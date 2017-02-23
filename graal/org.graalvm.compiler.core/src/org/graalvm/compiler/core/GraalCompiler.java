@@ -22,9 +22,6 @@
  */
 package org.graalvm.compiler.core;
 
-import static org.graalvm.compiler.core.GraalCompilerOptions.EmitLIRRepeatCount;
-import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
-
 import java.util.Collection;
 import java.util.List;
 
@@ -62,7 +59,6 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
-import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
@@ -193,7 +189,7 @@ public class GraalCompiler {
             HighTierContext highTierContext = new HighTierContext(providers, graphBuilderSuite, optimisticOpts);
             if (graph.start().next() == null) {
                 graphBuilderSuite.apply(graph, highTierContext);
-                new DeadCodeEliminationPhase(Optional).apply(graph);
+                new DeadCodeEliminationPhase(DeadCodeEliminationPhase.Optionality.Optional).apply(graph);
             } else {
                 Debug.dump(Debug.INFO_LOG_LEVEL, graph, "initial state");
             }
@@ -220,13 +216,6 @@ public class GraalCompiler {
     public static <T extends CompilationResult> void emitBackEnd(StructuredGraph graph, Object stub, ResolvedJavaMethod installedCodeOwner, Backend backend, T compilationResult,
                     CompilationResultBuilderFactory factory, RegisterConfig registerConfig, LIRSuites lirSuites) {
         try (Scope s = Debug.scope("BackEnd", graph.getLastSchedule()); DebugCloseable a = BackEnd.start()) {
-            // Repeatedly run the LIR code generation pass to improve statistical profiling results.
-            for (int i = 0; i < EmitLIRRepeatCount.getValue(graph.getOptions()); i++) {
-                SchedulePhase dummySchedule = new SchedulePhase(graph.getOptions());
-                dummySchedule.apply(graph);
-                emitLIR(backend, graph, stub, registerConfig, lirSuites);
-            }
-
             LIRGenerationResult lirGen = null;
             lirGen = emitLIR(backend, graph, stub, registerConfig, lirSuites);
             try (Scope s2 = Debug.scope("CodeGen", lirGen, lirGen.getLIR())) {
@@ -265,6 +254,7 @@ public class GraalCompiler {
     private static LIRGenerationResult emitLIR0(Backend backend, StructuredGraph graph, Object stub, RegisterConfig registerConfig, LIRSuites lirSuites,
                     String[] allocationRestrictedTo) {
         try (Scope ds = Debug.scope("EmitLIR"); DebugCloseable a = EmitLIR.start()) {
+            assert !graph.hasValueProxies();
             ScheduleResult schedule = graph.getLastSchedule();
             Block[] blocks = schedule.getCFG().getBlocks();
             Block startBlock = schedule.getCFG().getStartBlock();

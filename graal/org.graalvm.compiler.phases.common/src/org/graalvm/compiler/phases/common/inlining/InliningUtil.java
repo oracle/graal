@@ -763,25 +763,33 @@ public class InliningUtil {
         MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
         assert !callTarget.isStatic() : callTarget.targetMethod();
         StructuredGraph graph = callTarget.graph();
-        ValueNode firstParam = callTarget.arguments().get(0);
-        if (firstParam.getStackKind() == JavaKind.Object) {
-            Stamp paramStamp = firstParam.stamp();
-            Stamp stamp = paramStamp.join(StampFactory.objectNonNull(TypeReference.create(graph.getAssumptions(), callTarget.targetMethod().getDeclaringClass())));
-            if (!StampTool.isPointerNonNull(firstParam)) {
-                LogicNode condition = graph.unique(IsNullNode.create(firstParam));
-                FixedGuardNode fixedGuard = graph.add(new FixedGuardNode(condition, NullCheckException, InvalidateReprofile, true));
-                PiNode nonNullReceiver = graph.unique(new PiNode(firstParam, stamp, fixedGuard));
-                graph.addBeforeFixed(invoke.asNode(), fixedGuard);
-                callTarget.replaceFirstInput(firstParam, nonNullReceiver);
-                return nonNullReceiver;
+        ValueNode oldReceiver = callTarget.arguments().get(0);
+        ValueNode newReceiver = oldReceiver;
+        if (newReceiver.getStackKind() == JavaKind.Object) {
+
+            if (invoke.getInvokeKind() == InvokeKind.Special) {
+                Stamp paramStamp = newReceiver.stamp();
+                Stamp stamp = paramStamp.join(StampFactory.object(TypeReference.create(graph.getAssumptions(), callTarget.targetMethod().getDeclaringClass())));
+                if (!stamp.equals(paramStamp)) {
+                    // The verifier and previous optimizations guarantee unconditionally that the
+                    // receiver is at least of the type of the method holder for a special invoke.
+                    newReceiver = graph.unique(new PiNode(newReceiver, stamp));
+                }
             }
-            if (!stamp.equals(paramStamp)) {
-                PiNode cast = graph.unique(new PiNode(firstParam, stamp));
-                callTarget.replaceFirstInput(firstParam, cast);
-                return cast;
+
+            if (!StampTool.isPointerNonNull(newReceiver)) {
+                LogicNode condition = graph.unique(IsNullNode.create(newReceiver));
+                FixedGuardNode fixedGuard = graph.add(new FixedGuardNode(condition, NullCheckException, InvalidateReprofile, true));
+                PiNode nonNullReceiver = graph.unique(new PiNode(newReceiver, StampFactory.objectNonNull(), fixedGuard));
+                graph.addBeforeFixed(invoke.asNode(), fixedGuard);
+                newReceiver = nonNullReceiver;
             }
         }
-        return firstParam;
+
+        if (newReceiver != oldReceiver) {
+            callTarget.replaceFirstInput(oldReceiver, newReceiver);
+        }
+        return newReceiver;
     }
 
     public static boolean canIntrinsify(Replacements replacements, ResolvedJavaMethod target, int invokeBci) {

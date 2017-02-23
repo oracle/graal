@@ -51,6 +51,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.replacements.ConstantBindingParameterPlugin;
 import org.graalvm.compiler.replacements.SnippetTemplate;
@@ -139,6 +140,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
                 }
             }
 
+            new RemoveValueProxyPhase().apply(graph);
             graph.setGuardsStage(GuardsStage.FLOATING_GUARDS);
             CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
             PhaseContext context = new PhaseContext(providers);

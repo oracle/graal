@@ -37,6 +37,7 @@ import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
+import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -64,7 +65,8 @@ public final class FloatingReadNode extends FloatingAccessNode implements LIRLow
         this.lastLocationAccess = lastLocationAccess;
 
         // The input to floating reads must be always non-null or have at least a guard.
-        assert guard != null || !(address.getBase().stamp() instanceof ObjectStamp) || ((ObjectStamp) address.getBase().stamp()).nonNull() : address.getBase();
+        assert guard != null || !(address.getBase().stamp() instanceof ObjectStamp) || address.getBase() instanceof ValuePhiNode ||
+                        ((ObjectStamp) address.getBase().stamp()).nonNull() : address.getBase();
     }
 
     @Override

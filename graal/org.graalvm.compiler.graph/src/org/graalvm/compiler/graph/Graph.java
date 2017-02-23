@@ -976,6 +976,12 @@ public class Graph {
         if (Fingerprint.ENABLED) {
             Fingerprint.submit("%s: %s", NodeEvent.NODE_ADDED, node);
         }
+        afterRegister(node);
+    }
+
+    @SuppressWarnings("unused")
+    protected void afterRegister(Node node) {
+
     }
 
     @SuppressWarnings("unused")
@@ -1107,16 +1113,6 @@ public class Graph {
     public EconomicMap<Node, Node> addDuplicates(Iterable<? extends Node> newNodes, final Graph oldGraph, int estimatedNodeCount, DuplicationReplacement replacements) {
         try (DebugCloseable s = DuplicateGraph.start()) {
             return NodeClass.addGraphDuplicate(this, oldGraph, estimatedNodeCount, newNodes, replacements);
-        }
-    }
-
-    /**
-     * Reverses the usage orders of all nodes. This is used for debugging to make sure an unorthodox
-     * usage order does not trigger bugs in the compiler.
-     */
-    public void reverseUsageOrder() {
-        for (Node n : getNodes()) {
-            n.reverseUsageOrder();
         }
     }
 

@@ -143,11 +143,11 @@ public class NewInstanceStub extends SnippetStub {
          * The type is known to be an instance so Klass::_layout_helper is the instance size as a
          * raw number
          */
-        int sizeInBytes = readLayoutHelper(hub);
         Word thread = registerAsWord(threadRegister);
         boolean inlineContiguousAllocationSupported = GraalHotSpotVMConfigNode.inlineContiguousAllocationSupported();
         if (!forceSlowPath(options) && inlineContiguousAllocationSupported) {
             if (isInstanceKlassFullyInitialized(hub)) {
+                int sizeInBytes = readLayoutHelper(hub);
                 Word memory = refillAllocate(thread, intArrayHub, sizeInBytes, logging(options));
                 if (memory.notEqual(0)) {
                     Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(INJECTED_VMCONFIG), PROTOTYPE_MARK_WORD_LOCATION);

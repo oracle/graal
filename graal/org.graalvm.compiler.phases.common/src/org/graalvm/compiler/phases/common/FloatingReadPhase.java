@@ -51,8 +51,6 @@ import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.cfg.HIRLoop;
-import org.graalvm.compiler.nodes.extended.GuardingNode;
-import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.memory.FloatableAccessNode;
 import org.graalvm.compiler.nodes.memory.FloatingAccessNode;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
@@ -372,12 +370,6 @@ public class FloatingReadPhase extends Phase {
                 MemoryNode lastLocationAccess = state.getLastLocationAccess(locationIdentity);
                 try (DebugCloseable position = accessNode.withNodeSourcePosition()) {
                     FloatingAccessNode floatingNode = accessNode.asFloatingNode(lastLocationAccess);
-                    ValueAnchorNode anchor = null;
-                    GuardingNode guard = accessNode.getGuard();
-                    if (guard != null) {
-                        anchor = graph.add(new ValueAnchorNode(guard.asNode()));
-                        graph.addAfterFixed(accessNode, anchor);
-                    }
                     graph.replaceFixedWithFloating(accessNode, floatingNode);
                 }
             }

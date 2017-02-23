@@ -117,8 +117,8 @@ public final class OptimisticOptimizations {
         return GraalOptions.UseExceptionProbability.getValue(options) && enabledOpts.contains(Optimization.UseExceptionProbability);
     }
 
-    public boolean useExceptionProbabilityForOperations(OptionValues options) {
-        return GraalOptions.UseExceptionProbabilityForOperations.getValue(options) && enabledOpts.contains(Optimization.UseExceptionProbabilityForOperations);
+    public boolean useExceptionProbabilityForOperations() {
+        return enabledOpts.contains(Optimization.UseExceptionProbabilityForOperations);
     }
 
     public boolean useLoopLimitChecks(OptionValues options) {

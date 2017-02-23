@@ -377,7 +377,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     }
 
     private static FrameState getUniqueFramestate(NodeWithState nodeWithState, FrameState frameState) {
-        if (frameState.getUsageCount() > 1) {
+        if (frameState.hasMoreThanOneUsage()) {
             // Can happen for example from inlined snippets with multiple state split nodes.
             FrameState copy = (FrameState) frameState.copyWithInputs();
             nodeWithState.asNode().replaceFirstInput(frameState, copy);
@@ -1071,7 +1071,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
              * else. If the phi is also the only usage of this input, we know that no other place
              * can check object identity against it, so it is safe to lose the object identity here.
              */
-            return value instanceof AllocatedObjectNode && value.getUsageCount() == 1;
+            return value instanceof AllocatedObjectNode && value.hasExactlyOneUsage();
         }
     }
 

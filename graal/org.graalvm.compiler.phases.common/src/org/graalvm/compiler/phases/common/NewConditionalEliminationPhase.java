@@ -32,7 +32,6 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.And;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Or;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
@@ -46,7 +45,6 @@ import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BinaryOpLogicNode;
 import org.graalvm.compiler.nodes.ConditionAnchorNode;
-import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.DeoptimizingGuard;
 import org.graalvm.compiler.nodes.FixedGuardNode;
@@ -56,6 +54,7 @@ import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
+import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
@@ -67,8 +66,6 @@ import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.BinaryNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
-import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
-import org.graalvm.compiler.nodes.calc.PointerEqualsNode;
 import org.graalvm.compiler.nodes.calc.UnaryNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
@@ -76,7 +73,6 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
-import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.TypeSwitchNode;
 import org.graalvm.compiler.nodes.spi.NodeWithState;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
@@ -84,6 +80,8 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.Pair;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -94,7 +92,6 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
     private static final DebugCounter counterStampsRegistered = Debug.counter("StampsRegistered");
     private static final DebugCounter counterStampsFound = Debug.counter("StampsFound");
     private static final DebugCounter counterIfsKilled = Debug.counter("CE_KilledIfs");
-    private static final DebugCounter counterLFFolded = Debug.counter("ConstantLFFolded");
     private final boolean fullSchedule;
 
     public NewConditionalEliminationPhase(boolean fullSchedule) {
@@ -105,31 +102,89 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, PhaseContext context) {
         try (Debug.Scope s = Debug.scope("DominatorConditionalElimination")) {
-            BlockMap<List<Node>> blockToNodes;
-            NodeMap<Block> nodeToBlock;
-            ControlFlowGraph cfg;
+            BlockMap<List<Node>> blockToNodes = null;
+            ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
             if (fullSchedule) {
-                SchedulePhase schedule = new SchedulePhase(SchedulePhase.SchedulingStrategy.EARLIEST);
-                schedule.apply(graph);
-                cfg = graph.getLastSchedule().getCFG();
-                cfg.computePostdominators();
+                cfg.visitDominatorTree(new MoveGuardsUpwards(), graph.hasValueProxies());
+                SchedulePhase.run(graph, SchedulePhase.SchedulingStrategy.EARLIEST, cfg);
                 blockToNodes = graph.getLastSchedule().getBlockToNodesMap();
-                nodeToBlock = graph.getLastSchedule().getNodeToBlockMap();
-            } else {
-                cfg = ControlFlowGraph.compute(graph, true, true, true, true);
-                blockToNodes = null;
-                nodeToBlock = cfg.getNodeToBlock();
             }
 
-            Instance visitor = new Instance(graph, blockToNodes, nodeToBlock, context);
+            Instance visitor = new Instance(graph, blockToNodes, context);
             cfg.visitDominatorTree(visitor, graph.hasValueProxies());
         }
+    }
+
+    public static class MoveGuardsUpwards implements ControlFlowGraph.RecursiveVisitor<Block> {
+
+        Block anchorBlock;
+
+        @Override
+        public Block enter(Block b) {
+            Block oldAnchorBlock = anchorBlock;
+            if (b.getDominator() == null || b.getDominator().getPostdominator() != b) {
+                // New anchor.
+                anchorBlock = b;
+            }
+
+            AbstractBeginNode beginNode = b.getBeginNode();
+            if (beginNode instanceof MergeNode && anchorBlock != b) {
+                MergeNode mergeNode = (MergeNode) beginNode;
+                for (GuardNode guard : mergeNode.guards().snapshot()) {
+                    GuardNode newlyCreatedGuard = new GuardNode(guard.getCondition(), anchorBlock.getBeginNode(), guard.getReason(), guard.getAction(), guard.isNegated(), guard.getSpeculation());
+                    GuardNode newGuard = mergeNode.graph().unique(newlyCreatedGuard);
+                    guard.replaceAndDelete(newGuard);
+                }
+            }
+
+            FixedNode endNode = b.getEndNode();
+            if (endNode instanceof IfNode) {
+                IfNode node = (IfNode) endNode;
+
+                // Check if we can move guards upwards.
+                AbstractBeginNode trueSuccessor = node.trueSuccessor();
+                EconomicMap<LogicNode, GuardNode> trueGuards = EconomicMap.create(Equivalence.IDENTITY);
+                for (GuardNode guard : trueSuccessor.guards()) {
+                    LogicNode condition = guard.getCondition();
+                    if (condition.hasMoreThanOneUsage()) {
+                        trueGuards.put(condition, guard);
+                    }
+                }
+
+                if (!trueGuards.isEmpty()) {
+                    for (GuardNode guard : node.falseSuccessor().guards().snapshot()) {
+                        GuardNode otherGuard = trueGuards.get(guard.getCondition());
+                        if (otherGuard != null && guard.isNegated() == otherGuard.isNegated()) {
+                            JavaConstant speculation = otherGuard.getSpeculation();
+                            if (speculation == null) {
+                                speculation = guard.getSpeculation();
+                            } else if (guard.getSpeculation() != null && guard.getSpeculation() != speculation) {
+                                // Cannot optimize due to different speculations.
+                                continue;
+                            }
+                            GuardNode newlyCreatedGuard = new GuardNode(guard.getCondition(), anchorBlock.getBeginNode(), guard.getReason(), guard.getAction(), guard.isNegated(), speculation);
+                            GuardNode newGuard = node.graph().unique(newlyCreatedGuard);
+                            if (otherGuard.isAlive()) {
+                                otherGuard.replaceAndDelete(newGuard);
+                            }
+                            guard.replaceAndDelete(newGuard);
+                        }
+                    }
+                }
+            }
+            return oldAnchorBlock;
+        }
+
+        @Override
+        public void exit(Block b, Block value) {
+            anchorBlock = value;
+        }
+
     }
 
     public static class Instance implements ControlFlowGraph.RecursiveVisitor<Integer> {
         protected final NodeMap<InfoElement> map;
         protected final BlockMap<List<Node>> blockToNodes;
-        protected final NodeMap<Block> nodeToBlock;
         protected final CanonicalizerTool tool;
         protected final NodeStack undoOperations;
         protected final StructuredGraph graph;
@@ -139,11 +194,9 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
          */
         private Deque<PendingTest> pendingTests;
 
-        public Instance(StructuredGraph graph, BlockMap<List<Node>> blockToNodes,
-                        NodeMap<Block> nodeToBlock, PhaseContext context) {
+        public Instance(StructuredGraph graph, BlockMap<List<Node>> blockToNodes, PhaseContext context) {
             this.graph = graph;
             this.blockToNodes = blockToNodes;
-            this.nodeToBlock = nodeToBlock;
             this.undoOperations = new NodeStack();
             this.map = graph.createNodeMap();
             pendingTests = new ArrayDeque<>();
@@ -262,7 +315,6 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 survivingSuccessor.replaceAtPredecessor(null);
                 node.replaceAtPredecessor(survivingSuccessor);
                 GraphUtil.killCFG(node);
-                Debug.log("Kill if");
                 counterIfsKilled.increment();
                 return true;
             });
@@ -321,43 +373,12 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 processConditionAnchor((ConditionAnchorNode) node);
             } else if (node instanceof IfNode) {
                 processIf((IfNode) node);
-            } else if (node instanceof LoadFieldNode) {
-                processLoadField((LoadFieldNode) node);
             } else {
                 return;
             }
         }
 
-        private void processLoadField(LoadFieldNode node) {
-            GuardedConstantStamp stamp = this.getConstantObjectStamp(node.object());
-            if (stamp != null) {
-                counterLFFolded.increment();
-                node.setObject(ConstantNode.forConstant(stamp.objectConstant, tool.getMetaAccess(), graph));
-            }
-        }
-
         protected void registerNewCondition(LogicNode condition, boolean negated, GuardingNode guard) {
-            if (!negated && condition instanceof PointerEqualsNode) {
-                PointerEqualsNode pe = (PointerEqualsNode) condition;
-                ValueNode x = pe.getX();
-                if (maybeMultipleUsages(x)) {
-                    ValueNode y = pe.getY();
-                    if (y.isConstant()) {
-                        JavaConstant constant = y.asJavaConstant();
-                        Stamp succeeding = pe.getSucceedingStampForX(negated);
-                        if (succeeding == null && pe instanceof ObjectEqualsNode && guard instanceof FixedGuardNode) {
-                            succeeding = y.stamp();
-                        }
-                        if (succeeding != null) {
-                            if (y.stamp() instanceof ObjectStamp) {
-                                GuardedConstantStamp cos = new GuardedConstantStamp(constant, (ObjectStamp) succeeding);
-                                registerNewStamp(x, cos, guard);
-                                return;
-                            }
-                        }
-                    }
-                }
-            }
             if (condition instanceof UnaryOpLogicNode) {
                 UnaryOpLogicNode unaryLogicNode = (UnaryOpLogicNode) condition;
                 ValueNode value = unaryLogicNode.getValue();
@@ -399,18 +420,6 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 pendingTests.push(new PendingTest(condition, (DeoptimizingGuard) guard));
             }
             registerCondition(condition, negated, guard);
-        }
-
-        private GuardedConstantStamp getConstantObjectStamp(ValueNode n) {
-            InfoElement infoElement = getInfoElements(n);
-            while (infoElement != null) {
-                Stamp s = infoElement.getStamp();
-                if (s instanceof GuardedConstantStamp) {
-                    return (GuardedConstantStamp) s;
-                }
-                infoElement = infoElement.getParent();
-            }
-            return null;
         }
 
         Pair<InfoElement, Stamp> recursiveFoldStamp(Node node) {
@@ -726,7 +735,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
         }
 
         private static boolean maybeMultipleUsages(ValueNode value) {
-            if (value.getUsageCount() > 1) {
+            if (value.hasMoreThanOneUsage()) {
                 return true;
             } else {
                 return value instanceof ProxyNode;
@@ -881,16 +890,6 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
         public String toString() {
             return stamp + " -> " + guard;
         }
-    }
-
-    private static class GuardedConstantStamp extends ObjectStamp {
-        private final JavaConstant objectConstant;
-
-        GuardedConstantStamp(JavaConstant objectConstant, ObjectStamp succeedingStamp) {
-            super(succeedingStamp.type(), succeedingStamp.isExactType(), succeedingStamp.nonNull(), succeedingStamp.alwaysNull());
-            this.objectConstant = objectConstant;
-        }
-
     }
 
     @Override

@@ -177,7 +177,7 @@ public class LoopEx {
             if (!binary.isAssociative()) {
                 continue;
             }
-            BinaryArithmeticNode<?> result = BinaryArithmeticNode.reassociate(binary, invariant, binary.getX(), binary.getY());
+            ValueNode result = BinaryArithmeticNode.reassociate(binary, invariant, binary.getX(), binary.getY());
             if (result != binary) {
                 if (Debug.isLogEnabled()) {
                     Debug.log("%s : Reassociated %s into %s", graph.method().format("%H::%n"), binary, result);
