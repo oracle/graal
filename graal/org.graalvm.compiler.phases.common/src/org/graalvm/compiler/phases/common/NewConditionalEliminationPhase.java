@@ -32,7 +32,6 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.And;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Or;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
@@ -46,7 +45,6 @@ import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BinaryOpLogicNode;
 import org.graalvm.compiler.nodes.ConditionAnchorNode;
-import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.DeoptimizingGuard;
 import org.graalvm.compiler.nodes.FixedGuardNode;
@@ -68,8 +66,6 @@ import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.BinaryNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
-import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
-import org.graalvm.compiler.nodes.calc.PointerEqualsNode;
 import org.graalvm.compiler.nodes.calc.UnaryNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
@@ -77,7 +73,6 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
-import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.TypeSwitchNode;
 import org.graalvm.compiler.nodes.spi.NodeWithState;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
@@ -97,7 +92,6 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
     private static final DebugCounter counterStampsRegistered = Debug.counter("StampsRegistered");
     private static final DebugCounter counterStampsFound = Debug.counter("StampsFound");
     private static final DebugCounter counterIfsKilled = Debug.counter("CE_KilledIfs");
-    private static final DebugCounter counterLFFolded = Debug.counter("ConstantLFFolded");
     private final boolean fullSchedule;
 
     public NewConditionalEliminationPhase(boolean fullSchedule) {
@@ -401,43 +395,12 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 processConditionAnchor((ConditionAnchorNode) node);
             } else if (node instanceof IfNode) {
                 processIf((IfNode) node);
-            } else if (node instanceof LoadFieldNode) {
-                processLoadField((LoadFieldNode) node);
             } else {
                 return;
             }
         }
 
-        private void processLoadField(LoadFieldNode node) {
-            GuardedConstantStamp stamp = this.getConstantObjectStamp(node.object());
-            if (stamp != null) {
-                counterLFFolded.increment();
-                node.setObject(ConstantNode.forConstant(stamp.objectConstant, tool.getMetaAccess(), graph));
-            }
-        }
-
         protected void registerNewCondition(LogicNode condition, boolean negated, GuardingNode guard) {
-            if (!negated && condition instanceof PointerEqualsNode) {
-                PointerEqualsNode pe = (PointerEqualsNode) condition;
-                ValueNode x = pe.getX();
-                if (maybeMultipleUsages(x)) {
-                    ValueNode y = pe.getY();
-                    if (y.isConstant()) {
-                        JavaConstant constant = y.asJavaConstant();
-                        Stamp succeeding = pe.getSucceedingStampForX(negated);
-                        if (succeeding == null && pe instanceof ObjectEqualsNode && guard instanceof FixedGuardNode) {
-                            succeeding = y.stamp();
-                        }
-                        if (succeeding != null) {
-                            if (y.stamp() instanceof ObjectStamp) {
-                                GuardedConstantStamp cos = new GuardedConstantStamp(constant, (ObjectStamp) succeeding);
-                                registerNewStamp(x, cos, guard);
-                                return;
-                            }
-                        }
-                    }
-                }
-            }
             if (condition instanceof UnaryOpLogicNode) {
                 UnaryOpLogicNode unaryLogicNode = (UnaryOpLogicNode) condition;
                 ValueNode value = unaryLogicNode.getValue();
@@ -479,18 +442,6 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 pendingTests.push(new PendingTest(condition, (DeoptimizingGuard) guard));
             }
             registerCondition(condition, negated, guard);
-        }
-
-        private GuardedConstantStamp getConstantObjectStamp(ValueNode n) {
-            InfoElement infoElement = getInfoElements(n);
-            while (infoElement != null) {
-                Stamp s = infoElement.getStamp();
-                if (s instanceof GuardedConstantStamp) {
-                    return (GuardedConstantStamp) s;
-                }
-                infoElement = infoElement.getParent();
-            }
-            return null;
         }
 
         Pair<InfoElement, Stamp> recursiveFoldStamp(Node node) {
@@ -961,16 +912,6 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
         public String toString() {
             return stamp + " -> " + guard;
         }
-    }
-
-    private static class GuardedConstantStamp extends ObjectStamp {
-        private final JavaConstant objectConstant;
-
-        GuardedConstantStamp(JavaConstant objectConstant, ObjectStamp succeedingStamp) {
-            super(succeedingStamp.type(), succeedingStamp.isExactType(), succeedingStamp.nonNull(), succeedingStamp.alwaysNull());
-            this.objectConstant = objectConstant;
-        }
-
     }
 
     @Override
