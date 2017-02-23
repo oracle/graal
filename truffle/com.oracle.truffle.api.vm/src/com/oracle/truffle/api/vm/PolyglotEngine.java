@@ -540,9 +540,9 @@ public class PolyglotEngine {
      * This method is useful for Java applications that <em>interoperate</em> with guest languages.
      * The general strategy is to {@linkplain #eval(Source) evaluate} guest language code that
      * produces the desired language element and then {@linkplain Value#as(Class) create} a Java
-     * object of the appropriate type for Java access to the result. The tutorial
-     * <a href= "{@docRoot}/com/oracle/truffle/tutorial/embedding/package-summary.html">"Embedding
-     * Truffle Languages in Java"</a> contains examples.
+     * object of the appropriate type for Java access to the result. The tutorial <a href=
+     * "{@docRoot}/com/oracle/truffle/tutorial/embedding/package-summary.html">"Embedding Truffle
+     * Languages in Java"</a> contains examples.
      *
      * @param source guest language code
      * @return result of the evaluation wrapped in a non-null {@link Value}
@@ -971,8 +971,9 @@ public class PolyglotEngine {
          * languages. The general strategy is to {@linkplain PolyglotEngine#eval(Source) evaluate}
          * guest language code that produces the desired language element and then use this method
          * to create a Java object of the appropriate type for Java access to the result. The
-         * tutorial <a href= "{@docRoot}/com/oracle/truffle/tutorial/embedding/package-summary.html"
-         * >"Embedding Truffle Languages in Java"</a> contains examples.
+         * tutorial <a href=
+         * "{@docRoot}/com/oracle/truffle/tutorial/embedding/package-summary.html" >
+         * "Embedding Truffle Languages in Java"</a> contains examples.
          *
          * @param <T> the type of the requested view
          * @param representation an interface describing the requested access (must be an interface)
