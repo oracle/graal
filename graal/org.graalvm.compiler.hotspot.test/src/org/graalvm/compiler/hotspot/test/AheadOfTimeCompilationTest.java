@@ -87,8 +87,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         assertDeepEquals(1, getConstantNodes(result).count());
         Stamp constantStamp = getConstantNodes(result).first().stamp();
         Assert.assertTrue(constantStamp.toString(), constantStamp instanceof KlassPointerStamp);
-        assertDeepEquals(2, result.getNodes().filter(FloatingReadNode.class).count());
-        assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
+        assertDeepEquals(2, result.getNodes().filter(ReadNode.class).count());
     }
 
     @Test
@@ -96,7 +95,6 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         StructuredGraph result = compile("getStaticFinalObject", false);
         assertDeepEquals(1, getConstantNodes(result).count());
         assertDeepEquals(JavaKind.Object, getConstantNodes(result).first().getStackKind());
-        assertDeepEquals(0, result.getNodes().filter(FloatingReadNode.class).count());
         assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
@@ -113,8 +111,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) getMetaAccess().lookupJavaType(AheadOfTimeCompilationTest.class);
         assertDeepEquals(type.klass(), filter.first().asConstant());
 
-        assertDeepEquals(1, result.getNodes().filter(FloatingReadNode.class).count());
-        assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
+        assertDeepEquals(1, result.getNodes().filter(ReadNode.class).count());
     }
 
     @Test
@@ -126,7 +123,6 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         JavaConstant c = filter.first().asJavaConstant();
         Assert.assertEquals(getSnippetReflection().asObject(Class.class, c), AheadOfTimeCompilationTest.class);
 
-        assertDeepEquals(0, result.getNodes().filter(FloatingReadNode.class).count());
         assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
@@ -142,8 +138,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         Stamp constantStamp = filter.first().stamp();
         Assert.assertTrue(constantStamp instanceof KlassPointerStamp);
 
-        assertDeepEquals(2, result.getNodes().filter(FloatingReadNode.class).count());
-        assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
+        assertDeepEquals(2, result.getNodes().filter(ReadNode.class).count());
     }
 
     @Test
@@ -154,7 +149,6 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         JavaConstant c = filter.first().asJavaConstant();
         Assert.assertEquals(getSnippetReflection().asObject(Class.class, c), Integer.TYPE);
 
-        assertDeepEquals(0, result.getNodes().filter(FloatingReadNode.class).count());
         assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
