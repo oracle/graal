@@ -92,7 +92,7 @@ def checkLinks(javadocDir):
                     where = content.find('name="' + s + '"')
                     if where == -1:
                         mx.warn('There should be section ' + s + ' in ' + referencedfile + ". Referenced from " + path)
-                        #err = True
+                        err = True
 
     if err:
         mx.abort('There are wrong references in Javadoc')

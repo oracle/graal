@@ -465,7 +465,7 @@ public class PolyglotEngine {
          * other than the calling thread.
          * <p>
          * By default engines execute both {@link PolyglotEngine#eval(Source)} and
-         * {@link Value#invoke(Object, Object[])} synchronously in the calling thread.
+         * {@link Value#execute(java.lang.Object...)} synchronously in the calling thread.
          * <p>
          * A custom {@link Executor} is expected to perform every execution it is given (via
          * {@link Executor#execute(Runnable)}) in order of arrival. An arbitrary thread may be used,
@@ -954,8 +954,9 @@ public class PolyglotEngine {
     /**
      * A future value wrapper. A user level wrapper around values returned by evaluation of various
      * {@link PolyglotEngine} functions like {@link PolyglotEngine#findGlobalSymbol(String)} and
-     * {@link PolyglotEngine#eval(Source)} or a value returned by {@link #invoke(Object, Object...)
-     * a subsequent execution}. In case the {@link PolyglotEngine} has been initialized for
+     * {@link PolyglotEngine#eval(Source)} or a value returned by
+     * {@link #execute(java.lang.Object...) a subsequent execution}. In case the
+     * {@link PolyglotEngine} has been initialized for
      * {@link Builder#executor(java.util.concurrent.Executor) asynchronous execution}, the
      * {@link Value} represents a future - i.e., it is returned immediately, leaving the execution
      * running on behind.
