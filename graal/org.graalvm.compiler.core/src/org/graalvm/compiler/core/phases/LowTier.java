@@ -35,6 +35,7 @@ import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.ExpandLogicPhase;
+import org.graalvm.compiler.phases.common.FixReadsPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.common.ProfileCompiledMethodsPhase;
@@ -67,10 +68,12 @@ public class LowTier extends PhaseSuite<LowTierContext> {
 
         appendPhase(new ExpandLogicPhase());
 
-        /* Cleanup IsNull checks resulting from MID_TIER/LOW_TIER lowering and ExpandLogic phase. */
+        appendPhase(new FixReadsPhase());
+
         if (ConditionalElimination.getValue(options)) {
             appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, false));
-            /* Canonicalizer may create some new ShortCircuitOrNodes so clean them up. */
+
+            // Canonicalizations can introduce new short circuit ors.
             appendPhase(new ExpandLogicPhase());
         }
 
