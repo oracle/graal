@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -125,18 +126,11 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
         return 0;
     }
 
-    @SuppressWarnings("all")
-    private static boolean assertionsEnabled() {
-        boolean assertionsEnabled = false;
-        assert assertionsEnabled = true;
-        return assertionsEnabled;
-    }
-
     /**
      * List used to assert uniqueness of {@link #name} and {@link #autoSelectionPriority} across all
      * {@link CompilerConfigurationFactory} instances.
      */
-    private static final List<CompilerConfigurationFactory> factories = assertionsEnabled() ? new ArrayList<>() : null;
+    private static final List<CompilerConfigurationFactory> factories = Assertions.ENABLED ? new ArrayList<>() : null;
 
     private static boolean checkAndAddNewFactory(CompilerConfigurationFactory factory) {
         for (CompilerConfigurationFactory other : factories) {

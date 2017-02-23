@@ -102,9 +102,7 @@ public class Debug {
 
     @SuppressWarnings("all")
     private static boolean initialize() {
-        boolean assertionsEnabled = false;
-        assert assertionsEnabled = true;
-        return assertionsEnabled || params.enable || GraalDebugConfig.Options.ForceDebugEnable.getValue(DEBUG_OPTIONS);
+        return Assertions.ENABLED || params.enable || GraalDebugConfig.Options.ForceDebugEnable.getValue(DEBUG_OPTIONS);
     }
 
     private static final boolean ENABLED = initialize();

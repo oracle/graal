@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.hotspot.stubs;
 
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static org.graalvm.compiler.hotspot.nodes.JumpToExceptionHandlerInCallerNode.jumpToExceptionHandlerInCaller;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
 import static org.graalvm.compiler.hotspot.stubs.ExceptionHandlerStub.checkExceptionNotNull;
@@ -30,11 +31,13 @@ import static org.graalvm.compiler.hotspot.stubs.StubUtil.cAssertionsEnabled;
 import static org.graalvm.compiler.hotspot.stubs.StubUtil.decipher;
 import static org.graalvm.compiler.hotspot.stubs.StubUtil.newDescriptor;
 import static org.graalvm.compiler.hotspot.stubs.StubUtil.printf;
+
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
@@ -87,8 +90,8 @@ public class UnwindExceptionToCallerStub extends SnippetStub {
             printf(")\n");
         }
         Word thread = registerAsWord(threadRegister);
-        checkNoExceptionInThread(thread, assertionsEnabled(null));
-        checkExceptionNotNull(assertionsEnabled(null), exception);
+        checkNoExceptionInThread(thread, assertionsEnabled(INJECTED_VMCONFIG));
+        checkExceptionNotNull(assertionsEnabled(INJECTED_VMCONFIG), exception);
 
         Word handlerInCallerPc = exceptionHandlerForReturnAddress(EXCEPTION_HANDLER_FOR_RETURN_ADDRESS, thread, returnAddress);
 
@@ -107,18 +110,13 @@ public class UnwindExceptionToCallerStub extends SnippetStub {
     }
 
     /**
-     * Determines if either Java assertions are enabled for {@link UnwindExceptionToCallerStub} or
-     * if this is a HotSpot build where the ASSERT mechanism is enabled.
-     * <p>
-     * This first check relies on the per-class assertion status which is why this method must be in
-     * this class.
+     * Determines if either Java assertions are enabled for Graal or if this is a HotSpot build
+     * where the ASSERT mechanism is enabled.
      */
     @Fold
     @SuppressWarnings("all")
     static boolean assertionsEnabled(@InjectedParameter GraalHotSpotVMConfig config) {
-        boolean enabled = false;
-        assert enabled = true;
-        return enabled || cAssertionsEnabled(config);
+        return Assertions.ENABLED || cAssertionsEnabled(config);
     }
 
     public static final ForeignCallDescriptor EXCEPTION_HANDLER_FOR_RETURN_ADDRESS = newDescriptor(UnwindExceptionToCallerStub.class, "exceptionHandlerForReturnAddress", Word.class, Word.class,

@@ -42,6 +42,7 @@ import org.graalvm.compiler.code.DataSection.RawData;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.type.DataPointerConstant;
+import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeSourcePosition;
@@ -168,9 +169,7 @@ public class CompilationResultBuilder {
         assert frameContext != null;
         this.dataCache = dataCache;
 
-        boolean assertionsEnabled = false;
-        assert (assertionsEnabled = true) == true;
-        if (dataBuilder.needDetailedPatchingInformation() || assertionsEnabled) {
+        if (dataBuilder.needDetailedPatchingInformation() || Assertions.ENABLED) {
             /*
              * Always enabled in debug mode, even when the VM does not request detailed information,
              * to increase test coverage.

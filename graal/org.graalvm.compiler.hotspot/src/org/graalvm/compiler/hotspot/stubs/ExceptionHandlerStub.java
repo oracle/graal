@@ -41,6 +41,7 @@ import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
@@ -145,18 +146,13 @@ public class ExceptionHandlerStub extends SnippetStub {
     }
 
     /**
-     * Determines if either Java assertions are enabled for {@link ExceptionHandlerStub} or if this
-     * is a HotSpot build where the ASSERT mechanism is enabled.
-     * <p>
-     * This first check relies on the per-class assertion status which is why this method must be in
-     * this class.
+     * Determines if either Java assertions are enabled for Graal or if this is a HotSpot build
+     * where the ASSERT mechanism is enabled.
      */
     @Fold
     @SuppressWarnings("all")
     static boolean assertionsEnabled(@InjectedParameter GraalHotSpotVMConfig config) {
-        boolean enabled = false;
-        assert enabled = true;
-        return enabled || cAssertionsEnabled(config);
+        return Assertions.ENABLED || cAssertionsEnabled(config);
     }
 
     public static final ForeignCallDescriptor EXCEPTION_HANDLER_FOR_PC = newDescriptor(ExceptionHandlerStub.class, "exceptionHandlerForPc", Word.class, Word.class);

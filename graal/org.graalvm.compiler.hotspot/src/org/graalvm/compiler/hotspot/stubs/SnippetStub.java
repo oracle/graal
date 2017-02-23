@@ -33,6 +33,7 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
 import org.graalvm.compiler.debug.GraalError;
@@ -93,14 +94,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
         this.method = providers.getMetaAccess().lookupJavaMethod(javaMethod);
     }
 
-    @SuppressWarnings("all")
-    private static boolean assertionsEnabled() {
-        boolean enabled = false;
-        assert enabled = true;
-        return enabled;
-    }
-
-    public static final ThreadLocal<StructuredGraph> SnippetGraphUnderConstruction = assertionsEnabled() ? new ThreadLocal<>() : null;
+    public static final ThreadLocal<StructuredGraph> SnippetGraphUnderConstruction = Assertions.ENABLED ? new ThreadLocal<>() : null;
 
     @Override
     @SuppressWarnings("try")

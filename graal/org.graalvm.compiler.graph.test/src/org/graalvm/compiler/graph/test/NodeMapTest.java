@@ -31,6 +31,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import org.graalvm.compiler.api.test.Graal;
+import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -107,13 +108,6 @@ public class NodeMapTest extends GraphTest {
         }
     }
 
-    @SuppressWarnings("all")
-    private static boolean assertionsEnabled() {
-        boolean assertionsEnabled = false;
-        assert assertionsEnabled = true;
-        return assertionsEnabled;
-    }
-
     @Test
     public void testNewGet() {
         /*
@@ -123,7 +117,7 @@ public class NodeMapTest extends GraphTest {
         TestNode newNode = graph.add(new TestNode());
         try {
             map.get(newNode);
-            fail("expected " + (assertionsEnabled() ? AssertionError.class.getSimpleName() : ArrayIndexOutOfBoundsException.class.getSimpleName()));
+            fail("expected " + (Assertions.ENABLED ? AssertionError.class.getSimpleName() : ArrayIndexOutOfBoundsException.class.getSimpleName()));
         } catch (AssertionError ae) {
             // thrown when assertions are enabled
         } catch (ArrayIndexOutOfBoundsException e) {
@@ -140,7 +134,7 @@ public class NodeMapTest extends GraphTest {
         TestNode newNode = graph.add(new TestNode());
         try {
             map.set(newNode, 1);
-            fail("expected " + (assertionsEnabled() ? AssertionError.class.getSimpleName() : ArrayIndexOutOfBoundsException.class.getSimpleName()));
+            fail("expected " + (Assertions.ENABLED ? AssertionError.class.getSimpleName() : ArrayIndexOutOfBoundsException.class.getSimpleName()));
         } catch (AssertionError ae) {
             // thrown when assertions are enabled
         } catch (ArrayIndexOutOfBoundsException e) {
