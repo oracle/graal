@@ -27,7 +27,6 @@ package com.oracle.truffle.api.interop;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess.Factory;
 import com.oracle.truffle.api.nodes.Node;
 import java.util.Map;
@@ -72,8 +71,8 @@ public abstract class Message {
      * The code that wants to send this message should use:
      *
      * <pre>
-     * {@link ForeignAccess}.{@link ForeignAccess#sendRead(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object) sendRead}(
-     *   {@link Message#READ}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, receiver, nameOfTheField
+     * {@link ForeignAccess}.{@link ForeignAccess#sendRead(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object) sendRead}(
+     *   {@link Message#READ}.{@link Message#createNode()},  receiver, nameOfTheField
      * );
      * </pre>
      *
@@ -99,8 +98,8 @@ public abstract class Message {
      * To unbox an object, use:
      *
      * <pre>
-     * {@link ForeignAccess}.{@link ForeignAccess#sendUnbox(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject) sendUnbox}(
-     *   {@link Message#UNBOX}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, objectToUnbox
+     * {@link ForeignAccess}.{@link ForeignAccess#sendUnbox(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject) sendUnbox}(
+     *   {@link Message#UNBOX}.{@link Message#createNode()},  objectToUnbox
      * );
      * </pre>
      *
@@ -136,8 +135,8 @@ public abstract class Message {
      * Use following style to construct field modification message:
      *
      * <pre>
-     * {@link ForeignAccess}.{@link ForeignAccess#sendWrite(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object, java.lang.Object) sendWrite}(
-     *   {@link Message#WRITE}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, receiver, nameOfTheField, newValue
+     * {@link ForeignAccess}.{@link ForeignAccess#sendWrite(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object, java.lang.Object) sendWrite}(
+     *   {@link Message#WRITE}.{@link Message#createNode()},  receiver, nameOfTheField, newValue
      * );
      * </pre>
      *
@@ -184,8 +183,8 @@ public abstract class Message {
      * Use following style to construct execution message:
      *
      * <pre>
-     * {@link ForeignAccess}.{@link ForeignAccess#sendExecute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) sendExecute}(
-     *   {@link Message#createExecute(int) Message.createExecute}(2).{@link Message#createNode()}, {@link VirtualFrame currentFrame}, addFunction, valueOfA, valueOfB
+     * {@link ForeignAccess}.{@link ForeignAccess#sendExecute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) sendExecute}(
+     *   {@link Message#createExecute(int) Message.createExecute}(2).{@link Message#createNode()},  addFunction, valueOfA, valueOfB
      * );
      * </pre>
      *
@@ -228,7 +227,7 @@ public abstract class Message {
      *
      * <pre>
      * {@link Boolean} canBeExecuted = ({@link Boolean}) {@link ForeignAccess}.sendIsExecutable(
-     *   {@link Message#IS_EXECUTABLE}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, receiver
+     *   {@link Message#IS_EXECUTABLE}.{@link Message#createNode()},  receiver
      * );
      * </pre>
      * <p>
@@ -296,8 +295,8 @@ public abstract class Message {
      *
      * <pre>
      * <b>try</b> {
-     *   {@link ForeignAccess}.{@link ForeignAccess#sendInvoke(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.String, java.lang.Object...) sendInvoke}(
-     *     {@link Message#createInvoke(int) Message.createInvoke}(2).{@link Message#createNode()}, {@link VirtualFrame currentFrame}, obj, "add", valueOfA, valueOfB
+     *   {@link ForeignAccess}.{@link ForeignAccess#sendInvoke(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject, java.lang.String, java.lang.Object...) sendInvoke}(
+     *     {@link Message#createInvoke(int) Message.createInvoke}(2).{@link Message#createNode()},  obj, "add", valueOfA, valueOfB
      *   );
      * } <b>catch</b> ({@link IllegalArgumentException} ex) {
      *   // access the language via {@link #createExecute(int)}
@@ -354,7 +353,7 @@ public abstract class Message {
      *
      * <pre>
      * {@link Boolean} isNull = ({@link Boolean}) {@link ForeignAccess}.sendIsNull(
-     *   {@link Message#IS_NULL}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, objectToCheckForNull
+     *   {@link Message#IS_NULL}.{@link Message#createNode()},  objectToCheckForNull
      * );
      * </pre>
      *
@@ -379,7 +378,7 @@ public abstract class Message {
      *
      * @since 0.8 or earlier
      * @see ForeignAccess#sendHasSize(com.oracle.truffle.api.nodes.Node,
-     *      com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject)
+     *      com.oracle.truffle.api.interop.TruffleObject)
      */
     public static final Message HAS_SIZE = HasSize.INSTANCE;
 
@@ -399,7 +398,7 @@ public abstract class Message {
      *
      * @since 0.8 or earlier
      * @see ForeignAccess#sendGetSize(com.oracle.truffle.api.nodes.Node,
-     *      com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject)
+     *      com.oracle.truffle.api.interop.TruffleObject)
      */
     public static final Message GET_SIZE = GetSize.INSTANCE;
 
@@ -412,7 +411,7 @@ public abstract class Message {
      *
      * <pre>
      * {@link Boolean} isBoxed = ({@link Boolean}) {@link ForeignAccess}.sendIsBoxed(
-     *   {@link Message#IS_BOXED}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, objectToCheck
+     *   {@link Message#IS_BOXED}.{@link Message#createNode()},  objectToCheck
      * );
      * </pre>
      *
@@ -465,7 +464,7 @@ public abstract class Message {
      * will handle communication with the foreign language.
      *
      * @return node to be inserted into your AST and passed back to
-     *         {@link ForeignAccess#execute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object[])}
+     *         {@link ForeignAccess#send(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...)}
      *         method.
      * @since 0.8 or earlier
      */

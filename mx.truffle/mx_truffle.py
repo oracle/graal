@@ -27,6 +27,7 @@
 # ----------------------------------------------------------------------------------------------------
 
 import os
+from os.path import exists
 import re
 
 import mx
@@ -37,6 +38,7 @@ from mx_sigtest import sigtest
 from mx_jackpot import jackpot
 from mx_gate import Task
 from mx_javamodules import as_java_module, get_java_module_info
+from urlparse import urljoin
 import mx_gate
 import mx_unittest
 
@@ -45,6 +47,55 @@ _suite = mx.suite('truffle')
 def javadoc(args, vm=None):
     """build the Javadoc for all API packages"""
     mx.javadoc(['--unified'] + args)
+    javadocDir = os.sep.join([_suite.dir, 'javadoc'])
+    checkLinks(javadocDir)
+
+def checkLinks(javadocDir):
+    href = re.compile('(?<=href=").*?(?=")')
+    filesToCheck = {}
+    for root, _, files in os.walk(javadocDir):
+        for f in files:
+            if f.endswith('.html'):
+                html = os.path.join(root, f)
+                content = open(html, 'r').read()
+                for url in href.findall(content):
+                    full = urljoin(html, url)
+                    sectionIndex = full.find('#')
+                    questionIndex = full.find('?')
+                    minIndex = sectionIndex
+                    if minIndex < 0:
+                        minIndex = len(full)
+                    if questionIndex >= 0 and questionIndex < minIndex:
+                        minIndex = questionIndex
+                    path = full[0:minIndex]
+
+                    sectionNames = filesToCheck.get(path, [])
+                    if sectionIndex >= 0:
+                        s = full[sectionIndex + 1:]
+                        sectionNames = sectionNames + [(html, s)]
+                    else:
+                        sectionNames = sectionNames + [(html, None)]
+
+                    filesToCheck[path] = sectionNames
+
+    err = False
+    for referencedfile, sections in filesToCheck.items():
+        if referencedfile.startswith('javascript:') or referencedfile.startswith('http:') or referencedfile.startswith('https:'):
+            continue
+        if not exists(referencedfile):
+            mx.warn('Referenced file ' + referencedfile + ' does not exist. Referenced from ' + sections[0][0])
+            err = True
+        else:
+            content = open(referencedfile, 'r').read()
+            for path, s in sections:
+                if not s == None:
+                    where = content.find('name="' + s + '"')
+                    if where == -1:
+                        mx.warn('There should be section ' + s + ' in ' + referencedfile + ". Referenced from " + path)
+                        err = True
+
+    if err:
+        mx.abort('There are wrong references in Javadoc')
 
 def build(args, vm=None):
     """build the Java sources"""
