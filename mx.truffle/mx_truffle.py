@@ -56,7 +56,7 @@ def checkLinks(javadocDir):
     for root, _, files in os.walk(javadocDir):
         for f in files:
             if f.endswith('.html'):
-                html = os.sep.join([root, f])
+                html = os.path.join(root, f)
                 content = open(html, 'r').read()
                 for url in href.findall(content):
                     full = urljoin(html, url)
