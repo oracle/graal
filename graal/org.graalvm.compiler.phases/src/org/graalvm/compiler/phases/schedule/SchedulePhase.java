@@ -52,6 +52,7 @@ import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.GuardNode;
+import org.graalvm.compiler.nodes.KillingBeginNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.PhiNode;
@@ -315,6 +316,15 @@ public final class SchedulePhase extends Phase {
                     break;
                 }
                 lastBlock = currentBlock;
+            }
+
+            if (lastBlock.getBeginNode() instanceof KillingBeginNode) {
+                LocationIdentity locationIdentity = ((KillingBeginNode) lastBlock.getBeginNode()).getLocationIdentity();
+                if ((locationIdentity.isAny() || locationIdentity.equals(location)) && lastBlock != earliestBlock) {
+                    // The begin of this block kills the location, so we *have* to schedule the node
+                    // in the dominating block.
+                    lastBlock = lastBlock.getDominator();
+                }
             }
 
             return lastBlock;

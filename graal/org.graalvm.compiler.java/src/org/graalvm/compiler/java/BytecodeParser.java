@@ -1466,7 +1466,7 @@ public class BytecodeParser implements GraphBuilderContext {
             return createInvoke(callTarget, resultType);
         } else {
             Invoke invoke = createInvokeWithException(callTarget, resultType);
-            AbstractBeginNode beginNode = graph.add(new KillingBeginNode(LocationIdentity.any()));
+            AbstractBeginNode beginNode = graph.add(KillingBeginNode.create(LocationIdentity.any()));
             invoke.setNext(beginNode);
             lastInstr = beginNode;
             return invoke;
