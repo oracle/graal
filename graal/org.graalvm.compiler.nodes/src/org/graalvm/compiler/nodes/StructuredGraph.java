@@ -166,20 +166,22 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         private CompilationIdentifier compilationId = CompilationIdentifier.INVALID_COMPILATION_ID;
         private int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
         private boolean useProfilingInfo = true;
-        private OptionValues options = OptionValues.GLOBAL;
+        private final OptionValues options;
         private Cancellable cancellable = null;
 
         /**
          * Creates a builder for a graph.
          */
-        public Builder(AllowAssumptions allowAssumptions) {
+        public Builder(OptionValues options, AllowAssumptions allowAssumptions) {
+            this.options = options;
             this.assumptions = allowAssumptions == AllowAssumptions.YES ? new Assumptions() : null;
         }
 
         /**
          * Creates a builder for a graph that does not support {@link Assumptions}.
          */
-        public Builder() {
+        public Builder(OptionValues options) {
+            this.options = options;
             assumptions = null;
         }
 
@@ -215,11 +217,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
         public Builder useProfilingInfo(boolean flag) {
             this.useProfilingInfo = flag;
-            return this;
-        }
-
-        public Builder options(OptionValues optionValues) {
-            this.options = optionValues;
             return this;
         }
 

@@ -51,6 +51,7 @@ import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotCompilationIdentifier;
 import org.graalvm.compiler.hotspot.HotSpotCompiledCodeBuilder;
+import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.java.GraphBuilderPhase;
@@ -124,7 +125,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         public GraalDebugConfig getDebugConfig() {
             if (Debug.isEnabled()) {
                 SnippetReflectionProvider snippetReflection = runtime.getRequiredGraalCapability(SnippetReflectionProvider.class);
-                return DebugEnvironment.ensureInitialized(OptionValues.GLOBAL, snippetReflection);
+                return DebugEnvironment.ensureInitialized(TruffleCompilerOptions.getOptions(), snippetReflection);
             } else {
                 return null;
             }
@@ -134,6 +135,11 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     public HotSpotTruffleRuntime(Supplier<GraalRuntime> graalRuntime) {
         super(graalRuntime);
         setDontInlineCallBoundaryMethod();
+    }
+
+    @Override
+    public OptionValues getInitialOptions() {
+        return HotSpotGraalOptionValues.HOTSPOT_OPTIONS;
     }
 
     @Override
@@ -241,11 +247,11 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     private CompilationResult compileMethod(ResolvedJavaMethod javaMethod, CompilationIdentifier compilationId) {
         HotSpotProviders providers = getHotSpotProviders();
         SuitesProvider suitesProvider = providers.getSuites();
-        OptionValues opts = getOptions();
-        Suites suites = suitesProvider.getDefaultSuites(opts).copy();
-        LIRSuites lirSuites = suitesProvider.getDefaultLIRSuites(opts);
+        OptionValues options = getOptions();
+        Suites suites = suitesProvider.getDefaultSuites(options).copy();
+        LIRSuites lirSuites = suitesProvider.getDefaultLIRSuites(options);
         removeInliningPhase(suites);
-        StructuredGraph graph = new StructuredGraph.Builder(AllowAssumptions.NO).method(javaMethod).compilationId(compilationId).build();
+        StructuredGraph graph = new StructuredGraph.Builder(options, AllowAssumptions.NO).method(javaMethod).compilationId(compilationId).build();
 
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         Plugins plugins = new Plugins(new InvocationPlugins(metaAccess));
@@ -358,7 +364,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         if (factory == null) {
             return null;
         }
-        return new HotSpotNativeFunctionInterface(getHotSpotProviders(), factory, backend, config.dllLoad, config.dllLookup, config.rtldDefault);
+        return new HotSpotNativeFunctionInterface(getOptions(), getHotSpotProviders(), factory, backend, config.dllLoad, config.dllLookup, config.rtldDefault);
     }
 
     private static class TraceTransferToInterpreterHelper {

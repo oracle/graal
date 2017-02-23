@@ -26,9 +26,6 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import org.junit.Assert;
-import org.junit.Test;
-
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hotspot.replacements.arraycopy.ArrayCopySnippets;
@@ -37,6 +34,8 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LoweredCallTargetNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
+import org.junit.Assert;
+import org.junit.Test;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaMethod;
@@ -161,7 +160,7 @@ public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
     }
 
     /**
-     * Tests {@link ArrayCopySnippets#checkcastArraycopyWork(Object, int, Object, int, int)}.
+     * Tests {@link ArrayCopySnippets#checkcastArraycopyWork}.
      */
     @Test
     public void testArrayStoreException() {

@@ -22,8 +22,6 @@
  */
 package org.graalvm.compiler.core.test.debug;
 
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -241,7 +239,7 @@ public abstract class MethodMetricsTest extends GraalCompilerTest {
     static DebugConfig overrideGraalDebugConfig(PrintStream log, String methodFilter, String methodMeter) {
         List<DebugDumpHandler> dumpHandlers = new ArrayList<>();
         List<DebugVerifyHandler> verifyHandlers = new ArrayList<>();
-        OptionValues options = OptionValues.GLOBAL;
+        OptionValues options = getInitialOptions();
         GraalDebugConfig debugConfig = new GraalDebugConfig(
                         options,
                         GraalDebugConfig.Options.Log.getValue(options),
@@ -286,7 +284,7 @@ public abstract class MethodMetricsTest extends GraalCompilerTest {
     }
 
     void executeMethod(Method m, Object receiver, Object... args) {
-        OptionValues options = new OptionValues(GLOBAL, MethodMetricsPrinter.Options.MethodMeterPrintAscii, true);
+        OptionValues options = new OptionValues(getInitialOptions(), MethodMetricsPrinter.Options.MethodMeterPrintAscii, true);
         test(options, asResolvedJavaMethod(m), receiver, args);
     }
 

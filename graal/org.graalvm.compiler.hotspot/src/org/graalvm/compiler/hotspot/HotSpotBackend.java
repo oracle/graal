@@ -60,6 +60,7 @@ import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.word.Pointer;
 import org.graalvm.compiler.word.Word;
@@ -316,8 +317,9 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
      * runtime} object was initialized and this backend was registered with it.
      *
      * @param jvmciRuntime
+     * @param options
      */
-    public void completeInitialization(HotSpotJVMCIRuntime jvmciRuntime) {
+    public void completeInitialization(HotSpotJVMCIRuntime jvmciRuntime, OptionValues options) {
     }
 
     /**

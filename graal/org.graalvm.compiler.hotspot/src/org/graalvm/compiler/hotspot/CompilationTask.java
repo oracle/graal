@@ -31,7 +31,6 @@ import static org.graalvm.compiler.core.GraalCompilerOptions.PrintFilter;
 import static org.graalvm.compiler.core.GraalCompilerOptions.PrintStackTraceOnException;
 import static org.graalvm.compiler.core.phases.HighTier.Options.Inline;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
-
 import java.util.List;
 
 import org.graalvm.compiler.code.CompilationResult;
@@ -223,7 +222,7 @@ public class CompilationTask {
 
         CompilationResult result = null;
         try (DebugCloseable a = CompilationTime.start()) {
-            CompilationStatistics stats = CompilationStatistics.create(method, isOSR);
+            CompilationStatistics stats = CompilationStatistics.create(options, method, isOSR);
             final boolean printCompilation = PrintCompilation.getValue(options) && !TTY.isSuppressed();
             final boolean printAfterCompilation = PrintAfterCompilation.getValue(options) && !TTY.isSuppressed();
             if (printCompilation) {

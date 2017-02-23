@@ -22,12 +22,10 @@
  */
 package org.graalvm.compiler.core.test;
 
+import static org.graalvm.compiler.core.test.GraalCompilerTest.getInitialOptions;
 import static org.graalvm.compiler.debug.DelegatingDebugConfig.Feature.INTERCEPT;
 
 import java.lang.reflect.Method;
-
-import org.junit.Assume;
-import org.junit.Test;
 
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.debug.Debug;
@@ -45,6 +43,8 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.test.GraalTest;
+import org.junit.Assume;
+import org.junit.Test;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -90,7 +90,7 @@ public class StaticInterfaceFieldTest extends GraalTest {
 
         final Method m = getMethod(clazz, methodName);
         ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
-        StructuredGraph graph = new StructuredGraph.Builder().method(method).build();
+        StructuredGraph graph = new StructuredGraph.Builder(getInitialOptions()).method(method).build();
         try (DebugConfigScope s = Debug.setConfig(new DelegatingDebugConfig().disable(INTERCEPT)); Debug.Scope ds = Debug.scope("GraphBuilding", graph, method)) {
             graphBuilderSuite.apply(graph, context);
         } catch (Throwable e) {

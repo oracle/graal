@@ -63,10 +63,11 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
     }
 
     @Override
-    public void initialize(HotSpotProviders providers, GraalHotSpotVMConfig config) {
-        convertSnippets = new AMD64ConvertSnippets.Templates(providers, providers.getSnippetReflection(), providers.getCodeCache().getTarget());
-        profileSnippets = ProfileNode.Options.ProbabilisticProfiling.getValue(OptionValues.GLOBAL) ? new ProbabilisticProfileSnippets.Templates(providers, providers.getCodeCache().getTarget()) : null;
-        super.initialize(providers, config);
+    public void initialize(OptionValues options, HotSpotProviders providers, GraalHotSpotVMConfig config) {
+        convertSnippets = new AMD64ConvertSnippets.Templates(options, providers, providers.getSnippetReflection(), providers.getCodeCache().getTarget());
+        profileSnippets = ProfileNode.Options.ProbabilisticProfiling.getValue(options)
+                        ? new ProbabilisticProfileSnippets.Templates(options, providers, providers.getCodeCache().getTarget()) : null;
+        super.initialize(options, providers, config);
     }
 
     @Override
@@ -82,7 +83,7 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
 
     @Override
     protected ForeignCallDescriptor toForeignCall(UnaryOperation operation) {
-        if (GraalArithmeticStubs.getValue(OptionValues.GLOBAL)) {
+        if (GraalArithmeticStubs.getValue(runtime.getOptions())) {
             switch (operation) {
                 case LOG:
                     return ARITHMETIC_LOG_STUB;
@@ -106,7 +107,7 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
 
     @Override
     protected ForeignCallDescriptor toForeignCall(BinaryOperation operation) {
-        if (GraalArithmeticStubs.getValue(OptionValues.GLOBAL)) {
+        if (GraalArithmeticStubs.getValue(runtime.getOptions())) {
             switch (operation) {
                 case POW:
                     return ARITHMETIC_POW_STUB;

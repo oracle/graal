@@ -29,10 +29,11 @@ import java.lang.reflect.Method;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.Snippet.NonNullParameter;
-import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
+import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
 import org.graalvm.compiler.debug.GraalError;
@@ -46,6 +47,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
@@ -73,8 +75,8 @@ public abstract class SnippetStub extends Stub implements Snippets {
      *            this object
      * @param linkage linkage details for a call to the stub
      */
-    public SnippetStub(String snippetMethodName, HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
-        this(null, snippetMethodName, providers, linkage);
+    public SnippetStub(String snippetMethodName, OptionValues options, HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
+        this(null, snippetMethodName, options, providers, linkage);
     }
 
     /**
@@ -86,20 +88,13 @@ public abstract class SnippetStub extends Stub implements Snippets {
      *            {@code snippetDeclaringClass}
      * @param linkage linkage details for a call to the stub
      */
-    public SnippetStub(Class<? extends Snippets> snippetDeclaringClass, String snippetMethodName, HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
-        super(providers, linkage);
+    public SnippetStub(Class<? extends Snippets> snippetDeclaringClass, String snippetMethodName, OptionValues options, HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
+        super(options, providers, linkage);
         Method javaMethod = SnippetTemplate.AbstractTemplates.findMethod(snippetDeclaringClass == null ? getClass() : snippetDeclaringClass, snippetMethodName, null);
         this.method = providers.getMetaAccess().lookupJavaMethod(javaMethod);
     }
 
-    @SuppressWarnings("all")
-    private static boolean assertionsEnabled() {
-        boolean enabled = false;
-        assert enabled = true;
-        return enabled;
-    }
-
-    public static final ThreadLocal<StructuredGraph> SnippetGraphUnderConstruction = assertionsEnabled() ? new ThreadLocal<>() : null;
+    public static final ThreadLocal<StructuredGraph> SnippetGraphUnderConstruction = Assertions.ENABLED ? new ThreadLocal<>() : null;
 
     @Override
     @SuppressWarnings("try")
@@ -114,7 +109,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
 
         // Stubs cannot have optimistic assumptions since they have
         // to be valid for the entire run of the VM.
-        final StructuredGraph graph = new StructuredGraph.Builder().method(method).compilationId(compilationId).build();
+        final StructuredGraph graph = new StructuredGraph.Builder(options).method(method).compilationId(compilationId).build();
         try (Scope outer = Debug.scope("SnippetStub", graph)) {
             graph.disableUnsafeAccessTracking();
 

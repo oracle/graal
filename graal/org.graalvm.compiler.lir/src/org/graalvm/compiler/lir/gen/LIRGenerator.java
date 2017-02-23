@@ -47,7 +47,6 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.lir.ConstantValue;
-import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRVerifier;
@@ -103,11 +102,17 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     protected final ArithmeticLIRGenerator arithmeticLIRGen;
     private final MoveFactory moveFactory;
 
+    private final boolean printIrWithLir;
+    private final int traceLIRGeneratorLevel;
+
     public LIRGenerator(LIRKindTool lirKindTool, ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, CodeGenProviders providers, LIRGenerationResult res) {
         this.lirKindTool = lirKindTool;
         this.arithmeticLIRGen = arithmeticLIRGen;
         this.res = res;
         this.providers = providers;
+        OptionValues options = res.getLIR().getOptions();
+        this.printIrWithLir = !TTY.isSuppressed() && Options.PrintIRWithLIR.getValue(options);
+        this.traceLIRGeneratorLevel = TTY.isSuppressed() ? 0 : Options.TraceLIRGeneratorLevel.getValue(options);
 
         assert arithmeticLIRGen.lirGen == null;
         arithmeticLIRGen.lirGen = this;
@@ -297,8 +302,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     @Override
     public <I extends LIRInstruction> I append(I op) {
-        LIR lir = res.getLIR();
-        if (Options.PrintIRWithLIR.getValue(lir.getOptions()) && !TTY.isSuppressed()) {
+        if (printIrWithLir) {
             TTY.println(op.toStringWithIdPrefix());
             TTY.println();
         }
@@ -325,8 +329,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         }
 
         private void doBlockStart() {
-            OptionValues options = res.getLIR().getOptions();
-            if (Options.PrintIRWithLIR.getValue(options)) {
+            if (printIrWithLir) {
                 TTY.print(currentBlock.toString());
             }
 
@@ -336,18 +339,17 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
             append(new LabelOp(new Label(currentBlock.getId()), currentBlock.isAligned()));
 
-            if (Options.TraceLIRGeneratorLevel.getValue(options) >= 1) {
+            if (traceLIRGeneratorLevel >= 1) {
                 TTY.println("BEGIN Generating LIR for block B" + currentBlock.getId());
             }
         }
 
         private void doBlockEnd() {
-            OptionValues options = res.getLIR().getOptions();
-            if (Options.TraceLIRGeneratorLevel.getValue(options) >= 1) {
+            if (traceLIRGeneratorLevel >= 1) {
                 TTY.println("END Generating LIR for block B" + currentBlock.getId());
             }
 
-            if (Options.PrintIRWithLIR.getValue(options)) {
+            if (printIrWithLir) {
                 TTY.println();
             }
             currentBlock = null;

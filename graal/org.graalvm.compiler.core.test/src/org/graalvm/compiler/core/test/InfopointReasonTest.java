@@ -24,7 +24,6 @@ package org.graalvm.compiler.core.test;
 
 import static org.graalvm.compiler.core.GraalCompiler.compileGraph;
 import static org.graalvm.compiler.core.common.GraalOptions.OptAssumptions;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 import static org.junit.Assert.assertNotNull;
 
 import org.junit.Test;
@@ -77,7 +76,7 @@ public class InfopointReasonTest extends GraalCompilerTest {
     @Test
     public void lineInfopoints() {
         final ResolvedJavaMethod method = getResolvedJavaMethod("testMethod");
-        final StructuredGraph graph = parseDebug(method, AllowAssumptions.ifTrue(OptAssumptions.getValue(GLOBAL)));
+        final StructuredGraph graph = parseDebug(method, AllowAssumptions.ifTrue(OptAssumptions.getValue(getInitialOptions())));
         int graphLineSPs = 0;
         for (FullInfopointNode ipn : graph.getNodes().filter(FullInfopointNode.class)) {
             if (ipn.getReason() == InfopointReason.BYTECODE_POSITION) {

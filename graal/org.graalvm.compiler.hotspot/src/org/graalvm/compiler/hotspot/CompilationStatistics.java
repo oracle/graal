@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 import static java.lang.Thread.currentThread;
 
 import java.io.FileNotFoundException;
@@ -63,7 +62,6 @@ public final class CompilationStatistics {
     }
 
     private static final long RESOLUTION = 100000000;
-    private static final boolean ENABLED = Options.UseCompilationStatistics.getValue(GLOBAL);
 
     private static final CompilationStatistics DUMMY = new CompilationStatistics(null, false);
 
@@ -116,6 +114,7 @@ public final class CompilationStatistics {
             bytecodeCount = method.getCodeSize();
             threadAllocatedBytesStart = getThreadAllocatedBytes();
         } else {
+            assert DUMMY == null : "only DUMMY has no method";
             holder = "";
             name = "";
             signature = "";
@@ -124,7 +123,7 @@ public final class CompilationStatistics {
     }
 
     public void finish(HotSpotResolvedJavaMethod method, HotSpotInstalledCode code) {
-        if (ENABLED) {
+        if (isEnabled()) {
             duration = System.nanoTime() - startTime;
             codeSize = (int) code.getCodeSize();
             memoryUsed = getThreadAllocatedBytes() - threadAllocatedBytesStart;
@@ -139,8 +138,8 @@ public final class CompilationStatistics {
         return current.get().isEmpty() ? null : current.get().getLast();
     }
 
-    public static CompilationStatistics create(HotSpotResolvedJavaMethod method, boolean isOSR) {
-        if (ENABLED) {
+    public static CompilationStatistics create(OptionValues options, HotSpotResolvedJavaMethod method, boolean isOSR) {
+        if (Options.UseCompilationStatistics.getValue(options)) {
             CompilationStatistics stats = new CompilationStatistics(method, isOSR);
             list.add(stats);
             current.get().addLast(stats);
@@ -150,11 +149,12 @@ public final class CompilationStatistics {
         }
     }
 
+    public boolean isEnabled() {
+        return this != DUMMY;
+    }
+
     @SuppressWarnings("deprecation")
     public static void clear(String dumpName) {
-        if (!ENABLED) {
-            return;
-        }
         try {
             ConcurrentLinkedDeque<CompilationStatistics> snapshot = list;
             long snapshotZeroTime = zeroTime;

@@ -22,10 +22,8 @@
  */
 package org.graalvm.compiler.replacements;
 
-import static org.graalvm.compiler.core.common.GraalOptions.SnippetCounters;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import java.lang.reflect.Field;
@@ -46,6 +44,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
@@ -102,24 +101,20 @@ public class SnippetCounterNode extends FixedWithNextNode implements Lowerable {
     }
 
     /**
-     * When {@link #SnippetCounters} are enabled make sure {@link #SNIPPET_COUNTER_LOCATION} is part
-     * of the private locations.
+     * Add {@link #SNIPPET_COUNTER_LOCATION} to {@code privateLocations} if it isn't already there.
      *
      * @param privateLocations
      * @return a copy of privateLocations with any needed locations added
      */
     public static LocationIdentity[] addSnippetCounters(LocationIdentity[] privateLocations) {
-        if (SnippetCounters.getValue(GLOBAL)) {
-            for (LocationIdentity location : privateLocations) {
-                if (location.equals(SNIPPET_COUNTER_LOCATION)) {
-                    return privateLocations;
-                }
+        for (LocationIdentity location : privateLocations) {
+            if (location.equals(SNIPPET_COUNTER_LOCATION)) {
+                return privateLocations;
             }
-            LocationIdentity[] result = Arrays.copyOf(privateLocations, privateLocations.length + 1);
-            result[result.length - 1] = SnippetCounterNode.SNIPPET_COUNTER_LOCATION;
-            return result;
         }
-        return privateLocations;
+        LocationIdentity[] result = Arrays.copyOf(privateLocations, privateLocations.length + 1);
+        result[result.length - 1] = SnippetCounterNode.SNIPPET_COUNTER_LOCATION;
+        return result;
     }
 
     /**
@@ -150,8 +145,8 @@ public class SnippetCounterNode extends FixedWithNextNode implements Lowerable {
 
             private final SnippetInfo add = snippet(SnippetCounterSnippets.class, "add", SNIPPET_COUNTER_LOCATION);
 
-            Templates(Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
-                super(providers, snippetReflection, target);
+            Templates(OptionValues options, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
+                super(options, providers, snippetReflection, target);
             }
 
             public void lower(SnippetCounterNode counter, LoweringTool tool) {

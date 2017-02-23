@@ -74,6 +74,7 @@ import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
@@ -183,8 +184,9 @@ public class PartialEvaluator {
         }
 
         String name = callTarget.toString();
-        final StructuredGraph graph = new StructuredGraph.Builder(allowAssumptions).name(name).method(callRootMethod).speculationLog(callTarget.getSpeculationLog()).compilationId(
-                        compilationId).options(TruffleCompilerOptions.getOptions()).cancellable(task).build();
+        OptionValues options = TruffleCompilerOptions.getOptions();
+        final StructuredGraph graph = new StructuredGraph.Builder(options, allowAssumptions).name(name).method(callRootMethod).speculationLog(callTarget.getSpeculationLog()).compilationId(
+                        compilationId).cancellable(task).build();
         assert graph != null : "no graph for root method";
 
         try (Scope s = Debug.scope("CreateGraph", graph); Indent indent = Debug.logAndIndent("createGraph %s", graph)) {

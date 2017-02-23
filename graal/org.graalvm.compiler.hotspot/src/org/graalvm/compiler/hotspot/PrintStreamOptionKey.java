@@ -22,8 +22,6 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -32,6 +30,7 @@ import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
 
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
@@ -51,8 +50,8 @@ public class PrintStreamOptionKey extends OptionKey<String> {
      *
      * @return the name of the file to log to
      */
-    private String getFilename() {
-        String name = getValue(GLOBAL);
+    private String getFilename(OptionValues options) {
+        String name = getValue(options);
         if (name.contains("%p")) {
             String runtimeName = ManagementFactory.getRuntimeMXBean().getName();
             try {
@@ -114,11 +113,11 @@ public class PrintStreamOptionKey extends OptionKey<String> {
      * Gets the print stream configured by this option. If no file is configured, the print stream
      * will output to HotSpot's {@link HotSpotJVMCIRuntimeProvider#getLogStream() log} stream.
      */
-    public PrintStream getStream() {
-        if (getValue(GLOBAL) != null) {
+    public PrintStream getStream(OptionValues options) {
+        if (getValue(options) != null) {
             try {
                 final boolean enableAutoflush = true;
-                PrintStream ps = new PrintStream(new FileOutputStream(getFilename()), enableAutoflush);
+                PrintStream ps = new PrintStream(new FileOutputStream(getFilename(options)), enableAutoflush);
                 /*
                  * Add the JVM and Java arguments to the log file to help identity it.
                  */
@@ -130,7 +129,7 @@ public class PrintStreamOptionKey extends OptionKey<String> {
                 }
                 return ps;
             } catch (FileNotFoundException e) {
-                throw new RuntimeException("couldn't open file: " + getValue(GLOBAL), e);
+                throw new RuntimeException("couldn't open file: " + getValue(options), e);
             }
         } else {
             return new PrintStream(new DelayedOutputStream());

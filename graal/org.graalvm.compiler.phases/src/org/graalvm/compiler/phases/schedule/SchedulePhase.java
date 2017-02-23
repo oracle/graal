@@ -35,6 +35,7 @@ import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
+import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.graph.Graph.NodeEvent;
 import org.graalvm.compiler.graph.Graph.NodeEventListener;
@@ -102,9 +103,7 @@ public final class SchedulePhase extends Phase {
     }
 
     private NodeEventScope verifyImmutableGraph(StructuredGraph graph) {
-        boolean assertionsEnabled = false;
-        assert (assertionsEnabled = true) == true;
-        if (immutableGraph && assertionsEnabled) {
+        if (immutableGraph && Assertions.ENABLED) {
             return graph.trackNodeEvents(new NodeEventListener() {
                 @Override
                 public void event(NodeEvent e, Node node) {

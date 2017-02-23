@@ -23,13 +23,12 @@
 package org.graalvm.compiler.replacements;
 
 import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
-import static org.graalvm.compiler.core.common.GraalOptions.SnippetCounters;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import java.util.EnumMap;
 
 import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.Debug;
@@ -40,7 +39,9 @@ import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.SnippetCounter.Group;
 import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
@@ -54,98 +55,98 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 public class BoxingSnippets implements Snippets {
 
     @Snippet
-    public static Object booleanValueOf(boolean value) {
+    public static Object booleanValueOf(boolean value, @ConstantParameter SnippetCounter valueOfCounter) {
         valueOfCounter.inc();
         return PiNode.piCast(Boolean.valueOf(value), StampFactory.forNodeIntrinsic());
     }
 
     @Snippet
-    public static Object byteValueOf(byte value) {
+    public static Object byteValueOf(byte value, @ConstantParameter SnippetCounter valueOfCounter) {
         valueOfCounter.inc();
         return PiNode.piCast(Byte.valueOf(value), StampFactory.forNodeIntrinsic());
     }
 
     @Snippet
-    public static Object charValueOf(char value) {
+    public static Object charValueOf(char value, @ConstantParameter SnippetCounter valueOfCounter) {
         valueOfCounter.inc();
         return PiNode.piCast(Character.valueOf(value), StampFactory.forNodeIntrinsic());
     }
 
     @Snippet
-    public static Object doubleValueOf(double value) {
+    public static Object doubleValueOf(double value, @ConstantParameter SnippetCounter valueOfCounter) {
         valueOfCounter.inc();
         return PiNode.piCast(Double.valueOf(value), StampFactory.forNodeIntrinsic());
     }
 
     @Snippet
-    public static Object floatValueOf(float value) {
+    public static Object floatValueOf(float value, @ConstantParameter SnippetCounter valueOfCounter) {
         valueOfCounter.inc();
         return PiNode.piCast(Float.valueOf(value), StampFactory.forNodeIntrinsic());
     }
 
     @Snippet
-    public static Object intValueOf(int value) {
+    public static Object intValueOf(int value, @ConstantParameter SnippetCounter valueOfCounter) {
         valueOfCounter.inc();
         return PiNode.piCast(Integer.valueOf(value), StampFactory.forNodeIntrinsic());
     }
 
     @Snippet
-    public static Object longValueOf(long value) {
+    public static Object longValueOf(long value, @ConstantParameter SnippetCounter valueOfCounter) {
         valueOfCounter.inc();
         return PiNode.piCast(Long.valueOf(value), StampFactory.forNodeIntrinsic());
     }
 
     @Snippet
-    public static Object shortValueOf(short value) {
+    public static Object shortValueOf(short value, @ConstantParameter SnippetCounter valueOfCounter) {
         valueOfCounter.inc();
         return PiNode.piCast(Short.valueOf(value), StampFactory.forNodeIntrinsic());
     }
 
     @Snippet
-    public static boolean booleanValue(Boolean value) {
-        valueOfCounter.inc();
+    public static boolean booleanValue(Boolean value, @ConstantParameter SnippetCounter valueCounter) {
+        valueCounter.inc();
         return value.booleanValue();
     }
 
     @Snippet
-    public static byte byteValue(Byte value) {
-        valueOfCounter.inc();
+    public static byte byteValue(Byte value, @ConstantParameter SnippetCounter valueCounter) {
+        valueCounter.inc();
         return value.byteValue();
     }
 
     @Snippet
-    public static char charValue(Character value) {
-        valueOfCounter.inc();
+    public static char charValue(Character value, @ConstantParameter SnippetCounter valueCounter) {
+        valueCounter.inc();
         return value.charValue();
     }
 
     @Snippet
-    public static double doubleValue(Double value) {
-        valueOfCounter.inc();
+    public static double doubleValue(Double value, @ConstantParameter SnippetCounter valueCounter) {
+        valueCounter.inc();
         return value.doubleValue();
     }
 
     @Snippet
-    public static float floatValue(Float value) {
-        valueOfCounter.inc();
+    public static float floatValue(Float value, @ConstantParameter SnippetCounter valueCounter) {
+        valueCounter.inc();
         return value.floatValue();
     }
 
     @Snippet
-    public static int intValue(Integer value) {
-        valueOfCounter.inc();
+    public static int intValue(Integer value, @ConstantParameter SnippetCounter valueCounter) {
+        valueCounter.inc();
         return value.intValue();
     }
 
     @Snippet
-    public static long longValue(Long value) {
-        valueOfCounter.inc();
+    public static long longValue(Long value, @ConstantParameter SnippetCounter valueCounter) {
+        valueCounter.inc();
         return value.longValue();
     }
 
     @Snippet
-    public static short shortValue(Short value) {
-        valueOfCounter.inc();
+    public static short shortValue(Short value, @ConstantParameter SnippetCounter valueCounter) {
+        valueCounter.inc();
         return value.shortValue();
     }
 
@@ -182,12 +183,18 @@ public class BoxingSnippets implements Snippets {
         private final EnumMap<JavaKind, SnippetInfo> boxSnippets = new EnumMap<>(JavaKind.class);
         private final EnumMap<JavaKind, SnippetInfo> unboxSnippets = new EnumMap<>(JavaKind.class);
 
-        public Templates(Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
-            super(providers, snippetReflection, target);
+        private final SnippetCounter valueOfCounter;
+        private final SnippetCounter valueCounter;
+
+        public Templates(OptionValues options, SnippetCounter.Group.Factory factory, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
+            super(options, providers, snippetReflection, target);
             for (JavaKind kind : new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Double, JavaKind.Float, JavaKind.Int, JavaKind.Long, JavaKind.Short}) {
                 boxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "ValueOf"));
                 unboxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "Value"));
             }
+            Group group = factory.createSnippetCounterGroup("Boxing");
+            valueOfCounter = new SnippetCounter(group, "valueOf", "box intrinsification");
+            valueCounter = new SnippetCounter(group, "<kind>Value", "unbox intrinsification");
         }
 
         public void lower(BoxNode box, LoweringTool tool) {
@@ -198,6 +205,7 @@ public class BoxingSnippets implements Snippets {
             } else {
                 Arguments args = new Arguments(boxSnippets.get(box.getBoxingKind()), box.graph().getGuardsStage(), tool.getLoweringStage());
                 args.add("value", box.getValue());
+                args.addConst("valueOfCounter", valueOfCounter);
 
                 SnippetTemplate template = template(args);
                 Debug.log("Lowering integerValueOf in %s: node=%s, template=%s, arguments=%s", box.graph(), box, template, args);
@@ -208,14 +216,11 @@ public class BoxingSnippets implements Snippets {
         public void lower(UnboxNode unbox, LoweringTool tool) {
             Arguments args = new Arguments(unboxSnippets.get(unbox.getBoxingKind()), unbox.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("value", unbox.getValue());
+            args.addConst("valueCounter", valueCounter);
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering integerValueOf in %s: node=%s, template=%s, arguments=%s", unbox.graph(), unbox, template, args);
             template.instantiate(providers.getMetaAccess(), unbox, DEFAULT_REPLACER, args);
         }
     }
-
-    private static final SnippetCounter.Group integerCounters = SnippetCounters.getValue(GLOBAL) ? new SnippetCounter.Group("Integer intrinsifications") : null;
-    private static final SnippetCounter valueOfCounter = new SnippetCounter(integerCounters, "valueOf", "valueOf intrinsification");
-
 }

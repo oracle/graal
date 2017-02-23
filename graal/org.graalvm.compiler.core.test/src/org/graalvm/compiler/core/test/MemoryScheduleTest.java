@@ -25,7 +25,6 @@ package org.graalvm.compiler.core.test;
 import static org.graalvm.compiler.core.common.GraalOptions.OptImplicitNullChecks;
 import static org.graalvm.compiler.core.common.GraalOptions.OptScheduleOutOfLoops;
 import static org.graalvm.compiler.graph.test.matchers.NodeIterableCount.hasCount;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.assertThat;
 
@@ -723,7 +722,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @SuppressWarnings("try")
     private ScheduleResult getFinalSchedule(final String snippet, final TestMode mode, final SchedulingStrategy schedulingStrategy) {
-        OptionValues options = new OptionValues(GLOBAL, OptScheduleOutOfLoops, schedulingStrategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS, OptImplicitNullChecks, false);
+        OptionValues options = new OptionValues(getInitialOptions(), OptScheduleOutOfLoops, schedulingStrategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS, OptImplicitNullChecks, false);
         final StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO, options);
         try (Scope d = Debug.scope("FloatingReadTest", graph)) {
             HighTierContext context = getDefaultHighTierContext();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,29 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.test;
-
-import org.junit.Test;
-
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
-import org.graalvm.compiler.replacements.test.MethodSubstitutionTest;
+package org.graalvm.compiler.options;
 
 /**
- * Tests HotSpot specific substitutions for {@link Node}.
+ * Defines a service that supplies values for options. The values supplied may come from a source
+ * such as system properties or a command line.
+ *
+ * This mechanism for obtaining option values must only be used if there is no other more local
+ * context from which option values can be obtained.
  */
-public class HotSpotNodeSubstitutionsTest extends MethodSubstitutionTest {
+public interface OptionValuesAccess {
 
-    @Test
-    public void test() {
-        StructuredGraph graph = new StructuredGraph.Builder(getInitialOptions(), AllowAssumptions.YES).build();
-        test("getNodeClass", ConstantNode.forInt(42, graph));
-    }
-
-    public static NodeClass<?> getNodeClass(Node n) {
-        return n.getNodeClass();
-    }
+    /**
+     * Gets the option values available via this service.
+     */
+    OptionValues getOptions();
 }

@@ -25,6 +25,7 @@ package org.graalvm.compiler.nodes.test;
 import static org.junit.Assert.assertEquals;
 
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -44,7 +45,7 @@ public class NegateNodeCanonicalizationTest {
 
     @Before
     public void before() {
-        graph = new StructuredGraph.Builder(AllowAssumptions.YES).build();
+        graph = new StructuredGraph.Builder(GraalCompilerTest.getInitialOptions(), AllowAssumptions.YES).build();
     }
 
     @Test

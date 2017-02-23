@@ -36,7 +36,6 @@ import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
@@ -60,7 +59,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
         this.truffleCompiler = DefaultTruffleCompiler.create(runtime);
 
-        DebugEnvironment.ensureInitialized(OptionValues.GLOBAL, runtime.getRequiredGraalCapability(SnippetReflectionProvider.class));
+        DebugEnvironment.ensureInitialized(getInitialOptions(), runtime.getRequiredGraalCapability(SnippetReflectionProvider.class));
     }
 
     /**

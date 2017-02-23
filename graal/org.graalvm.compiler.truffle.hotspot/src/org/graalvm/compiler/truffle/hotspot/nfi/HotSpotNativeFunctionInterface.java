@@ -27,6 +27,8 @@ import java.lang.reflect.Field;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.options.OptionValues;
+
 import com.oracle.nfi.api.NativeFunctionInterface;
 import com.oracle.nfi.api.NativeFunctionPointer;
 import com.oracle.nfi.api.NativeLibraryHandle;
@@ -43,11 +45,11 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
     private HotSpotNativeFunctionHandle libraryLookupFunctionHandle;
     private HotSpotNativeFunctionHandle dllLookupFunctionHandle;
 
-    public HotSpotNativeFunctionInterface(HotSpotProviders providers, RawNativeCallNodeFactory factory, Backend backend, long dlopen, long dlsym, long rtldDefault) {
+    public HotSpotNativeFunctionInterface(OptionValues options, HotSpotProviders providers, RawNativeCallNodeFactory factory, Backend backend, long dlopen, long dlsym, long rtldDefault) {
         this.rtldDefault = rtldDefault == GraalHotSpotVMConfig.INVALID_RTLD_DEFAULT_HANDLE ? null : new HotSpotNativeLibraryHandle("RTLD_DEFAULT", rtldDefault);
         this.libraryLoadFunctionPointer = new HotSpotNativeFunctionPointer(dlopen, "os::dll_load");
         this.functionLookupFunctionPointer = new HotSpotNativeFunctionPointer(dlsym, "os::dll_lookup");
-        this.graphBuilder = new NativeCallStubGraphBuilder(providers, backend, factory);
+        this.graphBuilder = new NativeCallStubGraphBuilder(options, providers, backend, factory);
     }
 
     @Override

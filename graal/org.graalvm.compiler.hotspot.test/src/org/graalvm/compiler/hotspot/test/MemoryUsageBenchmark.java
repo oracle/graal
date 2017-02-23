@@ -23,7 +23,6 @@
 package org.graalvm.compiler.hotspot.test;
 
 import static org.graalvm.compiler.debug.internal.MemUseTrackerImpl.getCurrentThreadAllocatedBytes;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.core.test.AllocSpy;
@@ -33,7 +32,6 @@ import org.graalvm.compiler.hotspot.CompileTheWorld;
 import org.graalvm.compiler.hotspot.CompileTheWorldOptions;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
-import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -125,7 +123,7 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
         Graal.getRuntime();
 
         // Ensure a debug configuration for this thread is initialized
-        DebugEnvironment.ensureInitialized(OptionValues.GLOBAL);
+        DebugEnvironment.ensureInitialized(getInitialOptions());
         new MemoryUsageBenchmark().run();
     }
 
@@ -142,7 +140,7 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
             HotSpotJVMCIRuntimeProvider runtime = HotSpotJVMCIRuntime.runtime();
             int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
             HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, jvmciEnv);
-            CompilationTask task = new CompilationTask(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), request, true, false, GLOBAL);
+            CompilationTask task = new CompilationTask(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), request, true, false, getInitialOptions());
             task.runCompilation();
         }
     }
@@ -159,7 +157,7 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
             try (AllocSpy as = AllocSpy.open(methodName)) {
                 HotSpotJVMCIRuntimeProvider runtime = HotSpotJVMCIRuntime.runtime();
                 HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, JVMCICompiler.INVOCATION_ENTRY_BCI, jvmciEnv);
-                CompilationTask task = new CompilationTask(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), request, true, false, GLOBAL);
+                CompilationTask task = new CompilationTask(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), request, true, false, getInitialOptions());
                 task.runCompilation();
             }
         }
@@ -183,9 +181,9 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
     public void run() {
         compileAndTime("simple");
         compileAndTime("complex");
-        if (CompileTheWorldOptions.CompileTheWorldClasspath.getValue(GLOBAL) != CompileTheWorld.SUN_BOOT_CLASS_PATH) {
+        if (CompileTheWorldOptions.CompileTheWorldClasspath.getValue(getInitialOptions()) != CompileTheWorld.SUN_BOOT_CLASS_PATH) {
             HotSpotJVMCIRuntimeProvider runtime = HotSpotJVMCIRuntime.runtime();
-            CompileTheWorld ctw = new CompileTheWorld(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), GLOBAL);
+            CompileTheWorld ctw = new CompileTheWorld(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), getInitialOptions());
             try {
                 ctw.compile();
             } catch (Throwable e) {

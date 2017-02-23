@@ -28,7 +28,6 @@ import static org.graalvm.compiler.microbenchmarks.graal.util.GraalUtil.getMetho
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugEnvironment;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.options.OptionValues;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
@@ -46,10 +45,10 @@ public abstract class GraphState {
 
     @SuppressWarnings("try")
     public GraphState() {
-        // Ensure a debug configuration for this thread is initialized
-        DebugEnvironment.ensureInitialized(OptionValues.GLOBAL);
-
         GraalState graal = new GraalState();
+        // Ensure a debug configuration for this thread is initialized
+        DebugEnvironment.ensureInitialized(graal.options);
+
         ResolvedJavaMethod method = graal.metaAccess.lookupJavaMethod(getMethodFromMethodSpec(getClass()));
         StructuredGraph structuredGraph = null;
         try (Debug.Scope s = Debug.scope("GraphState", method)) {

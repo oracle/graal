@@ -23,8 +23,6 @@
 package org.graalvm.compiler.jtt;
 
 import static java.lang.reflect.Modifier.isStatic;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import java.util.Collections;
 import java.util.Set;
 
@@ -105,7 +103,7 @@ public class JTTTest extends GraalCompilerTest {
     }
 
     protected void runTest(String name, Object... args) {
-        runTest(GLOBAL, name, args);
+        runTest(getInitialOptions(), name, args);
     }
 
     protected void runTest(OptionValues options, String name, Object... args) {
@@ -113,7 +111,7 @@ public class JTTTest extends GraalCompilerTest {
     }
 
     protected void runTest(Set<DeoptimizationReason> shouldNotDeopt, String name, Object... args) {
-        runTest(GLOBAL, shouldNotDeopt, true, false, name, args);
+        runTest(getInitialOptions(), shouldNotDeopt, true, false, name, args);
     }
 
     protected void runTest(OptionValues options, Set<DeoptimizationReason> shouldNotDeopt, boolean bind, boolean noProfile, String name, Object... args) {

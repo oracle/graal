@@ -26,7 +26,6 @@ import static java.util.FormattableFlags.LEFT_JUSTIFY;
 import static java.util.FormattableFlags.UPPERCASE;
 import static org.graalvm.compiler.debug.DelegatingDebugConfig.Feature.INTERCEPT;
 import static org.graalvm.compiler.debug.DelegatingDebugConfig.Feature.LOG_METHOD;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -49,6 +48,7 @@ import org.graalvm.compiler.debug.internal.MemUseTrackerImpl;
 import org.graalvm.compiler.debug.internal.TimerImpl;
 import org.graalvm.compiler.debug.internal.method.MethodMetricsImpl;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.options.OptionValuesAccess;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -65,7 +65,12 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public class Debug {
 
-    private static final Params params = new Params();
+    /**
+     * The option values available in this package.
+     */
+    static final OptionValues DEBUG_OPTIONS = GraalServices.loadSingle(OptionValuesAccess.class, true).getOptions();
+
+    static final Params params = new Params();
 
     static {
         // Load the service providers that may want to modify any of the
@@ -78,7 +83,7 @@ public class Debug {
     /**
      * The parameters for configuring the initialization of {@link Debug} class.
      */
-    public static class Params {
+    public static final class Params {
         public boolean enable;
         public boolean enableMethodFilter;
         public boolean enableUnscopedTimers;
@@ -88,13 +93,16 @@ public class Debug {
         public boolean interceptCount;
         public boolean interceptTime;
         public boolean interceptMem;
+
+        @SuppressWarnings("static-method")
+        public OptionValues getOptions() {
+            return DEBUG_OPTIONS;
+        }
     }
 
     @SuppressWarnings("all")
     private static boolean initialize() {
-        boolean assertionsEnabled = false;
-        assert assertionsEnabled = true;
-        return assertionsEnabled || params.enable || GraalDebugConfig.Options.ForceDebugEnable.getValue(GLOBAL);
+        return Assertions.ENABLED || params.enable || GraalDebugConfig.Options.ForceDebugEnable.getValue(DEBUG_OPTIONS);
     }
 
     private static final boolean ENABLED = initialize();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,34 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.microbenchmarks.graal.util;
-
-import jdk.vm.ci.meta.MetaAccessProvider;
-
-import org.openjdk.jmh.annotations.Scope;
-import org.openjdk.jmh.annotations.State;
+package org.graalvm.compiler.graph.test;
 
 import org.graalvm.compiler.api.test.Graal;
-import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.runtime.RuntimeProvider;
 
-/**
- * Read-only, benchmark-wide state providing Graal runtime context.
- */
-@State(Scope.Benchmark)
-public class GraalState {
+public abstract class GraphTest {
 
-    public final OptionValues options;
-    public final Backend backend;
-    public final Providers providers;
-    public final MetaAccessProvider metaAccess;
-
-    public GraalState() {
-        options = Graal.getRequiredCapability(OptionValues.class);
-        backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
-        providers = backend.getProviders();
-        metaAccess = providers.getMetaAccess();
+    static OptionValues getOptions() {
+        return Graal.getRequiredCapability(OptionValues.class);
     }
 }

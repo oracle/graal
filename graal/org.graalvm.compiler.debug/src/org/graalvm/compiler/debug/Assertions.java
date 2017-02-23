@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,29 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.test;
-
-import org.junit.Test;
-
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
-import org.graalvm.compiler.replacements.test.MethodSubstitutionTest;
+package org.graalvm.compiler.debug;
 
 /**
- * Tests HotSpot specific substitutions for {@link Node}.
+ * Utility for query whether assertions are enabled.
  */
-public class HotSpotNodeSubstitutionsTest extends MethodSubstitutionTest {
+public class Assertions {
+    /**
+     * Determines if assertions are enabled. Strictly speaking, this may only be true for the
+     * {@link Assertions} class but we assume assertions are enabled/disabled for Graal as a whole.
+     */
+    public static final boolean ENABLED = assertionsEnabled();
 
-    @Test
-    public void test() {
-        StructuredGraph graph = new StructuredGraph.Builder(getInitialOptions(), AllowAssumptions.YES).build();
-        test("getNodeClass", ConstantNode.forInt(42, graph));
-    }
-
-    public static NodeClass<?> getNodeClass(Node n) {
-        return n.getNodeClass();
+    private static boolean assertionsEnabled() {
+        boolean enabled = false;
+        assert (enabled = true) == true;
+        return enabled;
     }
 }

@@ -142,7 +142,8 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             int sizeBefore = 0;
             Mark before = null;
             OptionValues options = graph.getOptions();
-            if (PhaseOptions.VerifyGraalPhasesSize.getValue(options) && checkContract()) {
+            boolean verifySizeContract = PhaseOptions.VerifyGraalPhasesSize.getValue(options) && checkContract();
+            if (verifySizeContract) {
                 if (context instanceof PhaseContext) {
                     sizeBefore = NodeCostUtil.computeGraphSize(graph, ((PhaseContext) context).getNodeCostProvider());
                     before = graph.getMark();
@@ -154,7 +155,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             inputNodesCount.add(graph.getNodeCount());
             this.run(graph, context);
             executionCount.increment();
-            if (PhaseOptions.VerifyGraalPhasesSize.getValue(options) && checkContract()) {
+            if (verifySizeContract) {
                 if (context instanceof PhaseContext) {
                     if (!before.isCurrent()) {
                         int sizeAfter = NodeCostUtil.computeGraphSize(graph, ((PhaseContext) context).getNodeCostProvider());

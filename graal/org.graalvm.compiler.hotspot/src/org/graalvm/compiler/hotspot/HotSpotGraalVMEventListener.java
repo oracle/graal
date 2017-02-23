@@ -22,8 +22,6 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.GraalDebugConfig;
@@ -61,7 +59,7 @@ public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {
     @Override
     public void notifyBootstrapFinished() {
         runtime.notifyBootstrapFinished();
-        if (GraalDebugConfig.Options.ClearMetricsAfterBootstrap.getValue(GLOBAL)) {
+        if (GraalDebugConfig.Options.ClearMetricsAfterBootstrap.getValue(runtime.getOptions())) {
             runtime.clearMeters();
         }
     }

@@ -22,8 +22,6 @@
  */
 package org.graalvm.compiler.jtt.jdk;
 
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import org.graalvm.compiler.jtt.JTTTest;
 import org.junit.Assume;
 import org.junit.Test;
@@ -52,6 +50,6 @@ public class Unsafe_compareAndSwapNullCheck extends JTTTest {
     public void run0() throws Throwable {
         // GR-2921: Unsafe_compareAndSwapNullCheck test crashes on jdk9
         Assume.assumeTrue(Java8OrEarlier);
-        runTest(GLOBAL, EMPTY, false, true, "test", null, 1L, 2L);
+        runTest(getInitialOptions(), EMPTY, false, true, "test", null, 1L, 2L);
     }
 }

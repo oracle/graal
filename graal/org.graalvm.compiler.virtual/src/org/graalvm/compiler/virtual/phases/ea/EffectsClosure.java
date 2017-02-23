@@ -56,6 +56,7 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator.LoopInfo;
@@ -231,7 +232,8 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 }
             }
 
-            VirtualUtil.trace("\nBlock: %s, preds: %s, succ: %s (", block, block.getPredecessors(), block.getSuccessors());
+            OptionValues options = block.getBeginNode().getOptions();
+            VirtualUtil.trace(options, "\nBlock: %s, preds: %s, succ: %s (", block, block.getPredecessors(), block.getSuccessors());
 
             // a lastFixedNode is needed in case we want to insert fixed nodes
             FixedWithNextNode lastFixedNode = null;
@@ -255,7 +257,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                     break;
                 }
             }
-            VirtualUtil.trace(")\n    end state: %s\n", state);
+            VirtualUtil.trace(options, ")\n    end state: %s\n", state);
         }
         return state;
     }

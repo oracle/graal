@@ -140,7 +140,7 @@ public class MethodMetricsTestInterception02 extends MethodMetricsTest {
     DebugConfig getConfig() {
         List<DebugDumpHandler> dumpHandlers = new ArrayList<>();
         List<DebugVerifyHandler> verifyHandlers = new ArrayList<>();
-        OptionValues options = OptionValues.GLOBAL;
+        OptionValues options = getInitialOptions();
         GraalDebugConfig debugConfig = new GraalDebugConfig(
                         options,
                         GraalDebugConfig.Options.Log.getValue(options),

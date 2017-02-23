@@ -105,6 +105,7 @@ public abstract class GraalCompilerState {
     /**
      * The graph processed by the benchmark.
      */
+    private final OptionValues options;
     private StructuredGraph graph;
     private final Backend backend;
     private final Providers providers;
@@ -115,12 +116,13 @@ public abstract class GraalCompilerState {
      */
     @SuppressWarnings("try")
     protected GraalCompilerState() {
+        this.options = Graal.getRequiredCapability(OptionValues.class);
         this.backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         this.providers = backend.getProviders();
 
         // Ensure a debug configuration for this thread is initialized
         if (Debug.isEnabled() && DebugScope.getConfig() == null) {
-            DebugEnvironment.ensureInitialized(OptionValues.GLOBAL);
+            DebugEnvironment.ensureInitialized(options);
         }
 
     }
@@ -244,12 +246,12 @@ public abstract class GraalCompilerState {
         return structuredGraph;
     }
 
-    protected Suites createSuites(OptionValues options) {
+    protected Suites createSuites() {
         Suites ret = backend.getSuites().getDefaultSuites(options).copy();
         return ret;
     }
 
-    protected LIRSuites createLIRSuites(OptionValues options) {
+    protected LIRSuites createLIRSuites() {
         LIRSuites ret = backend.getSuites().getDefaultLIRSuites(options).copy();
         return ret;
     }
@@ -321,7 +323,7 @@ public abstract class GraalCompilerState {
         assert !graph.isFrozen();
         ResolvedJavaMethod installedCodeOwner = graph.method();
         request = new Request<>(graph, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
-                        graph.getProfilingInfo(), createSuites(graph.getOptions()), createLIRSuites(graph.getOptions()), new CompilationResult(), CompilationResultBuilderFactory.Default);
+                        graph.getProfilingInfo(), createSuites(), createLIRSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
     }
 
     /**

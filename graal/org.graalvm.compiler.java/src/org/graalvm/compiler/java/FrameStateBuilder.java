@@ -100,6 +100,7 @@ public final class FrameStateBuilder implements SideEffectsState {
 
     private MonitorIdNode[] monitorIds;
     private final StructuredGraph graph;
+    private final boolean clearNonLiveLocals;
     private FrameState outerFrameState;
 
     /**
@@ -143,6 +144,7 @@ public final class FrameStateBuilder implements SideEffectsState {
 
         this.monitorIds = EMPTY_MONITOR_ARRAY;
         this.graph = graph;
+        this.clearNonLiveLocals = GraalOptions.OptClearNonLiveLocals.getValue(graph.getOptions());
         this.canVerifyKind = true;
     }
 
@@ -264,6 +266,7 @@ public final class FrameStateBuilder implements SideEffectsState {
 
         assert other.graph != null;
         graph = other.graph;
+        clearNonLiveLocals = other.clearNonLiveLocals;
         monitorIds = other.monitorIds.length == 0 ? other.monitorIds : other.monitorIds.clone();
 
         assert locals.length == code.getMaxLocals();
@@ -625,7 +628,7 @@ public final class FrameStateBuilder implements SideEffectsState {
          * slots at the OSR entry aren't cleared. it is also not enough to rely on PiNodes with
          * Kind.Illegal, because the conflicting branch might not have been parsed.
          */
-        if (!GraalOptions.OptClearNonLiveLocals.getValue(graph.getOptions())) {
+        if (!clearNonLiveLocals) {
             return;
         }
         if (liveIn) {

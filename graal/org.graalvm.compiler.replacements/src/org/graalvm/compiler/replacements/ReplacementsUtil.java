@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.replacements;
 
+import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.replacements.nodes.AssertionNode;
 
 // JaCoCo Exclude
@@ -30,13 +31,7 @@ public final class ReplacementsUtil {
         // empty
     }
 
-    public static final boolean REPLACEMENTS_ASSERTIONS_ENABLED;
-
-    static {
-        boolean assertionsEnabled = false;
-        assert (assertionsEnabled = true) != false;
-        REPLACEMENTS_ASSERTIONS_ENABLED = assertionsEnabled;
-    }
+    public static final boolean REPLACEMENTS_ASSERTIONS_ENABLED = Assertions.ENABLED;
 
     /**
      * Asserts that condition evaluates to true by the time compilation is finished. This is
