@@ -170,6 +170,7 @@ public final class DebuggerSession implements Closeable {
     private volatile boolean suspendNext;
     private boolean suspendAll;
     private final StableBoolean stepping = new StableBoolean(false);
+    private final StableBoolean breakpointsActive = new StableBoolean(true);
 
     /*
      * Legacy mode for backwards compatibility. Legacy mode means that recursive events will be
@@ -446,6 +447,29 @@ public final class DebuggerSession implements Closeable {
         return Collections.unmodifiableList(b);
     }
 
+    /**
+     * Set whether breakpoints are active in this session. This has no effect on breakpoints
+     * enabled/disabled state. Breakpoints need to be active to actually break the execution. The
+     * breakpoints are active by default.
+     *
+     * @param active <code>true</code> to make all breakpoints active, <code>false</code> to make
+     *            all breakpoints inactive.
+     * @since 0.24
+     */
+    public void setBreakpointsActive(boolean active) {
+        breakpointsActive.set(active);
+    }
+
+    /**
+     * Test whether breakpoints are active in this session. Breakpoints do not break execution when
+     * not active.
+     *
+     * @since 0.24
+     */
+    public boolean isBreakpointsActive() {
+        return breakpointsActive.get();
+    }
+
     /*
      * Deprecation Note: Usually you want to return unmodifiable collections instead of mutable
      * collections in APIs. Also sorting does not really make sense, in the new session based API
@@ -569,7 +593,7 @@ public final class DebuggerSession implements Closeable {
         List<Breakpoint> breaks = null;
         for (DebuggerNode node : nodes) {
             Breakpoint breakpoint = node.getBreakpoint();
-            if (breakpoint == null) {
+            if (breakpoint == null || !isBreakpointsActive()) {
                 continue; // not a breakpoint node
             }
             boolean hit = true;

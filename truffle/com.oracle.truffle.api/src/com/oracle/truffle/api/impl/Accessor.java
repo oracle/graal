@@ -60,6 +60,11 @@ public abstract class Accessor {
         public abstract boolean isInstrumentable(RootNode rootNode);
 
         public abstract boolean isTaggedWith(Node node, Class<?> tag);
+
+        public abstract boolean isCloneUninitializedSupported(RootNode rootNode);
+
+        public abstract RootNode cloneUninitialized(RootNode rootNode);
+
     }
 
     public abstract static class DebugSupport {

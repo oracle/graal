@@ -55,24 +55,17 @@ class LibFFIClosure {
         LibFFIType retType = signature.getRetType();
         if (retType instanceof LibFFIType.StringType || retType instanceof LibFFIType.ObjectType) {
             // shortcut for simple object return values
-            // can be called directly with {@link CallTarget#call}
             CallTarget executeCallTarget = Truffle.getRuntime().createCallTarget(new ObjectRetClosureRootNode(signature, executable, message));
             this.nativePointer = allocateClosureObjectRet(signature, executeCallTarget);
         } else if (retType instanceof LibFFIType.VoidType) {
             // special handling for no return value
-            // can be called directly with {@link CallTarget#call}
             CallTarget executeCallTarget = Truffle.getRuntime().createCallTarget(new ObjectRetClosureRootNode(signature, executable, message));
             this.nativePointer = allocateClosureVoidRet(signature, executeCallTarget);
         } else {
-            // to be called through {@link LibFFIClosure#call}
+            // generic case: last argument is the return buffer
             CallTarget executeCallTarget = Truffle.getRuntime().createCallTarget(new BufferRetClosureRootNode(signature, executable, message));
             this.nativePointer = allocateClosureBufferRet(signature, executeCallTarget);
         }
-    }
-
-    // called from native
-    static RetPatches call(CallTarget callTarget, Object[] args, ByteBuffer retBuffer) {
-        return (RetPatches) callTarget.call(args, retBuffer);
     }
 
     static final class RetPatches {
@@ -155,8 +148,9 @@ class LibFFIClosure {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            Object ret = callClosure.execute((Object[]) frame.getArguments()[0]);
-            return encodeRet.execute(ret, (ByteBuffer) frame.getArguments()[1]);
+            ByteBuffer retBuffer = (ByteBuffer) frame.getArguments()[frame.getArguments().length - 1];
+            Object ret = callClosure.execute(frame.getArguments());
+            return encodeRet.execute(ret, retBuffer);
         }
     }
 

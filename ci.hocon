@@ -2,6 +2,10 @@ java7 : {name : oraclejdk, version : "7",    platformspecific: true}
 java8 : {name : oraclejdk, version : "8u66", platformspecific: true}
 #java9 : {name : oraclejdk, version : "9",    platformspecific: true}
 java9 : {name : labsjdk, version : "9-SNAPSHOT",    platformspecific: true}
+
+# Used in overlay
+labsjdk8 : {name : labsjdk, version : "8u121-jvmci-0.25", platformspecific: true}
+
 ecj : {name: ecj, version: "4.5.1", platformspecific: false}
 eclipse : {name: eclipse, version: "4.5.2.1", platformspecific: true}
 
@@ -12,6 +16,7 @@ common : {
     "pip:astroid" : "==1.1.0"
     "pip:pylint" : "==1.1.0"
     maven : ">=3.3.9"
+    ruby: ">=2.1.0"
   }
 
   downloads : {
@@ -96,15 +101,24 @@ gateLite : {
 }
 
 # overlay version
-overlay = ba2610209dcaa955c5dcc06934e2b5b2098f0fcf
+overlay = 0edd74cfb471019c0f528dd8aeca68ad09d88fcc
 
 builds = [
   ${common} ${java8Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64], targets : [gate], name: "gate-truffle-8"},
+  ${common} ${java8Downloads} {
+    run : [
+        ["mx", "build"],
+        ["mx", "javadoc"],
+    ],
+    capabilities : [linux, amd64],
+    targets : [gate],
+    name: "gate-truffle-javadoc"
+  },
 # ${common} ${java9Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64], targets : [gate], name: "gate-truffle-9"},
   ${common} ${java8Downloads} {run : [["sh", ".travis.sigtest.sh"]], capabilities : [linux, amd64], targets : [gate], name: "gate-sigtest"},
 # ${common} ${java9Downloads} {run : [["mx", "-v", "testgraal"]], capabilities : [linux, amd64], targets : [gate], name: "gate-testgraal9"},
   ${common} ${java8Downloads} {run : [["mx", "-v", "testgraal"]], capabilities : [linux, amd64], targets : [gate], name: "gate-testgraal8"},
-  ${common} ${java8Downloads} {run : [["mx", "testrubytruffle"]], capabilities : [linux, amd64], targets : [post-merge], name: "gate-rubytruffle"},
+  ${common} ${java8Downloads} {run : [["mx", "-v", "testdownstream", "--repo", "https://github.com/graalvm/truffleruby.git", "--mx-command", "ruby_testdownstream"]], capabilities : [linux, amd64], targets : [post-merge], name: "gate-rubytruffle"},
   ${maven-deploy-dry-run}
   ${deploy-binary}
   ${solaris} ${java8Downloads} ${gateLite} {

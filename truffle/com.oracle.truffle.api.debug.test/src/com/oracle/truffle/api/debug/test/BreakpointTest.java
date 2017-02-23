@@ -394,4 +394,119 @@ public class BreakpointTest extends AbstractDebugTest {
         }
     }
 
+    @Test
+    public void testInactive() throws Throwable {
+        final Source source = testSource("ROOT(\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT\n" +
+                        ")\n");
+
+        // Breakpoints deactivated after the first suspend - no breakpoints are hit
+        try (DebuggerSession session = startSession()) {
+            Assert.assertTrue(session.isBreakpointsActive());
+            // normal breakpoint
+            Breakpoint breakpoint3 = session.install(Breakpoint.newBuilder(source).lineIs(3).build());
+
+            // disabled breakpoint
+            Breakpoint breakpoint4 = session.install(Breakpoint.newBuilder(source).lineIs(4).build());
+            breakpoint4.setEnabled(false);
+
+            // re-enabled breakpoint
+            Breakpoint breakpoint5 = session.install(Breakpoint.newBuilder(source).lineIs(5).build());
+            breakpoint5.setEnabled(false);
+            breakpoint5.setEnabled(true);
+
+            session.suspendNextExecution();
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 2, true, "STATEMENT");
+                session.setBreakpointsActive(false);
+            });
+            expectDone();
+
+            Assert.assertEquals(0, breakpoint3.getHitCount());
+            Assert.assertEquals(0, breakpoint4.getHitCount());
+            Assert.assertEquals(0, breakpoint5.getHitCount());
+            Assert.assertTrue(breakpoint3.isEnabled());
+            Assert.assertFalse(breakpoint4.isEnabled());
+            Assert.assertTrue(breakpoint5.isEnabled());
+        }
+
+        // Breakpoints deactivated after the first one is hit - the others are not
+        try (DebuggerSession session = startSession()) {
+            Assert.assertTrue(session.isBreakpointsActive());
+            // normal breakpoint
+            Breakpoint breakpoint2 = session.install(Breakpoint.newBuilder(source).lineIs(2).build());
+
+            // disabled breakpoint
+            Breakpoint breakpoint4 = session.install(Breakpoint.newBuilder(source).lineIs(4).build());
+            breakpoint4.setEnabled(false);
+
+            // re-enabled breakpoint
+            Breakpoint breakpoint5 = session.install(Breakpoint.newBuilder(source).lineIs(5).build());
+            breakpoint5.setEnabled(false);
+            breakpoint5.setEnabled(true);
+
+            session.suspendNextExecution();
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 2, true, "STATEMENT");
+                session.setBreakpointsActive(false);
+            });
+            expectDone();
+
+            Assert.assertEquals(1, breakpoint2.getHitCount());
+            Assert.assertEquals(0, breakpoint4.getHitCount());
+            Assert.assertEquals(0, breakpoint5.getHitCount());
+            Assert.assertTrue(breakpoint2.isEnabled());
+            Assert.assertFalse(breakpoint4.isEnabled());
+            Assert.assertTrue(breakpoint5.isEnabled());
+        }
+
+        // Breakpoints initially deactivated, they are activated before the last one is hit.
+        try (DebuggerSession session = startSession()) {
+            Assert.assertTrue(session.isBreakpointsActive());
+            session.setBreakpointsActive(false);
+            Assert.assertFalse(session.isBreakpointsActive());
+            // normal breakpoint
+            Breakpoint breakpoint2 = session.install(Breakpoint.newBuilder(source).lineIs(2).build());
+
+            // disabled breakpoint
+            Breakpoint breakpoint4 = session.install(Breakpoint.newBuilder(source).lineIs(4).build());
+            breakpoint4.setEnabled(false);
+
+            // re-enabled breakpoint
+            Breakpoint breakpoint5 = session.install(Breakpoint.newBuilder(source).lineIs(5).build());
+            breakpoint5.setEnabled(false);
+            breakpoint5.setEnabled(true);
+
+            session.suspendNextExecution();
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 2, true, "STATEMENT").prepareStepOver(2);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 4, true, "STATEMENT");
+                session.setBreakpointsActive(true);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 5, true, "STATEMENT");
+            });
+            expectDone();
+
+            Assert.assertEquals(0, breakpoint2.getHitCount());
+            Assert.assertEquals(0, breakpoint4.getHitCount());
+            Assert.assertEquals(1, breakpoint5.getHitCount());
+            Assert.assertTrue(breakpoint2.isEnabled());
+            Assert.assertFalse(breakpoint4.isEnabled());
+            Assert.assertTrue(breakpoint5.isEnabled());
+        }
+    }
+
 }

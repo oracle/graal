@@ -137,6 +137,7 @@ final class JavaInteropReflect {
         return functionalType.cast(obj);
     }
 
+    @CompilerDirectives.TruffleBoundary
     static TruffleObject asTruffleViaReflection(Object obj) throws IllegalArgumentException {
         if (Proxy.isProxyClass(obj.getClass())) {
             InvocationHandler h = Proxy.getInvocationHandler(obj);
