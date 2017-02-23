@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,30 +47,41 @@
  )
  */
 /**
- * <h1>The Truffle Tutorial</h1>
- *
+ * <h1>Truffle Tutorial: The Graal Compiler</h1>
  * <div id="contents">
  *
- * Welcome to <a href="https://github.com/graalvm/truffle">Truffle</a>:
- * the Open Source framework for implementing programming languages with very high performance, Java embedding,
- * language interoperation, debugging, and general tooling support.  Truffle is part of the
- * <a href="https://github.com/graalvm/truffle">Graal Project</a>, developed and maintained by
- * <a href="http://labs.oracle.com/">Oracle Labs</a>
- * and the
- * <a href="http://www.jku.at/isse/content">Institute for System Software</a> of the
- * Johannes Kepler University Linz.
- * <p>
- * This document contains tutorial information specialized for different interests,
- * for example whether you want to run Truffle languages inside a Java application ("Embedding...")
- * or implement your own language using Truffle ("Implementing..").  We expect this collection to grow.
- * <p>
- * Tutorial Topics:
+ * This 3-hour tutorial presents Graal, the high-performance dynamic compiler for Java written in Java
+ * that enables very high performance for Truffle-implemented languages.
+ * The tutorial was presented February 8, 2015 at the International Symposium on Code Generation and Optimization
+ * (<a href="http://cgo.org/cgo2015/">CGO 2015</a>) and covers the following topics:
  * <ul>
- * <li>{@linkplain com.oracle.truffle.tutorial.background Truffle Background}</li>
- * <li>{@linkplain com.oracle.truffle.tutorial.embedding Embedding Truffle in Java}</li>
- * <li>{@linkplain com.oracle.truffle.tutorial.newlanguage Implementing a Language with Truffle}</li>
- * <li>{@linkplain com.oracle.truffle.tutorial.graal The Graal Compiler}</li>
+ * <li>Key distinguishing features of Graal</li>
+ * <li>Introduction to the Graal IR: basic properties, instructions, and optimization phases</li>
+ * <li>Speculative optimizations: first-class support for optimistic optimizations and deoptimization</li>
+ * <li>Graal API: separation of the compiler from the VM</li>
+ * <li>Snippets: expressing high-level semantics in low-level Java code</li>
+ * <li>Compiler intrinsics: use all your hardware instructions with Graal</li>
+ * <li>Using Graal for static analysis</li>
+ * <li>Custom compilations with Graal: integration of the compiler with an application or library</li>
+ * <li>Graal as a compiler for dynamic programming languages in the Truffle framework</li>
  * </ul>
+ * <p>
+ * Video recording: <a href="https://youtu.be/Af9T9kFk1lM">Part 1</a>,
+ * <a href="https://youtu.be/WyU7KctlhzE">Part 2</a>
+ * <br>
+ * <a href="http://lafo.ssw.uni-linz.ac.at/papers/2015_CGO_Graal.pdf">Download Slides</a>
+ *
+ *
+ * <p>
+ * Related information:
+ * <ul>
+ * <li>The Graal project home:  <a href="https://github.com/graalvm">https://github.com/graalvm</a></li>
+ * <li><a href="https://github.com/graalvm/graal-core/blob/master/docs/Publications.md#graal-papers">Graal Publications</a></li>
+ * <li><a href=
+ * "{@docRoot}/com/oracle/truffle/tutorial/package-summary.html">Other Truffle Tutorials</a></li>
+ * </ul>
+
+ *
  * </div>
 <script>
 
@@ -129,6 +140,6 @@ window.onload = function () {
 };
 </script>
  *
- * @since 0.23
+ * @since 0.25
  */
-package com.oracle.truffle.tutorial;
+package com.oracle.truffle.tutorial.graal;

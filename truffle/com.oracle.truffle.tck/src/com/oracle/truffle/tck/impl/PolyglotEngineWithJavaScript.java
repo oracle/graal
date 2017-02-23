@@ -276,11 +276,11 @@ public class PolyglotEngineWithJavaScript {
         Value jsFunction = engine.eval(src);
 
         // Execute the JavaScript function
-        Value factory = jsFunction.execute();
+        Value jsFactory = jsFunction.execute();
 
-        // Call JavaScript function to create Java objects
-        Incrementor initFive = factory.execute(5).as(Incrementor.class);
-        Incrementor initTen = factory.execute(10).as(Incrementor.class);
+        // Execute the JavaScript factory to create Java objects
+        Incrementor initFive = jsFactory.execute(5).as(Incrementor.class);
+        Incrementor initTen = jsFactory.execute(10).as(Incrementor.class);
 
         initFive.inc();
         assertEquals("Now at seven", 7, initFive.inc());

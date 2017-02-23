@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,30 +47,37 @@
  )
  */
 /**
- * <h1>The Truffle Tutorial</h1>
- *
+ * <h1>Truffle Tutorial: Background</h1>
  * <div id="contents">
  *
- * Welcome to <a href="https://github.com/graalvm/truffle">Truffle</a>:
- * the Open Source framework for implementing programming languages with very high performance, Java embedding,
- * language interoperation, debugging, and general tooling support.  Truffle is part of the
- * <a href="https://github.com/graalvm/truffle">Graal Project</a>, developed and maintained by
+ * Truffle, together with the <a href="https://github.com/graalvm/graal-core/">Graal compiler</a>,
+ * represents a significant step forward in programming language implementation technology in the
+ * current era of dynamic languages.  A growing  body of shared implementation code and services
+ * reduces language implementation effort significantly, but leads to extremely competitive runtime
+ * performance that matches or exceeds the competition.  The value of the platform is further
+ * increased by support for low-overhead language interoperation, as well as a general instrumentation
+ * framework that supports multi-language debugging and other external developer tools.
+ * <p>
+ * Truffle is part of the Graal Project developed and maintained by
  * <a href="http://labs.oracle.com/">Oracle Labs</a>
  * and the
  * <a href="http://www.jku.at/isse/content">Institute for System Software</a> of the
  * Johannes Kepler University Linz.
- * <p>
- * This document contains tutorial information specialized for different interests,
- * for example whether you want to run Truffle languages inside a Java application ("Embedding...")
- * or implement your own language using Truffle ("Implementing..").  We expect this collection to grow.
- * <p>
- * Tutorial Topics:
+ * For additional information, please visit:
  * <ul>
- * <li>{@linkplain com.oracle.truffle.tutorial.background Truffle Background}</li>
- * <li>{@linkplain com.oracle.truffle.tutorial.embedding Embedding Truffle in Java}</li>
- * <li>{@linkplain com.oracle.truffle.tutorial.newlanguage Implementing a Language with Truffle}</li>
- * <li>{@linkplain com.oracle.truffle.tutorial.graal The Graal Compiler}</li>
+ * <li>The Graal project home:  <a href="https://github.com/graalvm">https://github.com/graalvm</a></li>
+ * <li>Truffle home:  <a href="https://github.com/graalvm/truffle">https://github.com/graalvm/truffle</a></li>
+ * <li><a href="http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index-2301583.html">Graal VM</a>
+ * download on the Oracle Technology Network</li>
+ * <li><a href="https://github.com/graalvm/truffle/blob/master/docs/Publications.md#truffle-presentations">Truffle Presentations</a></li>
+ * <li><a href="https://github.com/graalvm/truffle/blob/master/docs/Publications.md#truffle-papers">Truffle Publications</a></li>
+ * <li><a href="https://github.com/graalvm/graal-core/blob/master/docs/Publications.md#graal-papers">Graal Publications</a></li>
+ * <li>Mailing list for developers <a href="mailto:graal-dev@openjdk.java.net">graal-dev@openjdk.java.net</a>
+ * <li><a href=
+ * "{@docRoot}/com/oracle/truffle/tutorial/package-summary.html">Other Truffle Tutorials</a></li>
  * </ul>
+
+ *
  * </div>
 <script>
 
@@ -129,6 +136,6 @@ window.onload = function () {
 };
 </script>
  *
- * @since 0.23
+ * @since 0.25
  */
-package com.oracle.truffle.tutorial;
+package com.oracle.truffle.tutorial.background;

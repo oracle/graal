@@ -42,6 +42,7 @@ package com.oracle.truffle.tutorial;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.PolyglotEngine.Value;
 
 // @formatter:off
 
@@ -66,12 +67,13 @@ public final class HelloWorld {
     private static void helloWorldInJavaScript() {
         // BEGIN: com.oracle.truffle.tutorial.HelloWorld#helloWorldInJavaScript
         PolyglotEngine engine = PolyglotEngine.newBuilder().build();
-        String result = engine.eval(Source.newBuilder("'Hello World!'").
+        Source helloSource = Source.newBuilder("'Hello World!'").
             mimeType("text/javascript").
             name("hello.js").
-            build()
-        ).as(String.class);
-        assert "Hello World!".equals(result);
+            build();
+        Value result = engine.eval(helloSource);
+        String resultString = result.as(String.class);
+        assert "Hello World!".equals(resultString);
         // END: com.oracle.truffle.tutorial.HelloWorld#helloWorldInJavaScript
     }
 }

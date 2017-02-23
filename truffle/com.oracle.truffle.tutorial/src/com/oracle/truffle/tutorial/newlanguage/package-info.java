@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,30 +47,28 @@
  )
  */
 /**
- * <h1>The Truffle Tutorial</h1>
+ * <h1>Truffle Tutorial: Implementing a Language with Truffle</h1>
  *
  * <div id="contents">
  *
- * Welcome to <a href="https://github.com/graalvm/truffle">Truffle</a>:
- * the Open Source framework for implementing programming languages with very high performance, Java embedding,
- * language interoperation, debugging, and general tooling support.  Truffle is part of the
- * <a href="https://github.com/graalvm/truffle">Graal Project</a>, developed and maintained by
- * <a href="http://labs.oracle.com/">Oracle Labs</a>
- * and the
- * <a href="http://www.jku.at/isse/content">Institute for System Software</a> of the
- * Johannes Kepler University Linz.
+ * For an excellent, in-depth presentation on how to implement your language with Truffle,
+ * please have a look at a three hour walkthrough presented at a recent
+ * Conference on Programming Language Design and Implementation
+ * (<a href="http://conf.researchr.org/home/pldi-2016">PLDI 2016</a>).
  * <p>
- * This document contains tutorial information specialized for different interests,
- * for example whether you want to run Truffle languages inside a Java application ("Embedding...")
- * or implement your own language using Truffle ("Implementing..").  We expect this collection to grow.
+ * <a href="https://youtu.be/FJY96_6Y3a4">Video recording</a>
+ * <br>
+ * <a href="https://lafo.ssw.uni-linz.ac.at/pub/papers/2016_PLDI_Truffle.pdf">Download Slides</a>
  * <p>
- * Tutorial Topics:
- * <ul>
- * <li>{@linkplain com.oracle.truffle.tutorial.background Truffle Background}</li>
- * <li>{@linkplain com.oracle.truffle.tutorial.embedding Embedding Truffle in Java}</li>
- * <li>{@linkplain com.oracle.truffle.tutorial.newlanguage Implementing a Language with Truffle}</li>
- * <li>{@linkplain com.oracle.truffle.tutorial.graal The Graal Compiler}</li>
+ * Related information:
  * </ul>
+ * <li>{@link com.oracle.truffle.api.TruffleLanguage}: base class for Truffle language implementations.</li>
+ * <li>{@link com.oracle.truffle.api.vm.PolyglotEngine}: execution environment for Truffle-implemented languages.</li>
+ * <li>{@code com.oracle.truffle.sl.SLLanguage - link?}: Truffle implementation of the tutorial <em>Simple Language</em>.</li>
+ * <li><a href=
+ * "{@docRoot}/com/oracle/truffle/tutorial/package-summary.html">Other Truffle Tutorials</a></li>
+ * </ul>
+ *
  * </div>
 <script>
 
@@ -129,6 +127,6 @@ window.onload = function () {
 };
 </script>
  *
- * @since 0.23
+ * @since 0.25
  */
-package com.oracle.truffle.tutorial;
+package com.oracle.truffle.tutorial.newlanguage;
