@@ -28,7 +28,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Test;
 
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.AbstractInliningPhase;
 
 /**
@@ -91,7 +90,7 @@ public class CommonedConstantsTest extends GraalCompilerTest {
 
     @Test
     public void test1() {
-        createSuites(OptionValues.GLOBAL).getHighTier().findPhase(AbstractInliningPhase.class).remove();
+        createSuites(getInitialOptions()).getHighTier().findPhase(AbstractInliningPhase.class).remove();
         test1Snippet(new String(alphabet));
 
         test("test1Snippet", (Object) null);
@@ -115,7 +114,7 @@ public class CommonedConstantsTest extends GraalCompilerTest {
 
     @Test
     public void test2() {
-        assert createSuites(OptionValues.GLOBAL).getHighTier().findPhase(AbstractInliningPhase.class).hasNext();
+        assert createSuites(getInitialOptions()).getHighTier().findPhase(AbstractInliningPhase.class).hasNext();
         test2Snippet(new String(alphabet));
 
         test("test2Snippet", (Object) null);

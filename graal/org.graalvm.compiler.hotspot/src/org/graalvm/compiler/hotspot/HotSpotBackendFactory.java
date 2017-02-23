@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 
 import jdk.vm.ci.code.Architecture;
@@ -43,5 +42,5 @@ public interface HotSpotBackendFactory {
      */
     Class<? extends Architecture> getArchitecture();
 
-    HotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, OptionValues options, CompilerConfiguration compilerConfiguration, HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotBackend host);
+    HotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotBackend host);
 }

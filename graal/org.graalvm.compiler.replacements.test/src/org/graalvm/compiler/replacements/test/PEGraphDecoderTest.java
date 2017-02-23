@@ -23,8 +23,6 @@
 package org.graalvm.compiler.replacements.test;
 
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import org.junit.Test;
 
 import org.graalvm.compiler.core.common.LocationIdentity;
@@ -135,7 +133,7 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
         try (Debug.Scope scope = Debug.scope("GraphPETest", testMethod)) {
             GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getDefault(getDefaultGraphBuilderPlugins()).withEagerResolving(true);
             registerPlugins(graphBuilderConfig.getPlugins().getInvocationPlugins());
-            CachingPEGraphDecoder decoder = new CachingPEGraphDecoder(getProviders(), graphBuilderConfig, OptimisticOptimizations.NONE, AllowAssumptions.YES, getTarget().arch, GLOBAL);
+            CachingPEGraphDecoder decoder = new CachingPEGraphDecoder(getProviders(), graphBuilderConfig, OptimisticOptimizations.NONE, AllowAssumptions.YES, getTarget().arch, getInitialOptions());
 
             targetGraph = new StructuredGraph.Builder(getInitialOptions(), AllowAssumptions.YES).method(testMethod).build();
             decoder.decode(targetGraph, testMethod, null, null, new InlineInvokePlugin[]{new InlineAll()}, null);

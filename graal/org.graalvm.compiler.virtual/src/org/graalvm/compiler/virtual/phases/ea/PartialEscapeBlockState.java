@@ -39,6 +39,7 @@ import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.LockState;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.virtual.phases.ea.EffectList.Effect;
 
 public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<T>> extends EffectsBlockState<T> {
@@ -61,13 +62,16 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
      */
     private RefCount arrayRefCount;
 
+    private final OptionValues options;
+
     /**
      * Final subclass of PartialEscapeBlockState, for performance and to make everything behave
      * nicely with generics.
      */
     public static final class Final extends PartialEscapeBlockState<Final> {
 
-        public Final() {
+        public Final(OptionValues options) {
+            super(options);
         }
 
         public Final(Final other) {
@@ -75,14 +79,16 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
         }
     }
 
-    protected PartialEscapeBlockState() {
+    protected PartialEscapeBlockState(OptionValues options) {
         objectStates = EMPTY_ARRAY;
         arrayRefCount = new RefCount();
+        this.options = options;
     }
 
     protected PartialEscapeBlockState(PartialEscapeBlockState<T> other) {
         super(other);
         adoptAddObjectStates(other);
+        options = other.options;
     }
 
     public ObjectState getObjectState(int object) {
@@ -248,14 +254,14 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
             }
             objectMaterialized(virtual, (AllocatedObjectNode) representation, values.subList(pos, pos + entries.length));
         } else {
-            VirtualUtil.trace("materialized %s as %s", virtual, representation);
+            VirtualUtil.trace(options, "materialized %s as %s", virtual, representation);
             otherAllocations.add(representation);
             assert obj.getLocks() == null;
         }
     }
 
     protected void objectMaterialized(VirtualObjectNode virtual, AllocatedObjectNode representation, List<ValueNode> values) {
-        VirtualUtil.trace("materialized %s as %s with values %s", virtual, representation, values);
+        VirtualUtil.trace(options, "materialized %s as %s with values %s", virtual, representation, values);
     }
 
     public void addObject(int virtual, ObjectState state) {

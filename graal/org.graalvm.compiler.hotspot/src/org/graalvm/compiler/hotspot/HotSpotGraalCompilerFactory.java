@@ -22,9 +22,8 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-import static org.graalvm.compiler.options.OptionValues.GRAAL_OPTION_PROPERTY_PREFIX;
 import static jdk.vm.ci.common.InitTimer.timer;
+import static org.graalvm.compiler.hotspot.HotSpotGraalOptionValues.GRAAL_OPTION_PROPERTY_PREFIX;
 
 import java.io.PrintStream;
 import java.util.ServiceLoader;
@@ -34,6 +33,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 
 import jdk.vm.ci.common.InitTimer;
@@ -58,17 +58,43 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
         return "graal";
     }
 
+    /**
+     * Initialized when this factory is {@linkplain #onSelection() selected}.
+     */
+    private OptionValues options;
+
     @Override
     public void onSelection() {
-        initializeOptions();
         JVMCIVersionCheck.check(false);
+        assert options == null : "cannot select " + getClass() + " service more than once";
+        options = HotSpotGraalOptionValues.HOTSPOT_OPTIONS;
+        initializeGraalCompileOnlyFilter(options);
+        if (graalCompileOnlyFilter != null || !Options.UseTrivialPrefixes.getValue(options)) {
+            /*
+             * Exercise this code path early to encourage loading now. This doesn't solve problem of
+             * deadlock during class loading but seems to eliminate it in practice.
+             */
+            adjustCompilationLevelInternal(Object.class, "hashCode", "()I", CompilationLevel.FullOptimization);
+            adjustCompilationLevelInternal(Object.class, "hashCode", "()I", CompilationLevel.Simple);
+        }
+    }
+
+    private static void initializeGraalCompileOnlyFilter(OptionValues options) {
+        String optionValue = Options.GraalCompileOnly.getValue(options);
+        if (optionValue != null) {
+            MethodFilter[] filter = MethodFilter.parse(optionValue);
+            if (filter.length == 0) {
+                filter = null;
+            }
+            graalCompileOnlyFilter = filter;
+        }
     }
 
     @Override
     public void printProperties(PrintStream out) {
         ServiceLoader<OptionDescriptors> loader = ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader());
         out.println("[Graal properties]");
-        GLOBAL.printHelp(loader, out, GRAAL_OPTION_PROPERTY_PREFIX);
+        options.printHelp(loader, out, GRAAL_OPTION_PROPERTY_PREFIX);
     }
 
     static class Options {
@@ -86,27 +112,9 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
 
     }
 
-    @SuppressWarnings("try")
-    private static synchronized void initializeOptions() {
-        if (Options.GraalCompileOnly.getValue(GLOBAL) != null) {
-            graalCompileOnlyFilter = MethodFilter.parse(Options.GraalCompileOnly.getValue(GLOBAL));
-            if (graalCompileOnlyFilter.length == 0) {
-                graalCompileOnlyFilter = null;
-            }
-        }
-        if (graalCompileOnlyFilter != null || !Options.UseTrivialPrefixes.getValue(GLOBAL)) {
-            /*
-             * Exercise this code path early to encourage loading now. This doesn't solve problem of
-             * deadlock during class loading but seems to eliminate it in practice.
-             */
-            adjustCompilationLevelInternal(Object.class, "hashCode", "()I", CompilationLevel.FullOptimization);
-            adjustCompilationLevelInternal(Object.class, "hashCode", "()I", CompilationLevel.Simple);
-        }
-    }
-
     @Override
     public HotSpotGraalCompiler createCompiler(JVMCIRuntime runtime) {
-        HotSpotGraalCompiler compiler = createCompiler(runtime, CompilerConfigurationFactory.selectFactory(null));
+        HotSpotGraalCompiler compiler = createCompiler(runtime, options, CompilerConfigurationFactory.selectFactory(null, options));
         // Only the HotSpotGraalRuntime associated with the compiler created via
         // jdk.vm.ci.runtime.JVMCIRuntime.getCompiler() is registered for receiving
         // VM events.
@@ -122,18 +130,18 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
      * @param compilerConfigurationFactory factory for the {@link CompilerConfiguration}
      */
     @SuppressWarnings("try")
-    public static HotSpotGraalCompiler createCompiler(JVMCIRuntime runtime, CompilerConfigurationFactory compilerConfigurationFactory) {
+    public static HotSpotGraalCompiler createCompiler(JVMCIRuntime runtime, OptionValues options, CompilerConfigurationFactory compilerConfigurationFactory) {
         HotSpotJVMCIRuntime jvmciRuntime = (HotSpotJVMCIRuntime) runtime;
         try (InitTimer t = timer("HotSpotGraalRuntime.<init>")) {
-            HotSpotGraalRuntime graalRuntime = new HotSpotGraalRuntime(jvmciRuntime, compilerConfigurationFactory);
+            HotSpotGraalRuntime graalRuntime = new HotSpotGraalRuntime(jvmciRuntime, compilerConfigurationFactory, options);
             return new HotSpotGraalCompiler(jvmciRuntime, graalRuntime);
         }
     }
 
     @Override
     public String[] getTrivialPrefixes() {
-        if (Options.UseTrivialPrefixes.getValue(GLOBAL)) {
-            if (Options.CompileGraalWithC1Only.getValue(GLOBAL)) {
+        if (Options.UseTrivialPrefixes.getValue(options)) {
+            if (Options.CompileGraalWithC1Only.getValue(options)) {
                 return new String[]{"jdk/vm/ci", "org/graalvm/compiler", "com/oracle/graal"};
             }
         }
@@ -145,8 +153,8 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
         if (graalCompileOnlyFilter != null) {
             return CompilationLevelAdjustment.ByFullSignature;
         }
-        if (!Options.UseTrivialPrefixes.getValue(GLOBAL)) {
-            if (Options.CompileGraalWithC1Only.getValue(GLOBAL)) {
+        if (!Options.UseTrivialPrefixes.getValue(options)) {
+            if (Options.CompileGraalWithC1Only.getValue(options)) {
                 // We only decide using the class declaring the method
                 // so no need to have the method name and signature
                 // symbols converted to a String.

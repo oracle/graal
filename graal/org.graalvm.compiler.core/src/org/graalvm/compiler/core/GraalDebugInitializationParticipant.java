@@ -40,7 +40,7 @@ public class GraalDebugInitializationParticipant implements DebugInitializationP
 
     @Override
     public void apply(Params params) {
-        OptionValues options = params.options;
+        OptionValues options = params.getOptions();
         if (GraalDebugConfig.areDebugScopePatternsEnabled(options)) {
             params.enable = true;
         }

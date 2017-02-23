@@ -25,8 +25,6 @@ package org.graalvm.compiler.hotspot.test;
 import static org.graalvm.compiler.core.GraalCompiler.compileGraph;
 import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
 import static org.graalvm.compiler.nodes.ConstantNode.getConstantNodes;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
@@ -219,7 +217,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
 
     @SuppressWarnings("try")
     private StructuredGraph compile(String test, boolean compileAOT) {
-        OptionValues options = new OptionValues(GLOBAL, ImmutableCode, compileAOT);
+        OptionValues options = new OptionValues(getInitialOptions(), ImmutableCode, compileAOT);
         StructuredGraph graph = parseEager(test, AllowAssumptions.YES, options);
         ResolvedJavaMethod method = graph.method();
         // create suites every time, as we modify options for the compiler

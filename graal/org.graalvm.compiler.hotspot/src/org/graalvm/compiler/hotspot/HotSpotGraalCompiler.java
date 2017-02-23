@@ -24,8 +24,6 @@ package org.graalvm.compiler.hotspot;
 
 import static org.graalvm.compiler.core.common.GraalOptions.OptAssumptions;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.Formattable;
@@ -87,8 +85,9 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         this.jvmciRuntime = jvmciRuntime;
         this.graalRuntime = graalRuntime;
         // It is sufficient to have one compilation counter object per Graal compiler object.
-        this.compilationCounters = Options.CompilationCountLimit.getValue(GLOBAL) > 0 ? new CompilationCounters() : null;
-        this.bootstrapWatchDog = graalRuntime.isBootstrapping() && !GraalDebugConfig.Options.BootstrapInitializeOnly.getValue(GLOBAL) ? BootstrapWatchDog.maybeCreate(graalRuntime) : null;
+        OptionValues options = graalRuntime.getOptions();
+        this.compilationCounters = Options.CompilationCountLimit.getValue(options) > 0 ? new CompilationCounters(options) : null;
+        this.bootstrapWatchDog = graalRuntime.isBootstrapping() && !GraalDebugConfig.Options.BootstrapInitializeOnly.getValue(options) ? BootstrapWatchDog.maybeCreate(graalRuntime) : null;
     }
 
     @Override
@@ -99,7 +98,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
     @Override
     @SuppressWarnings("try")
     public CompilationRequestResult compileMethod(CompilationRequest request) {
-        OptionValues options = GLOBAL;
+        OptionValues options = graalRuntime.getOptions();
         if (graalRuntime.isBootstrapping()) {
             if (GraalDebugConfig.Options.BootstrapInitializeOnly.getValue(options)) {
                 return HotSpotCompilationRequestResult.failure(String.format("Skip compilation because %s is enabled", GraalDebugConfig.Options.BootstrapInitializeOnly.getName()), true);
@@ -113,14 +112,14 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         }
         ResolvedJavaMethod method = request.getMethod();
         HotSpotCompilationRequest hsRequest = (HotSpotCompilationRequest) request;
-        try (CompilationWatchDog w1 = CompilationWatchDog.watch(method, hsRequest.getId());
+        try (CompilationWatchDog w1 = CompilationWatchDog.watch(method, hsRequest.getId(), options);
                         BootstrapWatchDog.Watch w2 = bootstrapWatchDog == null ? null : bootstrapWatchDog.watch(request);
                         CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(options);) {
             if (compilationCounters != null) {
                 compilationCounters.countCompilation(method);
             }
             // Ensure a debug configuration for this thread is initialized
-            DebugEnvironment.ensureInitialized(OptionValues.GLOBAL, graalRuntime.getHostProviders().getSnippetReflection());
+            DebugEnvironment.ensureInitialized(options, graalRuntime.getHostProviders().getSnippetReflection());
             CompilationTask task = new CompilationTask(jvmciRuntime, this, hsRequest, true, true, options);
             CompilationRequestResult r = null;
             try (DebugConfigScope dcs = Debug.setConfig(new TopLevelDebugConfig());
@@ -134,12 +133,12 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
 
     public void compileTheWorld() throws Throwable {
         HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) jvmciRuntime.getHostJVMCIBackend().getCodeCache();
-        int iterations = CompileTheWorldOptions.CompileTheWorldIterations.getValue(GLOBAL);
+        int iterations = CompileTheWorldOptions.CompileTheWorldIterations.getValue(graalRuntime.getOptions());
         for (int i = 0; i < iterations; i++) {
             codeCache.resetCompilationStatistics();
             TTY.println("CompileTheWorld : iteration " + i);
             this.graalRuntime.getVMConfig();
-            CompileTheWorld ctw = new CompileTheWorld(jvmciRuntime, this, GLOBAL);
+            CompileTheWorld ctw = new CompileTheWorld(jvmciRuntime, this, graalRuntime.getOptions());
             ctw.compile();
         }
         System.exit(0);

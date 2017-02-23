@@ -23,8 +23,6 @@
 package org.graalvm.compiler.hotspot.test;
 
 import static org.graalvm.compiler.core.GraalCompilerOptions.ExitVMOnException;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.hotspot.CompileTheWorld;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
@@ -43,13 +41,13 @@ public class CompileTheWorldTest extends GraalCompilerTest {
 
     @Test
     public void testJDK() throws Throwable {
-        boolean originalSetting = ExitVMOnException.getValue(GLOBAL);
+        boolean originalSetting = ExitVMOnException.getValue(getInitialOptions());
         // Compile a couple classes in rt.jar
         HotSpotJVMCIRuntimeProvider runtime = HotSpotJVMCIRuntime.runtime();
         System.setProperty(CompileTheWorld.LIMITMODS_PROPERTY_NAME, "java.base");
-        OptionValues initialOptions = OptionValues.GLOBAL;
+        OptionValues initialOptions = getInitialOptions();
         EconomicMap<OptionKey<?>, Object> compilationOptions = CompileTheWorld.parseOptions("Inline=false");
         new CompileTheWorld(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), CompileTheWorld.SUN_BOOT_CLASS_PATH, 1, 5, null, null, true, initialOptions, compilationOptions).compile();
-        assert ExitVMOnException.getValue(GLOBAL) == originalSetting;
+        assert ExitVMOnException.getValue(initialOptions) == originalSetting;
     }
 }

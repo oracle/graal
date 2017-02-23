@@ -85,11 +85,16 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
-    public final OptionValues options;
+    protected final OptionValues options;
     public final Providers providers;
     public final SnippetReflectionProvider snippetReflection;
     public final TargetDescription target;
     private GraphBuilderConfiguration.Plugins graphBuilderPlugins;
+
+    @Override
+    public OptionValues getOptions() {
+        return options;
+    }
 
     /**
      * The preprocessed replacement graphs.

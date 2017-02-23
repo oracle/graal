@@ -86,7 +86,6 @@ import static org.graalvm.compiler.hotspot.stubs.StubUtil.VM_MESSAGE_C;
 import static org.graalvm.compiler.hotspot.stubs.UnwindExceptionToCallerStub.EXCEPTION_HANDLER_FOR_RETURN_ADDRESS;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.any;
 import static org.graalvm.compiler.nodes.java.ForeignCallDescriptors.REGISTER_FINALIZER;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 import static org.graalvm.compiler.replacements.Log.LOG_OBJECT;
 import static org.graalvm.compiler.replacements.Log.LOG_PRIMITIVE;
 import static org.graalvm.compiler.replacements.Log.LOG_PRINTF;
@@ -302,7 +301,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkForeignCall(options, providers, G1WBPOSTCALL, c.writeBarrierPostAddress, PREPEND_THREAD, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
         linkForeignCall(options, providers, VALIDATE_OBJECT, c.validateObject, PREPEND_THREAD, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
 
-        if (GeneratePIC.getValue(GLOBAL)) {
+        if (GeneratePIC.getValue(options)) {
             registerForeignCall(WRONG_METHOD_HANDLER, c.handleWrongMethodStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
             CompilerRuntimeHotSpotVMConfig cr = new CompilerRuntimeHotSpotVMConfig(HotSpotJVMCIRuntime.runtime().getConfigStore());
             linkForeignCall(options, providers, RESOLVE_STRING_BY_SYMBOL, cr.resolveStringBySymbol, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, INIT_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION);

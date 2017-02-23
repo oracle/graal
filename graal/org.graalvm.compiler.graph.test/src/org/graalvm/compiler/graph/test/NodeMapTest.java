@@ -37,7 +37,7 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 
-public class NodeMapTest {
+public class NodeMapTest extends GraphTest {
 
     @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static final class TestNode extends Node {
@@ -57,7 +57,7 @@ public class NodeMapTest {
         // Need to initialize HotSpotGraalRuntime before any Node class is initialized.
         Graal.getRuntime();
 
-        graph = new Graph();
+        graph = new Graph(getOptions());
         for (int i = 0; i < nodes.length; i++) {
             nodes[i] = graph.add(new TestNode());
         }

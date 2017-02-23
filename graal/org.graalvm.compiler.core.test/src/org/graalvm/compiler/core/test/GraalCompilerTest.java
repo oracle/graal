@@ -26,7 +26,6 @@ import static org.graalvm.compiler.core.GraalCompilerOptions.PrintCompilation;
 import static org.graalvm.compiler.nodes.ConstantNode.getConstantNodes;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -690,7 +689,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected Result executeActual(ResolvedJavaMethod method, Object receiver, Object... args) {
-        return executeActual(GLOBAL, method, receiver, args);
+        return executeActual(getInitialOptions(), method, receiver, args);
     }
 
     protected Result executeActual(OptionValues options, ResolvedJavaMethod method, Object receiver, Object... args) {
@@ -748,7 +747,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected final Result test(String name, Object... args) {
-        return test(GLOBAL, name, args);
+        return test(getInitialOptions(), name, args);
     }
 
     protected final Result test(OptionValues options, String name, Object... args) {
@@ -780,7 +779,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected Result test(ResolvedJavaMethod method, Object receiver, Object... args) {
-        return test(GLOBAL, method, receiver, args);
+        return test(getInitialOptions(), method, receiver, args);
     }
 
     protected Result test(OptionValues options, ResolvedJavaMethod method, Object receiver, Object... args) {
@@ -809,11 +808,11 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected final void testAgainstExpected(ResolvedJavaMethod method, Result expect, Object receiver, Object... args) {
-        testAgainstExpected(GLOBAL, method, expect, Collections.<DeoptimizationReason> emptySet(), receiver, args);
+        testAgainstExpected(getInitialOptions(), method, expect, Collections.<DeoptimizationReason> emptySet(), receiver, args);
     }
 
     protected void testAgainstExpected(ResolvedJavaMethod method, Result expect, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
-        testAgainstExpected(GLOBAL, method, expect, shouldNotDeopt, receiver, args);
+        testAgainstExpected(getInitialOptions(), method, expect, shouldNotDeopt, receiver, args);
     }
 
     protected final void testAgainstExpected(OptionValues options, ResolvedJavaMethod method, Result expect, Object receiver, Object... args) {
@@ -859,7 +858,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      * {@link #parseEager eagerly}.
      */
     protected final InstalledCode getCode(ResolvedJavaMethod method) {
-        return getCode(method, null, false, false, GLOBAL);
+        return getCode(method, null, false, false, getInitialOptions());
     }
 
     protected final InstalledCode getCode(ResolvedJavaMethod method, OptionValues options) {
@@ -874,7 +873,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      *            {@code installedCodeOwner} via {@link #parseForCompile(ResolvedJavaMethod)}.
      */
     protected final InstalledCode getCode(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph) {
-        return getCode(installedCodeOwner, graph, false, false, graph == null ? GLOBAL : graph.getOptions());
+        return getCode(installedCodeOwner, graph, false, false, graph == null ? getInitialOptions() : graph.getOptions());
     }
 
     /**
@@ -887,7 +886,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      *            key) pair
      */
     protected final InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean forceCompile) {
-        return getCode(installedCodeOwner, graph, forceCompile, false, graph == null ? GLOBAL : graph.getOptions());
+        return getCode(installedCodeOwner, graph, forceCompile, false, graph == null ? getInitialOptions() : graph.getOptions());
     }
 
     /**
@@ -973,7 +972,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected final StructuredGraph parseForCompile(ResolvedJavaMethod method) {
-        return parseEager(method, AllowAssumptions.YES, getCompilationId(method), GLOBAL);
+        return parseEager(method, AllowAssumptions.YES, getCompilationId(method), getInitialOptions());
     }
 
     protected StructuredGraph parseForCompile(ResolvedJavaMethod method, CompilationIdentifier compilationId, OptionValues options) {
@@ -989,11 +988,11 @@ public abstract class GraalCompilerTest extends GraalTest {
      *            {@link #parseForCompile(ResolvedJavaMethod)}.
      */
     protected final CompilationResult compile(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph) {
-        return compile(installedCodeOwner, graph, new CompilationResult(), getOrCreateCompilationId(installedCodeOwner, graph), GLOBAL);
+        return compile(installedCodeOwner, graph, new CompilationResult(), getOrCreateCompilationId(installedCodeOwner, graph), getInitialOptions());
     }
 
     protected final CompilationResult compile(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, CompilationIdentifier compilationId) {
-        return compile(installedCodeOwner, graph, new CompilationResult(), compilationId, GLOBAL);
+        return compile(installedCodeOwner, graph, new CompilationResult(), compilationId, getInitialOptions());
     }
 
     protected final CompilationResult compile(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, OptionValues options) {
@@ -1096,7 +1095,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      * @param allowAssumptions specifies if {@link Assumption}s can be made compiling the graph
      */
     protected final StructuredGraph parseProfiled(ResolvedJavaMethod method, AllowAssumptions allowAssumptions) {
-        return parse1(method, getDefaultGraphBuilderSuite(), allowAssumptions, getCompilationId(method), GLOBAL);
+        return parse1(method, getDefaultGraphBuilderSuite(), allowAssumptions, getCompilationId(method), getInitialOptions());
     }
 
     /**
@@ -1107,7 +1106,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      * @param allowAssumptions specifies if {@link Assumption}s can be made compiling the graph
      */
     protected final StructuredGraph parseEager(String methodName, AllowAssumptions allowAssumptions) {
-        return parseEager(getResolvedJavaMethod(methodName), allowAssumptions, GLOBAL);
+        return parseEager(getResolvedJavaMethod(methodName), allowAssumptions, getInitialOptions());
     }
 
     /**
@@ -1130,7 +1129,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      * @param allowAssumptions specifies if {@link Assumption}s can be made compiling the graph
      */
     protected final StructuredGraph parseEager(ResolvedJavaMethod method, AllowAssumptions allowAssumptions) {
-        return parseEager(method, allowAssumptions, getCompilationId(method), GLOBAL);
+        return parseEager(method, allowAssumptions, getCompilationId(method), getInitialOptions());
     }
 
     /**
@@ -1167,7 +1166,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      */
     protected StructuredGraph parseDebug(ResolvedJavaMethod method, AllowAssumptions allowAssumptions) {
         return parse1(method, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getDefault(getDefaultGraphBuilderPlugins()).withFullInfopoints(true)), allowAssumptions, getCompilationId(method),
-                        GLOBAL);
+                        getInitialOptions());
     }
 
     @SuppressWarnings("try")
@@ -1312,6 +1311,6 @@ public abstract class GraalCompilerTest extends GraalTest {
     public static void initializeForTimeout() {
         // timeout tests run in a separate thread which needs the DebugEnvironment to be
         // initialized
-        DebugEnvironment.ensureInitialized(OptionValues.GLOBAL);
+        DebugEnvironment.ensureInitialized(getInitialOptions());
     }
 }

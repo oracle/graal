@@ -39,7 +39,7 @@ public abstract class SnippetsTest extends ReplacementsTest implements Snippets 
     protected SnippetsTest() {
         ReplacementsImpl d = (ReplacementsImpl) getReplacements();
         ClassfileBytecodeProvider bytecodeProvider = getSystemClassLoaderBytecodeProvider();
-        installer = new ReplacementsImpl(d.providers, d.snippetReflection, bytecodeProvider, d.target);
+        installer = new ReplacementsImpl(getInitialOptions(), d.providers, d.snippetReflection, bytecodeProvider, d.target);
         installer.setGraphBuilderPlugins(d.getGraphBuilderPlugins());
     }
 

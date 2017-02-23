@@ -132,7 +132,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         this.nodeOperands = graph.createNodeMap();
         this.debugInfoBuilder = createDebugInfoBuilder(graph, this);
         if (MatchExpressions.getValue(graph.getOptions())) {
-            matchRules = MatchRuleRegistry.lookup(nodeMatchRules.getClass());
+            matchRules = MatchRuleRegistry.lookup(nodeMatchRules.getClass(), graph.getOptions());
         }
 
         assert nodeMatchRules.lirBuilder == null;

@@ -87,8 +87,7 @@ public class AArch64HotSpotBackendFactory implements HotSpotBackendFactory {
 
     @Override
     @SuppressWarnings("try")
-    public HotSpotBackend createBackend(HotSpotGraalRuntimeProvider graalRuntime, OptionValues options, CompilerConfiguration compilerConfiguration, HotSpotJVMCIRuntimeProvider jvmciRuntime,
-                    HotSpotBackend host) {
+    public HotSpotBackend createBackend(HotSpotGraalRuntimeProvider graalRuntime, CompilerConfiguration compilerConfiguration, HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotBackend host) {
         assert host == null;
 
         JVMCIBackend jvmci = jvmciRuntime.getHostJVMCIBackend();
@@ -139,7 +138,7 @@ public class AArch64HotSpotBackendFactory implements HotSpotBackendFactory {
                 bytecodeProvider = new ClassfileBytecodeProvider(metaAccess, snippetReflection);
             }
             try (InitTimer rt = timer("create Replacements provider")) {
-                replacements = createReplacements(options, p, snippetReflection, bytecodeProvider);
+                replacements = createReplacements(graalRuntime.getOptions(), p, snippetReflection, bytecodeProvider);
             }
             try (InitTimer rt = timer("create GraphBuilderPhase plugins")) {
                 plugins = createGraphBuilderPlugins(config, constantReflection, foreignCalls, metaAccess, snippetReflection, replacements, wordTypes, stampProvider);

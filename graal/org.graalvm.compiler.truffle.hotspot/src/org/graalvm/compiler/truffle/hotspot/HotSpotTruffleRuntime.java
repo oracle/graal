@@ -51,6 +51,7 @@ import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotCompilationIdentifier;
 import org.graalvm.compiler.hotspot.HotSpotCompiledCodeBuilder;
+import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.java.GraphBuilderPhase;
@@ -124,7 +125,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         public GraalDebugConfig getDebugConfig() {
             if (Debug.isEnabled()) {
                 SnippetReflectionProvider snippetReflection = runtime.getRequiredGraalCapability(SnippetReflectionProvider.class);
-                return DebugEnvironment.ensureInitialized(OptionValues.GLOBAL, snippetReflection);
+                return DebugEnvironment.ensureInitialized(TruffleCompilerOptions.getOptions(), snippetReflection);
             } else {
                 return null;
             }
@@ -134,6 +135,11 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     public HotSpotTruffleRuntime(Supplier<GraalRuntime> graalRuntime) {
         super(graalRuntime);
         setDontInlineCallBoundaryMethod();
+    }
+
+    @Override
+    public OptionValues getInitialOptions() {
+        return HotSpotGraalOptionValues.HOTSPOT_OPTIONS;
     }
 
     @Override

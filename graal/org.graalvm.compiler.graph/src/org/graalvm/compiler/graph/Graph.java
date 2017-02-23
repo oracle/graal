@@ -209,8 +209,8 @@ public class Graph {
     /**
      * Creates an empty Graph with no name.
      */
-    public Graph() {
-        this(null, OptionValues.GLOBAL);
+    public Graph(OptionValues options) {
+        this(null, options);
     }
 
     /**
@@ -236,7 +236,7 @@ public class Graph {
         iterableNodesFirst = new ArrayList<>(NodeClass.allocatedNodeIterabledIds());
         iterableNodesLast = new ArrayList<>(NodeClass.allocatedNodeIterabledIds());
         this.name = name;
-        this.options = options != null ? options : OptionValues.GLOBAL;
+        this.options = options;
 
         if (isModificationCountsEnabled()) {
             nodeModCounts = new int[INITIAL_NODES_SIZE];

@@ -65,7 +65,12 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public class Debug {
 
-    private static final Params params = new Params();
+    /**
+     * The option values available in this package.
+     */
+    static final OptionValues DEBUG_OPTIONS = GraalServices.loadSingle(OptionValuesAccess.class, true).getOptions();
+
+    static final Params params = new Params();
 
     static {
         // Load the service providers that may want to modify any of the
@@ -78,8 +83,7 @@ public class Debug {
     /**
      * The parameters for configuring the initialization of {@link Debug} class.
      */
-    public static class Params {
-        public final OptionValues options = GraalServices.loadSingle(OptionValuesAccess.class, true).getOptions();
+    public static final class Params {
         public boolean enable;
         public boolean enableMethodFilter;
         public boolean enableUnscopedTimers;
@@ -89,13 +93,18 @@ public class Debug {
         public boolean interceptCount;
         public boolean interceptTime;
         public boolean interceptMem;
+
+        @SuppressWarnings("static-method")
+        public OptionValues getOptions() {
+            return DEBUG_OPTIONS;
+        }
     }
 
     @SuppressWarnings("all")
     private static boolean initialize() {
         boolean assertionsEnabled = false;
         assert assertionsEnabled = true;
-        return assertionsEnabled || params.enable || GraalDebugConfig.Options.ForceDebugEnable.getValue(params.options);
+        return assertionsEnabled || params.enable || GraalDebugConfig.Options.ForceDebugEnable.getValue(DEBUG_OPTIONS);
     }
 
     private static final boolean ENABLED = initialize();

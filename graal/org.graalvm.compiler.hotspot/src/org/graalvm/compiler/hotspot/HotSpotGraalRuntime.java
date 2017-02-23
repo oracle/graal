@@ -22,17 +22,20 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import static org.graalvm.compiler.core.common.GraalOptions.HotSpotPrintInlining;
+import static jdk.vm.ci.common.InitTimer.timer;
+import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
+import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
+import static org.graalvm.compiler.core.common.GraalOptions.HotSpotPrintInlining;
 import static org.graalvm.compiler.debug.GraalDebugConfig.areScopedGlobalMetricsEnabled;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.DebugValueSummary;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Dump;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Log;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.MethodFilter;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Verify;
-import static jdk.vm.ci.common.InitTimer.timer;
-import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
-import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
@@ -44,6 +47,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.internal.DebugValuesPrinter;
 import org.graalvm.compiler.debug.internal.method.MethodMetricsPrinter;
+import org.graalvm.compiler.hotspot.CompilationStatistics.Options;
 import org.graalvm.compiler.hotspot.CompilerConfigurationFactory.BackendMap;
 import org.graalvm.compiler.hotspot.debug.BenchmarkCounters;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
@@ -51,9 +55,10 @@ import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.replacements.SnippetCounter;
+import org.graalvm.compiler.replacements.SnippetCounter.Group;
 import org.graalvm.compiler.runtime.RuntimeProvider;
-import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
+import org.graalvm.util.Equivalence;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.stack.StackIntrospection;
@@ -84,6 +89,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
     private final HotSpotBackend hostBackend;
     private DebugValuesPrinter debugValuesPrinter;
+    private final List<SnippetCounter.Group> snippetCounterGroups;
 
     private final EconomicMap<Class<? extends Architecture>, HotSpotBackend> backends = EconomicMap.create(Equivalence.IDENTITY);
 
@@ -93,12 +99,10 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
     /**
      * @param compilerConfigurationFactory factory for the compiler configuration
-     *            {@link CompilerConfigurationFactory#selectFactory(String)}
+     *            {@link CompilerConfigurationFactory#selectFactory(String, OptionValues)}
      */
     @SuppressWarnings("try")
-    HotSpotGraalRuntime(HotSpotJVMCIRuntime jvmciRuntime, CompilerConfigurationFactory compilerConfigurationFactory) {
-
-        OptionValues initialOptions = OptionValues.GLOBAL;
+    HotSpotGraalRuntime(HotSpotJVMCIRuntime jvmciRuntime, CompilerConfigurationFactory compilerConfigurationFactory, OptionValues initialOptions) {
         HotSpotVMConfigStore store = jvmciRuntime.getConfigStore();
         config = GeneratePIC.getValue(initialOptions) ? new AOTGraalHotSpotVMConfig(store) : new GraalHotSpotVMConfig(store);
 
@@ -109,6 +113,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
             options = initialOptions;
         }
 
+        snippetCounterGroups = GraalOptions.SnippetCounters.getValue(options) ? new ArrayList<>() : null;
         CompilerConfiguration compilerConfiguration = compilerConfigurationFactory.createCompilerConfiguration();
         BackendMap backendMap = compilerConfigurationFactory.createBackendMap();
 
@@ -119,7 +124,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
             if (factory == null) {
                 throw new GraalError("No backend available for host architecture \"%s\"", hostArchitecture);
             }
-            hostBackend = registerBackend(factory.createBackend(this, options, compilerConfiguration, jvmciRuntime, null));
+            hostBackend = registerBackend(factory.createBackend(this, compilerConfiguration, jvmciRuntime, null));
         }
 
         for (JVMCIBackend jvmciBackend : jvmciRuntime.getJVMCIBackends().values()) {
@@ -133,7 +138,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
                 throw new GraalError("No backend available for specified GPU architecture \"%s\"", gpuArchitecture);
             }
             try (InitTimer t = timer("create backend:", gpuArchitecture)) {
-                registerBackend(factory.createBackend(this, options, compilerConfiguration, null, hostBackend));
+                registerBackend(factory.createBackend(this, compilerConfiguration, null, hostBackend));
             }
         }
 
@@ -199,7 +204,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
             }
         }
 
-        BenchmarkCounters.initialize(jvmciRuntime);
+        BenchmarkCounters.initialize(jvmciRuntime, options);
 
         assert checkArrayIndexScaleInvariants();
 
@@ -222,6 +227,21 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     @Override
     public GraalHotSpotVMConfig getVMConfig() {
         return config;
+    }
+
+    @Override
+    public OptionValues getOptions() {
+        return options;
+    }
+
+    @Override
+    public Group createSnippetCounterGroup(String name) {
+        if (snippetCounterGroups != null) {
+            Group group = new Group(name);
+            snippetCounterGroups.add(group);
+            return group;
+        }
+        return null;
     }
 
     @Override
@@ -264,8 +284,10 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
      *
      * @param phase the execution phase being entered
      */
-    static void phaseTransition(String phase) {
-        CompilationStatistics.clear(phase);
+    void phaseTransition(String phase) {
+        if (Options.UseCompilationStatistics.getValue(options)) {
+            CompilationStatistics.clear(phase);
+        }
     }
 
     void shutdown() {
@@ -274,8 +296,12 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         }
         phaseTransition("final");
 
-        SnippetCounter.printGroups(TTY.out().out());
-        BenchmarkCounters.shutdown(runtime(), runtimeStartTime);
+        if (snippetCounterGroups != null) {
+            for (Group group : snippetCounterGroups) {
+                TTY.out().out().println(group);
+            }
+        }
+        BenchmarkCounters.shutdown(runtime(), options, runtimeStartTime);
     }
 
     void clearMeters() {

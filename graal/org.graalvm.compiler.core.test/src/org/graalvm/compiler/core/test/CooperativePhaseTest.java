@@ -23,8 +23,6 @@
 package org.graalvm.compiler.core.test;
 
 import static org.graalvm.compiler.core.common.util.CompilationAlarm.Options.CompilationExpirationPeriod;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import org.graalvm.compiler.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.GraalError;
@@ -103,8 +101,9 @@ public class CooperativePhaseTest extends GraalCompilerTest {
     @SuppressWarnings("try")
     public void test01() {
         initializeForTimeout();
-        OptionValues options = new OptionValues(GLOBAL, CompilationExpirationPeriod, 1/* sec */);
-        try (CompilationAlarm c1 = CompilationAlarm.trackCompilationPeriod(GLOBAL)) {
+        OptionValues initialOptions = getInitialOptions();
+        OptionValues options = new OptionValues(initialOptions, CompilationExpirationPeriod, 1/* sec */);
+        try (CompilationAlarm c1 = CompilationAlarm.trackCompilationPeriod(initialOptions)) {
             StructuredGraph g = parseEager("snippet", AllowAssumptions.NO, options);
             new CooperativePhase().apply(g);
         }
@@ -114,8 +113,9 @@ public class CooperativePhaseTest extends GraalCompilerTest {
     @SuppressWarnings("try")
     public void test02() {
         initializeForTimeout();
-        OptionValues options = new OptionValues(GLOBAL, CompilationExpirationPeriod, 1/* sec */);
-        try (CompilationAlarm c1 = CompilationAlarm.trackCompilationPeriod(GLOBAL)) {
+        OptionValues initialOptions = getInitialOptions();
+        OptionValues options = new OptionValues(initialOptions, CompilationExpirationPeriod, 1/* sec */);
+        try (CompilationAlarm c1 = CompilationAlarm.trackCompilationPeriod(initialOptions)) {
             StructuredGraph g = parseEager("snippet", AllowAssumptions.NO, options);
             new UnCooperativePhase().apply(g);
         }
@@ -126,8 +126,9 @@ public class CooperativePhaseTest extends GraalCompilerTest {
     public void test03() {
         initializeForTimeout();
         // 0 disables alarm utility
-        OptionValues options = new OptionValues(GLOBAL, CompilationExpirationPeriod, 0);
-        try (CompilationAlarm c1 = CompilationAlarm.trackCompilationPeriod(GLOBAL)) {
+        OptionValues initialOptions = getInitialOptions();
+        OptionValues options = new OptionValues(initialOptions, CompilationExpirationPeriod, 0);
+        try (CompilationAlarm c1 = CompilationAlarm.trackCompilationPeriod(initialOptions)) {
             StructuredGraph g = parseEager("snippet", AllowAssumptions.NO, options);
             new ParlyCooperativePhase().apply(g);
         }

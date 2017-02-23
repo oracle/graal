@@ -30,8 +30,6 @@ import static org.graalvm.compiler.hotspot.stubs.StubUtil.cAssertionsEnabled;
 import static org.graalvm.compiler.hotspot.stubs.StubUtil.decipher;
 import static org.graalvm.compiler.hotspot.stubs.StubUtil.newDescriptor;
 import static org.graalvm.compiler.hotspot.stubs.StubUtil.printf;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.Snippet;
@@ -71,14 +69,17 @@ public class UnwindExceptionToCallerStub extends SnippetStub {
 
     @Override
     protected Object getConstantParameterValue(int index, String name) {
-        assert index == 2;
-        return providers.getRegisters().getThreadRegister();
+        if (index == 2) {
+            return providers.getRegisters().getThreadRegister();
+        }
+        assert index == 3;
+        return options;
     }
 
     @Snippet
-    private static void unwindExceptionToCaller(Object exception, Word returnAddress, @ConstantParameter Register threadRegister) {
+    private static void unwindExceptionToCaller(Object exception, Word returnAddress, @ConstantParameter Register threadRegister, @ConstantParameter OptionValues options) {
         Pointer exceptionOop = Word.objectToTrackedPointer(exception);
-        if (logging()) {
+        if (logging(options)) {
             printf("unwinding exception %p (", exceptionOop.rawValue());
             decipher(exceptionOop.rawValue());
             printf(") at %p (", returnAddress.rawValue());
@@ -91,7 +92,7 @@ public class UnwindExceptionToCallerStub extends SnippetStub {
 
         Word handlerInCallerPc = exceptionHandlerForReturnAddress(EXCEPTION_HANDLER_FOR_RETURN_ADDRESS, thread, returnAddress);
 
-        if (logging()) {
+        if (logging(options)) {
             printf("handler for exception %p at return address %p is at %p (", exceptionOop.rawValue(), returnAddress.rawValue(), handlerInCallerPc.rawValue());
             decipher(handlerInCallerPc.rawValue());
             printf(")\n");
@@ -101,8 +102,8 @@ public class UnwindExceptionToCallerStub extends SnippetStub {
     }
 
     @Fold
-    static boolean logging() {
-        return StubOptions.TraceUnwindStub.getValue(GLOBAL);
+    static boolean logging(OptionValues options) {
+        return StubOptions.TraceUnwindStub.getValue(options);
     }
 
     /**

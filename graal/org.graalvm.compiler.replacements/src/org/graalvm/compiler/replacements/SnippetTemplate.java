@@ -235,7 +235,7 @@ public class SnippetTemplate {
 
         protected SnippetInfo(ResolvedJavaMethod method, LocationIdentity[] privateLocations) {
             this.method = method;
-            this.privateLocations = SnippetCounterNode.addSnippetCounters(privateLocations);
+            this.privateLocations = privateLocations;
             instantiationCounter = Debug.counter("SnippetInstantiationCount[%s]", method.getName());
             instantiationTimer = Debug.timer("SnippetInstantiationTime[%s]", method.getName());
             assert method.isStatic() : "snippet method must be static: " + method.format("%H.%n");
@@ -606,7 +606,7 @@ public class SnippetTemplate {
          * {@link Snippet} and returns a {@link SnippetInfo} value describing it. There must be
          * exactly one snippet method in {@code declaringClass}.
          */
-        protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, LocationIdentity... privateLocations) {
+        protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, LocationIdentity... initialPrivateLocations) {
             assert methodName != null;
             Method method = findMethod(declaringClass, methodName, null);
             assert method != null : "did not find @" + Snippet.class.getSimpleName() + " method in " + declaringClass + " named " + methodName;
@@ -614,6 +614,7 @@ public class SnippetTemplate {
             assert findMethod(declaringClass, methodName, method) == null : "found more than one method named " + methodName + " in " + declaringClass;
             ResolvedJavaMethod javaMethod = providers.getMetaAccess().lookupJavaMethod(method);
             providers.getReplacements().registerSnippet(javaMethod);
+            LocationIdentity[] privateLocations = GraalOptions.SnippetCounters.getValue(options) ? SnippetCounterNode.addSnippetCounters(initialPrivateLocations) : initialPrivateLocations;
             if (GraalOptions.EagerSnippets.getValue(options)) {
                 return new EagerSnippetInfo(javaMethod, privateLocations);
             } else {

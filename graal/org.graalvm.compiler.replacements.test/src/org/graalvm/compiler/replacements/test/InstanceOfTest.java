@@ -37,7 +37,6 @@ import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.AbstractInliningPhase;
 
 import jdk.vm.ci.code.site.Call;
@@ -51,7 +50,7 @@ import jdk.vm.ci.meta.JavaTypeProfile;
 public class InstanceOfTest extends TypeCheckTest {
 
     public InstanceOfTest() {
-        createSuites(OptionValues.GLOBAL).getHighTier().findPhase(AbstractInliningPhase.class).remove();
+        createSuites(getInitialOptions()).getHighTier().findPhase(AbstractInliningPhase.class).remove();
     }
 
     @Override

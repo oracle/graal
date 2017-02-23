@@ -25,8 +25,6 @@ package org.graalvm.compiler.jtt.backend;
 import static org.graalvm.compiler.api.directives.GraalDirectives.LIKELY_PROBABILITY;
 import static org.graalvm.compiler.api.directives.GraalDirectives.injectBranchProbability;
 import static org.graalvm.compiler.core.common.GraalOptions.MaximumInliningSize;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import java.lang.reflect.Method;
 
 import org.junit.Test;
@@ -59,18 +57,18 @@ public class ConstantPhiTest extends JTTTest {
     @Test
     @SuppressWarnings("try")
     public void run0() {
-        runTest(new OptionValues(GLOBAL, MaximumInliningSize, -1), "test", 0, 0xDEADDEAD);
+        runTest(new OptionValues(getInitialOptions(), MaximumInliningSize, -1), "test", 0, 0xDEADDEAD);
     }
 
     @Test
     @SuppressWarnings("try")
     public void run1() {
-        runTest(new OptionValues(GLOBAL, MaximumInliningSize, -1), "test", -1, 0xDEADDEAD);
+        runTest(new OptionValues(getInitialOptions(), MaximumInliningSize, -1), "test", -1, 0xDEADDEAD);
     }
 
     @Test
     @SuppressWarnings("try")
     public void run2() {
-        runTest(new OptionValues(GLOBAL, MaximumInliningSize, -1), "test", 1, 0xDEADDEAD);
+        runTest(new OptionValues(getInitialOptions(), MaximumInliningSize, -1), "test", 1, 0xDEADDEAD);
     }
 }

@@ -157,8 +157,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         this.target = target;
     }
 
-    public void initialize(OptionValues options, Providers providers, SnippetReflectionProvider snippetReflection) {
-        boxingSnippets = new BoxingSnippets.Templates(options, providers, snippetReflection, target);
+    public void initialize(OptionValues options, SnippetCounter.Group.Factory factory, Providers providers, SnippetReflectionProvider snippetReflection) {
+        boxingSnippets = new BoxingSnippets.Templates(options, factory, providers, snippetReflection, target);
         indexOfSnippets = new ConstantStringIndexOfSnippets.Templates(options, providers, snippetReflection, target);
         providers.getReplacements().registerSnippetTemplateCache(new SnippetCounterNode.SnippetCounterSnippets.Templates(options, providers, snippetReflection, target));
     }
