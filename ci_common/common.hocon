@@ -7,11 +7,8 @@ java9 : {name : labsjdk, version : "9-SNAPSHOT", platformspecific: true}
 java9EA : {name : labsjdk, version : "9-ea+156", platformspecific: true}
 java8Debug : {name : labsjdk, version : "8u121-jvmci-0.25-fastdebug", platformspecific: true}
 
-mx : {
-  packages : {
-    mx : "625248d328895c2a1af6f17edb610ff742b0897e"
-  }
-}
+# Overlay placeholder for pinning mx to a specific revision
+mx : {}
 
 chdirToSuite : ["cd", ${suite-root}]
 common : ${mx} {
