@@ -130,7 +130,6 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
             if (locationIdentity.equals(ARRAY_LENGTH_LOCATION)) {
                 ValueNode length = GraphUtil.arrayLength(object);
                 if (length != null) {
-                    // TODO Does this need a PiCastNode to the positive range?
                     return length;
                 }
             }
