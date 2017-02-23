@@ -105,6 +105,15 @@ overlay = 0edd74cfb471019c0f528dd8aeca68ad09d88fcc
 
 builds = [
   ${common} ${java8Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64], targets : [gate], name: "gate-truffle-8"},
+  ${common} ${java8Downloads} {
+    run : [
+        ["mx", "build"],
+        ["mx", "javadoc"],
+    ],
+    capabilities : [linux, amd64],
+    targets : [gate],
+    name: "gate-truffle-javadoc"
+  },
 # ${common} ${java9Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64], targets : [gate], name: "gate-truffle-9"},
   ${common} ${java8Downloads} {run : [["sh", ".travis.sigtest.sh"]], capabilities : [linux, amd64], targets : [gate], name: "gate-sigtest"},
 # ${common} ${java9Downloads} {run : [["mx", "-v", "testgraal"]], capabilities : [linux, amd64], targets : [gate], name: "gate-testgraal9"},
