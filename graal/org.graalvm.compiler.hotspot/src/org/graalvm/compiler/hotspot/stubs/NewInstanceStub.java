@@ -25,6 +25,7 @@ package org.graalvm.compiler.hotspot.stubs;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HEAP_END_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HEAP_TOP_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.PROTOTYPE_MARK_WORD_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.TLAB_FAST_REFILL_WASTE_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.TLAB_NOF_REFILLS_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.TLAB_REFILL_WASTE_LIMIT_LOCATION;
@@ -35,7 +36,9 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.getAndClearObjectResult;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.initializeTlab;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.isInstanceKlassFullyInitialized;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.readLayoutHelper;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.log2WordSize;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.prototypeMarkWordOffset;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.readTlabEnd;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.readTlabStart;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.readTlabTop;
@@ -71,7 +74,6 @@ import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
 import org.graalvm.compiler.hotspot.nodes.StubForeignCallNode;
 import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
-import org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import org.graalvm.compiler.hotspot.replacements.NewObjectSnippets;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -145,6 +147,7 @@ public class NewInstanceStub extends SnippetStub {
         boolean inlineContiguousAllocationSupported = GraalHotSpotVMConfigNode.inlineContiguousAllocationSupported();
         if (!forceSlowPath(options) && inlineContiguousAllocationSupported) {
             if (isInstanceKlassFullyInitialized(hub)) {
+                int sizeInBytes = readLayoutHelper(hub);
                 Word memory = refillAllocate(thread, intArrayHub, sizeInBytes, logging(options));
                 if (memory.notEqual(0)) {
                     Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(INJECTED_VMCONFIG), PROTOTYPE_MARK_WORD_LOCATION);

@@ -76,4 +76,17 @@ public class BC_instanceof extends JTTTest {
         runTest("test", 4);
     }
 
+    public static boolean testEmpty(Object obj) {
+        if (obj instanceof TestClass) {
+        }
+
+        if (!(obj instanceof TestClass)) {
+        }
+        return true;
+    }
+
+    @Test
+    public void run5() throws Throwable {
+        runTest("testEmpty", object2);
+    }
 }

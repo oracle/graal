@@ -3428,7 +3428,13 @@ public class BytecodeParser implements GraphBuilderContext {
         int value = getStream().readUByte(next);
         if (value == Bytecodes.IFEQ || value == Bytecodes.IFNE) {
             getStream().next();
-            genIf(instanceOfNode, value != Bytecodes.IFNE, currentBlock.getSuccessor(0), currentBlock.getSuccessor(1));
+            BciBlock firstSucc = currentBlock.getSuccessor(0);
+            BciBlock secondSucc = currentBlock.getSuccessor(1);
+            if (firstSucc != secondSucc) {
+                genIf(instanceOfNode, value != Bytecodes.IFNE, firstSucc, secondSucc);
+            } else {
+                appendGoto(firstSucc);
+            }
         } else {
             // Most frequent for value is IRETURN, followed by ISTORE.
             frameState.push(JavaKind.Int, append(genConditional(logicNode)));
