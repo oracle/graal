@@ -112,8 +112,6 @@ public final class TraceGlobalMoveResolutionPhase extends LIRPhase<TraceAllocati
         BlockEndOp blockEnd = SSIUtil.outgoing(lir, fromBlock);
         LabelOp label = SSIUtil.incoming(lir, toBlock);
 
-        assert verifySSI(fromBlock, toBlock, blockEnd, label);
-
         for (int i = 0; i < label.getPhiSize(); i++) {
             Value in = label.getIncomingValue(i);
             Value out = blockEnd.getOutgoingValue(i);
@@ -131,14 +129,6 @@ public final class TraceGlobalMoveResolutionPhase extends LIRPhase<TraceAllocati
 
     private static boolean isIllegalDestination(Value to) {
         return isIllegal(to) || isConstantValue(to);
-    }
-
-    private static boolean verifySSI(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, BlockEndOp blockEnd, LabelOp label) {
-        assert label.getIncomingSize() == blockEnd.getOutgoingSize() : String.format("In/Out size mismatch: in=%d vs. out=%d, blocks %s vs. %s", label.getIncomingSize(),
-                        blockEnd.getOutgoingSize(),
-                        toBlock, fromBlock);
-        assert label.getPhiSize() == blockEnd.getPhiSize() : String.format("Phi In/Out size mismatch: in=%d vs. out=%d", label.getPhiSize(), blockEnd.getPhiSize());
-        return true;
     }
 
     private static boolean verifyEdge(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock) {
