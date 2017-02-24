@@ -65,7 +65,7 @@ public abstract class ArithmeticStamp extends Stamp {
         if (!(obj instanceof ArithmeticStamp)) {
             return false;
         }
-        assert Objects.equals(ops, ((ArithmeticStamp) obj).ops);
+        assert Objects.equals(ops, ((ArithmeticStamp) obj).ops) : ops + " vs. " + ((ArithmeticStamp) obj).ops;
         return true;
     }
 }
