@@ -46,7 +46,11 @@ public abstract class ArithmeticStamp extends Stamp {
 
     @Override
     public Stamp improveWith(Stamp other) {
-        return this.join(other);
+        if (this.isCompatible(other)) {
+            return this.join(other);
+        }
+        // Cannot improve, because stamps are not compatible.
+        return this;
     }
 
     @Override
