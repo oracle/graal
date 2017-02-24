@@ -22,33 +22,48 @@
  */
 package org.graalvm.compiler.phases.common;
 
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugCounter;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeMap;
+import org.graalvm.compiler.graph.NodeStack;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.BinaryOpLogicNode;
+import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
+import org.graalvm.compiler.nodes.UnaryOpLogicNode;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph.RecursiveVisitor;
+import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
+import org.graalvm.compiler.nodes.java.TypeSwitchNode;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
 import org.graalvm.compiler.nodes.memory.FloatingAccessNode;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.graph.ScheduledNodeIterator;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
 
+import jdk.vm.ci.meta.TriState;
+
 /**
  * This phase lowers {@link FloatingReadNode FloatingReadNodes} into corresponding fixed reads.
  */
 public class FixReadsPhase extends BasePhase<LowTierContext> {
 
-    private static class FixReadsIterator extends ScheduledNodeIterator implements RecursiveVisitor<Integer> {
+    private static final DebugCounter counterStampsRegistered = Debug.counter("FixReads_StampsRegistered");
+    private static final DebugCounter counterIfsKilled = Debug.counter("FixReads_KilledIfs");
 
-        private final ScheduleResult schedule;
-
-        public FixReadsIterator(ScheduleResult schedule) {
-            this.schedule = schedule;
-        }
+    private static class FixReadsClosure extends ScheduledNodeIterator {
 
         @Override
         protected void processNode(Node node) {
@@ -62,14 +77,156 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
             }
         }
 
-        @Override
-        public Integer enter(Block b) {
-            this.processNodes(b, schedule);
-            return null;
+    }
+
+    private static class RawConditionalEliminationVisitor implements RecursiveVisitor<Integer> {
+
+        protected final NodeMap<StampElement> stampMap;
+        protected final NodeStack undoOperations;
+        private final ScheduleResult schedule;
+
+        public RawConditionalEliminationVisitor(StructuredGraph graph, ScheduleResult schedule) {
+            this.schedule = schedule;
+            stampMap = graph.createNodeMap();
+            undoOperations = new NodeStack();
+        }
+
+        protected void processNode(Node node) {
+            assert node.isAlive();
+            if (node instanceof AbstractBeginNode) {
+                processAbstractBegin((AbstractBeginNode) node);
+            } else if (node instanceof IfNode) {
+                processIf((IfNode) node);
+            }
+        }
+
+        private void processIf(IfNode node) {
+            TriState result = tryProofCondition(node.condition());
+            if (result != TriState.UNKNOWN) {
+                boolean isTrue = (result == TriState.TRUE);
+                AbstractBeginNode survivingSuccessor = node.getSuccessor(isTrue);
+                survivingSuccessor.replaceAtUsages(null);
+                survivingSuccessor.replaceAtPredecessor(null);
+                node.replaceAtPredecessor(survivingSuccessor);
+                GraphUtil.killCFG(node);
+                counterIfsKilled.increment();
+            }
+        }
+
+        private TriState tryProofCondition(LogicNode condition) {
+            Stamp conditionStamp = this.getBestStamp(condition);
+            if (conditionStamp == StampFactory.tautology()) {
+                return TriState.TRUE;
+            } else if (conditionStamp == StampFactory.contradiction()) {
+                return TriState.FALSE;
+            }
+
+            if (condition instanceof UnaryOpLogicNode) {
+                UnaryOpLogicNode unaryOpLogicNode = (UnaryOpLogicNode) condition;
+                return unaryOpLogicNode.tryFold(this.getBestStamp(unaryOpLogicNode.getValue()));
+            } else if (condition instanceof BinaryOpLogicNode) {
+                BinaryOpLogicNode binaryOpLogicNode = (BinaryOpLogicNode) condition;
+                return binaryOpLogicNode.tryFold(this.getBestStamp(binaryOpLogicNode.getX()), this.getBestStamp(binaryOpLogicNode.getY()));
+            }
+
+            return TriState.UNKNOWN;
+        }
+
+        private void processAbstractBegin(AbstractBeginNode beginNode) {
+            Node predecessor = beginNode.predecessor();
+            if (predecessor instanceof IfNode) {
+                IfNode ifNode = (IfNode) predecessor;
+                boolean negated = (ifNode.falseSuccessor() == beginNode);
+                LogicNode condition = ifNode.condition();
+                registerNewCondition(condition, negated);
+            } else if (predecessor instanceof TypeSwitchNode) {
+                TypeSwitchNode typeSwitch = (TypeSwitchNode) predecessor;
+                registerTypeSwitch(beginNode, predecessor, typeSwitch);
+            } else if (predecessor instanceof IntegerSwitchNode) {
+                IntegerSwitchNode integerSwitchNode = (IntegerSwitchNode) predecessor;
+                registerIntegerSwitch(beginNode, predecessor, integerSwitchNode);
+            }
+        }
+
+        @SuppressWarnings("unused")
+        private void registerIntegerSwitch(AbstractBeginNode beginNode, Node predecessor, IntegerSwitchNode integerSwitchNode) {
+        }
+
+        @SuppressWarnings("unused")
+        private void registerTypeSwitch(AbstractBeginNode beginNode, Node predecessor, TypeSwitchNode typeSwitch) {
+        }
+
+        protected void registerNewCondition(LogicNode condition, boolean negated) {
+            if (condition instanceof UnaryOpLogicNode) {
+                UnaryOpLogicNode unaryLogicNode = (UnaryOpLogicNode) condition;
+                ValueNode value = unaryLogicNode.getValue();
+                Stamp newStamp = unaryLogicNode.getSucceedingStampForValue(negated);
+                registerNewValueStamp(value, newStamp);
+            } else if (condition instanceof BinaryOpLogicNode) {
+                BinaryOpLogicNode binaryOpLogicNode = (BinaryOpLogicNode) condition;
+                ValueNode x = binaryOpLogicNode.getX();
+                registerNewValueStamp(x, binaryOpLogicNode.getSucceedingStampForX(negated));
+                ValueNode y = binaryOpLogicNode.getY();
+                registerNewValueStamp(y, binaryOpLogicNode.getSucceedingStampForY(negated));
+            }
+            registerCondition(condition, negated);
+        }
+
+        protected void registerCondition(LogicNode condition, boolean negated) {
+            registerNewStamp(condition, negated ? StampFactory.contradiction() : StampFactory.tautology());
+        }
+
+        protected void registerNewValueStamp(ValueNode value, Stamp newStamp) {
+            if (newStamp != null && !value.isConstant()) {
+                Stamp currentStamp = getBestStamp(value);
+                Stamp betterStamp = newStamp.join(currentStamp);
+
+                if (betterStamp.equals(currentStamp)) {
+                    // No new information available.
+                    return;
+                }
+
+                registerNewStamp(value, betterStamp);
+            }
+        }
+
+        protected void registerNewStamp(ValueNode value, Stamp newStamp) {
+            counterStampsRegistered.increment();
+            Debug.log("\t Saving stamp for node %s stamp %s", value, newStamp);
+            ValueNode originalNode = value;
+            stampMap.setAndGrow(originalNode, new StampElement(newStamp, stampMap.getAndGrow(originalNode)));
+            undoOperations.push(originalNode);
+        }
+
+        protected Stamp getBestStamp(ValueNode value) {
+            ValueNode originalNode = value;
+            StampElement currentStamp = stampMap.getAndGrow(originalNode);
+            if (currentStamp == null) {
+                return value.stamp();
+            }
+            return currentStamp.getStamp();
         }
 
         @Override
-        public void exit(Block b, Integer value) {
+        public Integer enter(Block b) {
+            int mark = undoOperations.size();
+            for (Node n : schedule.getBlockToNodesMap().get(b)) {
+                if (n.isAlive()) {
+                    processNode(n);
+                }
+            }
+            return mark;
+        }
+
+        @Override
+        public void exit(Block b, Integer state) {
+            int mark = state;
+            while (undoOperations.size() > mark) {
+                Node node = undoOperations.pop();
+                if (node.isAlive()) {
+                    stampMap.set(node, stampMap.get(node).getParent());
+                }
+            }
         }
 
     }
@@ -79,6 +236,42 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
         SchedulePhase schedulePhase = new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS);
         schedulePhase.apply(graph);
         ScheduleResult schedule = graph.getLastSchedule();
-        schedule.getCFG().visitDominatorTree(new FixReadsIterator(schedule), false);
+        FixReadsClosure fixReadsClosure = new FixReadsClosure();
+        for (Block block : schedule.getCFG().getBlocks()) {
+            fixReadsClosure.processNodes(block, schedule);
+        }
+        if (GraalOptions.RawConditionalElimination.getValue(graph.getOptions())) {
+            schedule.getCFG().visitDominatorTree(new RawConditionalEliminationVisitor(graph, schedule), false);
+        }
+    }
+
+    protected static final class StampElement {
+        private final Stamp stamp;
+        private final StampElement parent;
+
+        public StampElement(Stamp stamp, StampElement parent) {
+            this.stamp = stamp;
+            this.parent = parent;
+        }
+
+        public StampElement getParent() {
+            return parent;
+        }
+
+        public Stamp getStamp() {
+            return stamp;
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder result = new StringBuilder();
+            result.append(stamp);
+            if (this.parent != null) {
+                result.append(" (");
+                result.append(this.parent.toString());
+                result.append(")");
+            }
+            return result.toString();
+        }
     }
 }
