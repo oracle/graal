@@ -48,6 +48,12 @@ def javadoc(args, vm=None):
     """build the Javadoc for all API packages"""
     mx.javadoc(['--unified'] + args)
     javadocDir = os.sep.join([_suite.dir, 'javadoc'])
+    index = os.sep.join([javadocDir, 'index.html'])
+    indexContent = open(index, 'r').read()
+    indexContent = indexContent.replace('src="allclasses-frame.html"', 'src="com/oracle/truffle/api/vm/package-frame.html"')
+    indexContent = indexContent.replace('src="overview-summary.html"', 'src="com/oracle/truffle/tutorial/package-summary.html"')
+    new_file = open(index, "w")
+    new_file.write(indexContent)
     checkLinks(javadocDir)
 
 def checkLinks(javadocDir):
@@ -80,7 +86,7 @@ def checkLinks(javadocDir):
 
     err = False
     for referencedfile, sections in filesToCheck.items():
-        if referencedfile.startswith('javascript:') or referencedfile.startswith('http:') or referencedfile.startswith('https:'):
+        if referencedfile.startswith('javascript:') or referencedfile.startswith('http:') or referencedfile.startswith('https:') or referencedfile.startswith('mailto:'):
             continue
         if not exists(referencedfile):
             mx.warn('Referenced file ' + referencedfile + ' does not exist. Referenced from ' + sections[0][0])
