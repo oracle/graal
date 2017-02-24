@@ -196,7 +196,7 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
         }
     }
 
-    protected InvokeNode replaceWithInvoke() {
+    public InvokeNode replaceWithInvoke() {
         InvokeNode invoke = createInvoke();
         graph().replaceFixedWithFixed(this, invoke);
         return invoke;

@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.type.ObjectStamp;
@@ -118,7 +119,7 @@ public class InliningData {
 
     private int maxGraphs;
 
-    public InliningData(StructuredGraph rootGraph, HighTierContext context, int maxMethodPerInlining, CanonicalizerPhase canonicalizer, InliningPolicy inliningPolicy) {
+    public InliningData(StructuredGraph rootGraph, HighTierContext context, int maxMethodPerInlining, CanonicalizerPhase canonicalizer, InliningPolicy inliningPolicy, LinkedList<Invoke> rootInvokes) {
         assert rootGraph != null;
         this.context = context;
         this.maxMethodPerInlining = maxMethodPerInlining;
@@ -128,7 +129,7 @@ public class InliningData {
         this.rootGraph = rootGraph;
 
         invocationQueue.push(new MethodInvocation(null, 1.0, 1.0, null));
-        graphQueue.push(new CallsiteHolderExplorable(rootGraph, 1.0, 1.0, null));
+        graphQueue.push(new CallsiteHolderExplorable(rootGraph, 1.0, 1.0, null, rootInvokes));
     }
 
     public static boolean isFreshInstantiation(ValueNode arg) {
