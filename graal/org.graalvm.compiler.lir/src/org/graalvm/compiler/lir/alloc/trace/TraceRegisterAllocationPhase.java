@@ -36,7 +36,7 @@ import org.graalvm.compiler.lir.alloc.trace.TraceAllocationPhase.TraceAllocation
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool.MoveFactory;
 import org.graalvm.compiler.lir.phases.AllocationPhase;
-import org.graalvm.compiler.lir.ssi.SSIUtil;
+import org.graalvm.compiler.lir.ssa.SSAUtil;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
@@ -116,16 +116,13 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
      * Note: Incoming Values are needed for the RegisterVerifier, otherwise SIGMAs/PHIs where the
      * Out and In value matches (ie. there is no resolution move) are falsely detected as errors.
      */
-    @SuppressWarnings("try")
     private static void deconstructSSIForm(LIR lir) {
         for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
-            try (Indent i = Debug.logAndIndent("Fixup Block %s", block)) {
-                if (block.getPredecessorCount() != 0) {
-                    SSIUtil.removeIncoming(lir, block);
-                } else {
-                    assert lir.getControlFlowGraph().getStartBlock().equals(block);
+            if (SSAUtil.isMerge(block)) {
+                SSAUtil.phiIn(lir, block).clearIncomingValues();
+                for (AbstractBlockBase<?> pred : block.getPredecessors()) {
+                    SSAUtil.phiOut(lir, pred).clearOutgoingValues();
                 }
-                SSIUtil.removeOutgoing(lir, block);
             }
         }
     }

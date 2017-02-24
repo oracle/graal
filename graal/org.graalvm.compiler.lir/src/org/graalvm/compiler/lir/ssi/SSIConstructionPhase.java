@@ -38,11 +38,10 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.common.JVMCIError;
 
 /**
- * Constructs {@linkplain SSIUtil SSI LIR} using a liveness analysis.
+ * Constructs SSI LIR using a liveness analysis.
  *
  * Implementation derived from {@link LinearScanLifetimeAnalysisPhase}.
  *
- * @see SSIUtil
  */
 public final class SSIConstructionPhase extends AllocationPhase {
 

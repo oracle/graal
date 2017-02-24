@@ -64,7 +64,7 @@ import org.graalvm.compiler.lir.alloc.trace.lsra.TraceInterval.SpillState;
 import org.graalvm.compiler.lir.alloc.trace.lsra.TraceLinearScanPhase.TraceLinearScan;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool.MoveFactory;
-import org.graalvm.compiler.lir.ssi.SSIUtil;
+import org.graalvm.compiler.lir.ssa.SSAUtil;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterArray;
@@ -572,12 +572,14 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
         }
 
         private void handleBlockBegin(AbstractBlockBase<?> block) {
-            // handle phis
-            // method parameters are fixed later on (see end of #buildIntervals)
-            LabelOp label = SSIUtil.incoming(getLIR(), block);
-            for (int i = 0; i < label.getPhiSize(); i++) {
-                Variable var = asVariable(label.getIncomingValue(i));
-                addVariableDef(var, label, RegisterPriority.ShouldHaveRegister);
+            if (SSAUtil.isMerge(block)) {
+                // handle phis
+                // method parameters are fixed later on (see end of #buildIntervals)
+                LabelOp label = SSAUtil.phiIn(getLIR(), block);
+                for (int i = 0; i < label.getPhiSize(); i++) {
+                    Variable var = asVariable(label.getIncomingValue(i));
+                    addVariableDef(var, label, RegisterPriority.ShouldHaveRegister);
+                }
             }
         }
 
@@ -606,7 +608,7 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
                 GlobalLivenessInfo livenessInfo = allocator.getGlobalLivenessInfo();
                 // set hints for phi/sigma intervals
                 for (AbstractBlockBase<?> block : sortedBlocks()) {
-                    LabelOp label = SSIUtil.incoming(getLIR(), block);
+                    LabelOp label = (LabelOp) getLIR().getLIRforBlock(block).get(0);
                     for (AbstractBlockBase<?> pred : block.getPredecessors()) {
                         if (isAllocated(block, pred)) {
                             int[] liveVars = livenessInfo.getBlockIn(block);

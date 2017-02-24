@@ -32,14 +32,13 @@ import org.graalvm.compiler.core.common.alloc.Trace;
 import org.graalvm.compiler.core.common.alloc.TraceBuilderResult;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.lir.LIR;
-import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
 import org.graalvm.compiler.lir.StandardOp.JumpOp;
 import org.graalvm.compiler.lir.StandardOp.LabelOp;
 import org.graalvm.compiler.lir.ValueProcedure;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
-import org.graalvm.compiler.lir.ssi.SSIUtil;
+import org.graalvm.compiler.lir.ssa.SSAUtil;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.Value;
@@ -61,7 +60,7 @@ final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAllocationPh
 
         Value[] variableMap = new Value[lir.numVariables()];
         GlobalLivenessInfo livenessInfo = context.livenessInfo;
-        collectMapping(lir, block, pred, livenessInfo, variableMap);
+        collectMapping(block, pred, livenessInfo, variableMap);
         assignLocations(lir, block, livenessInfo, variableMap);
     }
 
@@ -69,7 +68,7 @@ final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAllocationPh
      * Collects the mapping from variable to location. Additionally the
      * {@link GlobalLivenessInfo#setInLocations incoming location array} is set.
      */
-    private static void collectMapping(LIR lir, AbstractBlockBase<?> block, AbstractBlockBase<?> pred, GlobalLivenessInfo livenessInfo, Value[] variableMap) {
+    private static void collectMapping(AbstractBlockBase<?> block, AbstractBlockBase<?> pred, GlobalLivenessInfo livenessInfo, Value[] variableMap) {
         final int[] blockIn = livenessInfo.getBlockIn(block);
         final Value[] predLocOut = livenessInfo.getOutLocation(pred);
         final Value[] locationIn = new Value[blockIn.length];
@@ -84,8 +83,6 @@ final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAllocationPh
             }
         }
         livenessInfo.setInLocations(block, locationIn);
-        // no need to care about handle phis
-        assert !SSIUtil.incoming(lir, block).isPhiIn() : "Merge blocks are not trivial! " + block;
     }
 
     /**
@@ -111,8 +108,7 @@ final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAllocationPh
             }
         };
 
-        LIRInstruction jump = SSIUtil.outgoingInst(lir, block);
-        assert jump instanceof JumpOp : "Can only be a jump! " + jump;
+        JumpOp jump = SSAUtil.phiOut(lir, block);
         // Jumps have only alive values (outgoing phi values)
         jump.forEachAlive(outputConsumer);
     }
