@@ -48,8 +48,10 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
+import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
+import org.graalvm.compiler.nodes.calc.NormalizeCompareNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -563,7 +565,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 } else if (distinct == 1) {
                     ValueNode trueValue = singlePhi.valueAt(trueEnd);
                     ValueNode falseValue = singlePhi.valueAt(falseEnd);
-                    ConditionalNode conditional = canonicalizeConditionalCascade(trueValue, falseValue);
+                    ValueNode conditional = canonicalizeConditionalCascade(trueValue, falseValue);
                     if (conditional != null) {
                         singlePhi.setValueAt(trueEnd, conditional);
                         removeThroughFalseBranch(tool);
@@ -605,7 +607,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
     }
 
-    private ConditionalNode canonicalizeConditionalCascade(ValueNode trueValue, ValueNode falseValue) {
+    private ValueNode canonicalizeConditionalCascade(ValueNode trueValue, ValueNode falseValue) {
         if (trueValue.getStackKind() != falseValue.getStackKind()) {
             return null;
         }
@@ -629,21 +631,39 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             } else {
                 return null;
             }
-            boolean negateConditionalCondition;
-            ValueNode otherValue;
+            boolean negateConditionalCondition = false;
+            ValueNode otherValue = null;
             if (constant == conditional.trueValue()) {
                 otherValue = conditional.falseValue();
                 negateConditionalCondition = false;
             } else if (constant == conditional.falseValue()) {
                 otherValue = conditional.trueValue();
                 negateConditionalCondition = true;
-            } else {
-                return null;
             }
-            if (otherValue.isConstant()) {
-                double shortCutProbability = probability(trueSuccessor());
-                LogicNode newCondition = LogicNode.or(condition(), negateCondition, conditional.condition(), negateConditionalCondition, shortCutProbability);
-                return graph().unique(new ConditionalNode(newCondition, constant, otherValue));
+            if (otherValue != null) {
+                if (otherValue.isConstant()) {
+                    double shortCutProbability = probability(trueSuccessor());
+                    LogicNode newCondition = LogicNode.or(condition(), negateCondition, conditional.condition(), negateConditionalCondition, shortCutProbability);
+                    return graph().unique(new ConditionalNode(newCondition, constant, otherValue));
+                }
+            } else if (!negateCondition && constant.isJavaConstant() && conditional.trueValue().isJavaConstant() && conditional.falseValue().isJavaConstant()) {
+                IntegerLessThanNode lessThan = null;
+                IntegerEqualsNode equals = null;
+                if (condition() instanceof IntegerLessThanNode && conditional.condition() instanceof IntegerEqualsNode && constant.asJavaConstant().asLong() == -1 &&
+                                conditional.trueValue().asJavaConstant().asLong() == 0 && conditional.falseValue().asJavaConstant().asLong() == 1) {
+                    lessThan = (IntegerLessThanNode) condition();
+                    equals = (IntegerEqualsNode) conditional.condition();
+                } else if (condition() instanceof IntegerEqualsNode && conditional.condition() instanceof IntegerLessThanNode && constant.asJavaConstant().asLong() == 0 &&
+                                conditional.trueValue().asJavaConstant().asLong() == -1 && conditional.falseValue().asJavaConstant().asLong() == 1) {
+                    lessThan = (IntegerLessThanNode) conditional.condition();
+                    equals = (IntegerEqualsNode) condition();
+                }
+                if (lessThan != null) {
+                    assert equals != null;
+                    if ((lessThan.getX() == equals.getX() && lessThan.getY() == equals.getY()) || (lessThan.getX() == equals.getY() && lessThan.getY() == equals.getX())) {
+                        return graph().unique(new NormalizeCompareNode(lessThan.getX(), lessThan.getY(), false));
+                    }
+                }
             }
         }
         return null;
