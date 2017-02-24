@@ -40,11 +40,14 @@ import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
+import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.lir.alloc.trace.GlobalLivenessInfo;
 
 import jdk.vm.ci.meta.Value;
 
-public final class FastSSIBuilder extends SSIBuilderBase {
+public final class FastSSIBuilder {
 
+    private static final int LOG_LEVEL = Debug.INFO_LOG_LEVEL;
     /**
      * Bit map specifying which operands are live upon entry to this block. These are values used in
      * this block or any of its successors where such value are not defined in this block. The bit
@@ -61,20 +64,26 @@ public final class FastSSIBuilder extends SSIBuilderBase {
 
     private final AbstractBlockBase<?>[] blocks;
 
-    protected FastSSIBuilder(LIR lir) {
-        super(lir);
+    private final Value[] operands;
+
+    private final LIR lir;
+
+    private final GlobalLivenessInfo.Builder livenessInfoBuilder;
+
+    FastSSIBuilder(LIR lir) {
         int numBlocks = lir.getControlFlowGraph().getBlocks().length;
         this.liveIns = new BitSet[numBlocks];
         this.liveOuts = new BitSet[numBlocks];
         this.blocks = lir.getControlFlowGraph().getBlocks();
+        this.lir = lir;
+        this.operands = new Value[lir.numVariables()];
+        this.livenessInfoBuilder = new GlobalLivenessInfo.Builder(lir);
     }
 
-    @Override
     BitSet getLiveIn(final AbstractBlockBase<?> block) {
         return liveIns[block.getId()];
     }
 
-    @Override
     BitSet getLiveOut(final AbstractBlockBase<?> block) {
         return liveOuts[block.getId()];
     }
@@ -87,8 +96,7 @@ public final class FastSSIBuilder extends SSIBuilderBase {
         liveOuts[block.getId()] = liveOut;
     }
 
-    @Override
-    protected void buildIntern() {
+    private void buildIntern() {
         Debug.log(1, "SSIConstruction block order: %s", Arrays.asList(blocks));
         computeLiveness();
     }
@@ -209,5 +217,93 @@ public final class FastSSIBuilder extends SSIBuilderBase {
                 Debug.log(LOG_LEVEL, "liveKill for operand %d(%s)", operandNum, operand);
             }
         }
+    }
+
+    private LIR getLIR() {
+        return lir;
+    }
+
+    public final void build() {
+        buildIntern();
+        // check that the liveIn set of the first block is empty
+        AbstractBlockBase<?> startBlock = getLIR().getControlFlowGraph().getStartBlock();
+        if (getLiveIn(startBlock).cardinality() != 0) {
+            // bailout if this occurs in product mode.
+            throw new GraalError("liveIn set of first block must be empty: " + getLiveIn(startBlock));
+        }
+    }
+
+    @SuppressWarnings("try")
+    public final void finish() {
+        // iterate all blocks in reverse order
+        for (AbstractBlockBase<?> block : (AbstractBlockBase<?>[]) lir.getControlFlowGraph().getBlocks()) {
+            try (Indent indent = Debug.logAndIndent(LOG_LEVEL, "Finish Block %s", block)) {
+                buildIncoming(block);
+                buildOutgoing(block);
+            }
+        }
+    }
+
+    public GlobalLivenessInfo getLivenessInfo() {
+        assert livenessInfoBuilder != null : "No liveness info collected";
+        return livenessInfoBuilder.createLivenessInfo();
+    }
+
+    private void buildIncoming(AbstractBlockBase<?> block) {
+        if (!GlobalLivenessInfo.storesIncoming(block)) {
+            assert block.getPredecessorCount() == 1;
+            assert GlobalLivenessInfo.storesOutgoing(block.getPredecessors()[0]) : "No incoming liveness info: " + block;
+            return;
+        }
+
+        final int[] liveInArray;
+        if (block.getPredecessorCount() == 0) {
+            // start block
+            assert getLiveIn(block).isEmpty() : "liveIn for start block is not empty? " + getLiveIn(block);
+            liveInArray = livenessInfoBuilder.emptySet;
+        } else {
+            /*
+             * Collect live out of predecessors since there might be values not used in this block
+             * which might cause out/in mismatch. Per construction the live sets of all predecessors
+             * are equal.
+             */
+            BitSet predLiveOut = getLiveOut(block.getPredecessors()[0]);
+            liveInArray = predLiveOut.isEmpty() ? livenessInfoBuilder.emptySet : bitSetToIntArray(predLiveOut);
+        }
+
+        livenessInfoBuilder.addIncoming(block, liveInArray);
+        // reuse the same array for outgoing variables in predecessors
+        for (AbstractBlockBase<?> pred : block.getPredecessors()) {
+            livenessInfoBuilder.addOutgoing(pred, liveInArray);
+        }
+    }
+
+    private void buildOutgoing(AbstractBlockBase<?> block) {
+        BitSet liveOut = getLiveOut(block);
+        if (!GlobalLivenessInfo.storesOutgoing(block)) {
+            assert GlobalLivenessInfo.storesOutgoing(block) || block.getSuccessorCount() == 1;
+            assert GlobalLivenessInfo.storesOutgoing(block) || GlobalLivenessInfo.storesIncoming(block.getSuccessors()[0]) : "No outgoing liveness info: " + block;
+            return;
+        }
+        int[] liveOutArray = liveOut.isEmpty() ? livenessInfoBuilder.emptySet : bitSetToIntArray(liveOut);
+
+        livenessInfoBuilder.addOutgoing(block, liveOutArray);
+        // reuse the same array for incoming variables in successors
+        for (AbstractBlockBase<?> succ : block.getSuccessors()) {
+            livenessInfoBuilder.addIncoming(succ, liveOutArray);
+        }
+    }
+
+    private static int[] bitSetToIntArray(BitSet live) {
+        int[] vars = new int[live.cardinality()];
+        int cnt = 0;
+        for (int i = live.nextSetBit(0); i >= 0; i = live.nextSetBit(i + 1), cnt++) {
+            vars[cnt] = i;
+        }
+        return vars;
+    }
+
+    private void recordVariable(LIRInstruction op, Variable var) {
+        livenessInfoBuilder.addVariable(op, var);
     }
 }

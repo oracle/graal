@@ -22,9 +22,6 @@
  */
 package org.graalvm.compiler.lir.ssi;
 
-import java.util.BitSet;
-
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.lir.alloc.lsra.LinearScanLifetimeAnalysisPhase;
 import org.graalvm.compiler.lir.alloc.trace.GlobalLivenessInfo;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
@@ -32,7 +29,6 @@ import org.graalvm.compiler.lir.phases.AllocationPhase;
 import org.graalvm.compiler.lir.ssa.SSAUtil;
 
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.JVMCIError;
 
 /**
  * Constructs SSI LIR using a liveness analysis.
@@ -51,18 +47,5 @@ public final class SSIConstructionPhase extends AllocationPhase {
         GlobalLivenessInfo livenessInfo = ssiBuilder.getLivenessInfo();
         assert livenessInfo.verify(lirGenRes.getLIR());
         context.contextAdd(livenessInfo);
-    }
-
-    static void check(AbstractBlockBase<?>[] blocks, SSIBuilderBase liveSets1, SSIBuilderBase liveSets2) {
-        for (AbstractBlockBase<?> block : blocks) {
-            check(block, liveSets1.getLiveIn(block), liveSets2.getLiveIn(block));
-            check(block, liveSets1.getLiveOut(block), liveSets2.getLiveOut(block));
-        }
-    }
-
-    private static void check(AbstractBlockBase<?> block, BitSet liveIn1, BitSet liveIn2) {
-        if (!liveIn1.equals(liveIn2)) {
-            throw JVMCIError.shouldNotReachHere(String.format("%s LiveSet differ: %s vs %s", block, liveIn1, liveIn2));
-        }
     }
 }
