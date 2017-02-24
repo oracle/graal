@@ -52,7 +52,6 @@ import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
 import org.graalvm.compiler.lir.LIRValueUtil;
-import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
 import org.graalvm.compiler.lir.StandardOp.LabelOp;
 import org.graalvm.compiler.lir.StandardOp.LoadConstantOp;
 import org.graalvm.compiler.lir.StandardOp.ValueMoveOp;
@@ -112,12 +111,8 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
             buildIntervals();
         }
 
-        private boolean sameTrace(AbstractBlockBase<?> a, AbstractBlockBase<?> b) {
-            return traceBuilderResult.getTraceForBlock(b) == traceBuilderResult.getTraceForBlock(a);
-        }
-
-        private boolean isAllocatedOrCurrent(AbstractBlockBase<?> currentBlock, AbstractBlockBase<?> other) {
-            return traceBuilderResult.getTraceForBlock(other).getId() <= traceBuilderResult.getTraceForBlock(currentBlock).getId();
+        private boolean isAllocated(AbstractBlockBase<?> currentBlock, AbstractBlockBase<?> other) {
+            return traceBuilderResult.getTraceForBlock(other).getId() < traceBuilderResult.getTraceForBlock(currentBlock).getId();
         }
 
         /**
@@ -608,22 +603,20 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
         @SuppressWarnings("try")
         private void addInterTraceHints() {
             try (Scope s = Debug.scope("InterTraceHints", allocator)) {
+                GlobalLivenessInfo livenessInfo = allocator.getGlobalLivenessInfo();
                 // set hints for phi/sigma intervals
                 for (AbstractBlockBase<?> block : sortedBlocks()) {
                     LabelOp label = SSIUtil.incoming(getLIR(), block);
                     for (AbstractBlockBase<?> pred : block.getPredecessors()) {
-                        if (isAllocatedOrCurrent(block, pred)) {
-                            BlockEndOp outgoing = SSIUtil.outgoing(getLIR(), pred);
-                            // do not look at phi variables as they are not same value!
-                            for (int i = outgoing.getPhiSize(); i < outgoing.getOutgoingSize(); i++) {
-                                Value toValue = label.getIncomingValue(i);
-                                assert !isShadowedRegisterValue(toValue) : "Shadowed Registers are not allowed here: " + toValue;
-                                if (isVariable(toValue)) {
-                                    Value fromValue = outgoing.getOutgoingValue(i);
-                                    assert sameTrace(block, pred) || !isVariable(fromValue) : "Unallocated variable: " + fromValue;
-                                    if (!LIRValueUtil.isConstantValue(fromValue)) {
-                                        addInterTraceHint(label, (AllocatableValue) toValue, fromValue);
-                                    }
+                        if (isAllocated(block, pred)) {
+                            int[] liveVars = livenessInfo.getBlockIn(block);
+                            Value[] outLocation = livenessInfo.getOutLocation(pred);
+
+                            for (int i = 0; i < liveVars.length; i++) {
+                                int varNum = liveVars[i];
+                                Value fromValue = outLocation[i];
+                                if (!LIRValueUtil.isConstantValue(fromValue)) {
+                                    addInterTraceHint(label, varNum, fromValue);
                                 }
                             }
                         }
@@ -634,10 +627,13 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
             }
         }
 
-        private void addInterTraceHint(LabelOp label, AllocatableValue toValue, Value fromValue) {
-            assert isVariable(toValue) : "Wrong toValue: " + toValue;
+        private void addInterTraceHint(LabelOp label, int varNum, Value fromValue) {
             assert isRegister(fromValue) || isVariable(fromValue) || isStackSlotValue(fromValue) || isShadowedRegisterValue(fromValue) : "Wrong fromValue: " + fromValue;
-            TraceInterval to = allocator.getOrCreateInterval(toValue);
+            TraceInterval to = allocator.intervalFor(varNum);
+            if (to == null) {
+                // variable not live -> do nothing
+                return;
+            }
             if (isVariableOrRegister(fromValue)) {
                 IntervalHint from = getIntervalHint((AllocatableValue) fromValue);
                 setHint(label, to, from);
