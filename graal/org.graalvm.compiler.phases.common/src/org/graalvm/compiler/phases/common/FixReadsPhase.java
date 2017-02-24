@@ -127,7 +127,7 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
         }
 
         private void processIf(IfNode node) {
-            TriState result = tryProofCondition(node.condition());
+            TriState result = tryProveCondition(node.condition());
             if (result != TriState.UNKNOWN) {
                 boolean isTrue = (result == TriState.TRUE);
                 AbstractBeginNode survivingSuccessor = node.getSuccessor(isTrue);
@@ -139,7 +139,7 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
             }
         }
 
-        private TriState tryProofCondition(LogicNode condition) {
+        private TriState tryProveCondition(LogicNode condition) {
             Stamp conditionStamp = this.getBestStamp(condition);
             if (conditionStamp == StampFactory.tautology()) {
                 return TriState.TRUE;
@@ -184,9 +184,11 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
             } else if (condition instanceof BinaryOpLogicNode) {
                 BinaryOpLogicNode binaryOpLogicNode = (BinaryOpLogicNode) condition;
                 ValueNode x = binaryOpLogicNode.getX();
-                registerNewValueStamp(x, binaryOpLogicNode.getSucceedingStampForX(negated));
                 ValueNode y = binaryOpLogicNode.getY();
-                registerNewValueStamp(y, binaryOpLogicNode.getSucceedingStampForY(negated));
+                Stamp xStamp = getBestStamp(x);
+                Stamp yStamp = getBestStamp(y);
+                registerNewValueStamp(x, binaryOpLogicNode.getSucceedingStampForX(negated, xStamp, yStamp));
+                registerNewValueStamp(y, binaryOpLogicNode.getSucceedingStampForY(negated, xStamp, yStamp));
             }
             registerCondition(condition, negated);
         }
@@ -198,14 +200,10 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
         protected void registerNewValueStamp(ValueNode value, Stamp newStamp) {
             if (newStamp != null && !value.isConstant()) {
                 Stamp currentStamp = getBestStamp(value);
-                Stamp betterStamp = newStamp.join(currentStamp);
-
-                if (betterStamp.equals(currentStamp)) {
-                    // No new information available.
-                    return;
+                Stamp betterStamp = currentStamp.tryImproveWith(newStamp);
+                if (betterStamp != null) {
+                    registerNewStamp(value, betterStamp);
                 }
-
-                registerNewStamp(value, betterStamp);
             }
         }
 

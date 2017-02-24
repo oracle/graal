@@ -132,7 +132,7 @@ public final class GraalOptions {
     public static final OptionKey<Boolean> StressInvokeWithExceptionNode = new OptionKey<>(false);
 
     @Option(help = "Stress the code by emitting reads at earliest instead of latest point.", type = OptionType.Debug)
-    public static final OptionKey<Boolean> StressTestEarlyReads = new OptionKey<>(true);
+    public static final OptionKey<Boolean> StressTestEarlyReads = new OptionKey<>(false);
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> VerifyPhases = new OptionKey<>(false);
@@ -163,7 +163,7 @@ public final class GraalOptions {
     public static final OptionKey<Boolean> ConditionalElimination = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
-    public static final OptionKey<Boolean> RawConditionalElimination = new OptionKey<>(false);
+    public static final OptionKey<Boolean> RawConditionalElimination = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> RemoveNeverExecutedCode = new OptionKey<>(true);
