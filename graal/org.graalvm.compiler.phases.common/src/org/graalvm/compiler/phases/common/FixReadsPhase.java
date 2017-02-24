@@ -61,6 +61,7 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
 
     private static final DebugCounter counterStampsRegistered = Debug.counter("FixReads_StampsRegistered");
     private static final DebugCounter counterIfsKilled = Debug.counter("FixReads_KilledIfs");
+    private static final DebugCounter counterCanonicalizedSwitches = Debug.counter("FixReads_CanonicalizedSwitches");
 
     private static class FixReadsClosure extends ScheduledNodeIterator {
 
@@ -96,6 +97,16 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
                 processAbstractBegin((AbstractBeginNode) node);
             } else if (node instanceof IfNode) {
                 processIf((IfNode) node);
+            } else if (node instanceof IntegerSwitchNode) {
+                processIntegerSwitch((IntegerSwitchNode) node);
+            }
+        }
+
+        private void processIntegerSwitch(IntegerSwitchNode node) {
+            Stamp bestStamp = getBestStamp(node.value());
+            if (node.tryRemoveUnreachableKeys(null, bestStamp)) {
+                Debug.log("\t Canonicalized integer switch %s for value %s and stamp %s", node, node.value(), bestStamp);
+                counterCanonicalizedSwitches.increment();
             }
         }
 
