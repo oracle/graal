@@ -152,6 +152,7 @@ public abstract class TruffleTCK {
     @AfterClass
     public static void disposePreviousVM() {
         replacePreviousVM(null);
+
     }
 
     private static void replacePreviousVM(PolyglotEngine newVM) {
