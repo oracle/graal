@@ -40,7 +40,12 @@ import org.graalvm.compiler.lir.Variable;
 import jdk.vm.ci.meta.Value;
 
 /**
- * Stores live in/live out variables for each basic block.
+ * Stores live in/live out variables and locations for each basic block.
+ *
+ * <em>Live variable information</em> is stored as an integer array containing <em>variable
+ * indices</em>. The information is only stored once per <em>control-flow split</em> or
+ * <em>control-merge</em>. In other words the live sets at the end of the source block and the
+ * beginning of the target block of an edge are the same.
  */
 public final class GlobalLivenessInfo {
 
@@ -54,20 +59,22 @@ public final class GlobalLivenessInfo {
         }
 
         public GlobalLivenessInfo createLivenessInfo() {
-            GlobalLivenessInfo rematInfo = info;
+            GlobalLivenessInfo livenessInfo = info;
             info = null;
-            return rematInfo;
+            return livenessInfo;
         }
 
         public void addIncoming(AbstractBlockBase<?> block, int[] varsIn) {
+            assert info.blockToVarIn[block.getId()] == null;
             assert verifyVars(varsIn);
-            assert storesIncoming(block);
+            assert storesIncoming(block) || info.blockToVarOut[block.getPredecessors()[0].getId()] == varsIn;
             info.blockToVarIn[block.getId()] = varsIn;
         }
 
         public void addOutgoing(AbstractBlockBase<?> block, int[] varsOut) {
+            assert info.blockToVarOut[block.getId()] == null;
             assert verifyVars(varsOut);
-            assert storesOutgoing(block);
+            assert storesOutgoing(block) || info.blockToVarIn[block.getSuccessors()[0].getId()] == varsOut;
             info.blockToVarOut[block.getId()] = varsOut;
         }
 
@@ -106,21 +113,11 @@ public final class GlobalLivenessInfo {
     }
 
     public int[] getBlockOut(AbstractBlockBase<?> block) {
-        if (storesOutgoing(block)) {
-            return blockToVarOut[block.getId()];
-        }
-        assert blockToVarOut[block.getId()] == null : String.format("Var out for block %s is not empty: %s", block, Arrays.toString(blockToVarOut[block.getId()]));
-        assert block.getSuccessorCount() == 1 : String.format("More then one successor: %s -> %s", block, Arrays.toString(block.getSuccessors()));
-        return blockToVarIn[block.getSuccessors()[0].getId()];
+        return blockToVarOut[block.getId()];
     }
 
     public int[] getBlockIn(AbstractBlockBase<?> block) {
-        if (storesIncoming(block)) {
-            return blockToVarIn[block.getId()];
-        }
-        assert blockToVarIn[block.getId()] == null : String.format("Var in for block %s is not empty: %s", block, Arrays.toString(blockToVarIn[block.getId()]));
-        assert block.getPredecessorCount() == 1 : String.format("More then one predecessor: %s -> %s", block, Arrays.toString(block.getPredecessors()));
-        return blockToVarOut[block.getPredecessors()[0].getId()];
+        return blockToVarIn[block.getId()];
     }
 
     public void setInLocations(AbstractBlockBase<?> block, Value[] values) {

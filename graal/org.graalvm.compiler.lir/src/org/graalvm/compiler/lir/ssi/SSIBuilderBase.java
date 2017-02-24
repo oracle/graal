@@ -107,6 +107,10 @@ public abstract class SSIBuilderBase {
         }
 
         livenessInfoBuilder.addIncoming(block, liveInArray);
+        // reuse the same array for outgoing variables in predecessors
+        for (AbstractBlockBase<?> pred : block.getPredecessors()) {
+            livenessInfoBuilder.addOutgoing(pred, liveInArray);
+        }
     }
 
     private void buildOutgoing(AbstractBlockBase<?> block) {
@@ -119,6 +123,10 @@ public abstract class SSIBuilderBase {
         int[] liveOutArray = liveOut.isEmpty() ? livenessInfoBuilder.emptySet : bitSetToIntArray(liveOut);
 
         livenessInfoBuilder.addOutgoing(block, liveOutArray);
+        // reuse the same array for incoming variables in successors
+        for (AbstractBlockBase<?> succ : block.getSuccessors()) {
+            livenessInfoBuilder.addIncoming(succ, liveOutArray);
+        }
     }
 
     private static int[] bitSetToIntArray(BitSet live) {
