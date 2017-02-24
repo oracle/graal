@@ -146,6 +146,10 @@ public abstract class ValueNode extends org.graalvm.compiler.graph.Node implemen
         }
     }
 
+    public final boolean isJavaConstant() {
+        return isConstant() && asConstant() instanceof JavaConstant;
+    }
+
     public final JavaConstant asJavaConstant() {
         Constant value = asConstant();
         if (value instanceof JavaConstant) {
