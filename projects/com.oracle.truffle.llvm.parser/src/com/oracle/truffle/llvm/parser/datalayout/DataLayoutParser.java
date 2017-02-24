@@ -74,7 +74,7 @@ final class DataLayoutParser {
         assertNoNullElement(layoutSpecs);
         List<DataTypeSpecification> specs = new ArrayList<>();
         for (String spec : layoutSpecs) {
-            if (spec.equals("e") || spec.equals("E") || spec.equals("m:e")) {
+            if (spec.equals("e") || spec.equals("E") || spec.equals("m:e") || spec.equals("m:o")) {
                 // ignore for the moment
             } else {
                 String type = spec.substring(0, 1);
