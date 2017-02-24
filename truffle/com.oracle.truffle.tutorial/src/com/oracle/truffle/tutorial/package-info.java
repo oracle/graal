@@ -68,7 +68,9 @@
  * <ul>
  * <li>{@linkplain com.oracle.truffle.tutorial.background Truffle Background}</li>
  * <li>{@linkplain com.oracle.truffle.tutorial.embedding Embedding Truffle in Java}</li>
- * <li>{@linkplain com.oracle.truffle.tutorial.newlanguage Implementing a Language with Truffle}</li>
+ * <li>Truffle language interoperation (TBD)</li>
+ * <li>{@linkplain com.oracle.truffle.tutorial.newlanguage Implementing a new language with Truffle}</li>
+ * <li>{@linkplain com.oracle.truffle.tutorial.sulong Implementing an LLVM-based language with Sulong}</li>
  * <li>{@linkplain com.oracle.truffle.tutorial.graal The Graal Compiler}</li>
  * </ul>
  * </div>

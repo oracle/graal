@@ -50,31 +50,42 @@
  * <h1>Truffle Tutorial: Background</h1>
  * <div id="contents">
  *
- * Truffle, together with the <a href="https://github.com/graalvm/graal-core/">Graal compiler</a>,
+ * Truffle is an Open Source library for building programming language implementations as interpreters
+ * for self-modifying Abstract Syntax Trees.
+ * Together with the Open Source <a href="https://github.com/graalvm/graal-core/">Graal compiler</a>, Truffle
  * represents a significant step forward in programming language implementation technology in the
- * current era of dynamic languages.  A growing  body of shared implementation code and services
+ * current era of dynamic languages.
+ * <p>
+ * A growing  body of shared implementation code and services
  * reduces language implementation effort significantly, but leads to extremely competitive runtime
  * performance that matches or exceeds the competition.  The value of the platform is further
  * increased by support for low-overhead language interoperation, as well as a general instrumentation
  * framework that supports multi-language debugging and other external developer tools.
  * <p>
- * Truffle is part of the Graal Project developed and maintained by
+ * Open Source Truffle implementations of both R and Ruby demonstrate excellent performance, and
+ * Sulong supports Truffle implementations of all LLVM-based languages.
+ * <p>
+ * Truffle is part of the Graal Project, developed and maintained by
  * <a href="http://labs.oracle.com/">Oracle Labs</a>
  * and the
  * <a href="http://www.jku.at/isse/content">Institute for System Software</a> of the
  * Johannes Kepler University Linz.
+ * <p>
  * For additional information, please visit:
  * <ul>
  * <li>The Graal project home:  <a href="https://github.com/graalvm">https://github.com/graalvm</a></li>
  * <li>Truffle home:  <a href="https://github.com/graalvm/truffle">https://github.com/graalvm/truffle</a></li>
+ * <li>Sulong home:  <a href="https://github.com/graalvm/sulong">https://github.com/graalvm/sulong</a></li>
  * <li><a href="http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index-2301583.html">Graal VM</a>
  * download on the Oracle Technology Network</li>
- * <li><a href="https://github.com/graalvm/truffle/blob/master/docs/Publications.md#truffle-presentations">Truffle Presentations</a></li>
- * <li><a href="https://github.com/graalvm/truffle/blob/master/docs/Publications.md#truffle-papers">Truffle Publications</a></li>
+ * <li><a href="https://github.com/graalvm/truffle/blob/master/docs/Publications.md#truffle-presentations">Truffle Presentations and Publications</a></li>
+ * <li><a href="https://github.com/graalvm/sulong/blob/master/docs/PUBLICATIONS.md">Sulong Presentations and Publications</a></li>
  * <li><a href="https://github.com/graalvm/graal-core/blob/master/docs/Publications.md#graal-papers">Graal Publications</a></li>
+ * <li><a href="https://github.com/graalvm/simplelanguage">SimpleLanguage</a>: the tutorial Truffle language implementation.</li>
+ * <li><a href="https://github.com/graalvm/fastr/blob/master/README.md">FastR</a>: an Open Source Truffle implementation of the R language</li>
+ * <li><a href="https://github.com/graalvm/truffleruby/blob/master/README.md">TruffleRuby</a>: an Open Source Truffle implementation of the Ruby language</li>
  * <li>Mailing list for developers <a href="mailto:graal-dev@openjdk.java.net">graal-dev@openjdk.java.net</a>
- * <li><a href=
- * "{@docRoot}/com/oracle/truffle/tutorial/package-summary.html">Other Truffle Tutorials</a></li>
+ * <li>{@linkplain com.oracle.truffle.tutorial Other Truffle Tutorials}
  * </ul>
 
  *

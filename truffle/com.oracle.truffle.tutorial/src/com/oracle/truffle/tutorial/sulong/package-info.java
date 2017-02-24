@@ -47,43 +47,29 @@
  )
  */
 /**
- * <h1>Truffle Tutorial: The Graal Compiler</h1>
+ * <h1>Truffle Tutorial: Implementing an LLVM-based Language with Sulong</h1>
+ *
  * <div id="contents">
  *
- * This 3-hour tutorial presents Graal, the high-performance dynamic compiler for Java written in Java
- * that enables very high performance for Truffle-implemented languages.
- * The tutorial was presented February 8, 2015 at the International Symposium on Code Generation and Optimization
- * (<a href="http://cgo.org/cgo2015/">CGO 2015</a>) and covers the following topics:
- * <ul>
- * <li>Key distinguishing features of Graal</li>
- * <li>Introduction to the Graal IR: basic properties, instructions, and optimization phases</li>
- * <li>Speculative optimizations: first-class support for optimistic optimizations and deoptimization</li>
- * <li>Graal API: separation of the compiler from the VM</li>
- * <li>Snippets: expressing high-level semantics in low-level Java code</li>
- * <li>Compiler intrinsics: use all your hardware instructions with Graal</li>
- * <li>Using Graal for static analysis</li>
- * <li>Custom compilations with Graal: integration of the compiler with an application or library</li>
- * <li>Graal as a compiler for dynamic programming languages in the Truffle framework</li>
- * </ul>
+ * Sulong is an LLVM IR interpreter implemented in Truffle.
+ * It supports execution of all LLVM-based languages, including C, C++, and Fortran,
+ * in the Truffle execution environment and presents opportunities for <em>interoperation</em>
+ * between these and other Truffle-implemented languages with low-overhead.
  * <p>
- * Video recording: <a href="https://youtu.be/Af9T9kFk1lM">Part 1</a>,
- * <a href="https://youtu.be/WyU7KctlhzE">Part 2</a>
- * <br>
- * <a href="http://lafo.ssw.uni-linz.ac.at/papers/2015_CGO_Graal.pdf">Download Slides</a>
- *
+ * More information is available at the Sulong
+ * <a href="https://github.com/graalvm/sulong/blob/master/README.md">README</a> and
+ * <a href="https://github.com/graalvm/sulong/blob/master/docs/FAQ.md">FAQ</a>.
  *
  * <p>
  * Related information:
- * <ul>
- * <li>The Graal project home:  <a href="https://github.com/graalvm">https://github.com/graalvm</a></li>
- * <li><a href="https://github.com/graalvm/graal-core/blob/master/docs/Publications.md#graal-papers">Graal Publications</a></li>
+ * </ul>
+ * <li>Sulong home: <a href="https://github.com/graalvm/sulong">https://github.com/graalvm/sulong</a></li>
  * <li>{@linkplain com.oracle.truffle.tutorial Other Truffle Tutorials}
  * </ul>
-
  *
  * </div>
  * <script src="../doc-files/tutorial.js"></script>
  *
  * @since 0.25
  */
-package com.oracle.truffle.tutorial.graal;
+package com.oracle.truffle.tutorial.sulong;

@@ -51,14 +51,25 @@
  *
  * This tutorial shows how to embed the Truffle language
  * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine execution environment} in a
- * Java application. Java can interoperate with Truffle-implemented
+ * Java application.
+ * <p>
+ * The Truffle environment lets Java interoperate with Truffle-implemented
  * <em>guest languages</em> via <em>foreign objects</em> and <em>foreign functions</em>.
  * For example Java code
  * can directly access guest language methods, objects, classes,
  * and some complex data structures
  * with Java-typed accessors. In the reverse direction, guest language code can access Java objects,
  * classes, and constructors.
+ * <p>
+ * This tutorial helps you get started, starting with setup instructions, followed by descriptions of
+ * different interoperation scenarios with (working) code examples.
  *
+ * <h2>Related information</h2>
+ * </ul>
+ * <li>{@link com.oracle.truffle.api.vm.PolyglotEngine}: execution environment for Truffle-implemented languages.</li>
+ * <li>{@linkplain com.oracle.truffle.tutorial Other Truffle Tutorials}
+ * </ul>
+
  *
  * <h2>Contents</h2>
  *
@@ -108,7 +119,7 @@
  *
  * <h3>It's a polyglot world</h3>
  *
- * How to list all available languages?
+ * How to list all available languages? (TBD)
  *
  * <h3>Add a language</h3>
  *
@@ -116,7 +127,7 @@
  *
  * <h3>Hello World in Ruby and JavaScript</h3>
  *
- * Mixing languages
+ * Mixing languages (TBD)
  *
  * <h2>Call guest language functions from Java</h2>
  *
@@ -142,7 +153,10 @@
  * </ul>
  *
  * <h3>Define and call a Ruby function</h3>
+ * (TBD)
+ *
  * <h3>Define and call an R function</h3>
+ * (TBD)
  *
  * <h2>Call multiple guest language functions with shared state from Java</h2>
  *
@@ -170,7 +184,7 @@
  *
  * <h2>Access guest language classes from Java</h2>
  *
- * <h3>Access JavaScript classes</h3>
+ * <h3>Access a JavaScript class</h3>
  *
  * The ECMAScript 6 specification adds the concept of typeless classes to JavaScript.
  * Truffle interoperation allows Java to access fields and functions of a JavaScript class,
@@ -260,8 +274,8 @@
  *
  * <h3>Access Java fields and methods from JavaScript</h3>
  *
- * <em>Public</em> members of Java objects to scripts can be exposed (as <em>foreign objects</em>)
- * to guest languages for example Java objects of type {@code Moment} in
+ * <em>Public</em> members of Java objects can be exposed to guest language code
+ * as <em>foreign objects</em>, for example Java objects of type {@code Moment} in
  * the following example.
  *
  * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessFieldsOfJavaObject}
@@ -271,49 +285,49 @@
  * <li>Evaluating the JS source returns an anonymous JS function of one argument wrapped
  * in a {@link com.oracle.truffle.api.vm.PolyglotEngine.Value Value} (assigned to
  * {@code jsFunction}) that can be executed directly with one argument.</li>
- * <li>When {@code jsFunction} is passed a Java argument
- * (of type {@code Moment} in the example) it is seen by JS as a
+ * <li>The Java argument {@code javaMoment} is seen by the JS function as a
  * <em>foreign object</em> whose public fields are visible.</em>
  * <li>Executing {@code jsFunction} returns a JS number
  * that can be
  * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Value#as(Class) "cast"}
- * to a Java {@link java.lang.Number}.</li>
+ * to a Java {@link java.lang.Number} and then to a Java {@code int}.</li>
  * <li>Parentheses around the JS function definition keep it out of JavaScript's
  * global scope, so the Java object holds the only reference to it.</li>
  * </ul>
  *
- * The multiple conversions needed to get the result in the above example
- * produce awkward code that can be
- * clarified by a different approach.  Instead of invoking the JS function
- * directly and dealing with a wrapped JS result, we can
+ * The multiple steps needed to convert the result in the above example
+ * produces awkward code that can be simplified.
+ * Instead of invoking the JS function directly, and "casting" the wrapped JS result,
+ * we can instead
  * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Value#as(Class) "cast"}
- * the JS function to a Java function of type {@code MomentConverter} that
+ * the JS function to a Java foreign function (of type {@code MomentConverter}) that
  * returns the desired Java type directly, as shown in the following variation.
  *
  * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessFieldsOfJavaObjectWithConverter}
  *
- * <h3>Access Java static methods from JavaScript</h3>
+ * <h3>Access Java constructors and static methods from JavaScript</h3>
  *
- * Dynamic languages can also access <b>public</b> static methods and <b>public</b>
- * constructors of Java classes, if they can get reference to them. Luckily
- * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Value#execute(java.lang.Object...) there is a support}
- * for wrapping instances of
- * {@link java.lang.Class} to appropriate objects:
+ * Dynamic languages can also access the <em>public constructors</em> and <em>public static methods</em>
+ * of any Java class for which they are provided a reference.
+ * The following example shows JavaScript access to the public constructor of a Java
+ * class.
  *
  * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#createJavaScriptFactoryForJavaClass}
  *
- * In the above example the <code>Moment.class</code> is passed into the JavaScript function
- * as first argument and can be used by the dynamic language as a constructor in
- * <code>new Moment(h, m, s)</code> - that creates new instances of the Java class. Static
- * methods of the passed in <code>Moment</code> object could be invoked as well.
- *
- * <h2>Related information</h2>
+ * Notes:
+ * <ul>
+ * <li>Evaluating the JS source returns an anonymous JS function of one argument wrapped
+ * in a {@link com.oracle.truffle.api.vm.PolyglotEngine.Value Value} (assigned to
+ * {@code jsFunction}) that can be executed directly with one argument.</li>
+ * <li>The Java class argument {@code Moment.class} is seen by the JS function as a
+ * <em>foreign class</em> whose public constructor is visible.</em>
+ * <li>Executing {@code jsFunction} with the Java class argument returns
+ * a JS "factory" function (for the Java class) that can be
+ * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Value#as(Class) "cast"}
+ * to the desired Java function type ({@code MomentFactory}).</li>
+ * <li>Parentheses around the JS function definition keep it out of JavaScript's
+ * global scope, so the Java object holds the only reference to it.</li>
  * </ul>
- * <li>{@link com.oracle.truffle.api.vm.PolyglotEngine}: execution environment for Truffle-implemented languages.</li>
- * <li><a href=
- * "{@docRoot}/com/oracle/truffle/tutorial/package-summary.html">Other Truffle Tutorials</a></li>
- * </ul>
-
  *
  * </div>
  * <script src="../doc-files/tutorial.js"></script>

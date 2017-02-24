@@ -70,9 +70,10 @@ import com.oracle.truffle.api.vm.PolyglotRootNode.EvalRootNode;
  * services, for example debugging and profiling, as well as API access to dynamic execution state
  * for external tools.
  * <p>
- * The "<a href= "{@docRoot}/com/oracle/truffle/tutorial/package-summary.html">Truffle Tutorial</a>"
- * provides general information about Truffle. For information specifically related to Java
- * applications, the tutorial "<a href=
+ * For a simple example see {@link #eval(Source) eval(Source)}. The
+ * "<a href= "{@docRoot}/com/oracle/truffle/tutorial/package-summary.html">Truffle Tutorial</a>"
+ * provides much more general information about Truffle. For information specifically related to
+ * Java applications, the tutorial "<a href=
  * "{@docRoot}/com/oracle/truffle/tutorial/embedding/package-summary.html">Embedding Truffle
  * Languages in Java</a>" explains, with examples, how Java code can directly access guest language
  * functions, objects, classes, and some complex data structures with Java-typed accessors. In the
@@ -80,8 +81,9 @@ import com.oracle.truffle.api.vm.PolyglotRootNode.EvalRootNode;
  *
  * <h4>Engine Creation</h4>
  *
- * {@link PolyglotEngine.Builder} creates new <em>engine</em> instances and allows both application-
- * and language-specific configuration. The following example creates a default instance.
+ * The {@link PolyglotEngine.Builder Builder} creates new <em>engine</em> instances and allows both
+ * application- and language-specific configuration. The following example creates a default
+ * instance.
  * <p>
  * {@codesnippet PolyglotEngineSnippets#defaultPolyglotEngine}
  *
@@ -96,9 +98,10 @@ import com.oracle.truffle.api.vm.PolyglotRootNode.EvalRootNode;
  * engine.
  * <p>
  * Specific language environments can be configured, for example in response to command line
- * options, by building the engine with combinations of language-specific
- * {@linkplain Builder#config(String, String, Object) MIME-key-value settings} and pre-registered
- * {@linkplain PolyglotEngine.Builder#globalSymbol global symbols}.
+ * options, by building the engine with combinations of language-specific MIME-key-value settings (
+ * {@link Builder#config(String, String, Object) Builder.config(String, String, Object)}) and
+ * pre-registered global symbols ({@link Builder#globalSymbol(String, Object)
+ * Builder.globalSymbol(String, Object)} )
  *
  * <h4>Global Symbols</h4>
  *
@@ -107,20 +110,20 @@ import com.oracle.truffle.api.vm.PolyglotRootNode.EvalRootNode;
  * statements used for <em>language interoperation</em>.
  * <p>
  * Each language dynamically manages a namespace of global symbols. The engine provides its own
- * (static) namespace, configured when the engine is
- * {@linkplain Builder#globalSymbol(String, Object) built}.
+ * (static) namespace, configured when the engine is built (
+ * {@link Builder#globalSymbol(String, Object) Builder.globalSymbol(String, Object)}).
  * <p>
- * An engine {@linkplain #findGlobalSymbol(String) retrieves} global symbols by name, first
- * searching the engine's namespace, and then searching all language namespaces in unspecified
- * order, returning the first one found. Name collisions across namespaces are possible and can only
- * be discovered by explicitly {@linkplain #findGlobalSymbols(String) retrieving} all global symbols
- * with a particular name.
+ * An engine retrieves global symbols by name, first searching the engine's namespace, and then
+ * searching all language namespaces in unspecified order, returning the first one found (
+ * {@link #findGlobalSymbol(String) findGlobalSymbol(String)}). Name collisions across namespaces
+ * are possible and can only be discovered by explicitly retrieving all global symbols with a
+ * particular name ({@link #findGlobalSymbols(String) findGlobalSymbols(String)}).
  *
  * <h4>Truffle Cross-language Interoperation</h4>
  *
  * <em>Interoperability</em> among executing guest language programs is supported in part by the
  * cross-language exchange of <em>global symbols</em> whose {@linkplain #findGlobalSymbol(String)
- * retrieval} produces results wrapped in instances of {@link Value}. The {@linkplain Value#get()
+ * retrieval} produces results wrapped {@link Value Value} instances. The {@linkplain Value#get()
  * content} of a {@link Value Value} may be a boxed Java primitive type or a <em>foreign object</em>
  * (implemented internally as a {@link TruffleObject}). Foreign objects support a message-based
  * protocol for access to their contents, possibly including fields and methods.
@@ -131,21 +134,21 @@ import com.oracle.truffle.api.vm.PolyglotRootNode.EvalRootNode;
  * <h4>Truffle-Java Interoperation</h4>
  *
  * <em>Interoperability</em> is also supported between Java and guest language programs. For example
- * a Java client can <em>export</em> global symbols during engine creation via
- * {@link Builder#globalSymbol(String, Object) Builder.globalSymbol(String, Object)} and
- * <em>import</em> them at any time via {@link #findGlobalSymbol(String)}. The
- * {@linkplain Value#get() content} of a {@link Value Value} (for example retrieved from an imported
- * symbol) can be accessed via {@link Value#as(Class) Value.as(Class)}, which returns an object of
- * the requested type. A {@link Value Value} determined to be functional can be called via
- * {@link Value#execute(Object...) Value.execute(Object...)}, whose result is wrapped in a non-null
- * {@link Value Value} instance.
+ * a Java client can <em>export</em> global symbols during engine creation (
+ * {@link Builder#globalSymbol(String, Object) Builder.globalSymbol(String, Object)}) and
+ * <em>import</em> them at any time ({@link #findGlobalSymbol(String) findGlobalSymbol(String)}).
+ * The {@linkplain Value#get() content} of a {@link Value Value} (for example retrieved from an
+ * imported symbol) can be accessed ({@link Value#as(Class) Value.as(Class)}) as an object of
+ * requested type (a kind of cross-langauge "cast"). A {@link Value Value} determined to be
+ * functional can be called ({@link Value#execute(Object...) Value.execute(Object...)}) and will
+ * return the result wrapped in a non-null {@link Value Value} instance.
  * <p>
  * Java clients <em>export values</em> in two ways:
  * <ul>
- * <li>bound to globally accessible names via {@link Builder#globalSymbol(String, Object)
- * Builder.globalSymbol(String, Object)}, or</li>
- * <li>as arguments to foreign method/procedure calls via {@link Value#execute(Object...)
- * Value.execute(Object...)}.</li>
+ * <li>bound to globally accessible names ({@link Builder#globalSymbol(String, Object)
+ * Builder.globalSymbol(String, Object)}), or</li>
+ * <li>as arguments to foreign method/procedure calls ({@link Value#execute(Object...)
+ * Value.execute(Object...)}).</li>
  * </ul>
  * In either case the engine <em>wraps</em> exported non-primitive Java values so that they appear
  * to guest languages the same as other foreign objects. In situations where a Java object is
@@ -163,30 +166,21 @@ import com.oracle.truffle.api.vm.PolyglotRootNode.EvalRootNode;
  * program execution, language environments, or global symbols are shared with other engine
  * instances.
  *
- * <h4>Execution Threads</h4>
+ * <h4>Threading</h4>
  *
  * Guest language code execution is single-threaded, performed on a thread determined by the
  * engine's configuration.
  * <p>
  * <ul>
- * <li>Execution is by default <em>synchronous</em> (performed on the calling thread) and only
- * permitted on the thread that created the engine.</li>
- * <li>An engine can be {@linkplain Builder#executor(Executor) configured} with a custom
- * {@link Executor} that performs all executions on a different thread. In this case the engine
- * requires only that all executions are performed on the same thread.</li>
+ * <li>Execution ({@link #eval(Source) eval(Source)}) is by default <em>synchronous</em> (performed
+ * on the calling thread) and only permitted on the thread that created the engine.</li>
+ * <li>An engine can be configured with a custom Executor ({@link Builder#executor(Executor)
+ * Builder.executor(Executor)}) that performs executions on a different thread. In this case the
+ * engine requires only that all executions are performed on the same thread.</li>
  * </ul>
  * <p>
  * In contrast, instrumentation-based access to engine state is <em>thread-safe</em>, both from
  * built-in services such as debugging and profiling as well as from external tools.
- *
- * <h4>Simple example: run guest language code</h4>
- *
- * An engine {@linkplain #eval(Source) evaluates} {@link Source} objects, which may wrap references
- * to guest language code (e.g. a filename or URL) or may represent code literally as in the example
- * below. The engine uses the language matching the code's MIME type and returns the result wrapped
- * in a language-agnostic {@link Value}.
- * <p>
- * {@link com.oracle.truffle.api.vm.PolyglotEngineSnippets#evalCode}
  *
  * @since 0.9
  */
@@ -527,11 +521,15 @@ public class PolyglotEngine {
     }
 
     /**
-     * Evaluates guest language source code, using the installed {@link Language language} that
-     * matches the code's {@link Source#getMimeType() MIME type}. The engine wraps the result in an
-     * instance of {@link Value Value}, for which Java-typed access (objects) can be created using
-     * {@link Value#as(Class) Value#as(Class)}.
-     * <p>
+     * Evaluates guest language source code, using the installed {@link Language Language} that
+     * matches the code's {@link Source#getMimeType() MIME type}. Source code is provided to the
+     * engine as {@link Source} objects, which may wrap references to guest language code (e.g. a
+     * filename or URL) or may represent code literally as in the example below. The engine returns
+     * the result wrapped in an instance of {@link Value Value}, for which Java-typed access
+     * (objects) can be created using {@link Value#as(Class) Value.as(Class)}.
+     *
+     * {@link com.oracle.truffle.api.vm.PolyglotEngineSnippets#evalCode}
+     *
      * For sources marked as {@link Source#isInteractive() interactive}, the engine will will do
      * more, depending the language. This may include printing the result, in a language-specific
      * format, to the engine's {@link PolyglotEngine.Builder#setOut standard output}. It might read
@@ -540,9 +538,9 @@ public class PolyglotEngine {
      * This method is useful for Java applications that <em>interoperate</em> with guest languages.
      * The general strategy is to {@linkplain #eval(Source) evaluate} guest language code that
      * produces the desired language element and then {@linkplain Value#as(Class) create} a Java
-     * object of the appropriate type for Java access to the result. The tutorial <a href=
-     * "{@docRoot}/com/oracle/truffle/tutorial/embedding/package-summary.html">"Embedding Truffle
-     * Languages in Java"</a> contains examples.
+     * object of the appropriate type for Java <em>foreign</em> access to the result. The tutorial
+     * <a href= "{@docRoot}/com/oracle/truffle/tutorial/embedding/package-summary.html">"Embedding
+     * Truffle Languages in Java"</a> contains examples.
      *
      * @param source guest language code
      * @return result of the evaluation wrapped in a non-null {@link Value}
@@ -955,8 +953,8 @@ public class PolyglotEngine {
         }
 
         /**
-         * Creates Java-typed foreign access to the object wrapped by this {@link Value}, a kind of
-         * cross-language "cast". Results depend on the requested type:
+         * Creates Java-typed foreign access to the object wrapped by this {@link Value Value}, a
+         * kind of cross-language "cast". Results depend on the requested type:
          * <ul>
          * <li>For primitive types such as {@link Number}, the value is simply cast and returned.
          * </li>
@@ -966,12 +964,12 @@ public class PolyglotEngine {
          * <li>Aggregate types such as {@link List} and {@link Map} are supported, including when
          * used in combination with nested generics.</li>
          * </ul>
-         *
+         * <p>
          * This method is useful for Java applications that <em>interoperate</em> with guest
-         * languages. The general strategy is to {@linkplain PolyglotEngine#eval(Source) evaluate}
-         * guest language code that produces the desired language element and then use this method
-         * to create a Java object of the appropriate type for Java access to the result. The
-         * tutorial <a href=
+         * language code. The general strategy is to {@linkplain PolyglotEngine#eval(Source)
+         * evaluate} guest language code that produces the desired language element and then use
+         * this method to create a Java object of the appropriate type for Java access to the
+         * result. The tutorial <a href=
          * "{@docRoot}/com/oracle/truffle/tutorial/embedding/package-summary.html" >
          * "Embedding Truffle Languages in Java"</a> contains examples.
          *
@@ -1028,61 +1026,19 @@ public class PolyglotEngine {
          * <ul>
          *
          * <li>If the value represents a function, makes a <em>foreign function call</em> using
-         * appropriate Java arguments. See {@linkplain PolyglotEngine "Truffle-Java Interoperation"}
-         * for the implications of making Java data available to guest languages.</li>
+         * appropriate Java arguments.</li>
          *
          * <li>If the value represents a field, then sets the field to the value of the first
          * argument, if provided, and returns the (possibly new) value of the field.</li>
          * </ul>
-         *
-         * <h5>Java interoperation examples</h5>
          * <p>
-         * The method {@link PolyglotEngine.Value#execute(Object...)} plays an essential role
-         * supporting interoperation between Java and guest languages. The examples here demonstrate
-         * JavaScript foreign access to Java elements. Access in the other direction, Java foreign
-         * access to JavaScript elements appear in method documentation for
-         * {@link PolyglotEngine#eval(Source)} and {@link Value#as(Class)}.
-         * <p>
-         * The examples use JavaScript as the guest language, assuming that a Truffle implementation
-         * of JavaScript is on the JVM class path. In each example a
-         * {@link Source#newBuilder(String) Source} builder creates a literal fragment of JavaScript
-         * code.
-         *
-         * <h6>Java interop example: JavaScript access to Java object fields and methods</h6>
-         *
-         * This example shows how to expose <em>public</em> members of Java objects to scripts
-         * written in dynamic languages. In the example a JavaScript function is able to access
-         * fields in (foreign) Java objects of type {@code Moment}.
-         * <p>
-         * Evaluating the JavaScript code fragment named {@code "MomentToSeconds.js"} produces a
-         * JavaScript function of one argument wrapped in a {@link Value}. This can be (foreign)
-         * executed, as shown, which returns a JavaScript number wrapped in a {@link Value}.
-         * Converting the result to Java requires using the method {@link Value#as(Class)}.
-         *
-         * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessFieldsOfJavaObject}
-         *
-         * The explicit conversion of the result type in the above example can be avoided by
-         * explicitly converting the type of the <em>foreign function</em> instead. In the following
-         * variation, the JavaScript function is given the Java functional type
-         * {@code MomentConvertor}, which returns a Java {@code int}.
-         *
-         * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessFieldsOfJavaObjectWithConverter}
-         *
-         * <h6>Java interop example: JavaScript access to Java static methods and constructors</h6>
-         *
-         * Dynamic languages can also access <em>public static methods</em> and <em>public
-         * constructors</em> of any Java class for which they are provided a reference. In this
-         * example a JavaScript function (created by evaluating the JavaScript code fragment named
-         * {@code "ConstructMoment.js"}) creates a JavaScript factory for a Java class passed to it
-         * as an argument. The JavaScript factory (foreign) invokes the Java class constructor and
-         * returns the new Java object instance wrapped in a {@link Value}.
-         *
-         * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#createJavaScriptFactoryForJavaClass}
-         *
-         * <p>
-         * Additional examples of Java/dynamic language interoperation can be found in description
-         * of {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source)
-         * PolyglotEngine.eval(Source)} and {@link #as(Class) Value.as(Class)} methods.
+         * This method is useful for Java applications that <em>interoperate</em> with guest
+         * language code. The general strategy is to {@linkplain PolyglotEngine#eval(Source)
+         * evaluate} guest language code that produces the desired language element. If that element
+         * is a guest language function, this method allows direct execution without giving the
+         * function a Java type. The tutorial <a href=
+         * "{@docRoot}/com/oracle/truffle/tutorial/embedding/package-summary.html" >
+         * "Embedding Truffle Languages in Java"</a> contains examples.
          *
          * @param args arguments to pass when executing the value
          * @return result of the execution wrapped in a non-null {@link Value}

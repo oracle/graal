@@ -47,7 +47,7 @@
  )
  */
 /**
- * <h1>Truffle Tutorial: Implementing a Language with Truffle</h1>
+ * <h1>Truffle Tutorial: Implementing a New Language with Truffle</h1>
  *
  * <div id="contents">
  *
@@ -64,9 +64,8 @@
  * </ul>
  * <li>{@link com.oracle.truffle.api.TruffleLanguage}: base class for Truffle language implementations.</li>
  * <li>{@link com.oracle.truffle.api.vm.PolyglotEngine}: execution environment for Truffle-implemented languages.</li>
- * <li>{@code com.oracle.truffle.sl.SLLanguage - link?}: Truffle implementation of the tutorial <em>Simple Language</em>.</li>
- * <li><a href=
- * "{@docRoot}/com/oracle/truffle/tutorial/package-summary.html">Other Truffle Tutorials</a></li>
+ * <li><a href="https://github.com/graalvm/simplelanguage">SimpleLanguage</a>: the tutorial Truffle language implementation.</li>
+ * <li>{@linkplain com.oracle.truffle.tutorial Other Truffle Tutorials}
  * </ul>
  *
  * </div>
