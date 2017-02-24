@@ -104,7 +104,8 @@ public class HotSpotClassSubstitutions {
                     if (superKlass.isNull()) {
                         return null;
                     } else {
-                        return readJavaMirror(superKlass);
+                        KlassPointer superKlassNonNull = ClassGetHubNode.piCastNonNull(superKlass, SnippetAnchorNode.anchor());
+                        return HubGetClassNode.readClass(superKlassNonNull);
                     }
                 }
             }
@@ -112,10 +113,6 @@ public class HotSpotClassSubstitutions {
             // Class for primitive type
         }
         return null;
-    }
-
-    public static Class<?> readJavaMirror(KlassPointer klass) {
-        return PiNode.asNonNullClass(HubGetClassNode.readClass(klass));
     }
 
     @MethodSubstitution(isStatic = false)
