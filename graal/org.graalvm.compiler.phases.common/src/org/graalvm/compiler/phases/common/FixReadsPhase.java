@@ -252,7 +252,11 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
 
     @Override
     protected void run(StructuredGraph graph, LowTierContext context) {
-        SchedulePhase schedulePhase = new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS);
+        SchedulingStrategy strategy = SchedulingStrategy.LATEST_OUT_OF_LOOPS;
+        if (GraalOptions.StressTestEarlyReads.getValue(graph.getOptions())) {
+            strategy = SchedulingStrategy.EARLIEST;
+        }
+        SchedulePhase schedulePhase = new SchedulePhase(strategy);
         schedulePhase.apply(graph);
         ScheduleResult schedule = graph.getLastSchedule();
         FixReadsClosure fixReadsClosure = new FixReadsClosure();
