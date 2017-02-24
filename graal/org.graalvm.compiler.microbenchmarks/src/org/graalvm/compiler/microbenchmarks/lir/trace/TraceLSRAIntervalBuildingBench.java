@@ -22,14 +22,10 @@
  */
 package org.graalvm.compiler.microbenchmarks.lir.trace;
 
-import org.openjdk.jmh.annotations.Benchmark;
-import org.openjdk.jmh.annotations.Level;
-import org.openjdk.jmh.annotations.Param;
-import org.openjdk.jmh.annotations.Setup;
-
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.alloc.Trace;
 import org.graalvm.compiler.core.common.alloc.TraceBuilderResult;
+import org.graalvm.compiler.lir.alloc.trace.GlobalLivenessAnalysisPhase;
 import org.graalvm.compiler.lir.alloc.trace.GlobalLivenessInfo;
 import org.graalvm.compiler.lir.alloc.trace.TraceBuilderPhase;
 import org.graalvm.compiler.lir.alloc.trace.lsra.TraceLinearScanLifetimeAnalysisPhase;
@@ -42,9 +38,12 @@ import org.graalvm.compiler.lir.phases.AllocationPhase;
 import org.graalvm.compiler.lir.phases.AllocationPhase.AllocationContext;
 import org.graalvm.compiler.lir.phases.LIRPhaseSuite;
 import org.graalvm.compiler.lir.phases.LIRSuites;
-import org.graalvm.compiler.lir.ssi.SSIConstructionPhase;
 import org.graalvm.compiler.microbenchmarks.graal.GraalBenchmark;
 import org.graalvm.compiler.microbenchmarks.lir.GraalCompilerState;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Param;
+import org.openjdk.jmh.annotations.Setup;
 
 import jdk.vm.ci.code.TargetDescription;
 
@@ -77,7 +76,7 @@ public class TraceLSRAIntervalBuildingBench extends GraalBenchmark {
     public abstract static class AllocationState extends GraalCompilerState {
 
         private static final DummyTraceAllocatorPhase LTA_PHASE = new DummyTraceAllocatorPhase();
-        private static final SSIConstructionPhase SSI_CONSTRUCTION_PHASE = new SSIConstructionPhase();
+        private static final GlobalLivenessAnalysisPhase LIVENESS_ANALYSIS_PHASE = new GlobalLivenessAnalysisPhase();
         private static final TraceBuilderPhase TRACE_BUILDER_PHASE = new TraceBuilderPhase();
 
         private AllocationContext allocationContext;
@@ -87,7 +86,7 @@ public class TraceLSRAIntervalBuildingBench extends GraalBenchmark {
             LIRSuites ls = super.getLIRSuites();
             LIRPhaseSuite<AllocationContext> allocationStage = new LIRPhaseSuite<>();
             allocationStage.appendPhase(TRACE_BUILDER_PHASE);
-            allocationStage.appendPhase(SSI_CONSTRUCTION_PHASE);
+            allocationStage.appendPhase(LIVENESS_ANALYSIS_PHASE);
             return new LIRSuites(ls.getPreAllocationOptimizationStage(), allocationStage, ls.getPostAllocationOptimizationStage());
         }
 
@@ -101,7 +100,7 @@ public class TraceLSRAIntervalBuildingBench extends GraalBenchmark {
             // context for all allocation phases
             allocationContext = createAllocationContext();
             applyLIRPhase(TRACE_BUILDER_PHASE, allocationContext);
-            applyLIRPhase(SSI_CONSTRUCTION_PHASE, allocationContext);
+            applyLIRPhase(LIVENESS_ANALYSIS_PHASE, allocationContext);
         }
 
         public TraceLinearScan compile() {

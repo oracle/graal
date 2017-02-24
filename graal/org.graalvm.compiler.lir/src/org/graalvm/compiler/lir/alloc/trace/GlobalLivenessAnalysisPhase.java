@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.lir.ssi;
+package org.graalvm.compiler.lir.alloc.trace;
 
 import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
@@ -38,10 +38,9 @@ import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.InstructionValueConsumer;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
-import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
-import org.graalvm.compiler.lir.alloc.lsra.LinearScanLifetimeAnalysisPhase;
+import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.alloc.trace.GlobalLivenessInfo;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.phases.AllocationPhase;
@@ -51,12 +50,9 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.Value;
 
 /**
- * Constructs SSI LIR using a liveness analysis.
- *
- * Implementation derived from {@link LinearScanLifetimeAnalysisPhase}.
- *
+ * Constructs {@link GlobalLivenessInfo global liveness information}.
  */
-public final class SSIConstructionPhase extends AllocationPhase {
+public final class GlobalLivenessAnalysisPhase extends AllocationPhase {
 
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
@@ -72,6 +68,7 @@ public final class SSIConstructionPhase extends AllocationPhase {
     private final class Analyser {
 
         private static final int LOG_LEVEL = Debug.INFO_LOG_LEVEL;
+
         /**
          * Bit map specifying which operands are live upon entry to this block. These are values
          * used in this block or any of its successors where such value are not defined in this
@@ -248,7 +245,7 @@ public final class SSIConstructionPhase extends AllocationPhase {
             return lir;
         }
 
-        public final void build() {
+        public void build() {
             buildIntern();
             // check that the liveIn set of the first block is empty
             AbstractBlockBase<?> startBlock = getLIR().getControlFlowGraph().getStartBlock();
@@ -259,7 +256,7 @@ public final class SSIConstructionPhase extends AllocationPhase {
         }
 
         @SuppressWarnings("try")
-        public final void finish() {
+        public void finish() {
             // iterate all blocks in reverse order
             for (AbstractBlockBase<?> block : (AbstractBlockBase<?>[]) lir.getControlFlowGraph().getBlocks()) {
                 try (Indent indent = Debug.logAndIndent(LOG_LEVEL, "Finish Block %s", block)) {
