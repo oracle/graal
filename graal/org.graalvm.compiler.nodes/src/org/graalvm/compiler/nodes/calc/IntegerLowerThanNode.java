@@ -71,8 +71,43 @@ public abstract class IntegerLowerThanNode extends CompareNode {
                 // MIN < y is the same as y != MIN
                 return LogicNegationNode.create(CompareNode.createCompareNode(Condition.EQ, forY, forX, tool.getConstantReflection()));
             }
+            if (forY instanceof AddNode) {
+                AddNode addNode = (AddNode) forY;
+                ValueNode canonical = canonicalizeXLowerXPlusA(forX, addNode, false, true);
+                if (canonical != null) {
+                    return canonical;
+                }
+            }
+            if (forX instanceof AddNode) {
+                AddNode addNode = (AddNode) forX;
+                ValueNode canonical = canonicalizeXLowerXPlusA(forY, addNode, true, false);
+                if (canonical != null) {
+                    return canonical;
+                }
+            }
         }
         return this;
+    }
+
+    private ValueNode canonicalizeXLowerXPlusA(ValueNode forX, AddNode addNode, boolean negated, boolean strict) {
+        // x < x + a
+        Stamp succeedingXStamp;
+        if (addNode.getX() == forX && addNode.getY().stamp() instanceof IntegerStamp) {
+            succeedingXStamp = getOp().getSucceedingStampForXLowerXPlusA(negated, strict, (IntegerStamp) addNode.getY().stamp());
+        } else if (addNode.getY() == forX && addNode.getX().stamp() instanceof IntegerStamp) {
+            succeedingXStamp = getOp().getSucceedingStampForXLowerXPlusA(negated, strict, (IntegerStamp) addNode.getX().stamp());
+        } else {
+            return null;
+        }
+        succeedingXStamp = forX.stamp().join(succeedingXStamp);
+        if (succeedingXStamp.isEmpty()) {
+            return LogicConstantNode.contradiction();
+        }
+        /*
+         * since getSucceedingStampForXLowerXPlusA is only best effort,
+         * succeedingXStamp.equals(xStamp) does not imply tautology
+         */
+        return null;
     }
 
     @Override
