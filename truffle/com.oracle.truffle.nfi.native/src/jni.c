@@ -46,11 +46,10 @@ JNIEnv *getEnv() {
     }
 }
 
-static void cacheFFIType(JNIEnv *env, jclass nativeSimpleType, jclass libFFIType, jmethodID initializeSimpleType, jfieldID ordinal, jobjectArray simpleTypeMap,
+static void cacheFFIType(JNIEnv *env, jclass nativeSimpleType, jclass libFFIType, jmethodID initializeSimpleType, jobjectArray simpleTypeMap,
         const char *enumName, ffi_type *type) {
     jfieldID enumField = (*env)->GetStaticFieldID(env, nativeSimpleType, enumName, "Lcom/oracle/truffle/nfi/types/NativeSimpleType;");
     jobject enumValue = (*env)->GetStaticObjectField(env, nativeSimpleType, enumField);
-    jint enumOrdinal = (*env)->GetIntField(env, enumValue, ordinal);
 
     (*env)->CallStaticVoidMethod(env, libFFIType, initializeSimpleType, enumValue, type->size, type->alignment, (jlong) type);
 }
@@ -58,30 +57,27 @@ static void cacheFFIType(JNIEnv *env, jclass nativeSimpleType, jclass libFFIType
 JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_NativeAccess_initialize(JNIEnv *env, jclass self, jstring libName, jobjectArray simpleTypeMap) {
     (*env)->GetJavaVM(env, &jvm);
 
-    jclass enumClass = (*env)->FindClass(env, "java/lang/Enum");
-    jfieldID ordinal = (*env)->GetFieldID(env, enumClass, "ordinal", "I");
-
     jclass nativeSimpleType = (*env)->FindClass(env, "com/oracle/truffle/nfi/types/NativeSimpleType");
     jclass libFFIType = (*env)->FindClass(env, "com/oracle/truffle/nfi/LibFFIType");
     jmethodID initializeSimpleType = (*env)->GetStaticMethodID(env, libFFIType, "initializeSimpleType", "(Lcom/oracle/truffle/nfi/types/NativeSimpleType;IIJ)V");
 
     // it's important to initialize "POINTER" first, because the primitive array types depend on it
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, ordinal, simpleTypeMap, "POINTER", &ffi_type_pointer);
+    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "POINTER", &ffi_type_pointer);
 
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, ordinal, simpleTypeMap, "VOID",    &ffi_type_void);
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, ordinal, simpleTypeMap, "UINT8",   &ffi_type_uint8);
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, ordinal, simpleTypeMap, "SINT8",   &ffi_type_sint8);
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, ordinal, simpleTypeMap, "UINT16",  &ffi_type_uint16);
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, ordinal, simpleTypeMap, "SINT16",  &ffi_type_sint16);
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, ordinal, simpleTypeMap, "UINT32",  &ffi_type_uint32);
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, ordinal, simpleTypeMap, "SINT32",  &ffi_type_sint32);
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, ordinal, simpleTypeMap, "UINT64",  &ffi_type_uint64);
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, ordinal, simpleTypeMap, "SINT64",  &ffi_type_sint64);
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, ordinal, simpleTypeMap, "FLOAT",   &ffi_type_float);
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, ordinal, simpleTypeMap, "DOUBLE",  &ffi_type_double);
+    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "VOID",    &ffi_type_void);
+    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "UINT8",   &ffi_type_uint8);
+    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "SINT8",   &ffi_type_sint8);
+    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "UINT16",  &ffi_type_uint16);
+    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "SINT16",  &ffi_type_sint16);
+    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "UINT32",  &ffi_type_uint32);
+    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "SINT32",  &ffi_type_sint32);
+    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "UINT64",  &ffi_type_uint64);
+    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "SINT64",  &ffi_type_sint64);
+    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "FLOAT",   &ffi_type_float);
+    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "DOUBLE",  &ffi_type_double);
 
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, ordinal, simpleTypeMap, "STRING", &ffi_type_pointer);
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, ordinal, simpleTypeMap, "OBJECT", &ffi_type_pointer);
+    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "STRING", &ffi_type_pointer);
+    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "OBJECT", &ffi_type_pointer);
 
     initializeClosure(env);
     initializeSignature(env);
