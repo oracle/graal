@@ -31,6 +31,8 @@ import java.util.Map;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Simplifiable;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
@@ -356,5 +358,20 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         SwitchNode newSwitch = graph().add(new IntegerSwitchNode(newValue, successorsArray, newKeys, newKeyProbabilities, newKeySuccessors));
         ((FixedWithNextNode) predecessor()).setNext(newSwitch);
         GraphUtil.killWithUnusedFloatingInputs(this);
+    }
+
+    @Override
+    public Stamp getValueStampForSuccessor(AbstractBeginNode beginNode) {
+        Stamp result = null;
+        for (int i = 0; i < keyCount(); i++) {
+            if (keySuccessor(i) == beginNode) {
+                if (result == null) {
+                    result = StampFactory.forConstant(keyAt(i));
+                } else {
+                    result = result.meet(StampFactory.forConstant(keyAt(i)));
+                }
+            }
+        }
+        return result;
     }
 }

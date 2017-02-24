@@ -28,6 +28,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 import java.util.Arrays;
 
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -201,4 +202,6 @@ public abstract class SwitchNode extends ControlSplitNode {
         tool.addToWorkList(blockSuccessor(survivingEdge));
         graph().removeSplit(this, blockSuccessor(survivingEdge));
     }
+
+    public abstract Stamp getValueStampForSuccessor(AbstractBeginNode beginNode);
 }

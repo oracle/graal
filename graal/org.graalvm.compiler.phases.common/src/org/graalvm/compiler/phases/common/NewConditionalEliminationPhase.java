@@ -34,7 +34,6 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Or;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCounter;
 import org.graalvm.compiler.graph.Node;
@@ -745,17 +744,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
         protected void processIntegerSwitch(AbstractBeginNode beginNode, IntegerSwitchNode integerSwitchNode) {
             ValueNode value = integerSwitchNode.value();
             if (maybeMultipleUsages(value)) {
-                Stamp stamp = null;
-                for (int i = 0; i < integerSwitchNode.keyCount(); i++) {
-                    if (integerSwitchNode.keySuccessor(i) == beginNode) {
-                        if (stamp == null) {
-                            stamp = StampFactory.forConstant(integerSwitchNode.keyAt(i));
-                        } else {
-                            stamp = stamp.meet(StampFactory.forConstant(integerSwitchNode.keyAt(i)));
-                        }
-                    }
-                }
-
+                Stamp stamp = integerSwitchNode.getValueStampForSuccessor(beginNode);
                 if (stamp != null) {
                     registerNewStamp(value, stamp, beginNode);
                 }
@@ -768,16 +757,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 LoadHubNode loadHub = (LoadHubNode) hub;
                 ValueNode value = loadHub.getValue();
                 if (maybeMultipleUsages(value)) {
-                    Stamp stamp = null;
-                    for (int i = 0; i < typeSwitch.keyCount(); i++) {
-                        if (typeSwitch.keySuccessor(i) == beginNode) {
-                            if (stamp == null) {
-                                stamp = StampFactory.objectNonNull(TypeReference.createExactTrusted(typeSwitch.typeAt(i)));
-                            } else {
-                                stamp = stamp.meet(StampFactory.objectNonNull(TypeReference.createExactTrusted(typeSwitch.typeAt(i))));
-                            }
-                        }
-                    }
+                    Stamp stamp = typeSwitch.getValueStampForSuccessor(beginNode);
                     if (stamp != null) {
                         registerNewStamp(value, stamp, beginNode);
                     }

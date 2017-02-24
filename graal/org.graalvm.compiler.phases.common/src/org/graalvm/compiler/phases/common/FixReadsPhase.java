@@ -42,7 +42,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph.RecursiveVisitor;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
-import org.graalvm.compiler.nodes.java.TypeSwitchNode;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
 import org.graalvm.compiler.nodes.memory.FloatingAccessNode;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
@@ -85,7 +84,7 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
         protected final NodeStack undoOperations;
         private final ScheduleResult schedule;
 
-        public RawConditionalEliminationVisitor(StructuredGraph graph, ScheduleResult schedule) {
+        RawConditionalEliminationVisitor(StructuredGraph graph, ScheduleResult schedule) {
             this.schedule = schedule;
             stampMap = graph.createNodeMap();
             undoOperations = new NodeStack();
@@ -139,21 +138,14 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
                 boolean negated = (ifNode.falseSuccessor() == beginNode);
                 LogicNode condition = ifNode.condition();
                 registerNewCondition(condition, negated);
-            } else if (predecessor instanceof TypeSwitchNode) {
-                TypeSwitchNode typeSwitch = (TypeSwitchNode) predecessor;
-                registerTypeSwitch(beginNode, predecessor, typeSwitch);
             } else if (predecessor instanceof IntegerSwitchNode) {
                 IntegerSwitchNode integerSwitchNode = (IntegerSwitchNode) predecessor;
-                registerIntegerSwitch(beginNode, predecessor, integerSwitchNode);
+                registerIntegerSwitch(beginNode, integerSwitchNode);
             }
         }
 
-        @SuppressWarnings("unused")
-        private void registerIntegerSwitch(AbstractBeginNode beginNode, Node predecessor, IntegerSwitchNode integerSwitchNode) {
-        }
-
-        @SuppressWarnings("unused")
-        private void registerTypeSwitch(AbstractBeginNode beginNode, Node predecessor, TypeSwitchNode typeSwitch) {
+        private void registerIntegerSwitch(AbstractBeginNode beginNode, IntegerSwitchNode integerSwitchNode) {
+            registerNewValueStamp(integerSwitchNode.value(), integerSwitchNode.getValueStampForSuccessor(beginNode));
         }
 
         protected void registerNewCondition(LogicNode condition, boolean negated) {
