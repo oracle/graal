@@ -27,11 +27,14 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCounter;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.NodeStack;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BinaryOpLogicNode;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.PiNode;
@@ -54,6 +57,8 @@ import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
 
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.TriState;
 
 /**
@@ -64,6 +69,7 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
     private static final DebugCounter counterStampsRegistered = Debug.counter("FixReads_StampsRegistered");
     private static final DebugCounter counterIfsKilled = Debug.counter("FixReads_KilledIfs");
     private static final DebugCounter counterCanonicalizedSwitches = Debug.counter("FixReads_CanonicalizedSwitches");
+    private static final DebugCounter counterConstantReplacements = Debug.counter("FixReads_ConstantReplacement");
 
     private static class FixReadsClosure extends ScheduledNodeIterator {
 
@@ -86,9 +92,13 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
         protected final NodeMap<StampElement> stampMap;
         protected final NodeStack undoOperations;
         private final ScheduleResult schedule;
+        private final StructuredGraph graph;
+        private final MetaAccessProvider metaAccess;
 
-        RawConditionalEliminationVisitor(StructuredGraph graph, ScheduleResult schedule) {
+        RawConditionalEliminationVisitor(StructuredGraph graph, ScheduleResult schedule, MetaAccessProvider metaAccess) {
+            this.graph = graph;
             this.schedule = schedule;
+            this.metaAccess = metaAccess;
             stampMap = graph.createNodeMap();
             undoOperations = new NodeStack();
         }
@@ -110,12 +120,31 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
 
         private void processUnaryNode(UnaryNode node) {
             Stamp newStamp = node.foldStamp(getBestStamp(node.getValue()));
-            registerNewValueStamp(node, newStamp);
+            if (!checkReplaceWithConstant(newStamp, node)) {
+                registerNewValueStamp(node, newStamp);
+            }
+        }
+
+        private boolean checkReplaceWithConstant(Stamp newStamp, ValueNode node) {
+            Constant constant = newStamp.asConstant();
+            if (constant != null && !(node instanceof ConstantNode)) {
+                ConstantNode stampConstant = ConstantNode.forConstant(node.stamp(), constant, metaAccess, graph);
+                Debug.log("RawConditionElimination: constant stamp replaces %1s with %1s", node, stampConstant);
+                counterConstantReplacements.increment();
+                node.replaceAtUsages(InputType.Value, stampConstant);
+                GraphUtil.tryKillUnused(node);
+                return true;
+            }
+            return false;
         }
 
         private void processBinary(BinaryNode node) {
-            Stamp newStamp = node.foldStamp(getBestStamp(node.getX()), getBestStamp(node.getY()));
-            registerNewValueStamp(node, newStamp);
+            Stamp xStamp = getBestStamp(node.getX());
+            Stamp yStamp = getBestStamp(node.getY());
+            Stamp newStamp = node.foldStamp(xStamp, yStamp);
+            if (!checkReplaceWithConstant(newStamp, node)) {
+                registerNewValueStamp(node, newStamp);
+            }
         }
 
         private void processIntegerSwitch(IntegerSwitchNode node) {
@@ -262,7 +291,7 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
             fixReadsClosure.processNodes(block, schedule);
         }
         if (GraalOptions.RawConditionalElimination.getValue(graph.getOptions())) {
-            schedule.getCFG().visitDominatorTree(new RawConditionalEliminationVisitor(graph, schedule), false);
+            schedule.getCFG().visitDominatorTree(new RawConditionalEliminationVisitor(graph, schedule, context.getMetaAccess()), false);
         }
     }
 
