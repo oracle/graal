@@ -39,6 +39,8 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.UnaryOpLogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.BinaryNode;
+import org.graalvm.compiler.nodes.calc.UnaryNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph.RecursiveVisitor;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
@@ -99,7 +101,21 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
                 processIf((IfNode) node);
             } else if (node instanceof IntegerSwitchNode) {
                 processIntegerSwitch((IntegerSwitchNode) node);
+            } else if (node instanceof BinaryNode) {
+                processBinary((BinaryNode) node);
+            } else if (node instanceof UnaryNode) {
+                processUnaryNode((UnaryNode) node);
             }
+        }
+
+        private void processUnaryNode(UnaryNode node) {
+            Stamp newStamp = node.foldStamp(getBestStamp(node.getValue()));
+            registerNewValueStamp(node, newStamp);
+        }
+
+        private void processBinary(BinaryNode node) {
+            Stamp newStamp = node.foldStamp(getBestStamp(node.getX()), getBestStamp(node.getY()));
+            registerNewValueStamp(node, newStamp);
         }
 
         private void processIntegerSwitch(IntegerSwitchNode node) {
