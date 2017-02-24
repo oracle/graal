@@ -538,10 +538,10 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
                 assert instructionIndex == 0 : "not at start?" + instructionIndex;
                 handleTraceBegin(blocks[0]);
 
-                // fix spill state for phi/sigma intervals
+                // fix spill state for phi/incoming intervals
                 for (TraceInterval interval : allocator.intervals()) {
                     if (interval != null && interval.spillState().equals(SpillState.NoDefinitionFound) && interval.spillDefinitionPos() != -1) {
-                        // there was a definition in a phi/sigma
+                        // there was a definition in a phi/incoming
                         interval.setSpillState(SpillState.NoSpillStore);
                     }
                 }
@@ -606,7 +606,7 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
         private void addInterTraceHints() {
             try (Scope s = Debug.scope("InterTraceHints", allocator)) {
                 GlobalLivenessInfo livenessInfo = allocator.getGlobalLivenessInfo();
-                // set hints for phi/sigma intervals
+                // set hints for phi/incoming intervals
                 for (AbstractBlockBase<?> block : sortedBlocks()) {
                     LabelOp label = (LabelOp) getLIR().getLIRforBlock(block).get(0);
                     for (AbstractBlockBase<?> pred : block.getPredecessors()) {

@@ -26,7 +26,6 @@ import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.BitSet;
 import java.util.EnumSet;
 
@@ -41,7 +40,6 @@ import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
 import org.graalvm.compiler.lir.Variable;
-import org.graalvm.compiler.lir.alloc.trace.GlobalLivenessInfo;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.phases.AllocationPhase;
 import org.graalvm.compiler.lir.ssa.SSAUtil;
@@ -119,7 +117,6 @@ public final class GlobalLivenessAnalysisPhase extends AllocationPhase {
         }
 
         private void buildIntern() {
-            Debug.log(1, "SSIConstruction block order: %s", Arrays.asList(blocks));
             computeLiveness();
         }
 

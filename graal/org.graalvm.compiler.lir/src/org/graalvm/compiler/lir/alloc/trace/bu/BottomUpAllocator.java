@@ -377,7 +377,6 @@ public final class BottomUpAllocator extends TraceAllocationPhase<TraceAllocatio
          * successor (which is already allocated). For constant inputs we insert moves.
          */
         private void resolvePhis(AbstractBlockBase<?> successorBlock, AbstractBlockBase<?> block) {
-            // Note that we are only visiting PHI values, not transient SSI values.
             phiVisitor.loads.clear();
             SSAUtil.forEachPhiValuePair(getLIR(), successorBlock, block, phiVisitor);
             if (phiVisitor.loads.size() > 0) {

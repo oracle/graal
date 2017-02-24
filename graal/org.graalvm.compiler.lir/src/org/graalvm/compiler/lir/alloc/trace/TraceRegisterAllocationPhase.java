@@ -107,16 +107,13 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         }
 
         TRACE_GLOBAL_MOVE_RESOLUTION_PHASE.apply(target, lirGenRes, traceContext);
-        deconstructSSIForm(lir);
+        deconstructSSAForm(lir);
     }
 
     /**
-     * Remove Phi/Sigma In/Out.
-     *
-     * Note: Incoming Values are needed for the RegisterVerifier, otherwise SIGMAs/PHIs where the
-     * Out and In value matches (ie. there is no resolution move) are falsely detected as errors.
+     * Remove Phi In/Out.
      */
-    private static void deconstructSSIForm(LIR lir) {
+    private static void deconstructSSAForm(LIR lir) {
         for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
             if (SSAUtil.isMerge(block)) {
                 SSAUtil.phiIn(lir, block).clearIncomingValues();

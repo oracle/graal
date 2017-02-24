@@ -178,8 +178,8 @@ final class TraceLinearScanResolveDataFlowPhase extends TraceLinearScanAllocatio
             return currentTrace.getId() == traceBuilderResult.getTraceForBlock(block).getId();
         }
 
-        private static final DebugCounter numSSIResolutionMoves = Debug.counter("SSI LSRA[numSSIResolutionMoves]");
-        private static final DebugCounter numStackToStackMoves = Debug.counter("SSI LSRA[numStackToStackMoves]");
+        private static final DebugCounter numResolutionMoves = Debug.counter("TraceRA[numTraceLSRAResolutionMoves]");
+        private static final DebugCounter numStackToStackMoves = Debug.counter("TraceRA[numTraceLSRAStackToStackMoves]");
 
         private void addMapping(Value phiFrom, Value phiTo, int fromId, int toId, TraceLocalMoveResolver moveResolver) {
             assert !isRegister(phiFrom) : "Out is a register: " + phiFrom;
@@ -191,7 +191,7 @@ final class TraceLinearScanResolveDataFlowPhase extends TraceLinearScanAllocatio
             }
             TraceInterval toParent = allocator.intervalFor(phiTo);
             if (isConstantValue(phiFrom)) {
-                numSSIResolutionMoves.increment();
+                numResolutionMoves.increment();
                 TraceInterval toInterval = allocator.splitChildAtOpId(toParent, toId, LIRInstruction.OperandMode.DEF);
                 moveResolver.addMapping(asConstant(phiFrom), toInterval);
             } else {
@@ -207,7 +207,7 @@ final class TraceLinearScanResolveDataFlowPhase extends TraceLinearScanAllocatio
                 return;
             }
             if (fromInterval != toInterval) {
-                numSSIResolutionMoves.increment();
+                numResolutionMoves.increment();
                 if (numStackToStackMoves.isEnabled() && isStackSlotValue(toInterval.location()) && isStackSlotValue(fromInterval.location())) {
                     numStackToStackMoves.increment();
                 }
