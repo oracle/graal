@@ -677,6 +677,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * @param tool
      */
     private boolean splitIfAtPhi(SimplifierTool tool) {
+        if (graph().getGuardsStage().areFrameStatesAtSideEffects()) {
+            // Disabled until we make sure we have no FrameState-less merges at this stage
+            return false;
+        }
+
         if (!(predecessor() instanceof MergeNode)) {
             return false;
         }
