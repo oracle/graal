@@ -46,9 +46,11 @@ public final class GlobalLivenessInfo {
 
     public static final class Builder {
         private GlobalLivenessInfo info;
+        public final int[] emptySet;
 
         public Builder(LIR lir) {
             info = new GlobalLivenessInfo(lir);
+            emptySet = new int[0];
         }
 
         public GlobalLivenessInfo createLivenessInfo() {
@@ -97,13 +99,6 @@ public final class GlobalLivenessInfo {
         blockToVarOut = new int[numBlocks][];
         blockToLocIn = new Value[numBlocks][];
         blockToLocOut = new Value[numBlocks][];
-
-        // initialize with empty array
-        int[] emptyArray = new int[0];
-        for (int i = 0; i < numBlocks; i++) {
-            blockToVarIn[i] = emptyArray;
-            blockToVarOut[i] = emptyArray;
-        }
     }
 
     public Variable getVariable(int varNum) {
@@ -114,7 +109,7 @@ public final class GlobalLivenessInfo {
         if (storesOutgoing(block)) {
             return blockToVarOut[block.getId()];
         }
-        assert blockToVarOut[block.getId()].length == 0 : String.format("Var out for block %s is not empty: %s", block, Arrays.toString(blockToVarOut[block.getId()]));
+        assert blockToVarOut[block.getId()] == null : String.format("Var out for block %s is not empty: %s", block, Arrays.toString(blockToVarOut[block.getId()]));
         assert block.getSuccessorCount() == 1 : String.format("More then one successor: %s -> %s", block, Arrays.toString(block.getSuccessors()));
         return blockToVarIn[block.getSuccessors()[0].getId()];
     }
@@ -123,7 +118,7 @@ public final class GlobalLivenessInfo {
         if (storesIncoming(block)) {
             return blockToVarIn[block.getId()];
         }
-        assert blockToVarIn[block.getId()].length == 0 : String.format("Var in for block %s is not empty: %s", block, Arrays.toString(blockToVarIn[block.getId()]));
+        assert blockToVarIn[block.getId()] == null : String.format("Var in for block %s is not empty: %s", block, Arrays.toString(blockToVarIn[block.getId()]));
         assert block.getPredecessorCount() == 1 : String.format("More then one predecessor: %s -> %s", block, Arrays.toString(block.getPredecessors()));
         return blockToVarOut[block.getPredecessors()[0].getId()];
     }
@@ -151,6 +146,10 @@ public final class GlobalLivenessInfo {
 
     public static boolean storesOutgoing(AbstractBlockBase<?> block) {
         assert block.getSuccessorCount() >= 0;
+        /*
+         * The second condition handles non-critical empty blocks, introduced, e.g., by two
+         * consecutive loop-exits.
+         */
         return block.getSuccessorCount() != 1 || block.getSuccessors()[0].getPredecessorCount() == 1;
     }
 

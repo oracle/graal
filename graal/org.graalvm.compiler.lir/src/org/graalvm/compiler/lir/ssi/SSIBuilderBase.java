@@ -40,12 +40,12 @@ public abstract class SSIBuilderBase {
     protected static final int LOG_LEVEL = Debug.INFO_LOG_LEVEL;
     protected final Value[] operands;
     protected final LIR lir;
-    private final GlobalLivenessInfo.Builder livenessInfo;
+    private final GlobalLivenessInfo.Builder livenessInfoBuilder;
 
     public SSIBuilderBase(LIR lir) {
         this.lir = lir;
         this.operands = new Value[lir.numVariables()];
-        this.livenessInfo = new GlobalLivenessInfo.Builder(lir);
+        this.livenessInfoBuilder = new GlobalLivenessInfo.Builder(lir);
     }
 
     protected LIR getLIR() {
@@ -80,8 +80,8 @@ public abstract class SSIBuilderBase {
     }
 
     public GlobalLivenessInfo getLivenessInfo() {
-        assert livenessInfo != null : "No liveness info collected";
-        return livenessInfo.createLivenessInfo();
+        assert livenessInfoBuilder != null : "No liveness info collected";
+        return livenessInfoBuilder.createLivenessInfo();
     }
 
     private void buildIncoming(AbstractBlockBase<?> block) {
@@ -90,32 +90,35 @@ public abstract class SSIBuilderBase {
             assert GlobalLivenessInfo.storesOutgoing(block.getPredecessors()[0]) : "No incoming liveness info: " + block;
             return;
         }
+
+        final int[] liveInArray;
         if (block.getPredecessorCount() == 0) {
             // start block
             assert getLiveIn(block).isEmpty() : "liveIn for start block is not empty? " + getLiveIn(block);
-            return;
-        }
-        /*
-         * Collect live out of predecessors since there might be values not used in this block which
-         * might cause out/in mismatch. Per construction the live sets of all predecessors are
-         * equal.
-         */
-        BitSet predLiveOut = getLiveOut(block.getPredecessors()[0]);
-        if (predLiveOut.isEmpty()) {
-            return;
+            liveInArray = livenessInfoBuilder.emptySet;
+        } else {
+            /*
+             * Collect live out of predecessors since there might be values not used in this block
+             * which might cause out/in mismatch. Per construction the live sets of all predecessors
+             * are equal.
+             */
+            BitSet predLiveOut = getLiveOut(block.getPredecessors()[0]);
+            liveInArray = predLiveOut.isEmpty() ? livenessInfoBuilder.emptySet : bitSetToIntArray(predLiveOut);
         }
 
-        livenessInfo.addIncoming(block, bitSetToIntArray(predLiveOut));
+        livenessInfoBuilder.addIncoming(block, liveInArray);
     }
 
     private void buildOutgoing(AbstractBlockBase<?> block) {
         BitSet liveOut = getLiveOut(block);
-        if (liveOut.isEmpty() || !GlobalLivenessInfo.storesOutgoing(block)) {
+        if (!GlobalLivenessInfo.storesOutgoing(block)) {
             assert GlobalLivenessInfo.storesOutgoing(block) || block.getSuccessorCount() == 1;
             assert GlobalLivenessInfo.storesOutgoing(block) || GlobalLivenessInfo.storesIncoming(block.getSuccessors()[0]) : "No outgoing liveness info: " + block;
             return;
         }
-        livenessInfo.addOutgoing(block, bitSetToIntArray(liveOut));
+        int[] liveOutArray = liveOut.isEmpty() ? livenessInfoBuilder.emptySet : bitSetToIntArray(liveOut);
+
+        livenessInfoBuilder.addOutgoing(block, liveOutArray);
     }
 
     private static int[] bitSetToIntArray(BitSet live) {
@@ -128,7 +131,7 @@ public abstract class SSIBuilderBase {
     }
 
     protected void recordVariable(LIRInstruction op, Variable var) {
-        livenessInfo.addVariable(op, var);
+        livenessInfoBuilder.addVariable(op, var);
     }
 
 }
