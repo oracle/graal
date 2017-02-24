@@ -27,6 +27,7 @@ import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph.RecursiveVisitor;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
 import org.graalvm.compiler.nodes.memory.FloatingAccessNode;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
@@ -41,7 +42,13 @@ import org.graalvm.compiler.phases.tiers.LowTierContext;
  */
 public class FixReadsPhase extends BasePhase<LowTierContext> {
 
-    private static class FixReadsIterator extends ScheduledNodeIterator {
+    private static class FixReadsIterator extends ScheduledNodeIterator implements RecursiveVisitor<Integer> {
+
+        private final ScheduleResult schedule;
+
+        public FixReadsIterator(ScheduleResult schedule) {
+            this.schedule = schedule;
+        }
 
         @Override
         protected void processNode(Node node) {
@@ -55,6 +62,16 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
             }
         }
 
+        @Override
+        public Integer enter(Block b) {
+            this.processNodes(b, schedule);
+            return null;
+        }
+
+        @Override
+        public void exit(Block b, Integer value) {
+        }
+
     }
 
     @Override
@@ -62,10 +79,6 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
         SchedulePhase schedulePhase = new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS);
         schedulePhase.apply(graph);
         ScheduleResult schedule = graph.getLastSchedule();
-
-        FixReadsIterator fixedReadsIterator = new FixReadsIterator();
-        for (Block block : schedule.getCFG().getBlocks()) {
-            fixedReadsIterator.processNodes(block, schedule);
-        }
+        schedule.getCFG().visitDominatorTree(new FixReadsIterator(schedule), false);
     }
 }
