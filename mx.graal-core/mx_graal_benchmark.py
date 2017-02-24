@@ -436,7 +436,8 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchma
         if args.n and args.n.isdigit():
             iterations = int(args.n)
         else:
-            iterations = self.daCapoIterations()[benchmarks[0]] + self.getExtraIterationCount(iterations)
+            iterations = self.daCapoIterations()[benchmarks[0]]
+            iterations = iterations + self.getExtraIterationCount(iterations)
         for i in range(0, iterations):
             if next((p for p in partialResults if p["metric.iteration"] == i), None) is None:
                 datapoint = {
