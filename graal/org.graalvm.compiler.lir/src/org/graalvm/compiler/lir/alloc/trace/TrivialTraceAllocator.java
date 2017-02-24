@@ -23,11 +23,10 @@
 package org.graalvm.compiler.lir.alloc.trace;
 
 import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
-import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 import static org.graalvm.compiler.lir.alloc.trace.TraceUtil.isTrivialTrace;
 
-import java.util.ArrayList;
+import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.alloc.Trace;
 import org.graalvm.compiler.core.common.alloc.TraceBuilderResult;
@@ -35,13 +34,12 @@ import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
+import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
 import org.graalvm.compiler.lir.StandardOp.JumpOp;
 import org.graalvm.compiler.lir.StandardOp.LabelOp;
 import org.graalvm.compiler.lir.ValueProcedure;
-import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.ssi.SSIUtil;
-import org.graalvm.compiler.lir.util.VariableVirtualStackValueMap;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.Value;
@@ -61,31 +59,62 @@ final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAllocationPh
 
         AbstractBlockBase<?> pred = TraceUtil.getBestTraceInterPredecessor(resultTraces, block);
 
-        VariableVirtualStackValueMap<Variable, Value> variableMap = new VariableVirtualStackValueMap<>(lir.numVariables(), 0);
-        SSIUtil.forEachValuePair(lir, block, pred, (to, from) -> {
-            if (isVariable(to)) {
-                variableMap.put(asVariable(to), from);
-            }
-        });
+        Value[] variableMap = new Value[lir.numVariables()];
+        GlobalLivenessInfo livenessInfo = context.livenessInfo;
+        collectMapping(lir, block, pred, livenessInfo, variableMap);
+        assignLocations(lir, block, livenessInfo, variableMap);
+    }
 
-        ValueProcedure outputConsumer = (value, mode, flags) -> {
-            if (isVariable(value)) {
-                Value incomingValue = variableMap.get(asVariable(value));
-                assert !flags.contains(OperandFlag.COMPOSITE);
-                assert !(SSIUtil.incoming(lir, block).isPhiIn() && isConstantValue(incomingValue)) : "Phi variable cannot be constant: " + incomingValue + " -> " + value;
-                return incomingValue;
+    /**
+     * Collects the mapping from variable to location. Additionally the
+     * {@link GlobalLivenessInfo#setInLocations incoming location array} is set.
+     */
+    private static void collectMapping(LIR lir, AbstractBlockBase<?> block, AbstractBlockBase<?> pred, GlobalLivenessInfo livenessInfo, Value[] variableMap) {
+        final int[] blockIn = livenessInfo.getBlockIn(block);
+        final Value[] predLocOut = livenessInfo.getOutLocation(pred);
+        final Value[] locationIn = new Value[blockIn.length];
+        for (int i = 0; i < blockIn.length; i++) {
+            int varNum = blockIn[i];
+            if (varNum >= 0) {
+                Value location = predLocOut[i];
+                variableMap[varNum] = location;
+                locationIn[i] = location;
+            } else {
+                locationIn[i] = Value.ILLEGAL;
             }
-            return value;
+        }
+        livenessInfo.setInLocations(block, locationIn);
+        // no need to care about handle phis
+        assert !SSIUtil.incoming(lir, block).isPhiIn() : "Merge blocks are not trivial! " + block;
+    }
+
+    /**
+     * Assigns the outgoing locations according to the {@link #collectMapping variable mapping}.
+     */
+    private static void assignLocations(LIR lir, AbstractBlockBase<?> block, GlobalLivenessInfo livenessInfo, Value[] variableMap) {
+        final int[] blockOut = livenessInfo.getBlockOut(block);
+        final Value[] locationOut = new Value[blockOut.length];
+        for (int i = 0; i < blockOut.length; i++) {
+            int varNum = blockOut[i];
+            locationOut[i] = variableMap[varNum];
+        }
+        livenessInfo.setOutLocations(block, locationOut);
+
+        // handle outgoing phi values
+        ValueProcedure outputConsumer = new ValueProcedure() {
+            @Override
+            public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+                if (isVariable(value)) {
+                    return variableMap[asVariable(value).index];
+                }
+                return value;
+            }
         };
 
-        ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
-        for (LIRInstruction op : instructions) {
-
-            op.forEachOutput(outputConsumer);
-            op.forEachTemp(outputConsumer);
-            op.forEachAlive(outputConsumer);
-            op.forEachInput(outputConsumer);
-            op.forEachState(outputConsumer);
-        }
+        LIRInstruction jump = SSIUtil.outgoingInst(lir, block);
+        assert jump instanceof JumpOp : "Can only be a jump! " + jump;
+        // Jumps have only alive values (outgoing phi values)
+        jump.forEachAlive(outputConsumer);
     }
+
 }

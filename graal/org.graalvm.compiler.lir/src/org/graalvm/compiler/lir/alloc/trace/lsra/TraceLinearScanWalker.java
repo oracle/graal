@@ -404,10 +404,10 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
             // moved to odd opId
             final int optimalSplitPosFinal;
             boolean blockBegin = allocator.isBlockBegin(optimalSplitPos);
+            assert blockBegin || !allocator.isBlockBegin(optimalSplitPos - 1);
+            boolean moveNecessary = !blockBegin;
             if (blockBegin) {
-                assert (optimalSplitPos & 1) == 0 : "Block begins must be even: " + optimalSplitPos;
-                // move position after the label (odd optId)
-                optimalSplitPosFinal = optimalSplitPos + 1;
+                optimalSplitPosFinal = optimalSplitPos;
             } else {
                 // move position before actual instruction (odd opId)
                 optimalSplitPosFinal = (optimalSplitPos - 1) | 1;
@@ -423,12 +423,8 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
             }
             assert optimalSplitPosFinal > currentPosition : "Can not split interval " + interval + " at current position: " + currentPosition;
 
-            // was:
-            // assert isBlockBegin || ((optimalSplitPos1 & 1) == 1) :
-            // "split pos must be odd when not on block boundary";
-            // assert !isBlockBegin || ((optimalSplitPos1 & 1) == 0) :
-            // "split pos must be even on block boundary";
-            assert (optimalSplitPosFinal & 1) == 1 : "split pos must be odd";
+            assert blockBegin || ((optimalSplitPosFinal & 1) == 1) : "split pos must be odd when not on block boundary";
+            assert !blockBegin || ((optimalSplitPosFinal & 1) == 0) : "split pos must be even on block boundary";
 
             // TODO (je) duplicate code. try to fold
             if (optimalSplitPosFinal == interval.to() && interval.nextUsage(RegisterPriority.MustHaveRegister, minSplitPos) == Integer.MAX_VALUE) {
@@ -441,7 +437,6 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
             }
             TraceInterval splitPart = interval.split(optimalSplitPosFinal, allocator);
 
-            boolean moveNecessary = true;
             splitPart.setInsertMoveWhenActivated(moveNecessary);
 
             assert splitPart.from() >= currentPosition : "cannot append new interval before current walk position";

@@ -170,13 +170,13 @@ public final class SSIBuilder extends SSIBuilderBase {
                 InstructionValueConsumer defConsumer = new InstructionValueConsumer() {
                     @Override
                     public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                        processLocalDef(liveGen, liveKill, operand, operands);
+                        processLocalDef(liveGen, liveKill, op, operand);
                     }
                 };
                 InstructionValueConsumer tempConsumer = new InstructionValueConsumer() {
                     @Override
                     public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                        processLocalDef(liveGen, liveKill, operand, operands);
+                        processLocalDef(liveGen, liveKill, op, operand);
                     }
                 };
 
@@ -220,8 +220,9 @@ public final class SSIBuilder extends SSIBuilderBase {
         }
     }
 
-    private static void processLocalDef(final BitSet liveGen, final BitSet liveKill, Value operand, Value[] operands) {
+    private void processLocalDef(final BitSet liveGen, final BitSet liveKill, LIRInstruction op, Value operand) {
         if (isVariable(operand)) {
+            recordVariable(op, asVariable(operand));
             int operandNum = operandNumber(operand);
             if (operands[operandNum] == null) {
                 operands[operandNum] = operand;

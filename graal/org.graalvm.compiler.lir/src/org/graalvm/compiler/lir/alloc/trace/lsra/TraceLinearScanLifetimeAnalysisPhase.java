@@ -58,6 +58,7 @@ import org.graalvm.compiler.lir.StandardOp.LoadConstantOp;
 import org.graalvm.compiler.lir.StandardOp.ValueMoveOp;
 import org.graalvm.compiler.lir.ValueProcedure;
 import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.lir.alloc.trace.GlobalLivenessInfo;
 import org.graalvm.compiler.lir.alloc.trace.ShadowedRegisterValue;
 import org.graalvm.compiler.lir.alloc.trace.lsra.TraceInterval.RegisterPriority;
 import org.graalvm.compiler.lir.alloc.trace.lsra.TraceInterval.SpillState;
@@ -484,18 +485,19 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
                     final AbstractBlockBase<?> block = blocks[blockId];
 
                     try (Indent indent2 = Debug.logAndIndent("handle block %d", block.getId())) {
+                        handleBlockEnd(block, (instructionIndex - 1) << 1);
 
                         /*
                          * Iterate all instructions of the block in reverse order. definitions of
                          * intervals are processed before uses.
                          */
                         ArrayList<LIRInstruction> instructions = getLIR().getLIRforBlock(block);
-                        for (int instIdx = instructions.size() - 1; instIdx >= 0; instIdx--) {
+                        for (int instIdx = instructions.size() - 1; instIdx >= 1; instIdx--) {
                             final LIRInstruction op = instructions.get(instIdx);
                             // number instruction
                             instructionIndex--;
-                            final int opId = instructionIndex << 1;
                             numberInstruction(block, op, instructionIndex);
+                            final int opId = op.id();
 
                             try (Indent indent3 = Debug.logAndIndent("handle inst %d: %s", opId, op)) {
 
@@ -529,12 +531,17 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
                             }
 
                         }   // end of instruction iteration
+                            // number label instruction
+                        instructionIndex--;
+                        numberInstruction(block, instructions.get(0), instructionIndex);
+                        handleBlockBegin(block);
                     }
                     if (Debug.isDumpEnabled(DUMP_DURING_ANALYSIS_LEVEL)) {
                         allocator.printIntervals("After Block " + block);
                     }
                 }   // end of block iteration
                 assert instructionIndex == 0 : "not at start?" + instructionIndex;
+                handleTraceBegin(blocks[0]);
 
                 // fix spill state for phi/sigma intervals
                 for (TraceInterval interval : allocator.intervals()) {
@@ -551,6 +558,41 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
                         /* We use [-1, 0] to avoid intersection with incoming values. */
                         interval1.addRange(-1, 0);
                     }
+                }
+            }
+        }
+
+        private void handleTraceBegin(AbstractBlockBase<?> block) {
+            LIRInstruction op = getLIR().getLIRforBlock(block).get(0);
+            GlobalLivenessInfo livenessInfo = allocator.getGlobalLivenessInfo();
+            for (int varNum : livenessInfo.getBlockIn(block)) {
+                if (isAliveAtBlockBegin(varNum)) {
+                    addVariableDef(livenessInfo.getVariable(varNum), op, RegisterPriority.None);
+                }
+            }
+        }
+
+        private boolean isAliveAtBlockBegin(int varNum) {
+            return allocator.intervalFor(varNum) != null;
+        }
+
+        private void handleBlockBegin(AbstractBlockBase<?> block) {
+            // handle phis
+            // method parameters are fixed later on (see end of #buildIntervals)
+            LabelOp label = SSIUtil.incoming(getLIR(), block);
+            for (int i = 0; i < label.getPhiSize(); i++) {
+                Variable var = asVariable(label.getIncomingValue(i));
+                addVariableDef(var, label, RegisterPriority.ShouldHaveRegister);
+            }
+        }
+
+        private void handleBlockEnd(AbstractBlockBase<?> block, int opId) {
+            // always alive until the end of the block
+            int aliveOpId = opId + 1;
+            GlobalLivenessInfo livenessInfo = allocator.getGlobalLivenessInfo();
+            for (int varNum : livenessInfo.getBlockOut(block)) {
+                if (allocator.intervalFor(varNum) == null) {
+                    addVariableUse(asVariable(livenessInfo.getVariable(varNum)), 0, aliveOpId, RegisterPriority.None);
                 }
             }
         }

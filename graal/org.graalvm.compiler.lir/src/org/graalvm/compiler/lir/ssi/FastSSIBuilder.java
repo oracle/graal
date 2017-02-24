@@ -129,7 +129,7 @@ public final class FastSSIBuilder extends SSIBuilderBase {
                 InstructionValueConsumer defConsumer = new InstructionValueConsumer() {
                     @Override
                     public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                        processDef(liveIn, operand, operands);
+                        processDef(liveIn, op, operand);
                     }
                 };
                 if (Debug.isLogEnabled()) {
@@ -197,8 +197,9 @@ public final class FastSSIBuilder extends SSIBuilderBase {
         }
     }
 
-    private static void processDef(final BitSet liveGen, Value operand, Value[] operands) {
+    private void processDef(final BitSet liveGen, LIRInstruction op, Value operand) {
         if (isVariable(operand)) {
+            recordVariable(op, asVariable(operand));
             int operandNum = operandNumber(operand);
             if (operands[operandNum] == null) {
                 operands[operandNum] = operand;

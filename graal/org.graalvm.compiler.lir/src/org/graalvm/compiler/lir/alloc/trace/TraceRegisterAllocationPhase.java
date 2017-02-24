@@ -37,7 +37,6 @@ import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool.MoveFactory;
 import org.graalvm.compiler.lir.phases.AllocationPhase;
 import org.graalvm.compiler.lir.ssi.SSIUtil;
-import org.graalvm.compiler.lir.ssi.SSIVerifier;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
@@ -78,20 +77,20 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         MoveFactory spillMoveFactory = context.spillMoveFactory;
         RegisterAllocationConfig registerAllocationConfig = context.registerAllocationConfig;
         LIR lir = lirGenRes.getLIR();
-        assert SSIVerifier.verify(lir) : "LIR not in SSI form.";
         TraceBuilderResult resultTraces = context.contextLookup(TraceBuilderResult.class);
-
-        TraceAllocationContext traceContext = new TraceAllocationContext(spillMoveFactory, registerAllocationConfig, resultTraces);
+        GlobalLivenessInfo livenessInfo = context.contextLookup(GlobalLivenessInfo.class);
+        assert livenessInfo != null;
+        TraceAllocationContext traceContext = new TraceAllocationContext(spillMoveFactory, registerAllocationConfig, resultTraces, livenessInfo);
         AllocatableValue[] cachedStackSlots = Options.TraceRACacheStackSlots.getValue(lir.getOptions()) ? new AllocatableValue[lir.numVariables()] : null;
 
         // currently this is not supported
         boolean neverSpillConstant = false;
 
-        final TraceRegisterAllocationPolicy plan = DefaultTraceRegisterAllocationPolicy.allocationPolicy(target, lirGenRes, spillMoveFactory, registerAllocationConfig, cachedStackSlots,
-                        resultTraces, neverSpillConstant, lir.getOptions());
+        final TraceRegisterAllocationPolicy plan = DefaultTraceRegisterAllocationPolicy.allocationPolicy(target, lirGenRes, spillMoveFactory, registerAllocationConfig, cachedStackSlots, resultTraces,
+                        neverSpillConstant, livenessInfo, lir.getOptions());
 
         Debug.dump(Debug.INFO_LOG_LEVEL, lir, "Before TraceRegisterAllocation");
-        try (Scope s0 = Debug.scope("AllocateTraces", resultTraces)) {
+        try (Scope s0 = Debug.scope("AllocateTraces", resultTraces, livenessInfo)) {
             for (Trace trace : resultTraces.getTraces()) {
                 tracesCounter.increment();
                 TraceAllocationPhase<TraceAllocationContext> allocator = plan.selectStrategy(trace);

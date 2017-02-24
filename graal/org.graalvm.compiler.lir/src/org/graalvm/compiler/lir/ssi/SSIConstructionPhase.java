@@ -26,6 +26,7 @@ import java.util.BitSet;
 
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.lir.alloc.lsra.LinearScanLifetimeAnalysisPhase;
+import org.graalvm.compiler.lir.alloc.trace.GlobalLivenessInfo;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.phases.AllocationPhase;
 import org.graalvm.compiler.lir.ssa.SSAUtil;
@@ -56,15 +57,14 @@ public final class SSIConstructionPhase extends AllocationPhase {
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
         assert SSAUtil.verifySSAForm(lirGenRes.getLIR());
-        if (Options.TraceRAFastSSIBuilder.getValue(lirGenRes.getLIR().getOptions())) {
-            FastSSIBuilder fastSSIBuilder = new FastSSIBuilder(lirGenRes.getLIR());
-            fastSSIBuilder.build();
-            fastSSIBuilder.finish();
-        } else {
-            SSIBuilder ssiBuilder = new SSIBuilder(lirGenRes.getLIR());
-            ssiBuilder.build();
-            ssiBuilder.finish();
-        }
+        SSIBuilderBase ssiBuilder = Options.TraceRAFastSSIBuilder.getValue(lirGenRes.getLIR().getOptions())
+                        ? new FastSSIBuilder(lirGenRes.getLIR())
+                        : new SSIBuilder(lirGenRes.getLIR());
+        ssiBuilder.build();
+        ssiBuilder.finish();
+        GlobalLivenessInfo livenessInfo = ssiBuilder.getLivenessInfo();
+        assert livenessInfo.verify(lirGenRes.getLIR());
+        context.contextAdd(livenessInfo);
     }
 
     static void check(AbstractBlockBase<?>[] blocks, SSIBuilderBase liveSets1, SSIBuilderBase liveSets2) {

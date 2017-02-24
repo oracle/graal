@@ -30,6 +30,7 @@ import org.openjdk.jmh.annotations.Setup;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.alloc.Trace;
 import org.graalvm.compiler.core.common.alloc.TraceBuilderResult;
+import org.graalvm.compiler.lir.alloc.trace.GlobalLivenessInfo;
 import org.graalvm.compiler.lir.alloc.trace.TraceBuilderPhase;
 import org.graalvm.compiler.lir.alloc.trace.lsra.TraceLinearScanLifetimeAnalysisPhase;
 import org.graalvm.compiler.lir.alloc.trace.lsra.TraceLinearScanLifetimeAnalysisPhase.Analyser;
@@ -62,7 +63,9 @@ public class TraceLSRAIntervalBuildingBench extends GraalBenchmark {
             MoveFactory spillMoveFactory = context.spillMoveFactory;
             RegisterAllocationConfig registerAllocationConfig = context.registerAllocationConfig;
             TraceBuilderResult resultTraces = context.contextLookup(TraceBuilderResult.class);
-            TraceLinearScanPhase phase = new TraceLinearScanPhase(target, lirGenRes, spillMoveFactory, registerAllocationConfig, resultTraces, false, null);
+            GlobalLivenessInfo livenessInfo = context.contextLookup(GlobalLivenessInfo.class);
+            assert livenessInfo != null;
+            TraceLinearScanPhase phase = new TraceLinearScanPhase(target, lirGenRes, spillMoveFactory, registerAllocationConfig, resultTraces, false, null, livenessInfo);
             for (Trace trace : resultTraces.getTraces()) {
                 allocator = phase.createAllocator(trace);
                 Analyser a = new TraceLinearScanLifetimeAnalysisPhase.Analyser(allocator, resultTraces);

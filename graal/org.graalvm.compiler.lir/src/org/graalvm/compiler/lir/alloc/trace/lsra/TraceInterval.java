@@ -658,11 +658,26 @@ final class TraceInterval extends IntervalHint {
         return null;
     }
 
+    TraceInterval getSplitChildAtOpIdOrNull(int opId, LIRInstruction.OperandMode mode) {
+        /*
+         * TODO(je) could be replace by a simple range check by caching `to` in the split parent
+         * when creating split children.
+         */
+        return getSplitChildAtOpIdIntern(opId, mode, true);
+    }
+
     TraceInterval getSplitChildAtOpId(int opId, LIRInstruction.OperandMode mode) {
+        return getSplitChildAtOpIdIntern(opId, mode, false);
+    }
+
+    private TraceInterval getSplitChildAtOpIdIntern(int opId, LIRInstruction.OperandMode mode, boolean returnNull) {
         assert isSplitParent() : "can only be called for split parents";
         assert opId >= 0 : "invalid opId (method cannot be called for spill moves)";
 
         if (splitChildrenEmpty()) {
+            if (returnNull) {
+                return covers(opId, mode) ? this : null;
+            }
             assert this.covers(opId, mode) : this + " does not cover " + opId;
             return this;
         } else {
@@ -689,7 +704,7 @@ final class TraceInterval extends IntervalHint {
                 }
             }
 
-            assert checkSplitChild(result, opId, toOffset, mode);
+            assert returnNull || checkSplitChild(result, opId, toOffset, mode);
             return result;
         }
     }

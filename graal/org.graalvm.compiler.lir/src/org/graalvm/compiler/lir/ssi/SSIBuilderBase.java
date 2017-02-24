@@ -29,8 +29,9 @@ import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.LIR;
-import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
-import org.graalvm.compiler.lir.StandardOp.LabelOp;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.lir.alloc.trace.GlobalLivenessInfo;
 
 import jdk.vm.ci.meta.Value;
 
@@ -39,10 +40,12 @@ public abstract class SSIBuilderBase {
     protected static final int LOG_LEVEL = Debug.INFO_LOG_LEVEL;
     protected final Value[] operands;
     protected final LIR lir;
+    private final GlobalLivenessInfo.Builder livenessInfo;
 
     public SSIBuilderBase(LIR lir) {
         this.lir = lir;
         this.operands = new Value[lir.numVariables()];
+        this.livenessInfo = new GlobalLivenessInfo.Builder(lir);
     }
 
     protected LIR getLIR() {
@@ -70,47 +73,62 @@ public abstract class SSIBuilderBase {
         // iterate all blocks in reverse order
         for (AbstractBlockBase<?> block : (AbstractBlockBase<?>[]) lir.getControlFlowGraph().getBlocks()) {
             try (Indent indent = Debug.logAndIndent(LOG_LEVEL, "Finish Block %s", block)) {
-                // set label
-                buildOutgoing(block, getLiveOut(block));
-                buildIncoming(block, getLiveIn(block));
+                buildIncoming(block);
+                buildOutgoing(block);
             }
         }
     }
 
-    private void buildIncoming(AbstractBlockBase<?> block, BitSet liveIn) {
+    public GlobalLivenessInfo getLivenessInfo() {
+        assert livenessInfo != null : "No liveness info collected";
+        return livenessInfo.createLivenessInfo();
+    }
+
+    private void buildIncoming(AbstractBlockBase<?> block) {
+        if (!GlobalLivenessInfo.storesIncoming(block)) {
+            assert block.getPredecessorCount() == 1;
+            assert GlobalLivenessInfo.storesOutgoing(block.getPredecessors()[0]) : "No incoming liveness info: " + block;
+            return;
+        }
+        if (block.getPredecessorCount() == 0) {
+            // start block
+            assert getLiveIn(block).isEmpty() : "liveIn for start block is not empty? " + getLiveIn(block);
+            return;
+        }
         /*
          * Collect live out of predecessors since there might be values not used in this block which
-         * might cause out/in mismatch.
+         * might cause out/in mismatch. Per construction the live sets of all predecessors are
+         * equal.
          */
-        BitSet predLiveOut = new BitSet(liveIn.length());
-        for (AbstractBlockBase<?> pred : block.getPredecessors()) {
-            predLiveOut.or(getLiveOut(pred));
-        }
+        BitSet predLiveOut = getLiveOut(block.getPredecessors()[0]);
         if (predLiveOut.isEmpty()) {
             return;
         }
 
-        Value[] values = new Value[predLiveOut.cardinality()];
-        assert values.length > 0;
-        int cnt = 0;
-        for (int i = predLiveOut.nextSetBit(0); i >= 0; i = predLiveOut.nextSetBit(i + 1)) {
-            values[cnt++] = liveIn.get(i) ? operands[i] : Value.ILLEGAL;
-        }
-        LabelOp label = SSIUtil.incoming(getLIR(), block);
-        label.addIncomingValues(values);
+        livenessInfo.addIncoming(block, bitSetToIntArray(predLiveOut));
     }
 
-    private void buildOutgoing(AbstractBlockBase<?> block, BitSet liveOut) {
-        if (liveOut.isEmpty()) {
+    private void buildOutgoing(AbstractBlockBase<?> block) {
+        BitSet liveOut = getLiveOut(block);
+        if (liveOut.isEmpty() || !GlobalLivenessInfo.storesOutgoing(block)) {
+            assert GlobalLivenessInfo.storesOutgoing(block) || block.getSuccessorCount() == 1;
+            assert GlobalLivenessInfo.storesOutgoing(block) || GlobalLivenessInfo.storesIncoming(block.getSuccessors()[0]) : "No outgoing liveness info: " + block;
             return;
         }
-        Value[] values = new Value[liveOut.cardinality()];
-        assert values.length > 0;
-        int cnt = 0;
-        for (int i = liveOut.nextSetBit(0); i >= 0; i = liveOut.nextSetBit(i + 1)) {
-            values[cnt++] = operands[i];
-        }
-        BlockEndOp blockEndOp = SSIUtil.outgoing(getLIR(), block);
-        blockEndOp.addOutgoingValues(values);
+        livenessInfo.addOutgoing(block, bitSetToIntArray(liveOut));
     }
+
+    private static int[] bitSetToIntArray(BitSet live) {
+        int[] vars = new int[live.cardinality()];
+        int cnt = 0;
+        for (int i = live.nextSetBit(0); i >= 0; i = live.nextSetBit(i + 1), cnt++) {
+            vars[cnt] = i;
+        }
+        return vars;
+    }
+
+    protected void recordVariable(LIRInstruction op, Variable var) {
+        livenessInfo.addVariable(op, var);
+    }
+
 }
