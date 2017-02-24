@@ -141,4 +141,24 @@ builds = [
 #    targets : [ gate ],
 #    name: "gate-mac-lite-9"
 #  }
+  ${common} ${java8Downloads} {
+    run : [
+        ["mx", "build"],
+        ["mx", "javadoc"],
+        ["zip", "-r", "javadoc.zip", "javadoc"],
+        ["git", "fetch", "origin", "gh-pages"],
+        ["git", "checkout", "-f", "FETCH_HEAD", "-B", "gh-pages"],
+        ["rm", "-rf", "javadoc"],
+        ["git", "status" ],
+        ["unzip", "-o", "javadoc.zip"],
+        ["git", "add", "javadoc"],
+        ["git", "config", "user.name", "Javadoc Publisher"],
+        ["git", "config", "user.email", "graal-dev@openjdk.java.net"],
+        ["git", "commit", "-m", [ "echo", "Javadoc as of", [ "date", "+%Y/%m/%d" ] ], "javadoc" ],
+        ["git", "push", "origin", "gh-pages"],
+    ],
+    capabilities : [linux, amd64],
+    targets : [post-merge],
+    name: "publish-javadoc"
+  }
 ]
