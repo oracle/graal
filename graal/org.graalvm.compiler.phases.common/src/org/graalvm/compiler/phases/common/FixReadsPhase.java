@@ -30,6 +30,7 @@ import org.graalvm.compiler.debug.DebugCounter;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.NodeStack;
+import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BinaryOpLogicNode;
@@ -71,6 +72,7 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
     private static final DebugCounter counterConditionalsKilled = Debug.counter("FixReads_KilledConditionals");
     private static final DebugCounter counterCanonicalizedSwitches = Debug.counter("FixReads_CanonicalizedSwitches");
     private static final DebugCounter counterConstantReplacements = Debug.counter("FixReads_ConstantReplacement");
+    private static final DebugCounter counterConstantInputReplacements = Debug.counter("FixReads_ConstantInputReplacement");
 
     private static class FixReadsClosure extends ScheduledNodeIterator {
 
@@ -82,7 +84,9 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
                 replaceCurrent(fixedAccess);
             } else if (node instanceof PiNode) {
                 PiNode piNode = (PiNode) node;
-                piNode.replaceAndDelete(piNode.getOriginalNode());
+                if (piNode.stamp().isCompatible(piNode.getOriginalNode().stamp())) {
+                    piNode.replaceAndDelete(piNode.getOriginalNode());
+                }
             }
         }
 
@@ -106,6 +110,29 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
 
         protected void processNode(Node node) {
             assert node.isAlive();
+
+            // Check if we can replace any of the inputs with a constant.
+            for (Position p : node.inputPositions()) {
+                Node input = p.get(node);
+                if (p.getInputType() == InputType.Value) {
+                    if (input instanceof ValueNode) {
+                        ValueNode valueNode = (ValueNode) input;
+                        if (valueNode instanceof ConstantNode) {
+                            // Input already is a constant.
+                        } else {
+                            Stamp bestStamp = getBestStamp(valueNode);
+                            Constant constant = bestStamp.asConstant();
+                            if (constant != null) {
+                                counterConstantInputReplacements.increment();
+                                ConstantNode stampConstant = ConstantNode.forConstant(bestStamp, constant, metaAccess, graph);
+                                assert stampConstant.stamp().isCompatible(valueNode.stamp());
+                                p.set(node, stampConstant);
+                            }
+                        }
+                    }
+                }
+            }
+
             if (node instanceof AbstractBeginNode) {
                 processAbstractBegin((AbstractBeginNode) node);
             } else if (node instanceof IfNode) {
@@ -131,7 +158,7 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
         private boolean checkReplaceWithConstant(Stamp newStamp, ValueNode node) {
             Constant constant = newStamp.asConstant();
             if (constant != null && !(node instanceof ConstantNode)) {
-                ConstantNode stampConstant = ConstantNode.forConstant(node.stamp(), constant, metaAccess, graph);
+                ConstantNode stampConstant = ConstantNode.forConstant(newStamp, constant, metaAccess, graph);
                 Debug.log("RawConditionElimination: constant stamp replaces %1s with %1s", node, stampConstant);
                 counterConstantReplacements.increment();
                 node.replaceAtUsages(InputType.Value, stampConstant);
