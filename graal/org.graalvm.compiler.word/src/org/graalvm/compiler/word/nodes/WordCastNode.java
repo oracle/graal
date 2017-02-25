@@ -34,6 +34,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -132,7 +133,7 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
             kind = value.getValueKind().changeType(kind.getPlatformKind());
         }
 
-        if (kind.equals(value.getValueKind())) {
+        if (kind.equals(value.getValueKind()) && !(value instanceof ConstantValue)) {
             generator.setResult(this, value);
         } else {
             AllocatableValue result = generator.getLIRGeneratorTool().newVariable(kind);
