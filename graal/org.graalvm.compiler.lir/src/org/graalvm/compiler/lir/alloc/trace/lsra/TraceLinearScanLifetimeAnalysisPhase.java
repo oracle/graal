@@ -52,6 +52,7 @@ import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
 import org.graalvm.compiler.lir.LIRValueUtil;
+import org.graalvm.compiler.lir.StandardOp.JumpOp;
 import org.graalvm.compiler.lir.StandardOp.LabelOp;
 import org.graalvm.compiler.lir.StandardOp.LoadConstantOp;
 import org.graalvm.compiler.lir.StandardOp.ValueMoveOp;
@@ -258,7 +259,7 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
             }
         }
 
-        private void addVariableDef(Variable operand, LIRInstruction op, RegisterPriority registerPriority) {
+        private TraceInterval addVariableDef(Variable operand, LIRInstruction op, RegisterPriority registerPriority) {
             int defPos = op.id();
 
             TraceInterval interval = allocator.getOrCreateInterval(operand);
@@ -293,6 +294,7 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
             if (Debug.isLogEnabled()) {
                 Debug.log("add def: %s defPos %d (%s)", interval, defPos, registerPriority.name());
             }
+            return interval;
         }
 
         private void addTemp(AllocatableValue operand, int tempPos, RegisterPriority registerPriority) {
@@ -529,7 +531,8 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
                             // number label instruction
                         instructionIndex--;
                         numberInstruction(block, instructions.get(0), instructionIndex);
-                        handleBlockBegin(block);
+                        AbstractBlockBase<?> pred = blockId == 0 ? null : blocks[blockId - 1];
+                        handleBlockBegin(block, pred);
                     }
                     if (Debug.isDumpEnabled(DUMP_DURING_ANALYSIS_LEVEL)) {
                         allocator.printIntervals("After Block " + block);
@@ -571,14 +574,23 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
             return allocator.intervalFor(varNum) != null;
         }
 
-        private void handleBlockBegin(AbstractBlockBase<?> block) {
+        private void handleBlockBegin(AbstractBlockBase<?> block, AbstractBlockBase<?> pred) {
             if (SSAUtil.isMerge(block)) {
                 // handle phis
                 // method parameters are fixed later on (see end of #buildIntervals)
                 LabelOp label = SSAUtil.phiIn(getLIR(), block);
+                JumpOp jump = pred == null ? null : SSAUtil.phiOut(getLIR(), pred);
                 for (int i = 0; i < label.getPhiSize(); i++) {
                     Variable var = asVariable(label.getIncomingValue(i));
-                    addVariableDef(var, label, RegisterPriority.ShouldHaveRegister);
+                    TraceInterval toInterval = addVariableDef(var, label, RegisterPriority.ShouldHaveRegister);
+                    // set hint for phis
+                    if (jump != null) {
+                        Value out = jump.getOutgoingValue(i);
+                        if (isVariable(out)) {
+                            TraceInterval fromInterval = allocator.getOrCreateInterval(asVariable(out));
+                            toInterval.setLocationHint(fromInterval);
+                        }
+                    }
                 }
             }
         }
@@ -589,7 +601,7 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
             GlobalLivenessInfo livenessInfo = allocator.getGlobalLivenessInfo();
             for (int varNum : livenessInfo.getBlockOut(block)) {
                 if (allocator.intervalFor(varNum) == null) {
-                    addVariableUse(asVariable(livenessInfo.getVariable(varNum)), 0, aliveOpId, RegisterPriority.None);
+                    addVariableUse(livenessInfo.getVariable(varNum), 0, aliveOpId, RegisterPriority.None);
                 }
             }
         }
