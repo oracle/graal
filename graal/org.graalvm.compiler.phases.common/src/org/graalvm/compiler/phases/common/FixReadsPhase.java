@@ -23,6 +23,7 @@
 package org.graalvm.compiler.phases.common;
 
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -34,10 +35,14 @@ import org.graalvm.compiler.graph.NodeStack;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BinaryOpLogicNode;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.MergeNode;
+import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
@@ -58,6 +63,8 @@ import org.graalvm.compiler.phases.graph.ScheduledNodeIterator;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.MapCursor;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -74,6 +81,7 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
     private static final DebugCounter counterCanonicalizedSwitches = Debug.counter("FixReads_CanonicalizedSwitches");
     private static final DebugCounter counterConstantReplacements = Debug.counter("FixReads_ConstantReplacement");
     private static final DebugCounter counterConstantInputReplacements = Debug.counter("FixReads_ConstantInputReplacement");
+    private static final DebugCounter counterBetterMergedStamps = Debug.counter("FixReads_BetterMergedStamp");
 
     private static class FixReadsClosure extends ScheduledNodeIterator {
 
@@ -101,11 +109,15 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
         private final StructuredGraph graph;
         private final MetaAccessProvider metaAccess;
         private final boolean replaceConstantInputs;
+        private final BlockMap<Integer> blockActionStart;
+        private final EconomicMap<MergeNode, EconomicMap<ValueNode, Stamp>> endMaps;
 
         RawConditionalEliminationVisitor(StructuredGraph graph, ScheduleResult schedule, MetaAccessProvider metaAccess) {
             this.graph = graph;
             this.schedule = schedule;
             this.metaAccess = metaAccess;
+            blockActionStart = new BlockMap<>(schedule.getCFG());
+            endMaps = EconomicMap.create();
             stampMap = graph.createNodeMap();
             undoOperations = new NodeStack();
             replaceConstantInputs = GraalOptions.ReplaceInputsWithConstantsBasedOnStamps.getValue(graph.getOptions());
@@ -145,6 +157,10 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
                 }
             }
 
+            if (node instanceof MergeNode) {
+                registerCombinedStamps((MergeNode) node);
+            }
+
             if (node instanceof AbstractBeginNode) {
                 processAbstractBegin((AbstractBeginNode) node);
             } else if (node instanceof IfNode) {
@@ -156,11 +172,93 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
             } else if (node instanceof ConditionalNode) {
                 processConditional((ConditionalNode) node);
             } else if (node instanceof UnaryNode) {
-                processUnaryNode((UnaryNode) node);
+                processUnary((UnaryNode) node);
+            } else if (node instanceof EndNode) {
+                processEnd((EndNode) node);
             }
         }
 
-        private void processUnaryNode(UnaryNode node) {
+        private void registerCombinedStamps(MergeNode node) {
+
+            EconomicMap<ValueNode, Stamp> endMap = endMaps.get(node);
+            MapCursor<ValueNode, Stamp> entries = endMap.getEntries();
+            while (entries.advance()) {
+                if (registerNewValueStamp(entries.getKey(), entries.getValue())) {
+                    counterBetterMergedStamps.increment();
+                }
+            }
+        }
+
+        private void processEnd(EndNode node) {
+            AbstractMergeNode abstractMerge = node.merge();
+            if (abstractMerge instanceof MergeNode) {
+                MergeNode merge = (MergeNode) abstractMerge;
+
+                NodeMap<Block> blockToNodeMap = this.schedule.getNodeToBlockMap();
+                Block mergeBlock = blockToNodeMap.get(merge);
+                Block mergeBlockDominator = mergeBlock.getDominator();
+                Block currentBlock = blockToNodeMap.get(node);
+
+                EconomicMap<ValueNode, Stamp> currentEndMap = endMaps.get(merge);
+
+                if (currentEndMap == null || !currentEndMap.isEmpty()) {
+
+                    EconomicMap<ValueNode, Stamp> endMap = EconomicMap.create();
+                    int lastMark = undoOperations.size();
+                    while (currentBlock != mergeBlockDominator) {
+                        int mark = blockActionStart.get(currentBlock);
+                        for (int i = lastMark - 1; i >= mark; --i) {
+                            ValueNode nodeWithNewStamp = (ValueNode) undoOperations.get(i);
+
+                            if (nodeWithNewStamp.isDeleted() || nodeWithNewStamp instanceof LogicNode || nodeWithNewStamp instanceof ConstantNode) {
+                                continue;
+                            }
+
+                            boolean shouldProcess;
+                            if (blockToNodeMap.isNew(nodeWithNewStamp)) {
+                                shouldProcess = true;
+                            } else {
+                                Block curBlock = blockToNodeMap.get(nodeWithNewStamp);
+                                if (nodeWithNewStamp instanceof PhiNode) {
+                                    PhiNode phiNode = (PhiNode) nodeWithNewStamp;
+                                    curBlock = blockToNodeMap.get(phiNode.merge());
+                                }
+                                shouldProcess = curBlock.getId() <= mergeBlockDominator.getId();
+                            }
+                            if (shouldProcess) {
+                                // Node with new stamp in path to the merge block dominator and that
+                                // at the same time was defined at least in the merge block
+                                // dominator (i.e., therefore can be used after the merge.)
+
+                                Stamp bestStamp = getBestStamp(nodeWithNewStamp);
+                                assert bestStamp != null;
+
+                                if (currentEndMap != null) {
+                                    Stamp otherEndsStamp = currentEndMap.get(nodeWithNewStamp);
+                                    if (otherEndsStamp == null) {
+                                        // No stamp registered in one of the previously processed
+                                        // ends => skip.
+                                        continue;
+                                    }
+                                    bestStamp = bestStamp.meet(otherEndsStamp);
+                                }
+
+                                if (bestStamp.equals(bestStamp.unrestricted()) || bestStamp.equals(nodeWithNewStamp.stamp())) {
+                                    // No point in registering the stamp.
+                                } else {
+                                    endMap.put(nodeWithNewStamp, bestStamp);
+                                }
+                            }
+                        }
+                        currentBlock = currentBlock.getDominator();
+                    }
+
+                    endMaps.put(merge, endMap);
+                }
+            }
+        }
+
+        private void processUnary(UnaryNode node) {
             Stamp newStamp = node.foldStamp(getBestStamp(node.getValue()));
             if (!checkReplaceWithConstant(newStamp, node)) {
                 registerNewValueStamp(node, newStamp);
@@ -281,14 +379,16 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
             registerNewStamp(condition, negated ? StampFactory.contradiction() : StampFactory.tautology());
         }
 
-        protected void registerNewValueStamp(ValueNode value, Stamp newStamp) {
+        protected boolean registerNewValueStamp(ValueNode value, Stamp newStamp) {
             if (newStamp != null && !value.isConstant()) {
                 Stamp currentStamp = getBestStamp(value);
                 Stamp betterStamp = currentStamp.tryImproveWith(newStamp);
                 if (betterStamp != null) {
                     registerNewStamp(value, betterStamp);
+                    return true;
                 }
             }
+            return false;
         }
 
         protected void registerNewStamp(ValueNode value, Stamp newStamp) {
@@ -311,6 +411,7 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
         @Override
         public Integer enter(Block b) {
             int mark = undoOperations.size();
+            blockActionStart.put(b, mark);
             for (Node n : schedule.getBlockToNodesMap().get(b)) {
                 if (n.isAlive()) {
                     processNode(n);

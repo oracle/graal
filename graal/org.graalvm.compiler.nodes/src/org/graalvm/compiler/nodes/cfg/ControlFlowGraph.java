@@ -305,10 +305,23 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                     dominator = ((dominator == null) ? pred : commonDominatorRaw(dominator, pred));
                 }
             }
-            // set dominator
+
+            // Set dominator.
             block.setDominator(dominator);
-            block.setDominatedSibling(dominator.getFirstDominated());
-            dominator.setFirstDominated(block);
+
+            // Keep dominated linked list sorted by block ID such that predecessor blocks are always
+            // before successor blocks.
+            Block currentDominated = dominator.getFirstDominated();
+            if (currentDominated != null && currentDominated.getId() < block.getId()) {
+                while (currentDominated.getDominatedSibling() != null && currentDominated.getDominatedSibling().getId() < block.getId()) {
+                    currentDominated = currentDominated.getDominatedSibling();
+                }
+                block.setDominatedSibling(currentDominated.getDominatedSibling());
+                currentDominated.setDominatedSibling(block);
+            } else {
+                block.setDominatedSibling(dominator.getFirstDominated());
+                dominator.setFirstDominated(block);
+            }
 
             curMaxDominatorDepth = Math.max(curMaxDominatorDepth, block.getDominatorDepth());
         }
@@ -679,7 +692,6 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     public void computePostdominators() {
 
         Block[] reversePostOrderTmp = this.reversePostOrder;
-
         outer: for (int j = reversePostOrderTmp.length - 1; j >= 0; --j) {
             Block block = reversePostOrderTmp[j];
             if (block.isLoopEnd()) {
