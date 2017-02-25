@@ -32,6 +32,7 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.And;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Or;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.Debug;
@@ -192,7 +193,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
 
     }
 
-    private static class PhiInfoElement {
+    private static final class PhiInfoElement {
 
         private InfoElement[] infoElements;
 
@@ -439,26 +440,56 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                         }
                     }
 
-                    if (phi.stamp().tryImproveWith(bestPossibleStamp) != null) {
-                        ValuePhiNode newPhi = graph.addWithoutUnique(new ValuePhiNode(bestPossibleStamp, merge));
-                        for (int i = 0; i < phi.valueCount(); ++i) {
-                            ValueNode valueAt = phi.valueAt(i);
-                            if (bestPossibleStamp.meet(valueAt.stamp()).equals(bestPossibleStamp)) {
-                                // Pi not required here.
-                            } else {
-                                assert infoElements[i] != null;
-                                Stamp curBestStamp = infoElements[i].getStamp();
-                                ValueNode input = infoElements[i].getProxifiedInput();
-                                if (input == null) {
-                                    input = valueAt;
-                                }
-                                PiNode piNode = graph.unique(new PiNode(input, curBestStamp, (ValueNode) infoElements[i].guard));
-                                valueAt = piNode;
+                    Stamp oldStamp = phi.stamp();
+                    if (oldStamp.tryImproveWith(bestPossibleStamp) != null) {
+
+                        // Need to be careful to not run into stamp update cycles with the iterative
+                        // canonicalization.
+                        boolean allow = false;
+                        if (bestPossibleStamp instanceof ObjectStamp) {
+                            // Always allow object stamps.
+                            allow = true;
+                        } else if (bestPossibleStamp instanceof IntegerStamp) {
+                            IntegerStamp integerStamp = (IntegerStamp) bestPossibleStamp;
+                            IntegerStamp oldIntegerStamp = (IntegerStamp) oldStamp;
+                            if (integerStamp.isPositive() != oldIntegerStamp.isPositive()) {
+                                allow = true;
+                            } else if (integerStamp.isNegative() != oldIntegerStamp.isNegative()) {
+                                allow = true;
+                            } else if (integerStamp.isStrictlyPositive() != oldIntegerStamp.isStrictlyPositive()) {
+                                allow = true;
+                            } else if (integerStamp.isStrictlyNegative() != oldIntegerStamp.isStrictlyNegative()) {
+                                allow = true;
+                            } else if (integerStamp.asConstant() != null) {
+                                allow = true;
+                            } else if (oldStamp.unrestricted().equals(oldStamp)) {
+                                allow = true;
                             }
-                            newPhi.addInput(valueAt);
+                        } else {
+                            allow = (bestPossibleStamp.asConstant() != null);
                         }
-                        counterPhiStampsImproved.increment();
-                        phi.replaceAtUsagesAndDelete(newPhi);
+
+                        if (allow) {
+                            ValuePhiNode newPhi = graph.addWithoutUnique(new ValuePhiNode(bestPossibleStamp, merge));
+                            for (int i = 0; i < phi.valueCount(); ++i) {
+                                ValueNode valueAt = phi.valueAt(i);
+                                if (bestPossibleStamp.meet(valueAt.stamp()).equals(bestPossibleStamp)) {
+                                    // Pi not required here.
+                                } else {
+                                    assert infoElements[i] != null;
+                                    Stamp curBestStamp = infoElements[i].getStamp();
+                                    ValueNode input = infoElements[i].getProxifiedInput();
+                                    if (input == null) {
+                                        input = valueAt;
+                                    }
+                                    PiNode piNode = graph.unique(new PiNode(input, curBestStamp, (ValueNode) infoElements[i].guard));
+                                    valueAt = piNode;
+                                }
+                                newPhi.addInput(valueAt);
+                            }
+                            counterPhiStampsImproved.increment();
+                            phi.replaceAtUsagesAndDelete(newPhi);
+                        }
                     }
                 }
             }
@@ -475,7 +506,8 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                     ValueNode valueAt = phi.valueAt(end);
                     InfoElement infoElement = this.getInfoElements(valueAt);
                     while (infoElement != null) {
-                        if (phi.stamp().tryImproveWith(infoElement.getStamp()) != null) {
+                        Stamp newStamp = infoElement.getStamp();
+                        if (phi.stamp().tryImproveWith(newStamp) != null) {
                             if (mergeMap == null) {
                                 mergeMap = EconomicMap.create();
                                 mergeMaps.put(merge, mergeMap);
