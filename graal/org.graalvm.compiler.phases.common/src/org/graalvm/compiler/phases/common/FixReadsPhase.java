@@ -42,6 +42,7 @@ import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.UnaryOpLogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.BinaryNode;
+import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.UnaryNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph.RecursiveVisitor;
@@ -67,6 +68,7 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
 
     private static final DebugCounter counterStampsRegistered = Debug.counter("FixReads_StampsRegistered");
     private static final DebugCounter counterIfsKilled = Debug.counter("FixReads_KilledIfs");
+    private static final DebugCounter counterConditionalsKilled = Debug.counter("FixReads_KilledConditionals");
     private static final DebugCounter counterCanonicalizedSwitches = Debug.counter("FixReads_CanonicalizedSwitches");
     private static final DebugCounter counterConstantReplacements = Debug.counter("FixReads_ConstantReplacement");
 
@@ -112,6 +114,8 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
                 processIntegerSwitch((IntegerSwitchNode) node);
             } else if (node instanceof BinaryNode) {
                 processBinary((BinaryNode) node);
+            } else if (node instanceof ConditionalNode) {
+                processConditional((ConditionalNode) node);
             } else if (node instanceof UnaryNode) {
                 processUnaryNode((UnaryNode) node);
             }
@@ -164,6 +168,19 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
                 node.replaceAtPredecessor(survivingSuccessor);
                 GraphUtil.killCFG(node);
                 counterIfsKilled.increment();
+            }
+        }
+
+        private void processConditional(ConditionalNode node) {
+            TriState result = tryProveCondition(node.condition());
+            if (result != TriState.UNKNOWN) {
+                boolean isTrue = (result == TriState.TRUE);
+                counterConditionalsKilled.increment();
+                node.replaceAndDelete(isTrue ? node.trueValue() : node.falseValue());
+            } else {
+                Stamp trueStamp = getBestStamp(node.trueValue());
+                Stamp falseStamp = getBestStamp(node.falseValue());
+                registerNewStamp(node, trueStamp.meet(falseStamp));
             }
         }
 
