@@ -48,6 +48,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.UnaryOpLogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.BinaryNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.UnaryNode;
@@ -179,7 +180,6 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
         }
 
         private void registerCombinedStamps(MergeNode node) {
-
             EconomicMap<ValueNode, Stamp> endMap = endMaps.get(node);
             MapCursor<ValueNode, Stamp> entries = endMap.getEntries();
             while (entries.advance()) {
@@ -204,6 +204,23 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
                 if (currentEndMap == null || !currentEndMap.isEmpty()) {
 
                     EconomicMap<ValueNode, Stamp> endMap = EconomicMap.create();
+
+                    // Process phis
+                    for (ValuePhiNode phi : merge.valuePhis()) {
+                        if (currentEndMap == null || currentEndMap.containsKey(phi)) {
+                            ValueNode valueAt = phi.valueAt(node);
+                            Stamp bestStamp = getBestStamp(valueAt);
+
+                            if (currentEndMap != null) {
+                                bestStamp = bestStamp.meet(currentEndMap.get(phi));
+                            }
+
+                            if (!bestStamp.equals(phi.stamp())) {
+                                endMap.put(phi, bestStamp);
+                            }
+                        }
+                    }
+
                     int lastMark = undoOperations.size();
                     while (currentBlock != mergeBlockDominator) {
                         int mark = blockActionStart.get(currentBlock);
