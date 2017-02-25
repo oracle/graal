@@ -290,7 +290,7 @@ public class FloatStamp extends PrimitiveStamp {
 
     @Override
     public JavaConstant asConstant() {
-        if (nonNaN && Double.compare(lowerBound, upperBound) == 0) {
+        if (nonNaN && Double.compare(lowerBound, upperBound) == 0 && !contains(0.0)) {
             switch (getBits()) {
                 case 32:
                     return JavaConstant.forFloat((float) lowerBound);
