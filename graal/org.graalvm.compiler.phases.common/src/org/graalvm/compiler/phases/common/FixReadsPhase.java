@@ -23,6 +23,7 @@
 package org.graalvm.compiler.phases.common;
 
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.Debug;
@@ -99,6 +100,7 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
         private final ScheduleResult schedule;
         private final StructuredGraph graph;
         private final MetaAccessProvider metaAccess;
+        private final boolean replaceConstantInputs;
 
         RawConditionalEliminationVisitor(StructuredGraph graph, ScheduleResult schedule, MetaAccessProvider metaAccess) {
             this.graph = graph;
@@ -106,27 +108,37 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
             this.metaAccess = metaAccess;
             stampMap = graph.createNodeMap();
             undoOperations = new NodeStack();
+            replaceConstantInputs = GraalOptions.ReplaceInputsWithConstantsBasedOnStamps.getValue(graph.getOptions());
         }
 
         protected void processNode(Node node) {
             assert node.isAlive();
 
-            // Check if we can replace any of the inputs with a constant.
-            for (Position p : node.inputPositions()) {
-                Node input = p.get(node);
-                if (p.getInputType() == InputType.Value) {
-                    if (input instanceof ValueNode) {
-                        ValueNode valueNode = (ValueNode) input;
-                        if (valueNode instanceof ConstantNode) {
-                            // Input already is a constant.
-                        } else {
-                            Stamp bestStamp = getBestStamp(valueNode);
-                            Constant constant = bestStamp.asConstant();
-                            if (constant != null) {
-                                counterConstantInputReplacements.increment();
-                                ConstantNode stampConstant = ConstantNode.forConstant(bestStamp, constant, metaAccess, graph);
-                                assert stampConstant.stamp().isCompatible(valueNode.stamp());
-                                p.set(node, stampConstant);
+            if (replaceConstantInputs) {
+                // Check if we can replace any of the inputs with a constant.
+                for (Position p : node.inputPositions()) {
+                    Node input = p.get(node);
+                    if (p.getInputType() == InputType.Value) {
+                        if (input instanceof ValueNode) {
+                            ValueNode valueNode = (ValueNode) input;
+                            if (valueNode instanceof ConstantNode) {
+                                // Input already is a constant.
+                            } else {
+                                Stamp bestStamp = getBestStamp(valueNode);
+                                Constant constant = bestStamp.asConstant();
+                                if (constant != null) {
+                                    if (bestStamp instanceof FloatStamp) {
+                                        FloatStamp floatStamp = (FloatStamp) bestStamp;
+                                        if (floatStamp.contains(0.0d)) {
+                                            // Could also be -0.0d.
+                                            continue;
+                                        }
+                                    }
+                                    counterConstantInputReplacements.increment();
+                                    ConstantNode stampConstant = ConstantNode.forConstant(bestStamp, constant, metaAccess, graph);
+                                    assert stampConstant.stamp().isCompatible(valueNode.stamp());
+                                    p.set(node, stampConstant);
+                                }
                             }
                         }
                     }

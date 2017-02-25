@@ -290,7 +290,7 @@ public class FloatStamp extends PrimitiveStamp {
 
     @Override
     public JavaConstant asConstant() {
-        if (nonNaN && Double.compare(lowerBound, upperBound) == 0 && !contains(0.0)) {
+        if (nonNaN && Double.compare(lowerBound, upperBound) == 0) {
             switch (getBits()) {
                 case 32:
                     return JavaConstant.forFloat((float) lowerBound);
@@ -299,10 +299,6 @@ public class FloatStamp extends PrimitiveStamp {
             }
         }
         return null;
-    }
-
-    public boolean isConstant() {
-        return (nonNaN && Double.compare(lowerBound, upperBound) == 0);
     }
 
     private static final ArithmeticOpTable OPS = new ArithmeticOpTable(
