@@ -58,6 +58,7 @@ import org.graalvm.compiler.lir.alloc.trace.TraceAllocationPhase;
 import org.graalvm.compiler.lir.alloc.trace.TraceAllocationPhase.TraceAllocationContext;
 import org.graalvm.compiler.lir.alloc.trace.TraceBuilderPhase;
 import org.graalvm.compiler.lir.alloc.trace.TraceRegisterAllocationPhase;
+import org.graalvm.compiler.lir.alloc.trace.TraceUtil;
 import org.graalvm.compiler.lir.alloc.trace.lsra.TraceInterval.RegisterPriority;
 import org.graalvm.compiler.lir.alloc.trace.lsra.TraceLinearScanAllocationPhase.TraceLinearScanAllocationContext;
 import org.graalvm.compiler.lir.debug.IntervalDumper;
@@ -1088,6 +1089,14 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
                     printInterval(interval, visitor);
                 }
             }
+        }
+
+        boolean hasInterTracePredecessor(AbstractBlockBase<?> block) {
+            return TraceUtil.hasInterTracePredecessor(traceBuilderResult, trace, block);
+        }
+
+        boolean hasInterTraceSuccessor(AbstractBlockBase<?> block) {
+            return TraceUtil.hasInterTraceSuccessor(traceBuilderResult, trace, block);
         }
 
     }

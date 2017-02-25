@@ -195,23 +195,29 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
         }
 
         private void handleBlockBegin(AbstractBlockBase<?> block, ArrayList<LIRInstruction> instructions) {
-            assert instructions.equals(allocator.getLIR().getLIRforBlock(block));
-            GlobalLivenessInfo li = allocator.getGlobalLivenessInfo();
-            LIRInstruction instruction = instructions.get(0);
-            OperandMode mode = OperandMode.DEF;
-            int[] live = li.getBlockIn(block);
-            Value[] values = calculateBlockBoundaryValues(instruction, live, mode);
-            li.setInLocations(block, values);
+            if (allocator.hasInterTracePredecessor(block)) {
+                /* Only materialize the locations array if there is an incoming inter-trace edge. */
+                assert instructions.equals(allocator.getLIR().getLIRforBlock(block));
+                GlobalLivenessInfo li = allocator.getGlobalLivenessInfo();
+                LIRInstruction instruction = instructions.get(0);
+                OperandMode mode = OperandMode.DEF;
+                int[] live = li.getBlockIn(block);
+                Value[] values = calculateBlockBoundaryValues(instruction, live, mode);
+                li.setInLocations(block, values);
+            }
         }
 
         private void handleBlockEnd(AbstractBlockBase<?> block, ArrayList<LIRInstruction> instructions) {
-            assert instructions.equals(allocator.getLIR().getLIRforBlock(block));
-            GlobalLivenessInfo li = allocator.getGlobalLivenessInfo();
-            LIRInstruction instruction = instructions.get(instructions.size() - 1);
-            OperandMode mode = OperandMode.USE;
-            int[] live = li.getBlockOut(block);
-            Value[] values = calculateBlockBoundaryValues(instruction, live, mode);
-            li.setOutLocations(block, values);
+            if (allocator.hasInterTraceSuccessor(block)) {
+                /* Only materialize the locations array if there is an outgoing inter-trace edge. */
+                assert instructions.equals(allocator.getLIR().getLIRforBlock(block));
+                GlobalLivenessInfo li = allocator.getGlobalLivenessInfo();
+                LIRInstruction instruction = instructions.get(instructions.size() - 1);
+                OperandMode mode = OperandMode.USE;
+                int[] live = li.getBlockOut(block);
+                Value[] values = calculateBlockBoundaryValues(instruction, live, mode);
+                li.setOutLocations(block, values);
+            }
         }
 
         private Value[] calculateBlockBoundaryValues(LIRInstruction instruction, int[] live, OperandMode mode) {

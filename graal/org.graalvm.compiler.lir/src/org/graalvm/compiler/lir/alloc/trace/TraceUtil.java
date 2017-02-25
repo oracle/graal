@@ -86,4 +86,28 @@ public class TraceUtil {
          */
         return instructions.get(1) instanceof JumpOp;
     }
+
+    public static boolean hasInterTracePredecessor(TraceBuilderResult result, Trace trace, AbstractBlockBase<?> block) {
+        assert result.getTraceForBlock(block).equals(trace);
+        if (block.getPredecessorCount() == 0) {
+            // start block
+            return false;
+        }
+        if (block.getPredecessorCount() == 1) {
+            return !result.getTraceForBlock(block.getPredecessors()[0]).equals(trace);
+        }
+        return true;
+    }
+
+    public static boolean hasInterTraceSuccessor(TraceBuilderResult result, Trace trace, AbstractBlockBase<?> block) {
+        assert result.getTraceForBlock(block).equals(trace);
+        if (block.getSuccessorCount() == 0) {
+            // method end block
+            return false;
+        }
+        if (block.getSuccessorCount() == 1) {
+            return !result.getTraceForBlock(block.getSuccessors()[0]).equals(trace);
+        }
+        return true;
+    }
 }
