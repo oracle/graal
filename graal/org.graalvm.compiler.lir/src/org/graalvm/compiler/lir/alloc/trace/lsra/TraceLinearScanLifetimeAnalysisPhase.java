@@ -622,22 +622,29 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
                 for (AbstractBlockBase<?> block : sortedBlocks()) {
                     LabelOp label = (LabelOp) getLIR().getLIRforBlock(block).get(0);
                     for (AbstractBlockBase<?> pred : block.getPredecessors()) {
-                        if (isAllocated(block, pred)) {
-                            int[] liveVars = livenessInfo.getBlockIn(block);
-                            Value[] outLocation = livenessInfo.getOutLocation(pred);
-
-                            for (int i = 0; i < liveVars.length; i++) {
-                                int varNum = liveVars[i];
-                                Value fromValue = outLocation[i];
-                                if (!LIRValueUtil.isConstantValue(fromValue)) {
-                                    addInterTraceHint(label, varNum, fromValue);
-                                }
-                            }
-                        }
+                        addInterTraceHints(livenessInfo, pred, block, label);
                     }
                 }
             } catch (Throwable e) {
                 throw Debug.handle(e);
+            }
+        }
+
+        private void addInterTraceHints(GlobalLivenessInfo livenessInfo, AbstractBlockBase<?> from, AbstractBlockBase<?> to, LabelOp label) {
+            if (isAllocated(to, from)) {
+                int[] liveVars = livenessInfo.getBlockIn(to);
+                Value[] outLocation = livenessInfo.getOutLocation(from);
+
+                for (int i = 0; i < liveVars.length; i++) {
+                    int varNum = liveVars[i];
+                    TraceInterval toInterval = allocator.intervalFor(varNum);
+                    if (toInterval != null && !toInterval.hasHint()) {
+                        Value fromValue = outLocation[i];
+                        if (!LIRValueUtil.isConstantValue(fromValue)) {
+                            addInterTraceHint(label, varNum, fromValue);
+                        }
+                    }
+                }
             }
         }
 

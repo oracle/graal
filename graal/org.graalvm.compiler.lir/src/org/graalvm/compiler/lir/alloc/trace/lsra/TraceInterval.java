@@ -448,6 +448,10 @@ final class TraceInterval extends IntervalHint {
         locationHint = interval;
     }
 
+    public boolean hasHint() {
+        return locationHint != null;
+    }
+
     public boolean isSplitParent() {
         return splitParent == this;
     }
