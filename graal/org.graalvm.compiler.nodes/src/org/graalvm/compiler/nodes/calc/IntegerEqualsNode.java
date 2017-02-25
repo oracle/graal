@@ -193,17 +193,17 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
     }
 
     @Override
-    public Stamp getSucceedingStampForX(boolean negated) {
+    public Stamp getSucceedingStampForX(boolean negated, Stamp xStamp, Stamp yStamp) {
         if (!negated) {
-            return getX().stamp().join(getY().stamp());
+            return xStamp.join(yStamp);
         }
         return null;
     }
 
     @Override
-    public Stamp getSucceedingStampForY(boolean negated) {
+    public Stamp getSucceedingStampForY(boolean negated, Stamp xStamp, Stamp yStamp) {
         if (!negated) {
-            return getX().stamp().join(getY().stamp());
+            return xStamp.join(yStamp);
         }
         return null;
     }

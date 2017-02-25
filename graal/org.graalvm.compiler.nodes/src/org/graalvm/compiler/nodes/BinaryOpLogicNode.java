@@ -91,9 +91,9 @@ public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerabl
         return this;
     }
 
-    public abstract Stamp getSucceedingStampForX(boolean negated);
+    public abstract Stamp getSucceedingStampForX(boolean negated, Stamp xStamp, Stamp yStamp);
 
-    public abstract Stamp getSucceedingStampForY(boolean negated);
+    public abstract Stamp getSucceedingStampForY(boolean negated, Stamp xStamp, Stamp yStamp);
 
     public abstract TriState tryFold(Stamp xStamp, Stamp yStamp);
 }

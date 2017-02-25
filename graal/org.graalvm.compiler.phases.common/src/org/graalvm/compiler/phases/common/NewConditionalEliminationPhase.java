@@ -34,7 +34,6 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Or;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCounter;
 import org.graalvm.compiler.graph.Node;
@@ -389,14 +388,14 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
             } else if (condition instanceof BinaryOpLogicNode) {
                 BinaryOpLogicNode binaryOpLogicNode = (BinaryOpLogicNode) condition;
                 ValueNode x = binaryOpLogicNode.getX();
+                ValueNode y = binaryOpLogicNode.getY();
                 if (!x.isConstant() && maybeMultipleUsages(x)) {
-                    Stamp newStampX = binaryOpLogicNode.getSucceedingStampForX(negated);
+                    Stamp newStampX = binaryOpLogicNode.getSucceedingStampForX(negated, x.stamp(), getSafeStamp(y));
                     registerNewStamp(x, newStampX, guard);
                 }
 
-                ValueNode y = binaryOpLogicNode.getY();
                 if (!y.isConstant() && maybeMultipleUsages(y)) {
-                    Stamp newStampY = binaryOpLogicNode.getSucceedingStampForY(negated);
+                    Stamp newStampY = binaryOpLogicNode.getSucceedingStampForY(negated, getSafeStamp(x), y.stamp());
                     registerNewStamp(y, newStampY, guard);
                 }
                 if (condition instanceof IntegerEqualsNode && guard instanceof DeoptimizingGuard && !negated) {
@@ -450,6 +449,13 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 }
             }
             return null;
+        }
+
+        private static Stamp getSafeStamp(ValueNode x) {
+            if (x.isConstant()) {
+                return x.stamp();
+            }
+            return x.stamp().unrestricted();
         }
 
         /**
@@ -660,13 +666,13 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 }
                 if (thisGuard != null) {
                     if (!x.isConstant()) {
-                        Stamp newStampX = binaryOpLogicNode.getSucceedingStampForX(thisGuard.isNegated());
+                        Stamp newStampX = binaryOpLogicNode.getSucceedingStampForX(thisGuard.isNegated(), x.stamp(), getSafeStamp(y));
                         if (newStampX != null && foldPendingTest(thisGuard, x, newStampX, rewireGuardFunction)) {
                             return true;
                         }
                     }
                     if (!y.isConstant()) {
-                        Stamp newStampY = binaryOpLogicNode.getSucceedingStampForY(thisGuard.isNegated());
+                        Stamp newStampY = binaryOpLogicNode.getSucceedingStampForY(thisGuard.isNegated(), getSafeStamp(x), y.stamp());
                         if (newStampY != null && foldPendingTest(thisGuard, y, newStampY, rewireGuardFunction)) {
                             return true;
                         }
@@ -727,10 +733,10 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 registerNewCondition(condition, negated, beginNode);
             } else if (predecessor instanceof TypeSwitchNode) {
                 TypeSwitchNode typeSwitch = (TypeSwitchNode) predecessor;
-                processTypeSwitch(beginNode, predecessor, typeSwitch);
+                processTypeSwitch(beginNode, typeSwitch);
             } else if (predecessor instanceof IntegerSwitchNode) {
                 IntegerSwitchNode integerSwitchNode = (IntegerSwitchNode) predecessor;
-                processIntegerSwitch(beginNode, predecessor, integerSwitchNode);
+                processIntegerSwitch(beginNode, integerSwitchNode);
             }
         }
 
@@ -742,42 +748,23 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
             }
         }
 
-        protected void processIntegerSwitch(AbstractBeginNode beginNode, Node predecessor, IntegerSwitchNode integerSwitchNode) {
+        protected void processIntegerSwitch(AbstractBeginNode beginNode, IntegerSwitchNode integerSwitchNode) {
             ValueNode value = integerSwitchNode.value();
             if (maybeMultipleUsages(value)) {
-                Stamp stamp = null;
-                for (int i = 0; i < integerSwitchNode.keyCount(); i++) {
-                    if (integerSwitchNode.keySuccessor(i) == predecessor) {
-                        if (stamp == null) {
-                            stamp = StampFactory.forConstant(integerSwitchNode.keyAt(i));
-                        } else {
-                            stamp = stamp.meet(StampFactory.forConstant(integerSwitchNode.keyAt(i)));
-                        }
-                    }
-                }
-
+                Stamp stamp = integerSwitchNode.getValueStampForSuccessor(beginNode);
                 if (stamp != null) {
                     registerNewStamp(value, stamp, beginNode);
                 }
             }
         }
 
-        protected void processTypeSwitch(AbstractBeginNode beginNode, Node predecessor, TypeSwitchNode typeSwitch) {
+        protected void processTypeSwitch(AbstractBeginNode beginNode, TypeSwitchNode typeSwitch) {
             ValueNode hub = typeSwitch.value();
             if (hub instanceof LoadHubNode) {
                 LoadHubNode loadHub = (LoadHubNode) hub;
                 ValueNode value = loadHub.getValue();
                 if (maybeMultipleUsages(value)) {
-                    Stamp stamp = null;
-                    for (int i = 0; i < typeSwitch.keyCount(); i++) {
-                        if (typeSwitch.keySuccessor(i) == predecessor) {
-                            if (stamp == null) {
-                                stamp = StampFactory.objectNonNull(TypeReference.createExactTrusted(typeSwitch.typeAt(i)));
-                            } else {
-                                stamp = stamp.meet(StampFactory.objectNonNull(TypeReference.createExactTrusted(typeSwitch.typeAt(i))));
-                            }
-                        }
-                    }
+                    Stamp stamp = typeSwitch.getValueStampForSuccessor(beginNode);
                     if (stamp != null) {
                         registerNewStamp(value, stamp, beginNode);
                     }
