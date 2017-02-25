@@ -175,7 +175,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         List<KeyData> newKeyDatas = new ArrayList<>(keys.length);
         ArrayList<AbstractBeginNode> newSuccessors = new ArrayList<>(blockSuccessorCount());
         for (int i = 0; i < keys.length; i++) {
-            if (integerStamp.contains(keys[i])) {
+            if (integerStamp.contains(keys[i]) && keySuccessor(i) != defaultSuccessor()) {
                 newKeyDatas.add(new KeyData(keys[i], keyProbabilities[i], addNewSuccessor(keySuccessor(i), newSuccessors)));
             }
         }
@@ -368,12 +368,14 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
     @Override
     public Stamp getValueStampForSuccessor(AbstractBeginNode beginNode) {
         Stamp result = null;
-        for (int i = 0; i < keyCount(); i++) {
-            if (keySuccessor(i) == beginNode) {
-                if (result == null) {
-                    result = StampFactory.forConstant(keyAt(i));
-                } else {
-                    result = result.meet(StampFactory.forConstant(keyAt(i)));
+        if (beginNode != this.defaultSuccessor()) {
+            for (int i = 0; i < keyCount(); i++) {
+                if (keySuccessor(i) == beginNode) {
+                    if (result == null) {
+                        result = StampFactory.forConstant(keyAt(i));
+                    } else {
+                        result = result.meet(StampFactory.forConstant(keyAt(i)));
+                    }
                 }
             }
         }
