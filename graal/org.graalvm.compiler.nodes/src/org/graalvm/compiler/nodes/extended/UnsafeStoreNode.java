@@ -69,6 +69,12 @@ public final class UnsafeStoreNode extends UnsafeAccessNode implements StateSpli
         assert accessKind != JavaKind.Void && accessKind != JavaKind.Illegal;
     }
 
+    @NodeIntrinsic
+    public static native Object storeObject(Object object, long offset, Object value, @ConstantNodeParameter JavaKind kind, @ConstantNodeParameter LocationIdentity locationIdentity);
+
+    @NodeIntrinsic
+    public static native Object storeChar(Object object, long offset, char value, @ConstantNodeParameter JavaKind kind, @ConstantNodeParameter LocationIdentity locationIdentity);
+
     @Override
     public FrameState stateAfter() {
         return stateAfter;

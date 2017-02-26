@@ -46,6 +46,7 @@ import org.graalvm.compiler.hotspot.phases.WriteBarrierAdditionPhase;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.extended.UnsafeCopyNode;
 import org.graalvm.compiler.nodes.extended.UnsafeLoadNode;
+import org.graalvm.compiler.nodes.extended.UnsafeStoreNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.SnippetTemplate;
@@ -53,7 +54,6 @@ import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
-import org.graalvm.compiler.replacements.nodes.DirectObjectStoreNode;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Unsigned;
 import org.graalvm.compiler.word.Word;
@@ -206,7 +206,7 @@ public class UnsafeArrayCopySnippets implements Snippets {
 
     /**
      * For this kind, Object, we want to avoid write barriers between writes, but instead have them
-     * at the end of the snippet. This is done by using {@link DirectObjectStoreNode}, and rely on
+     * at the end of the snippet. This is done by using {@link UnsafeStoreNode}, and rely on
      * {@link WriteBarrierAdditionPhase} to put write barriers after the {@link UnsafeArrayCopyNode}
      * with kind Object.
      */
@@ -220,13 +220,13 @@ public class UnsafeArrayCopySnippets implements Snippets {
             long start = (long) (length - 1) * scale;
             for (long i = start; i >= 0; i -= scale) {
                 Object a = UnsafeLoadNode.load(src, arrayBaseOffset + i + (long) srcPos * scale, kind, arrayLocation);
-                DirectObjectStoreNode.storeObject(dest, arrayBaseOffset, i + (long) destPos * scale, a, getArrayLocation(kind), kind);
+                UnsafeStoreNode.storeObject(dest, arrayBaseOffset + i + (long) destPos * scale, a, kind, getArrayLocation(kind));
             }
         } else {
             long end = (long) length * scale;
             for (long i = 0; i < end; i += scale) {
                 Object a = UnsafeLoadNode.load(src, arrayBaseOffset + i + (long) srcPos * scale, kind, arrayLocation);
-                DirectObjectStoreNode.storeObject(dest, arrayBaseOffset, i + (long) destPos * scale, a, getArrayLocation(kind), kind);
+                UnsafeStoreNode.storeObject(dest, arrayBaseOffset + i + (long) destPos * scale, a, kind, getArrayLocation(kind));
             }
         }
     }

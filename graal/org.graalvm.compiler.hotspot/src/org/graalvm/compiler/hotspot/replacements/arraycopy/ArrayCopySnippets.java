@@ -59,6 +59,7 @@ import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.UnsafeLoadNode;
+import org.graalvm.compiler.nodes.extended.UnsafeStoreNode;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -70,7 +71,6 @@ import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
-import org.graalvm.compiler.replacements.nodes.DirectObjectStoreNode;
 import org.graalvm.compiler.replacements.nodes.ExplodeLoopNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.util.UnmodifiableEconomicMap;
@@ -305,7 +305,7 @@ public class ArrayCopySnippets implements Snippets {
             for (int iteration = 0; iteration < length; iteration++) {
                 if (i >= 0) {
                     Object a = UnsafeLoadNode.load(nonNullSrc, arrayBaseOffset + i + (long) srcPos * scale, elementKind, arrayLocation);
-                    DirectObjectStoreNode.storeObject(nonNullDest, arrayBaseOffset, i + (long) destPos * scale, a, arrayLocation, elementKind);
+                    UnsafeStoreNode.storeObject(nonNullDest, arrayBaseOffset + i + (long) destPos * scale, a, elementKind, arrayLocation);
                     i -= scale;
                 }
             }
@@ -316,7 +316,7 @@ public class ArrayCopySnippets implements Snippets {
             for (int iteration = 0; iteration < length; iteration++) {
                 if (i < end) {
                     Object a = UnsafeLoadNode.load(nonNullSrc, arrayBaseOffset + i + (long) srcPos * scale, elementKind, arrayLocation);
-                    DirectObjectStoreNode.storeObject(nonNullDest, arrayBaseOffset, i + (long) destPos * scale, a, arrayLocation, elementKind);
+                    UnsafeStoreNode.storeObject(nonNullDest, arrayBaseOffset + i + (long) destPos * scale, a, elementKind, arrayLocation);
                     i += scale;
                 }
             }

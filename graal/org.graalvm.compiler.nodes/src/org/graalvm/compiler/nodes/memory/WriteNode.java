@@ -34,7 +34,6 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
-import org.graalvm.compiler.nodes.memory.address.AddressNode.Address;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
@@ -74,9 +73,6 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
         LIRKind writeKind = gen.getLIRGeneratorTool().getLIRKind(value().stamp());
         gen.getLIRGeneratorTool().getArithmetic().emitStore(writeKind, gen.operand(address), gen.operand(value()), gen.state(this));
     }
-
-    @NodeIntrinsic
-    public static native void writeMemory(Address address, @ConstantNodeParameter LocationIdentity location, Object value, @ConstantNodeParameter BarrierType barrierType);
 
     @Override
     public void virtualize(VirtualizerTool tool) {

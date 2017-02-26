@@ -72,6 +72,7 @@ import org.graalvm.compiler.nodes.extended.FixedValueAnchorNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.extended.NullCheckNode;
+import org.graalvm.compiler.nodes.extended.UnsafeStoreNode;
 import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode.Address;
@@ -85,7 +86,6 @@ import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
-import org.graalvm.compiler.replacements.nodes.DirectObjectStoreNode;
 import org.graalvm.compiler.replacements.nodes.DirectStoreNode;
 import org.graalvm.compiler.word.Pointer;
 import org.graalvm.compiler.word.Unsigned;
@@ -565,7 +565,7 @@ public class WriteBarrierSnippets implements Snippets {
     public static void validateObject(Object parent, Object child) {
         if (verifyOops(INJECTED_VMCONFIG) && child != null && !validateOop(VALIDATE_OBJECT, parent, child)) {
             log(true, "Verification ERROR, Parent: %p Child: %p\n", Word.objectToTrackedPointer(parent).rawValue(), Word.objectToTrackedPointer(child).rawValue());
-            DirectObjectStoreNode.storeObject(null, 0, 0, null, LocationIdentity.any(), JavaKind.Object);
+            UnsafeStoreNode.storeObject(null, 0, null, JavaKind.Object, LocationIdentity.any());
         }
     }
 
