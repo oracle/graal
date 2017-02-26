@@ -51,6 +51,9 @@ public final class JavaWriteNode extends AbstractWriteNode implements Lowerable,
         super(TYPE, address, location, value, barrierType, initialization);
         this.writeKind = writeKind;
         this.compressible = compressible;
+        if (compressible) {
+        System.out.println("writeKind: " + writeKind + " / " + compressible);
+        }
     }
 
     @Override

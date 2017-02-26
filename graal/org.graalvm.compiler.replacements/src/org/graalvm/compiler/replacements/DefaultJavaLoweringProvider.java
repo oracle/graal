@@ -405,7 +405,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
         GuardingNode boundsCheck = getBoundsCheck(loadIndexed, array, tool);
         AddressNode address = createArrayIndexAddress(graph, array, elementKind, loadIndexed.index(), boundsCheck);
-        ReadNode memoryRead = graph.add(new ReadNode(address, NamedLocationIdentity.getArrayLocation(elementKind), loadStamp, boundsCheck, BarrierType.NONE));
+        ReadNode memoryRead = graph.add(new ReadNode(address, NamedLocationIdentity.getArrayLocation(elementKind), loadStamp, BarrierType.NONE));
+        memoryRead.setGuard(boundsCheck);
         ValueNode readValue = implicitLoadConvert(graph, elementKind, memoryRead);
 
         loadIndexed.replaceAtUsages(readValue);
@@ -449,10 +450,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
         AddressNode address = createArrayIndexAddress(graph, array, elementKind, storeIndexed.index(), boundsCheck);
         WriteNode memoryWrite = graph.add(new WriteNode(address, NamedLocationIdentity.getArrayLocation(elementKind), implicitStoreConvert(graph, elementKind, value),
-                        arrayStoreBarrierType(storeIndexed.elementKind()), boundsCheck, false));
+                        arrayStoreBarrierType(storeIndexed.elementKind()), false));
+        memoryWrite.setGuard(boundsCheck);
         if (condition != null) {
-            GuardingNode storeCheckGuard = tool.createGuard(storeIndexed, condition, DeoptimizationReason.ArrayStoreException, DeoptimizationAction.InvalidateReprofile);
-            memoryWrite.setStoreCheckGuard(storeCheckGuard);
+            tool.createGuard(storeIndexed, condition, DeoptimizationReason.ArrayStoreException, DeoptimizationAction.InvalidateReprofile);
         }
         memoryWrite.setStateAfter(storeIndexed.stateAfter());
         graph.replaceFixedWithFixed(storeIndexed, memoryWrite);
@@ -567,11 +568,13 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         JavaKind readKind = load.accessKind();
         Stamp loadStamp = loadStamp(load.stamp(), readKind, compressible);
         AddressNode address = createUnsafeAddress(graph, load.object(), load.offset());
-        ReadNode memoryRead = graph.add(new ReadNode(address, load.getLocationIdentity(), loadStamp, guard, BarrierType.NONE));
+        ReadNode memoryRead = graph.add(new ReadNode(address, load.getLocationIdentity(), loadStamp, BarrierType.NONE));
         if (guard == null) {
             // An unsafe read must not float otherwise it may float above
             // a test guaranteeing the read is safe.
             memoryRead.setForceFixed(true);
+        } else {
+            memoryRead.setGuard(guard);
         }
         ValueNode readValue = implicitLoadConvert(graph, readKind, memoryRead, compressible);
         load.replaceAtUsages(readValue);

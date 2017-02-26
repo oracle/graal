@@ -22,35 +22,22 @@
  */
 package org.graalvm.compiler.nodes.memory;
 
-import static org.graalvm.compiler.nodeinfo.InputType.Guard;
-
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.compiler.nodes.spi.Virtualizable;
-import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 
 /**
  * Writes a given {@linkplain #value() value} a {@linkplain FixedAccessNode memory location}.
  */
 @NodeInfo(nameTemplate = "Write#{p#location/s}")
-public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, Virtualizable {
+public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess {
 
     public static final NodeClass<WriteNode> TYPE = NodeClass.create(WriteNode.class);
-
-    @OptionalInput(Guard) protected GuardingNode storeCheckGuard;
-
-    protected WriteNode(ValueNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
-        this((AddressNode) address, location, value, barrierType);
-    }
 
     public WriteNode(AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
         super(TYPE, address, location, value, barrierType);
@@ -60,12 +47,8 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
         super(TYPE, address, location, value, barrierType, initialization);
     }
 
-    public WriteNode(AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType, GuardingNode guard, boolean initialization) {
-        this(TYPE, address, location, value, barrierType, guard, initialization);
-    }
-
-    protected WriteNode(NodeClass<? extends WriteNode> c, AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType, GuardingNode guard, boolean initialization) {
-        super(c, address, location, value, barrierType, guard, initialization);
+    protected WriteNode(NodeClass<? extends WriteNode> c, AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
+        super(c, address, location, value, barrierType);
     }
 
     @Override
@@ -75,18 +58,8 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
     }
 
     @Override
-    public void virtualize(VirtualizerTool tool) {
-        throw GraalError.shouldNotReachHere("unexpected WriteNode before PEA");
-    }
-
-    @Override
     public boolean canNullCheck() {
         return true;
-    }
-
-    public void setStoreCheckGuard(GuardingNode newStoreCheckGuard) {
-        updateUsages((Node) this.storeCheckGuard, (Node) newStoreCheckGuard);
-        this.storeCheckGuard = newStoreCheckGuard;
     }
 
     @Override
