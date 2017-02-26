@@ -153,6 +153,7 @@ import jdk.vm.ci.services.Services;
  * These tests will be run by the {@code mx unittest} command.
  */
 @AddExports({"jdk.internal.vm.ci/jdk.vm.ci.meta",
+                "jdk.internal.vm.ci/jdk.vm.ci.services",
                 "jdk.internal.vm.ci/jdk.vm.ci.code",
                 "jdk.internal.vm.ci/jdk.vm.ci.services",
                 "java.base/jdk.internal.org.objectweb.asm",
