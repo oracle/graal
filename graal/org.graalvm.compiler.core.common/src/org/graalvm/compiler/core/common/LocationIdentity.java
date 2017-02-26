@@ -46,10 +46,37 @@ public abstract class LocationIdentity {
         }
     }
 
-    public static final LocationIdentity ANY_LOCATION = new AnyLocationIdentity();
+    private static final class InitLocationIdentity extends LocationIdentity {
+        @Override
+        public boolean isImmutable() {
+            return true;
+        }
 
+        @Override
+        public String toString() {
+            return "INIT_LOCATION";
+        }
+    }
+
+    public static final LocationIdentity ANY_LOCATION = new AnyLocationIdentity();
+    public static final LocationIdentity INIT_LOCATION = new InitLocationIdentity();
+
+    /**
+     * Indicates that the given location is the union of all possible mutable locations. A write to
+     * such a location kill all reads from mutable locations and a read from this location is killed
+     * by any write (except for initialization writes).
+     */
     public static LocationIdentity any() {
         return ANY_LOCATION;
+    }
+
+    /**
+     * Location only allowed to be used for writes. Indicates that a completely new memory location
+     * is written. Kills no read. The previous value at the given location must be either
+     * uninitialized or null. Writes to this location do not need a GC pre-barrier.
+     */
+    public static LocationIdentity init() {
+        return INIT_LOCATION;
     }
 
     /**
@@ -64,6 +91,10 @@ public abstract class LocationIdentity {
 
     public final boolean isAny() {
         return this == ANY_LOCATION;
+    }
+
+    public final boolean isInit() {
+        return this == INIT_LOCATION;
     }
 
     public final boolean isSingle() {

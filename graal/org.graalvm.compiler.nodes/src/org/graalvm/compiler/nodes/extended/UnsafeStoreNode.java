@@ -72,11 +72,9 @@ public final class UnsafeStoreNode extends UnsafeAccessNode implements StateSpli
     @NodeIntrinsic
     public static native Object storeObject(Object object, long offset, Object value, @ConstantNodeParameter JavaKind kind, @ConstantNodeParameter LocationIdentity locationIdentity);
 
-
     @NodeIntrinsic
     public static native Object storeChar(Object object, long offset, char value, @ConstantNodeParameter JavaKind kind, @ConstantNodeParameter LocationIdentity locationIdentity);
 
-    
     @Override
     public FrameState stateAfter() {
         return stateAfter;

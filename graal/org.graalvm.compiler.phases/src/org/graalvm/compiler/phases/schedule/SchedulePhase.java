@@ -438,8 +438,9 @@ public final class SchedulePhase extends Phase {
         }
 
         private static void checkWatchList(ArrayList<FloatingReadNode> watchList, LocationIdentity identity, Block b, ArrayList<Node> result, NodeMap<Block> nodeMap, NodeBitMap unprocessed) {
-            assert identity.isMutable();
-            if (identity.isAny()) {
+            if (identity.isImmutable()) {
+                // Nothing to do. This can happen for an initialization write.
+            } else if (identity.isAny()) {
                 for (FloatingReadNode r : watchList) {
                     if (unprocessed.isMarked(r)) {
                         sortIntoList(r, b, result, nodeMap, unprocessed, null);

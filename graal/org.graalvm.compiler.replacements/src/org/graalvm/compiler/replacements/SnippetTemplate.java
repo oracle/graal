@@ -23,7 +23,6 @@
 package org.graalvm.compiler.replacements;
 
 import static java.util.FormattableFlags.ALTERNATE;
-import static org.graalvm.compiler.core.common.LocationIdentity.ANY_LOCATION;
 import static org.graalvm.compiler.core.common.LocationIdentity.any;
 import static org.graalvm.compiler.debug.Debug.applyFormattingFlagsAndWidth;
 import static org.graalvm.compiler.graph.iterators.NodePredicates.isNotA;
@@ -857,7 +856,7 @@ public class SnippetTemplate {
                 boolean needsMemoryMaps = false;
                 for (ReturnNode retNode : snippet.getNodes(ReturnNode.TYPE)) {
                     MemoryMapNode memoryMap = retNode.getMemoryMap();
-                    if (memoryMap.getLocations().size() > 1 || memoryMap.getLastLocationAccess(ANY_LOCATION) != anchor) {
+                    if (memoryMap.getLocations().size() > 1 || memoryMap.getLastLocationAccess(LocationIdentity.any()) != anchor) {
                         needsMemoryMaps = true;
                         break;
                     }

@@ -91,7 +91,6 @@ import org.graalvm.compiler.hotspot.replacements.aot.ResolveConstantSnippets;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
-import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.PrefetchAllocateNode;
 import org.graalvm.compiler.nodes.SnippetAnchorNode;
@@ -136,8 +135,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Snippets used for implementing NEW, ANEWARRAY and NEWARRAY.
  */
 public class NewObjectSnippets implements Snippets {
-
-    public static final LocationIdentity INIT_LOCATION = NamedLocationIdentity.mutable("Initialization");
 
     enum ProfileContext {
         AllocatingMethod,
@@ -410,7 +407,7 @@ public class NewObjectSnippets implements Snippets {
         Word dims = DimensionsNode.allocaDimsArray(rank);
         ExplodeLoopNode.explodeLoop();
         for (int i = 0; i < rank; i++) {
-            dims.writeInt(i * 4, dimensions[i], INIT_LOCATION);
+            dims.writeInt(i * 4, dimensions[i], LocationIdentity.init());
         }
         return newArrayCall(HotSpotBackend.NEW_MULTI_ARRAY, hub, rank, dims);
     }
@@ -448,7 +445,7 @@ public class NewObjectSnippets implements Snippets {
         ReplacementsUtil.runtimeAssert((size & 0x7) == 0, "unaligned object size");
         int offset = startOffset;
         if ((offset & 0x7) != 0) {
-            memory.writeInt(offset, (int) value, INIT_LOCATION);
+            memory.writeInt(offset, (int) value, LocationIdentity.init());
             offset += 4;
         }
         ReplacementsUtil.runtimeAssert((offset & 0x7) == 0, "unaligned offset");
@@ -466,7 +463,7 @@ public class NewObjectSnippets implements Snippets {
                 if (offset == size) {
                     break;
                 }
-                memory.initializeLong(offset, value, INIT_LOCATION);
+                memory.initializeLong(offset, value, LocationIdentity.init());
             }
         } else {
             // Use Word instead of int to avoid extension to long in generated code
@@ -482,7 +479,7 @@ public class NewObjectSnippets implements Snippets {
                 }
             }
             for (; off.rawValue() < size; off = off.add(8)) {
-                memory.initializeLong(off, value, INIT_LOCATION);
+                memory.initializeLong(off, value, LocationIdentity.init());
             }
         }
     }
@@ -520,7 +517,7 @@ public class NewObjectSnippets implements Snippets {
         } else if (REPLACEMENTS_ASSERTIONS_ENABLED) {
             fillWithGarbage(size, memory, constantSize, instanceHeaderSize(INJECTED_VMCONFIG), false, counters);
         }
-        MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, INIT_LOCATION);
+        MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, LocationIdentity.init());
         return memory.toObjectNonNull();
     }
 
@@ -541,7 +538,7 @@ public class NewObjectSnippets implements Snippets {
      */
     public static Object formatArray(KlassPointer hub, int allocationSize, int length, int headerSize, Word memory, Word prototypeMarkWord, boolean fillContents, boolean maybeUnroll,
                     Counters counters) {
-        memory.writeInt(arrayLengthOffset(INJECTED_VMCONFIG), length, INIT_LOCATION);
+        memory.writeInt(arrayLengthOffset(INJECTED_VMCONFIG), length, LocationIdentity.init());
         /*
          * store hub last as the concurrent garbage collectors assume length is valid if hub field
          * is not null
@@ -552,7 +549,7 @@ public class NewObjectSnippets implements Snippets {
         } else if (REPLACEMENTS_ASSERTIONS_ENABLED) {
             fillWithGarbage(allocationSize, memory, false, headerSize, maybeUnroll, counters);
         }
-        MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, INIT_LOCATION);
+        MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, LocationIdentity.init());
         return memory.toObjectNonNull();
     }
 
@@ -574,19 +571,19 @@ public class NewObjectSnippets implements Snippets {
 
     public static class Templates extends AbstractTemplates {
 
-        private final SnippetInfo allocateInstance = snippet(NewObjectSnippets.class, "allocateInstance", INIT_LOCATION, MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
-        private final SnippetInfo allocateInstancePIC = snippet(NewObjectSnippets.class, "allocateInstancePIC", INIT_LOCATION, MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION,
+        private final SnippetInfo allocateInstance = snippet(NewObjectSnippets.class, "allocateInstance", MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
+        private final SnippetInfo allocateInstancePIC = snippet(NewObjectSnippets.class, "allocateInstancePIC", MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION,
                         TLAB_END_LOCATION);
-        private final SnippetInfo allocateArray = snippet(NewObjectSnippets.class, "allocateArray", INIT_LOCATION, MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
-        private final SnippetInfo allocateArrayPIC = snippet(NewObjectSnippets.class, "allocateArrayPIC", INIT_LOCATION, MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
-        private final SnippetInfo allocatePrimitiveArrayPIC = snippet(NewObjectSnippets.class, "allocatePrimitiveArrayPIC", INIT_LOCATION, MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION,
+        private final SnippetInfo allocateArray = snippet(NewObjectSnippets.class, "allocateArray", MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
+        private final SnippetInfo allocateArrayPIC = snippet(NewObjectSnippets.class, "allocateArrayPIC", MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
+        private final SnippetInfo allocatePrimitiveArrayPIC = snippet(NewObjectSnippets.class, "allocatePrimitiveArrayPIC", MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION,
                         TLAB_END_LOCATION);
-        private final SnippetInfo allocateArrayDynamic = snippet(NewObjectSnippets.class, "allocateArrayDynamic", INIT_LOCATION, MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION,
+        private final SnippetInfo allocateArrayDynamic = snippet(NewObjectSnippets.class, "allocateArrayDynamic", MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION,
                         TLAB_END_LOCATION);
-        private final SnippetInfo allocateInstanceDynamic = snippet(NewObjectSnippets.class, "allocateInstanceDynamic", INIT_LOCATION, MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION,
+        private final SnippetInfo allocateInstanceDynamic = snippet(NewObjectSnippets.class, "allocateInstanceDynamic", MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION,
                         TLAB_END_LOCATION);
-        private final SnippetInfo newmultiarray = snippet(NewObjectSnippets.class, "newmultiarray", INIT_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
-        private final SnippetInfo newmultiarrayPIC = snippet(NewObjectSnippets.class, "newmultiarrayPIC", INIT_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
+        private final SnippetInfo newmultiarray = snippet(NewObjectSnippets.class, "newmultiarray", TLAB_TOP_LOCATION, TLAB_END_LOCATION);
+        private final SnippetInfo newmultiarrayPIC = snippet(NewObjectSnippets.class, "newmultiarrayPIC", TLAB_TOP_LOCATION, TLAB_END_LOCATION);
         private final SnippetInfo verifyHeap = snippet(NewObjectSnippets.class, "verifyHeap");
         private final GraalHotSpotVMConfig config;
         private final Counters counters;

@@ -43,10 +43,6 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess {
         super(TYPE, address, location, value, barrierType);
     }
 
-    public WriteNode(AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType, boolean initialization) {
-        super(TYPE, address, location, value, barrierType, initialization);
-    }
-
     protected WriteNode(NodeClass<? extends WriteNode> c, AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
         super(c, address, location, value, barrierType);
     }

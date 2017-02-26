@@ -164,11 +164,17 @@ public class FloatingReadPhase extends Phase {
 
     protected void processNode(FixedNode node, EconomicSet<LocationIdentity> currentState) {
         if (node instanceof MemoryCheckpoint.Single) {
-            currentState.add(((MemoryCheckpoint.Single) node).getLocationIdentity());
+            processIdentity(currentState, ((MemoryCheckpoint.Single) node).getLocationIdentity());
         } else if (node instanceof MemoryCheckpoint.Multi) {
             for (LocationIdentity identity : ((MemoryCheckpoint.Multi) node).getLocationIdentities()) {
-                currentState.add(identity);
+                processIdentity(currentState, identity);
             }
+        }
+    }
+
+    private static void processIdentity(EconomicSet<LocationIdentity> currentState, LocationIdentity identity) {
+        if (identity.isMutable()) {
+            currentState.add(identity);
         }
     }
 
@@ -272,7 +278,7 @@ public class FloatingReadPhase extends Phase {
 
     private static boolean checkNoImmutableLocations(EconomicSet<LocationIdentity> keys) {
         keys.forEach(t -> {
-            assert !t.isImmutable();
+            assert t.isMutable();
         });
         return true;
     }
@@ -358,7 +364,9 @@ public class FloatingReadPhase extends Phase {
             if (identity.isAny()) {
                 state.lastMemorySnapshot.clear();
             }
-            state.lastMemorySnapshot.put(identity, checkpoint);
+            if (identity.isMutable()) {
+                state.lastMemorySnapshot.put(identity, checkpoint);
+            }
         }
 
         @SuppressWarnings("try")

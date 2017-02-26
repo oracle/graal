@@ -37,7 +37,6 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HUB_WRITE_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_LAYOUT_HELPER_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION;
-import static org.graalvm.compiler.hotspot.replacements.NewObjectSnippets.INIT_LOCATION;
 import java.lang.ref.Reference;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
@@ -781,10 +780,5 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     @Override
     public int arrayLengthOffset() {
         return runtime.getVMConfig().arrayOopDescLengthOffset();
-    }
-
-    @Override
-    public LocationIdentity initLocationIdentity() {
-        return INIT_LOCATION;
     }
 }
