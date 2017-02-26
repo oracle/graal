@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,20 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot;
+package org.graalvm.compiler.core.common;
 
 /**
  * A compact representation of the different encoding strategies for Objects and metadata.
  */
-public class CompressEncoding {
-    public final long base;
-    public final int shift;
-    public final int alignment;
+public final class CompressEncoding {
+    private final long base;
+    private final int shift;
 
-    CompressEncoding(long base, int shift, int alignment) {
+    public CompressEncoding(long base, int shift) {
         this.base = base;
         this.shift = shift;
-        this.alignment = alignment;
     }
 
     public int compress(long ptr) {
@@ -42,6 +40,22 @@ public class CompressEncoding {
         } else {
             return (int) ((ptr - base) >>> shift);
         }
+    }
+
+    public boolean hasBase() {
+        return base != 0;
+    }
+
+    public boolean hasShift() {
+        return shift != 0;
+    }
+
+    public long getBase() {
+        return base;
+    }
+
+    public int getShift() {
+        return shift;
     }
 
     public long uncompress(int ptr) {
@@ -54,14 +68,13 @@ public class CompressEncoding {
 
     @Override
     public String toString() {
-        return "base: " + base + " shift: " + shift + " alignment: " + alignment;
+        return "base: " + base + " shift: " + shift;
     }
 
     @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + alignment;
         result = prime * result + (int) (base ^ (base >>> 32));
         result = prime * result + shift;
         return result;
@@ -71,7 +84,7 @@ public class CompressEncoding {
     public boolean equals(Object obj) {
         if (obj instanceof CompressEncoding) {
             CompressEncoding other = (CompressEncoding) obj;
-            return alignment == other.alignment && base == other.base && shift == other.shift;
+            return base == other.base && shift == other.shift;
         } else {
             return false;
         }

@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.hotspot;
 
+import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.meta.HotSpotConstantLoadAction;
