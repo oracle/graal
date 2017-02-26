@@ -64,7 +64,7 @@ public class EdgesTest extends GraalCompilerTest {
 
     }
 
-    StructuredGraph graph = new StructuredGraph.Builder().build();
+    StructuredGraph graph = new StructuredGraph.Builder(getInitialOptions()).build();
     TestNode node;
     ConstantNode i1;
     ConstantNode i2;

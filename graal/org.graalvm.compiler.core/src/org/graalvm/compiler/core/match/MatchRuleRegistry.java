@@ -23,8 +23,6 @@
 package org.graalvm.compiler.core.match;
 
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.LogVerbose;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,6 +34,7 @@ import org.graalvm.compiler.graph.Edges;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.Position;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
@@ -74,10 +73,11 @@ public class MatchRuleRegistry {
      * Collect all the {@link MatchStatement}s defined by the superclass chain of theClass.
      *
      * @param theClass
+     * @param options
      * @return the set of {@link MatchStatement}s applicable to theClass.
      */
     @SuppressWarnings("try")
-    public static synchronized EconomicMap<Class<? extends Node>, List<MatchStatement>> lookup(Class<? extends NodeMatchRules> theClass) {
+    public static synchronized EconomicMap<Class<? extends Node>, List<MatchStatement>> lookup(Class<? extends NodeMatchRules> theClass, OptionValues options) {
         EconomicMap<Class<? extends Node>, List<MatchStatement>> result = registry.get(theClass);
 
         if (result == null) {
@@ -86,7 +86,7 @@ public class MatchRuleRegistry {
             assert registry.get(theClass) == rules;
             result = rules;
 
-            if (LogVerbose.getValue(GLOBAL)) {
+            if (LogVerbose.getValue(options)) {
                 try (Scope s = Debug.scope("MatchComplexExpressions")) {
                     Debug.log("Match rules for %s", theClass.getSimpleName());
                     MapCursor<Class<? extends Node>, List<MatchStatement>> cursor = result.getEntries();

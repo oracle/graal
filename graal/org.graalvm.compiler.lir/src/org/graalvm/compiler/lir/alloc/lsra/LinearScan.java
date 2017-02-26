@@ -184,6 +184,7 @@ public class LinearScan {
      */
     protected final Interval intervalEndMarker;
     public final Range rangeEndMarker;
+    public final boolean detailedAsserts;
 
     protected LinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, AbstractBlockBase<?>[] sortedBlocks,
                     boolean neverSpillConstants) {
@@ -202,6 +203,7 @@ public class LinearScan {
         this.rangeEndMarker = new Range(Integer.MAX_VALUE, Integer.MAX_VALUE, null);
         this.intervalEndMarker = new Interval(Value.ILLEGAL, Interval.END_MARKER_OPERAND_NUMBER, null, rangeEndMarker);
         this.intervalEndMarker.next = intervalEndMarker;
+        this.detailedAsserts = DetailedAsserts.getValue(ir.getOptions());
     }
 
     public Interval intervalEndMarker() {
@@ -687,14 +689,14 @@ public class LinearScan {
 
                 sortIntervalsAfterAllocation();
 
-                if (DetailedAsserts.getValue(getOptions())) {
+                if (detailedAsserts) {
                     verify();
                 }
                 beforeSpillMoveElimination();
                 createSpillMoveEliminationPhase().apply(target, lirGenRes, context);
                 createAssignLocationsPhase().apply(target, lirGenRes, context);
 
-                if (DetailedAsserts.getValue(getOptions())) {
+                if (detailedAsserts) {
                     verifyIntervals();
                 }
             } catch (Throwable e) {

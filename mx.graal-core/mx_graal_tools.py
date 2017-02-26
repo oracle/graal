@@ -114,7 +114,7 @@ def hsdis(args, copyToDir=None):
     else:
         flavoredLib = libpattern
     if flavoredLib not in sha1s:
-        mx.warn("hsdis with flavor '{}' not supported on this plattform or architecture".format(flavor))
+        mx.warn("hsdis with flavor '{}' not supported on this platform or architecture".format(flavor))
         return
 
     sha1 = sha1s[flavoredLib]
@@ -123,10 +123,30 @@ def hsdis(args, copyToDir=None):
     if not exists(path):
         sha1path = path + '.sha1'
         mx.download_file_with_sha1('hsdis', path, ['https://lafo.ssw.uni-linz.ac.at/pub/hsdis/' + lib], sha1, sha1path, True, True, sources=False)
-    if copyToDir is not None and exists(copyToDir):
-        destFileName = mx.add_lib_suffix('hsdis-' + mx.get_arch())
-        mx.logv('Copying {} to {}'.format(path, copyToDir + os.sep + destFileName))
-        shutil.copy(path, copyToDir + os.sep + destFileName)
+
+    overwrite = True
+    if copyToDir is None:
+        # Try install hsdis into JAVA_HOME
+        overwrite = False
+        base = mx.get_jdk().home
+        if exists(join(base, 'jre')):
+            copyToDir = join(base, 'jre', 'lib')
+        else:
+            copyToDir = join(base, 'lib')
+
+    if exists(copyToDir):
+        dest = join(copyToDir, mx.add_lib_suffix('hsdis-' + mx.get_arch()))
+        if exists(dest) and not overwrite:
+            import filecmp
+            # Only issue warning if existing lib is different
+            if filecmp.cmp(path, dest) == False:
+                mx.warn('Not overwriting existing {} with {}'.format(dest, path))
+        else:
+            try:
+                shutil.copy(path, dest)
+                mx.log('Copied {} to {}'.format(path, dest))
+            except IOError as e:
+                mx.warn('Could not copy {} to {}: {}'.format(path, dest, str(e)))
 
 def hcfdis(args):
     """disassemble HexCodeFiles embedded in text files

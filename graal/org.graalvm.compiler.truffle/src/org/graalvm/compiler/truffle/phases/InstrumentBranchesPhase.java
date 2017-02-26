@@ -62,14 +62,14 @@ import jdk.vm.ci.meta.JavaConstant;
  */
 public class InstrumentBranchesPhase extends InstrumentPhase {
 
-    public InstrumentBranchesPhase(OptionValues options, SnippetReflectionProvider snippetReflection, long[] accessTable) {
-        super(options, snippetReflection, accessTable);
+    public InstrumentBranchesPhase(OptionValues options, SnippetReflectionProvider snippetReflection, Instrumentation instrumentation) {
+        super(options, snippetReflection, instrumentation);
     }
 
     @Override
     protected void instrumentGraph(StructuredGraph graph, HighTierContext context, JavaConstant tableConstant) {
         for (IfNode n : graph.getNodes().filter(IfNode.class)) {
-            Instrumentation.Point p = getOrCreatePoint(n);
+            Point p = getOrCreatePoint(n);
             if (p != null) {
                 insertCounter(graph, context, tableConstant, n.trueSuccessor(), p.slotIndex(0));
                 insertCounter(graph, context, tableConstant, n.falseSuccessor(), p.slotIndex(1));
@@ -88,7 +88,7 @@ public class InstrumentBranchesPhase extends InstrumentPhase {
     }
 
     @Override
-    protected Instrumentation.Point createPoint(int id, int startIndex, Node n) {
+    protected Point createPoint(int id, int startIndex, Node n) {
         return new IfPoint(id, startIndex, n.getNodeSourcePosition());
     }
 
@@ -111,7 +111,7 @@ public class InstrumentBranchesPhase extends InstrumentPhase {
         }
     }
 
-    public class IfPoint extends InstrumentPhase.Instrumentation.Point {
+    public class IfPoint extends InstrumentPhase.Point {
         IfPoint(int id, int rawIndex, NodeSourcePosition position) {
             super(id, rawIndex, position);
         }
@@ -127,11 +127,11 @@ public class InstrumentBranchesPhase extends InstrumentPhase {
         }
 
         public long ifVisits() {
-            return accessTable[rawIndex];
+            return getInstrumentation().getAccessTable()[rawIndex];
         }
 
         public long elseVisits() {
-            return accessTable[rawIndex + 1];
+            return getInstrumentation().getAccessTable()[rawIndex + 1];
         }
 
         public BranchState getBranchState() {

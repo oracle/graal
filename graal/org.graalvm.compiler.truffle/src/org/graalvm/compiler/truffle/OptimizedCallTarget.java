@@ -42,6 +42,7 @@ import java.util.function.UnaryOperator;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.truffle.GraalTruffleRuntime.LazyFrameBoxingQuery;
 import org.graalvm.compiler.truffle.debug.AbstractDebugCompilationListener;
 import org.graalvm.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
 
@@ -88,7 +89,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     private volatile int cachedNonTrivialNodeCount = -1;
     private volatile SpeculationLog speculationLog;
     private volatile int callSitesKnown;
-    private volatile Future<?> compilationTask;
+    private volatile CancellableCompileTask compilationTask;
     /**
      * When this call target is inlined, the inlining {@link InstalledCode} registers this
      * assumption. It gets invalidated when a node rewriting is performed. This ensures that all
@@ -268,23 +269,32 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
                 return;
             }
 
-            Future<?> submitted = null;
+            CancellableCompileTask task = null;
             // Do not try to compile this target concurrently,
             // but do not block other threads if compilation is not asynchronous.
             synchronized (this) {
                 if (!isCompiling()) {
-                    compilationTask = submitted = runtime().submitForCompilation(this);
+                    compilationTask = task = runtime().submitForCompilation(this);
                 }
             }
-            if (submitted != null) {
-                boolean mayBeAsynchronous = TruffleCompilerOptions.getValue(TruffleBackgroundCompilation) && !TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreThrown);
-                runtime().finishCompilation(this, submitted, mayBeAsynchronous);
+            if (task != null) {
+                Future<?> submitted = task.getFuture();
+                if (submitted != null) {
+                    boolean mayBeAsynchronous = TruffleCompilerOptions.getValue(TruffleBackgroundCompilation) && !TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreThrown);
+                    runtime().finishCompilation(this, submitted, mayBeAsynchronous);
+                }
             }
         }
     }
 
     public final boolean isCompiling() {
-        return getCompilationTask() != null;
+        CancellableCompileTask task = getCompilationTask();
+        if (task != null) {
+            if (task.getFuture() != null) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -427,7 +437,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     /** Intrinsified in {@link TruffleGraphBuilderPlugins}. */
     public static VirtualFrame createFrame(FrameDescriptor descriptor, Object[] args) {
-        if (GraalTruffleRuntime.useFrameWithoutBoxing) {
+        if (LazyFrameBoxingQuery.useFrameWithoutBoxing) {
             return new FrameWithoutBoxing(descriptor, args);
         } else {
             return new FrameWithBoxing(descriptor, args);
@@ -554,7 +564,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return System.identityHashCode(this);
     }
 
-    Future<?> getCompilationTask() {
+    CancellableCompileTask getCompilationTask() {
         return compilationTask;
     }
 

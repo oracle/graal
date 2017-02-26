@@ -167,16 +167,6 @@ public final class BottomUpAllocator extends TraceAllocationPhase<TraceAllocatio
         return slot;
     }
 
-    private final PhiValueVisitor resolveLoopBackEdgeVisitor = (Value in, Value out) -> {
-        resolveBackEdge(in, out);
-    };
-
-    private void resolveBackEdge(Value in, Value out) {
-        if (!isIllegal(in) && !TraceGlobalMoveResolver.isMoveToSelf(out, in)) {
-            TraceGlobalMoveResolutionPhase.addMapping(moveResolver, out, in);
-        }
-    }
-
     @Override
     protected void run(@SuppressWarnings("hiding") TargetDescription target, @SuppressWarnings("hiding") LIRGenerationResult lirGenRes, Trace trace, TraceAllocationContext context) {
         allocate(trace);
@@ -326,6 +316,7 @@ public final class BottomUpAllocator extends TraceAllocationPhase<TraceAllocatio
                 Debug.log("insert after %s", move);
             } else {
                 Debug.log("Block end op. No from %s to %s necessary.", src, dst);
+                requireResolution = true;
             }
         }
 
@@ -351,24 +342,32 @@ public final class BottomUpAllocator extends TraceAllocationPhase<TraceAllocatio
         @SuppressWarnings("try")
         private void allocateTrace(Trace trace) {
             try (Scope s = Debug.scope("BottomUpAllocator", trace.getBlocks()); Indent indent = Debug.logAndIndent("%s (Trace%d)", trace, trace.getId())) {
-                AbstractBlockBase<?> successorBlock = null;
-                for (int i = trace.getBlocks().length - 1; i >= 0; i--) {
-                    AbstractBlockBase<?> block = trace.getBlocks()[i];
+                AbstractBlockBase<?>[] blocks = trace.getBlocks();
+                int lastBlockIdx = blocks.length - 1;
+                AbstractBlockBase<?> successorBlock = blocks[lastBlockIdx];
+                // handle last block
+                allocateBlock(successorBlock);
+                // handle remaining blocks
+                for (int i = lastBlockIdx - 1; i >= 0; i--) {
+                    AbstractBlockBase<?> block = blocks[i];
                     // handle PHIs
-                    if (successorBlock != null) {
-                        resolvePhis(successorBlock, block);
+                    resolvePhis(successorBlock, block);
+                    boolean needResolution = allocateBlock(block);
+
+                    if (needResolution) {
+                        // resolve local data flow
+                        resolveIntraTraceEdge(block, successorBlock);
                     }
-                    allocateBlock(block);
                     successorBlock = block;
                 }
-                resolveLocalDataFlow(trace);
+                resolveLoopBackEdge(trace);
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }
         }
 
         /**
-         * Resolve phi values, i.e. set the current location of values in the predecessors block
+         * Resolve phi values, i.e., set the current location of values in the predecessors block
          * (which is not yet allocated) to the location of the variable defined by the phi in the
          * successor (which is already allocated). For constant inputs we insert moves.
          */
@@ -383,6 +382,7 @@ public final class BottomUpAllocator extends TraceAllocationPhase<TraceAllocatio
         }
 
         private final PhiVisitor phiVisitor = new PhiVisitor();
+        private boolean requireResolution;
 
         private final class PhiVisitor implements PhiValueVisitor {
 
@@ -409,20 +409,83 @@ public final class BottomUpAllocator extends TraceAllocationPhase<TraceAllocatio
             }
         }
 
-        private void resolveLocalDataFlow(Trace trace) {
-            for (AbstractBlockBase<?> block : trace.getBlocks()) {
-                for (AbstractBlockBase<?> pred : block.getPredecessors()) {
-                    if (resultTraces.getTraceForBlock(pred).equals(trace)) {
-                        resolveFindInsertPos(pred, block);
-                        SSIUtil.forEachValuePair(getLIR(), block, pred, resolveLoopBackEdgeVisitor);
-                        moveResolver.resolveAndAppendMoves();
-                    }
+        /**
+         * Intra-trace edges, i.e., edge where both, the source and the target block are in the same
+         * trace, are either
+         * <ul>
+         * <li><em>immediate forward edges</em>, i.e., an edge from <code>i</code>th block of the
+         * trace to the <code>(i+1)</code>th block, or
+         * <li>a <em>loop back-edge</em> from the last block of the trace to the loop header.
+         * </ul>
+         * This property is guaranteed due to splitting of <em>critical edge</em>.
+         *
+         * Since forward edges are handled locally during bottom-up allocation we only need to check
+         * for the second case.
+         */
+        private void resolveLoopBackEdge(Trace trace) {
+            AbstractBlockBase<?>[] blocks = trace.getBlocks();
+            AbstractBlockBase<?> endBlock = blocks[blocks.length - 1];
+            if (endBlock.isLoopEnd()) {
+                assert endBlock.getSuccessorCount() == 1;
+                AbstractBlockBase<?> targetBlock = endBlock.getSuccessors()[0];
+                assert targetBlock.isLoopHeader() : String.format("Successor %s or loop end %s is not a loop header?", targetBlock, endBlock);
+                if (resultTraces.getTraceForBlock(targetBlock).equals(trace)) {
+                    resolveLoopBackEdge(endBlock, targetBlock);
                 }
             }
         }
 
+        private void resolveLoopBackEdge(AbstractBlockBase<?> from, AbstractBlockBase<?> to) {
+            assert resultTraces.getTraceForBlock(from).equals(resultTraces.getTraceForBlock(to)) : "Not on the same trace? " + from + " -> " + to;
+            resolveFindInsertPos(from, to);
+            LIR lir = getLIR();
+
+            BlockEndOp blockEnd = SSIUtil.outgoing(lir, from);
+            LabelOp label = SSIUtil.incoming(lir, to);
+
+            for (int i = 0; i < label.getPhiSize(); i++) {
+                Value incomingValue = label.getIncomingValue(i);
+                Value outgoingValue = blockEnd.getOutgoingValue(i);
+                resolveValuePair(incomingValue, outgoingValue);
+            }
+            resolveTraceEdge(blockEnd, label);
+            moveResolver.resolveAndAppendMoves();
+        }
+
+        private void resolveIntraTraceEdge(AbstractBlockBase<?> from, AbstractBlockBase<?> to) {
+            assert resultTraces.getTraceForBlock(from).equals(resultTraces.getTraceForBlock(to)) : "Not on the same trace? " + from + " -> " + to;
+            resolveFindInsertPos(from, to);
+            LIR lir = getLIR();
+
+            BlockEndOp blockEnd = SSIUtil.outgoing(lir, from);
+            LabelOp label = SSIUtil.incoming(lir, to);
+
+            resolveTraceEdge(blockEnd, label);
+            moveResolver.resolveAndAppendMoves();
+        }
+
+        private void resolveTraceEdge(BlockEndOp blockEnd, LabelOp label) {
+            for (int i = label.getPhiSize(); i < label.getIncomingSize(); i++) {
+                Value incomingValue = label.getIncomingValue(i);
+                Value outgoingValue = blockEnd.getOutgoingValue(i);
+                resolveValuePair(incomingValue, outgoingValue);
+            }
+        }
+
+        private void resolveValuePair(Value incomingValue, Value outgoingValue) {
+            if (!isIllegal(incomingValue) && !TraceGlobalMoveResolver.isMoveToSelf(outgoingValue, incomingValue)) {
+                TraceGlobalMoveResolutionPhase.addMapping(moveResolver, outgoingValue, incomingValue);
+            }
+        }
+
+        /**
+         * @return <code>true</code> if the block requires data-flow resolution.
+         */
         @SuppressWarnings("try")
-        private void allocateBlock(AbstractBlockBase<?> block) {
+        private boolean allocateBlock(AbstractBlockBase<?> block) {
+            // might be set in insertSpillMoveAfter
+            requireResolution = false;
+
             try (Indent indent = Debug.logAndIndent("handle block %s", block)) {
                 currentInstructions = getLIR().getLIRforBlock(block);
                 for (currentInstructionIndex = currentInstructions.size() - 1; currentInstructionIndex >= 0; currentInstructionIndex--) {
@@ -434,6 +497,7 @@ public final class BottomUpAllocator extends TraceAllocationPhase<TraceAllocatio
                 }
                 allocatedBlocks.set(block.getId());
             }
+            return requireResolution;
         }
 
         @SuppressWarnings("try")
@@ -486,8 +550,6 @@ public final class BottomUpAllocator extends TraceAllocationPhase<TraceAllocatio
                 if (attributes(reg).isAllocatable()) {
                     evacuateRegisterAndSpill(reg);
                     assert checkRegisterUsage(reg);
-                    evacuateRegisterAndSpill(reg);
-                    // setCurrentValue(reg, reg.asValue());
                     setLastRegisterUsage(reg, currentOpId);
                 }
             }

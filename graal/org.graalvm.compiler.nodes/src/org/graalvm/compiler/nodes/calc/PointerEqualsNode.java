@@ -125,10 +125,9 @@ public class PointerEqualsNode extends CompareNode implements BinaryCommutative<
     }
 
     @Override
-    public Stamp getSucceedingStampForX(boolean negated) {
+    public Stamp getSucceedingStampForX(boolean negated, Stamp xStamp, Stamp yStamp) {
         if (!negated) {
-            Stamp xStamp = getX().stamp();
-            Stamp newStamp = xStamp.join(getY().stamp());
+            Stamp newStamp = xStamp.join(yStamp);
             if (!newStamp.equals(xStamp)) {
                 return newStamp;
             }
@@ -137,10 +136,9 @@ public class PointerEqualsNode extends CompareNode implements BinaryCommutative<
     }
 
     @Override
-    public Stamp getSucceedingStampForY(boolean negated) {
+    public Stamp getSucceedingStampForY(boolean negated, Stamp xStamp, Stamp yStamp) {
         if (!negated) {
-            Stamp yStamp = getY().stamp();
-            Stamp newStamp = yStamp.join(getX().stamp());
+            Stamp newStamp = yStamp.join(xStamp);
             if (!newStamp.equals(yStamp)) {
                 return newStamp;
             }

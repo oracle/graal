@@ -98,7 +98,7 @@ public class PerformanceWarningTest {
         ByteArrayOutputStream outContent = new ByteArrayOutputStream();
         try (TTY.Filter filter = new TTY.Filter(new LogStream(outContent))) {
             try (TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TraceTrufflePerformanceWarnings, Boolean.TRUE)) {
-                DefaultTruffleCompiler.create(GraalTruffleRuntime.getRuntime()).compileMethod(target, GraalTruffleRuntime.getRuntime());
+                DefaultTruffleCompiler.create(GraalTruffleRuntime.getRuntime()).compileMethod(target, GraalTruffleRuntime.getRuntime(), null);
             }
         }
 

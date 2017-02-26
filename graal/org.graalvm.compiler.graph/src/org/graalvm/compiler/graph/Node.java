@@ -26,7 +26,6 @@ import static org.graalvm.compiler.graph.Edges.Type.Inputs;
 import static org.graalvm.compiler.graph.Edges.Type.Successors;
 import static org.graalvm.compiler.graph.Graph.isModificationCountsEnabled;
 import static org.graalvm.compiler.graph.UnsafeAccess.UNSAFE;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.RetentionPolicy;
@@ -36,7 +35,6 @@ import java.util.Formattable;
 import java.util.FormattableFlags;
 import java.util.Formatter;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
@@ -82,7 +80,7 @@ import sun.misc.Unsafe;
 public abstract class Node implements Cloneable, Formattable, NodeInterface {
 
     public static final NodeClass<?> TYPE = null;
-    public static final boolean USE_UNSAFE_TO_CLONE = Graph.Options.CloneNodesWithUnsafe.getValue(GLOBAL);
+    public static final boolean USE_UNSAFE_TO_CLONE = true;
 
     static final int DELETED_ID_START = -1000000000;
     static final int INITIAL_ID = -1;
@@ -252,7 +250,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
      * Gets the option values associated with this node's graph.
      */
     public final OptionValues getOptions() {
-        return graph.getOptions();
+        return graph == null ? null : graph.getOptions();
     }
 
     /**
@@ -354,15 +352,18 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         return this.usage0 != null;
     }
 
-    void reverseUsageOrder() {
-        List<Node> snapshot = this.usages().snapshot();
-        for (Node n : snapshot) {
-            this.removeUsage(n);
-        }
-        Collections.reverse(snapshot);
-        for (Node n : snapshot) {
-            this.addUsage(n);
-        }
+    /**
+     * Checks whether this node has more than one usages.
+     */
+    public final boolean hasMoreThanOneUsage() {
+        return this.usage1 != null;
+    }
+
+    /**
+     * Checks whether this node has exactly one usgae.
+     */
+    public final boolean hasExactlyOneUsage() {
+        return hasUsages() && !hasMoreThanOneUsage();
     }
 
     /**
@@ -799,12 +800,8 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         if (edgesToCopy.contains(type)) {
             getNodeClass().getEdges(type).copy(this, newNode);
         } else {
-            if (USE_UNSAFE_TO_CLONE) {
-                // The direct edges are already null
-                getNodeClass().getEdges(type).initializeLists(newNode, this);
-            } else {
-                getNodeClass().getEdges(type).clear(newNode);
-            }
+            // The direct edges are already null
+            getNodeClass().getEdges(type).initializeLists(newNode, this);
         }
     }
 
@@ -838,22 +835,11 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
 
         Node newNode = null;
         try {
-            if (USE_UNSAFE_TO_CLONE) {
-                newNode = (Node) UNSAFE.allocateInstance(getClass());
-                newNode.nodeClass = nodeClassTmp;
-                nodeClassTmp.getData().copy(this, newNode);
-                copyOrClearEdgesForClone(newNode, Inputs, edgesToCopy);
-                copyOrClearEdgesForClone(newNode, Successors, edgesToCopy);
-            } else {
-                newNode = (Node) this.clone();
-                newNode.typeCacheNext = null;
-                newNode.usage0 = null;
-                newNode.usage1 = null;
-                newNode.predecessor = null;
-                newNode.extraUsagesCount = 0;
-                copyOrClearEdgesForClone(newNode, Inputs, edgesToCopy);
-                copyOrClearEdgesForClone(newNode, Successors, edgesToCopy);
-            }
+            newNode = (Node) UNSAFE.allocateInstance(getClass());
+            newNode.nodeClass = nodeClassTmp;
+            nodeClassTmp.getData().copy(this, newNode);
+            copyOrClearEdgesForClone(newNode, Inputs, edgesToCopy);
+            copyOrClearEdgesForClone(newNode, Successors, edgesToCopy);
         } catch (Exception e) {
             throw new GraalGraphError(e).addContext(this);
         }

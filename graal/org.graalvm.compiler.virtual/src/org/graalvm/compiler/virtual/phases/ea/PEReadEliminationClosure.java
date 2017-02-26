@@ -91,7 +91,7 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
 
     @Override
     protected PEReadEliminationBlockState getInitialState() {
-        return new PEReadEliminationBlockState();
+        return new PEReadEliminationBlockState(tool.getOptions());
     }
 
     @Override

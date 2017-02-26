@@ -28,7 +28,6 @@ import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable.BinaryCommutative;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
@@ -47,7 +46,7 @@ import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.TriState;
 
 @NodeInfo(shortName = "==")
-public final class IntegerEqualsNode extends CompareNode implements BinaryCommutative<ValueNode>, IterableNodeType {
+public final class IntegerEqualsNode extends CompareNode implements BinaryCommutative<ValueNode> {
     public static final NodeClass<IntegerEqualsNode> TYPE = NodeClass.create(IntegerEqualsNode.class);
 
     public IntegerEqualsNode(ValueNode x, ValueNode y) {
@@ -194,17 +193,17 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
     }
 
     @Override
-    public Stamp getSucceedingStampForX(boolean negated) {
+    public Stamp getSucceedingStampForX(boolean negated, Stamp xStamp, Stamp yStamp) {
         if (!negated) {
-            return getX().stamp().join(getY().stamp());
+            return xStamp.join(yStamp);
         }
         return null;
     }
 
     @Override
-    public Stamp getSucceedingStampForY(boolean negated) {
+    public Stamp getSucceedingStampForY(boolean negated, Stamp xStamp, Stamp yStamp) {
         if (!negated) {
-            return getX().stamp().join(getY().stamp());
+            return xStamp.join(yStamp);
         }
         return null;
     }

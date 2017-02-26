@@ -76,7 +76,8 @@ public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends B
     @SuppressWarnings("try")
     public boolean runAnalysis(StructuredGraph graph, PhaseContextT context) {
         boolean changed = false;
-        for (int iteration = 0; iteration < maxIterations && !CompilationAlarm.hasExpired(graph.getOptions()); iteration++) {
+        CompilationAlarm compilationAlarm = CompilationAlarm.current();
+        for (int iteration = 0; iteration < maxIterations && !compilationAlarm.hasExpired(); iteration++) {
             try (Scope s = Debug.scope(isEnabled() ? "iteration " + iteration : null)) {
                 ScheduleResult schedule;
                 ControlFlowGraph cfg;

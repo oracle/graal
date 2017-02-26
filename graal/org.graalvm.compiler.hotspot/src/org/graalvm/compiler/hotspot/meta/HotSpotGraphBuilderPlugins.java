@@ -29,8 +29,6 @@ import static org.graalvm.compiler.core.common.util.Util.Java8OrEarlier;
 import static org.graalvm.compiler.hotspot.meta.HotSpotAOTProfilingPlugin.Options.TieredAOT;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_THREAD_OBJECT_LOCATION;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MutableCallSite;
 import java.lang.invoke.VolatileCallSite;
@@ -90,6 +88,7 @@ import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.InlineDuringParsingPlugin;
 import org.graalvm.compiler.replacements.MethodHandlePlugin;
 import org.graalvm.compiler.replacements.NodeIntrinsificationProvider;
@@ -135,7 +134,8 @@ public class HotSpotGraphBuilderPlugins {
 
         plugins.appendTypePlugin(nodePlugin);
         plugins.appendNodePlugin(nodePlugin);
-        if (GeneratePIC.getValue(GLOBAL)) {
+        OptionValues options = replacements.getOptions();
+        if (GeneratePIC.getValue(options)) {
             // AOT needs to filter out bad invokes
             plugins.prependNodePlugin(new NodePlugin() {
                 @Override
@@ -172,13 +172,13 @@ public class HotSpotGraphBuilderPlugins {
         }
         plugins.appendNodePlugin(new MethodHandlePlugin(constantReflection.getMethodHandleAccess(), true));
         plugins.appendInlineInvokePlugin(replacements);
-        if (InlineDuringParsing.getValue(GLOBAL)) {
+        if (InlineDuringParsing.getValue(options)) {
             plugins.appendInlineInvokePlugin(new InlineDuringParsingPlugin());
         }
 
-        if (GeneratePIC.getValue(GLOBAL)) {
+        if (GeneratePIC.getValue(options)) {
             plugins.setClassInitializationPlugin(new HotSpotClassInitializationPlugin());
-            if (TieredAOT.getValue(GLOBAL)) {
+            if (TieredAOT.getValue(options)) {
                 plugins.setProfilingPlugin(new HotSpotAOTProfilingPlugin());
             }
         }
@@ -188,7 +188,7 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public void run() {
                 BytecodeProvider replacementBytecodeProvider = replacements.getReplacementBytecodeProvider();
-                registerObjectPlugins(invocationPlugins, replacementBytecodeProvider);
+                registerObjectPlugins(invocationPlugins, options, replacementBytecodeProvider);
                 registerClassPlugins(plugins, config, replacementBytecodeProvider);
                 registerSystemPlugins(invocationPlugins, foreignCalls);
                 registerThreadPlugins(invocationPlugins, metaAccess, wordTypes, config, replacementBytecodeProvider);
@@ -209,9 +209,9 @@ public class HotSpotGraphBuilderPlugins {
         return plugins;
     }
 
-    private static void registerObjectPlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
+    private static void registerObjectPlugins(InvocationPlugins plugins, OptionValues options, BytecodeProvider bytecodeProvider) {
         Registration r = new Registration(plugins, Object.class, bytecodeProvider);
-        if (!GeneratePIC.getValue(GLOBAL)) {
+        if (!GeneratePIC.getValue(options)) {
             // FIXME: clone() requires speculation and requires a fix in here (to check that
             // b.getAssumptions() != null), and in ReplacementImpl.getSubstitution() where there is
             // an instantiation of IntrinsicGraphBuilder using a constructor that sets

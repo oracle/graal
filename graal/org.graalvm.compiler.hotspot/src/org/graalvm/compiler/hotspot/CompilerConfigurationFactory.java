@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 import static jdk.vm.ci.common.InitTimer.timer;
 
 import java.util.ArrayList;
@@ -30,10 +29,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.util.EconomicMap;
@@ -125,18 +126,11 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
         return 0;
     }
 
-    @SuppressWarnings("all")
-    private static boolean assertionsEnabled() {
-        boolean assertionsEnabled = false;
-        assert assertionsEnabled = true;
-        return assertionsEnabled;
-    }
-
     /**
      * List used to assert uniqueness of {@link #name} and {@link #autoSelectionPriority} across all
      * {@link CompilerConfigurationFactory} instances.
      */
-    private static final List<CompilerConfigurationFactory> factories = assertionsEnabled() ? new ArrayList<>() : null;
+    private static final List<CompilerConfigurationFactory> factories = Assertions.ENABLED ? new ArrayList<>() : null;
 
     private static boolean checkAndAddNewFactory(CompilerConfigurationFactory factory) {
         for (CompilerConfigurationFactory other : factories) {
@@ -170,10 +164,10 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
      * @param name the name of the compiler configuration to select (optional)
      */
     @SuppressWarnings("try")
-    public static CompilerConfigurationFactory selectFactory(String name) {
+    public static CompilerConfigurationFactory selectFactory(String name, OptionValues options) {
         CompilerConfigurationFactory factory = null;
         try (InitTimer t = timer("CompilerConfigurationFactory.selectFactory")) {
-            String value = name == null ? Options.CompilerConfiguration.getValue(GLOBAL) : name;
+            String value = name == null ? Options.CompilerConfiguration.getValue(options) : name;
             if ("help".equals(value)) {
                 System.out.println("The available Graal compiler configurations are:");
                 for (CompilerConfigurationFactory candidate : getAllCandidates()) {

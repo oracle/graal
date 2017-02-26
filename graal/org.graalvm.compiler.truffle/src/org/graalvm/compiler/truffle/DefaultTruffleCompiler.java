@@ -51,9 +51,19 @@ public final class DefaultTruffleCompiler extends TruffleCompiler {
         super(plugins, suites, lirSuites, backend, snippetReflection);
     }
 
+    public static TruffleCompiler createWithSuites(GraalTruffleRuntime runtime, Suites suites) {
+        Backend backend = runtime.getRequiredGraalCapability(RuntimeProvider.class).getHostBackend();
+        OptionValues options = TruffleCompilerOptions.getOptions();
+        LIRSuites lirSuites = backend.getSuites().getDefaultLIRSuites(options);
+        GraphBuilderPhase phase = (GraphBuilderPhase) backend.getSuites().getDefaultGraphBuilderSuite().findPhase(GraphBuilderPhase.class).previous();
+        Plugins plugins = phase.getGraphBuilderConfig().getPlugins();
+        SnippetReflectionProvider snippetReflection = runtime.getRequiredGraalCapability(SnippetReflectionProvider.class);
+        return new DefaultTruffleCompiler(plugins, suites, lirSuites, backend, snippetReflection);
+    }
+
     @Override
     protected PartialEvaluator createPartialEvaluator() {
-        return new PartialEvaluator(providers, config, snippetReflection, backend.getTarget().arch, ((GraalTruffleRuntime) Truffle.getRuntime()).getInstrumentationTable());
+        return new PartialEvaluator(providers, config, snippetReflection, backend.getTarget().arch, ((GraalTruffleRuntime) Truffle.getRuntime()).getInstrumentation());
     }
 
     @Override

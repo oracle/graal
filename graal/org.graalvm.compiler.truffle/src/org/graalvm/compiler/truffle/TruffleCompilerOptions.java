@@ -22,13 +22,15 @@
  */
 package org.graalvm.compiler.truffle;
 
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.util.EconomicMap;
 import org.graalvm.util.UnmodifiableEconomicMap;
+
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleRuntime;
 
 /**
  * Options for the Truffle compiler.
@@ -36,7 +38,18 @@ import org.graalvm.util.UnmodifiableEconomicMap;
 public class TruffleCompilerOptions {
 
     static class Lazy {
-        private static final ThreadLocal<TruffleOptionsOverrideScope> overrideScope = new ThreadLocal<>();
+        static final ThreadLocal<TruffleOptionsOverrideScope> overrideScope = new ThreadLocal<>();
+        static final OptionValues TRUFFLE_OPTIONS;
+        static {
+            TruffleRuntime truffleRuntime = Truffle.getRuntime();
+            if (truffleRuntime instanceof GraalTruffleRuntime) {
+                TRUFFLE_OPTIONS = ((GraalTruffleRuntime) truffleRuntime).getInitialOptions();
+            } else {
+                // Just because this class is initialized, it doesn't mean that a Graal Truffle
+                // runtime has been selected.
+                TRUFFLE_OPTIONS = new OptionValues(EconomicMap.create());
+            }
+        }
     }
 
     /**
@@ -45,7 +58,7 @@ public class TruffleCompilerOptions {
      */
     public static OptionValues getOptions() {
         TruffleOptionsOverrideScope scope = Lazy.overrideScope.get();
-        return scope != null ? scope.options : GLOBAL;
+        return scope != null ? scope.options : Lazy.TRUFFLE_OPTIONS;
     }
 
     /**
@@ -64,7 +77,7 @@ public class TruffleCompilerOptions {
 
         TruffleOptionsOverrideScope(UnmodifiableEconomicMap<OptionKey<?>, Object> overrides) {
             outer = Lazy.overrideScope.get();
-            options = new OptionValues(outer == null ? GLOBAL : outer.options, overrides);
+            options = new OptionValues(outer == null ? Lazy.TRUFFLE_OPTIONS : outer.options, overrides);
             Lazy.overrideScope.set(this);
         }
 

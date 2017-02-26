@@ -22,8 +22,6 @@
  */
 package org.graalvm.compiler.hotspot.debug;
 
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -50,6 +48,7 @@ import org.graalvm.compiler.nodes.debug.DynamicCounterNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.UniquePathUtilities;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -169,24 +168,24 @@ public class BenchmarkCounters {
         return counter;
     }
 
-    private static synchronized void dump(PrintStream out, double seconds, long[] counters, int maxRows) {
+    private static synchronized void dump(OptionValues options, PrintStream out, double seconds, long[] counters, int maxRows) {
         if (!counterMap.isEmpty()) {
-            if (Options.DynamicCountersHumanReadable.getValue(GLOBAL)) {
+            if (Options.DynamicCountersHumanReadable.getValue(options)) {
                 out.println("====== dynamic counters (" + counterMap.size() + " in total) ======");
             }
             TreeSet<String> set = new TreeSet<>();
             counterMap.forEach((nameGroup, counter) -> set.add(counter.group));
             for (String group : set) {
                 if (group != null) {
-                    if (Options.BenchmarkCountersDumpStatic.getValue(GLOBAL)) {
-                        dumpCounters(out, seconds, counters, true, group, maxRows);
+                    if (Options.BenchmarkCountersDumpStatic.getValue(options)) {
+                        dumpCounters(options, out, seconds, counters, true, group, maxRows);
                     }
-                    if (Options.BenchmarkCountersDumpDynamic.getValue(GLOBAL)) {
-                        dumpCounters(out, seconds, counters, false, group, maxRows);
+                    if (Options.BenchmarkCountersDumpDynamic.getValue(options)) {
+                        dumpCounters(options, out, seconds, counters, false, group, maxRows);
                     }
                 }
             }
-            if (Options.DynamicCountersHumanReadable.getValue(GLOBAL)) {
+            if (Options.DynamicCountersHumanReadable.getValue(options)) {
                 out.println("============================");
             }
 
@@ -198,7 +197,7 @@ public class BenchmarkCounters {
         delta = counters;
     }
 
-    private static synchronized void dumpCounters(PrintStream out, double seconds, long[] counters, boolean staticCounter, String group, int maxRows) {
+    private static synchronized void dumpCounters(OptionValues options, PrintStream out, double seconds, long[] counters, boolean staticCounter, String group, int maxRows) {
 
         // collect the numbers
         long[] array;
@@ -214,8 +213,8 @@ public class BenchmarkCounters {
             }
         }
         Set<Entry<String, Counter>> counterEntrySet = counterMap.entrySet();
-        if (Options.DynamicCountersHumanReadable.getValue(GLOBAL)) {
-            dumpHumanReadable(out, seconds, staticCounter, group, maxRows, array, counterEntrySet);
+        if (Options.DynamicCountersHumanReadable.getValue(options)) {
+            dumpHumanReadable(options, out, seconds, staticCounter, group, maxRows, array, counterEntrySet);
         } else {
             dumpComputerReadable(out, staticCounter, group, array, counterEntrySet);
         }
@@ -225,7 +224,8 @@ public class BenchmarkCounters {
         return nameGroup.substring(0, nameGroup.length() - group.length() - 1);
     }
 
-    private static void dumpHumanReadable(PrintStream out, double seconds, boolean staticCounter, String group, int maxRows, long[] array, Set<Entry<String, Counter>> counterEntrySet) {
+    private static void dumpHumanReadable(OptionValues options, PrintStream out, double seconds, boolean staticCounter, String group, int maxRows, long[] array,
+                    Set<Entry<String, Counter>> counterEntrySet) {
         // sort the counters by putting them into a sorted map
         TreeMap<Long, String> sorted = new TreeMap<>();
         long sum = 0;
@@ -253,7 +253,7 @@ public class BenchmarkCounters {
                 cnt--;
             }
 
-            String numFmt = Options.DynamicCountersPrintGroupSeparator.getValue(GLOBAL) ? "%,19d" : "%19d";
+            String numFmt = Options.DynamicCountersPrintGroupSeparator.getValue(options) ? "%,19d" : "%19d";
             if (staticCounter) {
                 out.println("=========== " + group + " (static counters):");
                 for (Map.Entry<Long, String> entry : sorted.entrySet()) {
@@ -349,7 +349,7 @@ public class BenchmarkCounters {
         }
     }
 
-    public static void initialize(final HotSpotJVMCIRuntime jvmciRuntime) {
+    public static void initialize(final HotSpotJVMCIRuntime jvmciRuntime, OptionValues options) {
         final class BenchmarkCountersOutputStream extends CallbackOutputStream {
 
             private long startTime;
@@ -377,15 +377,15 @@ public class BenchmarkCounters {
                         if (waitingForEnd) {
                             waitingForEnd = false;
                             running = false;
-                            BenchmarkCounters.dump(getPrintStream(), (System.nanoTime() - startTime) / 1000000000d, jvmciRuntime.collectCounters(), 100);
+                            BenchmarkCounters.dump(options, getPrintStream(options), (System.nanoTime() - startTime) / 1000000000d, jvmciRuntime.collectCounters(), 100);
                         }
                         break;
                 }
             }
         }
 
-        if (Options.BenchmarkDynamicCounters.getValue(GLOBAL) != null) {
-            String[] arguments = Options.BenchmarkDynamicCounters.getValue(GLOBAL).split(",");
+        if (Options.BenchmarkDynamicCounters.getValue(options) != null) {
+            String[] arguments = Options.BenchmarkDynamicCounters.getValue(options).split(",");
             if (arguments.length == 0 || (arguments.length % 3) != 0) {
                 throw new GraalError("invalid arguments to BenchmarkDynamicCounters: (err|out),start,end,(err|out),start,end,... (~ matches multiple digits)");
             }
@@ -400,23 +400,23 @@ public class BenchmarkCounters {
             }
             enabled = true;
         }
-        if (Options.GenericDynamicCounters.getValue(GLOBAL)) {
+        if (Options.GenericDynamicCounters.getValue(options)) {
             enabled = true;
         }
-        if (Options.TimedDynamicCounters.getValue(GLOBAL) > 0) {
+        if (Options.TimedDynamicCounters.getValue(options) > 0) {
             Thread thread = new Thread() {
                 long lastTime = System.nanoTime();
-                PrintStream out = getPrintStream();
+                PrintStream out = getPrintStream(options);
 
                 @Override
                 public void run() {
                     while (true) {
                         try {
-                            Thread.sleep(Options.TimedDynamicCounters.getValue(GLOBAL));
+                            Thread.sleep(Options.TimedDynamicCounters.getValue(options));
                         } catch (InterruptedException e) {
                         }
                         long time = System.nanoTime();
-                        dump(out, (time - lastTime) / 1000000000d, jvmciRuntime.collectCounters(), 10);
+                        dump(options, out, (time - lastTime) / 1000000000d, jvmciRuntime.collectCounters(), 10);
                         lastTime = time;
                     }
                 }
@@ -431,16 +431,16 @@ public class BenchmarkCounters {
         }
     }
 
-    public static void shutdown(HotSpotJVMCIRuntime jvmciRuntime, long compilerStartTime) {
-        if (Options.GenericDynamicCounters.getValue(GLOBAL)) {
-            dump(getPrintStream(), (System.nanoTime() - compilerStartTime) / 1000000000d, jvmciRuntime.collectCounters(), 100);
+    public static void shutdown(HotSpotJVMCIRuntime jvmciRuntime, OptionValues options, long compilerStartTime) {
+        if (Options.GenericDynamicCounters.getValue(options)) {
+            dump(options, getPrintStream(options), (System.nanoTime() - compilerStartTime) / 1000000000d, jvmciRuntime.collectCounters(), 100);
         }
     }
 
-    private static PrintStream getPrintStream() {
-        if (Options.BenchmarkCountersFile.getValue(GLOBAL) != null) {
+    private static PrintStream getPrintStream(OptionValues options) {
+        if (Options.BenchmarkCountersFile.getValue(options) != null) {
             try {
-                Path path = UniquePathUtilities.getPathGlobal(GLOBAL, Options.BenchmarkCountersFile, GraalDebugConfig.Options.DumpPath, "csv");
+                Path path = UniquePathUtilities.getPathGlobal(options, Options.BenchmarkCountersFile, GraalDebugConfig.Options.DumpPath, "csv");
                 TTY.println("Writing benchmark counters to '%s'", path);
                 return new PrintStream(path.toFile());
             } catch (FileNotFoundException e) {

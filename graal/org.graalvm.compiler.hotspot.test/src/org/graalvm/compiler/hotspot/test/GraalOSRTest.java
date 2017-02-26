@@ -22,8 +22,6 @@
  */
 package org.graalvm.compiler.hotspot.test;
 
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.junit.Assert;
 import org.junit.Test;
@@ -37,7 +35,7 @@ public class GraalOSRTest extends GraalOSRTestBase {
     @Test
     public void testOSR01() {
         try {
-            testOSR(GLOBAL, "testReduceLoop");
+            testOSR(getInitialOptions(), "testReduceLoop");
         } catch (Throwable t) {
             Assert.assertEquals("OSR compilation without OSR entry loop.", t.getMessage());
         }
@@ -45,12 +43,12 @@ public class GraalOSRTest extends GraalOSRTestBase {
 
     @Test
     public void testOSR02() {
-        testOSR(GLOBAL, "testSequentialLoop");
+        testOSR(getInitialOptions(), "testSequentialLoop");
     }
 
     @Test
     public void testOSR03() {
-        testOSR(GLOBAL, "testNonReduceLoop");
+        testOSR(getInitialOptions(), "testNonReduceLoop");
     }
 
     static int limit = 10000;

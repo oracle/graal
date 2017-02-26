@@ -32,8 +32,6 @@ import org.graalvm.compiler.options.OptionType;
 public class GraalCompilerOptions {
 
     // @formatter:off
-    @Option(help = "Repeatedly run the LIR code generation pass to improve statistical profiling results.", type = OptionType.Debug)
-    public static final OptionKey<Integer> EmitLIRRepeatCount = new OptionKey<>(0);
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<String> PrintFilter = new OptionKey<>(null);
     @Option(help = "", type = OptionType.Debug)

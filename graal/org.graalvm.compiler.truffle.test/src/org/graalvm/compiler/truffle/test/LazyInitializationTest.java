@@ -37,20 +37,22 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Test;
-
+import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.core.CompilerThreadFactory;
 import org.graalvm.compiler.core.common.util.ModuleAPI;
 import org.graalvm.compiler.core.common.util.Util;
+import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.options.OptionValuesAccess;
 import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.util.CollectionsUtil;
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
 
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
 import jdk.vm.ci.services.JVMCIServiceLocator;
@@ -217,6 +219,8 @@ public class LazyInitializationTest {
             }
         }
 
+        whitelist.add(Cancellable.class);
+
         List<String> forbiddenClasses = new ArrayList<>();
         for (Class<?> cls : loadedGraalClasses) {
             if (whitelist.contains(cls)) {
@@ -272,7 +276,7 @@ public class LazyInitializationTest {
             return true;
         }
 
-        if (cls == OptionsParser.class || cls == OptionValues.class) {
+        if (cls == Assertions.class || cls == OptionsParser.class || cls == OptionValues.class || OptionValuesAccess.class.isAssignableFrom(cls)) {
             // Classes implementing Graal option loading
             return true;
         }

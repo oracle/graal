@@ -55,11 +55,11 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
     }
 
     protected void testConditionalElimination(String snippet, String referenceSnippet) {
-        testConditionalElimination(snippet, referenceSnippet, false);
+        testConditionalElimination(snippet, referenceSnippet, false, false);
     }
 
     @SuppressWarnings("try")
-    protected void testConditionalElimination(String snippet, String referenceSnippet, boolean applyConditionalEliminationOnReference) {
+    protected void testConditionalElimination(String snippet, String referenceSnippet, boolean applyConditionalEliminationOnReference, boolean applyLowering) {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "Graph");
         PhaseContext context = new PhaseContext(getProviders());
@@ -70,11 +70,15 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
              */
             canonicalizer1.disableSimplification();
         }
+        if (applyLowering) {
+            new ConvertDeoptimizeToGuardPhase().apply(graph, context);
+            new LoweringPhase(canonicalizer1, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+            canonicalizer1.apply(graph, context);
+        }
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
         try (Debug.Scope scope = Debug.scope("ConditionalEliminationTest", graph)) {
             canonicalizer1.apply(graph, context);
             new ConvertDeoptimizeToGuardPhase().apply(graph, context);
-            // new DominatorConditionalEliminationPhase(true).apply(graph, context);
             new IterativeConditionalEliminationPhase(canonicalizer, true).apply(graph, context);
             canonicalizer.apply(graph, context);
             canonicalizer.apply(graph, context);
@@ -86,6 +90,13 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
         try (Debug.Scope scope = Debug.scope("ConditionalEliminationTest.ReferenceGraph", referenceGraph)) {
 
             new ConvertDeoptimizeToGuardPhase().apply(referenceGraph, context);
+
+            if (applyLowering) {
+                new ConvertDeoptimizeToGuardPhase().apply(referenceGraph, context);
+                new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(referenceGraph, context);
+                canonicalizer.apply(referenceGraph, context);
+            }
+
             if (applyConditionalEliminationOnReference) {
                 DominatorConditionalEliminationPhase.create(true).apply(referenceGraph, context);
                 canonicalizer.apply(referenceGraph, context);
@@ -93,6 +104,7 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
             } else {
                 canonicalizer.apply(referenceGraph, context);
             }
+
         } catch (Throwable t) {
             Debug.handle(t);
         }

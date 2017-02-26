@@ -33,6 +33,7 @@ import org.graalvm.compiler.debug.DebugConfigScope;
 import org.graalvm.compiler.debug.DebugTimer;
 import org.graalvm.compiler.debug.Management;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.util.EconomicMap;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
@@ -70,7 +71,8 @@ public class DebugTimerTest {
      */
     @Test
     public void test2() {
-        DebugConfig debugConfig = Debug.fixedConfig(OptionValues.GLOBAL, 0, 0, false, false, true, false, false, null, null, System.out);
+        OptionValues options = new OptionValues(EconomicMap.create());
+        DebugConfig debugConfig = Debug.fixedConfig(options, 0, 0, false, false, true, false, false, null, null, System.out);
         try (DebugConfigScope dcs = new DebugConfigScope(debugConfig); Debug.Scope s = Debug.scope("DebugTimerTest")) {
             DebugTimer timerC = Debug.timer("TimerC");
             try (DebugCloseable c1 = timerC.start()) {

@@ -336,7 +336,7 @@ public class DominatorConditionalEliminationPhase extends BasePhase<PhaseContext
                     ValueNode y = pe.getY();
                     if (y.isConstant()) {
                         JavaConstant constant = y.asJavaConstant();
-                        Stamp succeeding = pe.getSucceedingStampForX(negated);
+                        Stamp succeeding = pe.getSucceedingStampForX(negated, x.stamp(), getSafeStamp(y));
                         if (succeeding == null && pe instanceof ObjectEqualsNode && guard instanceof FixedGuardNode) {
                             succeeding = y.stamp();
                         }
@@ -356,14 +356,14 @@ public class DominatorConditionalEliminationPhase extends BasePhase<PhaseContext
                 } else if (condition instanceof BinaryOpLogicNode) {
                     BinaryOpLogicNode binaryOpLogicNode = (BinaryOpLogicNode) condition;
                     ValueNode x = binaryOpLogicNode.getX();
+                    ValueNode y = binaryOpLogicNode.getY();
                     if (!x.isConstant()) {
-                        Stamp newStampX = binaryOpLogicNode.getSucceedingStampForX(negated);
+                        Stamp newStampX = binaryOpLogicNode.getSucceedingStampForX(negated, x.stamp(), getSafeStamp(y));
                         registerNewStamp(x, newStampX, guard);
                     }
 
-                    ValueNode y = binaryOpLogicNode.getY();
                     if (!y.isConstant()) {
-                        Stamp newStampY = binaryOpLogicNode.getSucceedingStampForY(negated);
+                        Stamp newStampY = binaryOpLogicNode.getSucceedingStampForY(negated, getSafeStamp(x), y.stamp());
                         registerNewStamp(y, newStampY, guard);
                     }
                     if (condition instanceof IntegerEqualsNode && guard instanceof DeoptimizingGuard && !negated) {
@@ -386,6 +386,13 @@ public class DominatorConditionalEliminationPhase extends BasePhase<PhaseContext
                     pendingTests.push(new PendingTest(condition, (DeoptimizingGuard) guard));
                 }
                 registerCondition(condition, negated, guard);
+            }
+
+            private Stamp getSafeStamp(ValueNode x) {
+                if (x.isConstant()) {
+                    return x.stamp();
+                }
+                return x.stamp().unrestricted();
             }
 
             @SuppressWarnings("try")
@@ -771,13 +778,13 @@ public class DominatorConditionalEliminationPhase extends BasePhase<PhaseContext
                     }
                     if (thisGuard != null) {
                         if (!x.isConstant()) {
-                            Stamp newStampX = binaryOpLogicNode.getSucceedingStampForX(thisGuard.isNegated());
+                            Stamp newStampX = binaryOpLogicNode.getSucceedingStampForX(thisGuard.isNegated(), x.stamp(), getSafeStamp(y));
                             if (newStampX != null && foldPendingTest(thisGuard, x, newStampX, rewireGuardFunction)) {
                                 return true;
                             }
                         }
                         if (!y.isConstant()) {
-                            Stamp newStampY = binaryOpLogicNode.getSucceedingStampForY(thisGuard.isNegated());
+                            Stamp newStampY = binaryOpLogicNode.getSucceedingStampForY(thisGuard.isNegated(), getSafeStamp(x), y.stamp());
                             if (newStampY != null && foldPendingTest(thisGuard, y, newStampY, rewireGuardFunction)) {
                                 return true;
                             }

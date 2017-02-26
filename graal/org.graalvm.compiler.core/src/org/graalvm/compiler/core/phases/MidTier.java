@@ -25,10 +25,7 @@ package org.graalvm.compiler.core.phases;
 import static org.graalvm.compiler.core.common.GraalOptions.ConditionalElimination;
 import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
 import static org.graalvm.compiler.core.common.GraalOptions.OptDeoptimizationGrouping;
-import static org.graalvm.compiler.core.common.GraalOptions.OptEliminatePartiallyRedundantGuards;
 import static org.graalvm.compiler.core.common.GraalOptions.OptFloatingReads;
-import static org.graalvm.compiler.core.common.GraalOptions.OptPushThroughPi;
-import static org.graalvm.compiler.core.common.GraalOptions.OptReadElimination;
 import static org.graalvm.compiler.core.common.GraalOptions.ReassociateInvariants;
 import static org.graalvm.compiler.core.common.GraalOptions.VerifyHeapAtReturn;
 
@@ -47,13 +44,8 @@ import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.LockEliminationPhase;
 import org.graalvm.compiler.phases.common.LoopSafepointInsertionPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
-import org.graalvm.compiler.phases.common.OptimizeGuardAnchorsPhase;
-import org.graalvm.compiler.phases.common.PushThroughPiPhase;
-import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
-import org.graalvm.compiler.phases.common.ValueAnchorCleanupPhase;
 import org.graalvm.compiler.phases.common.VerifyHeapAtReturnPhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
-import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
 
 public class MidTier extends PhaseSuite<MidTierContext> {
 
@@ -63,45 +55,21 @@ public class MidTier extends PhaseSuite<MidTierContext> {
             canonicalizer.disableReadCanonicalization();
         }
 
-        if (OptPushThroughPi.getValue(options)) {
-            appendPhase(new PushThroughPiPhase());
-        }
-
-        appendPhase(canonicalizer);
-
-        appendPhase(new ValueAnchorCleanupPhase());
         appendPhase(new LockEliminationPhase());
-
-        if (OptReadElimination.getValue(options)) {
-            appendPhase(new EarlyReadEliminationPhase(canonicalizer));
-        }
 
         if (OptFloatingReads.getValue(options)) {
             appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new FloatingReadPhase()));
-        }
-        appendPhase(new RemoveValueProxyPhase());
-
-        appendPhase(canonicalizer);
-
-        if (OptEliminatePartiallyRedundantGuards.getValue(options)) {
-            appendPhase(new OptimizeGuardAnchorsPhase());
         }
 
         if (ConditionalElimination.getValue(options)) {
             appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, true));
         }
 
-        if (OptEliminatePartiallyRedundantGuards.getValue(options)) {
-            appendPhase(new OptimizeGuardAnchorsPhase());
-        }
-
-        appendPhase(canonicalizer);
-
-        appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new LoopSafepointEliminationPhase()));
+        appendPhase(new LoopSafepointEliminationPhase());
 
         appendPhase(new LoopSafepointInsertionPhase());
 
-        appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new GuardLoweringPhase()));
+        appendPhase(new GuardLoweringPhase());
 
         if (VerifyHeapAtReturn.getValue(options)) {
             appendPhase(new VerifyHeapAtReturnPhase());

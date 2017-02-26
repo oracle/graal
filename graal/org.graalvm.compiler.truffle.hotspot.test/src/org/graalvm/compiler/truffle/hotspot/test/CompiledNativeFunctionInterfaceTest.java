@@ -53,7 +53,7 @@ public class CompiledNativeFunctionInterfaceTest extends GraalCompilerTest {
         // verify that there is only a direct call, with all boxing eliminated
         FixedWithNextNode call = (FixedWithNextNode) graph.start().next();
         for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
-            Assert.assertEquals(1, param.getUsageCount());
+            Assert.assertTrue(param.hasExactlyOneUsage());
             Assert.assertTrue(param.getUsageAt(0) == call);
         }
 

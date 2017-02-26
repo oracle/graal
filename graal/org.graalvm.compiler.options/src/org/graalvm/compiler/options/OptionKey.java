@@ -31,33 +31,12 @@ import org.graalvm.util.EconomicMap;
  */
 public class OptionKey<T> {
 
-    private T defaultValue;
+    private final T defaultValue;
 
     private OptionDescriptor descriptor;
 
     public OptionKey(T defaultValue) {
         this.defaultValue = defaultValue;
-    }
-
-    private static final Object UNINITIALIZED = "UNINITIALIZED";
-
-    /**
-     * Creates an uninitialized option value for a subclass that initializes itself
-     * {@link #defaultValue() lazily}.
-     */
-    @SuppressWarnings("unchecked")
-    protected OptionKey() {
-        this.defaultValue = (T) UNINITIALIZED;
-    }
-
-    private static final Error NO_DEFAULT_VALUE = new InternalError("Option without a default value value must override defaultValue()");
-
-    /**
-     * Lazy initialization of default value.
-     */
-    protected T defaultValue() {
-        /* We want this method to be allocation free. */
-        throw NO_DEFAULT_VALUE;
     }
 
     /**
@@ -115,13 +94,9 @@ public class OptionKey<T> {
     }
 
     /**
-     * The initial value specified in source code. The returned value is not affected by options set
-     * on the command line.
+     * The initial value specified in source code.
      */
     public final T getDefaultValue() {
-        if (defaultValue == UNINITIALIZED) {
-            defaultValue = defaultValue();
-        }
         return defaultValue;
     }
 

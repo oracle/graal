@@ -34,6 +34,7 @@ import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.test.AddExports;
@@ -51,7 +52,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.runtime.JVMCIBackend;
 
-@AddExports("jdk.vm.ci/jdk.vm.ci.runtime")
+@AddExports("jdk.internal.vm.ci/jdk.vm.ci.runtime")
 public abstract class AssemblerTest extends GraalTest {
 
     private final MetaAccessProvider metaAccess;
@@ -60,6 +61,14 @@ public abstract class AssemblerTest extends GraalTest {
 
     public interface CodeGenTest {
         byte[] generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig, CallingConvention cc);
+    }
+
+    /**
+     * Gets the initial option values provided by the Graal runtime. These are option values
+     * typically parsed from the command line.
+     */
+    public static OptionValues getInitialOptions() {
+        return Graal.getRequiredCapability(OptionValues.class);
     }
 
     public AssemblerTest() {
@@ -79,7 +88,7 @@ public abstract class AssemblerTest extends GraalTest {
         try (Scope s = Debug.scope("assembleMethod", method, codeCache)) {
             RegisterConfig registerConfig = codeCache.getRegisterConfig();
             CompilationIdentifier compilationId = backend.getCompilationIdentifier(method);
-            StructuredGraph graph = new StructuredGraph.Builder().method(method).compilationId(compilationId).build();
+            StructuredGraph graph = new StructuredGraph.Builder(getInitialOptions()).method(method).compilationId(compilationId).build();
             CallingConvention cc = backend.newLIRGenerationResult(compilationId, null, null, graph, null).getCallingConvention();
 
             CompilationResult compResult = new CompilationResult();

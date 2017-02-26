@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.core.phases;
 
-import static org.graalvm.compiler.core.common.GraalOptions.ConditionalElimination;
 import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
 import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
@@ -35,10 +34,9 @@ import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.ExpandLogicPhase;
-import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
+import org.graalvm.compiler.phases.common.FixReadsPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.common.ProfileCompiledMethodsPhase;
-import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
 import org.graalvm.compiler.phases.common.UseTrappingNullChecksPhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
@@ -66,16 +64,9 @@ public class LowTier extends PhaseSuite<LowTierContext> {
 
         appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER));
 
-        appendPhase(new RemoveValueProxyPhase());
-
         appendPhase(new ExpandLogicPhase());
 
-        /* Cleanup IsNull checks resulting from MID_TIER/LOW_TIER lowering and ExpandLogic phase. */
-        if (ConditionalElimination.getValue(options)) {
-            appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, false));
-            /* Canonicalizer may create some new ShortCircuitOrNodes so clean them up. */
-            appendPhase(new ExpandLogicPhase());
-        }
+        appendPhase(new FixReadsPhase());
 
         appendPhase(new UseTrappingNullChecksPhase());
 

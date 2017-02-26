@@ -36,6 +36,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
+import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -460,6 +461,8 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                     LoopEndNode loopEndNode = (LoopEndNode) last;
                     block.setSuccessors(new Block[]{nodeMap.get(loopEndNode.loopBegin())});
                     // Nothing to do push onto the stack.
+                } else if (last instanceof ControlSinkNode) {
+                    block.setSuccessors(Block.EMPTY_ARRAY);
                 } else {
                     assert !(last instanceof AbstractEndNode) : "Algorithm only supports EndNode and LoopEndNode.";
                     int startTos = tos;

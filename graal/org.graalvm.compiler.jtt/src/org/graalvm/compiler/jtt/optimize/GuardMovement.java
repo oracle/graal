@@ -26,8 +26,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import static org.graalvm.compiler.core.common.GraalOptions.MaximumInliningSize;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.jtt.JTTTest;
 import org.graalvm.compiler.options.OptionValues;
@@ -66,8 +64,8 @@ public class GuardMovement extends JTTTest {
 
     @Test
     public void run0() throws Throwable {
-        OptionValues options = new OptionValues(GLOBAL, MaximumInliningSize, -1, GraalOptions.TrivialInliningSize, -1, GraalOptions.PartialEscapeAnalysis, false, GraalOptions.OptReadElimination,
-                        false);
+        OptionValues options = new OptionValues(getInitialOptions(), MaximumInliningSize, -1, GraalOptions.TrivialInliningSize, -1, GraalOptions.PartialEscapeAnalysis, false,
+                        GraalOptions.OptReadElimination, false);
         runTest(options, "test", new A());
         runTest(options, "test", new Object[]{null});
     }

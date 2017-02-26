@@ -22,7 +22,7 @@
  */
 package org.graalvm.compiler.debug;
 
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
+import static org.graalvm.compiler.debug.Debug.DEBUG_OPTIONS;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -52,7 +52,7 @@ public class Fingerprint implements AutoCloseable {
     /**
      * Determines whether fingerprinting is enabled.
      */
-    public static final boolean ENABLED = Options.UseFingerprinting.getValue(GLOBAL);
+    public static final boolean ENABLED = Options.UseFingerprinting.getValue(DEBUG_OPTIONS);
 
     private static final ThreadLocal<Fingerprint> current = ENABLED ? new ThreadLocal<>() : null;
 
@@ -114,7 +114,7 @@ public class Fingerprint implements AutoCloseable {
         }
     }
 
-    private static final int BREAKPOINT_EVENT = Options.FingerprintingBreakpointEvent.getValue(GLOBAL);
+    private static final int BREAKPOINT_EVENT = Options.FingerprintingBreakpointEvent.getValue(DEBUG_OPTIONS);
 
     /**
      * Submits an execution event for the purpose of recording or verifying a fingerprint. This must
@@ -138,7 +138,7 @@ public class Fingerprint implements AutoCloseable {
         return index == -1 ? events.size() : index;
     }
 
-    private static final int MAX_EVENT_TAIL_IN_ERROR_MESSAGE = Options.FingerprintErrorEventTailLength.getValue(GLOBAL);
+    private static final int MAX_EVENT_TAIL_IN_ERROR_MESSAGE = Options.FingerprintErrorEventTailLength.getValue(DEBUG_OPTIONS);
 
     private String tail() {
         int start = Math.max(index - MAX_EVENT_TAIL_IN_ERROR_MESSAGE, 0);

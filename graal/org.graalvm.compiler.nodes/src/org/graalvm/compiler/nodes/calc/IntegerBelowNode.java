@@ -102,9 +102,7 @@ public final class IntegerBelowNode extends CompareNode {
     }
 
     @Override
-    public Stamp getSucceedingStampForX(boolean negated) {
-        Stamp xStampGeneric = getX().stamp();
-        Stamp yStampGeneric = getY().stamp();
+    public Stamp getSucceedingStampForX(boolean negated, Stamp xStampGeneric, Stamp yStampGeneric) {
         if (xStampGeneric instanceof IntegerStamp) {
             IntegerStamp xStamp = (IntegerStamp) xStampGeneric;
             int bits = xStamp.getBits();
@@ -137,9 +135,7 @@ public final class IntegerBelowNode extends CompareNode {
     }
 
     @Override
-    public Stamp getSucceedingStampForY(boolean negated) {
-        Stamp xStampGeneric = getX().stamp();
-        Stamp yStampGeneric = getY().stamp();
+    public Stamp getSucceedingStampForY(boolean negated, Stamp xStampGeneric, Stamp yStampGeneric) {
         if (xStampGeneric instanceof IntegerStamp) {
             IntegerStamp xStamp = (IntegerStamp) xStampGeneric;
             int bits = xStamp.getBits();

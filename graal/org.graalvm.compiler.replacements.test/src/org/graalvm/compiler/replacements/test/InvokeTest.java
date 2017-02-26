@@ -25,7 +25,6 @@ package org.graalvm.compiler.replacements.test;
 import org.junit.Test;
 
 import org.graalvm.compiler.core.test.GraalCompilerTest;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.AbstractInliningPhase;
 
 /**
@@ -34,7 +33,7 @@ import org.graalvm.compiler.phases.common.AbstractInliningPhase;
 public class InvokeTest extends GraalCompilerTest {
 
     public InvokeTest() {
-        createSuites(OptionValues.GLOBAL).getHighTier().findPhase(AbstractInliningPhase.class).remove();
+        createSuites(getInitialOptions()).getHighTier().findPhase(AbstractInliningPhase.class).remove();
     }
 
     public interface I {

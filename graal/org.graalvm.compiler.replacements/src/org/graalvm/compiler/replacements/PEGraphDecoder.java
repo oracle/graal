@@ -416,7 +416,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     public void decode(StructuredGraph targetGraph, ResolvedJavaMethod method, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins,
                     ParameterPlugin parameterPlugin) {
-        PEMethodScope methodScope = new PEMethodScope(targetGraph, null, null, lookupEncodedGraph(method, null), method, null, 0, loopExplosionPlugin, invocationPlugins, inlineInvokePlugins,
+        PEMethodScope methodScope = new PEMethodScope(targetGraph, null, null, lookupEncodedGraph(method, null), method, null, 0, loopExplosionPlugin, invocationPlugins,
+                        inlineInvokePlugins,
                         parameterPlugin, null);
         decode(createInitialLoopScope(methodScope, null));
         cleanupGraph(methodScope);

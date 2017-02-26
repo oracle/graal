@@ -22,6 +22,8 @@
  */
 package org.graalvm.compiler.hotspot;
 
+import static org.graalvm.compiler.hotspot.HotSpotGraalOptionValues.HOTSPOT_OPTIONS;
+
 import java.io.PrintStream;
 
 import org.graalvm.compiler.debug.TTYStreamProvider;
@@ -43,6 +45,6 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
 
     @Override
     public PrintStream getStream() {
-        return Options.LogFile.getStream();
+        return Options.LogFile.getStream(HOTSPOT_OPTIONS);
     }
 }

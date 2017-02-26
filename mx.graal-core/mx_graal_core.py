@@ -469,7 +469,7 @@ _defaultFlags = ['-Dgraal.CompilationWatchDogStartDelay=60.0D']
 _assertionFlags = ['-esa']
 _graalErrorFlags = ['-Dgraal.ExitVMOnException=true']
 _graalEconomyFlags = ['-Dgraal.CompilerConfiguration=economy']
-_verificationFlags = ['-Dgraal.VerifyGraalGraphs=true', '-Dgraal.VerifyGraalGraphEdges=true', '-Dgraal.VerifyGraalPhasesSize=true', '-Dgraal.VerifyNodeCostOnAccess=true', '-Dgraal.VerifyPhases=true']
+_verificationFlags = ['-Dgraal.VerifyGraalGraphs=true', '-Dgraal.VerifyGraalGraphEdges=true', '-Dgraal.VerifyGraalPhasesSize=true', '-Dgraal.VerifyPhases=true']
 _coopFlags = ['-XX:-UseCompressedOops']
 _gcVerificationFlags = ['-XX:+UnlockDiagnosticVMOptions', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC']
 _g1VerificationFlags = ['-XX:-UseSerialGC', '-XX:+UseG1GC']
@@ -626,7 +626,7 @@ def _parseVmArgs(args, addDefaultArgs=True):
         for deployedModule in deployedModules:
             for concealingModule, packages in deployedModule.concealedRequires.iteritems():
                 # No need to explicitly export JVMCI - it's exported via reflection
-                if concealingModule != 'jdk.vm.ci':
+                if concealingModule != 'jdk.internal.vm.ci':
                     for package in packages:
                         addedExports.setdefault(concealingModule + '/' + package, set()).add(deployedModule.name)
 
@@ -737,8 +737,8 @@ class GraalArchiveParticipant:
                 mx.warn('@Option defined in test code will be ignored: ' + arcname)
             else:
                 # Need to create service files for the providers of the
-                # jdk.vm.ci.options.Options service created by
-                # jdk.vm.ci.options.processor.OptionProcessor.
+                # jdk.internal.vm.ci.options.Options service created by
+                # jdk.internal.vm.ci.options.processor.OptionProcessor.
                 provider = arcname[:-len('.class'):].replace('/', '.')
                 self.services.setdefault('org.graalvm.compiler.options.OptionDescriptors', []).append(provider)
         return False

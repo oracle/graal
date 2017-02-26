@@ -25,8 +25,6 @@ package org.graalvm.compiler.hotspot.test;
 import static org.graalvm.compiler.core.GraalCompiler.compileGraph;
 import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
 import static org.graalvm.compiler.nodes.ConstantNode.getConstantNodes;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
@@ -89,8 +87,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         assertDeepEquals(1, getConstantNodes(result).count());
         Stamp constantStamp = getConstantNodes(result).first().stamp();
         Assert.assertTrue(constantStamp.toString(), constantStamp instanceof KlassPointerStamp);
-        assertDeepEquals(2, result.getNodes().filter(FloatingReadNode.class).count());
-        assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
+        assertDeepEquals(2, result.getNodes().filter(ReadNode.class).count());
     }
 
     @Test
@@ -98,7 +95,6 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         StructuredGraph result = compile("getStaticFinalObject", false);
         assertDeepEquals(1, getConstantNodes(result).count());
         assertDeepEquals(JavaKind.Object, getConstantNodes(result).first().getStackKind());
-        assertDeepEquals(0, result.getNodes().filter(FloatingReadNode.class).count());
         assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
@@ -115,8 +111,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) getMetaAccess().lookupJavaType(AheadOfTimeCompilationTest.class);
         assertDeepEquals(type.klass(), filter.first().asConstant());
 
-        assertDeepEquals(1, result.getNodes().filter(FloatingReadNode.class).count());
-        assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
+        assertDeepEquals(1, result.getNodes().filter(ReadNode.class).count());
     }
 
     @Test
@@ -128,7 +123,6 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         JavaConstant c = filter.first().asJavaConstant();
         Assert.assertEquals(getSnippetReflection().asObject(Class.class, c), AheadOfTimeCompilationTest.class);
 
-        assertDeepEquals(0, result.getNodes().filter(FloatingReadNode.class).count());
         assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
@@ -144,8 +138,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         Stamp constantStamp = filter.first().stamp();
         Assert.assertTrue(constantStamp instanceof KlassPointerStamp);
 
-        assertDeepEquals(2, result.getNodes().filter(FloatingReadNode.class).count());
-        assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
+        assertDeepEquals(2, result.getNodes().filter(ReadNode.class).count());
     }
 
     @Test
@@ -156,7 +149,6 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         JavaConstant c = filter.first().asJavaConstant();
         Assert.assertEquals(getSnippetReflection().asObject(Class.class, c), Integer.TYPE);
 
-        assertDeepEquals(0, result.getNodes().filter(FloatingReadNode.class).count());
         assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
@@ -219,7 +211,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
 
     @SuppressWarnings("try")
     private StructuredGraph compile(String test, boolean compileAOT) {
-        OptionValues options = new OptionValues(GLOBAL, ImmutableCode, compileAOT);
+        OptionValues options = new OptionValues(getInitialOptions(), ImmutableCode, compileAOT);
         StructuredGraph graph = parseEager(test, AllowAssumptions.YES, options);
         ResolvedJavaMethod method = graph.method();
         // create suites every time, as we modify options for the compiler

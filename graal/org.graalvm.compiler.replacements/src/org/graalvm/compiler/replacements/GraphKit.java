@@ -312,7 +312,7 @@ public class GraphKit implements GraphBuilderTool {
         Plugins plugins = new Plugins(graphBuilderPlugins);
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
 
-        StructuredGraph calleeGraph = new StructuredGraph.Builder().method(method).options(invoke.getOptions()).build();
+        StructuredGraph calleeGraph = new StructuredGraph.Builder(invoke.getOptions()).method(method).build();
         IntrinsicContext initialReplacementContext = new IntrinsicContext(method, method, providers.getReplacements().getReplacementBytecodeProvider(), INLINE_AFTER_PARSING);
         GraphBuilderPhase.Instance instance = new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), providers.getConstantFieldProvider(), config,
                         OptimisticOptimizations.NONE,

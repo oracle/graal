@@ -24,8 +24,6 @@ package org.graalvm.compiler.hotspot.amd64;
 
 import static jdk.vm.ci.common.InitTimer.timer;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.Options.GraalArithmeticStubs;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -92,6 +90,7 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
     public HotSpotBackend createBackend(HotSpotGraalRuntimeProvider graalRuntime, CompilerConfiguration compilerConfiguration, HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotBackend host) {
         assert host == null;
 
+        OptionValues options = graalRuntime.getOptions();
         JVMCIBackend jvmci = jvmciRuntime.getHostJVMCIBackend();
         GraalHotSpotVMConfig config = graalRuntime.getVMConfig();
         HotSpotProviders providers;
@@ -111,7 +110,6 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         Plugins plugins;
         NodeCostProvider nodeCostProvider;
         BytecodeProvider bytecodeProvider;
-        OptionValues options = GLOBAL;
         try (InitTimer t = timer("create providers")) {
             try (InitTimer rt = timer("create HotSpotRegisters provider")) {
                 registers = createRegisters();
@@ -141,10 +139,10 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
                 bytecodeProvider = new ClassfileBytecodeProvider(metaAccess, snippetReflection);
             }
             try (InitTimer rt = timer("create Replacements provider")) {
-                replacements = createReplacements(p, snippetReflection, bytecodeProvider);
+                replacements = createReplacements(options, p, snippetReflection, bytecodeProvider);
             }
             try (InitTimer rt = timer("create GraphBuilderPhase plugins")) {
-                plugins = createGraphBuilderPlugins(config, target, constantReflection, foreignCalls, metaAccess, snippetReflection, replacements, wordTypes, stampProvider);
+                plugins = createGraphBuilderPlugins(config, options, target, constantReflection, foreignCalls, metaAccess, snippetReflection, replacements, wordTypes, stampProvider);
                 replacements.setGraphBuilderPlugins(plugins);
             }
             try (InitTimer rt = timer("create Suites provider")) {
@@ -159,12 +157,12 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         }
     }
 
-    protected Plugins createGraphBuilderPlugins(GraalHotSpotVMConfig config, TargetDescription target, HotSpotConstantReflectionProvider constantReflection,
+    protected Plugins createGraphBuilderPlugins(GraalHotSpotVMConfig config, OptionValues options, TargetDescription target, HotSpotConstantReflectionProvider constantReflection,
                     HotSpotHostForeignCallsProvider foreignCalls,
                     HotSpotMetaAccessProvider metaAccess, HotSpotSnippetReflectionProvider snippetReflection, HotSpotReplacementsImpl replacements, HotSpotWordTypes wordTypes,
                     HotSpotStampProvider stampProvider) {
         Plugins plugins = HotSpotGraphBuilderPlugins.create(config, wordTypes, metaAccess, constantReflection, snippetReflection, foreignCalls, stampProvider, replacements);
-        AMD64GraphBuilderPlugins.register(plugins, replacements.getReplacementBytecodeProvider(), (AMD64) target.arch, GraalArithmeticStubs.getValue(GLOBAL));
+        AMD64GraphBuilderPlugins.register(plugins, replacements.getReplacementBytecodeProvider(), (AMD64) target.arch, GraalArithmeticStubs.getValue(options));
         return plugins;
     }
 
@@ -176,8 +174,8 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         return new HotSpotRegisters(AMD64.r15, AMD64.r12, AMD64.rsp);
     }
 
-    protected HotSpotReplacementsImpl createReplacements(Providers p, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider) {
-        return new HotSpotReplacementsImpl(p, snippetReflection, bytecodeProvider, p.getCodeCache().getTarget());
+    protected HotSpotReplacementsImpl createReplacements(OptionValues options, Providers p, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider) {
+        return new HotSpotReplacementsImpl(options, p, snippetReflection, bytecodeProvider, p.getCodeCache().getTarget());
     }
 
     protected AMD64HotSpotForeignCallsProvider createForeignCalls(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalRuntimeProvider runtime, HotSpotMetaAccessProvider metaAccess,

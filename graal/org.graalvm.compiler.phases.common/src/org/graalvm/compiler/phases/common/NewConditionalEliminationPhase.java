@@ -32,10 +32,8 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.And;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Or;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCounter;
 import org.graalvm.compiler.graph.Node;
@@ -46,7 +44,6 @@ import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BinaryOpLogicNode;
 import org.graalvm.compiler.nodes.ConditionAnchorNode;
-import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.DeoptimizingGuard;
 import org.graalvm.compiler.nodes.FixedGuardNode;
@@ -56,6 +53,7 @@ import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
+import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
@@ -67,8 +65,6 @@ import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.BinaryNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
-import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
-import org.graalvm.compiler.nodes.calc.PointerEqualsNode;
 import org.graalvm.compiler.nodes.calc.UnaryNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
@@ -76,7 +72,6 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
-import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.TypeSwitchNode;
 import org.graalvm.compiler.nodes.spi.NodeWithState;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
@@ -84,6 +79,8 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.Pair;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -94,7 +91,6 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
     private static final DebugCounter counterStampsRegistered = Debug.counter("StampsRegistered");
     private static final DebugCounter counterStampsFound = Debug.counter("StampsFound");
     private static final DebugCounter counterIfsKilled = Debug.counter("CE_KilledIfs");
-    private static final DebugCounter counterLFFolded = Debug.counter("ConstantLFFolded");
     private final boolean fullSchedule;
 
     public NewConditionalEliminationPhase(boolean fullSchedule) {
@@ -105,31 +101,89 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, PhaseContext context) {
         try (Debug.Scope s = Debug.scope("DominatorConditionalElimination")) {
-            BlockMap<List<Node>> blockToNodes;
-            NodeMap<Block> nodeToBlock;
-            ControlFlowGraph cfg;
+            BlockMap<List<Node>> blockToNodes = null;
+            ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
             if (fullSchedule) {
-                SchedulePhase schedule = new SchedulePhase(SchedulePhase.SchedulingStrategy.EARLIEST);
-                schedule.apply(graph);
-                cfg = graph.getLastSchedule().getCFG();
-                cfg.computePostdominators();
+                cfg.visitDominatorTree(new MoveGuardsUpwards(), graph.hasValueProxies());
+                SchedulePhase.run(graph, SchedulePhase.SchedulingStrategy.EARLIEST, cfg);
                 blockToNodes = graph.getLastSchedule().getBlockToNodesMap();
-                nodeToBlock = graph.getLastSchedule().getNodeToBlockMap();
-            } else {
-                cfg = ControlFlowGraph.compute(graph, true, true, true, true);
-                blockToNodes = null;
-                nodeToBlock = cfg.getNodeToBlock();
             }
 
-            Instance visitor = new Instance(graph, blockToNodes, nodeToBlock, context);
+            Instance visitor = new Instance(graph, blockToNodes, context);
             cfg.visitDominatorTree(visitor, graph.hasValueProxies());
         }
+    }
+
+    public static class MoveGuardsUpwards implements ControlFlowGraph.RecursiveVisitor<Block> {
+
+        Block anchorBlock;
+
+        @Override
+        public Block enter(Block b) {
+            Block oldAnchorBlock = anchorBlock;
+            if (b.getDominator() == null || b.getDominator().getPostdominator() != b) {
+                // New anchor.
+                anchorBlock = b;
+            }
+
+            AbstractBeginNode beginNode = b.getBeginNode();
+            if (beginNode instanceof MergeNode && anchorBlock != b) {
+                MergeNode mergeNode = (MergeNode) beginNode;
+                for (GuardNode guard : mergeNode.guards().snapshot()) {
+                    GuardNode newlyCreatedGuard = new GuardNode(guard.getCondition(), anchorBlock.getBeginNode(), guard.getReason(), guard.getAction(), guard.isNegated(), guard.getSpeculation());
+                    GuardNode newGuard = mergeNode.graph().unique(newlyCreatedGuard);
+                    guard.replaceAndDelete(newGuard);
+                }
+            }
+
+            FixedNode endNode = b.getEndNode();
+            if (endNode instanceof IfNode) {
+                IfNode node = (IfNode) endNode;
+
+                // Check if we can move guards upwards.
+                AbstractBeginNode trueSuccessor = node.trueSuccessor();
+                EconomicMap<LogicNode, GuardNode> trueGuards = EconomicMap.create(Equivalence.IDENTITY);
+                for (GuardNode guard : trueSuccessor.guards()) {
+                    LogicNode condition = guard.getCondition();
+                    if (condition.hasMoreThanOneUsage()) {
+                        trueGuards.put(condition, guard);
+                    }
+                }
+
+                if (!trueGuards.isEmpty()) {
+                    for (GuardNode guard : node.falseSuccessor().guards().snapshot()) {
+                        GuardNode otherGuard = trueGuards.get(guard.getCondition());
+                        if (otherGuard != null && guard.isNegated() == otherGuard.isNegated()) {
+                            JavaConstant speculation = otherGuard.getSpeculation();
+                            if (speculation == null) {
+                                speculation = guard.getSpeculation();
+                            } else if (guard.getSpeculation() != null && guard.getSpeculation() != speculation) {
+                                // Cannot optimize due to different speculations.
+                                continue;
+                            }
+                            GuardNode newlyCreatedGuard = new GuardNode(guard.getCondition(), anchorBlock.getBeginNode(), guard.getReason(), guard.getAction(), guard.isNegated(), speculation);
+                            GuardNode newGuard = node.graph().unique(newlyCreatedGuard);
+                            if (otherGuard.isAlive()) {
+                                otherGuard.replaceAndDelete(newGuard);
+                            }
+                            guard.replaceAndDelete(newGuard);
+                        }
+                    }
+                }
+            }
+            return oldAnchorBlock;
+        }
+
+        @Override
+        public void exit(Block b, Block value) {
+            anchorBlock = value;
+        }
+
     }
 
     public static class Instance implements ControlFlowGraph.RecursiveVisitor<Integer> {
         protected final NodeMap<InfoElement> map;
         protected final BlockMap<List<Node>> blockToNodes;
-        protected final NodeMap<Block> nodeToBlock;
         protected final CanonicalizerTool tool;
         protected final NodeStack undoOperations;
         protected final StructuredGraph graph;
@@ -139,11 +193,9 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
          */
         private Deque<PendingTest> pendingTests;
 
-        public Instance(StructuredGraph graph, BlockMap<List<Node>> blockToNodes,
-                        NodeMap<Block> nodeToBlock, PhaseContext context) {
+        public Instance(StructuredGraph graph, BlockMap<List<Node>> blockToNodes, PhaseContext context) {
             this.graph = graph;
             this.blockToNodes = blockToNodes;
-            this.nodeToBlock = nodeToBlock;
             this.undoOperations = new NodeStack();
             this.map = graph.createNodeMap();
             pendingTests = new ArrayDeque<>();
@@ -154,7 +206,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
         protected void processConditionAnchor(ConditionAnchorNode node) {
             tryProveCondition(node.condition(), (guard, result, guardedValueStamp, newInput) -> {
                 if (result != node.isNegated()) {
-                    rewirePiNodes(node, guardedValueStamp, newInput);
+                    rewirePiNodes(node, guard, guardedValueStamp, newInput);
                     node.replaceAtUsages(guard.asNode());
                     GraphUtil.unlinkFixedNode(node);
                     GraphUtil.killWithUnusedFloatingInputs(node);
@@ -167,9 +219,9 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
             });
         }
 
-        private static void rewirePiNodes(GuardingNode node, Stamp guardedValueStamp, ValueNode newInput) {
+        private static void rewirePiNodes(GuardingNode toBeReplaced, GuardingNode replacement, Stamp guardedValueStamp, ValueNode newInput) {
             ValueNode unproxified = GraphUtil.unproxify(newInput);
-            for (Node usage : node.asNode().usages().snapshot()) {
+            for (Node usage : toBeReplaced.asNode().usages().snapshot()) {
                 if (usage instanceof PiNode) {
                     PiNode piNode = (PiNode) usage;
 
@@ -177,28 +229,49 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                         piNode.setOriginalNode(newInput);
                     }
 
-                    if (piNode.getOriginalNode() == newInput) {
+                    if (usesGuardedValue(replacement, GraphUtil.unproxify((ValueNode) piNode))) {
                         Stamp piStamp = piNode.piStamp();
-                        Stamp newStamp = piStamp.join(guardedValueStamp);
+                        if (guardedValueStamp != null) {
+                            Stamp newStamp = piStamp.join(guardedValueStamp);
 
-                        /*
-                         * Use an improved stamp in the PiNode. It's possible when joining class and
-                         * interfaces for the stamp to become worse so keep the original stamp in
-                         * that case. It's just not clear which answer would be most useful to
-                         * users.
-                         */
-                        if (!newStamp.isEmpty() && !newStamp.equals(piStamp) && !newStamp.join(piStamp).equals(piStamp)) {
-                            usage.replaceAtUsagesAndDelete(piNode.graph().unique(new PiNode(piNode.getOriginalNode(), newStamp, piNode.getGuard().asNode())));
+                            /*
+                             * Use an improved stamp in the PiNode. It's possible when joining class
+                             * and interfaces for the stamp to become worse so keep the original
+                             * stamp in that case. It's just not clear which answer would be most
+                             * useful to users.
+                             */
+                            if (!newStamp.isEmpty() && !newStamp.equals(piStamp) && !newStamp.join(piStamp).equals(piStamp)) {
+                                usage.replaceAtUsagesAndDelete(piNode.graph().unique(new PiNode(piNode.getOriginalNode(), newStamp, piNode.getGuard().asNode())));
+                            }
                         }
                     }
                 }
             }
         }
 
+        private static boolean usesGuardedValue(GuardingNode node, ValueNode guardedValue) {
+            LogicNode condition = null;
+            if (node instanceof FixedGuardNode) {
+                condition = ((FixedGuardNode) node).getCondition();
+            } else if (node instanceof AbstractBeginNode && ((Node) node).predecessor() instanceof IfNode) {
+                condition = ((IfNode) ((Node) node).predecessor()).condition();
+            } else if (node instanceof GuardNode) {
+                condition = ((GuardNode) node).getCondition();
+            }
+            if (condition instanceof UnaryOpLogicNode) {
+                UnaryOpLogicNode unary = (UnaryOpLogicNode) condition;
+                return unary.getValue() == guardedValue;
+            } else if (condition instanceof BinaryOpLogicNode) {
+                BinaryOpLogicNode binary = (BinaryOpLogicNode) condition;
+                return binary.getX() == guardedValue || binary.getY() == guardedValue;
+            }
+            return false;
+        }
+
         protected void processGuard(GuardNode node) {
             if (!tryProveGuardCondition(node, node.getCondition(), (guard, result, guardedValueStamp, newInput) -> {
                 if (result != node.isNegated()) {
-                    rewirePiNodes(node, guardedValueStamp, newInput);
+                    rewirePiNodes(node, guard, guardedValueStamp, newInput);
                     node.replaceAndDelete(guard.asNode());
                 } else {
                     DeoptimizeNode deopt = node.graph().add(new DeoptimizeNode(node.getAction(), node.getReason(), node.getSpeculation()));
@@ -216,7 +289,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
         protected void processFixedGuard(FixedGuardNode node) {
             if (!tryProveGuardCondition(node, node.condition(), (guard, result, guardedValueStamp, newInput) -> {
                 if (result != node.isNegated()) {
-                    rewirePiNodes(node, guardedValueStamp, newInput);
+                    rewirePiNodes(node, guard, guardedValueStamp, newInput);
                     node.replaceAtUsages(guard.asNode());
                     GraphUtil.unlinkFixedNode(node);
                     GraphUtil.killWithUnusedFloatingInputs(node);
@@ -236,12 +309,11 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
         protected void processIf(IfNode node) {
             tryProveCondition(node.condition(), (guard, result, guardedValueStamp, newInput) -> {
                 AbstractBeginNode survivingSuccessor = node.getSuccessor(result);
-                rewirePiNodes(survivingSuccessor, guardedValueStamp, newInput);
+                rewirePiNodes(survivingSuccessor, guard, guardedValueStamp, newInput);
                 survivingSuccessor.replaceAtUsages(InputType.Guard, guard.asNode());
                 survivingSuccessor.replaceAtPredecessor(null);
                 node.replaceAtPredecessor(survivingSuccessor);
                 GraphUtil.killCFG(node);
-                Debug.log("Kill if");
                 counterIfsKilled.increment();
                 return true;
             });
@@ -300,43 +372,12 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 processConditionAnchor((ConditionAnchorNode) node);
             } else if (node instanceof IfNode) {
                 processIf((IfNode) node);
-            } else if (node instanceof LoadFieldNode) {
-                processLoadField((LoadFieldNode) node);
             } else {
                 return;
             }
         }
 
-        private void processLoadField(LoadFieldNode node) {
-            GuardedConstantStamp stamp = this.getConstantObjectStamp(node.object());
-            if (stamp != null) {
-                counterLFFolded.increment();
-                node.setObject(ConstantNode.forConstant(stamp.objectConstant, tool.getMetaAccess(), graph));
-            }
-        }
-
         protected void registerNewCondition(LogicNode condition, boolean negated, GuardingNode guard) {
-            if (!negated && condition instanceof PointerEqualsNode) {
-                PointerEqualsNode pe = (PointerEqualsNode) condition;
-                ValueNode x = pe.getX();
-                if (maybeMultipleUsages(x)) {
-                    ValueNode y = pe.getY();
-                    if (y.isConstant()) {
-                        JavaConstant constant = y.asJavaConstant();
-                        Stamp succeeding = pe.getSucceedingStampForX(negated);
-                        if (succeeding == null && pe instanceof ObjectEqualsNode && guard instanceof FixedGuardNode) {
-                            succeeding = y.stamp();
-                        }
-                        if (succeeding != null) {
-                            if (y.stamp() instanceof ObjectStamp) {
-                                GuardedConstantStamp cos = new GuardedConstantStamp(constant, (ObjectStamp) succeeding);
-                                registerNewStamp(x, cos, guard);
-                                return;
-                            }
-                        }
-                    }
-                }
-            }
             if (condition instanceof UnaryOpLogicNode) {
                 UnaryOpLogicNode unaryLogicNode = (UnaryOpLogicNode) condition;
                 ValueNode value = unaryLogicNode.getValue();
@@ -347,14 +388,14 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
             } else if (condition instanceof BinaryOpLogicNode) {
                 BinaryOpLogicNode binaryOpLogicNode = (BinaryOpLogicNode) condition;
                 ValueNode x = binaryOpLogicNode.getX();
+                ValueNode y = binaryOpLogicNode.getY();
                 if (!x.isConstant() && maybeMultipleUsages(x)) {
-                    Stamp newStampX = binaryOpLogicNode.getSucceedingStampForX(negated);
+                    Stamp newStampX = binaryOpLogicNode.getSucceedingStampForX(negated, x.stamp(), getSafeStamp(y));
                     registerNewStamp(x, newStampX, guard);
                 }
 
-                ValueNode y = binaryOpLogicNode.getY();
                 if (!y.isConstant() && maybeMultipleUsages(y)) {
-                    Stamp newStampY = binaryOpLogicNode.getSucceedingStampForY(negated);
+                    Stamp newStampY = binaryOpLogicNode.getSucceedingStampForY(negated, getSafeStamp(x), y.stamp());
                     registerNewStamp(y, newStampY, guard);
                 }
                 if (condition instanceof IntegerEqualsNode && guard instanceof DeoptimizingGuard && !negated) {
@@ -378,18 +419,6 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 pendingTests.push(new PendingTest(condition, (DeoptimizingGuard) guard));
             }
             registerCondition(condition, negated, guard);
-        }
-
-        private GuardedConstantStamp getConstantObjectStamp(ValueNode n) {
-            InfoElement infoElement = getInfoElements(n);
-            while (infoElement != null) {
-                Stamp s = infoElement.getStamp();
-                if (s instanceof GuardedConstantStamp) {
-                    return (GuardedConstantStamp) s;
-                }
-                infoElement = infoElement.getParent();
-            }
-            return null;
         }
 
         Pair<InfoElement, Stamp> recursiveFoldStamp(Node node) {
@@ -420,6 +449,13 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 }
             }
             return null;
+        }
+
+        private static Stamp getSafeStamp(ValueNode x) {
+            if (x.isConstant()) {
+                return x.stamp();
+            }
+            return x.stamp().unrestricted();
         }
 
         /**
@@ -519,9 +555,8 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
             InfoElement infoElement = getInfoElements(node);
             if (infoElement != null) {
                 assert infoElement.getStamp() == StampFactory.tautology() || infoElement.getStamp() == StampFactory.contradiction();
-                // No proxified input required.
-                ValueNode proxifiedInput = null;
-                return rewireGuards(infoElement.getGuard(), infoElement.getStamp() == StampFactory.tautology(), proxifiedInput, infoElement.getStamp(), rewireGuardFunction);
+                // No proxified input and stamp required.
+                return rewireGuards(infoElement.getGuard(), infoElement.getStamp() == StampFactory.tautology(), null, null, rewireGuardFunction);
             }
             if (node instanceof UnaryOpLogicNode) {
                 UnaryOpLogicNode unaryLogicNode = (UnaryOpLogicNode) node;
@@ -631,13 +666,13 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 }
                 if (thisGuard != null) {
                     if (!x.isConstant()) {
-                        Stamp newStampX = binaryOpLogicNode.getSucceedingStampForX(thisGuard.isNegated());
+                        Stamp newStampX = binaryOpLogicNode.getSucceedingStampForX(thisGuard.isNegated(), x.stamp(), getSafeStamp(y));
                         if (newStampX != null && foldPendingTest(thisGuard, x, newStampX, rewireGuardFunction)) {
                             return true;
                         }
                     }
                     if (!y.isConstant()) {
-                        Stamp newStampY = binaryOpLogicNode.getSucceedingStampForY(thisGuard.isNegated());
+                        Stamp newStampY = binaryOpLogicNode.getSucceedingStampForY(thisGuard.isNegated(), getSafeStamp(x), y.stamp());
                         if (newStampY != null && foldPendingTest(thisGuard, y, newStampY, rewireGuardFunction)) {
                             return true;
                         }
@@ -677,8 +712,9 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
             assert guard != null;
             if (newStamp != null) {
                 ValueNode value = maybeProxiedValue;
-                ValueNode proxiedValue = value;
+                ValueNode proxiedValue = null;
                 if (value instanceof ValueProxy) {
+                    proxiedValue = value;
                     value = GraphUtil.unproxify(value);
                 }
                 counterStampsRegistered.increment();
@@ -697,57 +733,38 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 registerNewCondition(condition, negated, beginNode);
             } else if (predecessor instanceof TypeSwitchNode) {
                 TypeSwitchNode typeSwitch = (TypeSwitchNode) predecessor;
-                processTypeSwitch(beginNode, predecessor, typeSwitch);
+                processTypeSwitch(beginNode, typeSwitch);
             } else if (predecessor instanceof IntegerSwitchNode) {
                 IntegerSwitchNode integerSwitchNode = (IntegerSwitchNode) predecessor;
-                processIntegerSwitch(beginNode, predecessor, integerSwitchNode);
+                processIntegerSwitch(beginNode, integerSwitchNode);
             }
         }
 
         private static boolean maybeMultipleUsages(ValueNode value) {
-            if (value.getUsageCount() > 1) {
+            if (value.hasMoreThanOneUsage()) {
                 return true;
             } else {
                 return value instanceof ProxyNode;
             }
         }
 
-        protected void processIntegerSwitch(AbstractBeginNode beginNode, Node predecessor, IntegerSwitchNode integerSwitchNode) {
+        protected void processIntegerSwitch(AbstractBeginNode beginNode, IntegerSwitchNode integerSwitchNode) {
             ValueNode value = integerSwitchNode.value();
             if (maybeMultipleUsages(value)) {
-                Stamp stamp = null;
-                for (int i = 0; i < integerSwitchNode.keyCount(); i++) {
-                    if (integerSwitchNode.keySuccessor(i) == predecessor) {
-                        if (stamp == null) {
-                            stamp = StampFactory.forConstant(integerSwitchNode.keyAt(i));
-                        } else {
-                            stamp = stamp.meet(StampFactory.forConstant(integerSwitchNode.keyAt(i)));
-                        }
-                    }
-                }
-
+                Stamp stamp = integerSwitchNode.getValueStampForSuccessor(beginNode);
                 if (stamp != null) {
                     registerNewStamp(value, stamp, beginNode);
                 }
             }
         }
 
-        protected void processTypeSwitch(AbstractBeginNode beginNode, Node predecessor, TypeSwitchNode typeSwitch) {
+        protected void processTypeSwitch(AbstractBeginNode beginNode, TypeSwitchNode typeSwitch) {
             ValueNode hub = typeSwitch.value();
             if (hub instanceof LoadHubNode) {
                 LoadHubNode loadHub = (LoadHubNode) hub;
                 ValueNode value = loadHub.getValue();
                 if (maybeMultipleUsages(value)) {
-                    Stamp stamp = null;
-                    for (int i = 0; i < typeSwitch.keyCount(); i++) {
-                        if (typeSwitch.keySuccessor(i) == predecessor) {
-                            if (stamp == null) {
-                                stamp = StampFactory.objectNonNull(TypeReference.createExactTrusted(typeSwitch.typeAt(i)));
-                            } else {
-                                stamp = stamp.meet(StampFactory.objectNonNull(TypeReference.createExactTrusted(typeSwitch.typeAt(i))));
-                            }
-                        }
-                    }
+                    Stamp stamp = typeSwitch.getValueStampForSuccessor(beginNode);
                     if (stamp != null) {
                         registerNewStamp(value, stamp, beginNode);
                     }
@@ -860,16 +877,6 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
         public String toString() {
             return stamp + " -> " + guard;
         }
-    }
-
-    private static class GuardedConstantStamp extends ObjectStamp {
-        private final JavaConstant objectConstant;
-
-        GuardedConstantStamp(JavaConstant objectConstant, ObjectStamp succeedingStamp) {
-            super(succeedingStamp.type(), succeedingStamp.isExactType(), succeedingStamp.nonNull(), succeedingStamp.alwaysNull());
-            this.objectConstant = objectConstant;
-        }
-
     }
 
     @Override

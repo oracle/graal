@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.69.3",
+  "mxversion" : "5.72.0",
   "name" : "graal-core",
 
   "imports" : {
@@ -880,7 +880,7 @@ suite = {
         "org.graalvm.compiler.core.test"
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "1.8=",
       "workingSets" : "Graal,Test",
     },
 
@@ -1447,7 +1447,7 @@ suite = {
 
     "GRAAL" : {
       # This distribution defines a module.
-      "moduleName" : "jdk.vm.compiler",
+      "moduleName" : "jdk.internal.vm.compiler",
       "addExports" : [
         # All other internal packages are exported dynamically -
         # see org.graalvm.compiler.hotspot.HotSpotGraalJVMCIServiceLocator

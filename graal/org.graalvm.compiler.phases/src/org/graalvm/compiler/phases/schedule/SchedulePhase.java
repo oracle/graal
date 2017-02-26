@@ -35,6 +35,7 @@ import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
+import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.graph.Graph.NodeEvent;
 import org.graalvm.compiler.graph.Graph.NodeEventListener;
@@ -51,6 +52,7 @@ import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.GuardNode;
+import org.graalvm.compiler.nodes.KillingBeginNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.PhiNode;
@@ -102,9 +104,7 @@ public final class SchedulePhase extends Phase {
     }
 
     private NodeEventScope verifyImmutableGraph(StructuredGraph graph) {
-        boolean assertionsEnabled = false;
-        assert (assertionsEnabled = true) == true;
-        if (immutableGraph && assertionsEnabled) {
+        if (immutableGraph && Assertions.ENABLED) {
             return graph.trackNodeEvents(new NodeEventListener() {
                 @Override
                 public void event(NodeEvent e, Node node) {
@@ -125,6 +125,11 @@ public final class SchedulePhase extends Phase {
         }
     }
 
+    public static void run(StructuredGraph graph, SchedulingStrategy strategy, ControlFlowGraph cfg) {
+        Instance inst = new Instance(cfg);
+        inst.run(graph, strategy, false);
+    }
+
     public static class Instance {
 
         /**
@@ -134,10 +139,21 @@ public final class SchedulePhase extends Phase {
         protected BlockMap<List<Node>> blockToNodesMap;
         protected NodeMap<Block> nodeToBlockMap;
 
+        public Instance() {
+            this(null);
+        }
+
+        public Instance(ControlFlowGraph cfg) {
+            this.cfg = cfg;
+        }
+
         @SuppressWarnings("try")
         public void run(StructuredGraph graph, SchedulingStrategy selectedStrategy, boolean immutableGraph) {
             // assert GraphOrder.assertNonCyclicGraph(graph);
-            cfg = ControlFlowGraph.compute(graph, true, true, true, false);
+
+            if (this.cfg == null) {
+                this.cfg = ControlFlowGraph.compute(graph, true, true, true, false);
+            }
 
             NodeMap<Block> currentNodeMap = graph.createNodeMap();
             NodeBitMap visited = graph.createNodeBitMap();
@@ -300,6 +316,15 @@ public final class SchedulePhase extends Phase {
                     break;
                 }
                 lastBlock = currentBlock;
+            }
+
+            if (lastBlock.getBeginNode() instanceof KillingBeginNode) {
+                LocationIdentity locationIdentity = ((KillingBeginNode) lastBlock.getBeginNode()).getLocationIdentity();
+                if ((locationIdentity.isAny() || locationIdentity.equals(location)) && lastBlock != earliestBlock) {
+                    // The begin of this block kills the location, so we *have* to schedule the node
+                    // in the dominating block.
+                    lastBlock = lastBlock.getDominator();
+                }
             }
 
             return lastBlock;
@@ -469,30 +494,35 @@ public final class SchedulePhase extends Phase {
         protected void calcLatestBlock(Block earliestBlock, SchedulingStrategy strategy, Node currentNode, NodeMap<Block> currentNodeMap, LocationIdentity constrainingLocation,
                         BlockMap<ArrayList<FloatingReadNode>> watchListMap, BlockMap<List<Node>> latestBlockToNodesMap, NodeBitMap visited, boolean immutableGraph) {
             Block latestBlock = null;
-            assert currentNode.hasUsages();
-            for (Node usage : currentNode.usages()) {
-                if (immutableGraph && !visited.contains(usage)) {
-                    /*
-                     * Normally, dead nodes are deleted by the scheduler before we reach this point.
-                     * Only when the scheduler is asked to not modify a graph, we can see dead nodes
-                     * here.
-                     */
-                    continue;
+            if (!currentNode.hasUsages()) {
+                assert currentNode instanceof GuardNode;
+                latestBlock = earliestBlock;
+            } else {
+                assert currentNode.hasUsages();
+                for (Node usage : currentNode.usages()) {
+                    if (immutableGraph && !visited.contains(usage)) {
+                        /*
+                         * Normally, dead nodes are deleted by the scheduler before we reach this
+                         * point. Only when the scheduler is asked to not modify a graph, we can see
+                         * dead nodes here.
+                         */
+                        continue;
+                    }
+                    latestBlock = calcBlockForUsage(currentNode, usage, latestBlock, currentNodeMap);
                 }
-                latestBlock = calcBlockForUsage(currentNode, usage, latestBlock, currentNodeMap);
-            }
 
-            assert latestBlock != null : currentNode;
+                assert latestBlock != null : currentNode;
 
-            if (strategy == SchedulingStrategy.FINAL_SCHEDULE || strategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS) {
-                assert latestBlock != null;
-                while (latestBlock.getLoopDepth() > earliestBlock.getLoopDepth() && latestBlock != earliestBlock.getDominator()) {
-                    latestBlock = latestBlock.getDominator();
+                if (strategy == SchedulingStrategy.FINAL_SCHEDULE || strategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS) {
+                    assert latestBlock != null;
+                    while (latestBlock.getLoopDepth() > earliestBlock.getLoopDepth() && latestBlock != earliestBlock.getDominator()) {
+                        latestBlock = latestBlock.getDominator();
+                    }
                 }
-            }
 
-            if (latestBlock != earliestBlock && latestBlock != earliestBlock.getDominator() && constrainingLocation != null) {
-                latestBlock = checkKillsBetween(earliestBlock, latestBlock, constrainingLocation);
+                if (latestBlock != earliestBlock && latestBlock != earliestBlock.getDominator() && constrainingLocation != null) {
+                    latestBlock = checkKillsBetween(earliestBlock, latestBlock, constrainingLocation);
+                }
             }
 
             selectLatestBlock(currentNode, earliestBlock, latestBlock, currentNodeMap, watchListMap, constrainingLocation, latestBlockToNodesMap);
@@ -552,7 +582,7 @@ public final class SchedulePhase extends Phase {
              * Adds a new floating node into the micro block.
              */
             public void add(Node node) {
-                assert !(node instanceof FixedNode);
+                assert !(node instanceof FixedNode) : node;
                 NodeEntry newTail = new NodeEntry(node, null);
                 if (tail == null) {
                     tail = head = newTail;
@@ -646,6 +676,34 @@ public final class SchedulePhase extends Phase {
                     if (startBlock == null) {
                         startBlock = microBlock;
                     }
+
+                    // Process inputs of this fixed node.
+                    for (Node input : current.inputs()) {
+                        if (entries.get(input) == null) {
+                            processStack(input, startBlock, entries, visited, stack);
+                        }
+                    }
+
+                    if (current == b.getEndNode()) {
+                        // Break loop when reaching end node.
+                        break;
+                    }
+
+                    current = ((FixedWithNextNode) current).next();
+                }
+            }
+
+            // Now process guards.
+            for (GuardNode guardNode : graph.getNodes(GuardNode.TYPE)) {
+                if (entries.get(guardNode) == null) {
+                    processStack(guardNode, startBlock, entries, visited, stack);
+                }
+            }
+
+            // Now process inputs of fixed nodes.
+            for (Block b : cfg.reversePostOrder()) {
+                FixedNode current = b.getBeginNode();
+                while (true) {
 
                     // Process inputs of this fixed node.
                     for (Node input : current.inputs()) {

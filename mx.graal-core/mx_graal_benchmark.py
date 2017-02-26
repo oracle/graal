@@ -429,6 +429,44 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchma
             self.vmArgs(bmSuiteArgs) + ["-jar"] + [self.daCapoPath()] +
             [benchmarks[0]] + runArgs)
 
+    def repairDatapoints(self, benchmarks, bmSuiteArgs, partialResults):
+        parser = argparse.ArgumentParser(add_help=False)
+        parser.add_argument("-n", default=None)
+        args, _ = parser.parse_known_args(self.runArgs(bmSuiteArgs))
+        if args.n and args.n.isdigit():
+            iterations = int(args.n)
+        else:
+            iterations = self.daCapoIterations()[benchmarks[0]]
+            iterations = iterations + self.getExtraIterationCount(iterations)
+        for i in range(0, iterations):
+            if next((p for p in partialResults if p["metric.iteration"] == i), None) is None:
+                datapoint = {
+                    "benchmark": benchmarks[0],
+                    "vm": "jvmci",
+                    "config.name": "default",
+                    "metric.name": "warmup",
+                    "metric.value": -1,
+                    "metric.unit": "ms",
+                    "metric.type": "numeric",
+                    "metric.score-function":  "id",
+                    "metric.better": "lower",
+                    "metric.iteration": i
+                }
+                partialResults.append(datapoint)
+        datapoint = {
+            "benchmark": benchmarks[0],
+            "vm": "jvmci",
+            "config.name": "default",
+            "metric.name": "time",
+            "metric.value": -1,
+            "metric.unit": "ms",
+            "metric.type": "numeric",
+            "metric.score-function": "id",
+            "metric.better": "lower",
+            "metric.iteration": 0
+        }
+        partialResults.append(datapoint)
+
     def benchmarkList(self, bmSuiteArgs):
         return [key for key, value in self.daCapoIterations().iteritems() if value != -1]
 

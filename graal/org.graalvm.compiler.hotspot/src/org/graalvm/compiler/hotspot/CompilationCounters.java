@@ -24,8 +24,6 @@ package org.graalvm.compiler.hotspot;
 
 import static org.graalvm.compiler.hotspot.HotSpotGraalCompiler.fmt;
 import static org.graalvm.compiler.hotspot.HotSpotGraalCompiler.str;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
@@ -51,8 +49,11 @@ class CompilationCounters {
         // @formatter:on
     }
 
-    CompilationCounters() {
+    private final OptionValues options;
+
+    CompilationCounters(OptionValues options) {
         TTY.println("Warning: Compilation counters enabled, excessive recompilation of a method will cause a failure!");
+        this.options = options;
     }
 
     private final Map<ResolvedJavaMethod, Integer> counters = new HashMap<>();
@@ -68,7 +69,6 @@ class CompilationCounters {
         Integer val = counters.get(method);
         val = val != null ? val + 1 : 1;
         counters.put(method, val);
-        OptionValues options = GLOBAL;
         if (val > Options.CompilationCountLimit.getValue(options)) {
             TTY.printf("Error. Method %s was compiled too many times. Number of compilations: %d\n", fmt(method),
                             CompilationCounters.Options.CompilationCountLimit.getValue(options));

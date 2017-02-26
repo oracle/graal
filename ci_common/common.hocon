@@ -1,5 +1,5 @@
 # overlay version
-overlay = 0edd74cfb471019c0f528dd8aeca68ad09d88fcc
+overlay = 6ec64e68da6d971bc4e9e6dfcf017756686acca3
 
 java7 : {name : oraclejdk, version : "7",    platformspecific: true}
 java8 : {name : labsjdk, version : "8u121-jvmci-0.25", platformspecific: true}
@@ -7,11 +7,8 @@ java9 : {name : labsjdk, version : "9-SNAPSHOT", platformspecific: true}
 java9EA : {name : labsjdk, version : "9-ea+156", platformspecific: true}
 java8Debug : {name : labsjdk, version : "8u121-jvmci-0.25-fastdebug", platformspecific: true}
 
-mx : {
-  packages : {
-    mx : "68c777ea1644fe810765e6a5326ba585355a74af"
-  }
-}
+# Overlay placeholder for pinning mx to a specific revision
+mx : {}
 
 chdirToSuite : ["cd", ${suite-root}]
 common : ${mx} {

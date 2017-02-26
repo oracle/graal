@@ -117,6 +117,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
     private final NodeMap<Value> nodeOperands;
     private final DebugInfoBuilder debugInfoBuilder;
+    private final int traceLIRGeneratorLevel;
 
     protected final LIRGenerator gen;
 
@@ -131,9 +132,11 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         this.nodeMatchRules = nodeMatchRules;
         this.nodeOperands = graph.createNodeMap();
         this.debugInfoBuilder = createDebugInfoBuilder(graph, this);
-        if (MatchExpressions.getValue(graph.getOptions())) {
-            matchRules = MatchRuleRegistry.lookup(nodeMatchRules.getClass());
+        OptionValues options = graph.getOptions();
+        if (MatchExpressions.getValue(options)) {
+            matchRules = MatchRuleRegistry.lookup(nodeMatchRules.getClass(), options);
         }
+        traceLIRGeneratorLevel = TTY.isSuppressed() ? 0 : Options.TraceLIRGeneratorLevel.getValue(options);
 
         assert nodeMatchRules.lirBuilder == null;
         nodeMatchRules.lirBuilder = this;
@@ -319,6 +322,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     @Override
     @SuppressWarnings("try")
     public void doBlock(Block block, StructuredGraph graph, BlockMap<List<Node>> blockMap) {
+
         OptionValues options = graph.getOptions();
         try (BlockScope blockScope = gen.getBlockScope(block)) {
             setSourcePosition(null);
@@ -347,11 +351,12 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
             // of instructions
             matchComplexExpressions(nodes);
 
+            boolean trace = traceLIRGeneratorLevel >= 3;
             for (int i = 0; i < nodes.size(); i++) {
                 Node node = nodes.get(i);
                 if (node instanceof ValueNode) {
                     ValueNode valueNode = (ValueNode) node;
-                    if (Options.TraceLIRGeneratorLevel.getValue(options) >= 3) {
+                    if (trace) {
                         TTY.println("LIRGen for " + valueNode);
                     }
                     Value operand = getOperand(valueNode);
@@ -434,7 +439,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     protected abstract boolean peephole(ValueNode valueNode);
 
     private void doRoot(ValueNode instr) {
-        if (Options.TraceLIRGeneratorLevel.getValue(instr.getOptions()) >= 2) {
+        if (traceLIRGeneratorLevel >= 2) {
             TTY.println("Emitting LIR for instruction " + instr);
         }
         currentInstruction = instr;

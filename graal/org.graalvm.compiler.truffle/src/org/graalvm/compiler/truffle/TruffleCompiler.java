@@ -47,8 +47,8 @@ import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -111,12 +111,13 @@ public abstract class TruffleCompiler {
         boolean needSourcePositions = graalTruffleRuntime.enableInfopoints() || TruffleCompilerOptions.getValue(TruffleInstrumentBranches) ||
                         TruffleCompilerOptions.getValue(TruffleInstrumentBoundaries);
         GraphBuilderConfiguration baseConfig = GraphBuilderConfiguration.getDefault(new Plugins(plugins)).withNodeSourcePosition(needSourcePositions);
-        this.config = baseConfig.withSkippedExceptionTypes(skippedExceptionTypes).withOmitAssertions(TruffleCompilerOptions.getValue(TruffleExcludeAssertions));
+        this.config = baseConfig.withSkippedExceptionTypes(skippedExceptionTypes).withOmitAssertions(TruffleCompilerOptions.getValue(TruffleExcludeAssertions)).withBytecodeExceptionMode(
+                        BytecodeExceptionMode.ExplicitOnly);
 
         this.partialEvaluator = createPartialEvaluator();
 
         if (Debug.isEnabled()) {
-            DebugEnvironment.ensureInitialized(OptionValues.GLOBAL, graalTruffleRuntime.getRequiredGraalCapability(SnippetReflectionProvider.class));
+            DebugEnvironment.ensureInitialized(TruffleCompilerOptions.getOptions(), graalTruffleRuntime.getRequiredGraalCapability(SnippetReflectionProvider.class));
         }
 
         graalTruffleRuntime.reinstallStubs();
@@ -144,8 +145,12 @@ public abstract class TruffleCompiler {
     public static final DebugMemUseTracker CompilationMemUse = Debug.memUseTracker("TruffleCompilationMemUse");
     public static final DebugMemUseTracker CodeInstallationMemUse = Debug.memUseTracker("TruffleCodeInstallationMemUse");
 
-    @SuppressWarnings("try")
     public void compileMethod(final OptimizedCallTarget compilable, GraalTruffleRuntime runtime) {
+        compileMethod(compilable, runtime, null);
+    }
+
+    @SuppressWarnings("try")
+    public void compileMethod(final OptimizedCallTarget compilable, GraalTruffleRuntime runtime, CancellableCompileTask task) {
         StructuredGraph graph = null;
 
         compilationNotify.notifyCompilationStarted(compilable);
@@ -155,10 +160,12 @@ public abstract class TruffleCompiler {
             CompilationIdentifier compilationId = runtime.getCompilationIdentifier(compilable, partialEvaluator.getCompilationRootMethods()[0], backend);
             PhaseSuite<HighTierContext> graphBuilderSuite = createGraphBuilderSuite();
             try (DebugCloseable a = PartialEvaluationTime.start(); DebugCloseable c = PartialEvaluationMemUse.start()) {
-                graph = partialEvaluator.createGraph(compilable, inliningDecision, AllowAssumptions.YES, compilationId);
+                graph = partialEvaluator.createGraph(compilable, inliningDecision, AllowAssumptions.YES, compilationId, task);
             }
 
-            if (Thread.currentThread().isInterrupted()) {
+            // check if the task was cancelled in the time frame between [after PE: before
+            // compilation]
+            if (task != null && task.isCancelled()) {
                 return;
             }
 
@@ -169,6 +176,8 @@ public abstract class TruffleCompiler {
             compilationNotify.notifyCompilationSuccess(compilable, inliningDecision, graph, compilationResult);
             dequeueInlinedCallSites(inliningDecision, compilable);
         } catch (Throwable t) {
+            // Note: If the compiler cancels the compilation with a bailout exception, then the
+            // graph is null
             compilationNotify.notifyCompilationFailed(compilable, graph, t);
             throw t;
         }

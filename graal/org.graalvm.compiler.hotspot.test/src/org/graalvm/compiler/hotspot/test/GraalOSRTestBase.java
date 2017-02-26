@@ -23,8 +23,6 @@
 
 package org.graalvm.compiler.hotspot.test;
 
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import java.util.Arrays;
 
 import org.graalvm.compiler.bytecode.Bytecode;
@@ -89,7 +87,7 @@ public abstract class GraalOSRTestBase extends GraalCompilerTest {
     private static int getBackedgeBCI(ResolvedJavaMethod method) {
         Bytecode code = new ResolvedJavaMethodBytecode(method);
         BytecodeStream stream = new BytecodeStream(code.getCode());
-        BciBlockMapping bciBlockMapping = BciBlockMapping.create(stream, code, GLOBAL);
+        BciBlockMapping bciBlockMapping = BciBlockMapping.create(stream, code, getInitialOptions());
 
         for (BciBlock block : bciBlockMapping.getBlocks()) {
             if (block.startBci != -1) {

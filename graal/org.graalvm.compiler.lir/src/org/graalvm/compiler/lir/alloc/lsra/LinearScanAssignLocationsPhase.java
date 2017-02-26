@@ -23,7 +23,6 @@
 package org.graalvm.compiler.lir.alloc.lsra;
 
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
-import static org.graalvm.compiler.core.common.GraalOptions.DetailedAsserts;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
@@ -83,7 +82,7 @@ public class LinearScanAssignLocationsPhase extends AllocationPhase {
         assert interval != null : "interval must exist";
 
         if (opId != -1) {
-            if (DetailedAsserts.getValue(allocator.getOptions())) {
+            if (allocator.detailedAsserts) {
                 AbstractBlockBase<?> block = allocator.blockForId(opId);
                 if (block.getSuccessorCount() <= 1 && opId == allocator.getLastLirInstructionId(block)) {
                     /*

@@ -54,8 +54,8 @@ import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
+import org.graalvm.util.Equivalence;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -273,6 +273,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             if (merge.usages().count() != 1 || merge.phis().count() != 1) {
                 return false;
             }
+
+            if (trueSuccessor().anchored().isNotEmpty() || falseSuccessor().anchored().isNotEmpty()) {
+                return false;
+            }
+
             PhiNode phi = merge.phis().first();
             ValueNode falseValue = phi.valueAt(falseEnd);
             ValueNode trueValue = phi.valueAt(trueEnd);

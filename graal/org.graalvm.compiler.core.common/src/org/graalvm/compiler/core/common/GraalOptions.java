@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.core.common;
 
+import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionKey;
@@ -130,6 +131,9 @@ public final class GraalOptions {
     @Option(help = "Stress the code emitting invokes with explicit exception edges.", type = OptionType.Debug)
     public static final OptionKey<Boolean> StressInvokeWithExceptionNode = new OptionKey<>(false);
 
+    @Option(help = "Stress the code by emitting reads at earliest instead of latest point.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> StressTestEarlyReads = new OptionKey<>(false);
+
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> VerifyPhases = new OptionKey<>(false);
 
@@ -159,13 +163,13 @@ public final class GraalOptions {
     public static final OptionKey<Boolean> ConditionalElimination = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
+    public static final OptionKey<Boolean> RawConditionalElimination = new OptionKey<>(true);
+
+    @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> RemoveNeverExecutedCode = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> UseExceptionProbability = new OptionKey<>(true);
-
-    @Option(help = "", type = OptionType.Debug)
-    public static final OptionKey<Boolean> UseExceptionProbabilityForOperations = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> OmitHotExceptionStacktrace = new OptionKey<>(false);
@@ -247,9 +251,6 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> OptDevirtualizeInvokesOptimistically = new OptionKey<>(true);
 
-    @Option(help = "", type = OptionType.Debug)
-    public static final OptionKey<Boolean> OptPushThroughPi = new OptionKey<>(true);
-
     @Option(help = "Allow backend to match complex expressions.", type = OptionType.Debug)
     public static final OptionKey<Boolean> MatchExpressions = new OptionKey<>(true);
 
@@ -262,16 +263,8 @@ public final class GraalOptions {
     @Option(help = "Use a cache for snippet graphs.", type = OptionType.Debug)
     public static final OptionKey<Boolean> UseSnippetGraphCache = new OptionKey<>(true);
 
-    @Option(help = "Enable expensive assertions", type = OptionType.Debug)
-    public static final OptionKey<Boolean> DetailedAsserts = new OptionKey<Boolean>() {
-        @Override
-        protected Boolean defaultValue() {
-            boolean enabled = false;
-            // turn detailed assertions on when the general assertions are on (misusing the assert keyword for this)
-            assert (enabled = true) == true;
-            return enabled;
-        }
-    };
+    @Option(help = "Enable expensive assertions.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> DetailedAsserts = new OptionKey<>(Assertions.ENABLED);
 
     @Option(help = "Enable experimental Trace Register Allocation.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TraceRA = new OptionKey<>(false);

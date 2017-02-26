@@ -23,8 +23,6 @@
 package org.graalvm.compiler.hotspot.amd64.test;
 
 import static org.graalvm.compiler.core.common.GraalOptions.OptImplicitNullChecks;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import org.graalvm.compiler.hotspot.nodes.CompressionNode;
 import org.graalvm.compiler.hotspot.test.HotSpotGraalCompilerTest;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -63,7 +61,7 @@ public class CompressedNullCheckTest extends HotSpotGraalCompilerTest {
         // make sure we don't get a profile that removes the implicit null check
         method.reprofile();
 
-        OptionValues options = new OptionValues(GLOBAL, OptImplicitNullChecks, true);
+        OptionValues options = new OptionValues(getInitialOptions(), OptImplicitNullChecks, true);
         Result actual = executeActual(options, method, null, c);
         assertEquals(expect, actual);
     }
@@ -75,7 +73,7 @@ public class CompressedNullCheckTest extends HotSpotGraalCompilerTest {
         Container c = new Container();
         c.i = i;
 
-        test(new OptionValues(GLOBAL, OptImplicitNullChecks, false), "testSnippet", c);
+        test(new OptionValues(getInitialOptions(), OptImplicitNullChecks, false), "testSnippet", c);
     }
 
     @Test

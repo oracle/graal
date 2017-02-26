@@ -181,7 +181,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
 
     @Override
     public void createVirtualObject(VirtualObjectNode virtualObject, ValueNode[] entryState, List<MonitorIdNode> locks, boolean ensureVirtualized) {
-        VirtualUtil.trace("{{%s}} ", current);
+        VirtualUtil.trace(options, "{{%s}} ", current);
         if (!virtualObject.isAlive()) {
             effects.addFloatingNode(virtualObject, "newVirtualObject");
         }

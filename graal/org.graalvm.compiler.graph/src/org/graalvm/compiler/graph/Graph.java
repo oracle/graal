@@ -55,8 +55,6 @@ public class Graph {
         public static final OptionKey<Boolean> VerifyGraalGraphEdges = new OptionKey<>(false);
         @Option(help = "Graal graph compression is performed when percent of live nodes falls below this value", type = OptionType.Debug)//
         public static final OptionKey<Integer> GraphCompressionThreshold = new OptionKey<>(70);
-        @Option(help = "Use Unsafe to clone graph nodes thus avoiding copying fields that will be re-initialized anyway", type = OptionType.Debug)//
-        public static final OptionKey<Boolean> CloneNodesWithUnsafe = new OptionKey<>(true);
     }
 
     public final String name;
@@ -211,8 +209,8 @@ public class Graph {
     /**
      * Creates an empty Graph with no name.
      */
-    public Graph() {
-        this(null, OptionValues.GLOBAL);
+    public Graph(OptionValues options) {
+        this(null, options);
     }
 
     /**
@@ -238,7 +236,7 @@ public class Graph {
         iterableNodesFirst = new ArrayList<>(NodeClass.allocatedNodeIterabledIds());
         iterableNodesLast = new ArrayList<>(NodeClass.allocatedNodeIterabledIds());
         this.name = name;
-        this.options = options != null ? options : OptionValues.GLOBAL;
+        this.options = options;
 
         if (isModificationCountsEnabled()) {
             nodeModCounts = new int[INITIAL_NODES_SIZE];
@@ -978,6 +976,12 @@ public class Graph {
         if (Fingerprint.ENABLED) {
             Fingerprint.submit("%s: %s", NodeEvent.NODE_ADDED, node);
         }
+        afterRegister(node);
+    }
+
+    @SuppressWarnings("unused")
+    protected void afterRegister(Node node) {
+
     }
 
     @SuppressWarnings("unused")
@@ -1109,16 +1113,6 @@ public class Graph {
     public EconomicMap<Node, Node> addDuplicates(Iterable<? extends Node> newNodes, final Graph oldGraph, int estimatedNodeCount, DuplicationReplacement replacements) {
         try (DebugCloseable s = DuplicateGraph.start()) {
             return NodeClass.addGraphDuplicate(this, oldGraph, estimatedNodeCount, newNodes, replacements);
-        }
-    }
-
-    /**
-     * Reverses the usage orders of all nodes. This is used for debugging to make sure an unorthodox
-     * usage order does not trigger bugs in the compiler.
-     */
-    public void reverseUsageOrder() {
-        for (Node n : getNodes()) {
-            n.reverseUsageOrder();
         }
     }
 

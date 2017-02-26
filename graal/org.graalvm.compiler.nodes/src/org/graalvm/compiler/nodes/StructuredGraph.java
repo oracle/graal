@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
+import org.graalvm.compiler.common.CancellationBailoutException;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
@@ -165,19 +166,22 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         private CompilationIdentifier compilationId = CompilationIdentifier.INVALID_COMPILATION_ID;
         private int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
         private boolean useProfilingInfo = true;
-        private OptionValues options = OptionValues.GLOBAL;
+        private final OptionValues options;
+        private Cancellable cancellable = null;
 
         /**
          * Creates a builder for a graph.
          */
-        public Builder(AllowAssumptions allowAssumptions) {
+        public Builder(OptionValues options, AllowAssumptions allowAssumptions) {
+            this.options = options;
             this.assumptions = allowAssumptions == AllowAssumptions.YES ? new Assumptions() : null;
         }
 
         /**
          * Creates a builder for a graph that does not support {@link Assumptions}.
          */
-        public Builder() {
+        public Builder(OptionValues options) {
+            this.options = options;
             assumptions = null;
         }
 
@@ -201,6 +205,11 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return this;
         }
 
+        public Builder cancellable(Cancellable cancel) {
+            this.cancellable = cancel;
+            return this;
+        }
+
         public Builder entryBCI(int bci) {
             this.entryBCI = bci;
             return this;
@@ -211,13 +220,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return this;
         }
 
-        public Builder options(OptionValues optionValues) {
-            this.options = optionValues;
-            return this;
-        }
-
         public StructuredGraph build() {
-            return new StructuredGraph(name, rootMethod, entryBCI, assumptions, speculationLog, useProfilingInfo, compilationId, options);
+            return new StructuredGraph(name, rootMethod, entryBCI, assumptions, speculationLog, useProfilingInfo, compilationId, options, cancellable);
         }
     }
 
@@ -233,7 +237,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     private boolean isAfterFloatingReadPhase = false;
     private boolean hasValueProxies = true;
     private final boolean useProfilingInfo;
-
+    private final Cancellable cancellable;
     /**
      * The assumptions made while constructing and transforming this graph.
      */
@@ -274,7 +278,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                     SpeculationLog speculationLog,
                     boolean useProfilingInfo,
                     CompilationIdentifier compilationId,
-                    OptionValues options) {
+                    OptionValues options,
+                    Cancellable cancellable) {
         super(name, options);
         this.setStart(add(new StartNode()));
         this.rootMethod = method;
@@ -284,6 +289,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.assumptions = assumptions;
         this.speculationLog = speculationLog;
         this.useProfilingInfo = useProfilingInfo;
+        this.cancellable = cancellable;
     }
 
     public void setLastSchedule(ScheduleResult result) {
@@ -363,6 +369,16 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return entryBCI;
     }
 
+    public Cancellable getCancellable() {
+        return cancellable;
+    }
+
+    public void checkCancellation() {
+        if (cancellable != null && cancellable.isCancelled()) {
+            CancellationBailoutException.cancelCompilation();
+        }
+    }
+
     public boolean isOSR() {
         return entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
     }
@@ -402,7 +418,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                         speculationLog,
                         useProfilingInfo,
                         newCompilationId,
-                        getOptions());
+                        getOptions(), null);
         if (allowAssumptions == AllowAssumptions.YES && assumptions != null) {
             copy.assumptions.record(assumptions);
         }
@@ -519,7 +535,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     @SuppressWarnings("static-method")
-    public void replaceFixedWithFloating(FixedWithNextNode node, FloatingNode replacement) {
+    public void replaceFixedWithFloating(FixedWithNextNode node, ValueNode replacement) {
         assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
         GraphUtil.unlinkFixedNode(node);
         node.replaceAtUsagesAndDelete(replacement);
@@ -847,5 +863,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             }
         }
         return false;
+    }
+
+    @Override
+    protected void afterRegister(Node node) {
+        assert hasValueProxies() || !(node instanceof ValueProxyNode);
     }
 }

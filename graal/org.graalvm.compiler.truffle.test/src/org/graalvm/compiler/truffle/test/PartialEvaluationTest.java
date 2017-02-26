@@ -25,8 +25,6 @@ package org.graalvm.compiler.truffle.test;
 import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 import static org.graalvm.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
 
-import org.junit.Assert;
-
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
@@ -38,7 +36,6 @@ import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
@@ -49,6 +46,8 @@ import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.TruffleCompiler;
 import org.graalvm.compiler.truffle.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.TruffleInlining;
+import org.junit.Assert;
+
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -60,7 +59,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
         this.truffleCompiler = DefaultTruffleCompiler.create(runtime);
 
-        DebugEnvironment.ensureInitialized(OptionValues.GLOBAL, runtime.getRequiredGraalCapability(SnippetReflectionProvider.class));
+        DebugEnvironment.ensureInitialized(getInitialOptions(), runtime.getRequiredGraalCapability(SnippetReflectionProvider.class));
     }
 
     /**
@@ -117,7 +116,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         compilable.call(arguments);
 
         try (Scope s = Debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
-            return truffleCompiler.getPartialEvaluator().createGraph(compilable, new TruffleInlining(compilable, new DefaultInliningPolicy()), allowAssumptions, compilationId);
+            return truffleCompiler.getPartialEvaluator().createGraph(compilable, new TruffleInlining(compilable, new DefaultInliningPolicy()), allowAssumptions, compilationId, null);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

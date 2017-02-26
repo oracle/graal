@@ -22,8 +22,6 @@
  */
 package org.graalvm.compiler.lir.alloc.lsra;
 
-import static org.graalvm.compiler.core.common.GraalOptions.DetailedAsserts;
-
 import java.util.ArrayList;
 import java.util.BitSet;
 
@@ -102,7 +100,7 @@ public class LinearScanResolveDataFlowPhase extends AllocationPhase {
                 Debug.log("inserting moves at beginning of toBlock B%d", toBlock.getId());
             }
 
-            if (DetailedAsserts.getValue(allocator.getOptions())) {
+            if (allocator.detailedAsserts) {
                 assert allocator.getLIR().getLIRforBlock(fromBlock).get(0) instanceof StandardOp.LabelOp : "block does not start with a label";
 
                 /*

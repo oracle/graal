@@ -36,7 +36,7 @@ import java.lang.annotation.Target;
 public @interface AddExports {
     /**
      * The qualified name of the concealed package in {@code <module>/<package>} format (e.g.,
-     * "jdk.vm.ci/jdk.vm.ci.code").
+     * "jdk.internal.vm.ci/jdk.vm.ci.code").
      */
     String[] value() default "";
 }

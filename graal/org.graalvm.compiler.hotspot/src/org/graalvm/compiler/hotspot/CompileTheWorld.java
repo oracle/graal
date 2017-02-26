@@ -493,13 +493,6 @@ public final class CompileTheWorld {
         final String[] entries = classPath.split(File.pathSeparator);
         long start = System.currentTimeMillis();
 
-        CompilerThreadFactory factory = new CompilerThreadFactory("CompileTheWorld", new DebugConfigAccess() {
-            @Override
-            public GraalDebugConfig getDebugConfig() {
-                return DebugEnvironment.ensureInitialized(OptionValues.GLOBAL, compiler.getGraalRuntime().getHostProviders().getSnippetReflection());
-            }
-        });
-
         try {
             // compile dummy method to get compiler initialized outside of the
             // config debug override.
@@ -527,10 +520,17 @@ public final class CompileTheWorld {
         } else {
             running = true;
         }
-        threadPool = new ThreadPoolExecutor(threadCount, threadCount, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), factory);
 
         OptionValues savedOptions = currentOptions;
         currentOptions = new OptionValues(savedOptions, compilationOptions);
+        threadPool = new ThreadPoolExecutor(threadCount, threadCount, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(),
+                        new CompilerThreadFactory("CompileTheWorld", new DebugConfigAccess() {
+                            @Override
+                            public GraalDebugConfig getDebugConfig() {
+                                return DebugEnvironment.ensureInitialized(currentOptions, compiler.getGraalRuntime().getHostProviders().getSnippetReflection());
+                            }
+                        }));
+
         try {
             for (int i = 0; i < entries.length; i++) {
                 final String entry = entries[i];
