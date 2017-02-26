@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.truffle;
 
+import static org.graalvm.compiler.core.common.util.Util.Java8OrEarlier;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationRepeats;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompileOnly;
@@ -686,8 +687,23 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     }
 
     private static Object loadObjectLayoutFactory() {
-        LayoutFactory bestLayoutFactory = null;
         ServiceLoader<LayoutFactory> serviceLoader = ServiceLoader.load(LayoutFactory.class, GraalTruffleRuntime.class.getClassLoader());
+        LayoutFactory bestLayoutFactory = loadBestObjectLayoutFactory(null, serviceLoader);
+        if (!Java8OrEarlier) {
+            /*
+             * The Graal module (i.e., jdk.internal.vm.compiler) is loaded by the platform class
+             * loader on JDK 9. Its module dependencies such as Truffle are supplied via
+             * --module-path which means they loaded by the app class loader. As such, we need to
+             * search the app class loader path as well.
+             */
+            serviceLoader = ServiceLoader.load(LayoutFactory.class, LayoutFactory.class.getClassLoader());
+            bestLayoutFactory = loadBestObjectLayoutFactory(bestLayoutFactory, serviceLoader);
+        }
+        return bestLayoutFactory;
+    }
+
+    protected static LayoutFactory loadBestObjectLayoutFactory(LayoutFactory currentBestLayoutFactory, ServiceLoader<LayoutFactory> serviceLoader) {
+        LayoutFactory bestLayoutFactory = currentBestLayoutFactory;
         for (LayoutFactory currentLayoutFactory : serviceLoader) {
             if (bestLayoutFactory == null) {
                 bestLayoutFactory = currentLayoutFactory;

@@ -81,9 +81,9 @@ public class TruffleRuntimeTest {
         LayoutFactory layoutFactory = runtime.getCapability(LayoutFactory.class);
         assertNotNull("LayoutFactory not found", layoutFactory);
 
-        boolean Java8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
+        boolean java8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
         ClassLoader layoutFactoryCL = layoutFactory.getClass().getClassLoader();
-        if (Java8OrEarlier) {
+        if (java8OrEarlier) {
             // Bootstrap class loader or JVMCI class loader
             assertTrue(layoutFactoryCL == null || layoutFactoryCL == runtime.getClass().getClassLoader());
         } else {
