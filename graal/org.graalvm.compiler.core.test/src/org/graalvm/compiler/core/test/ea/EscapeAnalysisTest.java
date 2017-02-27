@@ -29,6 +29,7 @@ import org.graalvm.compiler.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.loop.phases.LoopFullUnrollPhase;
 import org.graalvm.compiler.loop.phases.LoopPeelingPhase;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
@@ -201,6 +202,30 @@ public class EscapeAnalysisTest extends EATestBase {
             notInlineable();
         }
         return obj.x <= 3 ? 1 : 0;
+    }
+
+    @Test
+    public void testMergeAllocationsInt3() {
+        // ensure that the result is not constant:
+        assertTrue(testMergeAllocationsInt3Snippet(true));
+        assertFalse(testMergeAllocationsInt3Snippet(false));
+
+        prepareGraph("testMergeAllocationsInt3Snippet", true);
+        assertFalse(graph.getNodes().filter(ReturnNode.class).first().result().isConstant());
+    }
+
+    public boolean testMergeAllocationsInt3Snippet(boolean a) {
+        TestClassInt phi1;
+        TestClassInt phi2;
+        if (a) {
+            field = new TestClassObject();
+            field = new TestClassObject();
+            phi1 = phi2 = new TestClassInt(1, 2);
+        } else {
+            phi1 = new TestClassInt(2, 3);
+            phi2 = new TestClassInt(3, 4);
+        }
+        return phi1 == phi2;
     }
 
     @Test
