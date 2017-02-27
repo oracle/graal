@@ -1004,10 +1004,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                         boolean identitySurvives = virtual.hasIdentity() &&
                                         // check whether we trivially see that this is the only
                                         // reference to this allocation
-                                        !isSingleUsageAllocation(getPhiValueAt(phi, i)) &&
-                                        // if the object does not survive at all, there can be no
-                                        // identity checks
-                                        Arrays.binarySearch(mergedVirtualObjects, virtual.getObjectId()) >= 0;
+                                        !isSingleUsageAllocation(getPhiValueAt(phi, i));
 
                         if (identitySurvives || !firstVirtual.type().equals(virtual.type()) || firstVirtual.entryCount() != virtual.entryCount()) {
                             compatible = false;
