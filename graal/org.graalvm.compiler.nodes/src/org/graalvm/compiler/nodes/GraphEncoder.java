@@ -224,8 +224,8 @@ public class GraphEncoder {
             NodeClass<?> nodeClass = node.getNodeClass();
             writer.putUV(nodeClasses.getIndex(nodeClass));
             writeProperties(node, nodeClass.getData());
-            writeEdges(node, nodeClass.getEdges(Edges.Type.Successors), nodeOrder);
             writeEdges(node, nodeClass.getEdges(Edges.Type.Inputs), nodeOrder);
+            writeEdges(node, nodeClass.getEdges(Edges.Type.Successors), nodeOrder);
 
             /* Special handling for some nodes that require additional information for decoding. */
             if (node instanceof AbstractEndNode) {

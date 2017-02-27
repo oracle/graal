@@ -497,8 +497,8 @@ public class GraphDecoder {
         int typeId = methodScope.reader.getUVInt();
         assert node.getNodeClass() == methodScope.encodedGraph.getNodeClasses()[typeId];
         readProperties(methodScope, node);
-        makeSuccessorStubs(methodScope, successorAddScope, node, updatePredecessors);
         makeInputNodes(methodScope, loopScope, node, true);
+        makeSuccessorStubs(methodScope, successorAddScope, node, updatePredecessors);
 
         LoopScope resultScope = loopScope;
         if (node instanceof LoopBeginNode) {
