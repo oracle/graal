@@ -118,17 +118,8 @@ public final class IntegerAddExactNode extends AddNode implements IntegerExactAr
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        ValueNode result = findSynonym(forX, forY);
-        if (result == null) {
-            return this;
-        } else {
-            return result;
-        }
-    }
-
-    private static ValueNode findSynonym(ValueNode forX, ValueNode forY) {
         if (forX.isConstant() && !forY.isConstant()) {
-            return new IntegerAddExactNode(forY, forX);
+            return new IntegerAddExactNode(forY, forX).canonical(tool);
         }
         if (forX.isConstant()) {
             ConstantNode constantNode = canonicalXconstant(forX, forY);
@@ -141,7 +132,10 @@ public final class IntegerAddExactNode extends AddNode implements IntegerExactAr
                 return forX;
             }
         }
-        return null;
+        if (!IntegerStamp.addCanOverflow((IntegerStamp) forX.stamp(), (IntegerStamp) forY.stamp())) {
+            return new AddNode(forX, forY).canonical(tool);
+        }
+        return this;
     }
 
     private static ConstantNode canonicalXconstant(ValueNode forX, ValueNode forY) {
