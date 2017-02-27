@@ -366,7 +366,7 @@ public class GraphEncoder {
 
     protected void writeEdges(Node node, Edges edges, NodeOrder nodeOrder) {
         for (int idx = 0; idx < edges.getDirectCount(); idx++) {
-            if (GraphDecoder.skipEdge(node, edges, idx, true, false)) {
+            if (GraphDecoder.skipDirectEdge(node, edges, idx)) {
                 /* Edge is not needed for decoding, so we must not write it. */
                 continue;
             }
@@ -374,7 +374,7 @@ public class GraphEncoder {
             writeOrderId(edge, nodeOrder);
         }
         for (int idx = edges.getDirectCount(); idx < edges.getCount(); idx++) {
-            if (GraphDecoder.skipEdge(node, edges, idx, false, false)) {
+            if (GraphDecoder.skipIndirectEdge(node, edges, idx, false)) {
                 /* Edge is not needed for decoding, so we must not write it. */
                 continue;
             }
