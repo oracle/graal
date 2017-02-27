@@ -24,6 +24,7 @@ package org.graalvm.compiler.core.common.type;
 
 import static jdk.vm.ci.code.CodeUtil.signExtend;
 
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.code.CodeUtil;
@@ -202,7 +203,7 @@ public class StampFactory {
     public static IntegerStamp forUnsignedInteger(int bits, long unsignedLowerBound, long unsignedUpperBound, long downMask, long upMask) {
         long lowerBound = signExtend(unsignedLowerBound, bits);
         long upperBound = signExtend(unsignedUpperBound, bits);
-        if (lowerBound >= 0 != upperBound >= 0) {
+        if (!NumUtil.sameSign(lowerBound, upperBound)) {
             lowerBound = CodeUtil.minValue(bits);
             upperBound = CodeUtil.maxValue(bits);
         }
