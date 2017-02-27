@@ -30,10 +30,10 @@ import com.oracle.truffle.nfi.LibFFIType.Direction;
 
 class LibFFIFunction implements TruffleObject {
 
-    private final LibFFISymbol symbol;
+    private final NativePointer symbol;
     private final LibFFISignature signature;
 
-    LibFFIFunction(LibFFISymbol symbol, LibFFISignature signature) {
+    LibFFIFunction(NativePointer symbol, LibFFISignature signature) {
         if (signature.getAllowedCallDirection() == Direction.NATIVE_TO_JAVA_ONLY) {
             throw new IllegalArgumentException("signature is only valid for native to Java callbacks");
         }
@@ -46,7 +46,7 @@ class LibFFIFunction implements TruffleObject {
     }
 
     public long getAddress() {
-        return symbol.address;
+        return symbol.nativePointer;
     }
 
     @Override

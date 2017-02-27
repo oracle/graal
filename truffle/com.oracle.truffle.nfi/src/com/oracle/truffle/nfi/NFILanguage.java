@@ -135,6 +135,6 @@ public class NFILanguage extends TruffleLanguage<Env> {
 
     @Override
     protected boolean isObjectOfLanguage(Object object) {
-        return object instanceof LibFFIFunction || object instanceof LibFFISymbol || object instanceof LibFFILibrary || object instanceof NativePointer || object instanceof NativeString;
+        return object instanceof LibFFIFunction || object instanceof LibFFILibrary || object instanceof NativePointer || object instanceof NativeString;
     }
 }
