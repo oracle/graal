@@ -66,8 +66,14 @@
  * <li>Graal as a compiler for dynamic programming languages in the Truffle framework</li>
  * </ul>
  * <p>
- * Video recording: <a href="https://youtu.be/Af9T9kFk1lM">Part 1</a>,
- * <a href="https://youtu.be/WyU7KctlhzE">Part 2</a>
+ * Video recording: <a href="https://youtu.be/Af9T9kFk1lM">Part 1</a>:<br>
+ *
+ * <iframe width="854" height="480" src="https://www.youtube.com/embed/Af9T9kFk1lM" frameborder="0" allowfullscreen></iframe>
+ *
+ * <br><a href="https://youtu.be/WyU7KctlhzE">Part 2</a>:<br>
+ *
+ * <iframe width="854" height="480" src="https://www.youtube.com/embed/WyU7KctlhzE" frameborder="0" allowfullscreen></iframe>
+ *
  * <br>
  * <a href="http://lafo.ssw.uni-linz.ac.at/papers/2015_CGO_Graal.pdf">Download Slides</a>
  *
