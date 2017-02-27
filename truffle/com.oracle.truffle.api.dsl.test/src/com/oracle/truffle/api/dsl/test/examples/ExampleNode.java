@@ -38,6 +38,10 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 @NodeChild(value = "args", type = ExampleNode[].class)
 public abstract class ExampleNode extends Node {
 
+    public ExampleNode[] getArgs() {
+        throw new UnsupportedOperationException();
+    }
+
     public Object execute(@SuppressWarnings("unused") VirtualFrame frame) {
         // will get implemented by the DSL.
         throw new UnsupportedOperationException();
@@ -68,13 +72,17 @@ public abstract class ExampleNode extends Node {
         return Truffle.getRuntime().createCallTarget(new ExampleRootNode(node));
     }
 
+    public static ExampleArgumentNode[] getArguments(CallTarget target) {
+        return (ExampleArgumentNode[]) ((ExampleRootNode) ((RootCallTarget) target).getRootNode()).child.getArgs();
+    }
+
     @SuppressWarnings("unchecked")
     public static <T> T getNode(CallTarget target) {
         return (T) ((ExampleRootNode) ((RootCallTarget) target).getRootNode()).child;
     }
 
-    public static ExampleNode[] createArguments(int count) {
-        ExampleNode[] nodes = new ExampleNode[count];
+    public static ExampleArgumentNode[] createArguments(int count) {
+        ExampleArgumentNode[] nodes = new ExampleArgumentNode[count];
         for (int i = 0; i < count; i++) {
             nodes[i] = new ExampleArgumentNode(i);
         }
@@ -97,9 +105,19 @@ public abstract class ExampleNode extends Node {
 
     }
 
-    private static class ExampleArgumentNode extends ExampleNode {
+    public static class ExampleArgumentNode extends ExampleNode {
 
         private final int index;
+
+        public int genericInvocationCount;
+        public int intInvocationCount;
+        public int doubleInvocationCount;
+        public int longInvocationCount;
+
+        @Override
+        public ExampleNode[] getArgs() {
+            return new ExampleNode[0];
+        }
 
         ExampleArgumentNode(int index) {
             this.index = index;
@@ -107,11 +125,30 @@ public abstract class ExampleNode extends Node {
 
         @Override
         public Object execute(VirtualFrame frame) {
+            genericInvocationCount++;
             Object[] arguments = frame.getArguments();
             if (index < arguments.length) {
                 return arguments[index];
             }
             return null;
+        }
+
+        @Override
+        public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
+            doubleInvocationCount++;
+            return super.executeDouble(frame);
+        }
+
+        @Override
+        public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
+            intInvocationCount++;
+            return super.executeInt(frame);
+        }
+
+        @Override
+        public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
+            longInvocationCount++;
+            return super.executeLong(frame);
         }
     }
 
