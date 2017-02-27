@@ -108,4 +108,16 @@ window.onload = function () {
             break;
         }
     }
+
+    var dllist = document.getElementsByTagName("dl");
+    for (var i = dllist.length - 1; i >= 0; i--) {
+        try {
+            if (dllist[i].children[i].children[i].innerHTML.indexOf("Since") >= 0) {
+                dllist[i].hidden = true;
+                break;
+            }
+        } catch (ignore) {
+            continue;
+        }
+    }
 };
