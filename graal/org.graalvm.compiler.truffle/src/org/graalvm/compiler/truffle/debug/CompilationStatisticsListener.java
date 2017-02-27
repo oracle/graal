@@ -233,7 +233,8 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
     }
 
     @Override
-    public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result, Map<OptimizedCallTarget, Object> compilationMap) {
+    public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result,
+                    Map<OptimizedCallTarget, Object> compilationMap) {
         success++;
         long compilationDone = System.nanoTime();
 

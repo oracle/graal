@@ -103,7 +103,8 @@ public final class TraceCompilationListener extends AbstractDebugCompilationList
     }
 
     @Override
-    public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result, Map<OptimizedCallTarget, Object> compilationMap) {
+    public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result,
+                    Map<OptimizedCallTarget, Object> compilationMap) {
         long timeCompilationFinished = System.nanoTime();
         int nodeCountLowered = graph.getNodeCount();
         LocalCompilation compilation = (LocalCompilation) compilationMap.get(target);

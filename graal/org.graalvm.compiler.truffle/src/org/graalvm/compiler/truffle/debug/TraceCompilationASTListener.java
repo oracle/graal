@@ -47,7 +47,8 @@ public final class TraceCompilationASTListener extends AbstractDebugCompilationL
     }
 
     @Override
-    public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result, Map<OptimizedCallTarget, Object> compilationMap) {
+    public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result,
+                    Map<OptimizedCallTarget, Object> compilationMap) {
         log(0, "opt AST", target.toString(), target.getDebugProperties(inliningDecision));
         printCompactTree(target, inliningDecision);
     }

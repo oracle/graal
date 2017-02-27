@@ -50,7 +50,8 @@ public final class TraceCompilationPolymorphismListener extends AbstractDebugCom
     }
 
     @Override
-    public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result, Map<OptimizedCallTarget, Object> compilationMap) {
+    public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result,
+                    Map<OptimizedCallTarget, Object> compilationMap) {
         super.notifyCompilationSuccess(target, inliningDecision, graph, result, compilationMap);
 
         for (Node node : target.nodeIterable(inliningDecision)) {
