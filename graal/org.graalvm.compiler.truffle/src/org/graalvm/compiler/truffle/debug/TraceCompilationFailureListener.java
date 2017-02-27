@@ -44,7 +44,7 @@ public final class TraceCompilationFailureListener extends AbstractDebugCompilat
     }
 
     @Override
-    public void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t) {
+    public void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t, Map<OptimizedCallTarget, Object> compilationMap) {
         // if we failed compilation via cancellation graph might be null (depending on time of
         // cancellation)
         if (isPermanentBailout(t) || PrintBailout.getValue(graph == null ? TruffleCompilerOptions.getOptions() : graph.getOptions())) {

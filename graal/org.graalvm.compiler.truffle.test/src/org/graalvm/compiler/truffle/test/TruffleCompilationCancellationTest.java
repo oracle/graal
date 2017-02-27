@@ -115,7 +115,7 @@ public class TruffleCompilationCancellationTest {
         compilable.call(arguments);
         StructuredGraph g = null;
         g = truffleCompiler.getPartialEvaluator().createGraph(compilable, new TruffleInlining(compilable, new DefaultInliningPolicy()), allowAssumptions, INVALID_COMPILATION_ID, c);
-        truffleCompiler.compileMethodHelper(g, "test", null, compilable, CompilationRequestIdentifier.asCompilationRequest(INVALID_COMPILATION_ID));
+        truffleCompiler.compileMethodHelper(g, "test", null, compilable, CompilationRequestIdentifier.asCompilationRequest(INVALID_COMPILATION_ID), null);
         Assert.fail("Finished compilation on non exceptional path.");
     }
 

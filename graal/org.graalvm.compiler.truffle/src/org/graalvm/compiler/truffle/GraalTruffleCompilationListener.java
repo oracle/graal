@@ -22,8 +22,11 @@
  */
 package org.graalvm.compiler.truffle;
 
+import java.util.Map;
+
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.nodes.StructuredGraph;
+
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -65,15 +68,15 @@ public interface GraalTruffleCompilationListener {
      */
     void notifyCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason);
 
-    void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t);
+    void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t, Map<OptimizedCallTarget, Object> compilationMap);
 
-    void notifyCompilationStarted(OptimizedCallTarget target);
+    void notifyCompilationStarted(OptimizedCallTarget target, Map<OptimizedCallTarget, Object> compilationMap);
 
-    void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph);
+    void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, Map<OptimizedCallTarget, Object> compilationMap);
 
-    void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph);
+    void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph, Map<OptimizedCallTarget, Object> compilationMa);
 
-    void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result);
+    void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result, Map<OptimizedCallTarget, Object> compilationMap);
 
     /**
      * Invoked if a compiled call target was invalidated.

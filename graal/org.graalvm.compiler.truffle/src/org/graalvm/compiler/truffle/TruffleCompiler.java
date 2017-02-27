@@ -29,7 +29,9 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrum
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBranches;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
@@ -152,8 +154,8 @@ public abstract class TruffleCompiler {
     @SuppressWarnings("try")
     public void compileMethod(final OptimizedCallTarget compilable, GraalTruffleRuntime runtime, CancellableCompileTask task) {
         StructuredGraph graph = null;
-
-        compilationNotify.notifyCompilationStarted(compilable);
+        Map<OptimizedCallTarget, Object> compilationMap = new HashMap<>();
+        compilationNotify.notifyCompilationStarted(compilable, compilationMap);
 
         try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(TruffleCompilerOptions.getOptions())) {
             TruffleInlining inliningDecision = new TruffleInlining(compilable, new DefaultInliningPolicy());
@@ -171,14 +173,14 @@ public abstract class TruffleCompiler {
 
             dequeueInlinedCallSites(inliningDecision, compilable);
 
-            compilationNotify.notifyCompilationTruffleTierFinished(compilable, inliningDecision, graph);
-            CompilationResult compilationResult = compileMethodHelper(graph, compilable.toString(), graphBuilderSuite, compilable, asCompilationRequest(compilationId));
-            compilationNotify.notifyCompilationSuccess(compilable, inliningDecision, graph, compilationResult);
+            compilationNotify.notifyCompilationTruffleTierFinished(compilable, inliningDecision, graph, compilationMap);
+            CompilationResult compilationResult = compileMethodHelper(graph, compilable.toString(), graphBuilderSuite, compilable, asCompilationRequest(compilationId), compilationMap);
+            compilationNotify.notifyCompilationSuccess(compilable, inliningDecision, graph, compilationResult, compilationMap);
             dequeueInlinedCallSites(inliningDecision, compilable);
         } catch (Throwable t) {
             // Note: If the compiler cancels the compilation with a bailout exception, then the
             // graph is null
-            compilationNotify.notifyCompilationFailed(compilable, graph, t);
+            compilationNotify.notifyCompilationFailed(compilable, graph, t, compilationMap);
             throw t;
         }
     }
@@ -199,7 +201,7 @@ public abstract class TruffleCompiler {
 
     @SuppressWarnings("try")
     public CompilationResult compileMethodHelper(StructuredGraph graph, String name, PhaseSuite<HighTierContext> graphBuilderSuite, InstalledCode predefinedInstalledCode,
-                    CompilationRequest compilationRequest) {
+                    CompilationRequest compilationRequest, Map<OptimizedCallTarget, Object> compilationMap) {
         try (Scope s = Debug.scope("TruffleFinal")) {
             Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "After TruffleTier");
         } catch (Throwable e) {
@@ -224,7 +226,7 @@ public abstract class TruffleCompiler {
             throw Debug.handle(e);
         }
 
-        compilationNotify.notifyCompilationGraalTierFinished((OptimizedCallTarget) predefinedInstalledCode, graph);
+        compilationNotify.notifyCompilationGraalTierFinished((OptimizedCallTarget) predefinedInstalledCode, graph, compilationMap);
 
         InstalledCode installedCode;
         try (DebugCloseable a = CodeInstallationTime.start(); DebugCloseable c = CodeInstallationMemUse.start()) {
