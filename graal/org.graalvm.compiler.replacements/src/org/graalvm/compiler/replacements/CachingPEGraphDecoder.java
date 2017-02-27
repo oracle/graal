@@ -24,9 +24,6 @@ package org.graalvm.compiler.replacements;
 
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.java.GraphBuilderPhase;
