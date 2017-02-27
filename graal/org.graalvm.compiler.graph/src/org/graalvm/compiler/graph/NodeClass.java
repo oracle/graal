@@ -524,7 +524,11 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     }
 
     private static int deepHashCode0(Object o) {
-        if (o instanceof Object[]) {
+        if (o == null) {
+            return 0;
+        } else if (!o.getClass().isArray()) {
+            return o.hashCode();
+        } else if (o instanceof Object[]) {
             return Arrays.deepHashCode((Object[]) o);
         } else if (o instanceof byte[]) {
             return Arrays.hashCode((byte[]) o);
@@ -542,10 +546,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             return Arrays.hashCode((double[]) o);
         } else if (o instanceof boolean[]) {
             return Arrays.hashCode((boolean[]) o);
-        } else if (o != null) {
-            return o.hashCode();
         } else {
-            return 0;
+            throw shouldNotReachHere();
         }
     }
 
@@ -598,29 +600,31 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     private static boolean deepEquals0(Object e1, Object e2) {
         assert e1 != null;
-        boolean eq;
-        if (e1 instanceof Object[] && e2 instanceof Object[]) {
-            eq = Arrays.deepEquals((Object[]) e1, (Object[]) e2);
-        } else if (e1 instanceof byte[] && e2 instanceof byte[]) {
-            eq = Arrays.equals((byte[]) e1, (byte[]) e2);
-        } else if (e1 instanceof short[] && e2 instanceof short[]) {
-            eq = Arrays.equals((short[]) e1, (short[]) e2);
-        } else if (e1 instanceof int[] && e2 instanceof int[]) {
-            eq = Arrays.equals((int[]) e1, (int[]) e2);
-        } else if (e1 instanceof long[] && e2 instanceof long[]) {
-            eq = Arrays.equals((long[]) e1, (long[]) e2);
-        } else if (e1 instanceof char[] && e2 instanceof char[]) {
-            eq = Arrays.equals((char[]) e1, (char[]) e2);
-        } else if (e1 instanceof float[] && e2 instanceof float[]) {
-            eq = Arrays.equals((float[]) e1, (float[]) e2);
-        } else if (e1 instanceof double[] && e2 instanceof double[]) {
-            eq = Arrays.equals((double[]) e1, (double[]) e2);
-        } else if (e1 instanceof boolean[] && e2 instanceof boolean[]) {
-            eq = Arrays.equals((boolean[]) e1, (boolean[]) e2);
+        if (e2 == null) {
+            return false;
+        } else if (e1 instanceof Object[] && e2 instanceof Object[]) {
+            return Arrays.deepEquals((Object[]) e1, (Object[]) e2);
+        } else if (!e1.getClass().isArray() || e1.getClass() != e2.getClass()) {
+            return e1.equals(e2);
+        } else if (e1 instanceof byte[]) {
+            return Arrays.equals((byte[]) e1, (byte[]) e2);
+        } else if (e1 instanceof short[]) {
+            return Arrays.equals((short[]) e1, (short[]) e2);
+        } else if (e1 instanceof int[]) {
+            return Arrays.equals((int[]) e1, (int[]) e2);
+        } else if (e1 instanceof long[]) {
+            return Arrays.equals((long[]) e1, (long[]) e2);
+        } else if (e1 instanceof char[]) {
+            return Arrays.equals((char[]) e1, (char[]) e2);
+        } else if (e1 instanceof float[]) {
+            return Arrays.equals((float[]) e1, (float[]) e2);
+        } else if (e1 instanceof double[]) {
+            return Arrays.equals((double[]) e1, (double[]) e2);
+        } else if (e1 instanceof boolean[]) {
+            return Arrays.equals((boolean[]) e1, (boolean[]) e2);
         } else {
-            eq = e1.equals(e2);
+            throw shouldNotReachHere();
         }
-        return eq;
     }
 
     public boolean dataEquals(Node a, Node b) {
