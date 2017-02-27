@@ -92,5 +92,20 @@ window.onload = function () {
         toc += (new Array(level + 1)).join("</ul>");
     }
 
-    document.getElementById("toc").innerHTML += toc;
+    var tocElement = document.getElementById("toc");
+    if (tocElement) {
+        tocElement.innerHTML += toc;
+    }
+
+    var headings = document.getElementsByTagName("h1");
+    for (var i = 0; i < headings.length; i++) {
+        var h1 = headings[i];
+        if (h1 && h1.innerHTML.indexOf("com.oracle.truffle") === -1) {
+            var title = h1.innerHTML;
+            var split = title.indexOf(':');
+            title = title.substring(split + 1);
+            document.getElementsByTagName("title")[0].innerHTML = title;
+            break;
+        }
+    }
 };
