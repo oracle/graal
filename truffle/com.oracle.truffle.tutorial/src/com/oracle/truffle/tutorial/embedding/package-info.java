@@ -123,7 +123,25 @@
  *
  * <h3>Add a language</h3>
  *
- * Put its JAR on classpath.
+ * The set of supported languages is determined by putting their JAR files on a
+ * classpath of your application. Some languages are available in central
+ * <a href="http://search.maven.org/#search|ga|1|a%3A%22jruby-truffle%22">Maven
+ * repository</a>. To include them, modify your <code>pom.xml</code> file (if
+ * using Maven) dependency section:
+ *
+ * <pre>
+ * &lt;dependency&gt;
+ *   &lt;groupId&gt;org.jruby&lt;/groupId&gt;
+ *   &lt;artifactId&gt;jruby-truffle&lt;/artifactId&gt;
+ *   &lt;version&gt;9.1.2.0&lt;/version&gt;
+ * &lt;/dependency&gt;
+ * </pre>
+ *
+ * In addition to languages found on classpath the
+ * <a href="http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/">GraalVM</a>
+ * download comes with highly efficient implementations of <em>JavaScript</em>,
+ * <a href="https://github.com/graalvm/truffleruby/">Ruby</a> and
+ * the <a href="https://github.com/graalvm/fastr/">R language</a>.
  *
  * <h3>Hello World in Ruby and JavaScript</h3>
  *
