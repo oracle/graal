@@ -198,7 +198,7 @@ builds = [
   ${gateTest} ${requireGCC} { name: gate-suite-gcc, run: [[mx, su-suite, gcc]] }
   ${gateTest} ${requireGCC} { name: gate-travis1, run: [[mx, su-travis1]] }
   ${gateTest} ${requireGCC} { name: gate-travis2, run: [[mx, su-travis2]] }
-  ${gateTest38} { name: gate-sulong-v38, run: [[mx, su-suite, sulong38]] }
+  ${gateTest38} { name: gate-sulong-v38, run: [[mx, su-suite, sulong38], [mx, su-suite, nwcc38], [mx, su-suite, llvm38]] }
 
   ${benchSulong} ${requireGCC}    ${graal-core}           {name: sulong-bench-graal-core}
   # TODO: enable once sulong's graal dependency is gone
