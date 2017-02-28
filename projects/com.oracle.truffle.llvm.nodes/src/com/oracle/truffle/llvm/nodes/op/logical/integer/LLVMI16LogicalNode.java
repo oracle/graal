@@ -68,7 +68,7 @@ public abstract class LLVMI16LogicalNode extends LLVMExpressionNode {
     public abstract static class LLVMI16LshrNode extends LLVMI16LogicalNode {
         @Specialization
         protected short executeI16(short left, short right) {
-            return (short) (left >>> right);
+            return (short) ((left & LLVMExpressionNode.I16_MASK) >>> right);
         }
     }
 
