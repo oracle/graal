@@ -1228,6 +1228,7 @@ public class FlatNodeGenFactory {
             var = frameState.createValue(execution, targetType).nextName();
 
             LocalVariable fallbackVar;
+            List<TypeMirror> originalSourceTypes = typeSystem.lookupSourceTypes(targetType);
             List<TypeMirror> sourceTypes = resolveOptimizedImplicitSourceTypes(execution, targetType);
             if (sourceTypes.size() > 1) {
                 TypeGuard typeGuard = new TypeGuard(targetType, execution.getIndex());
@@ -1237,11 +1238,9 @@ public class FlatNodeGenFactory {
                 // we want to create the check tree in reverse order
                 Collections.reverse(sourceTypes);
                 CodeTree access = var.createReference();
-                int sourceTypeIndex = sourceTypes.size() - 1;
                 boolean first = true;
                 for (TypeMirror sType : sourceTypes) {
                     if (ElementUtils.typeEquals(sType, targetType)) {
-                        sourceTypeIndex--;
                         continue;
                     }
                     String localName = createSourceTypeLocalName(var, sType);
@@ -1249,7 +1248,8 @@ public class FlatNodeGenFactory {
 
                     CodeTreeBuilder accessBuilder = builder.create();
                     accessBuilder.startParantheses();
-                    accessBuilder.tree(state.createContainsOnly(frameState, sourceTypeIndex, 1, new Object[]{typeGuard}, new Object[]{typeGuard, node.getUninitializedSpecialization()}));
+                    accessBuilder.tree(state.createContainsOnly(frameState, originalSourceTypes.indexOf(sType), 1, new Object[]{typeGuard},
+                                    new Object[]{typeGuard, node.getUninitializedSpecialization()}));
                     accessBuilder.string(" ? ");
                     if (ElementUtils.isPrimitive(sType)) {
                         accessBuilder.string("(").type(generic).string(") ");
@@ -1263,7 +1263,6 @@ public class FlatNodeGenFactory {
                     accessBuilder.end();
                     access = accessBuilder.build();
                     first = false;
-                    sourceTypeIndex--;
                 }
                 fallbackVar = fallbackVar.accessWith(access);
             } else {
@@ -3064,16 +3063,16 @@ public class FlatNodeGenFactory {
 
     private ChildExecutionResult createExecuteChildImplicitCast(CodeTreeBuilder parent, FrameState originalFrameState, FrameState frameState, NodeExecutionData execution, LocalVariable target) {
         CodeTreeBuilder builder = parent.create();
+        List<TypeMirror> originalSourceTypes = typeSystem.lookupSourceTypes(target.getTypeMirror());
         List<TypeMirror> sourceTypes = resolveOptimizedImplicitSourceTypes(execution, target.getTypeMirror());
         TypeGuard typeGuard = new TypeGuard(target.getTypeMirror(), execution.getIndex());
         boolean throwsUnexpected = false;
-        int sourceTypeIndex = 0;
         boolean elseIf = false;
         for (TypeMirror sourceType : sourceTypes) {
             ExecutableTypeData executableType = resolveTargetExecutable(execution, sourceType);
             elseIf = builder.startIf(elseIf);
             throwsUnexpected |= executableType.hasUnexpectedValue(context);
-            builder.tree(state.createContainsOnly(frameState, sourceTypeIndex, 1, new Object[]{typeGuard}, new Object[]{typeGuard, node.getUninitializedSpecialization()}));
+            builder.tree(state.createContainsOnly(frameState, originalSourceTypes.indexOf(sourceType), 1, new Object[]{typeGuard}, new Object[]{typeGuard, node.getUninitializedSpecialization()}));
             builder.end();
             builder.startBlock();
 
@@ -3092,7 +3091,6 @@ public class FlatNodeGenFactory {
 
             builder.startStatement().string(target.getName()).string(" = ").tree(value).end();
             builder.end();
-            sourceTypeIndex++;
         }
 
         if (elseIf) {
