@@ -35,6 +35,7 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugCounter;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
@@ -119,6 +120,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
         Block anchorBlock;
 
         @Override
+        @SuppressWarnings("try")
         public Block enter(Block b) {
             Block oldAnchorBlock = anchorBlock;
             if (b.getDominator() == null || b.getDominator().getPostdominator() != b) {
@@ -130,9 +132,11 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
             if (beginNode instanceof MergeNode && anchorBlock != b) {
                 MergeNode mergeNode = (MergeNode) beginNode;
                 for (GuardNode guard : mergeNode.guards().snapshot()) {
-                    GuardNode newlyCreatedGuard = new GuardNode(guard.getCondition(), anchorBlock.getBeginNode(), guard.getReason(), guard.getAction(), guard.isNegated(), guard.getSpeculation());
-                    GuardNode newGuard = mergeNode.graph().unique(newlyCreatedGuard);
-                    guard.replaceAndDelete(newGuard);
+                    try (DebugCloseable closeable = guard.withNodeSourcePosition()) {
+                        GuardNode newlyCreatedGuard = new GuardNode(guard.getCondition(), anchorBlock.getBeginNode(), guard.getReason(), guard.getAction(), guard.isNegated(), guard.getSpeculation());
+                        GuardNode newGuard = mergeNode.graph().unique(newlyCreatedGuard);
+                        guard.replaceAndDelete(newGuard);
+                    }
                 }
             }
 
@@ -161,12 +165,14 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                                 // Cannot optimize due to different speculations.
                                 continue;
                             }
-                            GuardNode newlyCreatedGuard = new GuardNode(guard.getCondition(), anchorBlock.getBeginNode(), guard.getReason(), guard.getAction(), guard.isNegated(), speculation);
-                            GuardNode newGuard = node.graph().unique(newlyCreatedGuard);
-                            if (otherGuard.isAlive()) {
-                                otherGuard.replaceAndDelete(newGuard);
+                            try (DebugCloseable closeable = guard.withNodeSourcePosition()) {
+                                GuardNode newlyCreatedGuard = new GuardNode(guard.getCondition(), anchorBlock.getBeginNode(), guard.getReason(), guard.getAction(), guard.isNegated(), speculation);
+                                GuardNode newGuard = node.graph().unique(newlyCreatedGuard);
+                                if (otherGuard.isAlive()) {
+                                    otherGuard.replaceAndDelete(newGuard);
+                                }
+                                guard.replaceAndDelete(newGuard);
                             }
-                            guard.replaceAndDelete(newGuard);
                         }
                     }
                 }
@@ -354,26 +360,29 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
             }
         }
 
+        @SuppressWarnings("try")
         protected void processNode(Node node) {
-            if (node instanceof NodeWithState && !(node instanceof GuardingNode)) {
-                pendingTests.clear();
-            }
-            if (node instanceof AbstractBeginNode) {
-                if (node instanceof LoopExitNode && graph.hasValueProxies()) {
-                    // Condition must not be used down this path.
-                } else {
-                    processAbstractBegin((AbstractBeginNode) node);
+            try (DebugCloseable closeable = node.withNodeSourcePosition()) {
+                if (node instanceof NodeWithState && !(node instanceof GuardingNode)) {
+                    pendingTests.clear();
                 }
-            } else if (node instanceof FixedGuardNode) {
-                processFixedGuard((FixedGuardNode) node);
-            } else if (node instanceof GuardNode) {
-                processGuard((GuardNode) node);
-            } else if (node instanceof ConditionAnchorNode) {
-                processConditionAnchor((ConditionAnchorNode) node);
-            } else if (node instanceof IfNode) {
-                processIf((IfNode) node);
-            } else {
-                return;
+                if (node instanceof AbstractBeginNode) {
+                    if (node instanceof LoopExitNode && graph.hasValueProxies()) {
+                        // Condition must not be used down this path.
+                    } else {
+                        processAbstractBegin((AbstractBeginNode) node);
+                    }
+                } else if (node instanceof FixedGuardNode) {
+                    processFixedGuard((FixedGuardNode) node);
+                } else if (node instanceof GuardNode) {
+                    processGuard((GuardNode) node);
+                } else if (node instanceof ConditionAnchorNode) {
+                    processConditionAnchor((ConditionAnchorNode) node);
+                } else if (node instanceof IfNode) {
+                    processIf((IfNode) node);
+                } else {
+                    return;
+                }
             }
         }
 
