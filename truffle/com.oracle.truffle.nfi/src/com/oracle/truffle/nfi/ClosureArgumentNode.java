@@ -32,7 +32,7 @@ abstract class ClosureArgumentNode extends Node {
 
     public abstract Object execute(Object arg);
 
-    static abstract class BufferClosureArgumentNode extends ClosureArgumentNode {
+    abstract static class BufferClosureArgumentNode extends ClosureArgumentNode {
 
         private final LibFFIType type;
 

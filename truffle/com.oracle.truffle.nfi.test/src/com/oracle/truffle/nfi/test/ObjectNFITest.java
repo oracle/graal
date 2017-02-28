@@ -47,20 +47,20 @@ public class ObjectNFITest extends NFITest {
 
         int intField;
 
-        public TestObject() {
+        TestObject() {
             this(0);
         }
 
-        public TestObject(int value) {
+        TestObject(int value) {
             intField = value;
         }
 
-        public int readField(String field) {
+        int readField(String field) {
             Assert.assertEquals("field name", "intField", field);
             return intField;
         }
 
-        public void writeField(String field, int value) {
+        void writeField(String field, int value) {
             Assert.assertEquals("field name", "intField", field);
             intField = value;
         }
@@ -68,12 +68,12 @@ public class ObjectNFITest extends NFITest {
 
     interface ReadIntField {
 
-        public int read(TestObject obj, String field);
+        int read(TestObject obj, String field);
     }
 
     interface WriteIntField {
 
-        public void write(TestObject obj, String field, int value);
+        void write(TestObject obj, String field, int value);
     }
 
     @BeforeClass
@@ -92,7 +92,7 @@ public class ObjectNFITest extends NFITest {
 
     interface DeleteEnv {
 
-        public void delete(TruffleObject env);
+        void delete(TruffleObject env);
     }
 
     @AfterClass

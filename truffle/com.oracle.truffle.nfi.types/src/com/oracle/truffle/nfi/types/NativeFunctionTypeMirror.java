@@ -33,7 +33,7 @@ public final class NativeFunctionTypeMirror extends NativeTypeMirror {
         this.signature = signature;
     }
 
-    public final NativeSignature getSignature() {
+    public NativeSignature getSignature() {
         return signature;
     }
 }

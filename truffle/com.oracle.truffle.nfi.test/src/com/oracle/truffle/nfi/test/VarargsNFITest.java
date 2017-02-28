@@ -116,7 +116,7 @@ public class VarargsNFITest extends NFITest {
 
         @CompilationFinal(dimensions = 1) final FormatSpec[] specs;
 
-        public MultiFormatRoot(FormatSpec... specs) {
+        MultiFormatRoot(FormatSpec... specs) {
             this.specs = specs;
         }
 

@@ -40,7 +40,7 @@ import com.oracle.truffle.nfi.LibFFIFunctionMessageResolutionFactory.CachedExecu
 @MessageResolution(language = NFILanguage.class, receiverType = LibFFIFunction.class)
 class LibFFIFunctionMessageResolution {
 
-    static abstract class CachedExecuteNode extends Node {
+    abstract static class CachedExecuteNode extends Node {
 
         public abstract Object execute(LibFFIFunction receiver, Object[] args);
 
@@ -128,7 +128,7 @@ class LibFFIFunctionMessageResolution {
     }
 
     @Resolve(message = "EXECUTE")
-    static abstract class ExecuteLibFFIFunctionNode extends Node {
+    abstract static class ExecuteLibFFIFunctionNode extends Node {
 
         @Child CachedExecuteNode cachedNode = CachedExecuteNodeGen.create();
 
@@ -138,7 +138,7 @@ class LibFFIFunctionMessageResolution {
     }
 
     @Resolve(message = "IS_EXECUTABLE")
-    static abstract class IsExecutableLibFFIFunctionNode extends Node {
+    abstract static class IsExecutableLibFFIFunctionNode extends Node {
 
         @SuppressWarnings("unused")
         public boolean access(LibFFIFunction receiver) {
@@ -147,7 +147,7 @@ class LibFFIFunctionMessageResolution {
     }
 
     @CanResolve
-    static abstract class CanResolveLibFFIFunctionNode extends Node {
+    abstract static class CanResolveLibFFIFunctionNode extends Node {
 
         public boolean test(TruffleObject receiver) {
             return receiver instanceof LibFFIFunction;

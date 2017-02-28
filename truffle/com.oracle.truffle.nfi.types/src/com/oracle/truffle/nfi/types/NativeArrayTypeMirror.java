@@ -33,7 +33,7 @@ public final class NativeArrayTypeMirror extends NativeTypeMirror {
         this.elementType = elementType;
     }
 
-    public final NativeTypeMirror getElementType() {
+    public NativeTypeMirror getElementType() {
         return elementType;
     }
 }
