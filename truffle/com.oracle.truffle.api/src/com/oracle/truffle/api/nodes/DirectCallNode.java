@@ -167,7 +167,7 @@ public abstract class DirectCallNode extends Node {
     public abstract CallTarget getClonedCallTarget();
 
     /**
-     * Returns the used call target when {@link #call(VirtualFrame, Object[])} is invoked. If the
+     * Returns the used call target when {@link #call(java.lang.Object[])} is invoked. If the
      * {@link CallTarget} was split this method returns the {@link CallTarget} returned by
      * {@link #getClonedCallTarget()}.
      *

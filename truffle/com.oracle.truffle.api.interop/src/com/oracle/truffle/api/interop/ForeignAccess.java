@@ -648,7 +648,7 @@ public final class ForeignAccess {
      * Read only access to foreign call arguments inside of a frame.
      *
      * @param frame the frame that was called via
-     *            {@link #execute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) }
+     *            {@link #send(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) }
      * @return read-only list of parameters passed to the frame
      * @since 0.11
      */
@@ -661,7 +661,7 @@ public final class ForeignAccess {
      * The foreign receiver in the frame.
      *
      * @param frame the frame that was called via
-     *            {@link #execute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) }
+     *            {@link #send(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) }
      * @return the receiver used when invoking the frame
      * @since 0.8 or earlier
      */

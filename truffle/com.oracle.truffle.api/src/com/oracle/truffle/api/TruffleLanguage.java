@@ -111,8 +111,8 @@ import java.util.List;
  * implementation, should be handled externally.
  *
  * @param <C> internal state of the language associated with every thread that is executing program
- *            {@link #parse(com.oracle.truffle.api.source.Source, com.oracle.truffle.api.nodes.Node, java.lang.String...)
- *            parsed} by the language
+ *            {@link #parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest) parsed} by the
+ *            language
  * @since 0.8 or earlier
  */
 @SuppressWarnings({"javadoc"})
@@ -348,8 +348,8 @@ public abstract class TruffleLanguage<C> {
         /**
          * Specifies the execution context for parsing. If the parsing request is used for
          * evaluation during halted execution, for example as in
-         * {@link com.oracle.truffle.api.debug.SuspendedEvent#eval} method, this method provides
-         * access to current {@link MaterializedFrame frame} with local variables, etc.
+         * {@link com.oracle.truffle.api.debug.DebugStackFrame#eval(String)} method, this method
+         * provides access to current {@link MaterializedFrame frame} with local variables, etc.
          *
          * @return a {@link MaterializedFrame} exposing the current execution state or
          *         <code>null</code> if there is none
@@ -739,9 +739,9 @@ public abstract class TruffleLanguage<C> {
         /**
          * Evaluates source of (potentially different) language. The {@link Source#getMimeType()
          * MIME type} is used to identify the {@link TruffleLanguage} to use to perform the
-         * {@link #parse(com.oracle.truffle.api.source.Source, com.oracle.truffle.api.nodes.Node, java.lang.String...)}
-         * . The names of arguments are parameters for the resulting {#link CallTarget} that allow
-         * the <code>source</code> to reference the actual parameters passed to
+         * {@link #parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest)} . The names of
+         * arguments are parameters for the resulting {#link CallTarget} that allow the
+         * <code>source</code> to reference the actual parameters passed to
          * {@link CallTarget#call(java.lang.Object...)}.
          *
          * @param source the source to evaluate

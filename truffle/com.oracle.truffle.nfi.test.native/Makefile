@@ -28,7 +28,7 @@ default: ${TARGET}
 
 OBJECTS=bin/array.o bin/numeric.o bin/object.o bin/string.o bin/varargs.o
 
-CFLAGS+=-g -fPIC
+CFLAGS+=-g -fPIC -Wall -Werror
 LDFLAGS+=-g
 
 ifeq (${OS},darwin)
