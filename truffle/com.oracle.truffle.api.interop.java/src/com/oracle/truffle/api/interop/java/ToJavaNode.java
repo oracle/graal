@@ -26,10 +26,8 @@ package com.oracle.truffle.api.interop.java;
 
 import java.util.List;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Cached;
@@ -152,14 +150,22 @@ abstract class ToJavaNode extends Node {
             this.toJava = ToJavaNodeGen.create();
         }
 
-        @SuppressWarnings("deprecation")
         @Override
         public Object execute(VirtualFrame frame) {
             TruffleObject function = (TruffleObject) frame.getArguments()[0];
             TypeAndClass<?> type = (TypeAndClass<?>) frame.getArguments()[1];
             Object[] args = (Object[]) frame.getArguments()[2];
 
-            Object raw = ForeignAccess.execute(foreignAccess, frame, function, args);
+            return call(function, args, type);
+        }
+
+        Object call(TruffleObject function, Object[] args, TypeAndClass<?> type) {
+            Object raw;
+            try {
+                raw = ForeignAccess.send(foreignAccess, function, args);
+            } catch (InteropException ex) {
+                throw ex.raise();
+            }
             if (type == null) {
                 return raw;
             }
@@ -197,8 +203,7 @@ abstract class ToJavaNode extends Node {
     @TruffleBoundary
     static Object message(TypeAndClass<?> convertTo, final Message m, Object receiver, Object... arr) throws InteropException {
         Node n = m.createNode();
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(TruffleLanguage.class, n));
-        return callTarget.call(receiver, convertTo, arr);
+        return new TemporaryRoot(TruffleLanguage.class, n).call((TruffleObject) receiver, arr, convertTo);
     }
 
     private static Object binaryMessage(final Message m, Object receiver, Object... arr) {
