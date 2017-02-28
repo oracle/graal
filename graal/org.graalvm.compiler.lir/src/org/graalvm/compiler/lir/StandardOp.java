@@ -173,13 +173,43 @@ public class StandardOp {
 
     public abstract static class AbstractBlockEndOp extends LIRInstruction implements BlockEndOp {
         public static final LIRInstructionClass<AbstractBlockEndOp> TYPE = LIRInstructionClass.create(AbstractBlockEndOp.class);
+
+        protected AbstractBlockEndOp(LIRInstructionClass<? extends AbstractBlockEndOp> c) {
+            super(c);
+        }
+
+    }
+
+    /**
+     * LIR operation that is an unconditional jump to a {@link #destination()}.
+     */
+    public static class JumpOp extends AbstractBlockEndOp {
+        public static final LIRInstructionClass<JumpOp> TYPE = LIRInstructionClass.create(JumpOp.class);
         public static final EnumSet<OperandFlag> outgoingFlags = EnumSet.of(REG, STACK, CONST, OUTGOING);
 
         @Alive({REG, STACK, CONST, OUTGOING}) private Value[] outgoingValues;
 
-        protected AbstractBlockEndOp(LIRInstructionClass<? extends AbstractBlockEndOp> c) {
+        private final LabelRef destination;
+
+        public JumpOp(LabelRef destination) {
+            this(TYPE, destination);
+        }
+
+        protected JumpOp(LIRInstructionClass<? extends JumpOp> c, LabelRef destination) {
             super(c);
+            this.destination = destination;
             this.outgoingValues = Value.NO_VALUES;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb) {
+            if (!crb.isSuccessorEdge(destination)) {
+                crb.asm.jmp(destination.label());
+            }
+        }
+
+        public LabelRef destination() {
+            return destination;
         }
 
         public void setPhiValues(Value[] values) {
@@ -203,36 +233,6 @@ public class StandardOp {
 
         private boolean checkRange(int idx) {
             return idx < outgoingValues.length;
-        }
-
-    }
-
-    /**
-     * LIR operation that is an unconditional jump to a {@link #destination()}.
-     */
-    public static class JumpOp extends AbstractBlockEndOp {
-        public static final LIRInstructionClass<JumpOp> TYPE = LIRInstructionClass.create(JumpOp.class);
-
-        private final LabelRef destination;
-
-        public JumpOp(LabelRef destination) {
-            this(TYPE, destination);
-        }
-
-        protected JumpOp(LIRInstructionClass<? extends JumpOp> c, LabelRef destination) {
-            super(c);
-            this.destination = destination;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb) {
-            if (!crb.isSuccessorEdge(destination)) {
-                crb.asm.jmp(destination.label());
-            }
-        }
-
-        public LabelRef destination() {
-            return destination;
         }
     }
 
