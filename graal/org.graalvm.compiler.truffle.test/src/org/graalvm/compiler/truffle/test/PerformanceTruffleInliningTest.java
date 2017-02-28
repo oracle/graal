@@ -1,6 +1,4 @@
 
-
-
 /*
  * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -123,7 +121,7 @@ public class PerformanceTruffleInliningTest extends TruffleInliningTest {
 
     protected void assertDecidingTakesLessThan(OptimizedCallTarget target, long maxDuration) {
         long duration = Long.MAX_VALUE;
-        for(int  i=0; i< 10; i++) {
+        for (int i = 0; i < 10; i++) {
             duration = Math.min(executionTime(target), duration);
         }
         Assert.assertTrue("Took too long: " + TimeUnit.NANOSECONDS.toMillis(duration) + "ms", duration < TimeUnit.MILLISECONDS.toNanos(maxDuration));
