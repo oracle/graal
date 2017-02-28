@@ -155,6 +155,8 @@ public final class Module implements ParserListener {
                 break;
 
             case ALIAS:
+                createAliasNew(args);
+                break;
             case ALIAS_OLD:
                 createAliasOld(args);
                 break;
@@ -163,6 +165,16 @@ public final class Module implements ParserListener {
                 LLVMLogger.info("Unknown Top-Level Record: " + Records.describe(id, args));
                 break;
         }
+    }
+
+    private void createAliasNew(long[] args) {
+        Type type = types.get(args[0]);
+        // idx = 1 is address space information
+        int value = (int) args[2];
+        long linkage = args[3];
+
+        generator.createAlias(type, value, linkage, Visibility.DEFAULT.ordinal());
+        symbols.add(type);
     }
 
     private void createAliasOld(long[] args) {

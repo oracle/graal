@@ -88,7 +88,8 @@ public final class LLVMParserRuntime {
         final ModelModule model = parserResult.getModel();
         final StackAllocation stackAllocation = parserResult.getStackAllocation();
         final TargetDataLayout layout = model.getTargetDataLayout();
-        final DataLayoutConverter.DataSpecConverterImpl targetDataLayout = layout != null ? DataLayoutConverter.getConverter(layout.getDataLayout()) : null;
+        assert layout != null;
+        final DataLayoutConverter.DataSpecConverterImpl targetDataLayout = DataLayoutConverter.getConverter(layout.getDataLayout());
 
         final LLVMFunctionRegistry functionRegistry = new LLVMFunctionRegistry(context, factoryFacade);
 

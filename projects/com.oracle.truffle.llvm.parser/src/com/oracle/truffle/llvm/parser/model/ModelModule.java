@@ -82,13 +82,17 @@ public final class ModelModule implements ModuleGenerator {
 
     private TargetDataLayout targetDataLayout = null;
 
+    // when running with Polyglot it can be that there is no layout available - we fall back to this
+    // one.
+    private static final TargetDataLayout defaultLayout = TargetDataLayout.fromString("e-m:e-i64:64-f80:128-n8:16:32:64-S128");
+
     @Override
     public void createTargetDataLayout(TargetDataLayout layout) {
         targetDataLayout = layout;
     }
 
     public TargetDataLayout getTargetDataLayout() {
-        return targetDataLayout;
+        return targetDataLayout == null ? defaultLayout : targetDataLayout;
     }
 
     public ModelModule() {

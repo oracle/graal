@@ -124,7 +124,7 @@ public final class IntegerType implements Type {
     @Override
     public int getAlignment(DataSpecConverter targetDataLayout) {
         if (targetDataLayout != null) {
-            return targetDataLayout.getBitAlignment(getLLVMBaseType()) / Byte.SIZE;
+            return targetDataLayout.getBitAlignment(this) / Byte.SIZE;
 
         } else if (bits <= Byte.SIZE) {
             return Byte.BYTES;
@@ -142,7 +142,7 @@ public final class IntegerType implements Type {
 
     @Override
     public int getSize(DataSpecConverter targetDataLayout) {
-        return Math.max(1, bits / Byte.SIZE);
+        return targetDataLayout.getSize(this);
     }
 
     @Override
