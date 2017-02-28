@@ -101,10 +101,10 @@ def runNWCCSuite(vmArgs):
     compileSuite(['nwcc'])
     return run32(vmArgs, "com.oracle.truffle.llvm.test.alpha.NWCCSuite")
 
-# def runNWCCSuite38(vmArgs):
-#     """runs the NWCC test suite"""
-#     compileSuite(['nwcc38'])
-#     return run38(vmArgs, "com.oracle.truffle.llvm.test.alpha.NWCCSuite")
+def runNWCCSuite38(vmArgs):
+    """runs the NWCC test suite"""
+    compileSuite(['nwcc38'])
+    return run38(vmArgs, "com.oracle.truffle.llvm.test.alpha.NWCCSuite")
 
 def runGCCSuite(vmArgs):
     """runs the LLVM test suite"""
@@ -221,20 +221,20 @@ def compileNWCCSuite():
     print("Compiling NWCC Suite with -O0 ", end='')
     mx_tools.printProgress(mx_tools.multicompileFolder(_nwccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
 
-# def compileV38NWCCSuite():
-#     ensureNWCCSuiteExists()
-#     deleteCachedTests('nwcc')
-#     excludes = mx_tools.collectExcludePattern(os.path.join(_nwccSuiteDir, "configs/"))
-#     print("Compiling NWCC Suite reference executables with clang 3.8 ", end='')
-#     mx_tools.printProgress(mx_tools.multicompileRefFolder(_nwccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_V38], ['-Iinclude'], excludes=excludes))
-#     print("Compiling NWCC Suite with clang clang 3.8 -O0 ", end='')
-#     mx_tools.printProgress(mx_tools.multicompileFolder(_nwccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_V38], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
+def compileV38NWCCSuite():
+    ensureNWCCSuiteExists()
+    deleteCachedTests('nwcc')
+    excludes = mx_tools.collectExcludePattern(os.path.join(_nwccSuiteDir, "configs/"))
+    print("Compiling NWCC Suite reference executables with clang 3.8 ", end='')
+    mx_tools.printProgress(mx_tools.multicompileRefFolder(_nwccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_V38], ['-Iinclude'], excludes=excludes))
+    print("Compiling NWCC Suite with clang clang 3.8 -O0 ", end='')
+    mx_tools.printProgress(mx_tools.multicompileFolder(_nwccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_V38], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
 
 testSuites = {
     'args' : (compileOtherTests, runArgsTests),
     'callback' : (compileOtherTests, runCallbackTests),
     'nwcc' : (compileNWCCSuite, runNWCCSuite),
-    # 'nwcc38' : (compileV38NWCCSuite, runNWCCSuite38),
+    'nwcc38' : (compileV38NWCCSuite, runNWCCSuite38),
     'assembly' : (compileInlineAssemblySuite, runInlineAssemblySuite),
     'gcc' : (compileGCCSuite, runGCCSuite),
     'llvm' : (compileLLVMSuite, runLLVMSuite),
