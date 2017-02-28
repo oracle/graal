@@ -141,9 +141,9 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
     }
 
     @Override
-    public void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t) {
+    public void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t, Map<OptimizedCallTarget, Object> compilationMap) {
         failures++;
-        compilationMap.remove(target);
+        localCompilationMap.remove(target);
     }
 
     @Override
@@ -151,14 +151,14 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
         invalidations++;
     }
 
-    private final Map<OptimizedCallTarget, CompilationLocal> compilationMap = new ConcurrentHashMap<>();
+    private final Map<OptimizedCallTarget, CompilationLocal> localCompilationMap = new ConcurrentHashMap<>();
 
     @Override
-    public void notifyCompilationStarted(OptimizedCallTarget target) {
+    public void notifyCompilationStarted(OptimizedCallTarget target, Map<OptimizedCallTarget, Object> compilationMap) {
         compilations++;
         CompilationLocal local = new CompilationLocal();
         local.compilationStarted = System.nanoTime();
-        compilationMap.put(target, local);
+        localCompilationMap.put(target, local);
 
         OptimizedCompilationProfile profile = target.getCompilationProfile();
         if (profile != null) {
@@ -168,8 +168,8 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
     }
 
     @Override
-    public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph) {
-        compilationMap.get(target).truffleTierFinished = System.nanoTime();
+    public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, Map<OptimizedCallTarget, Object> compilationMap) {
+        localCompilationMap.get(target).truffleTierFinished = System.nanoTime();
 
         nodeStatistics.accept(nodeClasses(target, inliningDecision));
 
@@ -197,8 +197,8 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
     }
 
     @Override
-    public void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph) {
-        compilationMap.get(target).graalTierFinished = System.nanoTime();
+    public void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph, Map<OptimizedCallTarget, Object> compilationMap) {
+        localCompilationMap.get(target).graalTierFinished = System.nanoTime();
         graalTierNodeCount.accept(graph.getNodeCount());
 
         if (TruffleCompilerOptions.getValue(TruffleCompilationStatisticDetails)) {
@@ -233,12 +233,13 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
     }
 
     @Override
-    public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result) {
+    public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result,
+                    Map<OptimizedCallTarget, Object> compilationMap) {
         success++;
         long compilationDone = System.nanoTime();
 
-        CompilationLocal local = compilationMap.get(target);
-        compilationMap.remove(target);
+        CompilationLocal local = localCompilationMap.get(target);
+        localCompilationMap.remove(target);
 
         compilationTime.accept(compilationDone - local.compilationStarted);
         compilationTimeTruffleTier.accept(local.truffleTierFinished - local.compilationStarted);

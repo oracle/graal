@@ -31,6 +31,7 @@ import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.TruffleInlining;
+
 import com.oracle.truffle.api.frame.Frame;
 
 public abstract class AbstractDebugCompilationListener implements GraalTruffleCompilationListener {
@@ -44,19 +45,19 @@ public abstract class AbstractDebugCompilationListener implements GraalTruffleCo
     }
 
     @Override
-    public void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t) {
+    public void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t, Map<OptimizedCallTarget, Object> compilationMap) {
     }
 
     @Override
-    public void notifyCompilationStarted(OptimizedCallTarget target) {
+    public void notifyCompilationStarted(OptimizedCallTarget target, Map<OptimizedCallTarget, Object> compilationMap) {
     }
 
     @Override
-    public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph) {
+    public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, Map<OptimizedCallTarget, Object> compilationMap) {
     }
 
     @Override
-    public void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph) {
+    public void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph, Map<OptimizedCallTarget, Object> compilationMap) {
     }
 
     @Override
@@ -64,7 +65,8 @@ public abstract class AbstractDebugCompilationListener implements GraalTruffleCo
     }
 
     @Override
-    public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result) {
+    public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result,
+                    Map<OptimizedCallTarget, Object> compilationMap) {
     }
 
     @Override

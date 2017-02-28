@@ -38,6 +38,7 @@ import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.TruffleInlining;
 import org.graalvm.compiler.truffle.TruffleInlining.CallTreeNodeVisitor;
 import org.graalvm.compiler.truffle.TruffleInliningDecision;
+
 import com.oracle.truffle.api.nodes.Node;
 
 public final class TraceCompilationCallTreeListener extends AbstractDebugCompilationListener {
@@ -52,7 +53,8 @@ public final class TraceCompilationCallTreeListener extends AbstractDebugCompila
     }
 
     @Override
-    public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result) {
+    public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result,
+                    Map<OptimizedCallTarget, Object> compilationMap) {
         log(0, "opt call tree", target.toString(), target.getDebugProperties(inliningDecision));
         logTruffleCallTree(target, inliningDecision);
     }
