@@ -27,13 +27,13 @@ package com.oracle.truffle.nfi;
 import java.lang.ref.PhantomReference;
 import java.lang.ref.ReferenceQueue;
 
-class NativeAllocation extends PhantomReference<Object> {
+final class NativeAllocation extends PhantomReference<Object> {
 
     public static void registerNativeAllocation(Object javaObject, Destructor destructor) {
         add(new NativeAllocation(javaObject, destructor));
     }
 
-    public static abstract class Destructor {
+    public abstract static class Destructor {
 
         protected abstract void destroy();
     }
@@ -42,7 +42,7 @@ class NativeAllocation extends PhantomReference<Object> {
 
         private final long address;
 
-        public FreeDestructor(long address) {
+        FreeDestructor(long address) {
             this.address = address;
         }
 

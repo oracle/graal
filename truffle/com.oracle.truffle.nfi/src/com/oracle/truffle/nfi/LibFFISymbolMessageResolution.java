@@ -41,7 +41,7 @@ import com.oracle.truffle.nfi.types.Parser;
 @MessageResolution(language = NFILanguage.class, receiverType = LibFFISymbol.class)
 class LibFFISymbolMessageResolution {
 
-    static abstract class SignatureCacheNode extends Node {
+    abstract static class SignatureCacheNode extends Node {
 
         protected abstract LibFFISignature execute(Object signature);
 
@@ -66,7 +66,7 @@ class LibFFISymbolMessageResolution {
     }
 
     @Resolve(message = "INVOKE")
-    static abstract class BindNode extends Node {
+    abstract static class BindNode extends Node {
 
         @Child protected SignatureCacheNode signatureCache = SignatureCacheNodeGen.create();
 
@@ -84,7 +84,7 @@ class LibFFISymbolMessageResolution {
     }
 
     @Resolve(message = "UNBOX")
-    static abstract class UnboxLibFFISymbolNode extends Node {
+    abstract static class UnboxLibFFISymbolNode extends Node {
 
         public long access(LibFFISymbol receiver) {
             return receiver.address;
@@ -92,7 +92,7 @@ class LibFFISymbolMessageResolution {
     }
 
     @Resolve(message = "IS_BOXED")
-    static abstract class IsBoxedLibFFISymbolNode extends Node {
+    abstract static class IsBoxedLibFFISymbolNode extends Node {
 
         @SuppressWarnings("unused")
         public boolean access(LibFFISymbol receiver) {
@@ -101,7 +101,7 @@ class LibFFISymbolMessageResolution {
     }
 
     @CanResolve
-    static abstract class CanResolveLibFFISymbolNode extends Node {
+    abstract static class CanResolveLibFFISymbolNode extends Node {
 
         public boolean test(TruffleObject receiver) {
             return receiver instanceof LibFFISymbol;

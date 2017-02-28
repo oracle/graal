@@ -95,6 +95,7 @@ suite = {
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java
       ],
+      "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.8",
       "workingSets" : "API,Truffle",
     },
@@ -473,6 +474,7 @@ suite = {
         "com.oracle.truffle.api.interop.java",
         "com.oracle.truffle.nfi.types",
       ],
+      "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTEROP_INTERNAL"],
       "workingSets" : "Truffle",
@@ -483,6 +485,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
       ],
+      "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle",
     },
@@ -514,6 +517,7 @@ suite = {
         "mx:JUNIT",
         "TRUFFLE_NFI",
       ],
+      "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle",
       "javaProperties" : {

@@ -27,7 +27,7 @@ package com.oracle.truffle.nfi;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 
-class LibFFISymbol implements TruffleObject {
+final class LibFFISymbol implements TruffleObject {
 
     protected final LibFFILibrary library;
     protected final long address;

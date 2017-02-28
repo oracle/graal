@@ -58,7 +58,7 @@ public class NFITest {
         lookupAndBind = Truffle.getRuntime().createCallTarget(new LookupAndBindNode());
     }
 
-    private static class LookupAndBindNode extends RootNode {
+    private static final class LookupAndBindNode extends RootNode {
 
         @Child Node lookupSymbol = Message.READ.createNode();
         @Child Node bind = Message.createInvoke(1).createNode();
@@ -106,7 +106,7 @@ public class NFITest {
         public abstract Object executeTest(VirtualFrame frame) throws InteropException;
     }
 
-    private static class SendExecuteNode extends TestRootNode {
+    private static final class SendExecuteNode extends TestRootNode {
 
         private final TruffleObject receiver;
 
