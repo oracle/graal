@@ -55,6 +55,7 @@ import org.graalvm.compiler.lir.RedundantMoveElimination;
 import org.graalvm.compiler.lir.StandardOp;
 import org.graalvm.compiler.lir.StandardOp.AbstractBlockEndOp;
 import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
+import org.graalvm.compiler.lir.StandardOp.JumpOp;
 import org.graalvm.compiler.lir.StandardOp.LabelOp;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
@@ -69,7 +70,6 @@ import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool.MoveFactory;
 import org.graalvm.compiler.lir.ssa.SSAUtil;
 import org.graalvm.compiler.lir.ssa.SSAUtil.PhiValueVisitor;
-import org.graalvm.compiler.lir.ssi.SSIUtil;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterArray;
@@ -445,13 +445,15 @@ public final class BottomUpAllocator extends TraceAllocationPhase<TraceAllocatio
             resolveFindInsertPos(from, to);
             LIR lir = getLIR();
 
-            BlockEndOp blockEnd = SSIUtil.outgoing(lir, from);
-            LabelOp label = SSIUtil.incoming(lir, to);
+            if (SSAUtil.isMerge(to)) {
+                JumpOp blockEnd = SSAUtil.phiOut(lir, from);
+                LabelOp label = SSAUtil.phiIn(lir, to);
 
-            for (int i = 0; i < label.getPhiSize(); i++) {
-                Value incomingValue = label.getIncomingValue(i);
-                Value outgoingValue = blockEnd.getOutgoingValue(i);
-                resolveValuePair(incomingValue, outgoingValue);
+                for (int i = 0; i < label.getPhiSize(); i++) {
+                    Value incomingValue = label.getIncomingValue(i);
+                    Value outgoingValue = blockEnd.getOutgoingValue(i);
+                    resolveValuePair(incomingValue, outgoingValue);
+                }
             }
             resolveTraceEdge(from, to);
             moveResolver.resolveAndAppendMoves();

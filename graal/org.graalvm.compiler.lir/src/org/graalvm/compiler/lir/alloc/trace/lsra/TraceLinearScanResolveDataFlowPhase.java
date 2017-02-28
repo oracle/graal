@@ -40,12 +40,12 @@ import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.StandardOp;
-import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
+import org.graalvm.compiler.lir.StandardOp.JumpOp;
 import org.graalvm.compiler.lir.StandardOp.LabelOp;
 import org.graalvm.compiler.lir.alloc.trace.GlobalLivenessInfo;
 import org.graalvm.compiler.lir.alloc.trace.lsra.TraceLinearScanPhase.TraceLinearScan;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
-import org.graalvm.compiler.lir.ssi.SSIUtil;
+import org.graalvm.compiler.lir.ssa.SSAUtil;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.Value;
@@ -153,11 +153,12 @@ final class TraceLinearScanResolveDataFlowPhase extends TraceLinearScanAllocatio
                 int fromId = allocator.getLastLirInstructionId(fromBlock);
                 assert fromId >= 0;
                 LIR lir = allocator.getLIR();
-                BlockEndOp blockEnd = SSIUtil.outgoing(lir, fromBlock);
-                LabelOp label = SSIUtil.incoming(lir, toBlock);
-
-                for (int i = 0; i < label.getPhiSize(); i++) {
-                    addMapping(blockEnd.getOutgoingValue(i), label.getIncomingValue(i), fromId, toId, moveResolver);
+                if (SSAUtil.isMerge(toBlock)) {
+                    JumpOp blockEnd = SSAUtil.phiOut(lir, fromBlock);
+                    LabelOp label = SSAUtil.phiIn(lir, toBlock);
+                    for (int i = 0; i < label.getPhiSize(); i++) {
+                        addMapping(blockEnd.getOutgoingValue(i), label.getIncomingValue(i), fromId, toId, moveResolver);
+                    }
                 }
                 GlobalLivenessInfo livenessInfo = allocator.getGlobalLivenessInfo();
                 int[] locTo = livenessInfo.getBlockIn(toBlock);

@@ -40,13 +40,13 @@ import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
-import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
+import org.graalvm.compiler.lir.StandardOp.JumpOp;
 import org.graalvm.compiler.lir.StandardOp.LabelOp;
 import org.graalvm.compiler.lir.alloc.trace.TraceAllocationPhase.TraceAllocationContext;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool.MoveFactory;
 import org.graalvm.compiler.lir.phases.LIRPhase;
-import org.graalvm.compiler.lir.ssi.SSIUtil;
+import org.graalvm.compiler.lir.ssa.SSAUtil;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.RegisterValue;
@@ -108,14 +108,16 @@ public final class TraceGlobalMoveResolutionPhase extends LIRPhase<TraceAllocati
     private static void resolveEdge(LIR lir, GlobalLivenessInfo livenessInfo, TraceGlobalMoveResolver moveResolver, AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock) {
         assert verifyEdge(fromBlock, toBlock);
 
-        // PHI
-        BlockEndOp blockEnd = SSIUtil.outgoing(lir, fromBlock);
-        LabelOp label = SSIUtil.incoming(lir, toBlock);
+        if (SSAUtil.isMerge(toBlock)) {
+            // PHI
+            JumpOp blockEnd = SSAUtil.phiOut(lir, fromBlock);
+            LabelOp label = SSAUtil.phiIn(lir, toBlock);
 
-        for (int i = 0; i < label.getPhiSize(); i++) {
-            Value in = label.getIncomingValue(i);
-            Value out = blockEnd.getOutgoingValue(i);
-            addMapping(moveResolver, out, in);
+            for (int i = 0; i < label.getPhiSize(); i++) {
+                Value in = label.getIncomingValue(i);
+                Value out = blockEnd.getOutgoingValue(i);
+                addMapping(moveResolver, out, in);
+            }
         }
         // GLI
         Value[] locFrom = livenessInfo.getOutLocation(fromBlock);
