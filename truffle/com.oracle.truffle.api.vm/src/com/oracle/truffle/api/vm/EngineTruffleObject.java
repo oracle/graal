@@ -88,6 +88,10 @@ final class EngineTruffleObject implements TruffleObject, ForeignAccess.Factory 
         return delegate;
     }
 
+    PolyglotEngine engine() {
+        return engine;
+    }
+
     void assertEngine(PolyglotEngine other) {
         if (this.engine != other) {
             throwEngine(other);

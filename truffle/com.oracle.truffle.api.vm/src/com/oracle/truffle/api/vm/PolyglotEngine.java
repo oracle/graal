@@ -48,6 +48,7 @@ import java.util.logging.Logger;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.impl.Accessor;
@@ -1726,6 +1727,19 @@ public class PolyglotEngine {
                     return ((EngineTruffleObject) truffleObject).getDelegate();
                 }
                 return truffleObject;
+            }
+
+            @Override
+            public CallTarget registerInteropTarget(Object truffleObject, RootNode computation) {
+                if (truffleObject instanceof EngineTruffleObject) {
+                    PolyglotEngine engine = ((EngineTruffleObject) truffleObject).engine();
+                    return engine.cachedTargets.lookupComputation(computation);
+                }
+
+                if (computation == null) {
+                    return null;
+                }
+                return Truffle.getRuntime().createCallTarget(computation);
             }
         }
 

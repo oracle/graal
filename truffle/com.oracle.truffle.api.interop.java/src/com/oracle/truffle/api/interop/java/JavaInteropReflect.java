@@ -27,13 +27,11 @@ package com.oracle.truffle.api.interop.java;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import static com.oracle.truffle.api.interop.java.ToJavaNode.message;
-import static com.oracle.truffle.api.interop.java.ToJavaNode.toPrimitive;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.lang.reflect.Constructor;
@@ -74,7 +72,7 @@ final class JavaInteropReflect {
             }
             throw (NoSuchFieldError) new NoSuchFieldError(ex.getMessage()).initCause(ex);
         }
-        if (ToJavaNode.isPrimitive(val)) {
+        if (new ToPrimitiveNode().isPrimitive(val)) {
             return val;
         }
         return JavaInterop.asTruffleObject(val);
@@ -101,7 +99,7 @@ final class JavaInteropReflect {
         for (Constructor<?> constructor : clazz.getConstructors()) {
             try {
                 Object ret = constructor.newInstance(args);
-                if (ToJavaNode.isPrimitive(ret)) {
+                if (new ToPrimitiveNode().isPrimitive(ret)) {
                     return ret;
                 }
                 return JavaInterop.asTruffleObject(ret);
@@ -203,20 +201,23 @@ final class JavaInteropReflect {
             CompilerAsserts.neverPartOfCompilation();
             Object[] args = arguments == null ? EMPTY : arguments;
             if (target == null) {
-                Node executeMain = Message.createExecute(args.length).createNode();
-                RootNode symbolNode = new ToJavaNode.TemporaryRoot(TruffleLanguage.class, executeMain, symbol, TypeAndClass.forReturnType(method));
-                target = Truffle.getRuntime().createCallTarget(symbolNode);
+                target = JavaInterop.ACCESSOR.engine().registerInteropTarget(symbol, null);
+                if (target == null) {
+                    Node executeMain = Message.createExecute(args.length).createNode();
+                    RootNode symbolNode = new ToJavaNode.TemporaryRoot(TruffleLanguage.class, executeMain);
+                    target = JavaInterop.ACCESSOR.engine().registerInteropTarget(symbol, symbolNode);
+                }
             }
             for (int i = 0; i < args.length; i++) {
                 if (args[i] instanceof TruffleObject) {
                     continue;
                 }
-                if (ToJavaNode.isPrimitive(args[i])) {
+                if (new ToPrimitiveNode().isPrimitive(args[i])) {
                     continue;
                 }
                 arguments[i] = JavaInterop.asTruffleObject(args[i]);
             }
-            return target.call(args);
+            return target.call(symbol, TypeAndClass.forReturnType(method), args);
         }
     }
 
@@ -297,7 +298,7 @@ final class JavaInteropReflect {
                     ret = message(convertTo, Message.createInvoke(args.length), obj, callArgs.toArray());
                 } catch (InteropException ex) {
                     val = message(null, Message.READ, obj, name);
-                    Object primitiveVal = toPrimitive(val, method.getReturnType());
+                    Object primitiveVal = new ToPrimitiveNode().toPrimitive(val, method.getReturnType());
                     if (primitiveVal != null) {
                         return primitiveVal;
                     }

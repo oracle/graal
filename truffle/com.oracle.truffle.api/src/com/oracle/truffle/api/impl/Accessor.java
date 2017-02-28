@@ -104,6 +104,8 @@ public abstract class Accessor {
         public abstract Object findLanguage(Class<? extends TruffleLanguage> language);
 
         public abstract Object findOriginalObject(Object truffleObject);
+
+        public abstract CallTarget registerInteropTarget(Object truffleObject, RootNode symbolNode);
     }
 
     public abstract static class LanguageSupport {

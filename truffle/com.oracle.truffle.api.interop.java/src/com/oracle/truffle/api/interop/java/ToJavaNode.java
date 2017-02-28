@@ -45,6 +45,8 @@ import java.util.Map;
 
 abstract class ToJavaNode extends Node {
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
+    @Child private Node isNull = Message.IS_NULL.createNode();
+    @Child private ToPrimitiveNode primitive = new ToPrimitiveNode();
 
     public abstract Object execute(Object value, TypeAndClass<?> type);
 
@@ -64,7 +66,7 @@ abstract class ToJavaNode extends Node {
     private Object convertImpl(Object value, TypeAndClass<?> targetType) {
         Object convertedValue;
         if (isPrimitiveType(targetType.clazz)) {
-            convertedValue = toPrimitive(value, targetType.clazz);
+            convertedValue = primitive.toPrimitive(value, targetType.clazz);
             if (convertedValue != null) {
                 return convertedValue;
             }
@@ -76,7 +78,8 @@ abstract class ToJavaNode extends Node {
         } else if (value == JavaObject.NULL) {
             return null;
         } else if (value instanceof TruffleObject) {
-            convertedValue = asJavaObject(targetType.clazz, targetType, (TruffleObject) value);
+            boolean hasSize = primitive.hasSize((TruffleObject) value);
+            convertedValue = asJavaObject(targetType.clazz, targetType, (TruffleObject) value, hasSize);
         } else {
             assert targetType.clazz.isAssignableFrom(value.getClass());
             convertedValue = value;
@@ -85,10 +88,8 @@ abstract class ToJavaNode extends Node {
     }
 
     @Specialization(guards = "operand != null", replaces = "doCached")
+    @TruffleBoundary
     protected Object doGeneric(Object operand, TypeAndClass<?> type) {
-        // TODO this specialization should be a TruffleBoundary because it produces too much code.
-        // It can't be because a frame is passed in. We need extract all uses of frame out of
-        // convertImpl.
         return convertImpl(operand, type);
     }
 
@@ -110,7 +111,7 @@ abstract class ToJavaNode extends Node {
     }
 
     @TruffleBoundary
-    private static <T> T asJavaObject(Class<T> clazz, TypeAndClass<?> type, TruffleObject foreignObject) {
+    private static <T> T asJavaObject(Class<T> clazz, TypeAndClass<?> type, TruffleObject foreignObject, boolean hasSize) {
         Object obj;
         if (foreignObject == null) {
             return null;
@@ -121,7 +122,7 @@ abstract class ToJavaNode extends Node {
             if (!clazz.isInterface()) {
                 throw new IllegalArgumentException();
             }
-            if (clazz == List.class && Boolean.TRUE.equals(binaryMessage(Message.HAS_SIZE, foreignObject))) {
+            if (clazz == List.class && hasSize) {
                 TypeAndClass<?> elementType = type.getParameterType(0);
                 obj = TruffleList.create(elementType, foreignObject);
             } else if (clazz == Map.class) {
@@ -143,37 +144,35 @@ abstract class ToJavaNode extends Node {
 
         @Node.Child private Node foreignAccess;
         @Node.Child private ToJavaNode toJava;
-        private final TruffleObject function;
-        private final TypeAndClass<?> type;
 
         @SuppressWarnings("rawtypes")
-        TemporaryRoot(Class<? extends TruffleLanguage> lang, Node foreignAccess, TruffleObject function, TypeAndClass<?> type) {
+        TemporaryRoot(Class<? extends TruffleLanguage> lang, Node foreignAccess) {
             super(lang, null, null);
             this.foreignAccess = foreignAccess;
-            this.function = function;
-            this.type = type;
-            if (type == null) {
-                this.toJava = null;
-            } else {
-                this.toJava = ToJavaNodeGen.create();
-            }
+            this.toJava = ToJavaNodeGen.create();
         }
 
         @SuppressWarnings("deprecation")
         @Override
         public Object execute(VirtualFrame frame) {
-            Object raw = ForeignAccess.execute(foreignAccess, frame, function, frame.getArguments());
-            if (toJava == null) {
+            TruffleObject function = (TruffleObject) frame.getArguments()[0];
+            TypeAndClass<?> type = (TypeAndClass<?>) frame.getArguments()[1];
+            Object[] args = (Object[]) frame.getArguments()[2];
+
+            Object raw = ForeignAccess.execute(foreignAccess, frame, function, args);
+            if (type == null) {
                 return raw;
             }
             return toJava.execute(raw, type);
         }
     }
 
+    @TruffleBoundary
     static Object toJava(Object ret, TypeAndClass<?> type) {
         CompilerAsserts.neverPartOfCompilation();
         Class<?> retType = type.clazz;
-        Object primitiveRet = toPrimitive(ret, retType);
+        final ToPrimitiveNode tmpPrimitive = new ToPrimitiveNode();
+        Object primitiveRet = tmpPrimitive.toPrimitive(ret, retType);
         if (primitiveRet != null) {
             return primitiveRet;
         }
@@ -188,82 +187,18 @@ abstract class ToJavaNode extends Node {
         if (ret instanceof TruffleObject) {
             final TruffleObject truffleObject = (TruffleObject) ret;
             if (retType.isInterface()) {
-                return asJavaObject(retType, type, truffleObject);
+                return asJavaObject(retType, type, truffleObject, tmpPrimitive.hasSize(truffleObject));
             }
         }
         return ret;
-    }
-
-    static boolean isPrimitive(Object attr) {
-        return toPrimitive(attr, null) != null;
-    }
-
-    @TruffleBoundary
-    static Object toPrimitive(Object value, Class<?> requestedType) {
-        Object attr;
-        if (value instanceof TruffleObject) {
-            if (!Boolean.TRUE.equals(binaryMessage(Message.IS_BOXED, value))) {
-                return null;
-            }
-            try {
-                attr = message(null, Message.UNBOX, value);
-            } catch (InteropException e) {
-                throw new IllegalStateException();
-            }
-        } else {
-            attr = value;
-        }
-        if (attr instanceof Number) {
-            if (requestedType == null) {
-                return attr;
-            }
-            Number n = (Number) attr;
-            if (requestedType == byte.class || requestedType == Byte.class) {
-                return n.byteValue();
-            }
-            if (requestedType == short.class || requestedType == Short.class) {
-                return n.shortValue();
-            }
-            if (requestedType == int.class || requestedType == Integer.class) {
-                return n.intValue();
-            }
-            if (requestedType == long.class || requestedType == Long.class) {
-                return n.longValue();
-            }
-            if (requestedType == float.class || requestedType == Float.class) {
-                return n.floatValue();
-            }
-            if (requestedType == double.class || requestedType == Double.class) {
-                return n.doubleValue();
-            }
-            if (requestedType == char.class || requestedType == Character.class) {
-                return (char) n.intValue();
-            }
-            return n;
-        }
-        if (attr instanceof CharSequence) {
-            if (requestedType == char.class || requestedType == Character.class) {
-                if (((String) attr).length() == 1) {
-                    return ((String) attr).charAt(0);
-                }
-            }
-            return String.valueOf(attr);
-        }
-        if (attr instanceof Character) {
-            return attr;
-        }
-        if (attr instanceof Boolean) {
-            return attr;
-        }
-        return null;
     }
 
     @SuppressWarnings("all")
     @TruffleBoundary
     static Object message(TypeAndClass<?> convertTo, final Message m, Object receiver, Object... arr) throws InteropException {
         Node n = m.createNode();
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(TruffleLanguage.class, n, (TruffleObject) receiver, convertTo));
-        return callTarget.call(arr);
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(TruffleLanguage.class, n));
+        return callTarget.call(receiver, convertTo, arr);
     }
 
     private static Object binaryMessage(final Message m, Object receiver, Object... arr) {

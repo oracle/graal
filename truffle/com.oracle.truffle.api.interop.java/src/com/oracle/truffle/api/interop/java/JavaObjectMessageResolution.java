@@ -138,18 +138,20 @@ class JavaObjectMessageResolution {
 
     @Resolve(message = "IS_BOXED")
     abstract static class BoxedCheckNode extends Node {
+        @Child private ToPrimitiveNode primitive = new ToPrimitiveNode();
 
         public Object access(JavaObject object) {
-            return ToJavaNode.isPrimitive(object.obj);
+            return primitive.isPrimitive(object.obj);
         }
 
     }
 
     @Resolve(message = "UNBOX")
     abstract static class UnboxNode extends Node {
+        @Child private ToPrimitiveNode primitive = new ToPrimitiveNode();
 
         public Object access(JavaObject object) {
-            return ToJavaNode.toPrimitive(object.obj, null);
+            return primitive.toPrimitive(object.obj, null);
         }
 
     }
