@@ -50,6 +50,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.interop.java.MethodMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.Ctx;
@@ -362,6 +363,20 @@ public class EngineTest {
         void foobar();
     }
 
+    interface ArrayLike {
+        @MethodMessage(message = "WRITE")
+        void set(int index, Object value);
+
+        @MethodMessage(message = "READ")
+        Object get(int index);
+
+        @MethodMessage(message = "GET_SIZE")
+        int size();
+
+        @MethodMessage(message = "HAS_SIZE")
+        boolean isArray();
+    }
+
     @Test
     public void testCachingFailing() {
         CachingLanguageChannel channel = new CachingLanguageChannel();
@@ -389,6 +404,9 @@ public class EngineTest {
             assertTrue(m1.isEmpty());
             List<?> l1 = value1.as(List.class);
             assertEquals(0, l1.size());
+            ArrayLike a1 = value1.as(ArrayLike.class);
+            assertEquals(0, a1.size());
+            assertTrue(a1.isArray());
 
             TestInterface testInterface2 = value2.as(TestInterface.class);
             testInterface2.foobar();
@@ -403,6 +421,9 @@ public class EngineTest {
             assertTrue(m2.isEmpty());
             List<?> l2 = value2.as(List.class);
             assertEquals(0, l2.size());
+            ArrayLike a2 = value1.as(ArrayLike.class);
+            assertEquals(0, a2.size());
+            assertTrue(a2.isArray());
 
             if (i == 0) {
                 // warmup

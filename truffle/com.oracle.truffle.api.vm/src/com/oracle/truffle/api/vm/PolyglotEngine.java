@@ -62,6 +62,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.ComputeInExecutor.Info;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
 import com.oracle.truffle.api.vm.PolyglotRootNode.EvalRootNode;
+import java.lang.reflect.Method;
 
 /**
  * A multi-language execution environment for Truffle-implemented {@linkplain Language languages}
@@ -1576,7 +1577,8 @@ public class PolyglotEngine {
             }
 
             @Override
-            public CallTarget registerInteropTarget(Object truffleObject, RootNode computation, Class<?> key) {
+            public CallTarget registerInteropTarget(Object truffleObject, RootNode computation, Object key) {
+                assert key instanceof Class || key instanceof Method : "Unexpected key: " + key;
                 if (truffleObject instanceof EngineTruffleObject) {
                     PolyglotEngine engine = ((EngineTruffleObject) truffleObject).engine();
                     return engine.cachedTargets.lookupComputation(key, computation);
