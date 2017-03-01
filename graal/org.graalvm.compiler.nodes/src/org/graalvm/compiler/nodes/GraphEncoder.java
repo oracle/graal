@@ -223,8 +223,8 @@ public class GraphEncoder {
             /* Write out the type, properties, and edges. */
             NodeClass<?> nodeClass = node.getNodeClass();
             writer.putUV(nodeClasses.getIndex(nodeClass));
-            writeProperties(node, nodeClass.getData());
             writeEdges(node, nodeClass.getEdges(Edges.Type.Inputs), nodeOrder);
+            writeProperties(node, nodeClass.getData());
             writeEdges(node, nodeClass.getEdges(Edges.Type.Successors), nodeOrder);
 
             /* Special handling for some nodes that require additional information for decoding. */
@@ -365,6 +365,11 @@ public class GraphEncoder {
     }
 
     protected void writeEdges(Node node, Edges edges, NodeOrder nodeOrder) {
+        if (node instanceof PhiNode) {
+            /* Edges are not needed for decoding, so we must not write it. */
+            return;
+        }
+
         for (int idx = 0; idx < edges.getDirectCount(); idx++) {
             if (GraphDecoder.skipDirectEdge(node, edges, idx)) {
                 /* Edge is not needed for decoding, so we must not write it. */
@@ -373,21 +378,23 @@ public class GraphEncoder {
             Node edge = Edges.getNode(node, edges.getOffsets(), idx);
             writeOrderId(edge, nodeOrder);
         }
-        for (int idx = edges.getDirectCount(); idx < edges.getCount(); idx++) {
-            if (GraphDecoder.skipIndirectEdge(node, edges, idx, false)) {
-                /* Edge is not needed for decoding, so we must not write it. */
-                continue;
-            }
-            NodeList<Node> edgeList = Edges.getNodeList(node, edges.getOffsets(), idx);
-            if (edgeList == null) {
-                writer.putSV(-1);
-            } else {
-                writer.putSV(edgeList.size());
-                for (Node edge : edgeList) {
-                    writeOrderId(edge, nodeOrder);
+
+        if (node instanceof AbstractMergeNode && edges.type() == Edges.Type.Inputs) {
+            /* The ends of merge nodes are decoded manually when the ends are processed. */
+        } else {
+            for (int idx = edges.getDirectCount(); idx < edges.getCount(); idx++) {
+                NodeList<Node> edgeList = Edges.getNodeList(node, edges.getOffsets(), idx);
+                if (edgeList == null) {
+                    writer.putSV(-1);
+                } else {
+                    writer.putSV(edgeList.size());
+                    for (Node edge : edgeList) {
+                        writeOrderId(edge, nodeOrder);
+                    }
                 }
             }
         }
+
     }
 
     protected void writeOrderId(Node node, NodeOrder nodeOrder) {

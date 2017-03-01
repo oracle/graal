@@ -39,6 +39,7 @@ import java.util.TreeMap;
 
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.Fields;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.util.TypeReader;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
 import org.graalvm.compiler.debug.Debug;
@@ -496,8 +497,8 @@ public class GraphDecoder {
         methodScope.reader.setByteIndex(methodScope.encodedGraph.nodeStartOffsets[nodeOrderId]);
         int typeId = methodScope.reader.getUVInt();
         assert node.getNodeClass() == methodScope.encodedGraph.getNodeClasses()[typeId];
+        makeFixedNodeInputs(methodScope, loopScope, node);
         readProperties(methodScope, node);
-        makeInputNodes(methodScope, loopScope, node, true);
         makeSuccessorStubs(methodScope, successorAddScope, node, updatePredecessors);
 
         LoopScope resultScope = loopScope;
@@ -954,12 +955,6 @@ public class GraphDecoder {
         return false;
     }
 
-    protected Node instantiateNode(MethodScope methodScope, int nodeOrderId) {
-        methodScope.reader.setByteIndex(methodScope.encodedGraph.nodeStartOffsets[nodeOrderId]);
-        NodeClass<?> nodeClass = methodScope.encodedGraph.getNodeClasses()[methodScope.reader.getUVInt()];
-        return nodeClass.allocateInstance();
-    }
-
     protected void readProperties(MethodScope methodScope, Node node) {
         node.setNodeSourcePosition((NodeSourcePosition) readObject(methodScope));
         Fields fields = node.getNodeClass().getData();
@@ -980,7 +975,7 @@ public class GraphDecoder {
      * are created on demand (recursively since they can themselves reference not yet created
      * nodes).
      */
-    protected void makeInputNodes(MethodScope methodScope, LoopScope loopScope, Node node, boolean updateUsages) {
+    protected void makeFixedNodeInputs(MethodScope methodScope, LoopScope loopScope, Node node) {
         Edges edges = node.getNodeClass().getInputEdges();
         for (int index = 0; index < edges.getDirectCount(); index++) {
             if (skipDirectEdge(node, edges, index)) {
@@ -989,25 +984,60 @@ public class GraphDecoder {
             int orderId = readOrderId(methodScope);
             Node value = ensureNodeCreated(methodScope, loopScope, orderId);
             edges.initializeNode(node, index, value);
-            if (updateUsages && value != null && !value.isDeleted()) {
+            if (value != null && !value.isDeleted()) {
                 edges.update(node, null, value);
 
             }
         }
-        for (int index = edges.getDirectCount(); index < edges.getCount(); index++) {
-            if (skipIndirectEdge(node, edges, index, true)) {
-                continue;
+
+        if (node instanceof AbstractMergeNode) {
+            /* The ends of merge nodes are filled manually when the ends are processed. */
+            assert edges.getCount() - edges.getDirectCount() == 1 : "MergeNode has one variable size input (the ends)";
+            assert Edges.getNodeList(node, edges.getOffsets(), edges.getDirectCount()) != null : "Input list must have been already created";
+        } else {
+            for (int index = edges.getDirectCount(); index < edges.getCount(); index++) {
+                int size = methodScope.reader.getSVInt();
+                if (size != -1) {
+                    NodeList<Node> nodeList = new NodeInputList<>(node, size);
+                    edges.initializeList(node, index, nodeList);
+                    for (int idx = 0; idx < size; idx++) {
+                        int orderId = readOrderId(methodScope);
+                        Node value = ensureNodeCreated(methodScope, loopScope, orderId);
+                        nodeList.initialize(idx, value);
+                        if (value != null && !value.isDeleted()) {
+                            edges.update(node, null, value);
+                        }
+                    }
+                }
             }
-            int size = methodScope.reader.getSVInt();
-            if (size != -1) {
-                NodeList<Node> nodeList = new NodeInputList<>(node, size);
-                edges.initializeList(node, index, nodeList);
-                for (int idx = 0; idx < size; idx++) {
-                    int orderId = readOrderId(methodScope);
-                    Node value = ensureNodeCreated(methodScope, loopScope, orderId);
-                    nodeList.initialize(idx, value);
-                    if (updateUsages && value != null && !value.isDeleted()) {
-                        edges.update(node, null, value);
+        }
+    }
+
+    protected void makeFloatingNodeInputs(MethodScope methodScope, LoopScope loopScope, Node node) {
+        Edges edges = node.getNodeClass().getInputEdges();
+        if (node instanceof PhiNode) {
+            /*
+             * The inputs of phi functions are filled manually when the end nodes are processed.
+             * However, the values must not be null, so initialize them with an empty list.
+             */
+            assert edges.getDirectCount() == 1 : "PhiNode has one direct input (the MergeNode)";
+            assert edges.getCount() - edges.getDirectCount() == 1 : "PhiNode has one variable size input (the values)";
+            edges.initializeList(node, edges.getDirectCount(), new NodeInputList<>(node));
+        } else {
+            for (int index = 0; index < edges.getDirectCount(); index++) {
+                int orderId = readOrderId(methodScope);
+                Node value = ensureNodeCreated(methodScope, loopScope, orderId);
+                edges.initializeNode(node, index, value);
+            }
+            for (int index = edges.getDirectCount(); index < edges.getCount(); index++) {
+                int size = methodScope.reader.getSVInt();
+                if (size != -1) {
+                    NodeList<Node> nodeList = new NodeInputList<>(node, size);
+                    edges.initializeList(node, index, nodeList);
+                    for (int idx = 0; idx < size; idx++) {
+                        int orderId = readOrderId(methodScope);
+                        Node value = ensureNodeCreated(methodScope, loopScope, orderId);
+                        nodeList.initialize(idx, value);
                     }
                 }
             }
@@ -1024,7 +1054,6 @@ public class GraphDecoder {
         }
 
         node = decodeFloatingNode(methodScope, loopScope, nodeOrderId);
-
         if (node instanceof ProxyNode || node instanceof PhiNode) {
             /*
              * We need these nodes as they were in the original graph, without any canonicalization
@@ -1056,7 +1085,10 @@ public class GraphDecoder {
      */
     protected Node decodeFloatingNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId) {
         long readerByteIndex = methodScope.reader.getByteIndex();
-        Node node = instantiateNode(methodScope, nodeOrderId);
+
+        methodScope.reader.setByteIndex(methodScope.encodedGraph.nodeStartOffsets[nodeOrderId]);
+        NodeClass<?> nodeClass = methodScope.encodedGraph.getNodeClasses()[methodScope.reader.getUVInt()];
+        Node node = allocateNode(nodeClass);
         if (node instanceof FixedNode) {
             /*
              * This is a severe error that will lead to a corrupted graph, so it is better not to
@@ -1065,14 +1097,19 @@ public class GraphDecoder {
             throw shouldNotReachHere("Not a floating node: " + node.getClass().getName());
         }
 
+        /* Read the inputs of the node, possibly creating them recursively. */
+        makeFloatingNodeInputs(methodScope, loopScope, node);
         /* Read the properties of the node. */
         readProperties(methodScope, node);
         /* There must not be any successors to read, since it is a non-fixed node. */
         assert node.getNodeClass().getEdges(Edges.Type.Successors).getCount() == 0;
-        /* Read the inputs of the node, possibly creating them recursively. */
-        makeInputNodes(methodScope, loopScope, node, false);
+
         methodScope.reader.setByteIndex(readerByteIndex);
         return node;
+    }
+
+    protected Node allocateNode(NodeClass<?> nodeClass) {
+        return nodeClass.allocateInstance();
     }
 
     /**
@@ -1121,9 +1158,6 @@ public class GraphDecoder {
             }
         }
         for (int index = edges.getDirectCount(); index < edges.getCount(); index++) {
-            if (skipIndirectEdge(node, edges, index, true)) {
-                continue;
-            }
             int size = methodScope.reader.getSVInt();
             if (size != -1) {
                 NodeList<Node> nodeList = new NodeSuccessorList<>(node, size);
@@ -1150,7 +1184,9 @@ public class GraphDecoder {
         }
 
         long readerByteIndex = methodScope.reader.getByteIndex();
-        node = (FixedNode) methodScope.graph.add(instantiateNode(methodScope, nodeOrderId));
+        methodScope.reader.setByteIndex(methodScope.encodedGraph.nodeStartOffsets[nodeOrderId]);
+        NodeClass<?> nodeClass = methodScope.encodedGraph.getNodeClasses()[methodScope.reader.getUVInt()];
+        node = (FixedNode) methodScope.graph.add(nodeClass.allocateInstance());
         /* Properties and edges are not filled yet, the node remains uninitialized. */
         methodScope.reader.setByteIndex(readerByteIndex);
 
@@ -1174,12 +1210,6 @@ public class GraphDecoder {
                     return true;
                 }
             }
-        } else if (node instanceof PhiNode) {
-            /* The inputs of phi functions are filled manually when the end nodes are processed. */
-            assert edges.type() == Edges.Type.Inputs;
-            assert index == edges.getDirectCount() - 1 : "PhiNode has one direct input (the MergeNode)";
-            return true;
-
         } else if (node instanceof LoopExitNode && edges.type() == Edges.Type.Inputs && edges.getType(index) == FrameState.class) {
             /* The stateAfter of the loop exit is filled manually. */
             return true;
@@ -1188,29 +1218,7 @@ public class GraphDecoder {
         return false;
     }
 
-    protected static boolean skipIndirectEdge(Node node, Edges edges, int index, boolean decode) {
-        assert !(node instanceof Invoke);
         assert !(node instanceof LoopExitNode && edges.type() == Edges.Type.Inputs && edges.getType(index) == FrameState.class);
-        if (node instanceof AbstractMergeNode && edges.type() == Edges.Type.Inputs) {
-            /* The ends of merge nodes are filled manually when the ends are processed. */
-            assert index == edges.getCount() - 1 : "MergeNode has one variable size input (the ends)";
-            assert Edges.getNodeList(node, edges.getOffsets(), index) != null : "Input list must have been already created";
-            return true;
-
-        } else if (node instanceof PhiNode) {
-            /* The inputs of phi functions are filled manually when the end nodes are processed. */
-            assert edges.type() == Edges.Type.Inputs;
-            assert index == edges.getCount() - 1 : "PhiNode has one variable size input (the values)";
-            if (decode) {
-                /* The values must not be null, so initialize with an empty list. */
-                edges.initializeList(node, index, new NodeInputList<>(node));
-            }
-            return true;
-
-        }
-        return false;
-    }
-
     protected Node lookupNode(LoopScope loopScope, int nodeOrderId) {
         return loopScope.createdNodes[nodeOrderId];
     }
