@@ -32,6 +32,8 @@ import com.oracle.truffle.tools.debug.shell.server.REPLServer;
 /**
  * Client context for interaction with a program halted by the {@link REPLServer}.
  */
+@SuppressWarnings("deprecation")
+@Deprecated
 interface REPLClientContext {
 
     /**

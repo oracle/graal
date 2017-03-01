@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.tools.debug.shell.client;
 
-// TODO (mlvdv)  write a real command line parser
 abstract class REPLCommand {
 
     private final String command;

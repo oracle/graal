@@ -457,7 +457,7 @@ suite = {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.api.debug",
+        "com.oracle.truffle.api.vm",
         "JLINE"
       ],
       "checkstyle" : "com.oracle.truffle.api",

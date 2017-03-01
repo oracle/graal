@@ -27,6 +27,7 @@ package com.oracle.truffle.tools.debug.shell.client;
 /**
  * Information about a stack frame in the current {@link REPLClientContext}.
  */
+@Deprecated
 interface REPLFrame {
 
     /**
