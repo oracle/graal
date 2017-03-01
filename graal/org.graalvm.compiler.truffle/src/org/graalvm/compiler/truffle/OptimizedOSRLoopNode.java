@@ -174,26 +174,33 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                 OptimizedCallTarget target = compiledOSRLoop;
                 if (target == null) {
                     return false;
-                } else if (target.isValid()) {
-                    Object result = target.callDirect(frame);
-                    if (result == Boolean.TRUE) {
-                        // loop is done. No further repetitions necessary.
-                        return true;
-                    } else {
-                        invalidateOSRTarget(this, "OSR compilation got invalidated");
-                        return false;
-                    }
-                } else if (!target.isCompiling()) {
+                }
+                if (target.isValid()) {
+                    return directCallTarget(target, frame);
+                }
+                if (!target.isCompiling()) {
                     invalidateOSRTarget(this, "OSR compilation failed or cancelled");
                     return false;
-                } else {
-                    iterations++;
                 }
+
+                iterations++;
+
             } while (repeatableNode.executeRepeating(frame));
             return true;
         } finally {
             baseLoopCount += iterations;
             reportParentLoopCount(iterations);
+        }
+    }
+
+    private boolean directCallTarget(OptimizedCallTarget target, VirtualFrame frame) {
+        if (target.callDirect(frame) == Boolean.TRUE) {
+            return true;
+        } else {
+            if (!target.isValid()) {
+                invalidateOSRTarget(this, "OSR compilation got invalidated");
+            }
+            return false;
         }
     }
 
