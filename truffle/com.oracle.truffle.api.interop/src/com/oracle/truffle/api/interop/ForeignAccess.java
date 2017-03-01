@@ -542,6 +542,8 @@ public final class ForeignAccess {
     public static boolean sendIsNull(Node isNullNode, TruffleObject receiver) {
         try {
             return (boolean) send(isNullNode, receiver);
+        } catch (UnsupportedMessageException ex) {
+            return false;
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
@@ -612,6 +614,8 @@ public final class ForeignAccess {
     public static boolean sendIsBoxed(Node isBoxedNode, TruffleObject receiver) {
         try {
             return (boolean) send(isBoxedNode, receiver);
+        } catch (UnsupportedMessageException ex) {
+            return false;
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);

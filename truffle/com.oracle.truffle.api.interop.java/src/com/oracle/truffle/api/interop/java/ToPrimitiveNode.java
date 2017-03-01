@@ -29,10 +29,16 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 
 final class ToPrimitiveNode extends Node {
-    private static final ToPrimitiveNode INSTANCE = new ToPrimitiveNode();
+    private static final ThreadLocal<ToPrimitiveNode> INSTANCE = new ThreadLocal<ToPrimitiveNode>() {
+        @Override
+        protected ToPrimitiveNode initialValue() {
+            return new ToPrimitiveNode();
+        }
+    };
 
     @Child Node isNullNode;
     @Child Node isBoxedNode;
@@ -52,7 +58,7 @@ final class ToPrimitiveNode extends Node {
 
     static ToPrimitiveNode shared() {
         CompilerAsserts.neverPartOfCompilation();
-        return INSTANCE;
+        return INSTANCE.get();
     }
 
     boolean isPrimitive(Object attr) {
@@ -125,6 +131,14 @@ final class ToPrimitiveNode extends Node {
 
     boolean isNull(TruffleObject ret) {
         return ForeignAccess.sendIsNull(isNullNode, ret);
+    }
+
+    Object unbox(TruffleObject ret) throws UnsupportedMessageException {
+        return ForeignAccess.sendUnbox(unboxNode, ret);
+    }
+
+    boolean isBoxed(TruffleObject foreignObject) {
+        return ForeignAccess.sendIsBoxed(isBoxedNode, foreignObject);
     }
 
 }
