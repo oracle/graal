@@ -348,10 +348,13 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchma
         bmArgs, _ = parser.parse_known_args(bmSuiteArgs)
         self.keepScratchDir = bmArgs.keep_scratch
         if not bmArgs.no_scratch:
-            self.workdir = mkdtemp(prefix='dacapo-work.', dir='.')
+            self._create_tmp_workdir()
         else:
             mx.warn("NO scratch directory created! (--no-scratch)")
             self.workdir = None
+
+    def _create_tmp_workdir(self):
+        self.workdir = mkdtemp(prefix='dacapo-work.', dir='.')
 
     def workingDirectory(self, benchmarks, bmSuiteArgs):
         return self.workdir
@@ -361,6 +364,15 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchma
             mx.warn("Scratch directory NOT deleted (--keep-scratch): {0}".format(self.workdir))
         elif self.workdir:
             rmtree(self.workdir)
+
+    def repairDatapointsAndFail(self, benchmarks, bmSuiteArgs, partialResults, message):
+        try:
+            super(BaseDaCapoBenchmarkSuite, self).repairDatapointsAndFail(benchmarks, bmSuiteArgs, partialResults, message)
+        finally:
+            if self.workdir:
+                # keep old workdir for investigation, create a new one for further benchmarking
+                mx.warn("Keeping scratch directory after failed benchmark: {0}".format(self.workdir))
+                self._create_tmp_workdir()
 
     def daCapoClasspathEnvVarName(self):
         raise NotImplementedError()
