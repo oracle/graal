@@ -34,11 +34,13 @@ import com.oracle.truffle.api.nodes.Node;
 final class ToPrimitiveNode extends Node {
     private static final ToPrimitiveNode INSTANCE = new ToPrimitiveNode();
 
+    @Child Node isNullNode;
     @Child Node isBoxedNode;
     @Child Node hasSizeNode;
     @Child Node unboxNode;
 
     private ToPrimitiveNode() {
+        this.isNullNode = Message.IS_NULL.createNode();
         this.isBoxedNode = Message.IS_BOXED.createNode();
         this.hasSizeNode = Message.HAS_SIZE.createNode();
         this.unboxNode = Message.UNBOX.createNode();
@@ -119,6 +121,10 @@ final class ToPrimitiveNode extends Node {
 
     boolean hasSize(TruffleObject truffleObject) {
         return ForeignAccess.sendHasSize(hasSizeNode, truffleObject);
+    }
+
+    boolean isNull(TruffleObject ret) {
+        return ForeignAccess.sendIsNull(isNullNode, ret);
     }
 
 }
