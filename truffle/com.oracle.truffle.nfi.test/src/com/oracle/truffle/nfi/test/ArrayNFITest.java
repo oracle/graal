@@ -96,8 +96,11 @@ public class ArrayNFITest extends NFITest {
                 } else if (elem instanceof Character) {
                     actual = (Character) elem;
                 } else if (elem instanceof Boolean) {
-                    actual = (Boolean) elem ? 1 : 0;
-                    expected &= 1; // only one bit available
+                    /*
+                     * The conversion from native byte to Java boolean is undefined and may be
+                     * different on different VM versions.
+                     */
+                    return;
                 }
                 Assert.assertEquals("array element", expected, actual);
             }
