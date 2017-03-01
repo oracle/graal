@@ -22,52 +22,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.nfi;
+package com.oracle.truffle.nfi.test.interop;
 
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
-import java.nio.ByteBuffer;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
 
-abstract class ClosureArgumentNode extends Node {
+public class TestCallback implements TruffleObject {
 
-    public abstract Object execute(Object arg);
+    public interface Function {
 
-    abstract static class BufferClosureArgumentNode extends ClosureArgumentNode {
+        @TruffleBoundary
+        Object call(Object... args);
+    }
 
-        private final LibFFIType type;
+    private final int arity;
+    private final Function function;
 
-        BufferClosureArgumentNode(LibFFIType type) {
-            this.type = type;
-        }
+    public TestCallback(int arity, Function function) {
+        this.arity = arity;
+        this.function = function;
+    }
 
-        @Specialization
-        public Object deserialize(ByteBuffer arg) {
-            NativeArgumentBuffer buffer = new NativeArgumentBuffer.Direct(arg, 0);
-            return type.deserialize(buffer);
+    Object call(Object... args) {
+        if (args.length == arity) {
+            Object ret = function.call(args);
+            return ret;
+        } else {
+            throw ArityException.raise(arity, args.length);
         }
     }
 
-    static class ObjectClosureArgumentNode extends ClosureArgumentNode {
-
-        @Override
-        public Object execute(Object arg) {
-            if (arg == null) {
-                return new NativePointer(0);
-            } else {
-                return arg;
-            }
-        }
-    }
-
-    static class StringClosureArgumentNode extends ClosureArgumentNode {
-
-        @Override
-        public Object execute(Object arg) {
-            if (arg == null) {
-                return new NativeString(0);
-            } else {
-                return arg;
-            }
-        }
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return TestCallbackMessageResolutionForeign.createAccess();
     }
 }

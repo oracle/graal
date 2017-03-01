@@ -26,10 +26,10 @@ package com.oracle.truffle.nfi.test;
 
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.nfi.test.interop.TestCallback;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.function.LongFunction;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.core.Is.is;
 import org.junit.Assert;
@@ -70,8 +70,8 @@ public class ImplicitConvertNFITest extends NFITest {
     @Parameter(2) public long numericValue;
     @Parameter(3) public Class<?> valueClass;
 
-    private Object callback(long argument) {
-        Assert.assertEquals("callback argument", numericValue + 1, argument);
+    private Object callback(Object... args) {
+        Assert.assertEquals("callback argument", numericValue + 1, NumericNFITest.unboxNumber(args[0]));
         return value;
     }
 
@@ -81,7 +81,7 @@ public class ImplicitConvertNFITest extends NFITest {
      */
     @Test
     public void testConvert() {
-        TruffleObject callback = JavaInterop.asTruffleFunction(LongFunction.class, this::callback);
+        TruffleObject callback = new TestCallback(1, this::callback);
         TruffleObject function = lookupAndBind("callback_" + type, String.format("((%s):%s, %s) : %s", type, type, type, type));
         Object ret = sendExecute(function, callback, value);
 

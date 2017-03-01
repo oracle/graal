@@ -22,52 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.nfi;
+package com.oracle.truffle.nfi.test.interop;
 
-import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.CanResolve;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import java.nio.ByteBuffer;
+import com.oracle.truffle.nfi.NFILanguage;
 
-abstract class ClosureArgumentNode extends Node {
+@MessageResolution(language = NFILanguage.class, receiverType = NullObject.class)
+class NullObjectMessageResolution {
 
-    public abstract Object execute(Object arg);
+    @Resolve(message = "IS_NULL")
+    abstract static class IsNullNode extends Node {
 
-    abstract static class BufferClosureArgumentNode extends ClosureArgumentNode {
-
-        private final LibFFIType type;
-
-        BufferClosureArgumentNode(LibFFIType type) {
-            this.type = type;
-        }
-
-        @Specialization
-        public Object deserialize(ByteBuffer arg) {
-            NativeArgumentBuffer buffer = new NativeArgumentBuffer.Direct(arg, 0);
-            return type.deserialize(buffer);
+        @SuppressWarnings("unused")
+        boolean access(NullObject object) {
+            return true;
         }
     }
 
-    static class ObjectClosureArgumentNode extends ClosureArgumentNode {
+    @CanResolve
+    abstract static class CanResolveIsNull extends Node {
 
-        @Override
-        public Object execute(Object arg) {
-            if (arg == null) {
-                return new NativePointer(0);
-            } else {
-                return arg;
-            }
-        }
-    }
-
-    static class StringClosureArgumentNode extends ClosureArgumentNode {
-
-        @Override
-        public Object execute(Object arg) {
-            if (arg == null) {
-                return new NativeString(0);
-            } else {
-                return arg;
-            }
+        boolean test(TruffleObject object) {
+            return object instanceof NullObject;
         }
     }
 }

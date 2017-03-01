@@ -53,9 +53,13 @@ final class LibFFIClosure {
         Message message = Message.createExecute(signature.getArgTypes().length);
 
         LibFFIType retType = signature.getRetType();
-        if (retType instanceof LibFFIType.StringType || retType instanceof LibFFIType.ObjectType) {
+        if (retType instanceof LibFFIType.ObjectType) {
             // shortcut for simple object return values
             CallTarget executeCallTarget = Truffle.getRuntime().createCallTarget(new ObjectRetClosureRootNode(signature, executable, message));
+            this.nativePointer = allocateClosureObjectRet(signature, executeCallTarget);
+        } else if (retType instanceof LibFFIType.StringType) {
+            // shortcut for simple string return values
+            CallTarget executeCallTarget = Truffle.getRuntime().createCallTarget(new StringRetClosureRootNode(signature, executable, message));
             this.nativePointer = allocateClosureObjectRet(signature, executeCallTarget);
         } else if (retType instanceof LibFFIType.VoidType) {
             // special handling for no return value
@@ -154,6 +158,21 @@ final class LibFFIClosure {
         }
     }
 
+    private static final class ObjectRetClosureRootNode extends RootNode {
+
+        @Child CallClosureNode callClosure;
+
+        private ObjectRetClosureRootNode(LibFFISignature signature, TruffleObject receiver, Message message) {
+            super(NFILanguage.class, null, null);
+            callClosure = new CallClosureNode(signature, receiver, message);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return callClosure.execute(frame.getArguments());
+        }
+    }
+
     abstract static class UnboxNullNode extends Node {
 
         protected abstract Object execute(Object obj);
@@ -177,12 +196,12 @@ final class LibFFIClosure {
         }
     }
 
-    private static final class ObjectRetClosureRootNode extends RootNode {
+    private static final class StringRetClosureRootNode extends RootNode {
 
         @Child CallClosureNode callClosure;
         @Child UnboxNullNode unboxNull;
 
-        private ObjectRetClosureRootNode(LibFFISignature signature, TruffleObject receiver, Message message) {
+        private StringRetClosureRootNode(LibFFISignature signature, TruffleObject receiver, Message message) {
             super(NFILanguage.class, null, null);
             callClosure = new CallClosureNode(signature, receiver, message);
             unboxNull = UnboxNullNodeGen.create();
