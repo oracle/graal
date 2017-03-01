@@ -32,6 +32,7 @@ import java.util.List;
 import com.oracle.truffle.api.source.Source;
 
 @SuppressWarnings("deprecation")
+@Deprecated
 public abstract class REPLRemoteCommand extends REPLCommand {
 
     public REPLRemoteCommand(String command, String abbreviation, String description) {

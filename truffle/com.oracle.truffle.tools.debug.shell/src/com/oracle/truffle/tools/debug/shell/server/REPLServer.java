@@ -25,10 +25,8 @@
 package com.oracle.truffle.tools.debug.shell.server;
 
 import java.io.IOException;
-import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,9 +35,6 @@ import java.util.TreeSet;
 import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.debug.Breakpoint;
-import com.oracle.truffle.api.debug.Debugger;
-import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -52,7 +47,6 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
-import com.oracle.truffle.tools.debug.shell.client.SimpleREPLClient;
 import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.LocationPrinter;
 
 /**
@@ -60,26 +54,15 @@ import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.Location
  * Read-Eval-Print-Loop.
  */
 @SuppressWarnings("deprecation")
+@Deprecated
 public final class REPLServer {
 
     private static final String REPL_SERVER_INSTRUMENT = "REPLServer";
-
-    private static final boolean TRACE = Boolean.getBoolean("truffle.debug.trace");
-    private static final String TRACE_PREFIX = "REPLSrv: ";
-    private static final PrintStream OUT = System.out;
-
-    private static void trace(String format, Object... args) {
-        if (TRACE) {
-            OUT.println(TRACE_PREFIX + String.format(format, args));
-        }
-    }
 
     private static int nextBreakpointUID = 0;
 
     // Language-agnostic
     private final PolyglotEngine engine;
-    private final Debugger db;
-    private final SimpleREPLClient replClient;
     private final String statusPrefix;
     private final Map<String, REPLHandler> handlerMap = new HashMap<>();
     private final LocationPrinter locationPrinter = new InstrumentationUtils.LocationPrinter();
@@ -88,12 +71,7 @@ public final class REPLServer {
     private Context currentServerContext;
 
     /** Languages sorted by name. */
-    private final TreeSet<Language> engineLanguages = new TreeSet<>(new Comparator<Language>() {
-
-        public int compare(Language lang1, Language lang2) {
-            return lang1.getName().compareTo(lang2.getName());
-        }
-    });
+    private final TreeSet<Language> engineLanguages = new TreeSet<>();
 
     /** MAP: language name => Language (case insensitive). */
     private final Map<String, Language> nameToLanguage = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
@@ -103,12 +81,11 @@ public final class REPLServer {
 
     private final Map<Integer, BreakpointInfo> breakpoints = new WeakHashMap<>();
 
-    public REPLServer(SimpleREPLClient client) {
-        this.replClient = client;
-        this.engine = PolyglotEngine.newBuilder().onEvent(onHalted).onEvent(onExec).build();
+    @SuppressWarnings("unused")
+    public REPLServer(com.oracle.truffle.tools.debug.shell.client.SimpleREPLClient client) {
+        this.engine = PolyglotEngine.newBuilder().build();
         this.engine.getInstruments().get(REPL_SERVER_INSTRUMENT).setEnabled(true);
 
-        this.db = Debugger.find(this.engine);
         engineLanguages.addAll(engine.getLanguages().values());
 
         for (Language language : engineLanguages) {
@@ -116,35 +93,6 @@ public final class REPLServer {
         }
         statusPrefix = "";
     }
-
-    private final com.oracle.truffle.api.vm.EventConsumer<SuspendedEvent> onHalted = new com.oracle.truffle.api.vm.EventConsumer<SuspendedEvent>(SuspendedEvent.class) {
-        @Override
-        protected void on(SuspendedEvent ev) {
-            if (TRACE) {
-                trace("BEGIN onSuspendedEvent()");
-            }
-            REPLServer.this.haltedAt(ev);
-            if (TRACE) {
-                trace("END onSuspendedEvent()");
-            }
-        }
-    };
-
-    private final com.oracle.truffle.api.vm.EventConsumer<com.oracle.truffle.api.debug.ExecutionEvent> onExec = new com.oracle.truffle.api.vm.EventConsumer<com.oracle.truffle.api.debug.ExecutionEvent>(
-                    com.oracle.truffle.api.debug.ExecutionEvent.class) {
-        @Override
-        protected void on(com.oracle.truffle.api.debug.ExecutionEvent event) {
-            if (TRACE) {
-                trace("BEGIN onExecutionEvent()");
-            }
-            if (currentServerContext.steppingInto) {
-                event.prepareStepInto();
-            }
-            if (TRACE) {
-                trace("END onExecutionEvent()");
-            }
-        }
-    };
 
     public void add(REPLHandler handler) {
         handlerMap.put(handler.getOp(), handler);
@@ -178,7 +126,7 @@ public final class REPLServer {
         add(REPLHandler.STEP_OVER_HANDLER);
         add(REPLHandler.UNSET_BREAK_CONDITION_HANDLER);
 
-        this.currentServerContext = new Context(null, null, defaultLanguage);
+        this.currentServerContext = new Context(null, defaultLanguage);
     }
 
     @SuppressWarnings("static-method")
@@ -190,90 +138,16 @@ public final class REPLServer {
         return locationPrinter;
     }
 
-    void haltedAt(SuspendedEvent event) {
-        // Message the client that execution is halted and is in a new debugging context
-        final com.oracle.truffle.tools.debug.shell.REPLMessage message = new com.oracle.truffle.tools.debug.shell.REPLMessage();
-        message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.OP, com.oracle.truffle.tools.debug.shell.REPLMessage.STOPPED);
-
-        // Identify language execution where halted; default to previous context
-        Language haltedLanguage = currentServerContext.currentLanguage;
-        final String mimeType = findMime(event.getNode());
-        if (mimeType == null) {
-            message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.WARNINGS, "unable to detect language at halt");
-        } else {
-            final Language language = engine.getLanguages().get(mimeType);
-            if (language == null) {
-                message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.WARNINGS, "no language installed for MIME type \"" + mimeType + "\"");
-            } else {
-                haltedLanguage = language;
-            }
-        }
-
-        // Create and push a new debug context where execution is halted
-        currentServerContext = new Context(currentServerContext, event, haltedLanguage);
-
-        message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.LANG_NAME, haltedLanguage.getName());
-        final SourceSection src = event.getNode().getSourceSection();
-        final Source source = src.getSource();
-        message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.SOURCE_NAME, source.getName());
-        final String path = source.getPath();
-        if (path == null) {
-            message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.SOURCE_TEXT, source.getCode());
-        } else {
-            message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.FILE_PATH, path);
-        }
-        message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.LINE_NUMBER, Integer.toString(src.getStartLine()));
-
-        message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.STATUS, com.oracle.truffle.tools.debug.shell.REPLMessage.SUCCEEDED);
-        message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.DEBUG_LEVEL, Integer.toString(currentServerContext.getLevel()));
-        List<String> warnings = event.getRecentWarnings();
-        if (!warnings.isEmpty()) {
-            final StringBuilder sb = new StringBuilder();
-            for (String warning : warnings) {
-                sb.append(warning + "\n");
-            }
-            message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.WARNINGS, sb.toString());
-        }
-        try {
-            // Cheat with synchrony: call client directly about entering a nested debugging
-            // context.
-            replClient.halted(message);
-        } finally {
-            // Returns when "kill" is called in the new debugging context
-
-            // Pop the debug context, and return so that the old context will continue
-            currentServerContext = currentServerContext.predecessor;
-        }
-    }
-
-    @SuppressWarnings("static-method")
-    private String findMime(Node node) {
-        String result = null;
-        final SourceSection section = node.getEncapsulatingSourceSection();
-        if (section != null) {
-            final Source source = section.getSource();
-            if (source != null) {
-                result = source.getMimeType();
-            }
-        }
-        return result;
-    }
-
     /**
      * Execution context of a halted program, possibly nested.
      */
     public final class Context {
 
-        private final Context predecessor;
         private final int level;
-        private final SuspendedEvent event;
         private Language currentLanguage;
-        private boolean steppingInto = false;  // Only true during a "stepInto" engine call
 
-        Context(Context predecessor, SuspendedEvent event, Language language) {
+        Context(Context predecessor, Language language) {
             this.level = predecessor == null ? 0 : predecessor.getLevel() + 1;
-            this.predecessor = predecessor;
-            this.event = event;
             this.currentLanguage = language;
         }
 
@@ -288,7 +162,7 @@ public final class REPLServer {
          * The AST node where execution is halted in this context.
          */
         Node getNodeAtHalt() {
-            return event.getNode();
+            return null;
         }
 
         /**
@@ -298,6 +172,7 @@ public final class REPLServer {
             return visualizer;
         }
 
+        @SuppressWarnings("unused")
         Object call(String name, boolean stepInto, List<String> argList) throws IOException {
             Value symbol = engine.findGlobalSymbol(name);
             if (symbol == null) {
@@ -313,21 +188,12 @@ public final class REPLServer {
                     args.add(stringArg);
                 }
             }
-            this.steppingInto = stepInto;
-            try {
-                return symbol.execute(args.toArray(new Object[0])).get();
-            } finally {
-                this.steppingInto = false;
-            }
+            return symbol.execute(args.toArray(new Object[0])).get();
         }
 
+        @SuppressWarnings("unused")
         void eval(Source source, boolean stepInto) {
-            this.steppingInto = stepInto;
-            try {
-                engine.eval(source);
-            } finally {
-                this.steppingInto = false;
-            }
+            engine.eval(source);
         }
 
         /**
@@ -340,53 +206,21 @@ public final class REPLServer {
          * @return result of the evaluation
          * @throws IOException if something goes wrong
          */
+        @SuppressWarnings("unused")
         Object eval(String code, Integer frameNumber, boolean stepInto) throws IOException {
-            if (event == null) {
-                if (frameNumber != null) {
-                    throw new IllegalStateException("Frame number requires a halted execution");
-                }
-                if (currentLanguage == null) {
-                    throw new IOException("No language set");
-                }
-                this.steppingInto = stepInto;
-                final String mimeType = defaultMIME(currentLanguage);
-                try {
-                    return engine.eval(Source.newBuilder(code).name("eval(\"" + code + "\")").mimeType(mimeType).build()).get();
-                } finally {
-                    this.steppingInto = false;
-                }
-            } else {
-                if (frameNumber == null) {
-                    throw new IllegalStateException("Eval in halted context requires a frame number");
-                }
-                if (stepInto) {
-                    event.prepareStepInto(1);
-                }
-                try {
-                    FrameInstance frameInstance = frameNumber == 0 ? null : event.getStack().get(frameNumber);
-                    final Object result = event.eval(code, frameInstance);
-                    return (result instanceof Value) ? ((Value) result).get() : result;
-                } finally {
-                    event.prepareContinue();
-                }
-            }
+            return null;
         }
 
+        @SuppressWarnings("unused")
         public String displayValue(Integer frameNumber, Object value, int trim) {
-            if (frameNumber == null) {
-                throw new IllegalStateException("displayValue in halted context requires a frame number");
-            }
-            if (value == null) {
-                return "<empty>";
-            }
-            return trim(event.toString(value, event.getStack().get(frameNumber)), trim);
+            return null;
         }
 
         /**
          * The frame where execution is halted in this context.
          */
         MaterializedFrame getFrameAtHalt() {
-            return event.getFrame();
+            return null;
         }
 
         /**
@@ -411,14 +245,14 @@ public final class REPLServer {
          * @return Node where halted
          */
         Node getNode() {
-            return event.getNode();
+            return null;
         }
 
         /**
          * @return Frame where halted
          */
         MaterializedFrame getFrame() {
-            return event.getFrame();
+            return null;
         }
 
         /**
@@ -427,7 +261,7 @@ public final class REPLServer {
          * @return immutable list of stack elements
          */
         List<FrameInstance> getStack() {
-            return event.getStack();
+            return null;
         }
 
         public String getLanguageName() {
@@ -448,31 +282,25 @@ public final class REPLServer {
             if (language == currentLanguage) {
                 return currentLanguage.getName();
             }
-            if (event != null) {
-                throw new IOException("Only supported at top level");
-            }
             this.currentLanguage = language;
             return language.getName();
         }
 
         void prepareStepOut() {
-            event.prepareStepOut();
         }
 
+        @SuppressWarnings("unused")
         void prepareStepInto(int repeat) {
-            event.prepareStepInto(repeat);
         }
 
+        @SuppressWarnings("unused")
         void prepareStepOver(int repeat) {
-            event.prepareStepOver(repeat);
         }
 
         void prepareContinue() {
-            event.prepareContinue();
         }
 
         void kill() {
-            event.prepareKill();
         }
 
     }
@@ -515,11 +343,6 @@ public final class REPLServer {
         return lang.getName() + "(" + lang.getVersion() + ")";
     }
 
-    @SuppressWarnings("static-method")
-    private String defaultMIME(Language language) {
-        return language.getMimeTypes().iterator().next();
-    }
-
     BreakpointInfo setLineBreakpoint(int ignoreCount, com.oracle.truffle.api.source.LineLocation lineLocation, boolean oneShot) throws IOException {
         final BreakpointInfo info = new LineBreakpointInfo(lineLocation, ignoreCount, oneShot);
         info.activate();
@@ -549,26 +372,18 @@ public final class REPLServer {
 
     final class LineBreakpointInfo extends BreakpointInfo {
 
-        private final com.oracle.truffle.api.source.LineLocation lineLocation;
-
+        @SuppressWarnings("unused")
         private LineBreakpointInfo(com.oracle.truffle.api.source.LineLocation lineLocation, int ignoreCount, boolean oneShot) {
             super(ignoreCount, oneShot);
-            this.lineLocation = lineLocation;
         }
 
         @Override
         protected void activate() throws IOException {
-            breakpoint = db.setLineBreakpoint(ignoreCount, lineLocation, oneShot);
-            // TODO (mlvdv) check if resolved
-            breakpoints.put(uid, this);
         }
 
         @Override
         String describeLocation() {
-            if (breakpoint == null) {
-                return "Line: " + lineLocation.getShortDescription();
-            }
-            return breakpoint.getLocationDescription();
+            return null;
         }
 
     }
@@ -579,8 +394,6 @@ public final class REPLServer {
         protected final boolean oneShot;
         protected final int ignoreCount;
 
-        protected Breakpoint.State state = Breakpoint.State.ENABLED_UNRESOLVED;
-        protected Breakpoint breakpoint;
         protected Source conditionSource;
 
         protected BreakpointInfo(int ignoreCount, boolean oneShot) {
@@ -598,74 +411,33 @@ public final class REPLServer {
         }
 
         String describeState() {
-            return (breakpoint == null ? state : breakpoint.getState()).getName();
+            return null;
         }
 
-        void setEnabled(boolean enabled) {
-            if (breakpoint == null) {
-                switch (state) {
-                    case ENABLED_UNRESOLVED:
-                        if (!enabled) {
-                            state = Breakpoint.State.DISABLED_UNRESOLVED;
-                        }
-                        break;
-                    case DISABLED_UNRESOLVED:
-                        if (enabled) {
-                            state = Breakpoint.State.ENABLED_UNRESOLVED;
-                        }
-                        break;
-                    case DISPOSED:
-                        throw new IllegalStateException("Disposed breakpoints must stay disposed");
-                    default:
-                        throw new IllegalStateException("Unexpected breakpoint state");
-                }
-            } else {
-                breakpoint.setEnabled(enabled);
-            }
+        void setEnabled(@SuppressWarnings("unused") boolean enabled) {
         }
 
         boolean isEnabled() {
-            return breakpoint == null ? (state == Breakpoint.State.ENABLED_UNRESOLVED) : breakpoint.isEnabled();
+            return false;
         }
 
+        @SuppressWarnings("unused")
         void setCondition(String expr) throws IOException {
-            if (breakpoint == null) {
-                conditionSource = expr == null ? null : Source.newBuilder(expr).name("breakpoint condition from text: " + expr).mimeType("content/unknown").build();
-            } else {
-                breakpoint.setCondition(expr);
-            }
         }
 
         String getCondition() {
-            Source source = null;
-            if (breakpoint == null) {
-                source = conditionSource;
-            } else if (breakpoint.getCondition() != null) {
-                return breakpoint.getCondition();
-            }
-            return source == null ? null : source.getCode();
+            return null;
         }
 
         int getIgnoreCount() {
-            return breakpoint == null ? ignoreCount : breakpoint.getIgnoreCount();
+            return 0;
         }
 
         int getHitCount() {
-            return breakpoint == null ? 0 : breakpoint.getHitCount();
+            return 0;
         }
 
         void dispose() {
-            if (breakpoint == null) {
-                if (state == Breakpoint.State.DISPOSED) {
-                    throw new IllegalStateException("Breakpoint already disposed");
-                }
-            } else {
-                breakpoint.dispose();
-                breakpoint = null;
-            }
-            state = Breakpoint.State.DISPOSED;
-            breakpoints.remove(uid);
-            conditionSource = null;
         }
 
         String summarize() {

@@ -154,11 +154,6 @@ def sl(args):
     vmArgs, slArgs = mx.extract_VM_args(args)
     mx.run_java(vmArgs + _path_args(["TRUFFLE_API", "com.oracle.truffle.sl"]) + ["com.oracle.truffle.sl.SLMain"] + slArgs)
 
-def repl(args):
-    """run a simple command line debugger for Truffle-implemented languages on the class path"""
-    vmArgs, slArgs = mx.extract_VM_args(args, useDoubleDash=True)
-    mx.run_java(vmArgs + _path_args() + ["com.oracle.truffle.tools.debug.shell.client.SimpleREPLClient"] + slArgs)
-
 def _truffle_gate_runner(args, tasks):
     jdk = mx.get_jdk(tag=mx.DEFAULT_JDK_TAG)
     with Task('Jackpot check', tasks) as t:
@@ -176,7 +171,6 @@ mx_gate.add_gate_runner(_suite, _truffle_gate_runner)
 mx.update_commands(_suite, {
     'javadoc' : [javadoc, '[SL args|@VM options]'],
     'sl' : [sl, '[SL args|@VM options]'],
-    'repl' : [repl, '[REPL Debugger args|@VM options]'],
     'testgraal' : [testgraal, ''],
 })
 

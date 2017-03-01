@@ -38,6 +38,7 @@ final class REPLineLocation {
      * Attempts to extract description of a source line from {@code arg[1]}, either "<source name>:
      * <n>" or just "<n>".
      */
+    @SuppressWarnings("deprecation")
     static REPLineLocation parse(REPLClientContext context, String[] args) throws IllegalArgumentException {
         if (args.length == 1) {
             throw new IllegalArgumentException("no location specified");

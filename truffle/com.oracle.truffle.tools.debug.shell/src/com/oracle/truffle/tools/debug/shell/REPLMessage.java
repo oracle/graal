@@ -39,6 +39,7 @@ import com.oracle.truffle.tools.debug.shell.server.REPLServer;
  * @see REPLServer
  * @since 0.8 or earlier
  */
+@SuppressWarnings("deprecation")
 @Deprecated
 public final class REPLMessage {
     /** @since 0.8 or earlier */

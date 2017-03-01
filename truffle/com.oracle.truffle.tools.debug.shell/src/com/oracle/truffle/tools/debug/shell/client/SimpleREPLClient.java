@@ -76,6 +76,7 @@ import java.io.File;
  * @see com.oracle.truffle.tools.debug.shell.com.oracle.truffle.tools.debug.shell.REPLMessage
  */
 @SuppressWarnings("deprecation")
+@Deprecated
 public class SimpleREPLClient implements com.oracle.truffle.tools.debug.shell.REPLClient {
 
     private static final String REPLY_PREFIX = "==> ";
