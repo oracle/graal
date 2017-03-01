@@ -951,32 +951,31 @@ public class Graph {
         assert !isFrozen();
         assert node.id() == Node.INITIAL_ID;
         if (nodes.length == nodesSize) {
-            Node[] newNodes = new Node[(nodesSize * 2) + 1];
-            System.arraycopy(nodes, 0, newNodes, 0, nodesSize);
-            nodes = newNodes;
+            grow();
         }
-        int id = nodesSize;
+        int id = nodesSize++;
         nodes[id] = node;
+        node.id = id;
         if (currentNodeSourcePosition != null) {
             node.setNodeSourcePosition(currentNodeSourcePosition);
-        } else if (!seenNodeSourcePosition && node.getNodeSourcePosition() != null) {
-            seenNodeSourcePosition = true;
         }
-        nodesSize++;
+        seenNodeSourcePosition = seenNodeSourcePosition || node.getNodeSourcePosition() != null;
 
         updateNodeCaches(node);
 
-        node.id = id;
         if (nodeEventListener != null) {
             nodeEventListener.nodeAdded(node);
-        }
-        if (!seenNodeSourcePosition && node.sourcePosition != null) {
-            seenNodeSourcePosition = true;
         }
         if (Fingerprint.ENABLED) {
             Fingerprint.submit("%s: %s", NodeEvent.NODE_ADDED, node);
         }
         afterRegister(node);
+    }
+
+    private void grow() {
+        Node[] newNodes = new Node[(nodesSize * 2) + 1];
+        System.arraycopy(nodes, 0, newNodes, 0, nodesSize);
+        nodes = newNodes;
     }
 
     @SuppressWarnings("unused")

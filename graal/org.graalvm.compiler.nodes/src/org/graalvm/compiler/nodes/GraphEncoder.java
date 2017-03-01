@@ -86,8 +86,8 @@ import jdk.vm.ci.code.Architecture;
  * struct Node {
  *   unsigned typeId
  *   signed[] properties
- *   unsigned[] successorOrderIds
  *   unsigned[] inputOrderIds
+ *   unsigned[] successorOrderIds
  * }
  * </pre>
  *
@@ -224,8 +224,8 @@ public class GraphEncoder {
             NodeClass<?> nodeClass = node.getNodeClass();
             writer.putUV(nodeClasses.getIndex(nodeClass));
             writeProperties(node, nodeClass.getData());
-            writeEdges(node, nodeClass.getEdges(Edges.Type.Successors), nodeOrder);
             writeEdges(node, nodeClass.getEdges(Edges.Type.Inputs), nodeOrder);
+            writeEdges(node, nodeClass.getEdges(Edges.Type.Successors), nodeOrder);
 
             /* Special handling for some nodes that require additional information for decoding. */
             if (node instanceof AbstractEndNode) {
@@ -366,7 +366,7 @@ public class GraphEncoder {
 
     protected void writeEdges(Node node, Edges edges, NodeOrder nodeOrder) {
         for (int idx = 0; idx < edges.getDirectCount(); idx++) {
-            if (GraphDecoder.skipEdge(node, edges, idx, true, false)) {
+            if (GraphDecoder.skipDirectEdge(node, edges, idx)) {
                 /* Edge is not needed for decoding, so we must not write it. */
                 continue;
             }
@@ -374,7 +374,7 @@ public class GraphEncoder {
             writeOrderId(edge, nodeOrder);
         }
         for (int idx = edges.getDirectCount(); idx < edges.getCount(); idx++) {
-            if (GraphDecoder.skipEdge(node, edges, idx, false, false)) {
+            if (GraphDecoder.skipIndirectEdge(node, edges, idx, false)) {
                 /* Edge is not needed for decoding, so we must not write it. */
                 continue;
             }

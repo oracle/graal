@@ -24,9 +24,6 @@ package org.graalvm.compiler.replacements;
 
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.java.GraphBuilderPhase;
@@ -42,6 +39,7 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -56,7 +54,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     protected final GraphBuilderConfiguration graphBuilderConfig;
     protected final OptimisticOptimizations optimisticOpts;
     private final AllowAssumptions allowAssumptions;
-    private final Map<ResolvedJavaMethod, EncodedGraph> graphCache;
+    private final EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache;
 
     public CachingPEGraphDecoder(Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, AllowAssumptions allowAssumptions,
                     Architecture architecture, OptionValues options) {
@@ -66,7 +64,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
         this.graphBuilderConfig = graphBuilderConfig;
         this.optimisticOpts = optimisticOpts;
         this.allowAssumptions = allowAssumptions;
-        this.graphCache = new HashMap<>();
+        this.graphCache = EconomicMap.create();
     }
 
     protected GraphBuilderPhase.Instance createGraphBuilderPhaseInstance(IntrinsicContext initialIntrinsicContext) {
