@@ -135,7 +135,7 @@ public abstract class DebugValue {
                 try {
                     properties = new ValuePropertiesCollection(getDebugger(), getSourceRoot(), map.entrySet());
                 } catch (Exception ex) {
-                    if (ex.getCause() instanceof InteropException) {
+                    if (ex instanceof InteropException || ex.getCause() instanceof InteropException) {
                         // Not supported, no properties
                     } else {
                         throw ex;
