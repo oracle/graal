@@ -201,11 +201,11 @@ final class JavaInteropReflect {
             CompilerAsserts.neverPartOfCompilation();
             Object[] args = arguments == null ? EMPTY : arguments;
             if (target == null) {
-                target = JavaInterop.ACCESSOR.engine().registerInteropTarget(symbol, null);
+                target = JavaInterop.ACCESSOR.engine().registerInteropTarget(symbol, null, JavaInteropReflect.class);
                 if (target == null) {
                     Node executeMain = Message.createExecute(args.length).createNode();
                     RootNode symbolNode = new ToJavaNode.TemporaryRoot(TruffleLanguage.class, executeMain);
-                    target = JavaInterop.ACCESSOR.engine().registerInteropTarget(symbol, symbolNode);
+                    target = JavaInterop.ACCESSOR.engine().registerInteropTarget(symbol, symbolNode, JavaInteropReflect.class);
                 }
             }
             for (int i = 0; i < args.length; i++) {

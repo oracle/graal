@@ -1576,10 +1576,10 @@ public class PolyglotEngine {
             }
 
             @Override
-            public CallTarget registerInteropTarget(Object truffleObject, RootNode computation) {
+            public CallTarget registerInteropTarget(Object truffleObject, RootNode computation, Class<?> key) {
                 if (truffleObject instanceof EngineTruffleObject) {
                     PolyglotEngine engine = ((EngineTruffleObject) truffleObject).engine();
-                    return engine.cachedTargets.lookupComputation(computation);
+                    return engine.cachedTargets.lookupComputation(key, computation);
                 }
 
                 if (computation == null) {
