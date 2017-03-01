@@ -69,7 +69,6 @@ import org.graalvm.compiler.lir.alloc.trace.TraceRegisterAllocationPhase;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool.MoveFactory;
 import org.graalvm.compiler.lir.ssa.SSAUtil;
-import org.graalvm.compiler.lir.ssa.SSAUtil.PhiValueVisitor;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterArray;
@@ -356,7 +355,7 @@ public final class BottomUpAllocator extends TraceAllocationPhase<TraceAllocatio
                 for (int i = lastBlockIdx - 1; i >= 0; i--) {
                     AbstractBlockBase<?> block = blocks[i];
                     // handle PHIs
-                    resolvePhis(successorBlock, block);
+                    resolvePhis(block, successorBlock);
                     boolean needResolution = allocateBlock(block);
 
                     if (needResolution) {
@@ -371,47 +370,50 @@ public final class BottomUpAllocator extends TraceAllocationPhase<TraceAllocatio
             }
         }
 
+        private final ArrayList<LIRInstruction> phiResolutionMoves = new ArrayList<>();
+
         /**
          * Resolve phi values, i.e., set the current location of values in the predecessors block
          * (which is not yet allocated) to the location of the variable defined by the phi in the
          * successor (which is already allocated). For constant inputs we insert moves.
          */
-        private void resolvePhis(AbstractBlockBase<?> successorBlock, AbstractBlockBase<?> block) {
-            phiVisitor.loads.clear();
-            SSAUtil.forEachPhiValuePair(getLIR(), successorBlock, block, phiVisitor);
-            if (phiVisitor.loads.size() > 0) {
-                ArrayList<LIRInstruction> instructions = getLIR().getLIRforBlock(block);
-                instructions.addAll(instructions.size() - 1, phiVisitor.loads);
-            }
-        }
+        private void resolvePhis(AbstractBlockBase<?> from, AbstractBlockBase<?> to) {
+            if (SSAUtil.isMerge(to)) {
+                JumpOp jump = SSAUtil.phiOut(getLIR(), from);
+                LabelOp label = SSAUtil.phiIn(getLIR(), to);
 
-        private final PhiVisitor phiVisitor = new PhiVisitor();
-        private boolean requireResolution;
+                assert phiResolutionMoves.isEmpty();
 
-        private final class PhiVisitor implements PhiValueVisitor {
-
-            private final ArrayList<LIRInstruction> loads = new ArrayList<>();
-
-            @Override
-            public void visit(Value phiIn, Value phiOut) {
-                assert isStackSlotValue(phiIn) || isRegister(phiIn) : "PHI defined values is not a register or stack slot: " + phiIn;
-                AllocatableValue in = asAllocatableValue(phiIn);
-
-                AllocatableValue dest = isRegister(in) ? getCurrentValue(asRegister(in)) : in;
-                final LIRInstruction load;
-                if (isConstantValue(phiOut)) {
-                    // insert move from constant
-                    load = spillMoveFactory.createLoad(dest, LIRValueUtil.asConstant(phiOut));
-                } else {
-                    assert isVariable(phiOut) : "Not a variable or constant: " + phiOut;
-                    // insert move from variable
-                    load = spillMoveFactory.createMove(dest, asVariable(phiOut));
+                for (int i = 0; i < label.getPhiSize(); i++) {
+                    visitPhiValuePair(jump.getOutgoingValue(i), label.getIncomingValue(i));
                 }
-                Debug.log("Inserting load %s", load);
-                loads.add(load);
-                return;
+                if (!phiResolutionMoves.isEmpty()) {
+                    ArrayList<LIRInstruction> instructions = getLIR().getLIRforBlock(from);
+                    instructions.addAll(instructions.size() - 1, phiResolutionMoves);
+                    phiResolutionMoves.clear();
+                }
             }
         }
+
+        private void visitPhiValuePair(Value phiOut, Value phiIn) {
+            assert isStackSlotValue(phiIn) || isRegister(phiIn) : "PHI defined values is not a register or stack slot: " + phiIn;
+            AllocatableValue in = asAllocatableValue(phiIn);
+
+            AllocatableValue dest = isRegister(in) ? getCurrentValue(asRegister(in)) : in;
+            final LIRInstruction move;
+            if (isConstantValue(phiOut)) {
+                // insert move from constant
+                move = spillMoveFactory.createLoad(dest, LIRValueUtil.asConstant(phiOut));
+            } else {
+                assert isVariable(phiOut) : "Not a variable or constant: " + phiOut;
+                // insert move from variable
+                move = spillMoveFactory.createMove(dest, asVariable(phiOut));
+            }
+            Debug.log("Inserting load %s", move);
+            phiResolutionMoves.add(move);
+        }
+
+        private boolean requireResolution;
 
         /**
          * Intra-trace edges, i.e., edge where both, the source and the target block are in the same
