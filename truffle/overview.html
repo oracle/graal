@@ -37,5 +37,35 @@ questions.
  language interoperation, debugging, and general tooling support.
 </p>
 
+
+<h4>Keeping Compatibility</h4>
+
+<p>
+The <b>Truffle</b> API values work of its adopters and as such it is developed
+with compatibility in mind. Methods and features are not removed and renamed
+randomly, without a notice and there is a binary compatibility testing framework
+in place to verify that.
+</p>
+<p>
+On the other hand the <b>Truffle</b> project is still young and needs a way
+to refine and change previously taken decisions. To balance the need between
+compatibility and give us a way to remove things from the API we following
+these rules:
+</p>
+<ul>
+    <li>Rather than removing/renaming or changing an API element (class, method,
+        field), mark it <em>deprecated</em>.</li>
+    <li>Make sure usage of such element can be replaced by non-deprecated ways</li>
+    <li>Keep such element working until next release</li>
+    <li>If possible provide automatic migration using Jackpot's META-INF/upgrade/ files</li>
+    <li>When new (major) release is out, remove it</li>
+</ul>
+<p>
+By deprecating parts of API while keeping them functional we are giving
+users of the <b>Truffle</b> API time to adjust to required
+changes and (under the assumption they pay attention to warnings in the code
+base) easily identify and migrate to more modern API alternatives.
+</p>
+
 </body>
 </html>
