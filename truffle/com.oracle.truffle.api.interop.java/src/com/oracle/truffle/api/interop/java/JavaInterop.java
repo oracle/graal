@@ -279,7 +279,7 @@ public final class JavaInterop {
         if (obj == null) {
             return false;
         }
-        return new ToPrimitiveNode().isPrimitive(obj);
+        return ToPrimitiveNode.shared().isPrimitive(obj);
     }
 
     /**

@@ -56,7 +56,7 @@ class JavaFunctionMessageResolution {
         static final class DoExecuteNode extends Node {
 
             @Children private final ToJavaNode[] toJava;
-            @Child private ToPrimitiveNode primitive = new ToPrimitiveNode();
+            @Child private ToPrimitiveNode primitive = ToPrimitiveNode.create();
 
             DoExecuteNode(int argsLength) {
                 this.toJava = new ToJavaNode[argsLength];

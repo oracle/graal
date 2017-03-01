@@ -44,7 +44,7 @@ import java.util.Map;
 abstract class ToJavaNode extends Node {
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
     @Child private Node isNull = Message.IS_NULL.createNode();
-    @Child private ToPrimitiveNode primitive = new ToPrimitiveNode();
+    @Child private ToPrimitiveNode primitive = ToPrimitiveNode.create();
 
     public abstract Object execute(Object value, TypeAndClass<?> type);
 
@@ -177,8 +177,8 @@ abstract class ToJavaNode extends Node {
     static Object toJava(Object ret, TypeAndClass<?> type) {
         CompilerAsserts.neverPartOfCompilation();
         Class<?> retType = type.clazz;
-        final ToPrimitiveNode tmpPrimitive = new ToPrimitiveNode();
-        Object primitiveRet = tmpPrimitive.toPrimitive(ret, retType);
+        final ToPrimitiveNode primitiveNode = ToPrimitiveNode.shared();
+        Object primitiveRet = primitiveNode.toPrimitive(ret, retType);
         if (primitiveRet != null) {
             return primitiveRet;
         }
@@ -193,7 +193,7 @@ abstract class ToJavaNode extends Node {
         if (ret instanceof TruffleObject) {
             final TruffleObject truffleObject = (TruffleObject) ret;
             if (retType.isInterface()) {
-                return asJavaObject(retType, type, truffleObject, tmpPrimitive.hasSize(truffleObject));
+                return asJavaObject(retType, type, truffleObject, primitiveNode.hasSize(truffleObject));
             }
         }
         return ret;

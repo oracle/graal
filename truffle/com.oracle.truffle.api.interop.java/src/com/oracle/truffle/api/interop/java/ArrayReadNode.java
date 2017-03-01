@@ -34,7 +34,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 
 abstract class ArrayReadNode extends Node {
-    @Child private ToPrimitiveNode primitive = new ToPrimitiveNode();
+    @Child private ToPrimitiveNode primitive = ToPrimitiveNode.create();
 
     protected abstract Object executeWithTarget(VirtualFrame frame, JavaObject receiver, Object index);
 
