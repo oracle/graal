@@ -68,7 +68,7 @@ public abstract class LLVMI8LogicalNode extends LLVMExpressionNode {
     public abstract static class LLVMI8LshrNode extends LLVMI8LogicalNode {
         @Specialization
         protected byte ashr(byte left, byte right) {
-            return (byte) (left >>> right);
+            return (byte) ((left & LLVMExpressionNode.I8_MASK) >>> right);
         }
     }
 

@@ -78,7 +78,7 @@ public class FunctionType implements Type, ValueSymbol {
     @Override
     public int getAlignment(DataSpecConverter targetDataLayout) {
         if (targetDataLayout != null) {
-            return targetDataLayout.getBitAlignment(getLLVMBaseType()) / Byte.SIZE;
+            return targetDataLayout.getBitAlignment(this) / Byte.SIZE;
         } else {
             return Long.BYTES;
         }

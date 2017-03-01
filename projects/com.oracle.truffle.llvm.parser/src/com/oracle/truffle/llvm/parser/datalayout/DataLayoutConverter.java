@@ -29,12 +29,13 @@
  */
 package com.oracle.truffle.llvm.parser.datalayout;
 
+import java.util.Arrays;
+import java.util.List;
+
 import com.oracle.truffle.llvm.parser.datalayout.DataLayoutParser.DataTypeSpecification;
 import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
-
-import java.util.Arrays;
-import java.util.List;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class DataLayoutConverter {
 
@@ -47,11 +48,28 @@ public final class DataLayoutConverter {
         }
 
         @Override
-        public int getBitAlignment(LLVMBaseType baseType) {
-            if (baseType == LLVMBaseType.I_VAR_BITWIDTH) {
-                return 0;
+        public int getSize(Type type) {
+            return Math.max(1, getBitAlignment(type) / Byte.SIZE);
+        }
+
+        @Override
+        public int getBitAlignment(Type baseType) {
+            if (baseType.getLLVMBaseType() == LLVMBaseType.I_VAR_BITWIDTH) {
+                /*
+                 * Handling of integer datatypes when the exact match not found
+                 * http://releases.llvm.org/3.9.0/docs/LangRef.html#data-layout
+                 */
+                DataTypeSpecification integerLayout = dataLayout.stream().filter(d -> d.getType() == DataLayoutType.INTEGER_WIDTHS).findFirst().orElseThrow(IllegalStateException::new);
+                int minPossibleSize = Arrays.stream(integerLayout.getValues()).max().orElseThrow(IllegalStateException::new);
+                int size = baseType.getBits();
+                for (int value : integerLayout.getValues()) {
+                    if (size < value && minPossibleSize > value) {
+                        minPossibleSize = value;
+                    }
+                }
+                return minPossibleSize;
             } else {
-                return getDataTypeSpecification(baseType).getValues()[1];
+                return getDataTypeSpecification(baseType.getLLVMBaseType()).getValues()[1];
             }
         }
 
@@ -59,7 +77,8 @@ public final class DataLayoutConverter {
             // Checkstyle: stop magic number name check
             switch (baseType) {
                 case I1:
-                    return locateDataTypeSpecification(DataLayoutType.INTEGER, 1);
+                    return locateDataTypeSpecification(DataLayoutType.INTEGER, 8); // 1 is rounded
+                                                                                   // up to 8
                 case I8:
                     return locateDataTypeSpecification(DataLayoutType.INTEGER, 8);
                 case I16:
@@ -86,39 +105,22 @@ public final class DataLayoutConverter {
             // Checkstyle: resume magic number name check
         }
 
-        private DataTypeSpecification locateDataTypeSpecification(DataLayoutType dataLayoutType, int... values) {
+        private DataTypeSpecification locateDataTypeSpecification(DataLayoutType dataLayoutType) {
             for (DataTypeSpecification spec : dataLayout) {
-                CONT: if (spec.getType().equals(dataLayoutType)) {
-                    for (int value : values) {
-                        if (value != spec.getValues()[0]) {
-                            break CONT;
-                        }
-                    }
+                if (spec.getType().equals(dataLayoutType)) {
                     return spec;
                 }
             }
+            throw new AssertionError(dataLayoutType);
+        }
 
-            if (dataLayoutType == DataLayoutType.INTEGER) {
-                /*
-                 * Handling of integer datatypes when the exact match not found
-                 * http://releases.llvm.org/3.9.0/docs/LangRef.html#data-layout
-                 */
-                int chosenIntTypeSize = 0;
-                DataTypeSpecification biggerIntegerTypeSepc = null;
-                OUT: for (DataTypeSpecification spec : dataLayout) {
-                    if (spec.getType() == DataLayoutType.INTEGER && spec.getValues()[0] > chosenIntTypeSize) {
-                        biggerIntegerTypeSepc = spec;
-                        chosenIntTypeSize = spec.getValues()[0];
-                        for (int value : values) {
-                            if (chosenIntTypeSize > value) {
-                                break OUT;
-                            }
-                        }
-                    }
+        private DataTypeSpecification locateDataTypeSpecification(DataLayoutType dataLayoutType, int size) {
+            for (DataTypeSpecification spec : dataLayout) {
+                if (spec.getType().equals(dataLayoutType) && size == spec.getValues()[0]) {
+                    return spec;
                 }
-                return biggerIntegerTypeSepc;
             }
-            throw new AssertionError(dataLayoutType + " " + Arrays.toString(values));
+            throw new AssertionError(dataLayoutType + " size: " + size);
         }
 
     }

@@ -30,5 +30,7 @@
 package com.oracle.truffle.llvm.runtime.types;
 
 public interface DataSpecConverter {
-    int getBitAlignment(LLVMBaseType baseType);
+    int getBitAlignment(Type type);
+
+    int getSize(Type type);
 }

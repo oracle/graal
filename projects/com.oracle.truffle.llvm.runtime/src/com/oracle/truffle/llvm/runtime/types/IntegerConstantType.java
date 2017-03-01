@@ -61,7 +61,7 @@ public final class IntegerConstantType implements Type {
     @Override
     public int getAlignment(DataSpecConverter targetDataLayout) {
         if (targetDataLayout != null) {
-            return targetDataLayout.getBitAlignment(type.getLLVMBaseType()) / Byte.SIZE;
+            return targetDataLayout.getBitAlignment(type) / Byte.SIZE;
 
         } else {
             return type.getAlignment(targetDataLayout);
