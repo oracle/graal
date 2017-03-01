@@ -125,15 +125,15 @@
  *
  * The set of supported languages is determined by putting their JAR files on a
  * classpath of your application. Some languages are available in central
- * <a href="http://search.maven.org/#search|ga|1|a%3A%22jruby-truffle%22">Maven
- * repository</a>. To include them, modify your <code>pom.xml</code> file (if
+ * <a href="http://search.maven.org/#search|ga|1|g%3A%22com.oracle.truffle%22%20AND%20a%3A%22truffle-sl%22">
+ * Maven repository</a>. To include them, modify your <code>pom.xml</code> file (if
  * using Maven) dependency section:
  *
  * <pre>
  * &lt;dependency&gt;
- *   &lt;groupId&gt;org.jruby&lt;/groupId&gt;
- *   &lt;artifactId&gt;jruby-truffle&lt;/artifactId&gt;
- *   &lt;version&gt;9.1.2.0&lt;/version&gt;
+ *   &lt;groupId&gt;com.oracle.truffle&lt;/groupId&gt;
+ *   &lt;artifactId&gt;truffle-sl&lt;/artifactId&gt;
+ *   &lt;version&gt;0.23&lt;/version&gt;
  * &lt;/dependency&gt;
  * </pre>
  *
