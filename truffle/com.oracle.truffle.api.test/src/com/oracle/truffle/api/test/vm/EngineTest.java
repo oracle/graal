@@ -387,7 +387,8 @@ public class EngineTest {
             value1.as(Double.class);
             Map<?, ?> m1 = value1.as(Map.class);
             assertTrue(m1.isEmpty());
-            value1.as(List.class);
+            List<?> l1 = value1.as(List.class);
+            assertEquals(0, l1.size());
 
             TestInterface testInterface2 = value2.as(TestInterface.class);
             testInterface2.foobar();
@@ -400,7 +401,8 @@ public class EngineTest {
             value2.as(Map.class);
             Map<?, ?> m2 = value2.as(Map.class);
             assertTrue(m2.isEmpty());
-            value2.as(List.class);
+            List<?> l2 = value2.as(List.class);
+            assertEquals(0, l2.size());
 
             if (i == 0) {
                 // warmup

@@ -105,7 +105,7 @@ final class EngineTruffleObject implements TruffleObject, ForeignAccess.Factory 
 
     @Override
     public boolean canHandle(TruffleObject obj) {
-        return true;
+        return obj instanceof EngineTruffleObject;
     }
 
     @Override
