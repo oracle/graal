@@ -290,10 +290,10 @@ public final class GlobalLivenessAnalysisPhase extends AllocationPhase {
                 liveInArray = predLiveOut.isEmpty() ? livenessInfoBuilder.emptySet : bitSetToIntArray(predLiveOut);
             }
 
-            livenessInfoBuilder.addIncoming(block, liveInArray);
+            livenessInfoBuilder.setIncoming(block, liveInArray);
             // reuse the same array for outgoing variables in predecessors
             for (AbstractBlockBase<?> pred : block.getPredecessors()) {
-                livenessInfoBuilder.addOutgoing(pred, liveInArray);
+                livenessInfoBuilder.setOutgoing(pred, liveInArray);
             }
         }
 
@@ -306,10 +306,10 @@ public final class GlobalLivenessAnalysisPhase extends AllocationPhase {
             }
             int[] liveOutArray = liveOut.isEmpty() ? livenessInfoBuilder.emptySet : bitSetToIntArray(liveOut);
 
-            livenessInfoBuilder.addOutgoing(block, liveOutArray);
+            livenessInfoBuilder.setOutgoing(block, liveOutArray);
             // reuse the same array for incoming variables in successors
             for (AbstractBlockBase<?> succ : block.getSuccessors()) {
-                livenessInfoBuilder.addIncoming(succ, liveOutArray);
+                livenessInfoBuilder.setIncoming(succ, liveOutArray);
             }
         }
 

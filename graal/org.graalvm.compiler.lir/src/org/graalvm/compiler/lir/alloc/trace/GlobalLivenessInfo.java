@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,14 +64,14 @@ public final class GlobalLivenessInfo {
             return livenessInfo;
         }
 
-        public void addIncoming(AbstractBlockBase<?> block, int[] varsIn) {
+        public void setIncoming(AbstractBlockBase<?> block, int[] varsIn) {
             assert info.blockToVarIn[block.getId()] == null;
             assert verifyVars(varsIn);
             assert storesIncoming(block) || info.blockToVarOut[block.getPredecessors()[0].getId()] == varsIn;
             info.blockToVarIn[block.getId()] = varsIn;
         }
 
-        public void addOutgoing(AbstractBlockBase<?> block, int[] varsOut) {
+        public void setOutgoing(AbstractBlockBase<?> block, int[] varsOut) {
             assert info.blockToVarOut[block.getId()] == null;
             assert verifyVars(varsOut);
             assert storesOutgoing(block) || info.blockToVarIn[block.getSuccessors()[0].getId()] == varsOut;
