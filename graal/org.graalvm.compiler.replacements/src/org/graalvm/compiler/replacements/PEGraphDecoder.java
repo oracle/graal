@@ -809,9 +809,10 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     }
 
     @Override
-    protected Node handleFloatingNodeBeforeAdd(MethodScope s, LoopScope loopScope, Node node) {
+    protected Node handleFloatingNodeBeforeAdd(MethodScope s, LoopScope loopScope, Node n) {
         PEMethodScope methodScope = (PEMethodScope) s;
 
+        Node node = n;
         if (node instanceof ParameterNode) {
             ParameterNode param = (ParameterNode) node;
             if (methodScope.arguments != null) {
@@ -827,7 +828,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                     return result;
                 }
             }
-
+            node = param.copyWithInputs();
         }
 
         return super.handleFloatingNodeBeforeAdd(methodScope, loopScope, node);

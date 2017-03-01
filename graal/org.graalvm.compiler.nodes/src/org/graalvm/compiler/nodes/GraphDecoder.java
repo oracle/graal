@@ -35,6 +35,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
+import java.util.Stack;
 import java.util.TreeMap;
 
 import org.graalvm.compiler.core.common.PermanentBailoutException;
@@ -339,9 +340,11 @@ public class GraphDecoder {
     }
 
     protected final Architecture architecture;
+    private final EconomicMap<NodeClass<?>, ArrayDeque<Node>> reusableFloatingNodes;
 
     public GraphDecoder(Architecture architecture) {
         this.architecture = architecture;
+        reusableFloatingNodes = EconomicMap.create(Equivalence.IDENTITY);
     }
 
     @SuppressWarnings("try")
@@ -1062,11 +1065,15 @@ public class GraphDecoder {
             node = methodScope.graph.addWithoutUnique(node);
         } else {
             /* Allow subclasses to canonicalize and intercept nodes. */
-            node = handleFloatingNodeBeforeAdd(methodScope, loopScope, node);
-            if (!node.isAlive()) {
-                node = addFloatingNode(methodScope, node);
+            Node newNode = handleFloatingNodeBeforeAdd(methodScope, loopScope, node);
+            if (newNode != node) {
+                releaseFloatingNode(node);
             }
-            node = handleFloatingNodeAfterAdd(methodScope, loopScope, node);
+
+            if (!newNode.isAlive()) {
+                newNode = addFloatingNode(methodScope, newNode);
+            }
+            node = handleFloatingNodeAfterAdd(methodScope, loopScope, newNode);
         }
         registerNode(loopScope, nodeOrderId, node, false, false);
         return node;
@@ -1088,7 +1095,7 @@ public class GraphDecoder {
 
         methodScope.reader.setByteIndex(methodScope.encodedGraph.nodeStartOffsets[nodeOrderId]);
         NodeClass<?> nodeClass = methodScope.encodedGraph.getNodeClasses()[methodScope.reader.getUVInt()];
-        Node node = allocateNode(nodeClass);
+        Node node = allocateFloatingNode(nodeClass);
         if (node instanceof FixedNode) {
             /*
              * This is a severe error that will lead to a corrupted graph, so it is better not to
@@ -1108,8 +1115,24 @@ public class GraphDecoder {
         return node;
     }
 
-    protected Node allocateNode(NodeClass<?> nodeClass) {
+    private Node allocateFloatingNode(NodeClass<?> nodeClass) {
+        ArrayDeque<? extends Node> cachedNodes = reusableFloatingNodes.get(nodeClass);
+        if (cachedNodes != null) {
+            Node node = cachedNodes.poll();
+            if (node != null) {
+                return node;
+            }
+        }
         return nodeClass.allocateInstance();
+    }
+
+    private void releaseFloatingNode(Node node) {
+        ArrayDeque<Node> cachedNodes = reusableFloatingNodes.get(node.getNodeClass());
+        if (cachedNodes == null) {
+            cachedNodes = new ArrayDeque<>();
+            reusableFloatingNodes.put(node.getNodeClass(), cachedNodes);
+        }
+        cachedNodes.push(node);
     }
 
     /**
