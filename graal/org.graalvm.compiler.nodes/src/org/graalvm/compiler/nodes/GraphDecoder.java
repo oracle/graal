@@ -35,12 +35,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
-import java.util.Stack;
 import java.util.TreeMap;
 
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.Fields;
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.util.TypeReader;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
 import org.graalvm.compiler.debug.Debug;
@@ -111,6 +109,9 @@ public class GraphDecoder {
 
         /** All merges created during loop explosion. */
         public final EconomicSet<Node> loopExplosionMerges;
+
+        /** The canonicalizer tool used for all canonicalizations in this scope */
+        public final CanonicalizerTool canonicalizerTool;
         /**
          * The start of explosion, and the merge point for when irreducible loops are detected. Only
          * used when {@link MethodScope#loopExplosion} is {@link LoopExplosionKind#MERGE_EXPLODE}.
@@ -123,6 +124,7 @@ public class GraphDecoder {
             this.methodStartMark = graph.getMark();
             this.encodedGraph = encodedGraph;
             this.loopExplosion = loopExplosion;
+            this.canonicalizerTool = createCanonicalizerTool(graph);
             this.cleanupTasks = new ArrayList<>(2);
             this.returnNodes = new ArrayList<>(1);
             this.unwindNodes = new ArrayList<>(0);
@@ -345,6 +347,10 @@ public class GraphDecoder {
     public GraphDecoder(Architecture architecture) {
         this.architecture = architecture;
         reusableFloatingNodes = EconomicMap.create(Equivalence.IDENTITY);
+    }
+
+    protected CanonicalizerTool createCanonicalizerTool(@SuppressWarnings("unused") StructuredGraph graph) {
+        return null;
     }
 
     @SuppressWarnings("try")

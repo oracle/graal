@@ -138,6 +138,11 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
     }
 
     @Override
+    protected CanonicalizerTool createCanonicalizerTool(StructuredGraph graph) {
+        return new PECanonicalizerTool(graph.getAssumptions(), graph.getOptions());
+    }
+
+    @Override
     protected void cleanupGraph(MethodScope methodScope) {
         GraphUtil.normalizeLoops(methodScope.graph);
         super.cleanupGraph(methodScope);
@@ -240,7 +245,7 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
             }
 
         } else if (node instanceof Canonicalizable) {
-            Node canonical = ((Canonicalizable) node).canonical(new PECanonicalizerTool(methodScope.graph.getAssumptions(), methodScope.graph.getOptions()));
+            Node canonical = ((Canonicalizable) node).canonical(methodScope.canonicalizerTool);
             if (canonical != node) {
                 handleCanonicalization(methodScope, loopScope, nodeOrderId, node, canonical);
             }
@@ -291,7 +296,7 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
             ((ValueNode) node).inferStamp();
         }
         if (node instanceof Canonicalizable) {
-            Node canonical = ((Canonicalizable) node).canonical(new PECanonicalizerTool(methodScope.graph.getAssumptions(), methodScope.graph.getOptions()));
+            Node canonical = ((Canonicalizable) node).canonical(methodScope.canonicalizerTool);
             if (canonical == null) {
                 /*
                  * This is a possible return value of canonicalization. However, we might need to
