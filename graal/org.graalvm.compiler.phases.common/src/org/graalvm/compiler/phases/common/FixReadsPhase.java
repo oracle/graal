@@ -84,6 +84,8 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
     private static final DebugCounter counterConstantInputReplacements = Debug.counter("FixReads_ConstantInputReplacement");
     private static final DebugCounter counterBetterMergedStamps = Debug.counter("FixReads_BetterMergedStamp");
 
+    private boolean replaceInputsWithConstants;
+
     private static class FixReadsClosure extends ScheduledNodeIterator {
 
         @Override
@@ -113,7 +115,7 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
         private final BlockMap<Integer> blockActionStart;
         private final EconomicMap<MergeNode, EconomicMap<ValueNode, Stamp>> endMaps;
 
-        RawConditionalEliminationVisitor(StructuredGraph graph, ScheduleResult schedule, MetaAccessProvider metaAccess) {
+        RawConditionalEliminationVisitor(StructuredGraph graph, ScheduleResult schedule, MetaAccessProvider metaAccess, boolean replaceInputsWithConstants) {
             this.graph = graph;
             this.schedule = schedule;
             this.metaAccess = metaAccess;
@@ -121,7 +123,7 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
             endMaps = EconomicMap.create();
             stampMap = graph.createNodeMap();
             undoOperations = new NodeStack();
-            replaceConstantInputs = GraalOptions.ReplaceInputsWithConstantsBasedOnStamps.getValue(graph.getOptions());
+            replaceConstantInputs = replaceInputsWithConstants && GraalOptions.ReplaceInputsWithConstantsBasedOnStamps.getValue(graph.getOptions());
         }
 
         protected void processNode(Node node) {
@@ -450,6 +452,10 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
 
     }
 
+    public FixReadsPhase(boolean replaceInputsWithConstants) {
+        this.replaceInputsWithConstants = replaceInputsWithConstants;
+    }
+
     @Override
     protected void run(StructuredGraph graph, LowTierContext context) {
         SchedulingStrategy strategy = SchedulingStrategy.LATEST_OUT_OF_LOOPS;
@@ -464,7 +470,7 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
             fixReadsClosure.processNodes(block, schedule);
         }
         if (GraalOptions.RawConditionalElimination.getValue(graph.getOptions())) {
-            schedule.getCFG().visitDominatorTree(new RawConditionalEliminationVisitor(graph, schedule, context.getMetaAccess()), false);
+            schedule.getCFG().visitDominatorTree(new RawConditionalEliminationVisitor(graph, schedule, context.getMetaAccess(), replaceInputsWithConstants), false);
         }
     }
 
