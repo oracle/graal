@@ -154,12 +154,6 @@ abstract class SerializeArgumentNode extends Node {
             argType.serialize(buffer, ptr);
             return null;
         }
-
-        @Specialization(insertBefore = "serializeNull")
-        protected Object serializeSymbol(NativeArgumentBuffer buffer, LibFFISymbol symbol) {
-            argType.serialize(buffer, symbol);
-            return null;
-        }
     }
 
     abstract static class SerializeStringArgumentNode extends SerializeUnboxingArgumentNode {

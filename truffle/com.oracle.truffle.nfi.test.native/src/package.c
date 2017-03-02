@@ -22,19 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.nfi;
+#include <stdlib.h>
+#include <math.h>
 
-final class LibFFISymbol extends NativePointer {
+static double square(double arg) {
+    return arg * arg;
+}
 
-    protected final LibFFILibrary library;
+static double add(double a, double b) {
+    return a + b;
+}
 
-    static LibFFISymbol create(LibFFILibrary library, long address) {
-        assert address != 0;
-        return new LibFFISymbol(library, address);
-    }
-
-    private LibFFISymbol(LibFFILibrary library, long address) {
-        super(address);
-        this.library = library;
-    }
+void initialize_package(void (*registerFunction)(const char *name, const char *signature, void *fn)) {
+    registerFunction("add", "(double,double):double", add);
+    registerFunction("square", "(double):double", square);
+    registerFunction("sqrt", "(double):double", sqrt);
 }

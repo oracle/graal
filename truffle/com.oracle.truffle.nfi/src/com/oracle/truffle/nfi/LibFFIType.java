@@ -327,9 +327,6 @@ abstract class LibFFIType {
             } else if (value instanceof NativeString) {
                 NativeString str = (NativeString) value;
                 buffer.putPointer(str.nativePointer, size);
-            } else if (value instanceof LibFFISymbol) {
-                LibFFISymbol sym = (LibFFISymbol) value;
-                buffer.putPointer(sym.address, size);
             } else {
                 super.doSerialize(buffer, value);
             }
@@ -347,7 +344,7 @@ abstract class LibFFIType {
 
         @Override
         public Object slowpathPrepareArgument(TruffleObject value) {
-            if (value instanceof NativePointer || value instanceof NativeString || value instanceof LibFFISymbol) {
+            if (value instanceof NativePointer || value instanceof NativeString) {
                 return value;
             } else {
                 return super.slowpathPrepareArgument(value);
@@ -620,9 +617,9 @@ abstract class LibFFIType {
 
         @Override
         protected void doSerialize(NativeArgumentBuffer buffer, Object value) {
-            if (value instanceof LibFFISymbol) {
-                LibFFISymbol symbol = (LibFFISymbol) value;
-                buffer.putPointer(symbol.address, size);
+            if (value instanceof NativePointer) {
+                NativePointer pointer = (NativePointer) value;
+                buffer.putPointer(pointer.nativePointer, size);
             } else {
                 LibFFIClosure closure;
                 if (value instanceof LibFFIClosure) {
@@ -656,10 +653,11 @@ abstract class LibFFIType {
         @Override
         protected Object doDeserialize(NativeArgumentBuffer buffer) {
             long functionPointer = buffer.getPointer(size);
+            NativePointer symbol = new NativePointer(functionPointer);
             if (functionPointer == 0) {
-                return new NativePointer(0);
+                // cannot bind null pointer
+                return symbol;
             } else {
-                LibFFISymbol symbol = LibFFISymbol.create(null, functionPointer);
                 return new LibFFIFunction(symbol, signature);
             }
         }
