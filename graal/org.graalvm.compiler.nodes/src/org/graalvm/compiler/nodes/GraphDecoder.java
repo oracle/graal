@@ -129,9 +129,9 @@ public class GraphDecoder {
                 reader = UnsafeArrayTypeReader.create(encodedGraph.getEncoding(), encodedGraph.getStartOffset(), architecture.supportsUnalignedMemoryAccess());
                 if (encodedGraph.nodeStartOffsets == null) {
                     int nodeCount = reader.getUVInt();
-                    long[] nodeStartOffsets = new long[nodeCount];
+                    int[] nodeStartOffsets = new int[nodeCount];
                     for (int i = 0; i < nodeCount; i++) {
-                        nodeStartOffsets[i] = encodedGraph.getStartOffset() - reader.getUV();
+                        nodeStartOffsets[i] = encodedGraph.getStartOffset() - reader.getUVInt();
                     }
                     encodedGraph.nodeStartOffsets = nodeStartOffsets;
                 }

@@ -152,7 +152,7 @@ public class GraphEncoder {
         GraphEncoder encoder = new GraphEncoder(architecture);
         encoder.prepare(graph);
         encoder.finishPrepare();
-        long startOffset = encoder.encode(graph);
+        int startOffset = encoder.encode(graph);
         return new EncodedGraph(encoder.getEncoding(), startOffset, encoder.getObjects(), encoder.getNodeClasses(), graph.getAssumptions(), graph.getMethods());
     }
 
@@ -202,7 +202,7 @@ public class GraphEncoder {
      *
      * @param graph The graph to encode
      */
-    public long encode(StructuredGraph graph) {
+    public int encode(StructuredGraph graph) {
         assert objectsArray != null && nodeClassesArray != null : "finishPrepare() must be called before encode()";
 
         NodeOrder nodeOrder = new NodeOrder(graph);
@@ -277,7 +277,7 @@ public class GraphEncoder {
         }
 
         /* Write out the table of contents with the start offset for all nodes. */
-        long nodeTableStart = writer.getBytesWritten();
+        int nodeTableStart = TypeConversion.asS4(writer.getBytesWritten());
         writer.putUV(nodeCount);
         for (int i = 0; i < nodeCount; i++) {
             assert i == NULL_ORDER_ID || i == START_NODE_ORDER_ID || nodeStartOffsets[i] > 0;
