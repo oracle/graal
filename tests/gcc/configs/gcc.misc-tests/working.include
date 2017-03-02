@@ -21,7 +21,6 @@ gcc-5.2.0/gcc/testsuite/gcc.misc-tests/gcov-12.c
 gcc-5.2.0/gcc/testsuite/gcc.misc-tests/arm-isr.c
 gcc-5.2.0/gcc/testsuite/gcc.misc-tests/gcov-9.c
 gcc-5.2.0/gcc/testsuite/gcc.misc-tests/gcov-14.c
-gcc-5.2.0/gcc/testsuite/gcc.misc-tests/dhry.c
 gcc-5.2.0/gcc/testsuite/gcc.misc-tests/bprob-1.c
 gcc-5.2.0/gcc/testsuite/gcc.misc-tests/gcov-4.c
 gcc-5.2.0/gcc/testsuite/gcc.misc-tests/gcov-4b.c

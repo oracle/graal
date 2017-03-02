@@ -84,7 +84,6 @@ gcc-5.2.0/gcc/testsuite/c-c++-common/guality/pr43141.c
 gcc-5.2.0/gcc/testsuite/c-c++-common/gomp/atomic-15.c
 gcc-5.2.0/gcc/testsuite/c-c++-common/gomp/pr61200.c
 gcc-5.2.0/gcc/testsuite/c-c++-common/gomp/pr53580.c
-gcc-5.2.0/gcc/testsuite/c-c++-common/cpp/pr65238-1.c
 gcc-5.2.0/gcc/testsuite/c-c++-common/cilk-plus/PS/reduction-3.c
 gcc-5.2.0/gcc/testsuite/c-c++-common/cilk-plus/PS/clauses3.c
 gcc-5.2.0/gcc/testsuite/c-c++-common/cilk-plus/PS/run-1.c

@@ -63,7 +63,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/addr_equal-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pubtypes-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/overflow-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/profile-dir-1.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/float-exact-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr15347.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr27758.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/struct-by-value-1.c
@@ -244,7 +243,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/special/gcsec-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/special/weak-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/special/alias-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/special/wkali-1.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/weak/weak-14.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/format/cmn-err-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/tls/opt-12.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/tls/pr24428.c
@@ -280,7 +278,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/strify4.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/mi1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/wchar-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/pr61854-5.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/strify2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/charconst-3.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/vararg1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/mac-dir-1.c
@@ -297,7 +294,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/paste9.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/digraphs.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/trad/mi6.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/trad/strify.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/trad/pr65238-3.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/trad/funlike-4.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/trad/builtins.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/trad/mi1.c

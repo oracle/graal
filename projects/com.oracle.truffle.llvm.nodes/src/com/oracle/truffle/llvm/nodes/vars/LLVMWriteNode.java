@@ -41,6 +41,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMFunctionStartNode;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
@@ -165,6 +166,12 @@ public abstract class LLVMWriteNode extends LLVMExpressionNode {
 
     @NodeChild(value = "valueNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMWriteAddressNode extends LLVMWriteNode {
+
+        @Specialization
+        protected Object writeObject(VirtualFrame frame, LLVMAddress value) {
+            frame.setObject(getSlot(), value);
+            return null;
+        }
 
         @Specialization
         protected Object writeObject(VirtualFrame frame, Object value) {

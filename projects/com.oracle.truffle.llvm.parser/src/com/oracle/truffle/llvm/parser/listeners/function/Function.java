@@ -392,11 +392,16 @@ public abstract class Function implements ParserListener {
     private void createGetElementPointer(long[] args) {
         int i = 0;
         boolean isInbounds = args[i++] != 0;
-        i++; // Unused parameter
+        i++; // we do not use this parameter
         int pointer = getIndex(args[i++]);
+        Type base;
+        if (pointer < symbols.size()) {
+            base = symbols.get(pointer);
+        } else {
+            base = types.get(args[i++]);
+        }
         int[] indices = getIndices(args, i);
-
-        Type type = new PointerType(getElementPointerType(symbols.get(pointer), indices));
+        Type type = new PointerType(getElementPointerType(base, indices));
 
         code.createGetElementPointer(
                         type,

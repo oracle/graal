@@ -60,6 +60,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMReturnAddressFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMStackRestoreNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMStackSaveNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMTrapFactory;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMFabsFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMPowFactory.LLVMPowDoubleFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMPowFactory.LLVMPowFloatFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMPowIFactory.LLVMPowIDoubleFactory;
@@ -115,6 +116,8 @@ final class LLVMIntrinsicFactory {
 
         factories.put("@llvm.powi.f32", LLVMPowIFloatFactory.getInstance());
         factories.put("@llvm.powi.f64", LLVMPowIDoubleFactory.getInstance());
+
+        factories.put("@llvm.fabs.f64", LLVMFabsFactory.getInstance());
 
         // frameaddress, returnaddress (constantly returns a null pointer)
         factories.put("@llvm.returnaddress", LLVMReturnAddressFactory.getInstance());

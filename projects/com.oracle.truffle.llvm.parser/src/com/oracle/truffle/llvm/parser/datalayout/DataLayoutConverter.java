@@ -70,7 +70,12 @@ public final class DataLayoutConverter {
                         minPossibleSize = value;
                     }
                 }
-                return minPossibleSize;
+                if (minPossibleSize >= size) {
+                    return minPossibleSize;
+                } else {
+                    // is that correct?
+                    return ((size + 7) / 8) * 8;
+                }
             } else {
                 return getDataTypeSpecification(baseType).getValues()[1];
             }

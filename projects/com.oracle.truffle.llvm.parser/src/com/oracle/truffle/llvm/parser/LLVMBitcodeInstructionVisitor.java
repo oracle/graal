@@ -87,6 +87,7 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
@@ -143,7 +144,11 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         if (count instanceof NullConstant) {
             result = factoryFacade.createAlloc(runtime, type, size, alignment, null, null);
         } else if (count instanceof IntegerConstant) {
-            result = factoryFacade.createAlloc(runtime, type, size * (int) ((IntegerConstant) count).getValue(), alignment, null, null);
+            if (type instanceof VariableBitWidthType) {
+                result = factoryFacade.createAlloc(runtime, type, size * (int) ((IntegerConstant) count).getValue(), alignment, null, null);
+            } else {
+                result = factoryFacade.createAlloc(runtime, type, size * (int) ((IntegerConstant) count).getValue(), alignment, null, null);
+            }
         } else {
             LLVMExpressionNode num = symbols.resolve(count);
             result = factoryFacade.createAlloc(runtime, type, size, alignment, count.getType(), num);
