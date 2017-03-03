@@ -166,6 +166,9 @@ public final class GraalOptions {
     public static final OptionKey<Boolean> RawConditionalElimination = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
+    public static final OptionKey<Boolean> ReplaceInputsWithConstantsBasedOnStamps = new OptionKey<>(true);
+
+    @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> RemoveNeverExecutedCode = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)

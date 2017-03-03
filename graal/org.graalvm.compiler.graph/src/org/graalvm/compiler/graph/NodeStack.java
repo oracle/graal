@@ -53,6 +53,10 @@ public final class NodeStack {
         values = newValues;
     }
 
+    public Node get(int index) {
+        return values[index];
+    }
+
     public Node pop() {
         assert tos > 0 : "stack must be non-empty";
         return values[--tos];

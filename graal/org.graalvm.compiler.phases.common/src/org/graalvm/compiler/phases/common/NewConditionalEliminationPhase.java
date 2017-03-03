@@ -32,6 +32,7 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.And;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Or;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.Debug;
@@ -43,10 +44,12 @@ import org.graalvm.compiler.graph.NodeStack;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BinaryOpLogicNode;
 import org.graalvm.compiler.nodes.ConditionAnchorNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.DeoptimizingGuard;
+import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -62,6 +65,7 @@ import org.graalvm.compiler.nodes.ShortCircuitOrNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnaryOpLogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.BinaryNode;
@@ -82,6 +86,7 @@ import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.Equivalence;
+import org.graalvm.util.MapCursor;
 import org.graalvm.util.Pair;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -92,6 +97,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
     private static final DebugCounter counterStampsRegistered = Debug.counter("StampsRegistered");
     private static final DebugCounter counterStampsFound = Debug.counter("StampsFound");
     private static final DebugCounter counterIfsKilled = Debug.counter("CE_KilledIfs");
+    private static final DebugCounter counterPhiStampsImproved = Debug.counter("CE_ImprovedPhis");
     private final boolean fullSchedule;
 
     public NewConditionalEliminationPhase(boolean fullSchedule) {
@@ -187,12 +193,30 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
 
     }
 
+    private static final class PhiInfoElement {
+
+        private InfoElement[] infoElements;
+
+        private PhiInfoElement(ValuePhiNode phiNode) {
+            infoElements = new InfoElement[phiNode.valueCount()];
+        }
+
+        public void set(int endIndex, InfoElement infoElement) {
+            infoElements[endIndex] = infoElement;
+        }
+
+        public InfoElement[] getInfoElements() {
+            return infoElements;
+        }
+    }
+
     public static class Instance implements ControlFlowGraph.RecursiveVisitor<Integer> {
         protected final NodeMap<InfoElement> map;
         protected final BlockMap<List<Node>> blockToNodes;
         protected final CanonicalizerTool tool;
         protected final NodeStack undoOperations;
         protected final StructuredGraph graph;
+        protected final EconomicMap<MergeNode, EconomicMap<ValuePhiNode, PhiInfoElement>> mergeMaps;
 
         /**
          * Tests which may be eliminated because post dominating tests to prove a broader condition.
@@ -207,6 +231,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
             pendingTests = new ArrayDeque<>();
             tool = GraphUtil.getDefaultSimplifier(context.getMetaAccess(), context.getConstantReflection(), context.getConstantFieldProvider(), false, graph.getAssumptions(), graph.getOptions(),
                             context.getLowerer());
+            mergeMaps = EconomicMap.create();
         }
 
         protected void processConditionAnchor(ConditionAnchorNode node) {
@@ -366,12 +391,17 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 if (node instanceof NodeWithState && !(node instanceof GuardingNode)) {
                     pendingTests.clear();
                 }
+
+                if (node instanceof MergeNode) {
+                    introducePisForPhis((MergeNode) node);
+                }
+
                 if (node instanceof AbstractBeginNode) {
                     if (node instanceof LoopExitNode && graph.hasValueProxies()) {
                         // Condition must not be used down this path.
-                    } else {
-                        processAbstractBegin((AbstractBeginNode) node);
+                        return;
                     }
+                    processAbstractBegin((AbstractBeginNode) node);
                 } else if (node instanceof FixedGuardNode) {
                     processFixedGuard((FixedGuardNode) node);
                 } else if (node instanceof GuardNode) {
@@ -380,8 +410,118 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                     processConditionAnchor((ConditionAnchorNode) node);
                 } else if (node instanceof IfNode) {
                     processIf((IfNode) node);
-                } else {
-                    return;
+                } else if (node instanceof EndNode) {
+                    processEnd((EndNode) node);
+                }
+            }
+        }
+
+        private void introducePisForPhis(MergeNode merge) {
+            EconomicMap<ValuePhiNode, PhiInfoElement> mergeMap = this.mergeMaps.get(merge);
+            if (mergeMap != null) {
+                MapCursor<ValuePhiNode, PhiInfoElement> entries = mergeMap.getEntries();
+                while (entries.advance()) {
+                    ValuePhiNode phi = entries.getKey();
+                    InfoElement[] infoElements = entries.getValue().getInfoElements();
+                    Stamp bestPossibleStamp = null;
+                    for (int i = 0; i < phi.valueCount(); ++i) {
+                        ValueNode valueAt = phi.valueAt(i);
+                        Stamp curBestStamp = valueAt.stamp();
+                        if (infoElements[i] != null) {
+                            curBestStamp = curBestStamp.join(infoElements[i].getStamp());
+                        }
+
+                        if (bestPossibleStamp == null) {
+                            bestPossibleStamp = curBestStamp;
+                        } else {
+                            bestPossibleStamp = bestPossibleStamp.meet(curBestStamp);
+                        }
+                    }
+
+                    Stamp oldStamp = phi.stamp();
+                    if (oldStamp.tryImproveWith(bestPossibleStamp) != null) {
+
+                        // Need to be careful to not run into stamp update cycles with the iterative
+                        // canonicalization.
+                        boolean allow = false;
+                        if (bestPossibleStamp instanceof ObjectStamp) {
+                            // Always allow object stamps.
+                            allow = true;
+                        } else if (bestPossibleStamp instanceof IntegerStamp) {
+                            IntegerStamp integerStamp = (IntegerStamp) bestPossibleStamp;
+                            IntegerStamp oldIntegerStamp = (IntegerStamp) oldStamp;
+                            if (integerStamp.isPositive() != oldIntegerStamp.isPositive()) {
+                                allow = true;
+                            } else if (integerStamp.isNegative() != oldIntegerStamp.isNegative()) {
+                                allow = true;
+                            } else if (integerStamp.isStrictlyPositive() != oldIntegerStamp.isStrictlyPositive()) {
+                                allow = true;
+                            } else if (integerStamp.isStrictlyNegative() != oldIntegerStamp.isStrictlyNegative()) {
+                                allow = true;
+                            } else if (integerStamp.asConstant() != null) {
+                                allow = true;
+                            } else if (oldStamp.unrestricted().equals(oldStamp)) {
+                                allow = true;
+                            }
+                        } else {
+                            allow = (bestPossibleStamp.asConstant() != null);
+                        }
+
+                        if (allow) {
+                            ValuePhiNode newPhi = graph.addWithoutUnique(new ValuePhiNode(bestPossibleStamp, merge));
+                            for (int i = 0; i < phi.valueCount(); ++i) {
+                                ValueNode valueAt = phi.valueAt(i);
+                                if (bestPossibleStamp.meet(valueAt.stamp()).equals(bestPossibleStamp)) {
+                                    // Pi not required here.
+                                } else {
+                                    assert infoElements[i] != null;
+                                    Stamp curBestStamp = infoElements[i].getStamp();
+                                    ValueNode input = infoElements[i].getProxifiedInput();
+                                    if (input == null) {
+                                        input = valueAt;
+                                    }
+                                    PiNode piNode = graph.unique(new PiNode(input, curBestStamp, (ValueNode) infoElements[i].guard));
+                                    valueAt = piNode;
+                                }
+                                newPhi.addInput(valueAt);
+                            }
+                            counterPhiStampsImproved.increment();
+                            phi.replaceAtUsagesAndDelete(newPhi);
+                        }
+                    }
+                }
+            }
+        }
+
+        private void processEnd(EndNode end) {
+            AbstractMergeNode abstractMerge = end.merge();
+            if (abstractMerge instanceof MergeNode) {
+                MergeNode merge = (MergeNode) abstractMerge;
+                int endIndex = merge.forwardEndIndex(end);
+
+                EconomicMap<ValuePhiNode, PhiInfoElement> mergeMap = this.mergeMaps.get(merge);
+                for (ValuePhiNode phi : merge.valuePhis()) {
+                    ValueNode valueAt = phi.valueAt(end);
+                    InfoElement infoElement = this.getInfoElements(valueAt);
+                    while (infoElement != null) {
+                        Stamp newStamp = infoElement.getStamp();
+                        if (phi.stamp().tryImproveWith(newStamp) != null) {
+                            if (mergeMap == null) {
+                                mergeMap = EconomicMap.create();
+                                mergeMaps.put(merge, mergeMap);
+                            }
+
+                            PhiInfoElement phiInfoElement = mergeMap.get(phi);
+                            if (phiInfoElement == null) {
+                                phiInfoElement = new PhiInfoElement(phi);
+                                mergeMap.put(phi, phiInfoElement);
+                            }
+
+                            phiInfoElement.set(endIndex, infoElement);
+                            break;
+                        }
+                        infoElement = infoElement.getParent();
+                    }
                 }
             }
         }
@@ -548,7 +688,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
             if (value == null) {
                 return null;
             }
-            return map.get(value);
+            return map.getAndGrow(value);
         }
 
         protected boolean rewireGuards(GuardingNode guard, boolean result, ValueNode proxifiedInput, Stamp guardedValueStamp, GuardRewirer rewireGuardFunction) {
@@ -728,7 +868,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 }
                 counterStampsRegistered.increment();
                 Debug.log("\t Saving stamp for node %s stamp %s guarded by %s", value, newStamp, guard == null ? "null" : guard);
-                map.set(value, new InfoElement(newStamp, guard, proxiedValue, map.get(value)));
+                map.setAndGrow(value, new InfoElement(newStamp, guard, proxiedValue, map.getAndGrow(value)));
                 undoOperations.push(value);
             }
         }
