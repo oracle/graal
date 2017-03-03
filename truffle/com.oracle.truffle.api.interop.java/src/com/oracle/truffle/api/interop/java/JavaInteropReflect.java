@@ -248,26 +248,24 @@ final class JavaInteropReflect {
             if (call == null) {
                 Message message = findMessage(method, method.getAnnotation(MethodMessage.class), args.length);
                 TypeAndClass<?> convertTo = TypeAndClass.forReturnType(method);
-                MethodNode methodNode = new MethodNode(obj, method.getName(), message, convertTo);
+                MethodNode methodNode = new MethodNode(method.getName(), message, convertTo);
                 call = JavaInterop.ACCESSOR.engine().registerInteropTarget(obj, methodNode, method);
             }
 
-            return call.call(args);
+            return call.call(obj, args);
         }
 
     }
 
     private static final class MethodNode extends RootNode {
-        private final TruffleObject obj;
         private final String name;
         private final TypeAndClass<?> returnType;
         @CompilerDirectives.CompilationFinal private Message message;
         @Child private ToJavaNode toJavaNode;
         @Child private Node node;
 
-        MethodNode(TruffleObject obj, String name, Message message, TypeAndClass<?> returnType) {
+        MethodNode(String name, Message message, TypeAndClass<?> returnType) {
             super(TruffleLanguage.class, null, null);
-            this.obj = obj;
             this.name = name;
             this.toJavaNode = ToJavaNodeGen.create();
             this.message = message;
@@ -277,14 +275,16 @@ final class JavaInteropReflect {
         @Override
         public Object execute(VirtualFrame frame) {
             try {
-                Object res = handleMessage(frame.getArguments());
+                TruffleObject receiver = (TruffleObject) frame.getArguments()[0];
+                Object[] params = (Object[]) frame.getArguments()[1];
+                Object res = handleMessage(receiver, params);
                 return toJavaNode.execute(res, returnType);
             } catch (InteropException ex) {
                 throw ex.raise();
             }
         }
 
-        private Object handleMessage(Object[] args) throws InteropException {
+        private Object handleMessage(TruffleObject obj, Object[] args) throws InteropException {
             if (message == Message.WRITE) {
                 ForeignAccess.sendWrite(node(), obj, name, args[0]);
                 return null;
@@ -314,32 +314,10 @@ final class JavaInteropReflect {
             }
 
             if (message == null) {
-                try {
-                    message = Message.createInvoke(args.length);
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    return ForeignAccess.sendInvoke(node(), obj, name, args);
-                } catch (InteropException ex) {
-                    message = Message.READ;
-                    node = null;
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    Object val = ForeignAccess.sendRead(node(), obj, name);
-                    Object primitiveVal = ToPrimitiveNode.shared().toPrimitive(val, returnType.clazz);
-                    if (primitiveVal != null) {
-                        return primitiveVal;
-                    }
-                    TruffleObject attr = (TruffleObject) val;
-                    val = ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), attr);
-                    if (Boolean.FALSE.equals(val)) {
-                        if (args.length == 0) {
-                            return attr;
-                        }
-                        throw ArityException.raise(0, args.length);
-                    }
-                    message = Message.createExecute(args.length);
-                    node = null;
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    return ForeignAccess.sendExecute(node(), attr, args);
+                if (this.node == null) {
+                    this.node = insert(new InvokeAndReadExecNode(returnType, args.length));
                 }
+                return ((InvokeAndReadExecNode) this.node).invoke(obj, name, args);
             }
             throw UnsupportedMessageException.raise(message);
         }
@@ -349,6 +327,48 @@ final class JavaInteropReflect {
                 this.node = insert(message.createNode());
             }
             return node;
+        }
+    }
+
+    private static final class InvokeAndReadExecNode extends Node {
+        private final TypeAndClass<?> returnType;
+        @Child private Node invokeNode;
+        @Child private Node isExecNode;
+        @Child private ToPrimitiveNode primitive;
+        @Child private Node readNode;
+        @Child private Node execNode;
+
+        InvokeAndReadExecNode(TypeAndClass<?> returnType, int arity) {
+            this.returnType = returnType;
+            this.invokeNode = Message.createInvoke(arity).createNode();
+        }
+
+        Object invoke(TruffleObject obj, String name, Object... args) throws InteropException {
+            try {
+                return ForeignAccess.sendInvoke(invokeNode, obj, name, args);
+            } catch (InteropException ex) {
+                if (readNode == null) {
+                    readNode = insert(Message.READ.createNode());
+                    primitive = insert(ToPrimitiveNode.create());
+                    isExecNode = insert(Message.IS_EXECUTABLE.createNode());
+                }
+                Object val = ForeignAccess.sendRead(readNode, obj, name);
+                Object primitiveVal = primitive.toPrimitive(val, returnType.clazz);
+                if (primitiveVal != null) {
+                    return primitiveVal;
+                }
+                TruffleObject attr = (TruffleObject) val;
+                if (!ForeignAccess.sendIsExecutable(isExecNode, attr)) {
+                    if (args.length == 0) {
+                        return attr;
+                    }
+                    throw ArityException.raise(0, args.length);
+                }
+                if (execNode == null) {
+                    execNode = insert(Message.createExecute(args.length).createNode());
+                }
+                return ForeignAccess.sendExecute(execNode, attr, args);
+            }
         }
     }
 
