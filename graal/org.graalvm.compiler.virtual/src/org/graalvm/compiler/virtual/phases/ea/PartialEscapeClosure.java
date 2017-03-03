@@ -322,15 +322,17 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
             Node input = pos.get(node);
             if (input instanceof ValueNode) {
                 if (input.isAlive()) {
-                    ObjectState obj = getObjectState(state, (ValueNode) input);
-                    if (obj != null) {
-                        if (obj.isVirtual()) {
-                            return false;
+                    if (!(input instanceof VirtualObjectNode)) {
+                        ObjectState obj = getObjectState(state, (ValueNode) input);
+                        if (obj != null) {
+                            if (obj.isVirtual()) {
+                                return false;
+                            } else {
+                                pos.initialize(node, obj.getMaterializedValue());
+                            }
                         } else {
-                            pos.initialize(node, obj.getMaterializedValue());
+                            pos.initialize(node, getScalarAlias((ValueNode) input));
                         }
-                    } else {
-                        pos.initialize(node, getScalarAlias((ValueNode) input));
                     }
                 } else {
                     if (!prepareCanonicalNode((ValueNode) input, state, effects)) {
