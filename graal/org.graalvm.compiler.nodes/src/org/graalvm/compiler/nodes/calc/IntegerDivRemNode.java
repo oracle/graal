@@ -56,7 +56,10 @@ public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lower
         super(c, stamp, x, y);
         this.op = op;
         this.type = type;
-        this.canDeopt = (!(getY().stamp() instanceof IntegerStamp) || ((IntegerStamp) getY().stamp()).contains(0));
+
+        // Assigning canDeopt during constructor, because it must never change during lifetime of
+        // the node.
+        this.canDeopt = ((IntegerStamp) getY().stamp()).contains(0);
     }
 
     public final Op getOp() {

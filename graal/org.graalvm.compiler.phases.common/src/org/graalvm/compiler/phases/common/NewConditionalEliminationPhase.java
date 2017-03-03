@@ -399,9 +399,9 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 if (node instanceof AbstractBeginNode) {
                     if (node instanceof LoopExitNode && graph.hasValueProxies()) {
                         // Condition must not be used down this path.
-                    } else {
                         return;
                     }
+                    processAbstractBegin((AbstractBeginNode) node);
                 } else if (node instanceof FixedGuardNode) {
                     processFixedGuard((FixedGuardNode) node);
                 } else if (node instanceof GuardNode) {
@@ -412,8 +412,6 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                     processIf((IfNode) node);
                 } else if (node instanceof EndNode) {
                     processEnd((EndNode) node);
-                } else {
-                    return;
                 }
             }
         }

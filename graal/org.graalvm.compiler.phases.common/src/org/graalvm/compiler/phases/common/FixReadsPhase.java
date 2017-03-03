@@ -229,22 +229,11 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
                         for (int i = lastMark - 1; i >= mark; --i) {
                             ValueNode nodeWithNewStamp = (ValueNode) undoOperations.get(i);
 
-                            if (nodeWithNewStamp.isDeleted() || nodeWithNewStamp instanceof LogicNode || nodeWithNewStamp instanceof ConstantNode) {
+                            if (nodeWithNewStamp.isDeleted() || nodeWithNewStamp instanceof LogicNode || nodeWithNewStamp instanceof ConstantNode || blockToNodeMap.isNew(nodeWithNewStamp)) {
                                 continue;
                             }
 
-                            boolean shouldProcess;
-                            if (blockToNodeMap.isNew(nodeWithNewStamp)) {
-                                shouldProcess = true;
-                            } else {
-                                Block curBlock = blockToNodeMap.get(nodeWithNewStamp);
-                                if (nodeWithNewStamp instanceof PhiNode) {
-                                    PhiNode phiNode = (PhiNode) nodeWithNewStamp;
-                                    curBlock = blockToNodeMap.get(phiNode.merge());
-                                }
-                                shouldProcess = curBlock.getId() <= mergeBlockDominator.getId();
-                            }
-                            if (shouldProcess) {
+                            if (getBlock(nodeWithNewStamp, blockToNodeMap).getId() <= mergeBlockDominator.getId()) {
                                 // Node with new stamp in path to the merge block dominator and that
                                 // at the same time was defined at least in the merge block
                                 // dominator (i.e., therefore can be used after the merge.)
@@ -262,7 +251,7 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
                                     bestStamp = bestStamp.meet(otherEndsStamp);
                                 }
 
-                                if (bestStamp.equals(bestStamp.unrestricted()) || bestStamp.equals(nodeWithNewStamp.stamp())) {
+                                if (nodeWithNewStamp.stamp().tryImproveWith(bestStamp) == null) {
                                     // No point in registering the stamp.
                                 } else {
                                     endMap.put(nodeWithNewStamp, bestStamp);
@@ -275,6 +264,14 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
                     endMaps.put(merge, endMap);
                 }
             }
+        }
+
+        private static Block getBlock(ValueNode node, NodeMap<Block> blockToNodeMap) {
+            if (node instanceof PhiNode) {
+                PhiNode phiNode = (PhiNode) node;
+                return blockToNodeMap.get(phiNode.merge());
+            }
+            return blockToNodeMap.get(node);
         }
 
         private void processUnary(UnaryNode node) {
