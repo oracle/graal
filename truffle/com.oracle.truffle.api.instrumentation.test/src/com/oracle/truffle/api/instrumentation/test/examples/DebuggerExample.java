@@ -46,7 +46,7 @@ import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
  * {@link DebuggerController} interface.
  */
 // BEGIN: DebuggerExample
-@Registration(id = DebuggerExample.ID)
+@Registration(id = DebuggerExample.ID, services = DebuggerController.class)
 public final class DebuggerExample extends TruffleInstrument {
     private Controller controller;
 

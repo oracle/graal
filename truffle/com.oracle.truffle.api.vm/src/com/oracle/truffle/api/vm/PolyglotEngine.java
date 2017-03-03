@@ -1205,6 +1205,9 @@ public class PolyglotEngine {
          * @since 0.9
          */
         public <T> T lookup(Class<T> type) {
+            if (!isEnabled() && info.supportsService(type)) {
+                setEnabled(true);
+            }
             return Access.INSTRUMENT.getInstrumentationHandlerService(instrumentationHandler, this, type);
         }
 
