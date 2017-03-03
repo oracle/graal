@@ -2185,6 +2185,15 @@ public class FlatNodeGenFactory {
                         builder.startStatement().string(duplicateFoundName, " = true").end();
                     }
                     builder.end(innerIfCount);
+                    // need to ensure that we update the implicit cast specializations on duplicates
+                    CodeTree updateImplicitCast = createUpdateImplicitCastState(builder, frameState, specialization);
+                    if (updateImplicitCast != null) {
+                        builder.startElseBlock();
+                        builder.tree(createUpdateImplicitCastState(builder, frameState, specialization));
+                        builder.tree(state.createSet(frameState, new SpecializationData[]{specialization}, true, true));
+                        builder.end();
+                    }
+
                     builder.startIf();
                     if (useSpecializationClass) {
                         builder.string(createSpecializationLocalName(specialization), " != null");
@@ -2192,6 +2201,7 @@ public class FlatNodeGenFactory {
                         builder.string(duplicateFoundName);
                     }
                     builder.end().startBlock();
+
                     builder.tree(createExecute(builder, frameState, executeAndSpecializeType, specialization, mode));
                     builder.end();
                 } else {
@@ -2446,19 +2456,31 @@ public class FlatNodeGenFactory {
             builder.tree((state.createSet(frameState, excludesArray, false, false)));
         }
 
+        CodeTree updateImplicitCast = createUpdateImplicitCastState(builder, frameState, specialization);
+        if (updateImplicitCast != null) {
+            builder.tree(createUpdateImplicitCastState(builder, frameState, specialization));
+        }
+
+        builder.tree(state.createSet(frameState, new SpecializationData[]{specialization}, true, true));
+        return builder.build();
+    }
+
+    private CodeTree createUpdateImplicitCastState(CodeTreeBuilder parent, FrameState frameState, SpecializationData specialization) {
+        CodeTreeBuilder builder = null;
         int signatureIndex = 0;
         for (Parameter p : specialization.getSignatureParameters()) {
             TypeMirror targetType = p.getType();
             TypeMirror polymorphicType = node.getPolymorphicSpecialization().findParameterOrDie(p.getSpecification().getExecution()).getType();
             if (typeSystem.hasImplicitSourceTypes(targetType) && needsCastTo(polymorphicType, targetType)) {
                 String implicitFieldName = createImplicitTypeStateLocalName(p);
+                if (builder == null) {
+                    builder = parent.create();
+                }
                 builder.tree(state.createSetInteger(frameState, new TypeGuard(p.getType(), signatureIndex), CodeTreeBuilder.singleString(implicitFieldName)));
             }
             signatureIndex++;
         }
-
-        builder.tree(state.createSet(frameState, new SpecializationData[]{specialization}, true, true));
-        return builder.build();
+        return builder == null ? null : builder.build();
     }
 
     private CodeTree createAssumptionGuard(AssumptionExpression assumption, CodeTree assumptionValue) {
