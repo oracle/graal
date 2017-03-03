@@ -237,11 +237,11 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 return true;
             }
             NodeClass<?> nodeClass = node.getNodeClass();
-            if (tryGlobalValueNumbering(node, nodeClass)) {
-                return true;
-            }
             StructuredGraph graph = (StructuredGraph) node.graph();
             if (tryCanonicalize(node, nodeClass)) {
+                return true;
+            }
+            if (tryGlobalValueNumbering(node, nodeClass)) {
                 return true;
             }
             if (node instanceof ValueNode) {
