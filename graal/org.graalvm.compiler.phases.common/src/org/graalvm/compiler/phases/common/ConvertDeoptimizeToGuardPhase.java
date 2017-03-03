@@ -27,6 +27,7 @@ import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Option
 import java.util.List;
 
 import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
@@ -77,6 +78,7 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
     }
 
     @Override
+    @SuppressWarnings("try")
     protected void run(final StructuredGraph graph, PhaseContext context) {
         assert graph.hasValueProxies() : "ConvertDeoptimizeToGuardPhase always creates proxies";
         if (graph.getNodes(DeoptimizeNode.TYPE).isEmpty()) {
@@ -88,13 +90,18 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
             // the deoptimization will not be triggered again. Example for such action is
             // reprofiling or recompiling with less aggressive options.
             if (d.action() != DeoptimizationAction.None) {
-                visitDeoptBegin(AbstractBeginNode.prevBegin(d), d.action(), d.reason(), d.getSpeculation(), graph, context != null ? context.getLowerer() : null);
+                try (DebugCloseable closable = d.withNodeSourcePosition()) {
+                    visitDeoptBegin(AbstractBeginNode.prevBegin(d), d.action(), d.reason(), d.getSpeculation(), graph, context != null ? context.getLowerer() : null);
+                }
             }
+
         }
 
         if (context != null) {
             for (FixedGuardNode fixedGuard : graph.getNodes(FixedGuardNode.TYPE)) {
-                trySplitFixedGuard(fixedGuard, context);
+                try (DebugCloseable closable = fixedGuard.withNodeSourcePosition()) {
+                    trySplitFixedGuard(fixedGuard, context);
+                }
             }
         }
 
