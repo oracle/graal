@@ -24,6 +24,8 @@ package com.oracle.truffle.api.dsl.test;
 
 import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createArguments;
 
+import java.util.concurrent.locks.ReentrantLock;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -50,6 +52,7 @@ import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCastExecu
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals1NodeGen;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals2NodeGen;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals3NodeGen;
+import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.TestImplicitCastWithCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.dsl.test.examples.ExampleNode;
@@ -542,6 +545,64 @@ public class ImplicitCastTest {
         Assert.assertEquals(0, args[1].doubleInvocationCount);
         Assert.assertEquals(0, args[0].intInvocationCount);
         Assert.assertEquals(0, args[1].intInvocationCount);
+
+    }
+
+    @Test
+    public void testImplicitCastWithCache() {
+        TestImplicitCastWithCacheNode node = TestImplicitCastWithCacheNodeGen.create();
+
+        Assert.assertEquals(0, node.specializeCalls);
+
+        ConcreteString concrete = new ConcreteString();
+        node.execute("a", true);
+        Assert.assertEquals(1, node.specializeCalls);
+        node.execute(concrete, true);
+        Assert.assertEquals(2, node.specializeCalls);
+        node.execute(concrete, true);
+        node.execute(concrete, true);
+        node.execute(concrete, true);
+
+        // ensure we stabilize
+        Assert.assertEquals(2, node.specializeCalls);
+    }
+
+    interface AbstractString {
+    }
+
+    static class ConcreteString implements AbstractString {
+    }
+
+    @TypeSystem
+    static class TestTypeSystem {
+        @ImplicitCast
+        public static AbstractString toAbstractStringVector(@SuppressWarnings("unused") String vector) {
+            return new ConcreteString();
+        }
+    }
+
+    @TypeSystemReference(TestTypeSystem.class)
+    abstract static class TestImplicitCastWithCacheNode extends Node {
+
+        int specializeCalls;
+
+        public abstract int execute(Object arg, boolean flag);
+
+        @Specialization(guards = {"specializeCall(flag)", "cachedFlag == flag"})
+        @SuppressWarnings("unused")
+        protected static int test(AbstractString arg, boolean flag,
+                        @Cached("flag") boolean cachedFlag) {
+            return flag ? 100 : -100;
+        }
+
+        boolean specializeCall(@SuppressWarnings("unused") boolean flag) {
+            ReentrantLock lock = (ReentrantLock) getLock();
+            if (lock.isHeldByCurrentThread()) {
+                // the lock is held for guards executed in executeAndSpecialize
+                specializeCalls++;
+            }
+            return true;
+        }
 
     }
 
