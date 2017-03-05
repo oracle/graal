@@ -78,6 +78,7 @@ import org.graalvm.compiler.truffle.debug.TraceCompilationPolymorphismListener;
 import org.graalvm.compiler.truffle.debug.TraceInliningListener;
 import org.graalvm.compiler.truffle.debug.TraceSplittingListener;
 import org.graalvm.compiler.truffle.phases.InstrumentPhase;
+import org.graalvm.util.CollectionsUtil;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -687,24 +688,24 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     }
 
     private static Object loadObjectLayoutFactory() {
-        ServiceLoader<LayoutFactory> serviceLoader = ServiceLoader.load(LayoutFactory.class, GraalTruffleRuntime.class.getClassLoader());
-        LayoutFactory bestLayoutFactory = loadBestObjectLayoutFactory(null, serviceLoader);
-        if (!Java8OrEarlier) {
+        ServiceLoader<LayoutFactory> graalLoader = ServiceLoader.load(LayoutFactory.class, GraalTruffleRuntime.class.getClassLoader());
+        if (Java8OrEarlier) {
+            return loadBestObjectLayoutFactory(graalLoader);
+        } else {
             /*
              * The Graal module (i.e., jdk.internal.vm.compiler) is loaded by the platform class
              * loader on JDK 9. Its module dependencies such as Truffle are supplied via
-             * --module-path which means they loaded by the app class loader. As such, we need to
-             * search the app class loader path as well.
+             * --module-path which means they are loaded by the app class loader. As such, we need
+             * to search the app class loader path as well.
              */
-            serviceLoader = ServiceLoader.load(LayoutFactory.class, LayoutFactory.class.getClassLoader());
-            bestLayoutFactory = loadBestObjectLayoutFactory(bestLayoutFactory, serviceLoader);
+            ServiceLoader<LayoutFactory> appLoader = ServiceLoader.load(LayoutFactory.class, LayoutFactory.class.getClassLoader());
+            return loadBestObjectLayoutFactory(CollectionsUtil.concat(graalLoader, appLoader));
         }
-        return bestLayoutFactory;
     }
 
-    protected static LayoutFactory loadBestObjectLayoutFactory(LayoutFactory currentBestLayoutFactory, ServiceLoader<LayoutFactory> serviceLoader) {
-        LayoutFactory bestLayoutFactory = currentBestLayoutFactory;
-        for (LayoutFactory currentLayoutFactory : serviceLoader) {
+    protected static LayoutFactory loadBestObjectLayoutFactory(Iterable<LayoutFactory> serviceLoaders) {
+        LayoutFactory bestLayoutFactory = null;
+        for (LayoutFactory currentLayoutFactory : serviceLoaders) {
             if (bestLayoutFactory == null) {
                 bestLayoutFactory = currentLayoutFactory;
             } else if (currentLayoutFactory.getPriority() >= bestLayoutFactory.getPriority()) {
