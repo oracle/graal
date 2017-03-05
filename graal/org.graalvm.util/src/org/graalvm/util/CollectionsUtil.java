@@ -25,7 +25,10 @@ package org.graalvm.util;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Predicate;
@@ -35,6 +38,60 @@ import java.util.function.Supplier;
  * This class contains utility methods for commonly used functional patterns for collections.
  */
 public class CollectionsUtil {
+
+    /**
+     * Concatenates two iterables into a single iterable. The iterator exposed by the returned
+     * iterable does not support {@link Iterator#remove()} even if the input iterables do.
+     *
+     * @throws NullPointerException if {@code a} or {@code b} is {@code null}
+     */
+    public static <T> Iterable<T> concat(Iterable<T> a, Iterable<T> b) {
+        List<Iterable<T>> l = Arrays.asList(a, b);
+        return concat(l);
+    }
+
+    /**
+     * Concatenates multiple iterables into a single iterable. The iterator exposed by the returned
+     * iterable does not support {@link Iterator#remove()} even if the input iterables do.
+     *
+     * @throws NullPointerException if {@code iterables} or any of its elements are {@code null}
+     */
+    public static <T> Iterable<T> concat(List<Iterable<T>> iterables) {
+        for (Iterable<T> iterable : iterables) {
+            Objects.requireNonNull(iterable);
+        }
+        return new Iterable<T>() {
+            @Override
+            public Iterator<T> iterator() {
+                if (iterables.size() == 0) {
+                    return Collections.emptyIterator();
+                }
+                return new Iterator<T>() {
+                    Iterator<Iterable<T>> cursor = iterables.iterator();
+                    Iterator<T> currentIterator = cursor.next().iterator();
+
+                    private void advance() {
+                        while (!currentIterator.hasNext() && cursor.hasNext()) {
+                            currentIterator = cursor.next().iterator();
+                        }
+                    }
+
+                    @Override
+                    public boolean hasNext() {
+                        advance();
+                        return currentIterator.hasNext();
+                    }
+
+                    @Override
+                    public T next() {
+                        advance();
+                        return currentIterator.next();
+                    }
+                };
+            }
+
+        };
+    }
 
     public static <T> boolean allMatch(T[] inputs, Predicate<T> predicate) {
         return allMatch(Arrays.asList(inputs), predicate);
