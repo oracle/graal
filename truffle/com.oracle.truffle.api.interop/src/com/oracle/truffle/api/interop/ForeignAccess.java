@@ -48,12 +48,16 @@ public final class ForeignAccess {
     private final Factory factory;
     private final RootNode languageCheck;
 
+    // still here for GraalVM intrinsics.
+    @SuppressWarnings("unused") private final Thread initThread;
+
     private ForeignAccess(Factory faf) {
         this(null, faf);
     }
 
     private ForeignAccess(RootNode languageCheck, Factory faf) {
         this.factory = faf;
+        this.initThread = null;
         this.languageCheck = languageCheck;
         CompilerAsserts.neverPartOfCompilation("do not create a ForeignAccess object from compiled code");
     }
