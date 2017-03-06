@@ -32,10 +32,10 @@ package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public interface VoidInstruction extends Instruction {
+public abstract class VoidInstruction extends Instruction {
 
     @Override
-    default Type getType() {
+    public Type getType() {
         return MetaType.VOID;
     }
 }

@@ -33,7 +33,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 
-public abstract class ValueInstruction implements Instruction, ValueSymbol {
+public abstract class ValueInstruction extends Instruction implements ValueSymbol {
 
     private final Type type;
 

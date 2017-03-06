@@ -53,13 +53,10 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchOldInstru
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInstruction;
 
-public abstract class ReducedInstructionVisitor implements InstructionVisitor {
+public abstract class ValueInstructionVisitor implements InstructionVisitor {
 
     public abstract void visitValueInstruction(ValueInstruction valueInstruction);
-
-    public abstract void visitVoidInstruction(VoidInstruction voidInstruction);
 
     @Override
     public void visit(AllocateInstruction allocate) {
@@ -73,7 +70,6 @@ public abstract class ReducedInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(BranchInstruction branch) {
-        visitVoidInstruction(branch);
     }
 
     @Override
@@ -93,7 +89,6 @@ public abstract class ReducedInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(ConditionalBranchInstruction branch) {
-        visitVoidInstruction(branch);
     }
 
     @Override
@@ -113,7 +108,6 @@ public abstract class ReducedInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(IndirectBranchInstruction branch) {
-        visitVoidInstruction(branch);
     }
 
     @Override
@@ -138,7 +132,6 @@ public abstract class ReducedInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(ReturnInstruction ret) {
-        visitVoidInstruction(ret);
     }
 
     @Override
@@ -153,27 +146,21 @@ public abstract class ReducedInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(StoreInstruction store) {
-        visitVoidInstruction(store);
     }
 
     @Override
     public void visit(SwitchInstruction select) {
-        visitVoidInstruction(select);
     }
 
     @Override
     public void visit(SwitchOldInstruction select) {
-        visitVoidInstruction(select);
     }
 
     @Override
     public void visit(UnreachableInstruction unreachable) {
-        visitVoidInstruction(unreachable);
     }
 
     @Override
     public void visit(VoidCallInstruction call) {
-        visitVoidInstruction(call);
-
     }
 }

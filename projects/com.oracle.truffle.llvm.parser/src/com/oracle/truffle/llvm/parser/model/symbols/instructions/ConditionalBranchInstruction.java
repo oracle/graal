@@ -35,9 +35,11 @@ import java.util.List;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.runtime.types.MetaType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
-public final class ConditionalBranchInstruction implements VoidInstruction, TerminatingInstruction {
+public final class ConditionalBranchInstruction extends TerminatingInstruction {
 
     private Symbol condition;
 
@@ -65,6 +67,11 @@ public final class ConditionalBranchInstruction implements VoidInstruction, Term
 
     public InstructionBlock getTrueSuccessor() {
         return trueSuccessor;
+    }
+
+    @Override
+    public Type getType() {
+        return MetaType.VOID;
     }
 
     @Override

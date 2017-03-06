@@ -62,10 +62,8 @@ import com.oracle.truffle.llvm.parser.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.ArrayConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.StructureConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInstruction;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.parser.model.visitors.ReducedInstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolResolver;
 import com.oracle.truffle.llvm.parser.util.LLVMFrameIDs;
 import com.oracle.truffle.llvm.parser.util.LLVMParserAsserts;
@@ -416,15 +414,10 @@ public final class LLVMParserRuntime {
 
     private final Map<String, Type> nameToTypeMapping = new HashMap<>();
 
-    private final InstructionVisitor nameToTypeMappingVisitor = new ReducedInstructionVisitor() {
+    private final ValueInstructionVisitor nameToTypeMappingVisitor = new ValueInstructionVisitor() {
         @Override
         public void visitValueInstruction(ValueInstruction valueInstruction) {
             nameToTypeMapping.put(valueInstruction.getName(), valueInstruction.getType());
-        }
-
-        @Override
-        public void visitVoidInstruction(VoidInstruction voidInstruction) {
-
         }
     };
 

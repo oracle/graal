@@ -33,12 +33,12 @@ import java.util.List;
 
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 
-public interface TerminatingInstruction extends Instruction {
+public abstract class TerminatingInstruction extends Instruction {
 
-    List<InstructionBlock> getSuccessors();
+    public abstract List<InstructionBlock> getSuccessors();
 
     @Override
-    default boolean isTerminating() {
+    public final boolean isTerminating() {
         return true;
     }
 }

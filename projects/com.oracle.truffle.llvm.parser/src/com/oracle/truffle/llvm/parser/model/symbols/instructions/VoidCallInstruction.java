@@ -42,7 +42,7 @@ import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
-public final class VoidCallInstruction implements Call, VoidInstruction {
+public final class VoidCallInstruction extends Instruction implements Call {
 
     private final Linkage linkage;
 
@@ -56,6 +56,11 @@ public final class VoidCallInstruction implements Call, VoidInstruction {
         arguments = new ArrayList<>();
         this.linkage = linkage;
         this.visibility = visibility;
+    }
+
+    @Override
+    public Type getType() {
+        return MetaType.VOID;
     }
 
     @Override
