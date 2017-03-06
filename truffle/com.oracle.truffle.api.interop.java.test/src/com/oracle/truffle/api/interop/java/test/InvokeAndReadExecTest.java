@@ -61,6 +61,7 @@ public class InvokeAndReadExecTest {
 
         @Resolve(message = "INVOKE")
         abstract static class InvokeImpl extends Node {
+            @SuppressWarnings("unused")
             protected Object access(InvokeObject obj, String name, Object... args) {
                 if (name.equals("test")) {
                     return "Invoked " + args[0];
@@ -92,6 +93,7 @@ public class InvokeAndReadExecTest {
         }
 
         @Resolve(message = "EXECUTE")
+        @SuppressWarnings("unused")
         abstract static class ExecImpl extends Node {
             protected Object access(ReadExecObject obj, Object... args) {
                 return "Executed " + args[0];
@@ -100,6 +102,7 @@ public class InvokeAndReadExecTest {
 
         @Resolve(message = "IS_EXECUTABLE")
         abstract static class IsExecImpl extends Node {
+            @SuppressWarnings("unused")
             protected Object access(ReadExecObject obj) {
                 return true;
             }
