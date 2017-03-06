@@ -25,6 +25,9 @@
 package com.oracle.truffle.api.instrumentation.test;
 
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -86,7 +89,7 @@ import com.oracle.truffle.api.source.SourceSection;
 @Registration(mimeType = InstrumentationTestLanguage.MIME_TYPE, name = "InstrumentTestLang", version = "2.0")
 @ProvidedTags({ExpressionNode.class, DefineNode.class, LoopNode.class,
                 StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, BlockNode.class, StandardTags.RootTag.class})
-public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, CallTarget>> {
+public class InstrumentationTestLanguage extends TruffleLanguage<Context> {
 
     public static final String MIME_TYPE = "application/x-truffle-instrumentation-test-language";
     public static final String FILENAME_EXTENSION = ".titl";
@@ -101,21 +104,21 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
     public static final Class<?> BLOCK = BlockNode.class;
 
     public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT};
-    public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "LOOP", "STATEMENT", "CALL", "BLOCK", "ROOT", "CONSTANT", "VARIABLE"};
+    public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "LOOP", "STATEMENT", "CALL", "BLOCK", "ROOT", "CONSTANT", "VARIABLE", "PRINT"};
 
     // used to test that no getSourceSection calls happen in certain situations
     private static int rootSourceSectionQueryCount;
 
     @Override
-    protected Map<String, CallTarget> createContext(TruffleLanguage.Env env) {
-        return new HashMap<>();
+    protected Context createContext(TruffleLanguage.Env env) {
+        return new Context(env.out(), env.err());
     }
 
     public Node createFindContextNode0() {
         return super.createFindContextNode();
     }
 
-    public Map<String, CallTarget> findContext0(Node contextNode) {
+    public Context findContext0(Node contextNode) {
         return findContext(contextNode);
     }
 
@@ -175,7 +178,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
             int numberOfIdents = 0;
             if (tag.equals("DEFINE") || tag.equals("CALL") || tag.equals("LOOP") || tag.equals("CONSTANT")) {
                 numberOfIdents = 1;
-            } else if (tag.equals("VARIABLE")) {
+            } else if (tag.equals("VARIABLE") || tag.equals("PRINT")) {
                 numberOfIdents = 2;
             }
             String[] idents = new String[numberOfIdents];
@@ -252,6 +255,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
                     return new ConstantNode(idents[0], childArray);
                 case "VARIABLE":
                     return new VariableNode(idents[0], idents[1], childArray);
+                case "PRINT":
+                    return new PrintNode(idents[0], idents[1], childArray);
                 default:
                     throw new AssertionError();
             }
@@ -437,13 +442,13 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
 
         @TruffleBoundary
         private void defineFunction() {
-            Map<String, CallTarget> context = InstrumentationTestLanguage.INSTANCE.findContext(contextNode);
-            if (context.containsKey(identifier)) {
-                if (context.get(identifier) != target) {
+            Context context = InstrumentationTestLanguage.INSTANCE.findContext(contextNode);
+            if (context.callTargets.containsKey(identifier)) {
+                if (context.callTargets.get(identifier) != target) {
                     throw new IllegalArgumentException("Identifier redefinition not supported.");
                 }
             }
-            context.put(this.identifier, target);
+            context.callTargets.put(this.identifier, target);
         }
 
     }
@@ -465,8 +470,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
         public Object execute(VirtualFrame frame) {
             if (callNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                Map<String, CallTarget> context = InstrumentationTestLanguage.INSTANCE.findContext(contextNode);
-                CallTarget target = context.get(identifier);
+                Context context = InstrumentationTestLanguage.INSTANCE.findContext(contextNode);
+                CallTarget target = context.callTargets.get(identifier);
                 callNode = insert(Truffle.getRuntime().createDirectCallNode(target));
             }
             return callNode.call(new Object[0]);
@@ -558,6 +563,52 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
         }
     }
 
+    static class PrintNode extends InstrumentedNode {
+
+        enum Output {
+            OUT,
+            ERR
+        }
+
+        private final Output where;
+        private final String what;
+        @CompilationFinal private PrintWriter writer;
+        @Child private Node contextNode;
+
+        PrintNode(String where, String what, BaseNode[] children) {
+            super(children);
+            if (what == null) {
+                this.where = Output.OUT;
+                this.what = where;
+            } else {
+                this.where = Output.valueOf(where);
+                this.what = what;
+            }
+            this.contextNode = InstrumentationTestLanguage.INSTANCE.createFindContextNode0();
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            if (writer == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Context context = InstrumentationTestLanguage.INSTANCE.findContext(contextNode);
+                switch (where) {
+                    case OUT:
+                        writer = new PrintWriter(new OutputStreamWriter(context.out));
+                        break;
+                    case ERR:
+                        writer = new PrintWriter(new OutputStreamWriter(context.err));
+                        break;
+                    default:
+                        throw new AssertionError(where);
+                }
+            }
+            writer.write(what);
+            writer.flush();
+            return null;
+        }
+    }
+
     public abstract static class BaseNode extends Node {
 
         private SourceSection sourceSection;
@@ -584,12 +635,12 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
     }
 
     @Override
-    protected Object findExportedSymbol(Map<String, CallTarget> context, String globalName, boolean onlyExplicit) {
-        return context.get(globalName);
+    protected Object findExportedSymbol(Context context, String globalName, boolean onlyExplicit) {
+        return context.callTargets.get(globalName);
     }
 
     @Override
-    protected Object getLanguageGlobal(Map<String, CallTarget> context) {
+    protected Object getLanguageGlobal(Context context) {
         return context;
     }
 
@@ -599,7 +650,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
     }
 
     @Override
-    protected Object findMetaObject(Map<String, CallTarget> context, Object obj) {
+    protected Object findMetaObject(Context context, Object obj) {
         if (obj instanceof Integer || obj instanceof Long) {
             return "Integer";
         }
@@ -613,7 +664,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
     }
 
     @Override
-    protected SourceSection findSourceLocation(Map<String, CallTarget> context, Object obj) {
+    protected SourceSection findSourceLocation(Context context, Object obj) {
         if (obj instanceof Integer || obj instanceof Long) {
             return Source.newBuilder("source integer").name("integer").mimeType(MIME_TYPE).build().createSection(1);
         }
@@ -629,5 +680,16 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
     public static int getRootSourceSectionQueryCount() {
         return rootSourceSectionQueryCount;
     }
+}
 
+class Context {
+
+    final Map<String, CallTarget> callTargets = new HashMap<>();
+    final OutputStream out;
+    final OutputStream err;
+
+    Context(OutputStream out, OutputStream err) {
+        this.out = out;
+        this.err = err;
+    }
 }

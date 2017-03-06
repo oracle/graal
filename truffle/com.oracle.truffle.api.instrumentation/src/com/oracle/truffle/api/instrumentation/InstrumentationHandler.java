@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode.EventChainNode;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
@@ -84,18 +85,20 @@ final class InstrumentationHandler {
     private final Collection<EventBinding<?>> executionBindings = new EventBindingList(8);
     private final Collection<EventBinding<?>> sourceSectionBindings = new EventBindingList(8);
     private final Collection<EventBinding<?>> sourceBindings = new EventBindingList(8);
+    private final Collection<EventBinding<?>> outputStdBindings = new EventBindingList(1);
+    private final Collection<EventBinding<?>> outputErrBindings = new EventBindingList(1);
 
     /*
      * Fast lookup of instrumenter instances based on a key provided by the accessor.
      */
     private final ConcurrentHashMap<Object, AbstractInstrumenter> instrumenterMap = new ConcurrentHashMap<>();
 
-    private final OutputStream out;
-    private final OutputStream err;
+    private final DispatchOutputStream out;
+    private final DispatchOutputStream err;
     private final InputStream in;
     private final Map<Class<?>, Set<Class<?>>> cachedProvidedTags = new ConcurrentHashMap<>();
 
-    private InstrumentationHandler(Object sourceVM, OutputStream out, OutputStream err, InputStream in) {
+    private InstrumentationHandler(Object sourceVM, DispatchOutputStream out, DispatchOutputStream err, InputStream in) {
         this.sourceVM = sourceVM;
         this.out = out;
         this.err = err;
@@ -176,6 +179,8 @@ final class InstrumentationHandler {
             disposeBindingsBulk(disposedExecutionBindings);
             disposeBindingsBulk(filterBindingsForInstrumenter(sourceSectionBindings, disposedInstrumenter));
             disposeBindingsBulk(filterBindingsForInstrumenter(sourceBindings, disposedInstrumenter));
+            disposeOutputBindingsBulk(out, outputStdBindings);
+            disposeOutputBindingsBulk(err, outputErrBindings);
         }
         if (TRACE) {
             trace("END: Disposed instrumenter %n", key);
@@ -184,6 +189,13 @@ final class InstrumentationHandler {
 
     private static void disposeBindingsBulk(Collection<EventBinding<?>> list) {
         for (EventBinding<?> binding : list) {
+            binding.disposeBulk();
+        }
+    }
+
+    private static void disposeOutputBindingsBulk(DispatchOutputStream dos, Collection<EventBinding<?>> list) {
+        for (EventBinding<?> binding : list) {
+            AccessorInstrumentHandler.engineAccess().detachOutputConsumer(dos, (OutputStream) binding.getElement());
             binding.disposeBulk();
         }
     }
@@ -251,6 +263,28 @@ final class InstrumentationHandler {
         return binding;
     }
 
+    <T extends OutputStream> EventBinding<T> addOutputBinding(EventBinding<T> binding, boolean errorOutput) {
+        if (TRACE) {
+            String kind = (errorOutput) ? "error" : "standard";
+            trace("BEGIN: Adding " + kind + " output binding %s%n", binding.getElement());
+        }
+
+        if (errorOutput) {
+            this.outputErrBindings.add(binding);
+            AccessorInstrumentHandler.engineAccess().attachOutputConsumer(this.err, binding.getElement());
+        } else {
+            this.outputStdBindings.add(binding);
+            AccessorInstrumentHandler.engineAccess().attachOutputConsumer(this.out, binding.getElement());
+        }
+
+        if (TRACE) {
+            String kind = (errorOutput) ? "error" : "standard";
+            trace("END: Added " + kind + " output binding %s%n", binding.getElement());
+        }
+
+        return binding;
+    }
+
     /**
      * Initializes sources and sourcesList by populating them from loadedRoots.
      */
@@ -286,6 +320,15 @@ final class InstrumentationHandler {
 
         if (binding.isExecutionEvent()) {
             visitRoots(executedRoots, new DisposeWrappersVisitor(binding));
+        } else {
+            Object elm = binding.getElement();
+            if (elm instanceof OutputStream) {
+                if (outputErrBindings.contains(binding)) {
+                    AccessorInstrumentHandler.engineAccess().detachOutputConsumer(err, (OutputStream) elm);
+                } else if (outputStdBindings.contains(binding)) {
+                    AccessorInstrumentHandler.engineAccess().detachOutputConsumer(out, (OutputStream) elm);
+                }
+            }
         }
 
         if (TRACE) {
@@ -460,6 +503,10 @@ final class InstrumentationHandler {
 
     private <T> EventBinding<T> attachSourceSectionListener(AbstractInstrumenter abstractInstrumenter, SourceSectionFilter filter, T listener, boolean notifyLoaded) {
         return addSourceSectionBinding(new EventBinding<>(abstractInstrumenter, filter, listener, false), notifyLoaded);
+    }
+
+    private <T extends OutputStream> EventBinding<T> attachOutputConsumer(AbstractInstrumenter instrumenter, T stream, boolean errorOutput) {
+        return addOutputBinding(new EventBinding<>(instrumenter, null, stream, false), errorOutput);
     }
 
     Set<Class<?>> getProvidedTags(Class<?> language) {
@@ -998,6 +1045,16 @@ final class InstrumentationHandler {
             return InstrumentationHandler.this.attachSourceSectionListener(this, filter, listener, notifyLoaded);
         }
 
+        @Override
+        public <T extends OutputStream> EventBinding<T> attachOutConsumer(T stream) {
+            return InstrumentationHandler.this.attachOutputConsumer(this, stream, false);
+        }
+
+        @Override
+        public <T extends OutputStream> EventBinding<T> attachErrConsumer(T stream) {
+            return InstrumentationHandler.this.attachOutputConsumer(this, stream, true);
+        }
+
         private void verifySourceOnly(SourceSectionFilter filter) {
             if (!filter.isSourceOnly()) {
                 throw new IllegalArgumentException(String.format("The attached filter %s uses filters that require source sections to verifiy. " +
@@ -1242,7 +1299,7 @@ final class InstrumentationHandler {
         static final class InstrumentImpl extends InstrumentSupport {
 
             @Override
-            public Object createInstrumentationHandler(Object vm, OutputStream out, OutputStream err, InputStream in) {
+            public Object createInstrumentationHandler(Object vm, DispatchOutputStream out, DispatchOutputStream err, InputStream in) {
                 return new InstrumentationHandler(vm, out, err, in);
             }
 
