@@ -1369,6 +1369,7 @@ suite = {
         "org.graalvm.compiler.phases.common.test",
         "org.graalvm.compiler.truffle.test",
         "org.graalvm.compiler.truffle.hotspot.test",
+        "org.graalvm.util.test",
         "com.oracle.nfi.test",
         "org.graalvm.compiler.loop.test",
       ],

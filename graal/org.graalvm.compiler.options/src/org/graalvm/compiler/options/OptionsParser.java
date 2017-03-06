@@ -41,11 +41,10 @@ public class OptionsParser {
      *
      * @param optionSettings option settings (i.e., assignments of values to options)
      * @param values the object in which to store the parsed values
-     * @param loader the loader for {@linkplain #lookup(ServiceLoader, String) looking} up
-     *            {@link OptionDescriptor}s
+     * @param loader source of the available {@link OptionDescriptors}
      * @throws IllegalArgumentException if there's a problem parsing {@code option}
      */
-    public static void parseOptions(EconomicMap<String, String> optionSettings, EconomicMap<OptionKey<?>, Object> values, ServiceLoader<OptionDescriptors> loader) {
+    public static void parseOptions(EconomicMap<String, String> optionSettings, EconomicMap<OptionKey<?>, Object> values, Iterable<OptionDescriptors> loader) {
         if (optionSettings != null && !optionSettings.isEmpty()) {
             MapCursor<String, String> cursor = optionSettings.getEntries();
             while (cursor.advance()) {
@@ -70,12 +69,12 @@ public class OptionsParser {
     /**
      * Looks up an {@link OptionDescriptor} based on a given name.
      *
-     * @param loader provides the available {@link OptionDescriptor}s
+     * @param loader source of the available {@link OptionDescriptors}
      * @param name the name of the option to look up
      * @return the {@link OptionDescriptor} whose name equals {@code name} or null if not such
      *         descriptor is available
      */
-    private static OptionDescriptor lookup(ServiceLoader<OptionDescriptors> loader, String name) {
+    private static OptionDescriptor lookup(Iterable<OptionDescriptors> loader, String name) {
         for (OptionDescriptors optionDescriptors : loader) {
             OptionDescriptor desc = optionDescriptors.get(name);
             if (desc != null) {
@@ -91,11 +90,10 @@ public class OptionsParser {
      * @param name the option name
      * @param uncheckedValue the unchecked value for the option
      * @param values the object in which to store the parsed option and value
-     * @param loader the loader for {@linkplain #lookup(ServiceLoader, String) looking} up
-     *            {@link OptionDescriptor}s
+     * @param loader source of the available {@link OptionDescriptors}
      * @throws IllegalArgumentException if there's a problem parsing {@code option}
      */
-    static void parseOption(String name, Object uncheckedValue, EconomicMap<OptionKey<?>, Object> values, ServiceLoader<OptionDescriptors> loader) {
+    static void parseOption(String name, Object uncheckedValue, EconomicMap<OptionKey<?>, Object> values, Iterable<OptionDescriptors> loader) {
 
         OptionDescriptor desc = lookup(loader, name);
         if (desc == null) {
@@ -202,7 +200,7 @@ public class OptionsParser {
     /**
      * Returns the set of options that fuzzy match a given option name.
      */
-    private static List<OptionDescriptor> fuzzyMatch(ServiceLoader<OptionDescriptors> loader, String optionName) {
+    private static List<OptionDescriptor> fuzzyMatch(Iterable<OptionDescriptors> loader, String optionName) {
         List<OptionDescriptor> matches = new ArrayList<>();
         for (OptionDescriptors options : loader) {
             for (OptionDescriptor option : options) {

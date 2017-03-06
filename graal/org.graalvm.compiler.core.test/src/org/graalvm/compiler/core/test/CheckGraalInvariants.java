@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.core.test;
 
-import static org.graalvm.compiler.core.test.GraalCompilerTest.getInitialOptions;
 import static org.graalvm.compiler.debug.DelegatingDebugConfig.Feature.INTERCEPT;
 
 import java.io.File;
@@ -82,7 +81,6 @@ import org.graalvm.compiler.phases.verify.VerifyUpdateUsages;
 import org.graalvm.compiler.phases.verify.VerifyUsageWithEquals;
 import org.graalvm.compiler.phases.verify.VerifyVirtualizableUsage;
 import org.graalvm.compiler.runtime.RuntimeProvider;
-import org.graalvm.compiler.test.GraalTest;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -103,7 +101,7 @@ import jdk.vm.ci.meta.Value;
  * global invariants such as using {@link Object#equals(Object)} to compare certain types instead of
  * identity comparisons.
  */
-public class CheckGraalInvariants extends GraalTest {
+public class CheckGraalInvariants extends GraalCompilerTest {
 
     private static boolean shouldVerifyEquals(ResolvedJavaMethod m) {
         if (m.getName().equals("identityEquals")) {
@@ -119,7 +117,7 @@ public class CheckGraalInvariants extends GraalTest {
     private static boolean shouldProcess(String classpathEntry) {
         if (classpathEntry.endsWith(".jar")) {
             String name = new File(classpathEntry).getName();
-            return name.contains("jvmci") || name.contains("graal") || name.contains("jdk.vm.compiler");
+            return name.contains("jvmci") || name.contains("graal") || name.contains("jdk.internal.vm.compiler");
         }
         return false;
     }

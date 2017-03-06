@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.truffle;
 
+import static org.graalvm.compiler.core.common.util.Util.Java8OrEarlier;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationRepeats;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompileOnly;
@@ -77,6 +78,7 @@ import org.graalvm.compiler.truffle.debug.TraceCompilationPolymorphismListener;
 import org.graalvm.compiler.truffle.debug.TraceInliningListener;
 import org.graalvm.compiler.truffle.debug.TraceSplittingListener;
 import org.graalvm.compiler.truffle.phases.InstrumentPhase;
+import org.graalvm.util.CollectionsUtil;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -686,9 +688,24 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     }
 
     private static Object loadObjectLayoutFactory() {
+        ServiceLoader<LayoutFactory> graalLoader = ServiceLoader.load(LayoutFactory.class, GraalTruffleRuntime.class.getClassLoader());
+        if (Java8OrEarlier) {
+            return loadBestObjectLayoutFactory(graalLoader);
+        } else {
+            /*
+             * The Graal module (i.e., jdk.internal.vm.compiler) is loaded by the platform class
+             * loader on JDK 9. Its module dependencies such as Truffle are supplied via
+             * --module-path which means they are loaded by the app class loader. As such, we need
+             * to search the app class loader path as well.
+             */
+            ServiceLoader<LayoutFactory> appLoader = ServiceLoader.load(LayoutFactory.class, LayoutFactory.class.getClassLoader());
+            return loadBestObjectLayoutFactory(CollectionsUtil.concat(graalLoader, appLoader));
+        }
+    }
+
+    protected static LayoutFactory loadBestObjectLayoutFactory(Iterable<LayoutFactory> serviceLoaders) {
         LayoutFactory bestLayoutFactory = null;
-        ServiceLoader<LayoutFactory> serviceLoader = ServiceLoader.load(LayoutFactory.class, GraalTruffleRuntime.class.getClassLoader());
-        for (LayoutFactory currentLayoutFactory : serviceLoader) {
+        for (LayoutFactory currentLayoutFactory : serviceLoaders) {
             if (bestLayoutFactory == null) {
                 bestLayoutFactory = currentLayoutFactory;
             } else if (currentLayoutFactory.getPriority() >= bestLayoutFactory.getPriority()) {

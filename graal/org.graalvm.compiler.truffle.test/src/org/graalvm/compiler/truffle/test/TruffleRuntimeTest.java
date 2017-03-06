@@ -27,16 +27,17 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import org.junit.Test;
-
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.runtime.RuntimeProvider;
+import org.junit.Test;
+
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.object.LayoutFactory;
 
+@AddExports("jdk.internal.vm.ci/jdk.vm.ci.services")
 public class TruffleRuntimeTest {
 
     @Test
@@ -80,7 +81,13 @@ public class TruffleRuntimeTest {
         LayoutFactory layoutFactory = runtime.getCapability(LayoutFactory.class);
         assertNotNull("LayoutFactory not found", layoutFactory);
 
-        // Bootstrap class loader or JVMCI class loader
-        assertTrue(layoutFactory.getClass().getClassLoader() == null || layoutFactory.getClass().getClassLoader() == runtime.getClass().getClassLoader());
+        boolean java8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
+        ClassLoader layoutFactoryCL = layoutFactory.getClass().getClassLoader();
+        if (java8OrEarlier) {
+            // Bootstrap class loader or JVMCI class loader
+            assertTrue(layoutFactoryCL == null || layoutFactoryCL == runtime.getClass().getClassLoader());
+        } else {
+            // Rely on modules to only load trusted service providers
+        }
     }
 }
