@@ -51,6 +51,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.FindContextNode;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -1578,7 +1579,7 @@ public class PolyglotEngine {
 
             @Override
             public CallTarget registerInteropTarget(Object truffleObject, RootNode computation, Object key) {
-                assert key instanceof Class || key instanceof Method : "Unexpected key: " + key;
+                assert TruffleOptions.AOT || assertKeyType(key);
                 if (truffleObject instanceof EngineTruffleObject) {
                     PolyglotEngine engine = ((EngineTruffleObject) truffleObject).engine();
                     return engine.cachedTargets.lookupComputation(key, computation);
@@ -1588,6 +1589,11 @@ public class PolyglotEngine {
                     return null;
                 }
                 return Truffle.getRuntime().createCallTarget(computation);
+            }
+
+            private static boolean assertKeyType(Object key) {
+                assert key instanceof Class || key instanceof Method : "Unexpected key: " + key;
+                return true;
             }
         }
 
