@@ -32,6 +32,7 @@ import org.graalvm.compiler.api.directives.GraalDirectives;
  * {@link org.graalvm.compiler.phases.common.DominatorConditionalEliminationPhase} including those
  * that triggered bugs in this phase.
  */
+@Ignore
 public class ConditionalEliminationTest11 extends ConditionalEliminationTestBase {
     public ConditionalEliminationTest11() {
         // Don't disable simplification

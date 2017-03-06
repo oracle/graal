@@ -27,10 +27,6 @@ import java.util.Deque;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.cfg.BlockMap;
-import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
-import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
-import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.And;
-import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Or;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -66,10 +62,8 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnaryOpLogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
-import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.BinaryNode;
-import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.UnaryNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
@@ -532,10 +526,22 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
         }
 
         private static Stamp getSafeStamp(ValueNode x) {
-            if (x.isConstant()) {
-                return x.stamp();
+
+            // Move upwards through pi nodes.
+            ValueNode current = x;
+            while (current instanceof PiNode) {
+                current = ((PiNode) current).getOriginalNode();
             }
-            return x.stamp().unrestricted();
+
+            // Move downwards as long as there is only a single user.
+            while (current != x && current.getUsageCount() == 1) {
+                Node first = current.usages().first();
+                if (first instanceof PiNode) {
+                    current = (ValueNode) first;
+                }
+            }
+
+            return current.stamp();
         }
 
         /**
@@ -563,16 +569,10 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                     BinaryOpLogicNode binaryOpLogicNode = (BinaryOpLogicNode) pending.condition;
                     ValueNode x = binaryOpLogicNode.getX();
                     ValueNode y = binaryOpLogicNode.getY();
-                    if (binaryOpLogicNode.getX() == original) {
-                        result = binaryOpLogicNode.tryFold(newStamp, binaryOpLogicNode.getY().stamp());
-                    } else if (binaryOpLogicNode.getY() == original) {
-                        result = binaryOpLogicNode.tryFold(binaryOpLogicNode.getX().stamp(), newStamp);
-                    } else if (binaryOpLogicNode instanceof IntegerEqualsNode && y.isConstant() && x instanceof AndNode) {
-                        AndNode and = (AndNode) x;
-                        if (and.getY() == y && and.getX() == original) {
-                            BinaryOp<And> andOp = ArithmeticOpTable.forStamp(newStamp).getAnd();
-                            result = binaryOpLogicNode.tryFold(andOp.foldStamp(newStamp, y.stamp()), y.stamp());
-                        }
+                    if (x == original) {
+                        result = binaryOpLogicNode.tryFold(newStamp, getSafeStamp(y));
+                    } else if (y == original) {
+                        result = binaryOpLogicNode.tryFold(getSafeStamp(x), newStamp);
                     }
                 }
                 if (result.isKnown()) {
@@ -727,32 +727,15 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                         }
                     }
                 }
-                if (thisGuard != null && binaryOpLogicNode instanceof IntegerEqualsNode && !thisGuard.isNegated()) {
-                    if (y.isConstant() && x instanceof AndNode) {
-                        AndNode and = (AndNode) x;
-                        if (and.getY() == y) {
-                            /*
-                             * This 'and' proves something about some of the bits in and.getX().
-                             * It's equivalent to or'ing in the mask value since those values are
-                             * known to be set.
-                             */
-                            BinaryOp<Or> op = ArithmeticOpTable.forStamp(x.stamp()).getOr();
-                            IntegerStamp newStampX = (IntegerStamp) op.foldStamp(and.getX().stamp(), y.stamp());
-                            if (foldPendingTest(thisGuard, and.getX(), newStampX, rewireGuardFunction)) {
-                                return true;
-                            }
-                        }
-                    }
-                }
                 if (thisGuard != null) {
                     if (!x.isConstant()) {
-                        Stamp newStampX = binaryOpLogicNode.getSucceedingStampForX(thisGuard.isNegated(), x.stamp(), getSafeStamp(y));
+                        Stamp newStampX = binaryOpLogicNode.getSucceedingStampForX(thisGuard.isNegated(), getSafeStamp(x), getSafeStamp(y));
                         if (newStampX != null && foldPendingTest(thisGuard, x, newStampX, rewireGuardFunction)) {
                             return true;
                         }
                     }
                     if (!y.isConstant()) {
-                        Stamp newStampY = binaryOpLogicNode.getSucceedingStampForY(thisGuard.isNegated(), getSafeStamp(x), y.stamp());
+                        Stamp newStampY = binaryOpLogicNode.getSucceedingStampForY(thisGuard.isNegated(), getSafeStamp(x), getSafeStamp(y));
                         if (newStampY != null && foldPendingTest(thisGuard, y, newStampY, rewireGuardFunction)) {
                             return true;
                         }
