@@ -30,16 +30,27 @@
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBaseNode;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
-public interface Instruction extends Symbol {
+public abstract class Instruction implements Symbol {
 
-    void accept(InstructionVisitor visitor);
+    private MetadataBaseNode debugLocation = null;
+
+    public MetadataBaseNode getDebugLocation() {
+        return debugLocation;
+    }
+
+    public void setDebugLocation(MetadataBaseNode debugLocation) {
+        this.debugLocation = debugLocation;
+    }
+
+    public abstract void accept(InstructionVisitor visitor);
 
     @Override
-    default boolean hasName() {
+    public boolean hasName() {
         return false;
     }
 
-    boolean isTerminating();
+    public abstract boolean isTerminating();
 }

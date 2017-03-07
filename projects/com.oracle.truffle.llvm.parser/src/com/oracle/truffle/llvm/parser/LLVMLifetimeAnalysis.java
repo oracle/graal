@@ -70,7 +70,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstructio
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.AbstractTerminatingInstructionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.parser.model.visitors.ValueSymbolVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
 import com.oracle.truffle.llvm.parser.util.LLVMParserAsserts;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
@@ -367,7 +367,7 @@ public final class LLVMLifetimeAnalysis {
         }
 
         private void initializeInstructionInOuts() {
-            final InstructionVisitor initEndKillsVisitor = new ValueSymbolVisitor() {
+            final InstructionVisitor initEndKillsVisitor = new ValueInstructionVisitor() {
                 @Override
                 public void visitValueInstruction(ValueInstruction valueInstruction) {
                     bbEndKills.put(valueInstruction, new HashSet<>());
@@ -404,7 +404,7 @@ public final class LLVMLifetimeAnalysis {
         }
 
         private void initializeVariableDefinitions() {
-            final InstructionVisitor initVarDefVisitor = new ValueSymbolVisitor() {
+            final InstructionVisitor initVarDefVisitor = new ValueInstructionVisitor() {
                 @Override
                 public void visitValueInstruction(ValueInstruction valueInstruction) {
                     final Set<FrameSlot> instructionDefs = new HashSet<>(1);

@@ -36,9 +36,11 @@ import java.util.List;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.runtime.types.MetaType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
-public final class SwitchOldInstruction implements VoidInstruction, TerminatingInstruction {
+public final class SwitchOldInstruction extends TerminatingInstruction {
 
     private Symbol condition;
 
@@ -77,6 +79,11 @@ public final class SwitchOldInstruction implements VoidInstruction, TerminatingI
 
     public InstructionBlock getDefaultBlock() {
         return defaultBlock;
+    }
+
+    @Override
+    public Type getType() {
+        return MetaType.VOID;
     }
 
     @Override

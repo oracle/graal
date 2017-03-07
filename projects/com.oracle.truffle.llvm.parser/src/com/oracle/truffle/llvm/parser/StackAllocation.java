@@ -40,10 +40,9 @@ import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
-import com.oracle.truffle.llvm.parser.model.visitors.ReducedInstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
 import com.oracle.truffle.llvm.parser.util.LLVMFrameIDs;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 
@@ -104,7 +103,7 @@ public final class StackAllocation {
         }
     }
 
-    private static final class StackAllocationFunctionVisitor extends ReducedInstructionVisitor implements FunctionVisitor {
+    private static final class StackAllocationFunctionVisitor extends ValueInstructionVisitor implements FunctionVisitor {
 
         private final FrameDescriptor frame;
 
@@ -117,10 +116,6 @@ public final class StackAllocation {
             final String slotName = valueInstruction.getName();
             final FrameSlotKind slotKind = valueInstruction.getType().getFrameSlotKind();
             frame.addFrameSlot(slotName, slotKind);
-        }
-
-        @Override
-        public void visitVoidInstruction(VoidInstruction voidInstruction) {
         }
 
         @Override
