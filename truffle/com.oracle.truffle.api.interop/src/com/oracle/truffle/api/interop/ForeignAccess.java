@@ -1106,4 +1106,6 @@ public final class ForeignAccess {
             return factory.accessMessage(msg);
         }
     }
+
+    @SuppressWarnings("unused") private static final InteropAccessor ACCESSOR = new InteropAccessor();
 }

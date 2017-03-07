@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,35 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.interop.java;
+package com.oracle.truffle.api.interop;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.nodes.Node;
 
-final class JavaInteropAccessor extends Accessor {
-
-    EngineSupport engine() {
-        return engineSupport();
-    }
+class InteropAccessor extends Accessor {
 
     @Override
-    protected JavaInteropSupport javaInteropSupport() {
-        return new JavaInteropSupport() {
+    protected InteropSupport interopSupport() {
+        return new InteropSupport() {
             @Override
-            public Node createToJavaNode() {
-                return ToJavaNodeGen.create();
+            public boolean canHandle(Object foreignAccess, Object receiver) {
+                ForeignAccess fa = (ForeignAccess) foreignAccess;
+                TruffleObject obj = (TruffleObject) receiver;
+                return fa.canHandle(obj);
             }
 
             @Override
-            public Object toJava(Node javaNode, Class<?> type, Object value) {
-                ToJavaNode toJavaNode = (ToJavaNode) javaNode;
-                return toJavaNode.execute(value, new TypeAndClass<>(null, type));
+            public CallTarget canHandleTarget(Object access) {
+                ForeignAccess fa = (ForeignAccess) access;
+                return fa.checkLanguage();
             }
         };
-    }
-
-    InteropSupport interop() {
-        return interopSupport();
     }
 
 }

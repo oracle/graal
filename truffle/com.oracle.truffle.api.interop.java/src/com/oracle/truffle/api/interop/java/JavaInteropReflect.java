@@ -28,6 +28,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -38,6 +39,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.interop.java.JavaInteropReflectFactory.MethodNodeGen;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.lang.reflect.Constructor;
@@ -251,7 +254,7 @@ final class JavaInteropReflect {
             if (call == null) {
                 Message message = findMessage(method, method.getAnnotation(MethodMessage.class), args.length);
                 TypeAndClass<?> convertTo = TypeAndClass.forReturnType(method);
-                MethodNode methodNode = new MethodNode(method.getName(), message, convertTo);
+                MethodNode methodNode = MethodNodeGen.create(method.getName(), message, convertTo);
                 call = JavaInterop.ACCESSOR.engine().registerInteropTarget(obj, methodNode, method);
             }
 
@@ -260,7 +263,7 @@ final class JavaInteropReflect {
 
     }
 
-    private static final class MethodNode extends RootNode {
+    abstract static class MethodNode extends RootNode {
         private final String name;
         private final TypeAndClass<?> returnType;
         @CompilerDirectives.CompilationFinal private Message message;
@@ -276,61 +279,114 @@ final class JavaInteropReflect {
         }
 
         @Override
-        public Object execute(VirtualFrame frame) {
+        public final Object execute(VirtualFrame frame) {
             try {
                 TruffleObject receiver = (TruffleObject) frame.getArguments()[0];
                 Object[] params = (Object[]) frame.getArguments()[1];
-                Object res = handleMessage(receiver, params);
+                Object res = executeImpl(receiver, params);
                 return toJavaNode.execute(res, returnType);
             } catch (InteropException ex) {
                 throw ex.raise();
             }
         }
 
-        private Object handleMessage(TruffleObject obj, Object[] args) throws InteropException {
+        private Object handleMessage(Node messageNode, TruffleObject obj, Object[] args) throws InteropException {
             if (message == Message.WRITE) {
-                ForeignAccess.sendWrite(node(), obj, name, args[0]);
+                ForeignAccess.sendWrite(messageNode, obj, name, args[0]);
                 return null;
             }
             if (message == Message.HAS_SIZE || message == Message.IS_BOXED || message == Message.IS_EXECUTABLE || message == Message.IS_NULL || message == Message.GET_SIZE) {
-                return ForeignAccess.send(node(), obj);
+                return ForeignAccess.send(messageNode, obj);
             }
 
             if (message == Message.READ) {
-                return ForeignAccess.sendRead(node(), obj, name);
+                return ForeignAccess.sendRead(messageNode, obj, name);
             }
 
             if (message == Message.UNBOX) {
-                return ForeignAccess.sendUnbox(node(), obj);
+                return ForeignAccess.sendUnbox(messageNode, obj);
             }
 
             if (Message.createExecute(0).equals(message)) {
-                return ForeignAccess.sendExecute(node(), obj, args);
+                return ForeignAccess.sendExecute(messageNode, obj, args);
             }
 
             if (Message.createInvoke(0).equals(message)) {
-                return ForeignAccess.sendInvoke(node(), obj, name, args);
+                return ForeignAccess.sendInvoke(messageNode, obj, name, args);
             }
 
             if (Message.createNew(0).equals(message)) {
-                return ForeignAccess.sendNew(node(), obj, args);
+                return ForeignAccess.sendNew(messageNode, obj, args);
             }
 
             if (message == null) {
-                if (this.node == null) {
-                    this.node = insert(JavaInteropReflectFactory.InvokeAndReadExecNodeGen.create(returnType, args.length));
-                }
-                return ((InvokeAndReadExecNode) this.node).executeDispatch(obj, name, args);
+                return ((InvokeAndReadExecNode) messageNode).executeDispatch(obj, name, args);
             }
             throw UnsupportedMessageException.raise(message);
         }
 
-        private Node node() {
+        Node node(Object[] args) {
             if (node == null) {
-                this.node = insert(message.createNode());
+                this.node = insert(createNode(args));
             }
             return node;
         }
+
+        Node createNode(Object[] args) {
+            if (message == null) {
+                return JavaInteropReflectFactory.InvokeAndReadExecNodeGen.create(returnType, args.length);
+            }
+            return message.createNode();
+        }
+
+        protected abstract Object executeImpl(TruffleObject receiver, Object[] arguments) throws InteropException;
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "acceptCached(receiver, foreignAccess, canHandleCall)", limit = "8")
+        protected Object doCached(TruffleObject receiver, Object[] arguments,
+                        @Cached("receiver.getForeignAccess()") ForeignAccess foreignAccess,
+                        @Cached("createInlinedCallNode(createCanHandleTarget(foreignAccess))") DirectCallNode canHandleCall,
+                        @Cached("createNode(arguments)") Node messageNode) {
+            try {
+                return handleMessage(messageNode, receiver, arguments);
+            } catch (InteropException ex) {
+                throw ex.raise();
+            }
+        }
+
+        protected static boolean acceptCached(TruffleObject receiver, ForeignAccess foreignAccess, DirectCallNode canHandleCall) {
+            if (canHandleCall != null) {
+                return (boolean) canHandleCall.call(new Object[]{receiver});
+            } else if (foreignAccess != null) {
+                return JavaInterop.ACCESSOR.interop().canHandle(foreignAccess, receiver);
+            } else {
+                return false;
+            }
+        }
+
+        static DirectCallNode createInlinedCallNode(CallTarget target) {
+            if (target == null) {
+                return null;
+            }
+            DirectCallNode callNode = DirectCallNode.create(target);
+            callNode.forceInlining();
+            return callNode;
+        }
+
+        @Specialization
+        Object doGeneric(TruffleObject receiver, Object[] arguments) {
+            try {
+                return handleMessage(node(arguments), receiver, arguments);
+            } catch (InteropException ex) {
+                throw ex.raise();
+            }
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        CallTarget createCanHandleTarget(ForeignAccess access) {
+            return JavaInterop.ACCESSOR.interop().canHandleTarget(access);
+        }
+
     }
 
     abstract static class InvokeAndReadExecNode extends Node {
