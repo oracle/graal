@@ -29,14 +29,30 @@ innr public abstract interface static Factory18
 meth public !varargs static java.lang.Object execute(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.interop.TruffleObject,java.lang.Object[])
  anno 0 java.lang.Deprecated()
 meth public !varargs static java.lang.Object send(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.interop.TruffleObject,java.lang.Object[]) throws com.oracle.truffle.api.interop.InteropException
+ anno 0 java.lang.Deprecated()
+meth public !varargs static java.lang.Object send(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject,java.lang.Object[]) throws com.oracle.truffle.api.interop.InteropException
 meth public !varargs static java.lang.Object sendExecute(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.interop.TruffleObject,java.lang.Object[]) throws com.oracle.truffle.api.interop.ArityException,com.oracle.truffle.api.interop.UnsupportedMessageException,com.oracle.truffle.api.interop.UnsupportedTypeException
+ anno 0 java.lang.Deprecated()
+meth public !varargs static java.lang.Object sendExecute(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject,java.lang.Object[]) throws com.oracle.truffle.api.interop.ArityException,com.oracle.truffle.api.interop.UnsupportedMessageException,com.oracle.truffle.api.interop.UnsupportedTypeException
 meth public !varargs static java.lang.Object sendInvoke(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.interop.TruffleObject,java.lang.String,java.lang.Object[]) throws com.oracle.truffle.api.interop.ArityException,com.oracle.truffle.api.interop.UnknownIdentifierException,com.oracle.truffle.api.interop.UnsupportedMessageException,com.oracle.truffle.api.interop.UnsupportedTypeException
+ anno 0 java.lang.Deprecated()
+meth public !varargs static java.lang.Object sendInvoke(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject,java.lang.String,java.lang.Object[]) throws com.oracle.truffle.api.interop.ArityException,com.oracle.truffle.api.interop.UnknownIdentifierException,com.oracle.truffle.api.interop.UnsupportedMessageException,com.oracle.truffle.api.interop.UnsupportedTypeException
 meth public !varargs static java.lang.Object sendNew(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.interop.TruffleObject,java.lang.Object[]) throws com.oracle.truffle.api.interop.ArityException,com.oracle.truffle.api.interop.UnsupportedMessageException,com.oracle.truffle.api.interop.UnsupportedTypeException
+ anno 0 java.lang.Deprecated()
+meth public !varargs static java.lang.Object sendNew(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject,java.lang.Object[]) throws com.oracle.truffle.api.interop.ArityException,com.oracle.truffle.api.interop.UnsupportedMessageException,com.oracle.truffle.api.interop.UnsupportedTypeException
 meth public java.lang.String toString()
 meth public static boolean sendHasSize(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.interop.TruffleObject)
+ anno 0 java.lang.Deprecated()
+meth public static boolean sendHasSize(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject)
 meth public static boolean sendIsBoxed(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.interop.TruffleObject)
+ anno 0 java.lang.Deprecated()
+meth public static boolean sendIsBoxed(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject)
 meth public static boolean sendIsExecutable(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.interop.TruffleObject)
+ anno 0 java.lang.Deprecated()
+meth public static boolean sendIsExecutable(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject)
 meth public static boolean sendIsNull(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.interop.TruffleObject)
+ anno 0 java.lang.Deprecated()
+meth public static boolean sendIsNull(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject)
 meth public static com.oracle.truffle.api.interop.ForeignAccess create(com.oracle.truffle.api.interop.ForeignAccess$Factory)
 meth public static com.oracle.truffle.api.interop.ForeignAccess create(com.oracle.truffle.api.interop.ForeignAccess$Factory10,com.oracle.truffle.api.nodes.RootNode)
  anno 0 java.lang.Deprecated()
@@ -46,10 +62,20 @@ meth public static com.oracle.truffle.api.interop.ForeignAccess create(java.lang
 meth public static com.oracle.truffle.api.interop.ForeignAccess create(java.lang.Class<? extends com.oracle.truffle.api.interop.TruffleObject>,com.oracle.truffle.api.interop.ForeignAccess$Factory18)
 meth public static com.oracle.truffle.api.interop.TruffleObject getReceiver(com.oracle.truffle.api.frame.Frame)
 meth public static com.oracle.truffle.api.interop.TruffleObject sendKeys(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.interop.TruffleObject) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+ anno 0 java.lang.Deprecated()
+meth public static com.oracle.truffle.api.interop.TruffleObject sendKeys(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public static java.lang.Object sendGetSize(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.interop.TruffleObject) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+ anno 0 java.lang.Deprecated()
+meth public static java.lang.Object sendGetSize(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public static java.lang.Object sendRead(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.interop.TruffleObject,java.lang.Object) throws com.oracle.truffle.api.interop.UnknownIdentifierException,com.oracle.truffle.api.interop.UnsupportedMessageException
+ anno 0 java.lang.Deprecated()
+meth public static java.lang.Object sendRead(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject,java.lang.Object) throws com.oracle.truffle.api.interop.UnknownIdentifierException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public static java.lang.Object sendUnbox(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.interop.TruffleObject) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+ anno 0 java.lang.Deprecated()
+meth public static java.lang.Object sendUnbox(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public static java.lang.Object sendWrite(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.interop.TruffleObject,java.lang.Object,java.lang.Object) throws com.oracle.truffle.api.interop.UnknownIdentifierException,com.oracle.truffle.api.interop.UnsupportedMessageException,com.oracle.truffle.api.interop.UnsupportedTypeException
+ anno 0 java.lang.Deprecated()
+meth public static java.lang.Object sendWrite(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject,java.lang.Object,java.lang.Object) throws com.oracle.truffle.api.interop.UnknownIdentifierException,com.oracle.truffle.api.interop.UnsupportedMessageException,com.oracle.truffle.api.interop.UnsupportedTypeException
 meth public static java.util.List<java.lang.Object> getArguments(com.oracle.truffle.api.frame.Frame)
 supr java.lang.Object
 hfds factory,initThread,languageCheck

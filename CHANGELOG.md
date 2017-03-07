@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 0.25
+
+* some changes
+
 ## Version 0.24
 1-Mar-2017
 * Added possibility to activate/deactivate breakpoints via [DebuggerSession.setBreakpointsActive](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerSession.html#setBreakpointsActive-boolean-) and get the active state via [DebuggerSession.isBreakpointsActive](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerSession.html#isBreakpointsActive--).
