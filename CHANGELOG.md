@@ -4,7 +4,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 0.25
 
-* some changes
+* Added [Instrumenter.attachOutConsumer](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/Instrumenter.html#attachOutConsumer-T-) and [Instrumenter.attachErrConsumer](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/Instrumenter.html#attachErrConsumer-T-) to receive output from executions run in the associated PolyglotEngine.
 
 ## Version 0.24
 1-Mar-2017

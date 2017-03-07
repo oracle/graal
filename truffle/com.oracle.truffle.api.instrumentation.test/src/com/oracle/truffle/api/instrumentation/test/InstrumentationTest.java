@@ -24,7 +24,13 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStreamReader;
 import java.io.IOException;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.io.Reader;
+import java.nio.CharBuffer;
 import java.util.Set;
 
 import org.junit.Assert;
@@ -645,6 +651,120 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                 public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
                 }
             });
+        }
+    }
+
+    @Test
+    public void testOutputConsumer() throws IOException {
+        // print without instruments
+        String rout = run("PRINT(OUT, InitialToStdOut)");
+        Assert.assertEquals("InitialToStdOut", rout);
+        run("PRINT(ERR, InitialToStdErr)");
+        Assert.assertEquals("InitialToStdErr", err.toString());
+        err.reset();
+
+        // turn instruments on
+        engine.getInstruments().get("testOutputConsumerArray").setEnabled(true);
+        engine.getInstruments().get("testOutputConsumerPiped").setEnabled(true);
+        engine.eval(lines("PRINT(OUT, OutputToStdOut)"));
+        engine.eval(lines("PRINT(ERR, OutputToStdErr)"));
+        // test that the output goes eveywhere
+        Assert.assertEquals("OutputToStdOut", getOut());
+        Assert.assertEquals("OutputToStdOut", TestOutputConsumerArray.getOut());
+        Assert.assertEquals("OutputToStdErr", getErr());
+        Assert.assertEquals("OutputToStdErr", TestOutputConsumerArray.getErr());
+        CharBuffer buff = CharBuffer.allocate(100);
+        TestOutputConsumerPiped.fromOut.read(buff);
+        buff.flip();
+        Assert.assertEquals("OutputToStdOut", buff.toString());
+        buff.rewind();
+        TestOutputConsumerPiped.fromErr.read(buff);
+        buff.flip();
+        Assert.assertEquals("OutputToStdErr", buff.toString());
+        buff.rewind();
+
+        // close piped err stream and test that print still works
+        TestOutputConsumerPiped.fromErr.close();
+        engine.eval(lines("PRINT(OUT, MoreOutputToStdOut)"));
+        engine.eval(lines("PRINT(ERR, MoreOutputToStdErr)"));
+        Assert.assertEquals("OutputToStdOutMoreOutputToStdOut", out.toString());
+        Assert.assertEquals("OutputToStdOutMoreOutputToStdOut", TestOutputConsumerArray.getOut());
+        String errorMsg = "java.lang.Exception: Output operation write(B[II) failed for java.io.PipedOutputStream";
+        Assert.assertTrue(err.toString(), err.toString().startsWith("OutputToStdErr" + errorMsg));
+        Assert.assertTrue(err.toString(), err.toString().endsWith("MoreOutputToStdErr"));
+        Assert.assertEquals("OutputToStdErrMoreOutputToStdErr", TestOutputConsumerArray.getErr());
+        buff.limit(buff.capacity());
+        TestOutputConsumerPiped.fromOut.read(buff);
+        buff.flip();
+        Assert.assertEquals("MoreOutputToStdOut", buff.toString());
+        out.reset();
+        err.reset();
+
+        // the I/O error is not printed again
+        engine.eval(lines("PRINT(ERR, EvenMoreOutputToStdErr)"));
+        Assert.assertEquals("EvenMoreOutputToStdErr", err.toString());
+        Assert.assertEquals("OutputToStdErrMoreOutputToStdErrEvenMoreOutputToStdErr", TestOutputConsumerArray.getErr());
+
+        // instruments disabled
+        engine.getInstruments().get("testOutputConsumerArray").setEnabled(false);
+        engine.getInstruments().get("testOutputConsumerPiped").setEnabled(false);
+        out.reset();
+        err.reset();
+        engine.eval(lines("PRINT(OUT, FinalOutputToStdOut)"));
+        engine.eval(lines("PRINT(ERR, FinalOutputToStdErr)"));
+        Assert.assertEquals("FinalOutputToStdOut", out.toString());
+        Assert.assertEquals("FinalOutputToStdErr", err.toString());
+        // nothing more printed to the disabled instrument
+        Assert.assertEquals("OutputToStdOutMoreOutputToStdOut", TestOutputConsumerArray.getOut());
+        Assert.assertEquals("OutputToStdErrMoreOutputToStdErrEvenMoreOutputToStdErr", TestOutputConsumerArray.getErr());
+    }
+
+    @Registration(id = "testOutputConsumerArray")
+    public static class TestOutputConsumerArray extends TruffleInstrument {
+
+        static ByteArrayOutputStream out = new ByteArrayOutputStream();
+        static ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        @Override
+        protected void onCreate(Env env) {
+            env.getInstrumenter().attachOutConsumer(out);
+            env.getInstrumenter().attachErrConsumer(err);
+        }
+
+        static String getOut() {
+            return new String(out.toByteArray());
+        }
+
+        static String getErr() {
+            return new String(err.toByteArray());
+        }
+    }
+
+    @Registration(id = "testOutputConsumerPiped")
+    public static class TestOutputConsumerPiped extends TruffleInstrument {
+
+        static PipedOutputStream out = new PipedOutputStream();
+        static Reader fromOut;
+        static PipedOutputStream err = new PipedOutputStream();
+        static Reader fromErr;
+
+        public TestOutputConsumerPiped() throws IOException {
+            fromOut = new InputStreamReader(new PipedInputStream(out));
+            fromErr = new InputStreamReader(new PipedInputStream(err));
+        }
+
+        @Override
+        protected void onCreate(Env env) {
+            env.getInstrumenter().attachOutConsumer(out);
+            env.getInstrumenter().attachErrConsumer(err);
+        }
+
+        Reader fromOut() {
+            return fromOut;
+        }
+
+        Reader fromErr() {
+            return fromErr;
         }
     }
 
