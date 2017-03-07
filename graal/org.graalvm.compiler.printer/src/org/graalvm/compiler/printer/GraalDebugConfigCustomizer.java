@@ -150,7 +150,7 @@ public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
             } else {
                 printer = new IdealGraphPrinter(Files.newOutputStream(path), true);
             }
-            TTY.println("Dumping IGV graphs to %s", path.toString());
+            TTY.println("Dumping IGV graphs to %s", path.toAbsolutePath().toString());
             return printer;
         } catch (IOException e) {
             throw new IOException(String.format("Failed to open %s to dump IGV graphs", path), e);
