@@ -177,13 +177,13 @@ abstract class ToJavaNode extends Node {
     static Object toJava(Object ret, TypeAndClass<?> type) {
         CompilerAsserts.neverPartOfCompilation();
         Class<?> retType = type.clazz;
-        final ToPrimitiveNode primitiveNode = ToPrimitiveNode.shared();
+        final ToPrimitiveNode primitiveNode = ToPrimitiveNode.temporary();
         Object primitiveRet = primitiveNode.toPrimitive(ret, retType);
         if (primitiveRet != null) {
             return primitiveRet;
         }
         if (ret instanceof TruffleObject) {
-            if (ToPrimitiveNode.shared().isNull((TruffleObject) ret)) {
+            if (ToPrimitiveNode.temporary().isNull((TruffleObject) ret)) {
                 return null;
             }
         }

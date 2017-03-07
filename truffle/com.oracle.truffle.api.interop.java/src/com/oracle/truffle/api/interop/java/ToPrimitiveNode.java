@@ -33,13 +33,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 
 final class ToPrimitiveNode extends Node {
-    private static final ThreadLocal<ToPrimitiveNode> INSTANCE = new ThreadLocal<ToPrimitiveNode>() {
-        @Override
-        protected ToPrimitiveNode initialValue() {
-            return new ToPrimitiveNode();
-        }
-    };
-
     @Child Node isNullNode;
     @Child Node isBoxedNode;
     @Child Node hasSizeNode;
@@ -56,9 +49,9 @@ final class ToPrimitiveNode extends Node {
         return new ToPrimitiveNode();
     }
 
-    static ToPrimitiveNode shared() {
+    static ToPrimitiveNode temporary() {
         CompilerAsserts.neverPartOfCompilation();
-        return INSTANCE.get();
+        return new ToPrimitiveNode();
     }
 
     boolean isPrimitive(Object attr) {
