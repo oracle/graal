@@ -73,7 +73,6 @@ import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.java.TypeSwitchNode;
 import org.graalvm.compiler.nodes.spi.NodeWithState;
-import org.graalvm.compiler.nodes.spi.ValueProxy;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
@@ -461,7 +460,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                             phiInfoElement.set(endIndex, infoElement);
                             break;
                         }
-                        infoElement = infoElement.getParent();
+                        infoElement = nextElement(infoElement);
                     }
                 }
             }
@@ -480,12 +479,12 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 ValueNode x = binaryOpLogicNode.getX();
                 ValueNode y = binaryOpLogicNode.getY();
                 if (!x.isConstant() && maybeMultipleUsages(x)) {
-                    Stamp newStampX = binaryOpLogicNode.getSucceedingStampForX(negated, getSafeStamp(x), getSafeStamp(y));
+                    Stamp newStampX = binaryOpLogicNode.getSucceedingStampForX(negated, getSafeStamp(x), getOtherSafeStamp(y));
                     registerNewStamp(x, newStampX, guard);
                 }
 
                 if (!y.isConstant() && maybeMultipleUsages(y)) {
-                    Stamp newStampY = binaryOpLogicNode.getSucceedingStampForY(negated, getSafeStamp(x), getSafeStamp(y));
+                    Stamp newStampY = binaryOpLogicNode.getSucceedingStampForY(negated, getOtherSafeStamp(x), getSafeStamp(y));
                     registerNewStamp(y, newStampY, guard);
                 }
             }
@@ -505,7 +504,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                     if (result != null) {
                         return Pair.create(infoElement, result);
                     }
-                    infoElement = infoElement.getParent();
+                    infoElement = nextElement(infoElement);
                 }
             } else if (node instanceof BinaryNode) {
                 BinaryNode binary = (BinaryNode) node;
@@ -518,7 +517,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                         if (result != null) {
                             return Pair.create(infoElement, result);
                         }
-                        infoElement = infoElement.getParent();
+                        infoElement = nextElement(infoElement);
                     }
                 }
             }
@@ -526,22 +525,14 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
         }
 
         private static Stamp getSafeStamp(ValueNode x) {
+            return GraphUtil.skipPi(x).stamp();
+        }
 
-            // Move upwards through pi nodes.
-            ValueNode current = x;
-            while (current instanceof PiNode) {
-                current = ((PiNode) current).getOriginalNode();
+        private static Stamp getOtherSafeStamp(ValueNode x) {
+            if (x.isConstant()) {
+                return x.stamp();
             }
-
-            // Move downwards as long as there is only a single user.
-            while (current != x && current.getUsageCount() == 1) {
-                Node first = current.usages().first();
-                if (first instanceof PiNode) {
-                    current = (ValueNode) first;
-                }
-            }
-
-            return current.stamp();
+            return x.stamp().unrestricted();
         }
 
         /**
@@ -570,9 +561,9 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                     ValueNode x = binaryOpLogicNode.getX();
                     ValueNode y = binaryOpLogicNode.getY();
                     if (x == original) {
-                        result = binaryOpLogicNode.tryFold(newStamp, getSafeStamp(y));
+                        result = binaryOpLogicNode.tryFold(newStamp, getOtherSafeStamp(y));
                     } else if (y == original) {
-                        result = binaryOpLogicNode.tryFold(getSafeStamp(x), newStamp);
+                        result = binaryOpLogicNode.tryFold(getOtherSafeStamp(x), newStamp);
                     }
                 }
                 if (result.isKnown()) {
@@ -615,7 +606,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
         }
 
         protected InfoElement getInfoElements(ValueNode proxiedValue) {
-            ValueNode value = GraphUtil.unproxify(proxiedValue);
+            ValueNode value = GraphUtil.skipPi(proxiedValue);
             if (value == null) {
                 return null;
             }
@@ -629,6 +620,20 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
 
         protected boolean tryProveCondition(LogicNode node, GuardRewirer rewireGuardFunction) {
             return tryProveGuardCondition(null, node, rewireGuardFunction);
+        }
+
+        private InfoElement nextElement(InfoElement current) {
+            InfoElement parent = current.getParent();
+            if (parent != null) {
+                return parent;
+            } else {
+                ValueNode proxifiedInput = current.getProxifiedInput();
+                if (proxifiedInput instanceof PiNode) {
+                    PiNode piNode = (PiNode) proxifiedInput;
+                    return getInfoElements(piNode.getOriginalNode());
+                }
+            }
+            return null;
         }
 
         protected boolean tryProveGuardCondition(DeoptimizingGuard thisGuard, LogicNode node, GuardRewirer rewireGuardFunction) {
@@ -648,7 +653,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                     if (result.isKnown()) {
                         return rewireGuards(infoElement.getGuard(), result.toBoolean(), infoElement.getProxifiedInput(), infoElement.getStamp(), rewireGuardFunction);
                     }
-                    infoElement = infoElement.getParent();
+                    infoElement = nextElement(infoElement);
                 }
                 Pair<InfoElement, Stamp> foldResult = recursiveFoldStampFromInfo(value);
                 if (foldResult != null) {
@@ -673,7 +678,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                     } else if (infoElement.getStamp().equals(StampFactory.tautology())) {
                         return rewireGuards(infoElement.getGuard(), true, infoElement.getProxifiedInput(), null, rewireGuardFunction);
                     }
-                    infoElement = infoElement.getParent();
+                    infoElement = nextElement(infoElement);
                 }
 
                 ValueNode x = binaryOpLogicNode.getX();
@@ -684,7 +689,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                     if (result.isKnown()) {
                         return rewireGuards(infoElement.getGuard(), result.toBoolean(), infoElement.getProxifiedInput(), infoElement.getStamp(), rewireGuardFunction);
                     }
-                    infoElement = infoElement.getParent();
+                    infoElement = nextElement(infoElement);
                 }
 
                 if (y.isConstant()) {
@@ -702,7 +707,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                         if (result.isKnown()) {
                             return rewireGuards(infoElement.getGuard(), result.toBoolean(), infoElement.getProxifiedInput(), infoElement.getStamp(), rewireGuardFunction);
                         }
-                        infoElement = infoElement.getParent();
+                        infoElement = nextElement(infoElement);
                     }
                 }
 
@@ -723,19 +728,19 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                             if (result.isKnown()) {
                                 return rewireGuards(infoElement.getGuard(), result.toBoolean(), infoElement.getProxifiedInput(), newStampX, rewireGuardFunction);
                             }
-                            infoElement = infoElement.getParent();
+                            infoElement = nextElement(infoElement);
                         }
                     }
                 }
                 if (thisGuard != null) {
                     if (!x.isConstant()) {
-                        Stamp newStampX = binaryOpLogicNode.getSucceedingStampForX(thisGuard.isNegated(), getSafeStamp(x), getSafeStamp(y));
+                        Stamp newStampX = binaryOpLogicNode.getSucceedingStampForX(thisGuard.isNegated(), getSafeStamp(x), getOtherSafeStamp(y));
                         if (newStampX != null && foldPendingTest(thisGuard, x, newStampX, rewireGuardFunction)) {
                             return true;
                         }
                     }
                     if (!y.isConstant()) {
-                        Stamp newStampY = binaryOpLogicNode.getSucceedingStampForY(thisGuard.isNegated(), getSafeStamp(x), getSafeStamp(y));
+                        Stamp newStampY = binaryOpLogicNode.getSucceedingStampForY(thisGuard.isNegated(), getOtherSafeStamp(x), getSafeStamp(y));
                         if (newStampY != null && foldPendingTest(thisGuard, y, newStampY, rewireGuardFunction)) {
                             return true;
                         }
@@ -776,9 +781,8 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
             if (newStamp != null) {
                 ValueNode value = maybeProxiedValue;
                 ValueNode proxiedValue = null;
-                if (value instanceof ValueProxy) {
+                if (value instanceof PiNode) {
                     proxiedValue = value;
-                    value = GraphUtil.unproxify(value);
                 }
                 counterStampsRegistered.increment();
                 Debug.log("\t Saving stamp for node %s stamp %s guarded by %s", value, newStamp, guard == null ? "null" : guard);
