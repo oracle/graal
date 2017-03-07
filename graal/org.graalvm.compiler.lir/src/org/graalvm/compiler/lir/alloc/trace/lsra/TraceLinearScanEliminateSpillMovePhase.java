@@ -228,7 +228,7 @@ final class TraceLinearScanEliminateSpillMovePhase extends TraceLinearScanAlloca
         TraceInterval prev = null;
         TraceInterval temp = interval;
         while (temp != TraceInterval.EndMarker) {
-            assert temp.spillDefinitionPos() >= 0 : "invalid spill definition pos";
+            assert temp.spillDefinitionPos() >= 0 : "invalid spill definition pos " + temp;
             if (prev != null) {
                 // assert temp.from() >= prev.from() : "intervals not sorted";
                 assert temp.spillDefinitionPos() >= prev.spillDefinitionPos() : "when intervals are sorted by from :  then they must also be sorted by spillDefinitionPos";

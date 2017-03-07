@@ -80,7 +80,7 @@ public final class DefaultTraceRegisterAllocationPolicy {
         @Override
         protected TraceAllocationPhase<TraceAllocationContext> initAllocator(TargetDescription target, LIRGenerationResult lirGenRes, MoveFactory spillMoveFactory,
                         RegisterAllocationConfig registerAllocationConfig, AllocatableValue[] cachedStackSlots, TraceBuilderResult resultTraces, boolean neverSpillConstant,
-                        ArrayList<AllocationStrategy> strategies) {
+                        GlobalLivenessInfo livenessInfo, ArrayList<AllocationStrategy> strategies) {
             return new TrivialTraceAllocator();
         }
     }
@@ -112,8 +112,8 @@ public final class DefaultTraceRegisterAllocationPolicy {
         @Override
         protected TraceAllocationPhase<TraceAllocationContext> initAllocator(TargetDescription target, LIRGenerationResult lirGenRes, MoveFactory spillMoveFactory,
                         RegisterAllocationConfig registerAllocationConfig, AllocatableValue[] cachedStackSlots, TraceBuilderResult resultTraces, boolean neverSpillConstant,
-                        ArrayList<AllocationStrategy> strategies) {
-            return new BottomUpAllocator(target, lirGenRes, spillMoveFactory, registerAllocationConfig, cachedStackSlots, resultTraces, neverSpillConstant);
+                        GlobalLivenessInfo livenessInfo, ArrayList<AllocationStrategy> strategies) {
+            return new BottomUpAllocator(target, lirGenRes, spillMoveFactory, registerAllocationConfig, cachedStackSlots, resultTraces, neverSpillConstant, livenessInfo);
         }
     }
 
@@ -132,14 +132,16 @@ public final class DefaultTraceRegisterAllocationPolicy {
         @Override
         protected TraceAllocationPhase<TraceAllocationContext> initAllocator(TargetDescription target, LIRGenerationResult lirGenRes, MoveFactory spillMoveFactory,
                         RegisterAllocationConfig registerAllocationConfig, AllocatableValue[] cachedStackSlots, TraceBuilderResult resultTraces, boolean neverSpillConstant,
-                        ArrayList<AllocationStrategy> strategies) {
-            return new TraceLinearScanPhase(target, lirGenRes, spillMoveFactory, registerAllocationConfig, resultTraces, neverSpillConstant, cachedStackSlots);
+                        GlobalLivenessInfo livenessInfo, ArrayList<AllocationStrategy> strategies) {
+            return new TraceLinearScanPhase(target, lirGenRes, spillMoveFactory, registerAllocationConfig, resultTraces, neverSpillConstant, cachedStackSlots, livenessInfo);
         }
     }
 
     public static TraceRegisterAllocationPolicy allocationPolicy(TargetDescription target, LIRGenerationResult lirGenRes, MoveFactory spillMoveFactory,
-                    RegisterAllocationConfig registerAllocationConfig, AllocatableValue[] cachedStackSlots, TraceBuilderResult resultTraces, boolean neverSpillConstant, OptionValues options) {
-        TraceRegisterAllocationPolicy plan = new TraceRegisterAllocationPolicy(target, lirGenRes, spillMoveFactory, registerAllocationConfig, cachedStackSlots, resultTraces, neverSpillConstant);
+                    RegisterAllocationConfig registerAllocationConfig, AllocatableValue[] cachedStackSlots, TraceBuilderResult resultTraces, boolean neverSpillConstant,
+                    GlobalLivenessInfo livenessInfo, OptionValues options) {
+        TraceRegisterAllocationPolicy plan = new TraceRegisterAllocationPolicy(target, lirGenRes, spillMoveFactory, registerAllocationConfig, cachedStackSlots, resultTraces, neverSpillConstant,
+                        livenessInfo);
         if (Options.TraceRAtrivialBlockAllocator.getValue(options)) {
             plan.appendStrategy(new TrivialTraceStrategy(plan));
         }

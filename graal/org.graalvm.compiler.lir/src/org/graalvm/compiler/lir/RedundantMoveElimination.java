@@ -385,7 +385,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
                     int sourceIdx = getStateIdx(moveOp.getInput());
                     int destIdx = getStateIdx(moveOp.getResult());
                     if (sourceIdx >= 0 && destIdx >= 0) {
-                        assert isObjectValue(state[sourceIdx]) || LIRKind.isValue(moveOp.getInput()) : "move op moves object but input is not defined as object";
+                        assert isObjectValue(state[sourceIdx]) || LIRKind.isValue(moveOp.getInput()) : "move op moves object but input is not defined as object " + moveOp;
                         state[destIdx] = state[sourceIdx];
                         Debug.log("move value %d from %d to %d", state[sourceIdx], sourceIdx, destIdx);
                         return initValueNum;

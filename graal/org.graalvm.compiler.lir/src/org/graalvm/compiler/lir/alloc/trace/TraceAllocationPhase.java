@@ -44,11 +44,13 @@ public abstract class TraceAllocationPhase<C extends TraceAllocationPhase.TraceA
         public final MoveFactory spillMoveFactory;
         public final RegisterAllocationConfig registerAllocationConfig;
         public final TraceBuilderResult resultTraces;
+        public final GlobalLivenessInfo livenessInfo;
 
-        public TraceAllocationContext(MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig, TraceBuilderResult resultTraces) {
+        public TraceAllocationContext(MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig, TraceBuilderResult resultTraces, GlobalLivenessInfo livenessInfo) {
             this.spillMoveFactory = spillMoveFactory;
             this.registerAllocationConfig = registerAllocationConfig;
             this.resultTraces = resultTraces;
+            this.livenessInfo = livenessInfo;
         }
     }
 
