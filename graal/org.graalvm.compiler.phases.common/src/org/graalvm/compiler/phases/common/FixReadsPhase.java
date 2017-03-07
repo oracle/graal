@@ -60,9 +60,8 @@ import org.graalvm.compiler.nodes.memory.FloatingAccessNode;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.graph.ScheduledNodeIterator;
-import org.graalvm.compiler.phases.schedule.SchedulePhase;
-import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.MapCursor;
@@ -85,6 +84,7 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
     private static final DebugCounter counterBetterMergedStamps = Debug.counter("FixReads_BetterMergedStamp");
 
     private boolean replaceInputsWithConstants;
+    private Phase schedulePhase;
 
     private static class FixReadsClosure extends ScheduledNodeIterator {
 
@@ -233,7 +233,8 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
                                 continue;
                             }
 
-                            if (getBlock(nodeWithNewStamp, blockToNodeMap).getId() <= mergeBlockDominator.getId()) {
+                            Block block = getBlock(nodeWithNewStamp, blockToNodeMap);
+                            if (block == null || block.getId() <= mergeBlockDominator.getId()) {
                                 // Node with new stamp in path to the merge block dominator and that
                                 // at the same time was defined at least in the merge block
                                 // dominator (i.e., therefore can be used after the merge.)
@@ -449,17 +450,13 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
 
     }
 
-    public FixReadsPhase(boolean replaceInputsWithConstants) {
+    public FixReadsPhase(boolean replaceInputsWithConstants, Phase schedulePhase) {
         this.replaceInputsWithConstants = replaceInputsWithConstants;
+        this.schedulePhase = schedulePhase;
     }
 
     @Override
     protected void run(StructuredGraph graph, LowTierContext context) {
-        SchedulingStrategy strategy = SchedulingStrategy.LATEST_OUT_OF_LOOPS;
-        if (GraalOptions.StressTestEarlyReads.getValue(graph.getOptions())) {
-            strategy = SchedulingStrategy.EARLIEST;
-        }
-        SchedulePhase schedulePhase = new SchedulePhase(strategy);
         schedulePhase.apply(graph);
         ScheduleResult schedule = graph.getLastSchedule();
         FixReadsClosure fixReadsClosure = new FixReadsClosure();
