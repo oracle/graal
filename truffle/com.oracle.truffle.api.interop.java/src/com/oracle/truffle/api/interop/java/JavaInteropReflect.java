@@ -28,13 +28,16 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.lang.reflect.Constructor;
@@ -315,9 +318,9 @@ final class JavaInteropReflect {
 
             if (message == null) {
                 if (this.node == null) {
-                    this.node = insert(new InvokeAndReadExecNode(returnType, args.length));
+                    this.node = insert(JavaInteropReflectFactory.InvokeAndReadExecNodeGen.create(returnType, args.length));
                 }
-                return ((InvokeAndReadExecNode) this.node).invoke(obj, name, args);
+                return ((InvokeAndReadExecNode) this.node).executeDispatch(obj, name, args);
             }
             throw UnsupportedMessageException.raise(message);
         }
@@ -330,7 +333,7 @@ final class JavaInteropReflect {
         }
     }
 
-    private static final class InvokeAndReadExecNode extends Node {
+    abstract static class InvokeAndReadExecNode extends Node {
         private final TypeAndClass<?> returnType;
         @Child private Node invokeNode;
         @Child private Node isExecNode;
@@ -343,10 +346,16 @@ final class JavaInteropReflect {
             this.invokeNode = Message.createInvoke(arity).createNode();
         }
 
-        Object invoke(TruffleObject obj, String name, Object... args) throws InteropException {
+        abstract Object executeDispatch(TruffleObject obj, String name, Object[] args);
+
+        @Specialization(rewriteOn = InteropException.class)
+        Object doInvoke(TruffleObject obj, String name, Object[] args) throws InteropException {
+            return ForeignAccess.sendInvoke(invokeNode, obj, name, args);
+        }
+
+        @Specialization(rewriteOn = UnsupportedMessageException.class)
+        Object doReadExec(TruffleObject obj, String name, Object[] args) throws UnsupportedMessageException {
             try {
-                return ForeignAccess.sendInvoke(invokeNode, obj, name, args);
-            } catch (InteropException ex) {
                 if (readNode == null) {
                     readNode = insert(Message.READ.createNode());
                     primitive = insert(ToPrimitiveNode.create());
@@ -368,6 +377,22 @@ final class JavaInteropReflect {
                     execNode = insert(Message.createExecute(args.length).createNode());
                 }
                 return ForeignAccess.sendExecute(execNode, attr, args);
+            } catch (ArityException | UnsupportedTypeException | UnknownIdentifierException ex) {
+                throw ex.raise();
+            }
+        }
+
+        @Specialization
+        @CompilerDirectives.TruffleBoundary
+        Object doBoth(TruffleObject obj, String name, Object[] args) {
+            try {
+                return doInvoke(obj, name, args);
+            } catch (InteropException retry) {
+                try {
+                    return doReadExec(obj, name, args);
+                } catch (UnsupportedMessageException error) {
+                    throw error.raise();
+                }
             }
         }
     }
