@@ -547,10 +547,23 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
             return null;
         }
 
+        /**
+         * Get the stamp that may be used for the value for which we are registering the condition.
+         * We may directly use the stamp here without restriction, because any later lookup of the
+         * registered info elements is in the same chain of pi nodes.
+         */
         private static Stamp getSafeStamp(ValueNode x) {
-            return GraphUtil.skipPi(x).stamp();
+            return x.stamp();
         }
 
+        /**
+         * We can only use the stamp of a second value involved in the condition if we are sure that
+         * we are not implicitly creating a dependency on a pi node that is responsible for that
+         * stamp. For now, we are conservatively only using the stamps of constants. Under certain
+         * circumstances, we may also be able to use the stamp of the value after skipping pi nodes
+         * (e.g., the stamp of a parameter after inlining, or the stamp of a fixed node that can
+         * never be replaced with a pi node via canonicalization).
+         */
         private static Stamp getOtherSafeStamp(ValueNode x) {
             if (x.isConstant()) {
                 return x.stamp();
