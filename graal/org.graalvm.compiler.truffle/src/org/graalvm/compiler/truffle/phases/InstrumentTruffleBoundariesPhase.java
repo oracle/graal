@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.truffle.phases;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import jdk.vm.ci.meta.JavaConstant;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.graph.Node;
@@ -31,13 +32,12 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.truffle.TruffleCallBoundary;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 
 /**
- * Instruments calls to {@link TruffleCallBoundary}-annotated methods in the graph, by adding
- * execution counters to respective callsites. If this phase is enabled, the runtime outputs a
- * summary of all such compiled callsites and their execution counts, when the program exits.
+ * Instruments calls to {@link TruffleBoundary}-annotated methods in the graph, by adding execution
+ * counters to respective callsites. If this phase is enabled, the runtime outputs a summary of all
+ * such compiled callsites and their execution counts, when the program exits.
  *
  * The phase is enabled with the following flag:
  *
@@ -69,7 +69,7 @@ public class InstrumentTruffleBoundariesPhase extends InstrumentPhase {
     @Override
     protected void instrumentGraph(StructuredGraph graph, HighTierContext context, JavaConstant tableConstant) {
         for (Node n : graph.getNodes()) {
-            if (n instanceof Invoke && ((Invoke) n).callTarget().targetMethod().isAnnotationPresent(TruffleCallBoundary.class)) {
+            if (n instanceof Invoke && ((Invoke) n).callTarget().targetMethod().isAnnotationPresent(TruffleBoundary.class)) {
                 Point p = getOrCreatePoint(n);
                 if (p != null) {
                     insertCounter(graph, context, tableConstant, (FixedWithNextNode) n.predecessor(), p.slotIndex(0));
