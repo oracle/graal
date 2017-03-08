@@ -30,6 +30,7 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
+
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.debug.GraalError;
@@ -62,11 +63,7 @@ public class StandardOp {
 
         Value getOutgoingValue(int idx);
 
-        int addOutgoingValues(Value[] values);
-
         void clearOutgoingValues();
-
-        void forEachOutgoingValue(InstructionValueProcedure proc);
 
         /**
          * The number of {@link SSAUtil phi} operands in the {@link #getOutgoingValue outgoing}
@@ -241,30 +238,10 @@ public class StandardOp {
             outgoingValues = Value.NO_VALUES;
         }
 
-        @Override
-        public int addOutgoingValues(Value[] values) {
-            if (outgoingValues.length == 0) {
-                setOutgoingValues(values);
-                return values.length;
-            }
-            int t = outgoingValues.length + values.length;
-            Value[] newArray = new Value[t];
-            System.arraycopy(outgoingValues, 0, newArray, 0, outgoingValues.length);
-            System.arraycopy(values, 0, newArray, outgoingValues.length, values.length);
-            outgoingValues = newArray;
-            return t;
-        }
-
         private boolean checkRange(int idx) {
             return idx < outgoingValues.length;
         }
 
-        @Override
-        public void forEachOutgoingValue(InstructionValueProcedure proc) {
-            for (int i = 0; i < outgoingValues.length; i++) {
-                outgoingValues[i] = proc.doValue(this, outgoingValues[i], OperandMode.ALIVE, outgoingFlags);
-            }
-        }
     }
 
     /**
