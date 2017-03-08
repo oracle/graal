@@ -39,7 +39,6 @@ import java.util.Set;
 import java.util.concurrent.Executors;
 
 import org.junit.After;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -50,12 +49,16 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.interop.java.MethodMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.Ctx;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
+import java.util.Collections;
+import static org.junit.Assert.assertTrue;
 
 public class EngineTest {
     private Set<PolyglotEngine> toDispose = new HashSet<>();
@@ -360,8 +363,21 @@ public class EngineTest {
         void foobar();
     }
 
+    interface ArrayLike {
+        @MethodMessage(message = "WRITE")
+        void set(int index, Object value);
+
+        @MethodMessage(message = "READ")
+        Object get(int index);
+
+        @MethodMessage(message = "GET_SIZE")
+        int size();
+
+        @MethodMessage(message = "HAS_SIZE")
+        boolean isArray();
+    }
+
     @Test
-    @Ignore("to be enabled as soon as caching is fully supported")
     public void testCachingFailing() {
         CachingLanguageChannel channel = new CachingLanguageChannel();
         PolyglotEngine vm = register(createBuilder().config(CachingLanguage.MIME_TYPE, "channel", channel).build());
@@ -372,7 +388,6 @@ public class EngineTest {
         int cachedTargetsSize = -1;
         int interopTargetsSize = -1;
 
-        // from now on we should not create any new targets
         for (int i = 0; i < 10; i++) {
             Value value1 = vm.eval(source1);
             Value value2 = vm.eval(source2);
@@ -385,8 +400,13 @@ public class EngineTest {
             value1.as(Long.class);
             value1.as(Float.class);
             value1.as(Double.class);
-            value1.as(Map.class);
-            value1.as(List.class);
+            Map<?, ?> m1 = value1.as(Map.class);
+            assertTrue(m1.isEmpty());
+            List<?> l1 = value1.as(List.class);
+            assertEquals(0, l1.size());
+            ArrayLike a1 = value1.as(ArrayLike.class);
+            assertEquals(0, a1.size());
+            assertTrue(a1.isArray());
 
             TestInterface testInterface2 = value2.as(TestInterface.class);
             testInterface2.foobar();
@@ -396,14 +416,22 @@ public class EngineTest {
             value2.as(Long.class);
             value2.as(Float.class);
             value2.as(Double.class);
-            value1.as(Map.class);
-            value1.as(List.class);
+            value2.as(Map.class);
+            Map<?, ?> m2 = value2.as(Map.class);
+            assertTrue(m2.isEmpty());
+            List<?> l2 = value2.as(List.class);
+            assertEquals(0, l2.size());
+            ArrayLike a2 = value1.as(ArrayLike.class);
+            assertEquals(0, a2.size());
+            assertTrue(a2.isArray());
 
             if (i == 0) {
+                // warmup
                 cachedTargetsSize = channel.parseTargets.size();
                 interopTargetsSize = channel.interopTargets.size();
                 assertNotEquals(0, cachedTargetsSize);
                 assertNotEquals(0, interopTargetsSize);
+                channel.frozen = true;
             } else {
                 // we need to have stable call targets after the first run.
                 assertEquals(cachedTargetsSize, channel.parseTargets.size());
@@ -417,6 +445,7 @@ public class EngineTest {
         final List<CallTarget> parseTargets = new ArrayList<>();
         final List<CallTarget> interopTargets = new ArrayList<>();
 
+        boolean frozen;
     }
 
     private static class CachingTruffleObject implements TruffleObject {
@@ -447,6 +476,12 @@ public class EngineTest {
                                 return true;
                             } else if (tree == Message.IS_NULL) {
                                 return false;
+                            } else if (tree == Message.HAS_SIZE) {
+                                return true;
+                            } else if (tree == Message.GET_SIZE) {
+                                return 0;
+                            } else if (tree == Message.KEYS) {
+                                return JavaInterop.asTruffleObject(Collections.emptyList());
                             } else if (tree == Message.UNBOX) {
                                 return 42;
                             }
@@ -455,6 +490,9 @@ public class EngineTest {
                     };
                     CallTarget target = Truffle.getRuntime().createCallTarget(root);
                     channel.interopTargets.add(target);
+                    if (channel.frozen) {
+                        throw new IllegalStateException("No new calltargets for " + tree);
+                    }
                     return target;
                 }
             });
@@ -489,6 +527,9 @@ public class EngineTest {
             };
             CallTarget target = Truffle.getRuntime().createCallTarget(root);
             channel.parseTargets.add(target);
+            if (channel.frozen) {
+                throw new IllegalStateException("No new calltargets");
+            }
             return target;
         }
 

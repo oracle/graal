@@ -109,8 +109,9 @@ abstract class PolyglotRootNode extends RootNode {
                 engineObject.assertEngine(engine);
                 args[i] = engineObject.getDelegate();
             }
-            // TODO use node based API to call into JavaInterop.asTruffleValue
-            args[i] = JavaInterop.asTruffleValue(args[i]);
+            if (args[i] != null && !isPrimitiveType(args[i].getClass())) {
+                args[i] = JavaInterop.asTruffleObject(args[i]);
+            }
         }
     }
 
@@ -125,11 +126,13 @@ abstract class PolyglotRootNode extends RootNode {
     private static final class ForeignSendRootNode extends PolyglotRootNode {
         @Child private ConvertNode returnConvertNode;
         @Child private Node messageNode;
+        @Child private Node toJavaNode;
 
         ForeignSendRootNode(PolyglotEngine engine, Message message) {
             super(engine);
             this.returnConvertNode = new ConvertNode();
             this.messageNode = message.createNode();
+            this.toJavaNode = Access.JAVA_INTEROP.createToJavaNode();
         }
 
         @Override
@@ -146,6 +149,7 @@ abstract class PolyglotRootNode extends RootNode {
     private static final class AsJavaRootNode extends PolyglotRootNode {
         @Child private ConvertNode returnConvertNode;
         @Child private Node executeNode;
+        @Child private Node toJavaNode;
 
         private final Class<? extends TruffleObject> receiverType;
 
@@ -155,6 +159,7 @@ abstract class PolyglotRootNode extends RootNode {
             super(engine);
             this.receiverType = receiverType;
             this.returnConvertNode = new ConvertNode();
+            this.toJavaNode = Access.JAVA_INTEROP.createToJavaNode();
         }
 
         @Override
@@ -162,9 +167,7 @@ abstract class PolyglotRootNode extends RootNode {
             Object[] args = frame.getArguments();
             final Class<?> targetType = (Class<?>) args[0];
             final TruffleObject value = receiverType.cast(args[1]);
-
-            // TODO use a node based API to call into JavaInteorp.
-            return JavaInterop.asJavaObject(targetType, value);
+            return Access.JAVA_INTEROP.toJava(toJavaNode, targetType, value);
         }
 
     }

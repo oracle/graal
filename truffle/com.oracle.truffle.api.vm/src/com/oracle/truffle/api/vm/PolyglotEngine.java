@@ -48,8 +48,10 @@ import java.util.logging.Logger;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.impl.FindContextNode;
@@ -62,6 +64,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.ComputeInExecutor.Info;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
 import com.oracle.truffle.api.vm.PolyglotRootNode.EvalRootNode;
+import java.lang.reflect.Method;
 
 /**
  * A multi-language execution environment for Truffle-implemented {@linkplain Language languages}
@@ -1453,6 +1456,7 @@ public class PolyglotEngine {
         static final Accessor.LanguageSupport LANGS = SPIAccessor.langs();
         static final Accessor.InstrumentSupport INSTRUMENT = SPIAccessor.instrumentAccess();
         static final Accessor.DebugSupport DEBUG = SPIAccessor.debugAccess();
+        static final Accessor.JavaInteropSupport JAVA_INTEROP = SPIAccessor.javaInteropAccess();
 
         static Collection<ClassLoader> loaders() {
             return SPI.allLoaders();
@@ -1470,6 +1474,10 @@ public class PolyglotEngine {
 
         static DebugSupport debugAccess() {
             return SPI.debugSupport();
+        }
+
+        static JavaInteropSupport javaInteropAccess() {
+            return SPI.javaInteropSupport();
         }
 
         Collection<ClassLoader> allLoaders() {
@@ -1569,6 +1577,75 @@ public class PolyglotEngine {
                 }
                 return truffleObject;
             }
+
+            @Override
+            public CallTarget lookupOrRegisterComputation(Object truffleObject, RootNode computation, Object... keys) {
+                CompilerAsserts.neverPartOfCompilation();
+                assert keys.length > 0;
+                Object key;
+                if (keys.length == 1) {
+                    key = keys[0];
+                    assert TruffleOptions.AOT || assertKeyType(key);
+                } else {
+                    Pair p = null;
+                    for (Object k : keys) {
+                        assert TruffleOptions.AOT || assertKeyType(k);
+                        p = new Pair(k, p);
+                    }
+                    key = p;
+                }
+                if (truffleObject instanceof EngineTruffleObject) {
+                    PolyglotEngine engine = ((EngineTruffleObject) truffleObject).engine();
+                    return engine.cachedTargets.lookupComputation(key, computation);
+                }
+
+                if (computation == null) {
+                    return null;
+                }
+                return Truffle.getRuntime().createCallTarget(computation);
+            }
+
+            private static boolean assertKeyType(Object key) {
+                assert key instanceof Class || key instanceof Method || key instanceof Message : "Unexpected key: " + key;
+                return true;
+            }
+        }
+
+        private static final class Pair {
+            final Object key;
+            final Pair next;
+
+            Pair(Object key, Pair next) {
+                this.key = key;
+                this.next = next;
+            }
+
+            @Override
+            public int hashCode() {
+                return this.key.hashCode() + (next == null ? 3754 : next.hashCode());
+            }
+
+            @Override
+            public boolean equals(Object obj) {
+                if (this == obj) {
+                    return true;
+                }
+                if (obj == null) {
+                    return false;
+                }
+                if (getClass() != obj.getClass()) {
+                    return false;
+                }
+                final Pair other = (Pair) obj;
+                if (!Objects.equals(this.key, other.key)) {
+                    return false;
+                }
+                if (!Objects.equals(this.next, other.next)) {
+                    return false;
+                }
+                return true;
+            }
+
         }
 
     } // end of SPIAccessor
