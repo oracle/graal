@@ -1247,7 +1247,6 @@ public class GraphDecoder {
         return false;
     }
 
-        assert !(node instanceof LoopExitNode && edges.type() == Edges.Type.Inputs && edges.getType(index) == FrameState.class);
     protected Node lookupNode(LoopScope loopScope, int nodeOrderId) {
         return loopScope.createdNodes[nodeOrderId];
     }
