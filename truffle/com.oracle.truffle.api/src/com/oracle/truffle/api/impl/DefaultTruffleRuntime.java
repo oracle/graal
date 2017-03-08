@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,6 +59,19 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
     private final ThreadLocal<DefaultFrameInstance> stackTraces = new ThreadLocal<>();
     private final DefaultTVMCI tvmci = new DefaultTVMCI();
+
+    private final TVMCI.Test<CallTarget> testTvmci = new TVMCI.Test<CallTarget>() {
+
+        @Override
+        public CallTarget createTestCallTarget(String testName, RootNode testNode) {
+            return createCallTarget(testNode);
+        }
+
+        @Override
+        public void finishWarmup(CallTarget callTarget) {
+            // do nothing if we have no compiler
+        }
+    };
 
     public DefaultTruffleRuntime() {
     }
@@ -183,6 +196,10 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     }
 
     public <T> T getCapability(Class<T> capability) {
+        if (capability == TVMCI.Test.class) {
+            return capability.cast(testTvmci);
+        }
+
         final Iterator<T> it = ServiceLoader.load(capability).iterator();
         try {
             return it.hasNext() ? it.next() : null;
