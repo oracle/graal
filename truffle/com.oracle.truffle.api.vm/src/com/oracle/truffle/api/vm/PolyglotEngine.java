@@ -998,6 +998,7 @@ public class PolyglotEngine {
                     Object unwrappedConvered = unwrapped instanceof ConvertedObject ? ((ConvertedObject) unwrapped).getOriginal() : unwrapped;
                     return representation.cast(Access.LANGS.toStringIfVisible(language[0], findEnv(clazz), unwrappedConvered, null));
                 }
+                unwrapped = Objects.toString(unwrapped);
             }
             if (ConvertedObject.isInstance(representation, unwrapped)) {
                 return ConvertedObject.cast(representation, unwrapped);
