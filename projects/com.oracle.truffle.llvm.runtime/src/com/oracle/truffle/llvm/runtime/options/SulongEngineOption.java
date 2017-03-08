@@ -59,4 +59,6 @@ abstract class SulongEngineOption {
     @Option(commandLineName = "ExecutionCount", help = "Execute each program for as many times as specified by this option.", name = "executionCount") //
     protected static final Integer EXECUTION_COUNT = 1;
 
+    @Option(commandLineName = "DisableNativeInterface", help = "Disables Sulongs native interface.", name = "disableNativeInterface") //
+    protected static final Boolean DISABLE_NFI = false;
 }
