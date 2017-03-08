@@ -45,15 +45,17 @@ public class LLVMFunctionStartNode extends RootNode {
     @Children private final LLVMExpressionNode[] afterFunction;
     @Children private final LLVMStackFrameNuller[] nullers;
     private final String name;
+    private final int explicitArgumentsCount;
 
     public LLVMFunctionStartNode(LLVMExpressionNode node, LLVMExpressionNode[] beforeFunction, LLVMExpressionNode[] afterFunction, SourceSection sourceSection, FrameDescriptor frameDescriptor,
-                    String name, LLVMStackFrameNuller[] initNullers) {
+                    String name, LLVMStackFrameNuller[] initNullers, int explicitArgumentsCount) {
         super(LLVMLanguage.class, sourceSection, frameDescriptor);
         this.node = node;
         this.beforeFunction = beforeFunction;
         this.afterFunction = afterFunction;
         this.nullers = initNullers;
         this.name = name;
+        this.explicitArgumentsCount = explicitArgumentsCount;
     }
 
     @Override
@@ -96,4 +98,7 @@ public class LLVMFunctionStartNode extends RootNode {
         return name;
     }
 
+    public int getExplicitArgumentsCount() {
+        return explicitArgumentsCount;
+    }
 }

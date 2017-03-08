@@ -55,14 +55,15 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 /**
  * The global entry point initializes the global scope and starts execution with the main function.
+ * This class might be subclassed by other projects.
  */
 public class LLVMGlobalRootNode extends RootNode {
 
     private final DirectCallNode main;
-    @CompilationFinal private final Object[] arguments;
+    @CompilationFinal(dimensions = 1) protected final Object[] arguments;
     private final LLVMContext context;
     // FIXME instead make the option system "PE safe"
-    private final int executionCount = LLVMOptions.ENGINE.executionCount();
+    protected final int executionCount = LLVMOptions.ENGINE.executionCount();
     private final boolean printExecutionTime = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.printExecutionTime());
     private final FrameSlot stackPointerSlot;
     private long startExecutionTime;
@@ -105,7 +106,7 @@ public class LLVMGlobalRootNode extends RootNode {
         }
     }
 
-    private Object executeIteration(int iteration, Object[] args) {
+    protected Object executeIteration(int iteration, Object[] args) {
         Object result;
 
         if (iteration != 0) {
@@ -150,7 +151,7 @@ public class LLVMGlobalRootNode extends RootNode {
     }
 
     @TruffleBoundary
-    private void executeStaticInits() {
+    protected void executeStaticInits() {
         List<RootCallTarget> globalVarInits = context.getGlobalVarInits();
         for (RootCallTarget callTarget : globalVarInits) {
             callTarget.call(globalVarInits);

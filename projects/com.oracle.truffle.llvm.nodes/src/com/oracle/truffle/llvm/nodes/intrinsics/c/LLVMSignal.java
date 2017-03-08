@@ -208,7 +208,7 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
                                                 new LLVMExpressionNode[]{},
                                                 new LLVMExpressionNode[]{},
                                                 null,
-                                                new FrameDescriptor(), null, new LLVMStackFrameNuller[0]));
+                                                new FrameDescriptor(), null, new LLVMStackFrameNuller[0], 1));
 
                 isRunning.set(true);
                 context.registerThread(this);
