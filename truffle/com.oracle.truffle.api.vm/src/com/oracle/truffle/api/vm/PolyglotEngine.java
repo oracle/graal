@@ -992,9 +992,11 @@ public class PolyglotEngine {
                 unwrapped = unwrapJava(original);
             }
             if (representation == String.class) {
-                final Class<? extends TruffleLanguage> clazz = language[0].getClass();
-                Object unwrappedConvered = unwrapped instanceof ConvertedObject ? ((ConvertedObject) unwrapped).getOriginal() : unwrapped;
-                return representation.cast(Access.LANGS.toStringIfVisible(language[0], findEnv(clazz), unwrappedConvered, null));
+                if (language[0] != null) {
+                    final Class<? extends TruffleLanguage> clazz = language[0].getClass();
+                    Object unwrappedConvered = unwrapped instanceof ConvertedObject ? ((ConvertedObject) unwrapped).getOriginal() : unwrapped;
+                    return representation.cast(Access.LANGS.toStringIfVisible(language[0], findEnv(clazz), unwrappedConvered, null));
+                }
             }
             if (ConvertedObject.isInstance(representation, unwrapped)) {
                 return ConvertedObject.cast(representation, unwrapped);
