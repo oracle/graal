@@ -515,8 +515,14 @@ public final class SchedulePhase extends Phase {
 
                 if (strategy == SchedulingStrategy.FINAL_SCHEDULE || strategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS) {
                     assert latestBlock != null;
-                    while (latestBlock.getLoopDepth() > earliestBlock.getLoopDepth() && latestBlock != earliestBlock.getDominator()) {
-                        latestBlock = latestBlock.getDominator();
+                    Block currentBlock = latestBlock;
+                    while (currentBlock.getLoopDepth() > earliestBlock.getLoopDepth() && currentBlock != earliestBlock.getDominator()) {
+                        Block previousCurrentBlock = currentBlock;
+                        currentBlock = currentBlock.getDominator();
+                        if (previousCurrentBlock.isLoopHeader() && currentBlock.probability() < latestBlock.probability()) {
+                            // Only assign new latest block if frequency is actually lower.
+                            latestBlock = currentBlock;
+                        }
                     }
                 }
 
