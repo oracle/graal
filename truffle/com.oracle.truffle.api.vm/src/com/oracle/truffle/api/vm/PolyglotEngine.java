@@ -915,7 +915,7 @@ public class PolyglotEngine {
             if (unwrapTarget == null) {
                 unwrapTarget = cachedTargets.lookupAsJava(value.getClass());
             }
-            return (T) unwrapTarget.call(Object.class, value);
+            return (T) unwrapTarget.call(value, Object.class);
         }
 
         @SuppressWarnings("unchecked")
@@ -923,7 +923,7 @@ public class PolyglotEngine {
             if (asJavaObjectTarget == null) {
                 asJavaObjectTarget = cachedTargets.lookupAsJava(value == null ? void.class : value.getClass());
             }
-            return (T) asJavaObjectTarget.call(type, value);
+            return (T) asJavaObjectTarget.call(value, type);
         }
 
         @SuppressWarnings("try")
@@ -984,6 +984,7 @@ public class PolyglotEngine {
          * @throws ClassCastException if the value cannot be converted to desired view
          * @since 0.9
          */
+        @SuppressWarnings("unchecked")
         public <T> T as(final Class<T> representation) {
             Object original = waitForSymbol();
             Object unwrapped = original;
@@ -1005,7 +1006,12 @@ public class PolyglotEngine {
             if (original instanceof TruffleObject) {
                 original = EngineTruffleObject.wrap(PolyglotEngine.this, original);
             }
-            return representation.cast(asJavaObject(representation, original));
+            Object javaValue = asJavaObject(representation, original);
+            if (representation.isPrimitive()) {
+                return (T) javaValue;
+            } else {
+                return representation.cast(javaValue);
+            }
         }
 
         /**

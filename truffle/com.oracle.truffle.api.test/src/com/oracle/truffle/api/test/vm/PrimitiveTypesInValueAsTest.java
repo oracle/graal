@@ -44,7 +44,18 @@ public class PrimitiveTypesInValueAsTest {
                         {Float.class, 1.3f},
                         {Double.class, 1.4},
                         {Character.class, 'A'},
+                        {Boolean.class, true},
                         {String.class, "String"},
+
+                        // primitive types
+                        {byte.class, (byte) 20},
+                        {short.class, (short) 31},
+                        {int.class, 41},
+                        {long.class, 122332L},
+                        {float.class, 1.6f},
+                        {double.class, 1.466},
+                        {char.class, 'B'},
+                        {boolean.class, false},
         });
     }
 

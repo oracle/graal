@@ -48,6 +48,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 abstract class PolyglotRootNode extends RootNode {
 
     private static final CallTarget VOID_TARGET = new CallTarget() {
+        @Override
         public Object call(Object... arguments) {
             return arguments[0];
         }
@@ -165,8 +166,8 @@ abstract class PolyglotRootNode extends RootNode {
         @Override
         protected Object executeImpl(VirtualFrame frame) {
             Object[] args = frame.getArguments();
-            final Class<?> targetType = (Class<?>) args[0];
-            final TruffleObject value = receiverType.cast(args[1]);
+            final Class<?> targetType = (Class<?>) args[1];
+            final TruffleObject value = receiverType.cast(args[0]);
             return Access.JAVA_INTEROP.toJava(toJavaNode, targetType, value);
         }
 
