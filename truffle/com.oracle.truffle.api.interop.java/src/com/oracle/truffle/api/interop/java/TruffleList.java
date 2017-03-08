@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.interop.java;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -113,9 +114,11 @@ final class TruffleList<T> extends AbstractList<T> {
                 } else if (msg == Message.WRITE) {
                     ret = ForeignAccess.sendWrite(writeNode, receiver, args[3], args[4]);
                 } else {
+                    CompilerDirectives.transferToInterpreter();
                     throw UnsupportedMessageException.raise(msg);
                 }
             } catch (InteropException ex) {
+                CompilerDirectives.transferToInterpreter();
                 throw ex.raise();
             }
 

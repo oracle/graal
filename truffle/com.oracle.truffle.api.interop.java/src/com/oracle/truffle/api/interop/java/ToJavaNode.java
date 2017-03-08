@@ -27,6 +27,7 @@ package com.oracle.truffle.api.interop.java;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
@@ -164,6 +165,7 @@ abstract class ToJavaNode extends Node {
             try {
                 raw = ForeignAccess.send(foreignAccess, function, args);
             } catch (InteropException ex) {
+                CompilerDirectives.transferToInterpreter();
                 throw ex.raise();
             }
             if (type == null) {

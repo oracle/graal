@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.interop.java;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -203,9 +204,11 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
                 } else if (msg == Message.KEYS) {
                     ret = ForeignAccess.sendKeys(keysNode, receiver);
                 } else {
+                    CompilerDirectives.transferToInterpreter();
                     throw UnsupportedMessageException.raise(msg);
                 }
             } catch (InteropException ex) {
+                CompilerDirectives.transferToInterpreter();
                 throw ex.raise();
             }
 

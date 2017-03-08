@@ -175,6 +175,12 @@ final class JavaInteropReflect {
         return names.toArray(new String[0]);
     }
 
+    @CompilerDirectives.TruffleBoundary
+    static RuntimeException reraise(InteropException ex) {
+        CompilerDirectives.transferToInterpreter();
+        throw ex.raise();
+    }
+
     private static final class SingleHandler implements InvocationHandler {
 
         private final TruffleObject symbol;
@@ -286,7 +292,7 @@ final class JavaInteropReflect {
                 Object res = executeImpl(receiver, params);
                 return toJavaNode.execute(res, returnType);
             } catch (InteropException ex) {
-                throw ex.raise();
+                throw reraise(ex);
             }
         }
 
@@ -322,11 +328,13 @@ final class JavaInteropReflect {
             if (message == null) {
                 return ((InvokeAndReadExecNode) messageNode).executeDispatch(obj, name, args);
             }
+            CompilerDirectives.transferToInterpreter();
             throw UnsupportedMessageException.raise(message);
         }
 
         Node node(Object[] args) {
             if (node == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 this.node = insert(createNode(args));
             }
             return node;
@@ -350,7 +358,7 @@ final class JavaInteropReflect {
             try {
                 return handleMessage(messageNode, receiver, arguments);
             } catch (InteropException ex) {
-                throw ex.raise();
+                throw reraise(ex);
             }
         }
 
@@ -378,7 +386,7 @@ final class JavaInteropReflect {
             try {
                 return handleMessage(node(arguments), receiver, arguments);
             } catch (InteropException ex) {
-                throw ex.raise();
+                throw reraise(ex);
             }
         }
 
@@ -413,6 +421,7 @@ final class JavaInteropReflect {
         Object doReadExec(TruffleObject obj, String name, Object[] args) throws UnsupportedMessageException {
             try {
                 if (readNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     readNode = insert(Message.READ.createNode());
                     primitive = insert(ToPrimitiveNode.create());
                     isExecNode = insert(Message.IS_EXECUTABLE.createNode());
@@ -427,14 +436,16 @@ final class JavaInteropReflect {
                     if (args.length == 0) {
                         return attr;
                     }
+                    CompilerDirectives.transferToInterpreter();
                     throw ArityException.raise(0, args.length);
                 }
                 if (execNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     execNode = insert(Message.createExecute(args.length).createNode());
                 }
                 return ForeignAccess.sendExecute(execNode, attr, args);
             } catch (ArityException | UnsupportedTypeException | UnknownIdentifierException ex) {
-                throw ex.raise();
+                throw reraise(ex);
             }
         }
 
@@ -447,7 +458,7 @@ final class JavaInteropReflect {
                 try {
                     return doReadExec(obj, name, args);
                 } catch (UnsupportedMessageException error) {
-                    throw error.raise();
+                    throw reraise(error);
                 }
             }
         }
