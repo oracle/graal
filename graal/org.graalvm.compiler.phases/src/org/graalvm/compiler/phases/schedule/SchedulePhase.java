@@ -519,9 +519,12 @@ public final class SchedulePhase extends Phase {
                     while (currentBlock.getLoopDepth() > earliestBlock.getLoopDepth() && currentBlock != earliestBlock.getDominator()) {
                         Block previousCurrentBlock = currentBlock;
                         currentBlock = currentBlock.getDominator();
-                        if (previousCurrentBlock.isLoopHeader() && currentBlock.probability() < latestBlock.probability()) {
-                            // Only assign new latest block if frequency is actually lower.
-                            latestBlock = currentBlock;
+                        if (previousCurrentBlock.isLoopHeader()) {
+                            if (currentBlock.probability() < latestBlock.probability() || ((StructuredGraph) currentNode.graph()).hasValueProxies()) {
+                                // Only assign new latest block if frequency is actually lower or if
+                                // loop proxies would be required otherwise.
+                                latestBlock = currentBlock;
+                            }
                         }
                     }
                 }
