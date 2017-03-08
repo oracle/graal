@@ -149,7 +149,12 @@ final class LibFFISignature {
     public Object execute(long functionPointer, NativeArgumentBuffer.Array argBuffer) {
         CompilerAsserts.partialEvaluationConstant(retType);
         if (retType instanceof LibFFIType.ObjectType) {
-            return executeObject(functionPointer, argBuffer.prim, argBuffer.getPatchCount(), argBuffer.patches, argBuffer.objects);
+            Object ret = executeObject(functionPointer, argBuffer.prim, argBuffer.getPatchCount(), argBuffer.patches, argBuffer.objects);
+            if (ret == null) {
+                return new NativePointer(0);
+            } else {
+                return ret;
+            }
         } else if (retType instanceof LibFFIType.SimpleType) {
             LibFFIType.SimpleType simpleType = (LibFFIType.SimpleType) retType;
             long ret = executePrimitive(functionPointer, argBuffer.prim, argBuffer.getPatchCount(), argBuffer.patches, argBuffer.objects);

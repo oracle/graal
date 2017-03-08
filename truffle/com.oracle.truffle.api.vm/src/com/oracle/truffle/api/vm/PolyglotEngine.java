@@ -53,6 +53,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.impl.FindContextNode;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.Message;
@@ -195,8 +196,8 @@ public class PolyglotEngine {
     private final ComputeInExecutor.Info executor;
     private final Map<String, Language> langs;
     private final InputStream in;
-    private final OutputStream err;
-    private final OutputStream out;
+    private final DispatchOutputStream err;
+    private final DispatchOutputStream out;
     private final EventConsumer<?>[] handlers;
     private final Map<String, Object> globals;
     private final Object instrumentationHandler;
@@ -246,8 +247,8 @@ public class PolyglotEngine {
     PolyglotEngine(Executor executor, Map<String, Object> globals, OutputStream out, OutputStream err, InputStream in, EventConsumer<?>[] handlers, List<Object[]> config) {
         assertNoTruffle();
         this.executor = ComputeInExecutor.wrap(executor);
-        this.out = out;
-        this.err = err;
+        this.out = SPIAccessor.instrumentAccess().createDispatchOutput(out);
+        this.err = SPIAccessor.instrumentAccess().createDispatchOutput(err);
         this.in = in;
         this.handlers = handlers;
         this.initThread = Thread.currentThread();
@@ -255,7 +256,7 @@ public class PolyglotEngine {
         this.config = config;
         // this.debugger = SPI.createDebugger(this, this.instrumenter);
         // new instrumentation
-        this.instrumentationHandler = Access.INSTRUMENT.createInstrumentationHandler(this, out, err, in);
+        this.instrumentationHandler = Access.INSTRUMENT.createInstrumentationHandler(this, this.out, this.err, in);
         Map<String, Language> map = new HashMap<>();
         /* We want to create a language instance but per LanguageCache and not per mime type. */
         Set<LanguageCache> uniqueCaches = new HashSet<>(LanguageCache.languages().values());

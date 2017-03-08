@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,20 @@
  */
 package com.oracle.truffle.api.test.profiles;
 
+import com.oracle.truffle.api.interop.java.JavaInterop;
 import static com.oracle.truffle.api.test.ReflectionUtils.getStaticField;
 import static com.oracle.truffle.api.test.ReflectionUtils.invoke;
 import static com.oracle.truffle.api.test.ReflectionUtils.invokeStatic;
 import static com.oracle.truffle.api.test.ReflectionUtils.loadRelative;
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeThat;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -130,6 +134,14 @@ public class PrimitiveValueProfileTest {
         profile.toString(); // test that it is not crashing
     }
 
+    private static boolean primitiveEquals(Object value0, Object value1) {
+        if (JavaInterop.isPrimitive(value0)) {
+            return value0.equals(value1);
+        } else {
+            return value0 == value1;
+        }
+    }
+
     @Theory
     public void testProfileTwoObject(Object value0, Object value1) {
         Object result0 = profile.profile(value0);
@@ -138,7 +150,7 @@ public class PrimitiveValueProfileTest {
         assertThat(result0, is(value0));
         assertThat(result1, is(value1));
 
-        if (value0 == value1) {
+        if (primitiveEquals(value0, value1)) {
             assertThat(getCachedValue(profile), is(value0));
             assertThat(isGeneric(profile), is(false));
         } else {
@@ -158,7 +170,7 @@ public class PrimitiveValueProfileTest {
         assertThat(result1, is(value1));
         assertThat(result2, is(value2));
 
-        if (value0 == value1 && value1 == value2) {
+        if (primitiveEquals(value0, value1) && primitiveEquals(value1, value2)) {
             assertThat(getCachedValue(profile), is(value0));
             assertThat(isGeneric(profile), is(false));
         } else {
@@ -866,6 +878,8 @@ public class PrimitiveValueProfileTest {
 
     @Theory
     public void testWithByteThenObject(byte value0, Object value1) {
+        assumeThat(value0, is(not(equalTo(value1))));
+
         byte result0 = profile.profile(value0);
         Object result1 = profile.profile(value1);
 
@@ -877,6 +891,8 @@ public class PrimitiveValueProfileTest {
 
     @Theory
     public void testWithShortThenObject(short value0, Object value1) {
+        assumeThat(value0, is(not(equalTo(value1))));
+
         short result0 = profile.profile(value0);
         Object result1 = profile.profile(value1);
 
@@ -888,6 +904,8 @@ public class PrimitiveValueProfileTest {
 
     @Theory
     public void testWithIntThenObject(int value0, Object value1) {
+        assumeThat(value0, is(not(equalTo(value1))));
+
         int result0 = profile.profile(value0);
         Object result1 = profile.profile(value1);
 
@@ -899,6 +917,8 @@ public class PrimitiveValueProfileTest {
 
     @Theory
     public void testWithLongThenObject(long value0, Object value1) {
+        assumeThat(value0, is(not(equalTo(value1))));
+
         long result0 = profile.profile(value0);
         Object result1 = profile.profile(value1);
 
@@ -910,6 +930,8 @@ public class PrimitiveValueProfileTest {
 
     @Theory
     public void testWithFloatThenObject(float value0, Object value1) {
+        assumeThat(value0, is(not(equalTo(value1))));
+
         float result0 = profile.profile(value0);
         Object result1 = profile.profile(value1);
 
@@ -921,6 +943,8 @@ public class PrimitiveValueProfileTest {
 
     @Theory
     public void testWithDoubleThenObject(double value0, Object value1) {
+        assumeThat(value0, is(not(equalTo(value1))));
+
         double result0 = profile.profile(value0);
         Object result1 = profile.profile(value1);
 
@@ -932,6 +956,8 @@ public class PrimitiveValueProfileTest {
 
     @Theory
     public void testWithBooleanThenObject(boolean value0, Object value1) {
+        assumeThat(value0, is(not(equalTo(value1))));
+
         boolean result0 = profile.profile(value0);
         Object result1 = profile.profile(value1);
 
@@ -943,6 +969,8 @@ public class PrimitiveValueProfileTest {
 
     @Theory
     public void testWithCharThenObject(char value0, Object value1) {
+        assumeThat(value0, is(not(equalTo(value1))));
+
         char result0 = profile.profile(value0);
         Object result1 = profile.profile(value1);
 

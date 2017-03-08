@@ -22,18 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.nfi.types;
+package com.oracle.truffle.nfi.test.interop;
 
-public final class NativeSimpleTypeMirror extends NativeTypeMirror {
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
 
-    private final NativeSimpleType simpleType;
+public class NullObject implements TruffleObject {
 
-    NativeSimpleTypeMirror(NativeSimpleType simpleType) {
-        super(Kind.SIMPLE);
-        this.simpleType = simpleType;
-    }
-
-    public NativeSimpleType getSimpleType() {
-        return simpleType;
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return NullObjectMessageResolutionForeign.createAccess();
     }
 }

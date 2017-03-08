@@ -22,18 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.nfi.types;
+#include <stdlib.h>
+#include <math.h>
 
-public final class NativeSimpleTypeMirror extends NativeTypeMirror {
+static double square(double arg) {
+    return arg * arg;
+}
 
-    private final NativeSimpleType simpleType;
+static double add(double a, double b) {
+    return a + b;
+}
 
-    NativeSimpleTypeMirror(NativeSimpleType simpleType) {
-        super(Kind.SIMPLE);
-        this.simpleType = simpleType;
-    }
-
-    public NativeSimpleType getSimpleType() {
-        return simpleType;
-    }
+void initialize_package(void (*registerFunction)(const char *name, const char *signature, void *fn)) {
+    registerFunction("add", "(double,double):double", add);
+    registerFunction("square", "(double):double", square);
+    registerFunction("sqrt", "(double):double", sqrt);
 }

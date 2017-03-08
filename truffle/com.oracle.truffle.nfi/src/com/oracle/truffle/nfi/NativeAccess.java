@@ -41,10 +41,12 @@ class NativeAccess {
     }
 
     // initialized by native code
+    // Checkstyle: stop field name check
     static int RTLD_GLOBAL;
     static int RTLD_LOCAL;
     static int RTLD_LAZY;
     static int RTLD_NOW;
+    // Checkstyle: resume field name check
 
     private static native void initialize(String libName, LibFFIType[] simpleTypeMap);
 

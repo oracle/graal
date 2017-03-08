@@ -22,18 +22,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.nfi.types;
+package com.oracle.truffle.nfi.test.interop;
 
-public final class NativeSimpleTypeMirror extends NativeTypeMirror {
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
 
-    private final NativeSimpleType simpleType;
+public class TestCallback implements TruffleObject {
 
-    NativeSimpleTypeMirror(NativeSimpleType simpleType) {
-        super(Kind.SIMPLE);
-        this.simpleType = simpleType;
+    public interface Function {
+
+        @TruffleBoundary
+        Object call(Object... args);
     }
 
-    public NativeSimpleType getSimpleType() {
-        return simpleType;
+    private final int arity;
+    private final Function function;
+
+    public TestCallback(int arity, Function function) {
+        this.arity = arity;
+        this.function = function;
+    }
+
+    Object call(Object... args) {
+        if (args.length == arity) {
+            Object ret = function.call(args);
+            return ret;
+        } else {
+            throw ArityException.raise(arity, args.length);
+        }
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return TestCallbackMessageResolutionForeign.createAccess();
     }
 }

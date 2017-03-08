@@ -24,6 +24,8 @@ package com.oracle.truffle.api.dsl.test;
 
 import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createArguments;
 
+import java.util.concurrent.locks.ReentrantLock;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -50,9 +52,11 @@ import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCastExecu
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals1NodeGen;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals2NodeGen;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals3NodeGen;
+import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.TestImplicitCastWithCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.dsl.test.examples.ExampleNode;
+import com.oracle.truffle.api.dsl.test.examples.ExampleNode.ExampleArgumentNode;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
@@ -461,7 +465,32 @@ public class ImplicitCastTest {
     @DSLOptions(defaultGenerator = DSLGenerator.FLAT)
     public static class TS {
         @ImplicitCast
-        static long upcast(int value) {
+        public static int promoteToInt(byte value) {
+            return value;
+        }
+
+        @ImplicitCast
+        public static int promoteToInt(short value) {
+            return value;
+        }
+
+        @ImplicitCast
+        public static long promoteToLong(byte value) {
+            return value;
+        }
+
+        @ImplicitCast
+        public static long promoteToLong(short value) {
+            return value;
+        }
+
+        @ImplicitCast
+        public static long promoteToLong(int value) {
+            return value;
+        }
+
+        @ImplicitCast
+        public static double promoteToDouble(float value) {
             return value;
         }
     }
@@ -483,6 +512,96 @@ public class ImplicitCastTest {
         @Specialization
         public String s2(long a, long b) {
             return "s2";
+        }
+
+    }
+
+    @Test
+    public void testImplicitCastExecute2() {
+        ExampleArgumentNode[] args = ExampleNode.createArguments(2);
+        CallTarget target = ExampleNode.createTarget(ImplicitCastExecuteNodeGen.create(args));
+
+        Assert.assertEquals("s2", target.call(1L, 1L));
+        Assert.assertEquals(0, args[0].longInvocationCount);
+        Assert.assertEquals(0, args[1].longInvocationCount);
+        Assert.assertEquals(1, args[0].genericInvocationCount);
+        Assert.assertEquals(1, args[1].genericInvocationCount);
+
+        Assert.assertEquals("s2", target.call(1L, 1L));
+
+        Assert.assertEquals(1, args[0].longInvocationCount);
+        Assert.assertEquals(1, args[1].longInvocationCount);
+        Assert.assertEquals(2, args[0].genericInvocationCount);
+        Assert.assertEquals(2, args[1].genericInvocationCount);
+
+        Assert.assertEquals("s2", target.call(1L, 1L));
+
+        Assert.assertEquals(2, args[0].longInvocationCount);
+        Assert.assertEquals(2, args[1].longInvocationCount);
+        Assert.assertEquals(3, args[0].genericInvocationCount);
+        Assert.assertEquals(3, args[1].genericInvocationCount);
+
+        Assert.assertEquals(0, args[0].doubleInvocationCount);
+        Assert.assertEquals(0, args[1].doubleInvocationCount);
+        Assert.assertEquals(0, args[0].intInvocationCount);
+        Assert.assertEquals(0, args[1].intInvocationCount);
+
+    }
+
+    @Test
+    public void testImplicitCastWithCache() {
+        TestImplicitCastWithCacheNode node = TestImplicitCastWithCacheNodeGen.create();
+
+        Assert.assertEquals(0, node.specializeCalls);
+
+        ConcreteString concrete = new ConcreteString();
+        node.execute("a", true);
+        Assert.assertEquals(1, node.specializeCalls);
+        node.execute(concrete, true);
+        Assert.assertEquals(2, node.specializeCalls);
+        node.execute(concrete, true);
+        node.execute(concrete, true);
+        node.execute(concrete, true);
+
+        // ensure we stabilize
+        Assert.assertEquals(2, node.specializeCalls);
+    }
+
+    interface AbstractString {
+    }
+
+    static class ConcreteString implements AbstractString {
+    }
+
+    @TypeSystem
+    static class TestTypeSystem {
+        @ImplicitCast
+        public static AbstractString toAbstractStringVector(@SuppressWarnings("unused") String vector) {
+            return new ConcreteString();
+        }
+    }
+
+    @TypeSystemReference(TestTypeSystem.class)
+    abstract static class TestImplicitCastWithCacheNode extends Node {
+
+        int specializeCalls;
+
+        public abstract int execute(Object arg, boolean flag);
+
+        @Specialization(guards = {"specializeCall(flag)", "cachedFlag == flag"})
+        @SuppressWarnings("unused")
+        protected static int test(AbstractString arg, boolean flag,
+                        @Cached("flag") boolean cachedFlag) {
+            return flag ? 100 : -100;
+        }
+
+        boolean specializeCall(@SuppressWarnings("unused") boolean flag) {
+            ReentrantLock lock = (ReentrantLock) getLock();
+            if (lock.isHeldByCurrentThread()) {
+                // the lock is held for guards executed in executeAndSpecialize
+                specializeCalls++;
+            }
+            return true;
         }
 
     }

@@ -31,97 +31,12 @@ questions.
 <body>
 
 <p>
-Truffle is a framework for writing and executing interpreters. In case
-you want to execute already written interpreters from your Java application,
-start at {@link com.oracle.truffle.api.vm.PolyglotEngine}. In case you'd like
-to write your own Truffle based language, start at 
-{@link com.oracle.truffle.api.TruffleLanguage}.
-<p>
-To get the best speed out of your Truffle system, make sure you are running
-on top of 
-<a target="graal" href="https://github.com/graalvm/graal-core/">Graal</a>
-virtual machine. The easiest way to get binaries of the virtual machine
-is to download the
-<a target="graal" href="http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index.html">
-OTN technology preview</a>.
-
-<h4>Using Truffle</h4>
-
-You can embed any Truffle language into your existing Java program. The central
-class to start at is {@link com.oracle.truffle.api.vm.PolyglotEngine}. Once
-you have an instance of {@link com.oracle.truffle.api.vm.PolyglotEngine}, you
-can {@link com.oracle.truffle.api.vm.PolyglotEngine#eval evaluate}
-{@link com.oracle.truffle.api.source.Source sources} written in any language
-the {@link com.oracle.truffle.api.vm.PolyglotEngine} understands.
-
-The set of supported languages is determined by putting their JAR files
-on a classpath of your application. Some languages are available in central
-<a href="http://search.maven.org/#search|ga|1|a%3A%22jruby-truffle%22">Maven repository</a>.
-To include them, modify your <code>pom.xml</code> file (if using Maven) dependency section:
-
-<pre>
-&lt;dependency&gt;
-    &lt;groupId&gt;org.jruby&lt;/groupId&gt;
-    &lt;artifactId&gt;jruby-truffle&lt;/artifactId&gt;
-    &lt;version&gt;9.1.2.0&lt;/version&gt;
-&lt;/dependency&gt;
-</pre>
-
-Other languages may be prepackaged in your virtual machine. For example when
-using the
-<a target="graal" href="http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index.html">
-OTN Graal VM</a> one can start the <em>java</em> executable with
-parameter <code>-polyglot</code> and the 
-<a target="graal" href="https://github.com/graalvm/fastr">FastR</a>,
-JavaScript and 
-<a target="graal" href="https://github.com/jruby/jruby/wiki/Truffle">TruffleRuby</a>
-languages will be made available automatically.
-
-<h4>Learning Truffle</h4>
-
-<p>
-Our typical sample language is called the <em>SimpleLanguage</em>.
-A good entry point for exploring <em>SimpleLanguage</em> is the
-<a target="_blank" href="https://github.com/graalvm/Truffle/blob/master/truffle/com.oracle.truffle.sl/src/com/oracle/truffle/sl/SLLanguage.java">SLLanguage</a>
-class.
+ {@link com.oracle.truffle.tutorial Truffle Tutorial} gives
+ you the best introduction to to <a href="https://github.com/graalvm/truffle">Truffle</a>:
+ the Open Source framework for implementing programming languages with very high performance, Java embedding,
+ language interoperation, debugging, and general tooling support.
 </p>
 
-<p>
-    There is an excellent tutorial <em>Add Graal JIT Compilation to Your JVM Language</em>
-    written by Stefan Marr which gives real example of turning an existing language
-    into <em>Truffle</em> based one:
-</p>
-<ul>
-    <li>Step 1: 
-        <a target="golo" href="http://stefan-marr.de/2015/11/add-graal-jit-compilation-to-your-jvm-language-in-5-easy-steps-step-1/">Setting a Goal and Choosing a Benchmark</a>
-    </li>
-    <li>Step 2: 
-        <a target="golo" href="http://stefan-marr.de/2015/11/add-graal-jit-compilation-to-your-jvm-language-in-5-easy-steps-step-2/">Adding Bits Operations</a>
-    </li>
-    <li>Step 3: 
-        <a target="golo" href="http://stefan-marr.de/2015/11/add-graal-jit-compilation-to-your-jvm-language-in-5-easy-steps-step-3/">Interpreting a Simple Fibonacci Function</a>
-    </li>
-    <li>Step 4: 
-        <a target="golo" href="http://stefan-marr.de/2015/12/add-graal-jit-compilation-to-your-jvm-language-in-5-easy-steps-step-4/">Complete Support for Mandelbrot</a>
-    </li>
-    <li>Step 5: 
-        <a target="golo" href="http://stefan-marr.de/2015/12/add-graal-jit-compilation-to-your-jvm-language-in-5-easy-steps-step-5/">Optimizing the Interpreter for Compilation</a>
-    </li>
-</ul>
-<p>
-    The posts cover not only basics, and API usage, but also description
-    of available tools for analyzing the performance and optimizing it.
-</p>
-
-<h4>References</h4>
-
-<ul>
-  <li><a target="_blank" href="https://github.com/graalvm/truffle">Truffle on Github</a></li>
-  <li><a target="_blank" href="https://github.com/graalvm/graal-core">Graal on Github</a></li>
-  <li><a target="_blank" href="https://github.com/graalvm/truffle/blob/master/docs/Publications.md">Tutorials and publications on Truffle</a></li>
-  <li><a target="_blank" href="https://github.com/graalvm/graal-core/blob/master/docs/Publications.md">Tutorials and publications on Graal</a></li>
-  <li><a target="_blank" href="http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index-2301583.html">Graal VM</a> on the Oracle Technology Network</li>
-</ul>
 
 <h4>Keeping Compatibility</h4>
 
@@ -151,5 +66,6 @@ users of the <b>Truffle</b> API time to adjust to required
 changes and (under the assumption they pay attention to warnings in the code
 base) easily identify and migrate to more modern API alternatives.
 </p>
+
 </body>
 </html>

@@ -37,7 +37,7 @@ import com.oracle.truffle.nfi.LibFFILibraryMessageResolutionFactory.CachedLookup
 @MessageResolution(language = NFILanguage.class, receiverType = LibFFILibrary.class)
 class LibFFILibraryMessageResolution {
 
-    static abstract class CachedLookupSymbolNode extends Node {
+    abstract static class CachedLookupSymbolNode extends Node {
 
         protected abstract LibFFISymbol executeLookup(LibFFILibrary receiver, String symbol);
 
@@ -61,7 +61,7 @@ class LibFFILibraryMessageResolution {
     }
 
     @Resolve(message = "READ")
-    static abstract class LookupSymbolNode extends Node {
+    abstract static class LookupSymbolNode extends Node {
 
         @Child private CachedLookupSymbolNode cached = CachedLookupSymbolNodeGen.create();
 
@@ -71,7 +71,7 @@ class LibFFILibraryMessageResolution {
     }
 
     @CanResolve
-    static abstract class CanResolveLibFFILibraryNode extends Node {
+    abstract static class CanResolveLibFFILibraryNode extends Node {
 
         public boolean test(TruffleObject receiver) {
             return receiver instanceof LibFFILibrary;

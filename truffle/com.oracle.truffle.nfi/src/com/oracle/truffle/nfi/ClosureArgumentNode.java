@@ -32,7 +32,7 @@ abstract class ClosureArgumentNode extends Node {
 
     public abstract Object execute(Object arg);
 
-    static abstract class BufferClosureArgumentNode extends ClosureArgumentNode {
+    abstract static class BufferClosureArgumentNode extends ClosureArgumentNode {
 
         private final LibFFIType type;
 
@@ -47,11 +47,27 @@ abstract class ClosureArgumentNode extends Node {
         }
     }
 
-    static class DirectClosureArgumentNode extends ClosureArgumentNode {
+    static class ObjectClosureArgumentNode extends ClosureArgumentNode {
 
         @Override
         public Object execute(Object arg) {
-            return arg;
+            if (arg == null) {
+                return new NativePointer(0);
+            } else {
+                return arg;
+            }
+        }
+    }
+
+    static class StringClosureArgumentNode extends ClosureArgumentNode {
+
+        @Override
+        public Object execute(Object arg) {
+            if (arg == null) {
+                return new NativeString(0);
+            } else {
+                return arg;
+            }
         }
     }
 }

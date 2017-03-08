@@ -22,18 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.nfi.types;
+#include <stdlib.h>
 
-public final class NativeSimpleTypeMirror extends NativeTypeMirror {
+void *return_null() {
+    return NULL;
+}
 
-    private final NativeSimpleType simpleType;
-
-    NativeSimpleTypeMirror(NativeSimpleType simpleType) {
-        super(Kind.SIMPLE);
-        this.simpleType = simpleType;
+const char *null_arg(void *arg) {
+    if (arg == NULL) {
+        return "null";
+    } else {
+        return "non-null";
     }
+}
 
-    public NativeSimpleType getSimpleType() {
-        return simpleType;
+void callback_null_arg(void (*callback)(void *)) {
+    callback(NULL);
+}
+
+const char *callback_null_ret(void *(*callback)()) {
+    void *ret = callback();
+    if (ret == NULL) {
+        return "null";
+    } else {
+        return "non-null";
     }
 }

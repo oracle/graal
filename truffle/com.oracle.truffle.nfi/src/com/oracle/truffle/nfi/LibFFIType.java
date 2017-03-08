@@ -30,7 +30,8 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.nfi.ClosureArgumentNode.DirectClosureArgumentNode;
+import com.oracle.truffle.nfi.ClosureArgumentNode.ObjectClosureArgumentNode;
+import com.oracle.truffle.nfi.ClosureArgumentNode.StringClosureArgumentNode;
 import com.oracle.truffle.nfi.ClosureArgumentNodeFactory.BufferClosureArgumentNodeGen;
 import com.oracle.truffle.nfi.NativeArgumentBuffer.TypeTag;
 import com.oracle.truffle.nfi.SerializeArgumentNodeFactory.SerializeArrayArgumentNodeGen;
@@ -89,16 +90,16 @@ abstract class LibFFIType {
         throw new AssertionError("unsupported type");
     }
 
-    protected static void initializeSimpleType(NativeSimpleType simpleType, int size, int alignment, long ffi_type) {
+    protected static void initializeSimpleType(NativeSimpleType simpleType, int size, int alignment, long ffiType) {
         assert simpleTypeMap[simpleType.ordinal()] == null : "initializeSimpleType called twice for " + simpleType;
-        simpleTypeMap[simpleType.ordinal()] = createSimpleType(simpleType, size, alignment, ffi_type);
+        simpleTypeMap[simpleType.ordinal()] = createSimpleType(simpleType, size, alignment, ffiType);
         arrayTypeMap[simpleType.ordinal()] = createArrayType(simpleType);
     }
 
-    private static LibFFIType createSimpleType(NativeSimpleType simpleType, int size, int alignment, long ffi_type) {
+    private static LibFFIType createSimpleType(NativeSimpleType simpleType, int size, int alignment, long ffiType) {
         switch (simpleType) {
             case VOID:
-                return new VoidType(size, alignment, ffi_type);
+                return new VoidType(size, alignment, ffiType);
             case UINT8:
             case SINT8:
             case UINT16:
@@ -109,13 +110,13 @@ abstract class LibFFIType {
             case SINT64:
             case FLOAT:
             case DOUBLE:
-                return new SimpleType(simpleType, size, alignment, ffi_type);
+                return new SimpleType(simpleType, size, alignment, ffiType);
             case POINTER:
-                return new PointerType(size, alignment, ffi_type);
+                return new PointerType(size, alignment, ffiType);
             case STRING:
-                return new StringType(size, alignment, ffi_type);
+                return new StringType(size, alignment, ffiType);
             case OBJECT:
-                return new ObjectType(size, alignment, ffi_type);
+                return new ObjectType(size, alignment, ffiType);
             default:
                 throw new AssertionError(simpleType.name());
         }
@@ -143,8 +144,8 @@ abstract class LibFFIType {
 
         final NativeSimpleType simpleType;
 
-        private SimpleType(NativeSimpleType simpleType, int size, int alignment, long ffi_type) {
-            super(size, alignment, 0, ffi_type, Direction.BOTH);
+        SimpleType(NativeSimpleType simpleType, int size, int alignment, long ffiType) {
+            super(size, alignment, 0, ffiType, Direction.BOTH);
             this.simpleType = simpleType;
         }
 
@@ -293,10 +294,10 @@ abstract class LibFFIType {
         }
     }
 
-    static class VoidType extends SimpleType {
+    static final class VoidType extends SimpleType {
 
-        private VoidType(int size, int alignment, long ffi_type) {
-            super(NativeSimpleType.VOID, size, alignment, ffi_type);
+        private VoidType(int size, int alignment, long ffiType) {
+            super(NativeSimpleType.VOID, size, alignment, ffiType);
         }
 
         @Override
@@ -310,10 +311,10 @@ abstract class LibFFIType {
         }
     }
 
-    static class PointerType extends SimpleType {
+    static final class PointerType extends SimpleType {
 
-        private PointerType(int size, int alignment, long ffi_type) {
-            super(NativeSimpleType.POINTER, size, alignment, ffi_type);
+        private PointerType(int size, int alignment, long ffiType) {
+            super(NativeSimpleType.POINTER, size, alignment, ffiType);
         }
 
         @Override
@@ -326,9 +327,6 @@ abstract class LibFFIType {
             } else if (value instanceof NativeString) {
                 NativeString str = (NativeString) value;
                 buffer.putPointer(str.nativePointer, size);
-            } else if (value instanceof LibFFISymbol) {
-                LibFFISymbol sym = (LibFFISymbol) value;
-                buffer.putPointer(sym.address, size);
             } else {
                 super.doSerialize(buffer, value);
             }
@@ -346,7 +344,7 @@ abstract class LibFFIType {
 
         @Override
         public Object slowpathPrepareArgument(TruffleObject value) {
-            if (value instanceof NativePointer || value instanceof NativeString || value instanceof LibFFISymbol) {
+            if (value instanceof NativePointer || value instanceof NativeString) {
                 return value;
             } else {
                 return super.slowpathPrepareArgument(value);
@@ -354,10 +352,10 @@ abstract class LibFFIType {
         }
     }
 
-    static class StringType extends LibFFIType {
+    static final class StringType extends LibFFIType {
 
-        private StringType(int size, int alignment, long ffi_type) {
-            super(size, alignment, 1, ffi_type, Direction.BOTH);
+        private StringType(int size, int alignment, long ffiType) {
+            super(size, alignment, 1, ffiType, Direction.BOTH);
         }
 
         @Override
@@ -388,7 +386,7 @@ abstract class LibFFIType {
 
         @Override
         public ClosureArgumentNode createClosureArgumentNode() {
-            return new DirectClosureArgumentNode();
+            return new StringClosureArgumentNode();
         }
 
         @Override
@@ -403,8 +401,8 @@ abstract class LibFFIType {
 
     static class ObjectType extends LibFFIType {
 
-        public ObjectType(int size, int alignment, long ffi_type) {
-            super(size, alignment, 1, ffi_type, Direction.BOTH);
+        ObjectType(int size, int alignment, long ffiType) {
+            super(size, alignment, 1, ffiType, Direction.BOTH);
         }
 
         @Override
@@ -415,7 +413,12 @@ abstract class LibFFIType {
 
         @Override
         protected Object doDeserialize(NativeArgumentBuffer buffer) {
-            return buffer.getObject(size);
+            Object ret = buffer.getObject(size);
+            if (ret == null) {
+                return new NativePointer(0);
+            } else {
+                return ret;
+            }
         }
 
         @Override
@@ -425,7 +428,7 @@ abstract class LibFFIType {
 
         @Override
         public ClosureArgumentNode createClosureArgumentNode() {
-            return new DirectClosureArgumentNode();
+            return new ObjectClosureArgumentNode();
         }
 
         @Override
@@ -434,7 +437,7 @@ abstract class LibFFIType {
         }
     }
 
-    static abstract class BasePointerType extends LibFFIType {
+    abstract static class BasePointerType extends LibFFIType {
 
         private static final LibFFIType POINTER;
 
@@ -453,7 +456,7 @@ abstract class LibFFIType {
 
         final NativeSimpleType elementType;
 
-        public ArrayType(NativeSimpleType elementType) {
+        ArrayType(NativeSimpleType elementType) {
             super(Direction.JAVA_TO_NATIVE_ONLY);
             switch (elementType) {
                 case UINT8:
@@ -606,7 +609,7 @@ abstract class LibFFIType {
         private final LibFFISignature signature;
         private final boolean asRetType;
 
-        public ClosureType(LibFFISignature signature, boolean asRetType) {
+        ClosureType(LibFFISignature signature, boolean asRetType) {
             super(signature.getAllowedCallDirection().reverse());
             this.signature = signature;
             this.asRetType = asRetType;
@@ -614,9 +617,9 @@ abstract class LibFFIType {
 
         @Override
         protected void doSerialize(NativeArgumentBuffer buffer, Object value) {
-            if (value instanceof LibFFISymbol) {
-                LibFFISymbol symbol = (LibFFISymbol) value;
-                buffer.putPointer(symbol.address, size);
+            if (value instanceof NativePointer) {
+                NativePointer pointer = (NativePointer) value;
+                buffer.putPointer(pointer.nativePointer, size);
             } else {
                 LibFFIClosure closure;
                 if (value instanceof LibFFIClosure) {
@@ -650,8 +653,13 @@ abstract class LibFFIType {
         @Override
         protected Object doDeserialize(NativeArgumentBuffer buffer) {
             long functionPointer = buffer.getPointer(size);
-            LibFFISymbol symbol = LibFFISymbol.create(null, functionPointer);
-            return new LibFFIFunction(symbol, signature);
+            NativePointer symbol = new NativePointer(functionPointer);
+            if (functionPointer == 0) {
+                // cannot bind null pointer
+                return symbol;
+            } else {
+                return new LibFFIFunction(symbol, signature);
+            }
         }
 
         @Override

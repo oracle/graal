@@ -18,13 +18,13 @@ Software of the Johannes Kepler University Linz.
 
 ## Using Truffle
 
-Truffle official documentation is part of [Truffle javadoc](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/).
+Truffle official documentation is part of [Truffle javadoc](http://graalvm.github.io/truffle/javadoc/).
 It includes description of common use-cases, references to various tutorials,
 code snippets and more. In case you want to embedded Truffle into your
 application or write your own high speed language interpreter, start by
 downloading [GraalVM](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/)
 (which contains all the necessary pre-built components) and then follow to the
-[javadoc overview](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/).
+[javadoc overview](http://graalvm.github.io/truffle/javadoc/).
 
 Truffle bits are uploaded to Maven central. You can use them from your
 `pom.xml` file as:
@@ -33,12 +33,12 @@ Truffle bits are uploaded to Maven central. You can use them from your
 <dependency>
     <groupId>com.oracle.truffle</groupId>
     <artifactId>truffle-api</artifactId>
-    <version>0.18</version> <!-- or any later version -->
+    <version>0.23</version> <!-- or any later version -->
 </dependency>
 <dependency>
     <groupId>com.oracle.truffle</groupId>
     <artifactId>truffle-dsl-processor</artifactId>
-    <version>0.18</version>
+    <version>0.23</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -47,7 +47,7 @@ If you want to implement your own Truffle guest language, a good way to start is
 SimpleLanguage is well documented and designed to demonstrate most of the Truffle features.
 
 Important links to resources that are available:
-  - [Truffle javadoc overview](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/)
+  - [Truffle javadoc overview](http://graalvm.github.io/truffle/javadoc/)
   - [SimpleLanguage example](https://github.com/graalvm/simplelanguage)
   - [Tutorials and publications on Truffle](https://github.com/graalvm/truffle/blob/master/docs/Publications.md)
   - [Tutorials and publications on Graal](https://github.com/graalvm/graal-core/blob/master/docs/Publications.md)

@@ -22,51 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.nfi;
+package com.oracle.truffle.nfi.test.interop;
 
 import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.nfi.NFILanguage;
 
-@MessageResolution(language = NFILanguage.class, receiverType = NativeString.class)
-class NativeStringMessageResolution {
+@MessageResolution(language = NFILanguage.class, receiverType = BoxedPrimitive.class)
+class BoxedPrimitiveMessageResolution {
 
     @Resolve(message = "UNBOX")
-    abstract static class UnboxNativeStringNode extends Node {
+    abstract static class UnboxNode extends Node {
 
-        public Object access(NativeString receiver) {
-            if (receiver.nativePointer == 0) {
-                return receiver;
-            } else {
-                return receiver.toJavaString();
-            }
-        }
-    }
-
-    @Resolve(message = "IS_BOXED")
-    abstract static class IsBoxedNativeStringNode extends Node {
-
-        @SuppressWarnings("unused")
-        public boolean access(NativeString receiver) {
-            return true;
-        }
-    }
-
-    @Resolve(message = "IS_NULL")
-    abstract static class IsNullNativeStringNode extends Node {
-
-        public boolean access(NativeString receiver) {
-            return receiver.nativePointer == 0;
+        Object access(BoxedPrimitive boxed) {
+            return boxed.primitive;
         }
     }
 
     @CanResolve
-    abstract static class CanResolveNativeStringNode extends Node {
+    abstract static class CanResolveBoxedPrimitive extends Node {
 
-        public boolean test(TruffleObject receiver) {
-            return receiver instanceof NativeString;
+        boolean test(TruffleObject object) {
+            return object instanceof BoxedPrimitive;
         }
     }
 }

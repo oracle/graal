@@ -117,6 +117,16 @@ public abstract class Accessor {
         public abstract Object findOriginalObject(Object truffleObject);
 
         public abstract CallTarget lookupOrRegisterComputation(Object truffleObject, RootNode symbolNode, Object... keyOrKeys);
+
+        @SuppressWarnings("static-method")
+        public final void attachOutputConsumer(DispatchOutputStream dos, OutputStream out) {
+            dos.attach(out);
+        }
+
+        @SuppressWarnings("static-method")
+        public final void detachOutputConsumer(DispatchOutputStream dos, OutputStream out) {
+            dos.detach(out);
+        }
     }
 
     public abstract static class LanguageSupport {
@@ -154,7 +164,7 @@ public abstract class Accessor {
 
         public abstract <T> T getInstrumentationHandlerService(Object handler, Object key, Class<T> type);
 
-        public abstract Object createInstrumentationHandler(Object vm, OutputStream out, OutputStream err, InputStream in);
+        public abstract Object createInstrumentationHandler(Object vm, DispatchOutputStream out, DispatchOutputStream err, InputStream in);
 
         public abstract void collectEnvServices(Set<Object> collectTo, Object vm, TruffleLanguage<?> impl, Env context);
 
@@ -163,6 +173,11 @@ public abstract class Accessor {
         public abstract void onFirstExecution(RootNode rootNode);
 
         public abstract void onLoad(RootNode rootNode);
+
+        @SuppressWarnings("static-method")
+        public final DispatchOutputStream createDispatchOutput(OutputStream out) {
+            return new DispatchOutputStream(out);
+        }
     }
 
     protected abstract static class Frames {

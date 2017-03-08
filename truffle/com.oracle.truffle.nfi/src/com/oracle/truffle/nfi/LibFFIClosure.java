@@ -39,7 +39,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.LibFFIClosureFactory.UnboxNullNodeGen;
 import java.nio.ByteBuffer;
 
-class LibFFIClosure {
+final class LibFFIClosure {
 
     final ClosureNativePointer nativePointer;
 
@@ -53,9 +53,13 @@ class LibFFIClosure {
         Message message = Message.createExecute(signature.getArgTypes().length);
 
         LibFFIType retType = signature.getRetType();
-        if (retType instanceof LibFFIType.StringType || retType instanceof LibFFIType.ObjectType) {
+        if (retType instanceof LibFFIType.ObjectType) {
             // shortcut for simple object return values
             CallTarget executeCallTarget = Truffle.getRuntime().createCallTarget(new ObjectRetClosureRootNode(signature, executable, message));
+            this.nativePointer = allocateClosureObjectRet(signature, executeCallTarget);
+        } else if (retType instanceof LibFFIType.StringType) {
+            // shortcut for simple string return values
+            CallTarget executeCallTarget = Truffle.getRuntime().createCallTarget(new StringRetClosureRootNode(signature, executable, message));
             this.nativePointer = allocateClosureObjectRet(signature, executeCallTarget);
         } else if (retType instanceof LibFFIType.VoidType) {
             // special handling for no return value
@@ -81,7 +85,7 @@ class LibFFIClosure {
         }
     }
 
-    private static class CallClosureNode extends Node {
+    private static final class CallClosureNode extends Node {
 
         private final TruffleObject receiver;
         @Child Node messageNode;
@@ -114,7 +118,7 @@ class LibFFIClosure {
         }
     }
 
-    private static class EncodeRetNode extends Node {
+    private static final class EncodeRetNode extends Node {
 
         @Child SerializeArgumentNode retNode;
         private final int retObjectCount;
@@ -135,7 +139,7 @@ class LibFFIClosure {
         }
     }
 
-    private static class BufferRetClosureRootNode extends RootNode {
+    private static final class BufferRetClosureRootNode extends RootNode {
 
         @Child CallClosureNode callClosure;
         @Child EncodeRetNode encodeRet;
@@ -154,7 +158,22 @@ class LibFFIClosure {
         }
     }
 
-    static abstract class UnboxNullNode extends Node {
+    private static final class ObjectRetClosureRootNode extends RootNode {
+
+        @Child CallClosureNode callClosure;
+
+        private ObjectRetClosureRootNode(LibFFISignature signature, TruffleObject receiver, Message message) {
+            super(NFILanguage.class, null, null);
+            callClosure = new CallClosureNode(signature, receiver, message);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return callClosure.execute(frame.getArguments());
+        }
+    }
+
+    abstract static class UnboxNullNode extends Node {
 
         protected abstract Object execute(Object obj);
 
@@ -177,12 +196,12 @@ class LibFFIClosure {
         }
     }
 
-    private static class ObjectRetClosureRootNode extends RootNode {
+    private static final class StringRetClosureRootNode extends RootNode {
 
         @Child CallClosureNode callClosure;
         @Child UnboxNullNode unboxNull;
 
-        private ObjectRetClosureRootNode(LibFFISignature signature, TruffleObject receiver, Message message) {
+        private StringRetClosureRootNode(LibFFISignature signature, TruffleObject receiver, Message message) {
             super(NFILanguage.class, null, null);
             callClosure = new CallClosureNode(signature, receiver, message);
             unboxNull = UnboxNullNodeGen.create();

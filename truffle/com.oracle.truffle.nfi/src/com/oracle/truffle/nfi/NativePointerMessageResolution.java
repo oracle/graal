@@ -24,17 +24,72 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.nfi.NativePointerMessageResolutionFactory.SignatureCacheNodeGen;
+import com.oracle.truffle.nfi.types.NativeSignature;
+import com.oracle.truffle.nfi.types.Parser;
 
 @MessageResolution(language = NFILanguage.class, receiverType = NativePointer.class)
 class NativePointerMessageResolution {
 
+    abstract static class SignatureCacheNode extends Node {
+
+        protected abstract LibFFISignature execute(Object signature);
+
+        @Specialization(guards = "checkSignature(signature, cachedSignature)")
+        @SuppressWarnings("unused")
+        protected LibFFISignature cached(String signature,
+                        @Cached("signature") String cachedSignature,
+                        @Cached("parse(signature)") LibFFISignature ret) {
+            return ret;
+        }
+
+        @Specialization(replaces = "cached")
+        @TruffleBoundary
+        protected LibFFISignature parse(String signature) {
+            NativeSignature parsed = Parser.parseSignature(signature);
+            return LibFFISignature.create(parsed);
+        }
+
+        protected static boolean checkSignature(String signature, String cachedSignature) {
+            return signature.equals(cachedSignature);
+        }
+    }
+
+    @Resolve(message = "INVOKE")
+    abstract static class BindNode extends Node {
+
+        @Child protected SignatureCacheNode signatureCache = SignatureCacheNodeGen.create();
+
+        public TruffleObject access(NativePointer receiver, String method, Object[] args) {
+            if (!"bind".equals(method)) {
+                throw UnknownIdentifierException.raise(method);
+            }
+            if (args.length != 1) {
+                throw ArityException.raise(1, args.length);
+            }
+
+            LibFFISignature signature = signatureCache.execute(args[0]);
+            if (receiver.nativePointer == 0) {
+                // cannot bind null function
+                return receiver;
+            } else {
+                return new LibFFIFunction(receiver, signature);
+            }
+        }
+    }
+
     @Resolve(message = "UNBOX")
-    static abstract class UnboxNativePointerNode extends Node {
+    abstract static class UnboxNativePointerNode extends Node {
 
         public long access(NativePointer receiver) {
             return receiver.nativePointer;
@@ -42,7 +97,7 @@ class NativePointerMessageResolution {
     }
 
     @Resolve(message = "IS_BOXED")
-    static abstract class IsBoxedNativePointerNode extends Node {
+    abstract static class IsBoxedNativePointerNode extends Node {
 
         @SuppressWarnings("unused")
         public boolean access(NativePointer receiver) {
@@ -51,7 +106,7 @@ class NativePointerMessageResolution {
     }
 
     @Resolve(message = "IS_NULL")
-    static abstract class IsNullNativePointerNode extends Node {
+    abstract static class IsNullNativePointerNode extends Node {
 
         public boolean access(NativePointer receiver) {
             return receiver.nativePointer == 0;
@@ -59,7 +114,7 @@ class NativePointerMessageResolution {
     }
 
     @CanResolve
-    static abstract class CanResolveNativePointerNode extends Node {
+    abstract static class CanResolveNativePointerNode extends Node {
 
         public boolean test(TruffleObject receiver) {
             return receiver instanceof NativePointer;
