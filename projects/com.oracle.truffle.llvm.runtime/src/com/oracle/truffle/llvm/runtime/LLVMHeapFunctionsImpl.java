@@ -47,11 +47,11 @@ final class LLVMHeapFunctionsImpl implements LLVMHeapFunctions {
     private final TruffleObject malloc;
 
     LLVMHeapFunctionsImpl(NativeLookup nativeLookup) {
-        memmove = nativeLookup.getNativeFunction("@memmove", "(POINTER,POINTER,UINT64):POINTER");
-        memcpy = nativeLookup.getNativeFunction("@memcpy", "(POINTER,POINTER,UINT64):POINTER");
-        memset = nativeLookup.getNativeFunction("@memset", "(POINTER,SINT32,UINT64):VOID");
-        free = nativeLookup.getNativeFunction("@free", "(POINTER):VOID");
-        malloc = nativeLookup.getNativeFunction("@malloc", "(UINT64):POINTER");
+        memmove = nativeLookup == null ? null : nativeLookup.getNativeFunction("@memmove", "(POINTER,POINTER,UINT64):POINTER");
+        memcpy = nativeLookup == null ? null : nativeLookup.getNativeFunction("@memcpy", "(POINTER,POINTER,UINT64):POINTER");
+        memset = nativeLookup == null ? null : nativeLookup.getNativeFunction("@memset", "(POINTER,SINT32,UINT64):VOID");
+        free = nativeLookup == null ? null : nativeLookup.getNativeFunction("@free", "(POINTER):VOID");
+        malloc = nativeLookup == null ? null : nativeLookup.getNativeFunction("@malloc", "(UINT64):POINTER");
     }
 
     @Override

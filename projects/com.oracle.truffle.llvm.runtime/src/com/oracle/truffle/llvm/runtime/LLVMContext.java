@@ -45,6 +45,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public class LLVMContext extends ExecutionContext {
@@ -76,7 +77,7 @@ public class LLVMContext extends ExecutionContext {
     private final HashMap<String, LLVMFunctionDescriptor> functionIndex;
 
     public LLVMContext(Env env) {
-        this.nativeLookup = new NativeLookup(env);
+        this.nativeLookup = LLVMOptions.ENGINE.disableNativeInterface() ? null : new NativeLookup(env);
         this.functionIndex = new HashMap<>();
         this.heapFunctions = new LLVMHeapFunctionsImpl(nativeLookup);
     }
