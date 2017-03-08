@@ -51,7 +51,7 @@ abstract class SlowPathSerializeArgumentNode extends Node {
         return null;
     }
 
-    @Specialization(replaces = "cacheType")
+    @Specialization(replaces = "cacheType", guards = "value != null")
     protected Object genericWithUnbox(NativeArgumentBuffer buffer, LibFFIType type, TruffleObject value,
                     @Cached("createIsNull()") Node isNull,
                     @Cached("createUnbox()") Node unbox,
