@@ -46,13 +46,21 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
     private final TypeAndClass<K> keyType;
     private final TypeAndClass<V> valueType;
     private final TruffleObject obj;
-    private final CallTarget call;
+    private final CallTarget callKeys;
+    private final CallTarget callHasSize;
+    private final CallTarget callGetSize;
+    private final CallTarget callRead;
+    private final CallTarget callWrite;
 
     private TruffleMap(TypeAndClass<K> keyType, TypeAndClass<V> valueType, TruffleObject obj) {
         this.keyType = keyType;
         this.valueType = valueType;
         this.obj = obj;
-        this.call = initializeMapCall(obj);
+        this.callKeys = initializeMapCall(obj, Message.KEYS);
+        this.callHasSize = initializeMapCall(obj, Message.HAS_SIZE);
+        this.callGetSize = initializeMapCall(obj, Message.GET_SIZE);
+        this.callRead = initializeMapCall(obj, Message.READ);
+        this.callWrite = initializeMapCall(obj, Message.WRITE);
     }
 
     static <K, V> Map<K, V> create(TypeAndClass<K> keyType, TypeAndClass<V> valueType, TruffleObject foreignObject) {
@@ -61,9 +69,9 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
 
     @Override
     public Set<Entry<K, V>> entrySet() {
-        Object props = call.call(null, Message.KEYS, obj);
-        if (Boolean.TRUE.equals(call.call(null, Message.HAS_SIZE, props))) {
-            Number size = (Number) call.call(null, Message.GET_SIZE, props);
+        Object props = callKeys.call(null, obj);
+        if (Boolean.TRUE.equals(callHasSize.call(null, props))) {
+            Number size = (Number) callGetSize.call(null, props);
             return new LazyEntries(props, size.intValue());
         }
         return Collections.emptySet();
@@ -72,7 +80,7 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
     @Override
     public V get(Object key) {
         keyType.cast(key);
-        final Object item = call.call(valueType, Message.READ, obj, key);
+        final Object item = callRead.call(valueType, obj, key);
         return valueType.cast(item);
     }
 
@@ -81,14 +89,14 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
         keyType.cast(key);
         valueType.cast(value);
         V previous = get(key);
-        call.call(valueType, Message.WRITE, obj, key, value);
+        callWrite.call(valueType, obj, key, value);
         return previous;
     }
 
-    private static CallTarget initializeMapCall(TruffleObject obj) {
-        CallTarget res = JavaInterop.ACCESSOR.engine().registerInteropTarget(obj, null, TruffleMap.class);
+    private static CallTarget initializeMapCall(TruffleObject obj, Message msg) {
+        CallTarget res = JavaInterop.ACCESSOR.engine().lookupOrRegisterComputation(obj, null, TruffleMap.class, msg);
         if (res == null) {
-            res = JavaInterop.ACCESSOR.engine().registerInteropTarget(obj, new MapNode(), TruffleMap.class);
+            res = JavaInterop.ACCESSOR.engine().lookupOrRegisterComputation(obj, new MapNode(msg), TruffleMap.class, msg);
         }
         return res;
     }
@@ -128,7 +136,7 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
 
             @Override
             public Entry<K, V> next() {
-                Object key = call.call(keyType, Message.READ, props, index++);
+                Object key = callRead.call(keyType, props, index++);
                 return new TruffleEntry(keyType.cast(key));
             }
 
@@ -154,55 +162,48 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
 
         @Override
         public V getValue() {
-            final Object value = call.call(valueType, Message.READ, obj, key);
+            final Object value = callRead.call(valueType, obj, key);
             return valueType.cast(value);
         }
 
         @Override
         public V setValue(V value) {
             V prev = getValue();
-            call.call(null, Message.WRITE, obj, key, value);
+            callWrite.call(null, obj, key, value);
             return prev;
         }
     }
 
     private static final class MapNode extends RootNode {
-        @Child private Node readNode;
-        @Child private Node writeNode;
-        @Child private Node hasSizeNode;
-        @Child private Node getSizeNode;
-        @Child private Node keysNode;
+        private final Message msg;
+        @Child private Node node;
         @Child private ToJavaNode toJavaNode;
 
-        MapNode() {
+        MapNode(Message msg) {
             super(TruffleLanguage.class, null, null);
-            readNode = Message.READ.createNode();
-            writeNode = Message.WRITE.createNode();
-            hasSizeNode = Message.HAS_SIZE.createNode();
-            getSizeNode = Message.GET_SIZE.createNode();
-            keysNode = Message.KEYS.createNode();
-            toJavaNode = ToJavaNodeGen.create();
+            this.msg = msg;
+            this.node = msg.createNode();
+            this.toJavaNode = ToJavaNodeGen.create();
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
             final Object[] args = frame.getArguments();
             TypeAndClass<?> type = (TypeAndClass<?>) args[0];
-            Message msg = (Message) args[1];
-            TruffleObject receiver = (TruffleObject) args[2];
+            TruffleObject receiver = (TruffleObject) args[1];
 
             Object ret;
             try {
                 if (msg == Message.HAS_SIZE) {
-                    ret = ForeignAccess.sendHasSize(hasSizeNode, receiver);
+                    ret = ForeignAccess.sendHasSize(node, receiver);
                 } else if (msg == Message.GET_SIZE) {
-                    ret = ForeignAccess.sendGetSize(getSizeNode, receiver);
+                    ret = ForeignAccess.sendGetSize(node, receiver);
                 } else if (msg == Message.READ) {
-                    ret = ForeignAccess.sendRead(readNode, receiver, args[3]);
+                    ret = ForeignAccess.sendRead(node, receiver, args[2]);
                 } else if (msg == Message.WRITE) {
-                    ret = ForeignAccess.sendWrite(writeNode, receiver, args[3], args[4]);
+                    ret = ForeignAccess.sendWrite(node, receiver, args[2], args[3]);
                 } else if (msg == Message.KEYS) {
-                    ret = ForeignAccess.sendKeys(keysNode, receiver);
+                    ret = ForeignAccess.sendKeys(node, receiver);
                 } else {
                     CompilerDirectives.transferToInterpreter();
                     throw UnsupportedMessageException.raise(msg);

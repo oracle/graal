@@ -116,7 +116,7 @@ public abstract class Accessor {
 
         public abstract Object findOriginalObject(Object truffleObject);
 
-        public abstract CallTarget registerInteropTarget(Object truffleObject, RootNode symbolNode, Object key);
+        public abstract CallTarget lookupOrRegisterComputation(Object truffleObject, RootNode symbolNode, Object... keyOrKeys);
     }
 
     public abstract static class LanguageSupport {

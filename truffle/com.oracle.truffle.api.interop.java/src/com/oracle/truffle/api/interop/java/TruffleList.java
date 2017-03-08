@@ -41,12 +41,16 @@ import java.util.List;
 final class TruffleList<T> extends AbstractList<T> {
     private final TruffleObject array;
     private final TypeAndClass<T> type;
-    private final CallTarget call;
+    private final CallTarget callRead;
+    private final CallTarget callGetSize;
+    private final CallTarget callWrite;
 
     private TruffleList(TypeAndClass<T> elementType, TruffleObject array) {
         this.array = array;
         this.type = elementType;
-        this.call = initializeListCall(array);
+        this.callRead = initializeListCall(array, Message.READ);
+        this.callWrite = initializeListCall(array, Message.WRITE);
+        this.callGetSize = initializeListCall(array, Message.GET_SIZE);
     }
 
     public static <T> List<T> create(TypeAndClass<T> elementType, TruffleObject array) {
@@ -55,7 +59,7 @@ final class TruffleList<T> extends AbstractList<T> {
 
     @Override
     public T get(int index) {
-        final Object item = call.call(type, Message.READ, array, index);
+        final Object item = callRead.call(type, array, index);
         return type.cast(item);
     }
 
@@ -63,56 +67,49 @@ final class TruffleList<T> extends AbstractList<T> {
     public T set(int index, T element) {
         type.cast(element);
         T prev = get(index);
-        call.call(null, Message.WRITE, array, index, element);
+        callWrite.call(null, array, index, element);
         return prev;
     }
 
     @Override
     public int size() {
-        return (Integer) call.call(null, Message.GET_SIZE, array);
+        return (Integer) callGetSize.call(null, array);
     }
 
-    private static CallTarget initializeListCall(TruffleObject obj) {
-        CallTarget res = JavaInterop.ACCESSOR.engine().registerInteropTarget(obj, null, TruffleList.class);
+    private static CallTarget initializeListCall(TruffleObject obj, Message msg) {
+        CallTarget res = JavaInterop.ACCESSOR.engine().lookupOrRegisterComputation(obj, null, TruffleList.class, msg);
         if (res == null) {
-            res = JavaInterop.ACCESSOR.engine().registerInteropTarget(obj, new ListNode(), TruffleList.class);
+            res = JavaInterop.ACCESSOR.engine().lookupOrRegisterComputation(obj, new ListNode(msg), TruffleList.class, msg);
         }
         return res;
     }
 
     private static final class ListNode extends RootNode {
-        @Child private Node readNode;
-        @Child private Node writeNode;
-        @Child private Node hasSizeNode;
-        @Child private Node getSizeNode;
+        private final Message msg;
+        @Child private Node node;
         @Child private ToJavaNode toJavaNode;
 
-        ListNode() {
+        ListNode(Message msg) {
             super(TruffleLanguage.class, null, null);
-            readNode = Message.READ.createNode();
-            writeNode = Message.WRITE.createNode();
-            hasSizeNode = Message.HAS_SIZE.createNode();
-            getSizeNode = Message.GET_SIZE.createNode();
-            toJavaNode = ToJavaNodeGen.create();
+            this.msg = msg;
+            this.node = msg.createNode();
+            this.toJavaNode = ToJavaNodeGen.create();
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
             final Object[] args = frame.getArguments();
             TypeAndClass<?> type = (TypeAndClass<?>) args[0];
-            Message msg = (Message) args[1];
-            TruffleObject receiver = (TruffleObject) args[2];
+            TruffleObject receiver = (TruffleObject) args[1];
 
             Object ret;
             try {
-                if (msg == Message.HAS_SIZE) {
-                    ret = ForeignAccess.sendHasSize(hasSizeNode, receiver);
-                } else if (msg == Message.GET_SIZE) {
-                    ret = ForeignAccess.sendGetSize(getSizeNode, receiver);
+                if (msg == Message.GET_SIZE) {
+                    ret = ForeignAccess.sendGetSize(node, receiver);
                 } else if (msg == Message.READ) {
-                    ret = ForeignAccess.sendRead(readNode, receiver, args[3]);
+                    ret = ForeignAccess.sendRead(node, receiver, args[2]);
                 } else if (msg == Message.WRITE) {
-                    ret = ForeignAccess.sendWrite(writeNode, receiver, args[3], args[4]);
+                    ret = ForeignAccess.sendWrite(node, receiver, args[2], args[3]);
                 } else {
                     CompilerDirectives.transferToInterpreter();
                     throw UnsupportedMessageException.raise(msg);

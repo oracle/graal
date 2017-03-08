@@ -215,11 +215,11 @@ final class JavaInteropReflect {
             CompilerAsserts.neverPartOfCompilation();
             Object[] args = arguments == null ? EMPTY : arguments;
             if (target == null) {
-                target = JavaInterop.ACCESSOR.engine().registerInteropTarget(symbol, null, JavaInteropReflect.class);
+                target = JavaInterop.ACCESSOR.engine().lookupOrRegisterComputation(symbol, null, JavaInteropReflect.class);
                 if (target == null) {
                     Node executeMain = Message.createExecute(args.length).createNode();
                     RootNode symbolNode = new ToJavaNode.TemporaryRoot(TruffleLanguage.class, executeMain);
-                    target = JavaInterop.ACCESSOR.engine().registerInteropTarget(symbol, symbolNode, JavaInteropReflect.class);
+                    target = JavaInterop.ACCESSOR.engine().lookupOrRegisterComputation(symbol, symbolNode, JavaInteropReflect.class);
                 }
             }
             for (int i = 0; i < args.length; i++) {
@@ -256,12 +256,12 @@ final class JavaInteropReflect {
                 return method.invoke(obj, args);
             }
 
-            CallTarget call = JavaInterop.ACCESSOR.engine().registerInteropTarget(obj, null, method);
+            CallTarget call = JavaInterop.ACCESSOR.engine().lookupOrRegisterComputation(obj, null, method);
             if (call == null) {
                 Message message = findMessage(method, method.getAnnotation(MethodMessage.class), args.length);
                 TypeAndClass<?> convertTo = TypeAndClass.forReturnType(method);
                 MethodNode methodNode = MethodNodeGen.create(method.getName(), message, convertTo);
-                call = JavaInterop.ACCESSOR.engine().registerInteropTarget(obj, methodNode, method);
+                call = JavaInterop.ACCESSOR.engine().lookupOrRegisterComputation(obj, methodNode, method);
             }
 
             return call.call(obj, args);

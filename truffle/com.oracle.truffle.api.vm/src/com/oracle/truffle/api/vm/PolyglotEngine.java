@@ -1578,8 +1578,21 @@ public class PolyglotEngine {
             }
 
             @Override
-            public CallTarget registerInteropTarget(Object truffleObject, RootNode computation, Object key) {
-                assert TruffleOptions.AOT || assertKeyType(key);
+            public CallTarget lookupOrRegisterComputation(Object truffleObject, RootNode computation, Object... keys) {
+                CompilerAsserts.neverPartOfCompilation();
+                assert keys.length > 0;
+                Object key;
+                if (keys.length == 1) {
+                    key = keys[0];
+                    assert TruffleOptions.AOT || assertKeyType(key);
+                } else {
+                    Pair p = null;
+                    for (Object k : keys) {
+                        assert TruffleOptions.AOT || assertKeyType(k);
+                        p = new Pair(k, p);
+                    }
+                    key = p;
+                }
                 if (truffleObject instanceof EngineTruffleObject) {
                     PolyglotEngine engine = ((EngineTruffleObject) truffleObject).engine();
                     return engine.cachedTargets.lookupComputation(key, computation);
@@ -1592,9 +1605,46 @@ public class PolyglotEngine {
             }
 
             private static boolean assertKeyType(Object key) {
-                assert key instanceof Class || key instanceof Method : "Unexpected key: " + key;
+                assert key instanceof Class || key instanceof Method || key instanceof Message : "Unexpected key: " + key;
                 return true;
             }
+        }
+
+        private static final class Pair {
+            final Object key;
+            final Pair next;
+
+            Pair(Object key, Pair next) {
+                this.key = key;
+                this.next = next;
+            }
+
+            @Override
+            public int hashCode() {
+                return this.key.hashCode() + (next == null ? 3754 : next.hashCode());
+            }
+
+            @Override
+            public boolean equals(Object obj) {
+                if (this == obj) {
+                    return true;
+                }
+                if (obj == null) {
+                    return false;
+                }
+                if (getClass() != obj.getClass()) {
+                    return false;
+                }
+                final Pair other = (Pair) obj;
+                if (!Objects.equals(this.key, other.key)) {
+                    return false;
+                }
+                if (!Objects.equals(this.next, other.next)) {
+                    return false;
+                }
+                return true;
+            }
+
         }
 
     } // end of SPIAccessor
