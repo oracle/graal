@@ -53,7 +53,6 @@ import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
 import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.RedundantMoveElimination;
 import org.graalvm.compiler.lir.StandardOp;
-import org.graalvm.compiler.lir.StandardOp.AbstractBlockEndOp;
 import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
 import org.graalvm.compiler.lir.StandardOp.JumpOp;
 import org.graalvm.compiler.lir.StandardOp.LabelOp;
@@ -577,7 +576,7 @@ public final class BottomUpAllocator extends TraceAllocationPhase<TraceAllocatio
             int[] vars = livenessInfo.getBlockOut(block);
             Value[] locs = new Value[vars.length];
             for (int i = 0; i < vars.length; i++) {
-                locs[i] = allocStackOrRegister(instruction, livenessInfo.getVariable(vars[i]), OperandMode.ALIVE, AbstractBlockEndOp.outgoingFlags);
+                locs[i] = allocStackOrRegister(instruction, livenessInfo.getVariable(vars[i]), OperandMode.ALIVE, JumpOp.outgoingFlags);
             }
             livenessInfo.setOutLocations(block, locs);
         }
