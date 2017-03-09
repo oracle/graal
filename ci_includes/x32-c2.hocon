@@ -1,5 +1,5 @@
 x32.c2 : {
-  capabilities: [linux, x32, no_frequency_scaling, tmpfs10g]
+  capabilities: [linux, x32, no_frequency_scaling, tmpfs25g]
   environment : {
     XMX         : "8g"
     XMS         : "8g"
