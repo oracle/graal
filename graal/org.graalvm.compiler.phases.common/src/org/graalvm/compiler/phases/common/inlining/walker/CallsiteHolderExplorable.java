@@ -74,13 +74,13 @@ public final class CallsiteHolderExplorable extends CallsiteHolder {
     private final ToDoubleFunction<FixedNode> probabilities;
     private final ComputeInliningRelevance computeInliningRelevance;
 
-    public CallsiteHolderExplorable(StructuredGraph graph, double probability, double relevance, BitSet freshlyInstantiatedArguments) {
+    public CallsiteHolderExplorable(StructuredGraph graph, double probability, double relevance, BitSet freshlyInstantiatedArguments, LinkedList<Invoke> invokes) {
         assert graph != null;
         this.graph = graph;
         this.probability = probability;
         this.relevance = relevance;
         this.fixedParams = fixedParamsAt(freshlyInstantiatedArguments);
-        remainingInvokes = new InliningIterator(graph).apply();
+        remainingInvokes = invokes == null ? new InliningIterator(graph).apply() : invokes;
         if (remainingInvokes.isEmpty()) {
             probabilities = null;
             computeInliningRelevance = null;

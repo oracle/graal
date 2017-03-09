@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.phases.common.inlining;
 
+import java.util.LinkedList;
 import java.util.Map;
 
 import org.graalvm.compiler.nodes.Invoke;
@@ -54,6 +55,7 @@ public class InliningPhase extends AbstractInliningPhase {
 
     private final InliningPolicy inliningPolicy;
     private final CanonicalizerPhase canonicalizer;
+    private LinkedList<Invoke> rootInvokes = null;
 
     private int maxMethodPerInlining = Integer.MAX_VALUE;
 
@@ -83,6 +85,10 @@ public class InliningPhase extends AbstractInliningPhase {
         maxMethodPerInlining = max;
     }
 
+    public void setRootInvokes(LinkedList<Invoke> rootInvokes) {
+        this.rootInvokes = rootInvokes;
+    }
+
     /**
      *
      * This method sets in motion the inlining machinery.
@@ -93,7 +99,7 @@ public class InliningPhase extends AbstractInliningPhase {
      */
     @Override
     protected void run(final StructuredGraph graph, final HighTierContext context) {
-        final InliningData data = new InliningData(graph, context, maxMethodPerInlining, canonicalizer, inliningPolicy);
+        final InliningData data = new InliningData(graph, context, maxMethodPerInlining, canonicalizer, inliningPolicy, rootInvokes);
 
         int count = 0;
         assert data.repOK();
