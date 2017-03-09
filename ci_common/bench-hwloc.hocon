@@ -2,14 +2,14 @@
 hwloc.bench-common-8 : {
   packages: {hwloc: ">=1.9"}
   environment: {
-    RESULTS_FILE_NAME: "bench-results.json"
+    BASE_BENCH_RESULTS_FILE_NAME: "bench-results.json"
     LOG_FILE_NAME : "-output.log"
     NODE: undefined
-    RESULTS_FILE: undefined
+    BENCH_RESULTS_FILE_PATH: undefined
   }
   teardown : [
-    ["bench-uploader.py", "--url", "$BENCH_SERVER_URL", "node0-$RESULTS_FILE_NAME"]
-    ["bench-uploader.py", "--url", "$BENCH_SERVER_URL", "node1-$RESULTS_FILE_NAME"]
+    ["bench-uploader.py", "--url", "$BENCH_SERVER_URL", "node0-$BASE_BENCH_RESULTS_FILE_NAME"]
+    ["bench-uploader.py", "--url", "$BENCH_SERVER_URL", "node1-$BASE_BENCH_RESULTS_FILE_NAME"]
   ]
   logs : [
     "*output.log"
@@ -23,8 +23,8 @@ hwloc.node0 : ["hwloc-bind", "--cpubind", "node:0", "--membind", "node:0", "--"]
 hwloc.node1 : ["hwloc-bind", "--cpubind", "node:1", "--membind", "node:1", "--"]
 hwloc.node : ["hwloc-bind", "--cpubind", "node:$NODE", "--membind", "node:$NODE", "--"]
 
-export.node0: [export, "NODE=0", "RESULTS_FILE=node0-$RESULTS_FILE_NAME"]
-export.node1: [export, "NODE=1", "RESULTS_FILE=node1-$RESULTS_FILE_NAME"]
+export.node0: [export, "NODE=0", "BENCH_RESULTS_FILE_PATH=node0-$BASE_BENCH_RESULTS_FILE_NAME"]
+export.node1: [export, "NODE=1", "BENCH_RESULTS_FILE_PATH=node1-$BASE_BENCH_RESULTS_FILE_NAME"]
 
 bench-dacapo-hwloc: ${bench-dacapo} ${hwloc.bench-common-8} {
   run: [
