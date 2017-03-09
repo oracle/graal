@@ -1,4 +1,4 @@
-gateCmd : ["mx", "-v", "--kill-with-sigquit", "--strict-compliance", "gate", "--strict-mode", "--extra-vm-argument=${EXTRA_VM_ARGS}", "--tags"]
+gateCmd : ["mx", "-v", "--kill-with-sigquit", "--strict-compliance", "gate", "--strict-mode", "--extra-vm-argument=-Dgraal.DumpOnError=true -Dgraal.PrintGraphFile=true", "--extra-vm-argument=${EXTRA_VM_ARGS}", "--tags"]
 
 gateTest : {
   environment : {
