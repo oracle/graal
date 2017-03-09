@@ -25,7 +25,6 @@ package org.graalvm.compiler.nodes.calc;
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
@@ -109,11 +108,8 @@ public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, 
 
     @Override
     public Stamp getSucceedingStampForValue(boolean negated) {
-        if (this.getValue().stamp() instanceof ObjectStamp) {
-            return negated ? StampFactory.objectNonNull() : StampFactory.alwaysNull();
-        } else {
-            return null;
-        }
+        AbstractPointerStamp pointerStamp = (AbstractPointerStamp) getValue().stamp();
+        return negated ? pointerStamp.asNonNull() : pointerStamp.asAlwaysNull();
     }
 
     @Override
