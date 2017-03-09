@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,60 +40,48 @@
  */
 package com.oracle.truffle.sl.runtime;
 
-import static com.oracle.truffle.sl.runtime.SLContext.fromForeignValue;
-
-import com.oracle.truffle.api.interop.CanResolve;
+import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.sl.SLLanguage;
-import com.oracle.truffle.sl.nodes.call.SLDispatchNode;
-import com.oracle.truffle.sl.nodes.call.SLDispatchNodeGen;
-import com.oracle.truffle.sl.nodes.interop.SLTypeToForeignNode;
-import com.oracle.truffle.sl.nodes.interop.SLTypeToForeignNodeGen;
+import java.math.BigInteger;
 
-/**
- * The class containing all message resolution implementations of {@link SLFunction}.
- */
-@MessageResolution(receiverType = SLFunction.class, language = SLLanguage.class)
-public class SLFunctionMessageResolution {
-    /*
-     * An SL function resolves an EXECUTE message.
-     */
-    @Resolve(message = "EXECUTE")
-    public abstract static class SLForeignFunctionExecuteNode extends Node {
+@MessageResolution(language = SLLanguage.class, receiverType = SLBigTruffleObject.class)
+public class SLBigTruffleObject implements TruffleObject {
 
-        @Child private SLDispatchNode dispatch = SLDispatchNodeGen.create();
-        @Child private SLTypeToForeignNode toForeign = SLTypeToForeignNodeGen.create();
+    private final BigInteger value;
 
-        public Object access(SLFunction receiver, Object[] arguments) {
-            Object[] arr = new Object[arguments.length];
-            // Before the arguments can be used by the SLFunction, they need to be converted to SL
-            // values.
-            for (int i = 0; i < arr.length; i++) {
-                arr[i] = fromForeignValue(arguments[i]);
-            }
-            Object result = dispatch.executeDispatch(receiver, arr);
-            return toForeign.executeConvert(result);
+    public SLBigTruffleObject(BigInteger value) {
+        this.value = value;
+    }
+
+    public BigInteger getValue() {
+        return value;
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return SLBigTruffleObjectForeign.createAccess();
+    }
+
+    static boolean isInstance(TruffleObject obj) {
+        return obj instanceof SLBigTruffleObject;
+    }
+
+    @Resolve(message = "UNBOX")
+    abstract static class UnboxBigNode extends Node {
+        Object access(SLBigTruffleObject obj) {
+            return obj.value.doubleValue();
         }
     }
 
-    /*
-     * An SL function should respond to an IS_EXECUTABLE message with true.
-     */
-    @Resolve(message = "IS_EXECUTABLE")
-    public abstract static class SLForeignIsExecutableNode extends Node {
-        public Object access(Object receiver) {
-            return receiver instanceof SLFunction;
-        }
-    }
-
-    @CanResolve
-    public abstract static class CheckFunction extends Node {
-
-        protected static boolean test(TruffleObject receiver) {
-            return receiver instanceof SLFunction;
+    @Resolve(message = "IS_BOXED")
+    abstract static class IsBoxedBigNode extends Node {
+        @SuppressWarnings("unused")
+        Object access(SLBigTruffleObject obj) {
+            return true;
         }
     }
 }

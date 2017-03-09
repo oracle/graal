@@ -224,7 +224,7 @@ abstract class LibFFIType {
         public final Object fromPrimitive(long primitive) {
             switch (simpleType) {
                 case VOID:
-                    return null;
+                    return JavaInterop.asTruffleObject(null);
                 case UINT8:
                 case SINT8:
                     return (byte) primitive;

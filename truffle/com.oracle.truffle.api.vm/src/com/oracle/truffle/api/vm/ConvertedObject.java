@@ -26,14 +26,17 @@ package com.oracle.truffle.api.vm;
 
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.java.JavaInterop;
 
 final class ConvertedObject implements TruffleObject {
+    private static final TruffleObject NULL = JavaInterop.asTruffleObject(null);
+
     private final TruffleObject original;
     private final Object value;
 
     ConvertedObject(TruffleObject obj, Object newValue) {
         this.original = obj;
-        this.value = newValue;
+        this.value = newValue == null ? NULL : newValue;
     }
 
     TruffleObject getOriginal() {
@@ -45,6 +48,10 @@ final class ConvertedObject implements TruffleObject {
             return ((ConvertedObject) obj).value;
         }
         return obj;
+    }
+
+    static boolean isNull(Object result) {
+        return NULL == result;
     }
 
     static <T> boolean isInstance(Class<T> representation, Object obj) {

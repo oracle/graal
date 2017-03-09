@@ -953,7 +953,7 @@ public class PolyglotEngine {
                     result = EngineTruffleObject.wrap(PolyglotEngine.this, result);
                 }
             }
-            return result;
+            return ConvertedObject.isNull(result) ? null : result;
         }
 
         /**

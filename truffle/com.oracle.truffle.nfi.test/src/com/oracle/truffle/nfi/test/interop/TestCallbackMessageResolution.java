@@ -28,6 +28,7 @@ import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.NFILanguage;
 
@@ -38,7 +39,8 @@ class TestCallbackMessageResolution {
     abstract static class ExecuteNode extends Node {
 
         Object access(TestCallback callback, Object[] arguments) {
-            return callback.call(arguments);
+            Object res = callback.call(arguments);
+            return res == null ? JavaInterop.asTruffleObject(null) : res;
         }
     }
 

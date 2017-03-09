@@ -32,25 +32,27 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 
 abstract class ArrayWriteNode extends Node {
+    final ToJavaNode toJavaNode = ToJavaNodeGen.create();
 
     protected abstract Object executeWithTarget(VirtualFrame frame, JavaObject receiver, Object index, Object value);
 
     @SuppressWarnings("unchecked")
     @Specialization(guards = "index.getClass() == clazz")
-    protected static final Object doNumber(JavaObject receiver, Number index, Object value,
+    protected final Object doNumber(JavaObject receiver, Number index, Object value,
                     @Cached("index.getClass()") Class<?> clazz) {
         Class<Number> numberClazz = (Class<Number>) clazz;
         return doArrayAccess(receiver, numberClazz.cast(index).intValue(), value);
     }
 
     @Specialization(replaces = "doNumber")
-    protected static final Object doNumberGeneric(JavaObject receiver, Number index, Object value) {
+    protected final Object doNumberGeneric(JavaObject receiver, Number index, Object value) {
         return doArrayAccess(receiver, index.intValue(), value);
     }
 
-    private static Object doArrayAccess(JavaObject receiver, int index, Object value) {
+    private Object doArrayAccess(JavaObject receiver, int index, Object value) {
         Object obj = receiver.obj;
-        Array.set(obj, index, value);
+        final Object javaValue = toJavaNode.execute(value, TypeAndClass.ANY);
+        Array.set(obj, index, javaValue);
         return JavaObject.NULL;
     }
 }

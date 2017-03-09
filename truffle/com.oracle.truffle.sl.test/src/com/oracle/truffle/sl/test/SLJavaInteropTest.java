@@ -60,6 +60,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.fail;
 
 public class SLJavaInteropTest {
 
@@ -107,6 +108,14 @@ public class SLJavaInteropTest {
         valuesIn.call("OK", "Fine");
 
         assertEquals("Called with OK and Fine\n", os.toString("UTF-8"));
+    }
+
+    private static void assertNumber(double exp, Object real) {
+        if (real instanceof Number) {
+            assertEquals(exp, ((Number) real).doubleValue(), 0.1);
+        } else {
+            fail("Expecting a number, but was " + real);
+        }
     }
 
     interface PassInValues {
@@ -345,12 +354,12 @@ public class SLJavaInteropTest {
         map.put("a", 42);
 
         Object b = read.execute(map, "a").get();
-        assertEquals(42L, b);
+        assertNumber(42L, b);
 
         write.execute(map, "a", 33);
 
         Object c = read.execute(map, "a").get();
-        assertEquals(33L, c);
+        assertNumber(33L, c);
     }
 
     @FunctionalInterface

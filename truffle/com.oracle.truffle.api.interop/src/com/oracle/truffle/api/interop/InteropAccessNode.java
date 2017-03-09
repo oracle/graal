@@ -48,38 +48,38 @@ abstract class InteropAccessNode extends Node {
 
     @SuppressWarnings("unused")
     public final Object execute(TruffleObject receiver) throws InteropException {
-        return executeImpl(receiver, new Object[]{receiver});
+        return checkInteropType(executeImpl(receiver, new Object[]{receiver}));
     }
 
     @SuppressWarnings("unused")
     public final Object execute(TruffleObject receiver, Object[] arguments) throws InteropException {
-        return executeImpl(receiver, insertArg1(arguments, receiver));
+        return checkInteropType(executeImpl(receiver, insertArg1(arguments, receiver)));
     }
 
     @SuppressWarnings("unused")
     public final Object execute(TruffleObject receiver, Object arg0) throws InteropException {
-        return executeImpl(receiver, new Object[]{receiver, arg0});
+        return checkInteropType(executeImpl(receiver, new Object[]{receiver, checkInteropType(arg0)}));
     }
 
     @SuppressWarnings("unused")
     public final Object execute(TruffleObject receiver, Object arg0, Object arg1) throws InteropException {
-        return executeImpl(receiver, new Object[]{receiver, arg0, arg1});
+        return checkInteropType(executeImpl(receiver, new Object[]{receiver, checkInteropType(arg0), checkInteropType(arg1)}));
     }
 
     @SuppressWarnings("unused")
     public final Object execute(TruffleObject receiver, Object arg0, Object[] arguments) throws InteropException {
-        return executeImpl(receiver, insertArg2(arguments, receiver, arg0));
+        return checkInteropType(executeImpl(receiver, insertArg2(arguments, receiver, arg0)));
     }
 
     @Deprecated
     public final Object executeOld(TruffleObject receiver, Object[] arguments) {
-        return executeImpl(receiver, insertArg1(arguments, receiver));
+        return checkInteropType(executeImpl(receiver, insertArg1(arguments, receiver)));
     }
 
     private Object[] insertArg1(Object[] arguments, Object arg0) {
         int length = profileLength(arguments.length);
         Object[] newArguments = new Object[length + 1];
-        newArguments[0] = arg0;
+        newArguments[0] = checkInteropType(arg0);
         arraycopy(arguments, 0, newArguments, 1, length);
         return newArguments;
     }
@@ -87,15 +87,52 @@ abstract class InteropAccessNode extends Node {
     private Object[] insertArg2(Object[] arguments, Object arg0, Object arg1) {
         int length = profileLength(arguments.length);
         Object[] newArguments = new Object[length + 2];
-        newArguments[0] = arg0;
-        newArguments[1] = arg1;
+        newArguments[0] = checkInteropType(arg0);
+        newArguments[1] = checkInteropType(arg1);
         arraycopy(arguments, 0, newArguments, 2, length);
         return newArguments;
     }
 
     private static void arraycopy(Object[] src, int srcPos, Object[] dest, int destPos, int length) {
         for (int i = 0; i < length; i++) {
-            dest[destPos + i] = src[srcPos + i];
+            dest[destPos + i] = checkInteropType(src[srcPos + i]);
+        }
+    }
+
+    private static Object checkInteropType(Object obj) {
+        if (obj instanceof TruffleObject) {
+            return obj;
+        }
+        if (obj == null) {
+            return yieldAnError(null);
+        }
+        Class<?> clazz = obj.getClass();
+        if (clazz == Byte.class ||
+                        clazz == Short.class ||
+                        clazz == Integer.class ||
+                        clazz == Long.class ||
+                        clazz == Float.class ||
+                        clazz == Double.class ||
+                        clazz == Character.class ||
+                        clazz == Boolean.class ||
+                        clazz == String.class) {
+            return obj;
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            yieldAnError(obj.getClass());
+            return null;
+        }
+    }
+
+    @TruffleBoundary
+    private static Object yieldAnError(Class<?> clazz) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(clazz == null ? "null" : clazz.getName());
+        sb.append(" isn't allowed Truffle interop type!\n");
+        if (clazz == null) {
+            throw new NullPointerException(sb.toString());
+        } else {
+            throw new ClassCastException(sb.toString());
         }
     }
 
