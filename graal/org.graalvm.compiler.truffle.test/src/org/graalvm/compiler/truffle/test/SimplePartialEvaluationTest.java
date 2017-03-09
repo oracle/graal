@@ -43,6 +43,8 @@ import org.graalvm.compiler.truffle.test.nodes.RecursionTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.graalvm.compiler.truffle.test.nodes.StoreLocalTestNode;
 import org.graalvm.compiler.truffle.test.nodes.StringEqualsNode;
+import org.graalvm.compiler.truffle.test.nodes.StringHashCodeFinalNode;
+import org.graalvm.compiler.truffle.test.nodes.StringHashCodeNonFinalNode;
 import org.graalvm.compiler.truffle.test.nodes.SynchronizedExceptionMergeNode;
 import org.graalvm.compiler.truffle.test.nodes.TwoMergesExplodedLoopTestNode;
 import org.junit.Assert;
@@ -271,5 +273,26 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new ExplodeLoopUntilReturnWithThrowNode();
         assertPartialEvalEquals("constant42", new RootTestNode(fd, "explodeLoopUntilReturnWithThrow", result));
+    }
+
+    @Test
+    public void intrinsicStringHashCodeFinal() {
+        /* The intrinsic for String.hashcode() triggers on constant strings. */
+        FrameDescriptor fd = new FrameDescriptor();
+        AbstractTestNode result = new StringHashCodeFinalNode("*");
+        /* The hash code of "*" is 42. */
+        assertPartialEvalEquals("constant42", new RootTestNode(fd, "intrinsicStringHashCodeFinal", result));
+    }
+
+    @Test
+    public void intrinsicStringHashCodeNonFinal() {
+        /*
+         * The intrinsic for String.hashcode() does not trigger on non-constant strings, so the
+         * method String.hashCode() must be inlined during partial evaluation (so there must not be
+         * an invoke after partial evaluation).
+         */
+        FrameDescriptor fd = new FrameDescriptor();
+        AbstractTestNode result = new StringHashCodeNonFinalNode("*");
+        assertPartialEvalNoInvokes(new RootTestNode(fd, "intrinsicStringHashCodeNonFinal", result));
     }
 }
