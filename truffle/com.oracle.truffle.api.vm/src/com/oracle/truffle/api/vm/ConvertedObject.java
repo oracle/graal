@@ -39,8 +39,11 @@ final class ConvertedObject implements TruffleObject {
         this.value = newValue == null ? NULL : newValue;
     }
 
-    TruffleObject getOriginal() {
-        return original;
+    static Object original(Object obj) {
+        if (obj instanceof ConvertedObject) {
+            return ((ConvertedObject) obj).original;
+        }
+        return obj;
     }
 
     static Object value(Object obj) {
@@ -73,6 +76,6 @@ final class ConvertedObject implements TruffleObject {
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return original.getForeignAccess();
+        throw new IllegalStateException();
     }
 }

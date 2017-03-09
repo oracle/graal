@@ -44,7 +44,6 @@ import java.util.Map;
 
 abstract class ToJavaNode extends Node {
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
-    @Child private Node isNull = Message.IS_NULL.createNode();
     @Child private ToPrimitiveNode primitive = ToPrimitiveNode.create();
 
     public abstract Object execute(Object value, TypeAndClass<?> type);
@@ -78,7 +77,8 @@ abstract class ToJavaNode extends Node {
             return null;
         } else if (value instanceof TruffleObject) {
             boolean hasSize = primitive.hasSize((TruffleObject) value);
-            convertedValue = asJavaObject(targetType.clazz, targetType, (TruffleObject) value, hasSize);
+            boolean isNull = primitive.isNull((TruffleObject) value);
+            convertedValue = asJavaObject(targetType.clazz, targetType, (TruffleObject) value, hasSize, isNull);
         } else {
             assert targetType.clazz.isAssignableFrom(value.getClass()) : value.getClass().getName() + " is not assignable to " + targetType;
             convertedValue = value;
@@ -110,7 +110,7 @@ abstract class ToJavaNode extends Node {
     }
 
     @TruffleBoundary
-    private static <T> T asJavaObject(Class<T> clazz, TypeAndClass<?> type, TruffleObject foreignObject, boolean hasSize) {
+    private static <T> T asJavaObject(Class<T> clazz, TypeAndClass<?> type, TruffleObject foreignObject, boolean hasSize, boolean isNull) {
         Object obj;
         if (foreignObject == null) {
             return null;
@@ -119,6 +119,9 @@ abstract class ToJavaNode extends Node {
             obj = foreignObject;
         } else {
             if (!clazz.isInterface()) {
+                if (isNull) {
+                    return null;
+                }
                 throw new ClassCastException();
             }
             if (clazz == List.class && hasSize) {
@@ -195,7 +198,7 @@ abstract class ToJavaNode extends Node {
         if (ret instanceof TruffleObject) {
             final TruffleObject truffleObject = (TruffleObject) ret;
             if (retType.isInterface()) {
-                return asJavaObject(retType, type, truffleObject, primitiveNode.hasSize(truffleObject));
+                return asJavaObject(retType, type, truffleObject, primitiveNode.hasSize(truffleObject), primitiveNode.isNull(truffleObject));
             }
         }
         return ret;
