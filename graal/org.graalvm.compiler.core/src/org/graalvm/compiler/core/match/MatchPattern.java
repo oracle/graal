@@ -274,17 +274,21 @@ public class MatchPattern {
             return true;
         }
         if (node.isAllowedUsageType(InputType.Guard)) {
+            // See if the other usages are non-Value usages.
             valueUsage = 0;
             for (Node usage : node.usages()) {
                 for (Position input : usage.inputPositions()) {
                     if (input.getInputType() == InputType.Value && input.get(usage) == node) {
                         valueUsage++;
                         if (valueUsage > 1) {
+                            // Too many value users
                             return false;
                         }
                     }
                 }
             }
+            assert valueUsage == 1;
+            return true;
         }
         return false;
     }
