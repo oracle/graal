@@ -8,27 +8,27 @@ hwloc.bench-common-8 : {
     BENCH_RESULTS_FILE_PATH: undefined
   }
   teardown : [
-    ["bench-uploader.py", "--url", "$BENCH_SERVER_URL", "node0-$BASE_BENCH_RESULTS_FILE_NAME"]
-    ["bench-uploader.py", "--url", "$BENCH_SERVER_URL", "node1-$BASE_BENCH_RESULTS_FILE_NAME"]
+    ["bench-uploader.py", "--url", "${BENCH_SERVER_URL}", "node0-${BASE_BENCH_RESULTS_FILE_NAME}"]
+    ["bench-uploader.py", "--url", "${BENCH_SERVER_URL}", "node1-${BASE_BENCH_RESULTS_FILE_NAME}"]
   ]
   logs : [
     "*output.log"
   ]
 }
 
-hwloc.cmd.suffix : ["|","tee", "$LOGDIR/node$NODE$LOG_FILE_NAME", "&"]
+hwloc.cmd.suffix : ["|","tee", "${LOGDIR}/node${NODE}${LOG_FILE_NAME}", "&"]
 
 # command prefix for binding a command to a certain node
 hwloc.node0 : ["hwloc-bind", "--cpubind", "node:0", "--membind", "node:0", "--"]
 hwloc.node1 : ["hwloc-bind", "--cpubind", "node:1", "--membind", "node:1", "--"]
-hwloc.node : ["hwloc-bind", "--cpubind", "node:$NODE", "--membind", "node:$NODE", "--"]
+hwloc.node : ["hwloc-bind", "--cpubind", "node:${NODE}", "--membind", "node:${NODE}", "--"]
 
-export.node0: [export, "NODE=0", "BENCH_RESULTS_FILE_PATH=node0-$BASE_BENCH_RESULTS_FILE_NAME"]
-export.node1: [export, "NODE=1", "BENCH_RESULTS_FILE_PATH=node1-$BASE_BENCH_RESULTS_FILE_NAME"]
+export.node0: [export, "NODE=0", "BENCH_RESULTS_FILE_PATH=node0-${BASE_BENCH_RESULTS_FILE_NAME}"]
+export.node1: [export, "NODE=1", "BENCH_RESULTS_FILE_PATH=node1-${BASE_BENCH_RESULTS_FILE_NAME}"]
 
 bench-dacapo-hwloc: ${bench-dacapo} ${hwloc.bench-common-8} {
   run: [
-    [export, "LOGDIR=$PWD"]
+    [export, "LOGDIR=${PWD}"]
     ${export.node0}
     ${hwloc.node} ${bench-jvmci.mx-dacapo} ${bench-arguments} ${hwloc.cmd.suffix}
     ${export.node1}
@@ -39,7 +39,7 @@ bench-dacapo-hwloc: ${bench-dacapo} ${hwloc.bench-common-8} {
 
 bench-dacapo-timing-hwloc: ${bench-dacapo-timing} ${hwloc.bench-common-8} {
   run: [
-    [export, "LOGDIR=$PWD"]
+    [export, "LOGDIR=${PWD}"]
     ${export.node0}
     ${hwloc.node} ${bench-jvmci.mx-dacapo-timing} ${bench-arguments} ${hwloc.cmd.suffix}
     ${export.node1}
@@ -50,7 +50,7 @@ bench-dacapo-timing-hwloc: ${bench-dacapo-timing} ${hwloc.bench-common-8} {
 
 bench-dacapo-move-profiling-hwloc: ${bench-dacapo-move-profiling} ${hwloc.bench-common-8} {
   run: [
-    [export, "LOGDIR=$PWD"]
+    [export, "LOGDIR=${PWD}"]
     ${export.node0}
     ${hwloc.node} ${bench-jvmci.mx-dacapo-move-profiling} ${bench-arguments} ${hwloc.cmd.suffix}
     ${export.node1}
@@ -63,7 +63,7 @@ bench-dacapo-move-profiling-hwloc: ${bench-dacapo-move-profiling} ${hwloc.bench-
 
 bench-scala-dacapo-hwloc: ${bench-scala-dacapo} ${hwloc.bench-common-8} {
   run: [
-    [export, "LOGDIR=$PWD"]
+    [export, "LOGDIR=${PWD}"]
     ${export.node0}
     ${hwloc.node} ${bench-jvmci.mx-scala-dacapo} ${bench-arguments} ${hwloc.cmd.suffix}
     ${export.node1}
@@ -74,7 +74,7 @@ bench-scala-dacapo-hwloc: ${bench-scala-dacapo} ${hwloc.bench-common-8} {
 
 bench-scala-dacapo-timing-hwloc: ${bench-scala-dacapo-timing} ${hwloc.bench-common-8} {
   run: [
-    [export, "LOGDIR=$PWD"]
+    [export, "LOGDIR=${PWD}"]
     ${export.node0}
     ${hwloc.node} ${bench-jvmci.mx-scala-dacapo-timing} ${bench-arguments} ${hwloc.cmd.suffix}
     ${export.node1}
@@ -85,7 +85,7 @@ bench-scala-dacapo-timing-hwloc: ${bench-scala-dacapo-timing} ${hwloc.bench-comm
 
 bench-scala-dacapo-move-profiling-hwloc: ${bench-scala-dacapo-move-profiling} ${hwloc.bench-common-8} {
   run: [
-    [export, "LOGDIR=$PWD"]
+    [export, "LOGDIR=${PWD}"]
     ${export.node0}
     ${hwloc.node} ${bench-jvmci.mx-scala-dacapo-move-profiling} ${bench-arguments} ${hwloc.cmd.suffix}
     ${export.node1}
@@ -98,7 +98,7 @@ bench-scala-dacapo-move-profiling-hwloc: ${bench-scala-dacapo-move-profiling} ${
 
 bench-renaissance-hwloc: ${bench-renaissance} ${hwloc.bench-common-8} {
   run: [
-    [export, "LOGDIR=$PWD"]
+    [export, "LOGDIR=${PWD}"]
     ${export.node0}
     ${hwloc.node} ${bench-jvmci.mx-renaissance} ${bench-arguments} ${hwloc.cmd.suffix}
     ${export.node1}

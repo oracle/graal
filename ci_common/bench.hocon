@@ -3,7 +3,7 @@
 bench-arguments : ["--machine-name", "${MACHINE_NAME}", "--", "-Xmx${XMX}", "-Xms${XMS}", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}", "--jvm=${JVM}"]
 
 bench-jvmci : {
-  mx-benchmark : ["mx", "--kill-with-sigquit", "benchmark", "--results-file", "$BENCH_RESULTS_FILE_PATH"]
+  mx-benchmark : ["mx", "--kill-with-sigquit", "benchmark", "--results-file", "${BENCH_RESULTS_FILE_PATH}"]
   mx-dacapo : ${bench-jvmci.mx-benchmark} ["dacapo:*"]
   mx-scala-dacapo : ${bench-jvmci.mx-benchmark} ["scala-dacapo:*"]
   mx-dacapo-timing : ${bench-jvmci.mx-benchmark} ["dacapo-timing:*"]
@@ -16,7 +16,7 @@ bench-jvmci : {
   mx-specjbb2015: ${bench-jvmci.mx-benchmark} ["specjbb2015"]
   mx-renaissance: ${bench-jvmci.mx-benchmark} ["renaissance:*"]
   mx-micros-graal: ${bench-jvmci.mx-benchmark} ["jmh-graal-core-whitebox:*"]
-  mx-teardown : ["bench-uploader.py", "--url", "$BENCH_SERVER_URL", "$BENCH_RESULTS_FILE_PATH"]
+  mx-teardown : ["bench-uploader.py", "--url", "${BENCH_SERVER_URL}", "${BENCH_RESULTS_FILE_PATH}"]
 }
 
 bench-common-8 : ${java8Downloads} ${mx} {
