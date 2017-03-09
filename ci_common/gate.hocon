@@ -1,8 +1,8 @@
-gateCmd : ["mx", "-v", "--kill-with-sigquit", "--strict-compliance", "gate", "--strict-mode", "--extra-vm-argument=${EXTRA_VM_ARGS}", "--tags"]
+gateCmd : ["mx", "-v", "--kill-with-sigquit", "--strict-compliance", "gate", "--strict-mode", "--extra-vm-argument=-Dgraal.DumpOnError=true -Dgraal.PrintGraphFile=true", "--extra-vm-argument=${EXTRA_VM_ARGS}", "--tags"]
 
 gateTest : {
   environment : {
-    EXTRA_VM_ARGS : "-Dgraal.DumpOnError=true -Dgraal.PrintGraphFile=true"
+    EXTRA_VM_ARGS : ""
   }
   run : [
     ${gateCmd} ["build,test"]
@@ -11,7 +11,7 @@ gateTest : {
 
 gateTestCTW : {
   environment : {
-    EXTRA_VM_ARGS : "-Dgraal.DumpOnError=true -Dgraal.PrintGraphFile=true"
+    EXTRA_VM_ARGS : ""
   }
   run : [
     ${gateCmd} ["build,ctw"]
@@ -20,7 +20,7 @@ gateTestCTW : {
 
 gateTestBenchmark : {
   environment : {
-    EXTRA_VM_ARGS : "-Dgraal.DumpOnError=true -Dgraal.PrintGraphFile=true"
+    EXTRA_VM_ARGS : ""
   }
   run : [
     ${gateCmd} ["build,benchmarktest"]
@@ -29,7 +29,7 @@ gateTestBenchmark : {
 
 gateBootstrap : {
   environment : {
-    EXTRA_VM_ARGS : "-Dgraal.DumpOnError=true -Dgraal.PrintGraphFile=true"
+    EXTRA_VM_ARGS : ""
   }
   run : [
     ${gateCmd} ["build,bootstrap"]
@@ -38,7 +38,7 @@ gateBootstrap : {
 
 gateBootstrapLite : {
   environment : {
-    EXTRA_VM_ARGS : "-Dgraal.DumpOnError=true -Dgraal.PrintGraphFile=true"
+    EXTRA_VM_ARGS : ""
   }
   run : [
     ${gateCmd} ["build,bootstraplite"]
@@ -47,7 +47,7 @@ gateBootstrapLite : {
 
 gateBootstrapFullVerify : {
   environment : {
-    EXTRA_VM_ARGS : "-Dgraal.DumpOnError=true -Dgraal.PrintGraphFile=true"
+    EXTRA_VM_ARGS : ""
   }
   run : [
     ${gateCmd} ["build,bootstrapfullverify"]
