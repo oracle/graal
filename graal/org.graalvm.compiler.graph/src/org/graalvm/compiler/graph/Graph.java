@@ -57,6 +57,12 @@ public class Graph {
         public static final OptionKey<Integer> GraphCompressionThreshold = new OptionKey<>(70);
     }
 
+    private enum FreezeState {
+        Unfrozen,
+        TemporaryFreeze,
+        DeepFreeze
+    }
+
     public final String name;
 
     /**
@@ -132,7 +138,7 @@ public class Graph {
      * Indicates that the graph should no longer be modified. Frozen graphs can be used by multiple
      * threads so it's only safe to read them.
      */
-    private boolean isFrozen = false;
+    private FreezeState freezeState = FreezeState.Unfrozen;
 
     /**
      * The option values used while compiling this graph.
@@ -1116,10 +1122,24 @@ public class Graph {
     }
 
     public boolean isFrozen() {
-        return isFrozen;
+        return freezeState != FreezeState.Unfrozen;
     }
 
     public void freeze() {
-        this.isFrozen = true;
+        this.freezeState = FreezeState.DeepFreeze;
+    }
+
+    public void temporaryFreeze() {
+        if (this.freezeState == FreezeState.DeepFreeze) {
+            throw new GraalError("Graph was permanetly frozen.");
+        }
+        this.freezeState = FreezeState.TemporaryFreeze;
+    }
+
+    public void unfreeze() {
+        if (this.freezeState == FreezeState.DeepFreeze) {
+            throw new GraalError("Graph was permanetly frozen.");
+        }
+        this.freezeState = FreezeState.Unfrozen;
     }
 }
