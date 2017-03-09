@@ -64,9 +64,10 @@ def _run_netbeans_app(app_name, env=None, args=None):
 def _igvJdk():
     v8u20 = mx.VersionSpec("1.8.0_20")
     v8u40 = mx.VersionSpec("1.8.0_40")
-    v8 = mx.VersionSpec("1.8")
+    v9 = mx.VersionSpec("1.9")
     def _igvJdkVersionCheck(version):
-        return version >= v8 and (version < v8u20 or version >= v8u40)
+        # Remove v9 check once GR-3187 is resolved
+        return version < v9 and (version < v8u20 or version >= v8u40)
     return mx.get_jdk(_igvJdkVersionCheck, versionDescription='>= 1.8 and < 1.8.0u20 or >= 1.8.0u40', purpose="running IGV").home
 
 def igv(args):
