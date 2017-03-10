@@ -226,7 +226,7 @@ class JavaObjectMessageResolution {
                     fields[i++] = Objects.toString(key, null);
                 }
             } else {
-                fields = TruffleOptions.AOT ? new String[0] : JavaInteropReflect.findPublicMemberNames(receiver.clazz, receiver.obj != null);
+                fields = TruffleOptions.AOT ? new String[0] : JavaInteropReflect.findUniquePublicMemberNames(receiver.clazz, receiver.obj != null);
             }
             return JavaInterop.asTruffleObject(fields);
         }
