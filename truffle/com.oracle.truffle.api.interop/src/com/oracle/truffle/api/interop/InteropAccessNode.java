@@ -118,14 +118,13 @@ abstract class InteropAccessNode extends Node {
                         clazz == String.class) {
             return obj;
         } else {
-            CompilerDirectives.transferToInterpreter();
             yieldAnError(obj.getClass());
             return null;
         }
     }
 
-    @TruffleBoundary
     private static Object yieldAnError(Class<?> clazz) {
+        CompilerDirectives.transferToInterpreter();
         StringBuilder sb = new StringBuilder();
         sb.append(clazz == null ? "null" : clazz.getName());
         sb.append(" isn't allowed Truffle interop type!\n");
