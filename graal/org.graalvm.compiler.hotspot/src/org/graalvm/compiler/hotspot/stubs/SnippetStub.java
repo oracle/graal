@@ -33,7 +33,6 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
 import org.graalvm.compiler.debug.GraalError;
@@ -95,8 +94,6 @@ public abstract class SnippetStub extends Stub implements Snippets {
         this.method = providers.getMetaAccess().lookupJavaMethod(javaMethod);
     }
 
-    public static final ThreadLocal<StructuredGraph> SnippetGraphUnderConstruction = Assertions.ENABLED ? new ThreadLocal<>() : null;
-
     @Override
     @SuppressWarnings("try")
     protected StructuredGraph getGraph(CompilationIdentifier compilationId) {
@@ -114,29 +111,17 @@ public abstract class SnippetStub extends Stub implements Snippets {
         try (Scope outer = Debug.scope("SnippetStub", graph)) {
             graph.disableUnsafeAccessTracking();
 
-            if (SnippetGraphUnderConstruction != null) {
-                assert SnippetGraphUnderConstruction.get() == null : SnippetGraphUnderConstruction.get().toString() + " " + graph;
-                SnippetGraphUnderConstruction.set(graph);
-            }
+            IntrinsicContext initialIntrinsicContext = new IntrinsicContext(method, method, getReplacementsBytecodeProvider(), INLINE_AFTER_PARSING);
+            GraphBuilderPhase.Instance instance = new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(),
+                            providers.getConstantReflection(), providers.getConstantFieldProvider(),
+                            config, OptimisticOptimizations.NONE,
+                            initialIntrinsicContext);
+            instance.apply(graph);
 
-            try {
-                IntrinsicContext initialIntrinsicContext = new IntrinsicContext(method, method, getReplacementsBytecodeProvider(), INLINE_AFTER_PARSING);
-                GraphBuilderPhase.Instance instance = new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(),
-                                providers.getConstantReflection(), providers.getConstantFieldProvider(),
-                                config, OptimisticOptimizations.NONE,
-                                initialIntrinsicContext);
-                instance.apply(graph);
-
-                for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
-                    int index = param.index();
-                    if (method.getParameterAnnotation(NonNullParameter.class, index) != null) {
-                        param.setStamp(param.stamp().join(StampFactory.objectNonNull()));
-                    }
-                }
-
-            } finally {
-                if (SnippetGraphUnderConstruction != null) {
-                    SnippetGraphUnderConstruction.set(null);
+            for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
+                int index = param.index();
+                if (method.getParameterAnnotation(NonNullParameter.class, index) != null) {
+                    param.setStamp(param.stamp().join(StampFactory.objectNonNull()));
                 }
             }
 
