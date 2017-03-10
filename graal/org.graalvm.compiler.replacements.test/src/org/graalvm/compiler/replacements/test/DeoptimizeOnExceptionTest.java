@@ -29,11 +29,11 @@ import org.graalvm.compiler.phases.common.AbstractInliningPhase;
 import org.graalvm.compiler.test.ExportingClassLoader;
 import org.junit.Assert;
 import org.junit.Test;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
 
-import jdk.internal.org.objectweb.asm.ClassWriter;
-import jdk.internal.org.objectweb.asm.Label;
-import jdk.internal.org.objectweb.asm.MethodVisitor;
-import jdk.internal.org.objectweb.asm.Opcodes;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
