@@ -22,23 +22,13 @@
  */
 package org.graalvm.compiler.hotspot.test;
 
-import static org.graalvm.compiler.core.GraalCompiler.compileGraph;
 import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
 import static org.graalvm.compiler.nodes.ConstantNode.getConstantNodes;
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
 
-import org.graalvm.compiler.api.test.Graal;
-import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
-import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
-import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -46,16 +36,15 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.phases.tiers.Suites;
-import org.graalvm.compiler.phases.tiers.SuitesProvider;
-import org.graalvm.compiler.runtime.RuntimeProvider;
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Before;
+import org.junit.Test;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * use
@@ -183,17 +172,18 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         return Boolean.valueOf(true);
     }
 
-    @Ignore("ImmutableCode override may not work reliably in non-hosted mode")
     @Test
     public void testBoxedBooleanAOT() {
         StructuredGraph result = compile("getBoxedBoolean", true);
 
-        assertDeepEquals(2, result.getNodes().filter(FloatingReadNode.class).count());
-        assertDeepEquals(1, result.getNodes(PiNode.TYPE).count());
+        assertDeepEquals(0, result.getNodes().filter(FloatingReadNode.class).count());
+        assertDeepEquals(0, result.getNodes(PiNode.TYPE).count());
         assertDeepEquals(1, getConstantNodes(result).count());
         ConstantNode constant = getConstantNodes(result).first();
-        assertDeepEquals(JavaKind.Long, constant.getStackKind());
-        assertDeepEquals(((HotSpotResolvedObjectType) getMetaAccess().lookupJavaType(Boolean.class)).klass(), constant.asConstant());
+        assertDeepEquals(JavaKind.Object, constant.getStackKind());
+
+        JavaConstant c = constant.asJavaConstant();
+        Assert.assertEquals(getSnippetReflection().asObject(Boolean.class, c), Boolean.TRUE);
     }
 
     @Test
@@ -213,14 +203,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
     private StructuredGraph compile(String test, boolean compileAOT) {
         OptionValues options = new OptionValues(getInitialOptions(), ImmutableCode, compileAOT);
         StructuredGraph graph = parseEager(test, AllowAssumptions.YES, options);
-        ResolvedJavaMethod method = graph.method();
-        // create suites every time, as we modify options for the compiler
-        SuitesProvider suitesProvider = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getSuites();
-        final Suites suitesLocal = suitesProvider.getDefaultSuites(options);
-        final LIRSuites lirSuitesLocal = suitesProvider.getDefaultLIRSuites(options);
-        final CompilationResult compResult = compileGraph(graph, method, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, graph.getProfilingInfo(),
-                        suitesLocal, lirSuitesLocal, new CompilationResult(), CompilationResultBuilderFactory.Default);
-        addMethod(method, compResult);
+        compile(graph.method(), graph);
         return graph;
     }
 }
