@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.api.test.vm;
 
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
@@ -85,5 +87,38 @@ public class ToStringTest {
         assertEquals("Should always work", Integer.valueOf(42), fourtyTwo.as(Integer.class));
         assertEquals("Current behavior", Integer.valueOf(42), fourtyTwo.get());
         assertEquals("MyLang.toString is called", "Unboxed: 42", fourtyTwo.as(String.class));
+    }
+
+    @Test
+    public void toStringWithoutALanguage() throws Exception {
+        engine = PolyglotEngine.newBuilder().globalSymbol("value", "Ahoj").build();
+        PolyglotEngine.Value value = engine.findGlobalSymbol("value");
+        assertEquals("Converted", "Ahoj", value.as(String.class));
+    }
+
+    @Test
+    public void toStringOnIntWithoutALanguage() throws Exception {
+        engine = PolyglotEngine.newBuilder().globalSymbol("value", 42).build();
+        PolyglotEngine.Value value = engine.findGlobalSymbol("value");
+        assertEquals("Converted", "42", value.as(String.class));
+    }
+
+    @Test
+    public void toStringCallsToStringWithoutALanguage() throws Exception {
+        class MyObj implements TruffleObject {
+            @Override
+            public ForeignAccess getForeignAccess() {
+                return null;
+            }
+
+            @Override
+            public String toString() {
+                return "Ahoj";
+            }
+        }
+
+        engine = PolyglotEngine.newBuilder().globalSymbol("value", new MyObj()).build();
+        PolyglotEngine.Value value = engine.findGlobalSymbol("value");
+        assertEquals("Converted via toString() call", "Ahoj", value.as(String.class));
     }
 }

@@ -27,26 +27,38 @@ import static com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.L1_ALT;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
-
-import java.util.List;
-
-import org.junit.Test;
-
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.Ctx;
-
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
 
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executors;
-import org.junit.After;
 
-import static org.junit.Assert.assertSame;
+import org.junit.After;
+import org.junit.Test;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.interop.java.MethodMessage;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.Ctx;
+import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
+import com.oracle.truffle.api.vm.PolyglotEngine.Value;
+import java.util.Collections;
+import static org.junit.Assert.assertTrue;
 
 public class EngineTest {
     private Set<PolyglotEngine> toDispose = new HashSet<>();
@@ -306,4 +318,235 @@ public class EngineTest {
             vm.dispose();
         }
     }
+
+    @Test
+    public void testCaching() {
+        CachingLanguageChannel channel = new CachingLanguageChannel();
+        PolyglotEngine vm = register(createBuilder().config(CachingLanguage.MIME_TYPE, "channel", channel).build());
+
+        final Source source1 = Source.newBuilder("unboxed").name("something").mimeType(CachingLanguage.MIME_TYPE).build();
+        final Source source2 = Source.newBuilder("unboxed").name("something").mimeType(CachingLanguage.MIME_TYPE).build();
+
+        int cachedTargetsSize = -1;
+        int interopTargetsSize = -1;
+
+        // from now on we should not create any new targets
+        for (int i = 0; i < 10; i++) {
+            Value value1 = vm.eval(source1);
+            Value value2 = vm.eval(source2);
+
+            value1 = value1.execute().execute().execute().execute();
+            value2 = value2.execute().execute().execute().execute();
+
+            value1.get();
+            value2.get();
+
+            assertNotNull(value1.as(CachingTruffleObject.class));
+            assertNotNull(value2.as(CachingTruffleObject.class));
+
+            if (i == 0) {
+                cachedTargetsSize = channel.parseTargets.size();
+                interopTargetsSize = channel.interopTargets.size();
+                // its fair to assume some call targets need to get created
+                assertNotEquals(0, cachedTargetsSize);
+                assertNotEquals(0, interopTargetsSize);
+            } else {
+                // we need to have stable call targets after the first run.
+                assertEquals(cachedTargetsSize, channel.parseTargets.size());
+                assertEquals(interopTargetsSize, channel.interopTargets.size());
+            }
+        }
+    }
+
+    @FunctionalInterface
+    interface TestInterface {
+        void foobar();
+    }
+
+    interface ArrayLike {
+        @MethodMessage(message = "WRITE")
+        void set(int index, Object value);
+
+        @MethodMessage(message = "READ")
+        Object get(int index);
+
+        @MethodMessage(message = "GET_SIZE")
+        int size();
+
+        @MethodMessage(message = "HAS_SIZE")
+        boolean isArray();
+    }
+
+    @Test
+    public void testCachingFailing() {
+        CachingLanguageChannel channel = new CachingLanguageChannel();
+        PolyglotEngine vm = register(createBuilder().config(CachingLanguage.MIME_TYPE, "channel", channel).build());
+
+        final Source source1 = Source.newBuilder("boxed").name("something").mimeType(CachingLanguage.MIME_TYPE).build();
+        final Source source2 = Source.newBuilder("boxed").name("something").mimeType(CachingLanguage.MIME_TYPE).build();
+
+        int cachedTargetsSize = -1;
+        int interopTargetsSize = -1;
+
+        for (int i = 0; i < 10; i++) {
+            Value value1 = vm.eval(source1);
+            Value value2 = vm.eval(source2);
+
+            TestInterface testInterface1 = value1.as(TestInterface.class);
+            testInterface1.foobar();
+            value1.as(Byte.class);
+            value1.as(Short.class);
+            value1.as(Integer.class);
+            value1.as(Long.class);
+            value1.as(Float.class);
+            value1.as(Double.class);
+            Map<?, ?> m1 = value1.as(Map.class);
+            assertTrue(m1.isEmpty());
+            List<?> l1 = value1.as(List.class);
+            assertEquals(0, l1.size());
+            ArrayLike a1 = value1.as(ArrayLike.class);
+            assertEquals(0, a1.size());
+            assertTrue(a1.isArray());
+
+            TestInterface testInterface2 = value2.as(TestInterface.class);
+            testInterface2.foobar();
+            value2.as(Byte.class);
+            value2.as(Short.class);
+            value2.as(Integer.class);
+            value2.as(Long.class);
+            value2.as(Float.class);
+            value2.as(Double.class);
+            value2.as(Map.class);
+            Map<?, ?> m2 = value2.as(Map.class);
+            assertTrue(m2.isEmpty());
+            List<?> l2 = value2.as(List.class);
+            assertEquals(0, l2.size());
+            ArrayLike a2 = value1.as(ArrayLike.class);
+            assertEquals(0, a2.size());
+            assertTrue(a2.isArray());
+
+            if (i == 0) {
+                // warmup
+                cachedTargetsSize = channel.parseTargets.size();
+                interopTargetsSize = channel.interopTargets.size();
+                assertNotEquals(0, cachedTargetsSize);
+                assertNotEquals(0, interopTargetsSize);
+                channel.frozen = true;
+            } else {
+                // we need to have stable call targets after the first run.
+                assertEquals(cachedTargetsSize, channel.parseTargets.size());
+                assertEquals(interopTargetsSize, channel.interopTargets.size());
+            }
+        }
+    }
+
+    private static class CachingLanguageChannel {
+
+        final List<CallTarget> parseTargets = new ArrayList<>();
+        final List<CallTarget> interopTargets = new ArrayList<>();
+
+        boolean frozen;
+    }
+
+    private static class CachingTruffleObject implements TruffleObject {
+
+        private final CachingLanguageChannel channel;
+        private boolean boxed;
+
+        CachingTruffleObject(CachingLanguageChannel channel, boolean boxed) {
+            this.channel = channel;
+            this.boxed = boxed;
+        }
+
+        public ForeignAccess getForeignAccess() {
+            return ForeignAccess.create(new ForeignAccess.Factory() {
+
+                @Override
+                public boolean canHandle(TruffleObject obj) {
+                    return true;
+                }
+
+                public CallTarget accessMessage(final Message tree) {
+                    RootNode root = new RootNode(TruffleLanguage.class, null, null) {
+                        @Override
+                        public Object execute(VirtualFrame frame) {
+                            if (tree == Message.IS_BOXED) {
+                                return boxed;
+                            } else if (tree == Message.IS_EXECUTABLE) {
+                                return true;
+                            } else if (tree == Message.IS_NULL) {
+                                return false;
+                            } else if (tree == Message.HAS_SIZE) {
+                                return true;
+                            } else if (tree == Message.GET_SIZE) {
+                                return 0;
+                            } else if (tree == Message.KEYS) {
+                                return JavaInterop.asTruffleObject(Collections.emptyList());
+                            } else if (tree == Message.UNBOX) {
+                                return 42;
+                            }
+                            return new CachingTruffleObject(channel, boxed);
+                        }
+                    };
+                    CallTarget target = Truffle.getRuntime().createCallTarget(root);
+                    channel.interopTargets.add(target);
+                    if (channel.frozen) {
+                        throw new IllegalStateException("No new calltargets for " + tree);
+                    }
+                    return target;
+                }
+            });
+        }
+
+    }
+
+    @TruffleLanguage.Registration(mimeType = CachingLanguage.MIME_TYPE, version = "", name = "")
+    public static final class CachingLanguage extends TruffleLanguage<CachingLanguageChannel> {
+
+        static final String MIME_TYPE = "application/x-test-caching";
+
+        public static final CachingLanguage INSTANCE = new CachingLanguage();
+
+        public CachingLanguage() {
+        }
+
+        @Override
+        protected CachingLanguageChannel createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
+            return (CachingLanguageChannel) env.getConfig().get("channel");
+        }
+
+        @Override
+        protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
+            final boolean boxed = request.getSource().getCode().equals("boxed");
+            final CachingLanguageChannel channel = findContext(createFindContextNode());
+            RootNode root = new RootNode(TruffleLanguage.class, null, null) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return new CachingTruffleObject(channel, boxed);
+                }
+            };
+            CallTarget target = Truffle.getRuntime().createCallTarget(root);
+            channel.parseTargets.add(target);
+            if (channel.frozen) {
+                throw new IllegalStateException("No new calltargets");
+            }
+            return target;
+        }
+
+        @Override
+        protected Object findExportedSymbol(CachingLanguageChannel context, String globalName, boolean onlyExplicit) {
+            return null;
+        }
+
+        @Override
+        protected Object getLanguageGlobal(CachingLanguageChannel context) {
+            return null;
+        }
+
+        @Override
+        protected boolean isObjectOfLanguage(Object object) {
+            return false;
+        }
+    }
+
 }

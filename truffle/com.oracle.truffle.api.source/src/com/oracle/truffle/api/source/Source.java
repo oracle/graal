@@ -85,9 +85,9 @@ import java.util.Objects;
  *
  * the content is <em>read eagerly</em> once the {@link Builder#build()} method is called. It
  * doesn't have associated {@link #getMimeType() mime type} and {@link #getName()}. Both values have
- * to be explicitly provided by {@link Builder#name} and {@link Builder#mimeType(java.lang.String)}
- * methods otherwise {@link MissingMIMETypeException} and/or {@link MissingNameException} are
- * thrown.
+ * to be explicitly provided by {@link Builder#name(java.lang.String) } and
+ * {@link Builder#mimeType(java.lang.String)} methods otherwise {@link MissingMIMETypeException}
+ * and/or {@link MissingNameException} are thrown.
  *
  *
  * <h2>Immutability of {@link Source}</h2>
@@ -133,8 +133,8 @@ public abstract class Source {
     /**
      * Creates new {@link Source} builder for specified <code>file</code>. Once the source is built
      * the {@link Source#getName() name} will become {@link File#getName()} and the
-     * {@link Source#getCode()} will be loaded from the file, unless {@link Builder#content
-     * redefined} on the builder. Sample usage:
+     * {@link Source#getCode()} will be loaded from the file, unless
+     * {@link Builder#content(java.lang.String) redefined} on the builder. Sample usage:
      * <p>
      * {@link SourceSnippets#fromFile}
      * <p>
@@ -323,7 +323,7 @@ public abstract class Source {
     /**
      * Get URI of the source. Every source has an associated {@link URI}, which can be used as a
      * persistent identification of the source. For example one can
-     * {@link com.oracle.truffle.api.debug.Debugger#setLineBreakpoint(int, java.net.URI, int, boolean)
+     * {@link com.oracle.truffle.api.debug.DebuggerSession#install(com.oracle.truffle.api.debug.Breakpoint)
      * register a breakpoint using a URI} to a source that isn't loaded yet and it will be activated
      * when the source is
      * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval(com.oracle.truffle.api.source.Source)
@@ -823,8 +823,8 @@ public abstract class Source {
          *
          * @return the source object
          * @throws E1 exception if something went wrong while creating the source
-         * @throws E2 eliminate this exception by calling {@link #mimeType}
-         * @throws E3 eliminate this exception by calling {@link #name}
+         * @throws E2 eliminate this exception by calling {@link #mimeType(java.lang.String) }
+         * @throws E3 eliminate this exception by calling {@link #name(java.lang.String) }
          * @since 0.15
          */
         public Source build() throws E1, E2, E3 {

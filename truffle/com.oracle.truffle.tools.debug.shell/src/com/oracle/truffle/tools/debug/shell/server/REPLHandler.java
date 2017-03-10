@@ -24,25 +24,15 @@
  */
 package com.oracle.truffle.tools.debug.shell.server;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
 
-import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
-import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.ASTPrinter;
 import com.oracle.truffle.tools.debug.shell.server.InstrumentationUtils.LocationPrinter;
-import com.oracle.truffle.tools.debug.shell.server.REPLServer.BreakpointInfo;
-import com.oracle.truffle.tools.debug.shell.server.REPLServer.Context;
-import com.oracle.truffle.tools.debug.shell.server.REPLServer.REPLVisualizer;
-import java.io.File;
 
 /**
  * Server-side REPL implementation of an
@@ -50,11 +40,9 @@ import java.io.File;
  * <p>
  * The language-agnostic handlers are implemented here.
  */
+@Deprecated
 @SuppressWarnings("deprecation")
 public abstract class REPLHandler {
-
-    // TODO (mlvdv) add support for setting/using ignore count
-    private static final int DEFAULT_IGNORE_COUNT = 0;
 
     private final String op;
 
@@ -109,7 +97,7 @@ public abstract class REPLHandler {
         return replies;
     }
 
-    protected static final com.oracle.truffle.tools.debug.shell.REPLMessage createBreakpointInfoMessage(BreakpointInfo info) {
+    protected static final com.oracle.truffle.tools.debug.shell.REPLMessage createBreakpointInfoMessage(com.oracle.truffle.tools.debug.shell.server.REPLServer.BreakpointInfo info) {
         final com.oracle.truffle.tools.debug.shell.REPLMessage infoMessage = new com.oracle.truffle.tools.debug.shell.REPLMessage(com.oracle.truffle.tools.debug.shell.REPLMessage.OP,
                         com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_INFO);
         infoMessage.put(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_ID, Integer.toString(info.getID()));
@@ -150,27 +138,13 @@ public abstract class REPLHandler {
 
         @Override
         public com.oracle.truffle.tools.debug.shell.REPLMessage[] receive(com.oracle.truffle.tools.debug.shell.REPLMessage request, REPLServer replServer) {
-            final REPLVisualizer visualizer = replServer.getCurrentContext().getVisualizer();
-            final ArrayList<com.oracle.truffle.tools.debug.shell.REPLMessage> replies = new ArrayList<>();
-            final Context currentContext = replServer.getCurrentContext();
-            final List<FrameInstance> stack = currentContext.getStack();
-            int frameIndex = 0; // Index into list of displayed frames
-            // Iterate the real stack for the current execution
-            for (int stackIndex = 0; stackIndex < stack.size(); stackIndex++) {
-                final Node callNode = stackIndex == 0 ? currentContext.getNode() : stack.get(stackIndex).getCallNode();
-                if (callNode != null) {
-                    replies.add(btMessage(frameIndex++, callNode, visualizer, replServer.getLocationPrinter()));
-                }
-            }
-            if (replies.size() > 0) {
-                return replies.toArray(new com.oracle.truffle.tools.debug.shell.REPLMessage[0]);
-            }
-            return finishReplyFailed(new com.oracle.truffle.tools.debug.shell.REPLMessage(com.oracle.truffle.tools.debug.shell.REPLMessage.OP,
-                            com.oracle.truffle.tools.debug.shell.REPLMessage.BACKTRACE), "No stack");
+            return null;
         }
     };
 
-    private static com.oracle.truffle.tools.debug.shell.REPLMessage btMessage(int index, Node node, REPLVisualizer visualizer, LocationPrinter locationPrinter) {
+    @SuppressWarnings("unused")
+    private static com.oracle.truffle.tools.debug.shell.REPLMessage btMessage(int index, Node node, com.oracle.truffle.tools.debug.shell.server.REPLServer.REPLVisualizer visualizer,
+                    LocationPrinter locationPrinter) {
         final com.oracle.truffle.tools.debug.shell.REPLMessage btMessage = new com.oracle.truffle.tools.debug.shell.REPLMessage(com.oracle.truffle.tools.debug.shell.REPLMessage.OP,
                         com.oracle.truffle.tools.debug.shell.REPLMessage.BACKTRACE);
         btMessage.put(com.oracle.truffle.tools.debug.shell.REPLMessage.FRAME_NUMBER, Integer.toString(index));
@@ -195,39 +169,7 @@ public abstract class REPLHandler {
 
         @Override
         public com.oracle.truffle.tools.debug.shell.REPLMessage[] receive(com.oracle.truffle.tools.debug.shell.REPLMessage request, REPLServer replServer) {
-            final com.oracle.truffle.tools.debug.shell.REPLMessage reply = createReply();
-            final String path = request.get(com.oracle.truffle.tools.debug.shell.REPLMessage.FILE_PATH);
-            final String fileName = request.get(com.oracle.truffle.tools.debug.shell.REPLMessage.SOURCE_NAME);
-            final String lookupFile = (path == null || path.isEmpty()) ? fileName : path;
-            Source source = null;
-            try {
-                source = Source.newBuilder(new File(lookupFile)).build();
-            } catch (Exception ex) {
-                return finishReplyFailed(reply, ex);
-            }
-            if (source == null) {
-                return finishReplyFailed(reply, fileName + " not found");
-            }
-            final Integer lineNumber = request.getIntValue(com.oracle.truffle.tools.debug.shell.REPLMessage.LINE_NUMBER);
-            if (lineNumber == null) {
-                return finishReplyFailed(reply, "missing line number");
-            }
-            Integer ignoreCount = request.getIntValue(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_IGNORE_COUNT);
-            if (ignoreCount == null) {
-                ignoreCount = 0;
-            }
-            BreakpointInfo breakpointInfo;
-            try {
-                breakpointInfo = replServer.setLineBreakpoint(DEFAULT_IGNORE_COUNT, source.createLineLocation(lineNumber), false);
-            } catch (IOException ex) {
-                return finishReplyFailed(reply, ex.getMessage());
-            }
-            reply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.SOURCE_NAME, fileName);
-            reply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.FILE_PATH, source.getPath());
-            reply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointInfo.getID()));
-            reply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.LINE_NUMBER, Integer.toString(lineNumber));
-            reply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_IGNORE_COUNT, ignoreCount.toString());
-            return finishReplySucceeded(reply, "Breakpoint set");
+            return null;
         }
     };
 
@@ -235,34 +177,7 @@ public abstract class REPLHandler {
 
         @Override
         public com.oracle.truffle.tools.debug.shell.REPLMessage[] receive(com.oracle.truffle.tools.debug.shell.REPLMessage request, REPLServer replServer) {
-            final com.oracle.truffle.tools.debug.shell.REPLMessage reply = createReply();
-            final String path = request.get(com.oracle.truffle.tools.debug.shell.REPLMessage.FILE_PATH);
-            final String fileName = request.get(com.oracle.truffle.tools.debug.shell.REPLMessage.SOURCE_NAME);
-            final String lookupFile = (path == null || path.isEmpty()) ? fileName : path;
-            Source source = null;
-            try {
-                source = Source.newBuilder(new File(lookupFile)).build();
-            } catch (Exception ex) {
-                return finishReplyFailed(reply, ex);
-            }
-            if (source == null) {
-                return finishReplyFailed(reply, fileName + " not found");
-            }
-            final Integer lineNumber = request.getIntValue(com.oracle.truffle.tools.debug.shell.REPLMessage.LINE_NUMBER);
-            if (lineNumber == null) {
-                return finishReplyFailed(reply, "missing line number");
-            }
-            BreakpointInfo breakpointInfo;
-            try {
-                breakpointInfo = replServer.setLineBreakpoint(DEFAULT_IGNORE_COUNT, source.createLineLocation(lineNumber), true);
-            } catch (IOException ex) {
-                return finishReplyFailed(reply, ex.getMessage());
-            }
-            reply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.SOURCE_NAME, fileName);
-            reply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.FILE_PATH, source.getPath());
-            reply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointInfo.getID()));
-            reply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.LINE_NUMBER, Integer.toString(lineNumber));
-            return finishReplySucceeded(reply, "One-shot line breakpoint set");
+            return null;
         }
     };
 
@@ -270,15 +185,7 @@ public abstract class REPLHandler {
 
         @Override
         public com.oracle.truffle.tools.debug.shell.REPLMessage[] receive(com.oracle.truffle.tools.debug.shell.REPLMessage request, REPLServer replServer) {
-            final com.oracle.truffle.tools.debug.shell.REPLMessage reply = createReply();
-            final ArrayList<com.oracle.truffle.tools.debug.shell.REPLMessage> infoMessages = new ArrayList<>();
-            for (BreakpointInfo breakpointInfo : replServer.getBreakpoints()) {
-                infoMessages.add(createBreakpointInfoMessage(breakpointInfo));
-            }
-            if (infoMessages.size() > 0) {
-                return infoMessages.toArray(new com.oracle.truffle.tools.debug.shell.REPLMessage[0]);
-            }
-            return finishReplyFailed(reply, "No breakpoints");
+            return null;
         }
     };
 
@@ -315,18 +222,7 @@ public abstract class REPLHandler {
 
         @Override
         public com.oracle.truffle.tools.debug.shell.REPLMessage[] receive(com.oracle.truffle.tools.debug.shell.REPLMessage request, REPLServer replServer) {
-            final com.oracle.truffle.tools.debug.shell.REPLMessage reply = createReply();
-            final Integer breakpointNumber = request.getIntValue(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_ID);
-            if (breakpointNumber == null) {
-                return finishReplyFailed(reply, "missing breakpoint number");
-            }
-            final BreakpointInfo breakpointInfo = replServer.findBreakpoint(breakpointNumber);
-            if (breakpointInfo == null) {
-                return finishReplyFailed(reply, "no breakpoint number " + breakpointNumber);
-            }
-            breakpointInfo.dispose();
-            reply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointNumber));
-            return finishReplySucceeded(reply, "Breakpoint " + breakpointNumber + " cleared");
+            return null;
         }
     };
 
@@ -344,15 +240,7 @@ public abstract class REPLHandler {
 
         @Override
         public com.oracle.truffle.tools.debug.shell.REPLMessage[] receive(com.oracle.truffle.tools.debug.shell.REPLMessage request, REPLServer replServer) {
-            final com.oracle.truffle.tools.debug.shell.REPLMessage reply = createReply();
-            final Collection<BreakpointInfo> breakpoints = replServer.getBreakpoints();
-            if (breakpoints.isEmpty()) {
-                return finishReplyFailed(reply, "no breakpoints to delete");
-            }
-            for (BreakpointInfo breakpointInfo : breakpoints) {
-                breakpointInfo.dispose();
-            }
-            return finishReplySucceeded(reply, Integer.toString(breakpoints.size()) + " breakpoints deleted");
+            return null;
         }
     };
 
@@ -360,18 +248,7 @@ public abstract class REPLHandler {
 
         @Override
         public com.oracle.truffle.tools.debug.shell.REPLMessage[] receive(com.oracle.truffle.tools.debug.shell.REPLMessage request, REPLServer replServer) {
-            final com.oracle.truffle.tools.debug.shell.REPLMessage reply = createReply();
-            Integer breakpointNumber = request.getIntValue(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_ID);
-            if (breakpointNumber == null) {
-                return finishReplyFailed(reply, "missing breakpoint number");
-            }
-            final BreakpointInfo breakpointInfo = replServer.findBreakpoint(breakpointNumber);
-            if (breakpointInfo == null) {
-                return finishReplyFailed(reply, "no breakpoint number " + breakpointNumber);
-            }
-            breakpointInfo.setEnabled(false);
-            reply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointNumber));
-            return finishReplySucceeded(reply, "Breakpoint " + breakpointNumber + " disabled");
+            return null;
         }
     };
 
@@ -379,38 +256,13 @@ public abstract class REPLHandler {
 
         @Override
         public com.oracle.truffle.tools.debug.shell.REPLMessage[] receive(com.oracle.truffle.tools.debug.shell.REPLMessage request, REPLServer replServer) {
-            final com.oracle.truffle.tools.debug.shell.REPLMessage reply = createReply();
-            Integer breakpointNumber = request.getIntValue(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_ID);
-            if (breakpointNumber == null) {
-                return finishReplyFailed(reply, "missing breakpoint number");
-            }
-            final BreakpointInfo breakpointInfo = replServer.findBreakpoint(breakpointNumber);
-            if (breakpointInfo == null) {
-                return finishReplyFailed(reply, "no breakpoint number " + breakpointNumber);
-            }
-            breakpointInfo.setEnabled(true);
-            reply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointNumber));
-            return finishReplySucceeded(reply, "Breakpoint " + breakpointNumber + " enabled");
+            return null;
         }
     };
     public static final REPLHandler EVAL_HANDLER = new REPLHandler(com.oracle.truffle.tools.debug.shell.REPLMessage.EVAL) {
         @Override
         public com.oracle.truffle.tools.debug.shell.REPLMessage[] receive(com.oracle.truffle.tools.debug.shell.REPLMessage request, REPLServer replServer) {
-            final com.oracle.truffle.tools.debug.shell.REPLMessage reply = createReply();
-            final String sourceName = request.get(com.oracle.truffle.tools.debug.shell.REPLMessage.SOURCE_NAME);
-            reply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.SOURCE_NAME, sourceName);
-            final Context serverContext = replServer.getCurrentContext();
-            reply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.DEBUG_LEVEL, Integer.toString(serverContext.getLevel()));
-
-            final String source = request.get(com.oracle.truffle.tools.debug.shell.REPLMessage.CODE);
-            final Integer frameNumber = request.getIntValue(com.oracle.truffle.tools.debug.shell.REPLMessage.FRAME_NUMBER);
-            final boolean stepInto = com.oracle.truffle.tools.debug.shell.REPLMessage.TRUE.equals(request.get(com.oracle.truffle.tools.debug.shell.REPLMessage.STEP_INTO));
-            try {
-                Object returnValue = serverContext.eval(source, frameNumber, stepInto);
-                return finishReplySucceeded(reply, serverContext.displayValue(frameNumber, returnValue, 0));
-            } catch (Exception ex) {
-                return finishReplyFailed(reply, ex);
-            }
+            return null;
         }
     };
     public static final REPLHandler FILE_HANDLER = new REPLHandler(com.oracle.truffle.tools.debug.shell.REPLMessage.FILE) {
@@ -448,43 +300,7 @@ public abstract class REPLHandler {
 
         @Override
         public com.oracle.truffle.tools.debug.shell.REPLMessage[] receive(com.oracle.truffle.tools.debug.shell.REPLMessage request, REPLServer replServer) {
-            final Integer frameNumber = request.getIntValue(com.oracle.truffle.tools.debug.shell.REPLMessage.FRAME_NUMBER);
-            if (frameNumber == null) {
-                return finishReplyFailed(createReply(), "no frame number specified");
-            }
-            final Context currentContext = replServer.getCurrentContext();
-            final List<FrameInstance> stack = currentContext.getStack();
-            if (frameNumber < 0 || frameNumber > stack.size()) {
-                return finishReplyFailed(createReply(), "frame number " + frameNumber + " out of range");
-            }
-            final REPLVisualizer visualizer = replServer.getCurrentContext().getVisualizer();
-
-            MaterializedFrame frame;
-            Node node;
-            if (frameNumber == 0) {
-                frame = currentContext.getFrame();
-                node = currentContext.getNode();
-            } else {
-                final FrameInstance instance = stack.get(frameNumber);
-                frame = instance.getFrame(FrameAccess.MATERIALIZE, true).materialize();
-                node = instance.getCallNode();
-            }
-            List<? extends FrameSlot> slots = frame.getFrameDescriptor().getSlots();
-            if (slots.size() == 0) {
-                final com.oracle.truffle.tools.debug.shell.REPLMessage emptyFrameMessage = createFrameInfoMessage(replServer, frameNumber, node);
-                return finishReplySucceeded(emptyFrameMessage, "empty frame");
-            }
-            final ArrayList<com.oracle.truffle.tools.debug.shell.REPLMessage> replies = new ArrayList<>();
-
-            for (FrameSlot slot : slots) {
-                final com.oracle.truffle.tools.debug.shell.REPLMessage slotMessage = createFrameInfoMessage(replServer, frameNumber, node);
-                slotMessage.put(com.oracle.truffle.tools.debug.shell.REPLMessage.SLOT_INDEX, Integer.toString(slot.getIndex()));
-                slotMessage.put(com.oracle.truffle.tools.debug.shell.REPLMessage.SLOT_ID, visualizer.displayIdentifier(slot));
-                slotMessage.put(com.oracle.truffle.tools.debug.shell.REPLMessage.SLOT_VALUE, currentContext.displayValue(frameNumber, frame.getValue(slot), 0));
-                slotMessage.put(com.oracle.truffle.tools.debug.shell.REPLMessage.STATUS, com.oracle.truffle.tools.debug.shell.REPLMessage.SUCCEEDED);
-                replies.add(slotMessage);
-            }
-            return replies.toArray(new com.oracle.truffle.tools.debug.shell.REPLMessage[0]);
+            return null;
         }
     };
 
@@ -602,32 +418,7 @@ public abstract class REPLHandler {
 
         @Override
         public com.oracle.truffle.tools.debug.shell.REPLMessage[] receive(com.oracle.truffle.tools.debug.shell.REPLMessage request, REPLServer replServer) {
-            final com.oracle.truffle.tools.debug.shell.REPLMessage message = new com.oracle.truffle.tools.debug.shell.REPLMessage(com.oracle.truffle.tools.debug.shell.REPLMessage.OP,
-                            com.oracle.truffle.tools.debug.shell.REPLMessage.SET_BREAK_CONDITION);
-            Integer breakpointNumber = request.getIntValue(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_ID);
-            if (breakpointNumber == null) {
-                return finishReplyFailed(message, "missing breakpoint number");
-            }
-            message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointNumber));
-            final BreakpointInfo breakpointInfo = replServer.findBreakpoint(breakpointNumber);
-            if (breakpointInfo == null) {
-                return finishReplyFailed(message, "no breakpoint number " + breakpointNumber);
-            }
-            final String expr = request.get(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_CONDITION);
-            if (expr == null || expr.isEmpty()) {
-                return finishReplyFailed(message, "missing condition for " + breakpointNumber);
-            }
-            try {
-                breakpointInfo.setCondition(expr);
-            } catch (IOException ex) {
-                return finishReplyFailed(message, "invalid condition for " + breakpointNumber);
-            } catch (UnsupportedOperationException ex) {
-                return finishReplyFailed(message, "conditions not supported by breakpoint " + breakpointNumber);
-            } catch (Exception ex) {
-                return finishReplyFailed(message, ex);
-            }
-            message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_CONDITION, expr);
-            return finishReplySucceeded(message, "Breakpoint " + breakpointNumber + " condition=\"" + expr + "\"");
+            return null;
         }
     };
 
@@ -671,92 +462,12 @@ public abstract class REPLHandler {
         }
     };
 
-    public static final REPLHandler TRUFFLE_HANDLER = new REPLHandler(com.oracle.truffle.tools.debug.shell.REPLMessage.TRUFFLE) {
-
-        @Override
-        public com.oracle.truffle.tools.debug.shell.REPLMessage[] receive(com.oracle.truffle.tools.debug.shell.REPLMessage request, REPLServer replServer) {
-            final com.oracle.truffle.tools.debug.shell.REPLMessage reply = createReply();
-            final ASTPrinter astPrinter = replServer.getASTPrinter();
-            final String topic = request.get(com.oracle.truffle.tools.debug.shell.REPLMessage.TOPIC);
-            reply.put(com.oracle.truffle.tools.debug.shell.REPLMessage.TOPIC, topic);
-            Node node = replServer.getCurrentContext().getNodeAtHalt();
-            if (node == null) {
-                return finishReplyFailed(reply, "no current AST node");
-            }
-            final Integer depth = request.getIntValue(com.oracle.truffle.tools.debug.shell.REPLMessage.AST_DEPTH);
-            if (depth == null) {
-                return finishReplyFailed(reply, "missing AST depth");
-            }
-            try {
-                switch (topic) {
-                    case com.oracle.truffle.tools.debug.shell.REPLMessage.AST:
-                        while (node.getParent() != null) {
-                            node = node.getParent();
-                        }
-                        final String astText = astPrinter.displayAST(node, depth, replServer.getCurrentContext().getNodeAtHalt());
-                        return finishReplySucceeded(reply, astText);
-                    case com.oracle.truffle.tools.debug.shell.REPLMessage.SUBTREE:
-                    case com.oracle.truffle.tools.debug.shell.REPLMessage.SUB:
-                        final String subTreeText = astPrinter.displayAST(node, depth);
-                        return finishReplySucceeded(reply, subTreeText);
-                    default:
-                        return finishReplyFailed(reply, "Unknown \"" + com.oracle.truffle.tools.debug.shell.REPLMessage.TRUFFLE.toString() + "\" topic");
-                }
-
-            } catch (Exception ex) {
-                return finishReplyFailed(reply, ex);
-            }
-        }
-    };
-
     public static final REPLHandler UNSET_BREAK_CONDITION_HANDLER = new REPLHandler(com.oracle.truffle.tools.debug.shell.REPLMessage.UNSET_BREAK_CONDITION) {
 
         @Override
         public com.oracle.truffle.tools.debug.shell.REPLMessage[] receive(com.oracle.truffle.tools.debug.shell.REPLMessage request, REPLServer replServer) {
-            final com.oracle.truffle.tools.debug.shell.REPLMessage message = new com.oracle.truffle.tools.debug.shell.REPLMessage(com.oracle.truffle.tools.debug.shell.REPLMessage.OP,
-                            com.oracle.truffle.tools.debug.shell.REPLMessage.UNSET_BREAK_CONDITION);
-            Integer breakpointNumber = request.getIntValue(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_ID);
-            if (breakpointNumber == null) {
-                return finishReplyFailed(message, "missing breakpoint number");
-            }
-            message.put(com.oracle.truffle.tools.debug.shell.REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointNumber));
-            final BreakpointInfo breakpointInfo = replServer.findBreakpoint(breakpointNumber);
-            if (breakpointInfo == null) {
-                return finishReplyFailed(message, "no breakpoint number " + breakpointNumber);
-            }
-            try {
-                breakpointInfo.setCondition(null);
-            } catch (Exception ex) {
-                return finishReplyFailed(message, ex);
-            }
-            return finishReplySucceeded(message, "Breakpoint " + breakpointNumber + " condition cleared");
+            return null;
         }
     };
 
-    public static final REPLHandler TRUFFLE_NODE_HANDLER = new REPLHandler(com.oracle.truffle.tools.debug.shell.REPLMessage.TRUFFLE_NODE) {
-
-        @Override
-        public com.oracle.truffle.tools.debug.shell.REPLMessage[] receive(com.oracle.truffle.tools.debug.shell.REPLMessage request, REPLServer replServer) {
-            final com.oracle.truffle.tools.debug.shell.REPLMessage reply = createReply();
-            final Node node = replServer.getCurrentContext().getNodeAtHalt();
-            if (node == null) {
-                return finishReplyFailed(reply, "no current AST node");
-            }
-
-            try {
-                final StringBuilder sb = new StringBuilder();
-                sb.append(replServer.getASTPrinter().displayNodeWithInstrumentation(node));
-                final SourceSection sourceSection = node.getSourceSection();
-                if (sourceSection != null) {
-                    final String code = sourceSection.getCode();
-                    sb.append(" \"");
-                    sb.append(code.substring(0, Math.min(code.length(), 15)));
-                    sb.append("...\"");
-                }
-                return finishReplySucceeded(reply, sb.toString());
-            } catch (Exception ex) {
-                return finishReplyFailed(reply, ex);
-            }
-        }
-    };
 }

@@ -27,17 +27,7 @@ package com.oracle.truffle.api.debug;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 
 /**
- * This event is delivered to all
- * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#onEvent(com.oracle.truffle.api.vm.EventConsumer)
- * registered event handlers} when an execution is about to be started. The event is the intended
- * place to initialize debugger - e.g. set
- * {@link Debugger#setLineBreakpoint(int, com.oracle.truffle.api.source.LineLocation, boolean)
- * breakpoints} or specify to execution should halt on the {@link #prepareStepInto() first possible
- * occurrence}. Methods in this event can only be used while the handlers process the event. Then
- * the state of the event becomes invalid and subsequent calls to the event methods yield
- * {@link IllegalStateException}. One can however obtain reference to {@link Debugger} instance and
- * keep it to further manipulate with debugging capabilities of the
- * {@link com.oracle.truffle.api.vm.PolyglotEngine} when it is running.
+ * Obsoleted.
  *
  * @deprecated Use {@link Debugger#startSession(SuspendedCallback)} instead to step into the next
  *             execution.

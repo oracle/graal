@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,20 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tck;
+package com.oracle.truffle.nfi.test.interop;
 
-import org.junit.runner.notification.Failure;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
 
-class EagerStackTraceDecorator extends TruffleJUnitRunListenerDecorator {
-
-    EagerStackTraceDecorator(TruffleJUnitRunListener l) {
-        super(l);
-    }
+public class NullObject implements TruffleObject {
 
     @Override
-    public void testFailed(Failure failure) {
-        super.testFailed(failure);
-        failure.getException().printStackTrace(getWriter());
+    public ForeignAccess getForeignAccess() {
+        return NullObjectMessageResolutionForeign.createAccess();
     }
-
 }

@@ -42,7 +42,7 @@ final class Lexer {
 
         private final String name;
 
-        private Token(String name) {
+        Token(String name) {
             this.name = name;
         }
 
@@ -60,7 +60,7 @@ final class Lexer {
     private Token nextToken;
     private int nextTokenStart;
 
-    public Lexer(CharSequence source) {
+    Lexer(CharSequence source) {
         this.source = source;
         this.position = 0;
         lex();
@@ -164,16 +164,14 @@ final class Lexer {
                     return Token.INVALID;
                 case '"':
                 case '\'':
-                    for (;;) {
-                        if (atEnd()) {
-                            return Token.INVALID;
-                        }
+                    while (!atEnd()) {
                         if (ch() == c) {
                             position++;
                             return Token.STRING;
                         }
                         position++;
                     }
+                    return Token.INVALID;
                 default:
                     return Token.INVALID;
             }

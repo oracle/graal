@@ -1,0 +1,223 @@
+#Signature file v4.1
+#Version 
+
+CLSS public abstract interface com.oracle.truffle.api.Assumption
+meth public abstract boolean isValid()
+meth public abstract java.lang.String getName()
+meth public abstract void check() throws com.oracle.truffle.api.nodes.InvalidAssumptionException
+meth public abstract void invalidate()
+
+CLSS public abstract com.oracle.truffle.api.nodes.NodeCloneable
+cons protected init()
+intf java.lang.Cloneable
+meth protected java.lang.Object clone()
+supr java.lang.Object
+
+CLSS public final com.oracle.truffle.api.utilities.AlwaysValidAssumption
+fld public final static com.oracle.truffle.api.utilities.AlwaysValidAssumption INSTANCE
+intf com.oracle.truffle.api.Assumption
+meth public boolean isValid()
+meth public java.lang.String getName()
+meth public void check() throws com.oracle.truffle.api.nodes.InvalidAssumptionException
+meth public void invalidate()
+supr java.lang.Object
+
+CLSS public com.oracle.truffle.api.utilities.AssumedValue<%0 extends java.lang.Object>
+cons public init(java.lang.String,{com.oracle.truffle.api.utilities.AssumedValue%0})
+cons public init({com.oracle.truffle.api.utilities.AssumedValue%0})
+meth public void set({com.oracle.truffle.api.utilities.AssumedValue%0})
+meth public {com.oracle.truffle.api.utilities.AssumedValue%0} get()
+supr java.lang.Object
+hfds ASSUMPTION_UPDATER,assumption,name,value
+
+CLSS public final com.oracle.truffle.api.utilities.BinaryConditionProfile
+ anno 0 java.lang.Deprecated()
+meth public boolean profile(boolean)
+meth public boolean wasFalse()
+meth public boolean wasTrue()
+meth public java.lang.String toString()
+supr com.oracle.truffle.api.utilities.ConditionProfile
+hfds wasFalse,wasTrue
+
+CLSS public final com.oracle.truffle.api.utilities.BranchProfile
+ anno 0 java.lang.Deprecated()
+meth public boolean isVisited()
+meth public java.lang.String toString()
+meth public static com.oracle.truffle.api.utilities.BranchProfile create()
+ anno 0 java.lang.Deprecated()
+meth public void enter()
+supr com.oracle.truffle.api.nodes.NodeCloneable
+hfds visited
+
+CLSS public abstract com.oracle.truffle.api.utilities.ConditionProfile
+ anno 0 java.lang.Deprecated()
+meth public abstract boolean profile(boolean)
+meth public static com.oracle.truffle.api.utilities.ConditionProfile createBinaryProfile()
+ anno 0 java.lang.Deprecated()
+meth public static com.oracle.truffle.api.utilities.ConditionProfile createCountingProfile()
+ anno 0 java.lang.Deprecated()
+supr com.oracle.truffle.api.nodes.NodeCloneable
+
+CLSS public final com.oracle.truffle.api.utilities.CountingConditionProfile
+ anno 0 java.lang.Deprecated()
+meth public boolean profile(boolean)
+meth public int getFalseCount()
+meth public int getTrueCount()
+meth public java.lang.String toString()
+supr com.oracle.truffle.api.utilities.ConditionProfile
+hfds falseCount,trueCount
+
+CLSS public com.oracle.truffle.api.utilities.CyclicAssumption
+cons public init(java.lang.String)
+meth public com.oracle.truffle.api.Assumption getAssumption()
+meth public void invalidate()
+supr java.lang.Object
+hfds ASSUMPTION_UPDATER,assumption,name
+
+CLSS public com.oracle.truffle.api.utilities.JSONHelper
+cons public init()
+ anno 0 java.lang.Deprecated()
+innr public abstract static JSONStringBuilder
+innr public final static JSONArrayBuilder
+innr public final static JSONObjectBuilder
+meth public static com.oracle.truffle.api.utilities.JSONHelper$JSONArrayBuilder array()
+meth public static com.oracle.truffle.api.utilities.JSONHelper$JSONObjectBuilder object()
+meth public static java.lang.String getResult()
+meth public static void dumpNewChild(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node)
+meth public static void dumpNewNode(com.oracle.truffle.api.nodes.Node)
+meth public static void dumpReplaceChild(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node,java.lang.CharSequence)
+meth public static void restart()
+supr java.lang.Object
+hfds ACCESSOR,AstJsonDumpBuilder
+hcls DumpAccessor
+
+CLSS public final static com.oracle.truffle.api.utilities.JSONHelper$JSONArrayBuilder
+ outer com.oracle.truffle.api.utilities.JSONHelper
+meth protected void appendTo(java.lang.StringBuilder)
+meth public com.oracle.truffle.api.utilities.JSONHelper$JSONArrayBuilder add(com.oracle.truffle.api.utilities.JSONHelper$JSONStringBuilder)
+meth public com.oracle.truffle.api.utilities.JSONHelper$JSONArrayBuilder add(java.lang.Boolean)
+meth public com.oracle.truffle.api.utilities.JSONHelper$JSONArrayBuilder add(java.lang.Number)
+meth public com.oracle.truffle.api.utilities.JSONHelper$JSONArrayBuilder add(java.lang.String)
+supr com.oracle.truffle.api.utilities.JSONHelper$JSONStringBuilder
+hfds contents
+
+CLSS public final static com.oracle.truffle.api.utilities.JSONHelper$JSONObjectBuilder
+ outer com.oracle.truffle.api.utilities.JSONHelper
+meth protected void appendTo(java.lang.StringBuilder)
+meth public com.oracle.truffle.api.utilities.JSONHelper$JSONObjectBuilder add(java.lang.String,com.oracle.truffle.api.utilities.JSONHelper$JSONStringBuilder)
+meth public com.oracle.truffle.api.utilities.JSONHelper$JSONObjectBuilder add(java.lang.String,java.lang.Boolean)
+meth public com.oracle.truffle.api.utilities.JSONHelper$JSONObjectBuilder add(java.lang.String,java.lang.Number)
+meth public com.oracle.truffle.api.utilities.JSONHelper$JSONObjectBuilder add(java.lang.String,java.lang.String)
+supr com.oracle.truffle.api.utilities.JSONHelper$JSONStringBuilder
+hfds contents
+
+CLSS public abstract static com.oracle.truffle.api.utilities.JSONHelper$JSONStringBuilder
+ outer com.oracle.truffle.api.utilities.JSONHelper
+cons protected init()
+ anno 0 java.lang.Deprecated()
+meth protected abstract void appendTo(java.lang.StringBuilder)
+meth protected static void appendValue(java.lang.StringBuilder,java.lang.Object)
+meth public final java.lang.String toString()
+supr java.lang.Object
+
+CLSS public final com.oracle.truffle.api.utilities.NeverValidAssumption
+fld public final static com.oracle.truffle.api.utilities.NeverValidAssumption INSTANCE
+intf com.oracle.truffle.api.Assumption
+meth public boolean isValid()
+meth public java.lang.String getName()
+meth public void check() throws com.oracle.truffle.api.nodes.InvalidAssumptionException
+meth public void invalidate()
+supr java.lang.Object
+
+CLSS public com.oracle.truffle.api.utilities.PrimitiveValueProfile
+ anno 0 java.lang.Deprecated()
+meth public <%0 extends java.lang.Object> {%%0} profile({%%0})
+meth public boolean isGeneric()
+meth public boolean isUninitialized()
+meth public boolean profile(boolean)
+meth public byte profile(byte)
+meth public char profile(char)
+meth public double profile(double)
+meth public float profile(float)
+meth public int profile(int)
+meth public java.lang.Object getCachedValue()
+meth public java.lang.String toString()
+meth public long profile(long)
+meth public short profile(short)
+meth public static boolean exactCompare(double,double)
+meth public static boolean exactCompare(float,float)
+supr com.oracle.truffle.api.utilities.ValueProfile
+hfds GENERIC,UNINITIALIZED,cachedValue
+
+CLSS public com.oracle.truffle.api.utilities.UnionAssumption
+cons public init(com.oracle.truffle.api.Assumption,com.oracle.truffle.api.Assumption)
+cons public init(java.lang.String,com.oracle.truffle.api.Assumption,com.oracle.truffle.api.Assumption)
+intf com.oracle.truffle.api.Assumption
+meth public boolean isValid()
+meth public java.lang.String getName()
+meth public void check() throws com.oracle.truffle.api.nodes.InvalidAssumptionException
+meth public void invalidate()
+supr java.lang.Object
+hfds first,name,second
+
+CLSS public abstract com.oracle.truffle.api.utilities.ValueProfile
+ anno 0 java.lang.Deprecated()
+cons public init()
+ anno 0 java.lang.Deprecated()
+meth public abstract <%0 extends java.lang.Object> {%%0} profile({%%0})
+meth public static com.oracle.truffle.api.utilities.PrimitiveValueProfile createPrimitiveProfile()
+ anno 0 java.lang.Deprecated()
+meth public static com.oracle.truffle.api.utilities.ValueProfile createClassProfile()
+ anno 0 java.lang.Deprecated()
+meth public static com.oracle.truffle.api.utilities.ValueProfile createIdentityProfile()
+ anno 0 java.lang.Deprecated()
+supr com.oracle.truffle.api.nodes.NodeCloneable
+
+CLSS public abstract interface java.lang.Cloneable
+
+CLSS public abstract interface !annotation java.lang.Deprecated
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, PARAMETER, TYPE])
+intf java.lang.annotation.Annotation
+
+CLSS public java.lang.Object
+cons public init()
+meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
+meth protected void finalize() throws java.lang.Throwable
+meth public boolean equals(java.lang.Object)
+meth public final java.lang.Class<?> getClass()
+meth public final void notify()
+meth public final void notifyAll()
+meth public final void wait() throws java.lang.InterruptedException
+meth public final void wait(long) throws java.lang.InterruptedException
+meth public final void wait(long,int) throws java.lang.InterruptedException
+meth public int hashCode()
+meth public java.lang.String toString()
+
+CLSS public abstract interface java.lang.annotation.Annotation
+meth public abstract boolean equals(java.lang.Object)
+meth public abstract int hashCode()
+meth public abstract java.lang.Class<? extends java.lang.annotation.Annotation> annotationType()
+meth public abstract java.lang.String toString()
+
+CLSS public abstract interface !annotation java.lang.annotation.Documented
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface !annotation java.lang.annotation.Retention
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.annotation.RetentionPolicy value()
+
+CLSS public abstract interface !annotation java.lang.annotation.Target
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.annotation.ElementType[] value()
+

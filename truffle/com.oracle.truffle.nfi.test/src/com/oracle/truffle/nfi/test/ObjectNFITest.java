@@ -31,7 +31,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
-import java.util.function.Supplier;
+import com.oracle.truffle.nfi.test.interop.TestCallback;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import org.junit.AfterClass;
@@ -43,44 +43,60 @@ public class ObjectNFITest extends NFITest {
 
     private static TruffleObject nativeEnv;
 
-    private static class TestObject {
+    private static class TestObject implements TruffleObject {
 
         int intField;
 
-        public TestObject() {
+        TestObject() {
             this(0);
         }
 
-        public TestObject(int value) {
+        TestObject(int value) {
             intField = value;
         }
 
-        public int readField(String field) {
+        int readField(String field) {
             Assert.assertEquals("field name", "intField", field);
             return intField;
         }
 
-        public void writeField(String field, int value) {
+        void writeField(String field, int value) {
             Assert.assertEquals("field name", "intField", field);
             intField = value;
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            Assert.fail("unexpected interop access to TestObject");
+            return null;
         }
     }
 
     interface ReadIntField {
 
-        public int read(TestObject obj, String field);
+        int read(TestObject obj, String field);
     }
 
     interface WriteIntField {
 
-        public void write(TestObject obj, String field, int value);
+        void write(TestObject obj, String field, int value);
     }
 
     @BeforeClass
     public static void initEnv() {
-        TruffleObject createNewObject = JavaInterop.asTruffleFunction(Supplier.class, TestObject::new);
-        TruffleObject readIntField = JavaInterop.asTruffleFunction(ReadIntField.class, TestObject::readField);
-        TruffleObject writeIntField = JavaInterop.asTruffleFunction(WriteIntField.class, TestObject::writeField);
+        TruffleObject createNewObject = new TestCallback(0, (args) -> new TestObject());
+        TruffleObject readIntField = new TestCallback(2, (args) -> {
+            Assert.assertThat("args[0]", args[0], is(instanceOf(TestObject.class)));
+            Assert.assertThat("args[1]", args[1], is(instanceOf(String.class)));
+            return ((TestObject) args[0]).readField((String) args[1]);
+        });
+        TruffleObject writeIntField = new TestCallback(3, (args) -> {
+            Assert.assertThat("args[0]", args[0], is(instanceOf(TestObject.class)));
+            Assert.assertThat("args[1]", args[1], is(instanceOf(String.class)));
+            Assert.assertThat("args[2]", args[2], is(instanceOf(Integer.class)));
+            ((TestObject) args[0]).writeField((String) args[1], (Integer) args[2]);
+            return null;
+        });
 
         TruffleObject initializeEnv = lookupAndBind("initialize_env", "( ():object, (object,string):sint32, (object,string,sint32):void ) : pointer");
         try {
@@ -92,7 +108,7 @@ public class ObjectNFITest extends NFITest {
 
     interface DeleteEnv {
 
-        public void delete(TruffleObject env);
+        void delete(TruffleObject env);
     }
 
     @AfterClass
@@ -106,15 +122,11 @@ public class ObjectNFITest extends NFITest {
     public void testCopyAndIncrement() {
         TruffleObject copyAndIncrement = lookupAndBind("copy_and_increment", "(pointer, object) : object");
         TestObject testArg = new TestObject(42);
-        TruffleObject arg = JavaInterop.asTruffleObject(testArg);
 
-        Object ret = sendExecute(copyAndIncrement, nativeEnv, arg);
-        Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
+        Object ret = sendExecute(copyAndIncrement, nativeEnv, testArg);
+        Assert.assertThat("return value", ret, is(instanceOf(TestObject.class)));
 
-        TruffleObject obj = (TruffleObject) ret;
-        Assert.assertTrue("isJavaObject", JavaInterop.isJavaObject(TestObject.class, obj));
-
-        TestObject testRet = JavaInterop.asJavaObject(TestObject.class, obj);
+        TestObject testRet = (TestObject) ret;
         Assert.assertNotSame("return value", testArg, testRet);
         Assert.assertEquals("intField", 43, testRet.intField);
     }
@@ -153,13 +165,10 @@ public class ObjectNFITest extends NFITest {
 
                 return ForeignAccess.sendExecute(executeFreeAndGetObject, freeAndGetObject, nativePtr3);
             }
-        }, JavaInterop.asTruffleObject(testArg));
+        }, testArg);
 
-        Assert.assertThat("return value", finalRet, is(instanceOf(TruffleObject.class)));
-
-        TruffleObject retObj = (TruffleObject) finalRet;
-        Assert.assertTrue("isJavaObject", JavaInterop.isJavaObject(TestObject.class, retObj));
-        Assert.assertSame("return value", testArg, JavaInterop.asJavaObject(TestObject.class, retObj));
+        Assert.assertThat("return value", finalRet, is(instanceOf(TestObject.class)));
+        Assert.assertSame("return value", testArg, finalRet);
     }
 
     @Test
@@ -179,10 +188,7 @@ public class ObjectNFITest extends NFITest {
             }
         });
 
-        Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
-
-        TruffleObject retObj = (TruffleObject) ret;
-        Assert.assertTrue("isJavaObject", JavaInterop.isJavaObject(TestObject.class, retObj));
-        Assert.assertEquals("intField", 8472, JavaInterop.asJavaObject(TestObject.class, retObj).intField);
+        Assert.assertThat("return value", ret, is(instanceOf(TestObject.class)));
+        Assert.assertEquals("intField", 8472, ((TestObject) ret).intField);
     }
 }

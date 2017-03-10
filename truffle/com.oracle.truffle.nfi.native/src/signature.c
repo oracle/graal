@@ -157,6 +157,10 @@ static void executeHelper(JNIEnv *env, void *ret, jobject self, jlong address, j
 
     for (i = 0; i < releaseCount; i++) {
         switch (tagsForRelease[i]) {
+            case OBJECT:
+            case CLOSURE:
+                // nothing to do
+                break;
             case STRING:
                 (*env)->ReleaseStringUTFChars(env, (jstring) objectsForRelease[i], (const char *) ptrsForRelease[i]);
                 break;

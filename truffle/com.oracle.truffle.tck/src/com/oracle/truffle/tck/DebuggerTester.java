@@ -293,7 +293,6 @@ public final class DebuggerTester implements AutoCloseable {
 
     /**
      * Returns the thread that the execution started with {@link #startEval(Source)} is running on.
-     * This might be useful to test the behavior of {@link DebuggerSession#suspend(Thread)}.
      *
      * @return the thread instance
      * @since 0.16

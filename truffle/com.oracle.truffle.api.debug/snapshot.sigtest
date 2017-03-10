@@ -99,15 +99,17 @@ hcls AccessorDebug
 
 CLSS public final com.oracle.truffle.api.debug.DebuggerSession
 intf java.io.Closeable
+meth public boolean isBreakpointsActive()
 meth public com.oracle.truffle.api.debug.Breakpoint install(com.oracle.truffle.api.debug.Breakpoint)
 meth public com.oracle.truffle.api.debug.Debugger getDebugger()
 meth public java.lang.String toString()
 meth public java.util.List<com.oracle.truffle.api.debug.Breakpoint> getBreakpoints()
 meth public void close()
 meth public void resumeAll()
+meth public void setBreakpointsActive(boolean)
 meth public void suspendNextExecution()
 supr java.lang.Object
-hfds SESSIONS,alwaysHaltBreakpoint,breakpoints,callBinding,callback,closed,currentSuspendedEventMap,debugger,legacy,sessionId,statementBinding,stepping,strategyMap,suspendAll,suspendNext
+hfds SESSIONS,alwaysHaltBreakpoint,breakpoints,breakpointsActive,callBinding,callback,closed,currentSuspendedEventMap,debugger,legacy,sessionId,statementBinding,stepping,strategyMap,suspendAll,suspendNext
 hcls CallSteppingNode,StableBoolean,StatementSteppingNode,SteppingLocation
 
 CLSS public final com.oracle.truffle.api.debug.DebuggerTags

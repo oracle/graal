@@ -110,8 +110,8 @@ public final class FrameSlot implements Cloneable {
 
     /**
      * Changes the kind of this slot. Change of the slot kind is done on <em>slow path</em> and
-     * invalidates assumptions about {@link FrameDescriptor#createVersion() version} of
-     * {@link #getFrameDescriptor() associated descriptor}.
+     * invalidates assumptions about version of the {@link #getFrameDescriptor() associated
+     * descriptor}.
      *
      * @param kind new kind of the slot
      * @since 0.8 or earlier

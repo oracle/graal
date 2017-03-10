@@ -68,16 +68,3 @@ int string_callback(int (*str_arg)(const char *), char *(*str_ret)()) {
     free(str);
     return ret;
 }
-
-const char *null_string_test(const char *(*null_callback)(const char *str), const char *null_str) {
-    if (null_str != NULL) {
-        return "null_str != null";
-    }
-
-    const char *callback_ret = null_callback(NULL);
-    if (callback_ret != NULL) {
-        return "callback_ret != null";
-    }
-
-    return NULL;
-}

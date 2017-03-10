@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -105,6 +106,30 @@ public abstract class Instrumenter {
      * @since 0.15
      */
     public abstract <T extends LoadSourceSectionListener> EventBinding<T> attachLoadSourceSectionListener(SourceSectionFilter filter, T listener, boolean includeExistingSourceSections);
+
+    /**
+     * Attach an output stream as a consumer of the {@link TruffleInstrument.Env#out() standard
+     * output}. The consumer output stream receives all output that goes to
+     * {@link TruffleInstrument.Env#out()} since this call, including output emitted by the
+     * {@link com.oracle.truffle.api.vm.PolyglotEngine} this instrumenter is being executed in,
+     * output from instruments (including this one), etc. Be sure to {@link EventBinding#dispose()
+     * dispose} the binding when it's not used any more.
+     *
+     * @since 0.25
+     */
+    public abstract <T extends OutputStream> EventBinding<T> attachOutConsumer(T stream);
+
+    /**
+     * Attach an output stream as a consumer of the {@link TruffleInstrument.Env#err() error output}
+     * . The consumer output stream receives all error output that goes to
+     * {@link TruffleInstrument.Env#err()} since this call, including error output emitted by the
+     * {@link com.oracle.truffle.api.vm.PolyglotEngine} this instrumenter is being executed in,
+     * error output from instruments (including this one), etc. Be sure to
+     * {@link EventBinding#dispose() dispose} the binding when it's not used any more.
+     *
+     * @since 0.25
+     */
+    public abstract <T extends OutputStream> EventBinding<T> attachErrConsumer(T stream);
 
     /**
      * Returns a filtered list of loaded {@link SourceSection} instances.

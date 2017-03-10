@@ -279,7 +279,7 @@ public final class JavaInterop {
         if (obj == null) {
             return false;
         }
-        return ToJavaNode.isPrimitive(obj);
+        return ToPrimitiveNode.temporary().isPrimitive(obj);
     }
 
     /**
@@ -344,7 +344,7 @@ public final class JavaInterop {
         if (foreignObject == null) {
             return true;
         }
-        return boolMessage(Message.IS_NULL, foreignObject);
+        return ToPrimitiveNode.temporary().isNull(foreignObject);
     }
 
     /**
@@ -365,7 +365,7 @@ public final class JavaInterop {
         if (foreignObject == null) {
             return false;
         }
-        return boolMessage(Message.HAS_SIZE, foreignObject);
+        return ToPrimitiveNode.temporary().hasSize(foreignObject);
     }
 
     /**
@@ -382,7 +382,7 @@ public final class JavaInterop {
         if (foreignObject == null) {
             return false;
         }
-        return boolMessage(Message.IS_BOXED, foreignObject);
+        return ToPrimitiveNode.temporary().isBoxed(foreignObject);
     }
 
     /**
@@ -402,18 +402,9 @@ public final class JavaInterop {
             return null;
         }
         try {
-            return ToJavaNode.message(null, Message.UNBOX, foreignObject);
+            return ToPrimitiveNode.temporary().unbox(foreignObject);
         } catch (InteropException iex) {
             return null;
-        }
-    }
-
-    private static boolean boolMessage(Message message, TruffleObject foreignObject) {
-        try {
-            Object isTrue = ToJavaNode.message(null, message, foreignObject);
-            return Boolean.TRUE.equals(isTrue);
-        } catch (InteropException iex) {
-            return false;
         }
     }
 
@@ -474,4 +465,5 @@ public final class JavaInterop {
         return type.getMethods().length == 1;
     }
 
+    static final JavaInteropAccessor ACCESSOR = new JavaInteropAccessor();
 }

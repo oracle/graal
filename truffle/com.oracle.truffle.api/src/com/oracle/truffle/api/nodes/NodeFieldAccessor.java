@@ -141,18 +141,34 @@ public abstract class NodeFieldAccessor {
         return getDeclaringClass().getName() + "." + getName();
     }
 
-    /** @since 0.8 or earlier */
+    /**
+     * @since 0.8 or earlier
+     * @deprecated scheduled for removal from the API
+     */
+    @Deprecated
     @SuppressWarnings("deprecation")
     public abstract static class AbstractUnsafeNodeFieldAccessor extends NodeFieldAccessor {
-        /** @since 0.8 or earlier */
+        /**
+         * @since 0.8 or earlier
+         * @deprecated scheduled for removal from the API
+         */
+        @Deprecated
         protected AbstractUnsafeNodeFieldAccessor(NodeFieldKind kind, Class<?> declaringClass, String name, Class<?> type) {
             super(kind, declaringClass, name, type);
         }
 
-        /** @since 0.8 or earlier */
+        /**
+         * @since 0.8 or earlier
+         * @deprecated scheduled for removal from the API
+         */
+        @Deprecated
         public abstract long getOffset();
 
-        /** @since 0.8 or earlier */
+        /**
+         * @since 0.8 or earlier
+         * @deprecated scheduled for removal from the API
+         */
+        @Deprecated
         @Override
         public void putObject(Node receiver, Object value) {
             if (!type.isPrimitive() && value == null || type.isInstance(value)) {
@@ -166,7 +182,11 @@ public abstract class NodeFieldAccessor {
             return new IllegalArgumentException("Cannot set " + getType().getName() + " field " + toString() + " to " + (value == null ? "null" : value.getClass().getName()));
         }
 
-        /** @since 0.8 or earlier */
+        /**
+         * @since 0.8 or earlier
+         * @deprecated scheduled for removal from the API
+         */
+        @Deprecated
         @Override
         public Object getObject(Node receiver) {
             if (!type.isPrimitive()) {
@@ -176,7 +196,11 @@ public abstract class NodeFieldAccessor {
             }
         }
 
-        /** @since 0.8 or earlier */
+        /**
+         * @since 0.8 or earlier
+         * @deprecated scheduled for removal from the API
+         */
+        @Deprecated
         @Override
         public Object loadValue(Node node) {
             if (type == boolean.class) {

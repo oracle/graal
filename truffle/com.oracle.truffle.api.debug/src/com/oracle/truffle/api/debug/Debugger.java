@@ -337,6 +337,7 @@ public final class Debugger {
 
             @SuppressWarnings("deprecation")
             @Override
+            @TruffleBoundary
             public void executionStarted(Object vm) {
                 final PolyglotEngine engine = (PolyglotEngine) vm;
                 dispatchEvent(engine, new ExecutionEvent(engine), EngineSupport.EXECUTION_EVENT);

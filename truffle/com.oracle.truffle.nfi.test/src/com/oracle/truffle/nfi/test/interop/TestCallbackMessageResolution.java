@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tck;
+package com.oracle.truffle.nfi.test.interop;
 
-import org.junit.runner.Description;
+import com.oracle.truffle.api.interop.CanResolve;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.nfi.NFILanguage;
 
-final class GCAfterTestDecorator extends TruffleJUnitRunListenerDecorator {
+@MessageResolution(language = NFILanguage.class, receiverType = TestCallback.class)
+class TestCallbackMessageResolution {
 
-    GCAfterTestDecorator(TruffleJUnitRunListener l) {
-        super(l);
+    @Resolve(message = "EXECUTE")
+    abstract static class ExecuteNode extends Node {
+
+        Object access(TestCallback callback, Object[] arguments) {
+            return callback.call(arguments);
+        }
     }
 
-    @Override
-    public void testFinished(Description description) {
-        System.gc();
-        super.testFinished(description);
+    @CanResolve
+    abstract static class CanResolveTestCallback extends Node {
+
+        boolean test(TruffleObject object) {
+            return object instanceof TestCallback;
+        }
     }
 }

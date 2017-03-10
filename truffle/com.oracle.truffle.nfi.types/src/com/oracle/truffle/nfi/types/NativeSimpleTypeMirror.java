@@ -33,7 +33,7 @@ public final class NativeSimpleTypeMirror extends NativeTypeMirror {
         this.simpleType = simpleType;
     }
 
-    public final NativeSimpleType getSimpleType() {
+    public NativeSimpleType getSimpleType() {
         return simpleType;
     }
 }

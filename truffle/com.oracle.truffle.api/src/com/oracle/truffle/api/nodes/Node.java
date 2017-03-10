@@ -84,8 +84,8 @@ public abstract class Node implements NodeInterface, Cloneable {
     protected Node() {
         CompilerAsserts.neverPartOfCompilation("do not create a Node from compiled code");
         this.nodeClass = NodeClass.get(getClass());
-        if (TruffleOptions.TraceASTJSON && ACCESSOR != null) {
-            ACCESSOR.dumpSupport().dump(this, null, null);
+        if (TruffleOptions.TraceASTJSON) {
+            dump(this, null, null);
         }
     }
 
@@ -203,7 +203,7 @@ public abstract class Node implements NodeInterface, Cloneable {
         }
         newChild.parent = this;
         if (TruffleOptions.TraceASTJSON) {
-            ACCESSOR.dumpSupport().dump(this, newChild, null);
+            dump(this, newChild, null);
         }
         NodeUtil.adoptChildrenHelper(newChild);
     }
@@ -323,7 +323,16 @@ public abstract class Node implements NodeInterface, Cloneable {
             NodeUtil.traceRewrite(this, newNode, reason);
         }
         if (TruffleOptions.TraceASTJSON) {
-            ACCESSOR.dumpSupport().dump(this, newNode, reason);
+            dump(this, newNode, reason);
+        }
+    }
+
+    private static void dump(Node node, Node newChild, CharSequence reason) {
+        if (ACCESSOR != null) {
+            Accessor.DumpSupport dumpSupport = ACCESSOR.dumpSupport();
+            if (dumpSupport != null) {
+                dumpSupport.dump(node, newChild, reason);
+            }
         }
     }
 
@@ -600,6 +609,16 @@ public abstract class Node implements NodeInterface, Cloneable {
             @Override
             public boolean isTaggedWith(Node node, Class<?> tag) {
                 return node.isTaggedWith(tag);
+            }
+
+            @Override
+            public boolean isCloneUninitializedSupported(RootNode rootNode) {
+                return rootNode.isCloneUninitializedSupported();
+            }
+
+            @Override
+            public RootNode cloneUninitialized(RootNode rootNode) {
+                return rootNode.cloneUninitialized();
             }
         }
     }

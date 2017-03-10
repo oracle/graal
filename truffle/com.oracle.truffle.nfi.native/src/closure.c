@@ -62,6 +62,7 @@ enum closure_arg_type {
 struct closure_data {
     ffi_closure closure;
     jobject callTarget;
+    jobject signature;
 
     enum closure_arg_type argTypes[0];
 };
@@ -216,6 +217,9 @@ jobject prepare_closure(JNIEnv *env, jobject signature, jobject callTarget, void
     struct closure_data *data = (struct closure_data *) ffi_closure_alloc(sizeof(struct closure_data) + cif->nargs * sizeof(enum closure_arg_type), &code);
     data->callTarget = (*env)->NewGlobalRef(env, callTarget);
 
+    // keep signature from being garbage collected as long as the closure is alive
+    data->signature = (*env)->NewGlobalRef(env, signature);
+
     jobjectArray argTypes = (jobjectArray) (*env)->GetObjectField(env, signature, LibFFISignature_argTypes);
     int i;
     for (i = 0; i < cif->nargs; i++) {
@@ -250,6 +254,7 @@ JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_LibFFIClosure_allocateClos
 JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_ClosureNativePointer_freeClosure(JNIEnv *env, jclass self, jlong ptr) {
     struct closure_data *data = (struct closure_data *) ptr;
     (*env)->DeleteGlobalRef(env, data->callTarget);
+    (*env)->DeleteGlobalRef(env, data->signature);
     ffi_closure_free(data);
 }
 

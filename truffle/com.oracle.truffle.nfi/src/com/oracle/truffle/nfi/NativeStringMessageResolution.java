@@ -34,7 +34,7 @@ import com.oracle.truffle.api.nodes.Node;
 class NativeStringMessageResolution {
 
     @Resolve(message = "UNBOX")
-    static abstract class UnboxNativeStringNode extends Node {
+    abstract static class UnboxNativeStringNode extends Node {
 
         public Object access(NativeString receiver) {
             if (receiver.nativePointer == 0) {
@@ -46,7 +46,7 @@ class NativeStringMessageResolution {
     }
 
     @Resolve(message = "IS_BOXED")
-    static abstract class IsBoxedNativeStringNode extends Node {
+    abstract static class IsBoxedNativeStringNode extends Node {
 
         @SuppressWarnings("unused")
         public boolean access(NativeString receiver) {
@@ -55,7 +55,7 @@ class NativeStringMessageResolution {
     }
 
     @Resolve(message = "IS_NULL")
-    static abstract class IsNullNativeStringNode extends Node {
+    abstract static class IsNullNativeStringNode extends Node {
 
         public boolean access(NativeString receiver) {
             return receiver.nativePointer == 0;
@@ -63,7 +63,7 @@ class NativeStringMessageResolution {
     }
 
     @CanResolve
-    static abstract class CanResolveNativeStringNode extends Node {
+    abstract static class CanResolveNativeStringNode extends Node {
 
         public boolean test(TruffleObject receiver) {
             return receiver instanceof NativeString;
