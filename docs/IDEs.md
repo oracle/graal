@@ -6,19 +6,22 @@ Download and install the latest IntelliJ IDEA Community Edition: [https://www.je
 
 Change the IntelliJ maximum memory to 2 GB or more ([instructions](https://www.jetbrains.com/idea/help/increasing-memory-heap.html#d1366197e127)).
 
-Open IntelliJ and go to "Preferences > Plugins > Browse Repositories". Install the following plugins:
+Enable parallel builds in **Preferences > Build, Execution, Deployment > Compiler > Compile independent modules in parallel**.
+
+Open IntelliJ and go to **Preferences > Plugins > Browse Repositories**. Install the following plugins:
 
 * [Eclipse Code Formatter](https://plugins.jetbrains.com/plugin/6546): formats code according to Eclipse
 * [Checkstyle-IDEA](https://plugins.jetbrains.com/plugin/1065): runs style checks as you develop
 * [Save Actions](https://plugins.jetbrains.com/plugin/7642): allows code reformatting on save similar to Eclipse
 * [FindBugs-IDEA](https://plugins.jetbrains.com/plugin/3847): looks for suspicious code
 * [Python Plugin](https://plugins.jetbrains.com/idea/plugin/631-python): python plugin
+* [Markdown Navigator](https://plugins.jetbrains.com/plugin/7896-markdown-navigator): markdown plugin
 
 Make sure you have [`mx`](https://github.com/graalvm/mx) installed and updated (`mx update`). Then, to initialize IntelliJ project files, go to the root of your project and invoke: `mx intellijinit --mx-python-modules`
 
-Open the folder of your freshly initialized project from IntelliJ (*IntelliJ IDEA > File > Open…*). All depending projects will be included automatically.
+Open the folder of your freshly initialized project from IntelliJ (**IntelliJ IDEA > File > Open…**). All depending projects will be included automatically.
 
-Configure the `Eclipse Code Formatter` (*IntelliJ IDEA > Preferences > Other Settings > Eclipse Code Formatter*):
+Configure the `Eclipse Code Formatter` (**IntelliJ IDEA > Preferences > Other Settings > Eclipse Code Formatter**):
 
 1. Set "Use the Eclipse code formatter"
 2. Choose the right version of the formatter for your project (e.g., 4.5 vs 4.6)
