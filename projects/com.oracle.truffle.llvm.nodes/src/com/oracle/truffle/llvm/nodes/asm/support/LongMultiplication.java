@@ -72,4 +72,9 @@ public class LongMultiplication {
             return (((b >>> SHIFT32) + k) >>> SHIFT32) + a;
         }
     }
+
+    public static long multiplyHighUnsigned(long x, long y) {
+        long high = multiplyHigh(x, y);
+        return high + (((x < 0) ? y : 0) + ((y < 0) ? x : 0));
+    }
 }

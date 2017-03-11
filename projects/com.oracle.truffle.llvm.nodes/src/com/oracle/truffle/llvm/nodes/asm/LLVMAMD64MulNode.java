@@ -92,8 +92,7 @@ public abstract class LLVMAMD64MulNode extends LLVMExpressionNode {
 
         @Specialization
         protected long executeI64(VirtualFrame frame, long left, long right) {
-            // FIXME: implement as unsigned operation
-            long hi = LongMultiplication.multiplyHigh(left, right);
+            long hi = LongMultiplication.multiplyHighUnsigned(left, right);
             high.execute(frame, hi);
             return left * right;
         }
