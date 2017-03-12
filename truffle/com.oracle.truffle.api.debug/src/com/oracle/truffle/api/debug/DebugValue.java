@@ -147,7 +147,7 @@ public abstract class DebugValue {
     }
 
     private static boolean isUnsupportedException(Throwable ex) {
-        return ex instanceof InteropException || isUnsupportedException(ex.getCause());
+        return ex instanceof InteropException || ex.getCause() != null && isUnsupportedException(ex.getCause());
     }
 
     /*
