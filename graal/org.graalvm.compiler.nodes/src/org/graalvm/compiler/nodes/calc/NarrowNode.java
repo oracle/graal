@@ -120,4 +120,9 @@ public final class NarrowNode extends IntegerConvertNode<Narrow, SignExtend> {
     public void generate(NodeLIRBuilderTool nodeValueMap, ArithmeticLIRGeneratorTool gen) {
         nodeValueMap.setResult(this, gen.emitNarrow(nodeValueMap.operand(getValue()), getResultBits()));
     }
+
+    @Override
+    public boolean mayNullCheckSkipConversion() {
+        return false;
+    }
 }

@@ -95,7 +95,9 @@ public final class FloatingReadNode extends FloatingAccessNode implements LIRLow
     @Override
     public FixedAccessNode asFixedNode() {
         try (DebugCloseable position = withNodeSourcePosition()) {
-            return graph().add(new ReadNode(getAddress(), getLocationIdentity(), stamp(), getGuard(), getBarrierType()));
+            ReadNode result = graph().add(new ReadNode(getAddress(), getLocationIdentity(), stamp(), getBarrierType()));
+            result.setGuard(getGuard());
+            return result;
         }
     }
 

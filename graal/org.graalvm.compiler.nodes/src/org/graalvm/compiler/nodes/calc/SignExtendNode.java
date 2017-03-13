@@ -110,4 +110,9 @@ public final class SignExtendNode extends IntegerConvertNode<SignExtend, Narrow>
     public void generate(NodeLIRBuilderTool nodeValueMap, ArithmeticLIRGeneratorTool gen) {
         nodeValueMap.setResult(this, gen.emitSignExtend(nodeValueMap.operand(getValue()), getInputBits(), getResultBits()));
     }
+
+    @Override
+    public boolean mayNullCheckSkipConversion() {
+        return true;
+    }
 }

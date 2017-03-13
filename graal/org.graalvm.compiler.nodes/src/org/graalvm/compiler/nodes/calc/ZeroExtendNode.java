@@ -124,4 +124,9 @@ public final class ZeroExtendNode extends IntegerConvertNode<ZeroExtend, Narrow>
     public void generate(NodeLIRBuilderTool nodeValueMap, ArithmeticLIRGeneratorTool gen) {
         nodeValueMap.setResult(this, gen.emitZeroExtend(nodeValueMap.operand(getValue()), getInputBits(), getResultBits()));
     }
+
+    @Override
+    public boolean mayNullCheckSkipConversion() {
+        return true;
+    }
 }

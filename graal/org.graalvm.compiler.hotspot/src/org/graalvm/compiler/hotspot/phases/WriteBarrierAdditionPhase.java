@@ -116,7 +116,7 @@ public class WriteBarrierAdditionPhase extends Phase {
             case PRECISE:
                 boolean precise = barrierType == BarrierType.PRECISE;
                 if (config.useG1GC) {
-                    if (!node.isInitialization()) {
+                    if (!node.getLocationIdentity().isInit()) {
                         addG1PreWriteBarrier(node, node.getAddress(), null, true, node.getNullCheck(), graph);
                     }
                     addG1PostWriteBarrier(node, node.getAddress(), node.value(), precise, graph);

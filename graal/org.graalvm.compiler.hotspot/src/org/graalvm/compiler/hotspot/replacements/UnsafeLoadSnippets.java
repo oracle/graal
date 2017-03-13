@@ -28,7 +28,7 @@ import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.nodes.extended.FixedValueAnchorNode;
-import org.graalvm.compiler.nodes.extended.UnsafeLoadNode;
+import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
@@ -60,7 +60,7 @@ public class UnsafeLoadSnippets implements Snippets {
             super(options, providers, providers.getSnippetReflection(), target);
         }
 
-        public void lower(UnsafeLoadNode load, LoweringTool tool) {
+        public void lower(RawLoadNode load, LoweringTool tool) {
             Arguments args = new Arguments(unsafeLoad, load.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("object", load.object());
             args.add("offset", load.offset());

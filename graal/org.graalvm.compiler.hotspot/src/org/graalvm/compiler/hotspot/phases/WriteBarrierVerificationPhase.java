@@ -33,6 +33,7 @@ import org.graalvm.compiler.hotspot.nodes.ArrayRangeWriteBarrier;
 import org.graalvm.compiler.hotspot.nodes.G1PostWriteBarrier;
 import org.graalvm.compiler.hotspot.nodes.ObjectWriteBarrier;
 import org.graalvm.compiler.hotspot.nodes.SerialWriteBarrier;
+import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
@@ -74,6 +75,12 @@ public class WriteBarrierVerificationPhase extends Phase {
     private void processWrites(StructuredGraph graph) {
         for (Node node : graph.getNodes()) {
             if (isObjectWrite(node) || isObjectArrayRangeWrite(node)) {
+                if (node instanceof WriteNode) {
+                    WriteNode writeNode = (WriteNode) node;
+                    if (StampTool.isPointerAlwaysNull(writeNode.value())) {
+                        continue;
+                    }
+                }
                 validateWrite(node);
             }
         }
@@ -93,7 +100,7 @@ public class WriteBarrierVerificationPhase extends Phase {
         while (iterator.hasNext()) {
             Node currentNode = iterator.next();
             if (isSafepoint(currentNode)) {
-                throw new AssertionError("Write barrier must be present " + write);
+                throw new AssertionError("Write barrier must be present " + write.toString(Verbosity.All) + " / " + write.inputs());
             }
             if (useG1GC()) {
                 if (!(currentNode instanceof G1PostWriteBarrier) || (!validateBarrier((FixedAccessNode) write, (ObjectWriteBarrier) currentNode))) {
@@ -115,7 +122,13 @@ public class WriteBarrierVerificationPhase extends Phase {
     private boolean hasAttachedBarrier(FixedWithNextNode node) {
         final Node next = node.next();
         final Node previous = node.predecessor();
-        final boolean validatePreBarrier = useG1GC() && (isObjectWrite(node) || !((ArrayRangeWriteNode) node).isInitialization());
+        boolean validatePreBarrier = useG1GC() && (isObjectWrite(node) || !((ArrayRangeWriteNode) node).isInitialization());
+        if (node instanceof WriteNode) {
+            WriteNode writeNode = (WriteNode) node;
+            if (writeNode.getLocationIdentity().isInit()) {
+                validatePreBarrier = false;
+            }
+        }
         if (isObjectWrite(node)) {
             return (isObjectBarrier(node, next) || StampTool.isPointerAlwaysNull(getValueWritten(node))) && (!validatePreBarrier || isObjectBarrier(node, previous));
         } else if (isObjectArrayRangeWrite(node)) {

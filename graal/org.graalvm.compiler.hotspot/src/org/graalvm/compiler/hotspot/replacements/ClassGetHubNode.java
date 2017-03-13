@@ -135,6 +135,14 @@ public final class ClassGetHubNode extends FloatingNode implements Lowerable, Ca
         return false;
     }
 
+    /**
+     * There is more than one {@link java.lang.Class} value that has a NULL hub.
+     */
+    @Override
+    public boolean mayNullCheckSkipConversion() {
+        return false;
+    }
+
     @Override
     public boolean preservesOrder(Condition op, Constant value, ConstantReflectionProvider constantReflection) {
         assert op == Condition.EQ || op == Condition.NE;

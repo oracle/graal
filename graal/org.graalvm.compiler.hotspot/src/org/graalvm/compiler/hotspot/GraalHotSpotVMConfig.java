@@ -27,6 +27,7 @@ import java.lang.reflect.Modifier;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
+import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
 
 import jdk.vm.ci.common.JVMCIError;
@@ -53,8 +54,10 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     GraalHotSpotVMConfig(HotSpotVMConfigStore store) {
         super(store);
 
-        oopEncoding = new CompressEncoding(narrowOopBase, narrowOopShift, logMinObjAlignment());
-        klassEncoding = new CompressEncoding(narrowKlassBase, narrowKlassShift, logKlassAlignment);
+        assert narrowKlassShift <= logKlassAlignment;
+        assert narrowOopShift <= logMinObjAlignment();
+        oopEncoding = new CompressEncoding(narrowOopBase, narrowOopShift);
+        klassEncoding = new CompressEncoding(narrowKlassBase, narrowKlassShift);
 
         assert check();
     }

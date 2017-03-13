@@ -27,6 +27,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 import static jdk.vm.ci.sparc.SPARCKind.WORD;
 import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 
+import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
@@ -34,7 +35,6 @@ import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.core.sparc.SPARCArithmeticLIRGenerator;
 import org.graalvm.compiler.core.sparc.SPARCLIRGenerator;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.hotspot.CompressEncoding;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotDebugInfoBuilder;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
@@ -311,8 +311,8 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
             // metaspace pointer
             Variable result = newVariable(LIRKind.value(WORD));
             AllocatableValue base = Value.ILLEGAL;
-            if (encoding.base != 0) {
-                base = emitLoadConstant(LIRKind.value(XWORD), JavaConstant.forLong(encoding.base));
+            if (encoding.hasBase()) {
+                base = emitLoadConstant(LIRKind.value(XWORD), JavaConstant.forLong(encoding.getBase()));
             }
             append(new SPARCHotSpotMove.CompressPointer(result, asAllocatable(pointer), base, encoding, nonNull));
             return result;
@@ -332,8 +332,8 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
             // metaspace pointer
             Variable result = newVariable(LIRKind.value(XWORD));
             AllocatableValue base = Value.ILLEGAL;
-            if (encoding.base != 0) {
-                base = emitLoadConstant(LIRKind.value(XWORD), JavaConstant.forLong(encoding.base));
+            if (encoding.hasBase()) {
+                base = emitLoadConstant(LIRKind.value(XWORD), JavaConstant.forLong(encoding.getBase()));
             }
             append(new SPARCHotSpotMove.UncompressPointer(result, asAllocatable(pointer), base, encoding, nonNull));
             return result;

@@ -23,13 +23,9 @@
 package org.graalvm.compiler.hotspot.amd64.test;
 
 import static org.graalvm.compiler.core.common.GraalOptions.OptImplicitNullChecks;
-import org.graalvm.compiler.hotspot.nodes.CompressionNode;
+
 import org.graalvm.compiler.hotspot.test.HotSpotGraalCompilerTest;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.options.OptionValues;
-import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
@@ -94,19 +90,5 @@ public class CompressedNullCheckTest extends HotSpotGraalCompilerTest {
     @Test
     public void explicitNull() {
         testExplicit(null);
-    }
-
-    @Override
-    protected boolean checkMidTierGraph(StructuredGraph graph) {
-        int count = 0;
-        for (IsNullNode isNull : graph.getNodes().filter(IsNullNode.class).snapshot()) {
-            ValueNode value = isNull.getValue();
-            if (value instanceof CompressionNode) {
-                count++;
-                isNull.replaceFirstInput(value, ((CompressionNode) value).getValue());
-            }
-        }
-        Assert.assertEquals("graph should contain exactly one IsNullNode", 1, count);
-        return super.checkMidTierGraph(graph);
     }
 }

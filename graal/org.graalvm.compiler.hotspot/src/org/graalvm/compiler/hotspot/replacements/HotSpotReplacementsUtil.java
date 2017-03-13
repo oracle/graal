@@ -50,7 +50,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.StoreHubNode;
-import org.graalvm.compiler.nodes.extended.UnsafeLoadNode;
+import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.memory.Access;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
@@ -731,10 +731,10 @@ public class HotSpotReplacementsUtil {
     @NodeIntrinsic(value = WriteRegisterNode.class, setStampFromReturnType = true)
     public static native void writeRegisterAsWord(@ConstantNodeParameter Register register, Word value);
 
-    @NodeIntrinsic(value = UnsafeLoadNode.class, setStampFromReturnType = true)
+    @NodeIntrinsic(value = RawLoadNode.class, setStampFromReturnType = true)
     private static native Word loadWordFromObjectIntrinsic(Object object, long offset, @ConstantNodeParameter JavaKind wordKind, @ConstantNodeParameter LocationIdentity locationIdentity);
 
-    @NodeIntrinsic(value = UnsafeLoadNode.class, setStampFromReturnType = true)
+    @NodeIntrinsic(value = RawLoadNode.class, setStampFromReturnType = true)
     private static native KlassPointer loadKlassFromObjectIntrinsic(Object object, long offset, @ConstantNodeParameter JavaKind wordKind, @ConstantNodeParameter LocationIdentity locationIdentity);
 
     @NodeIntrinsic(value = LoadHubNode.class)

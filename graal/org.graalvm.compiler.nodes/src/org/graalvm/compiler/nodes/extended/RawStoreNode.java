@@ -52,21 +52,39 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * performed before the store.
  */
 @NodeInfo(cycles = CYCLES_3, size = SIZE_1)
-public final class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Lowerable, Virtualizable, MemoryCheckpoint.Single {
+public final class RawStoreNode extends UnsafeAccessNode implements StateSplit, Lowerable, Virtualizable, MemoryCheckpoint.Single {
 
-    public static final NodeClass<UnsafeStoreNode> TYPE = NodeClass.create(UnsafeStoreNode.class);
+    public static final NodeClass<RawStoreNode> TYPE = NodeClass.create(RawStoreNode.class);
     @Input ValueNode value;
     @OptionalInput(State) FrameState stateAfter;
+    private final boolean needsBarrier;
 
-    public UnsafeStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity) {
-        this(object, offset, value, accessKind, locationIdentity, null, false);
+    public RawStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity) {
+        this(object, offset, value, accessKind, locationIdentity, true);
     }
 
-    public UnsafeStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity, FrameState stateAfter, boolean forceAnyLocation) {
+    public RawStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity, boolean needsBarrier) {
+        this(object, offset, value, accessKind, locationIdentity, needsBarrier, null, false);
+    }
+
+    public RawStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity, boolean needsBarrier, FrameState stateAfter,
+                    boolean forceAnyLocation) {
         super(TYPE, StampFactory.forVoid(), object, offset, accessKind, locationIdentity, forceAnyLocation);
         this.value = value;
+        this.needsBarrier = needsBarrier;
         this.stateAfter = stateAfter;
         assert accessKind != JavaKind.Void && accessKind != JavaKind.Illegal;
+    }
+
+    @NodeIntrinsic
+    public static native Object storeObject(Object object, long offset, Object value, @ConstantNodeParameter JavaKind kind, @ConstantNodeParameter LocationIdentity locationIdentity,
+                    @ConstantNodeParameter boolean needsBarrier);
+
+    @NodeIntrinsic
+    public static native Object storeChar(Object object, long offset, char value, @ConstantNodeParameter JavaKind kind, @ConstantNodeParameter LocationIdentity locationIdentity);
+
+    public boolean needsBarrier() {
+        return needsBarrier;
     }
 
     @Override
@@ -135,7 +153,7 @@ public final class UnsafeStoreNode extends UnsafeAccessNode implements StateSpli
 
     @Override
     protected ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity) {
-        return new UnsafeStoreNode(object(), location, value, accessKind(), identity, stateAfter(), isAnyLocationForced());
+        return new RawStoreNode(object(), location, value, accessKind(), identity, needsBarrier, stateAfter(), isAnyLocationForced());
     }
 
     public FrameState getState() {

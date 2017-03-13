@@ -441,8 +441,8 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
         assert op == Opcode.WRITE_POINTER || op == Opcode.WRITE_OBJECT || op == Opcode.WRITE_BARRIERED || op == Opcode.INITIALIZE;
         final BarrierType barrier = (op == Opcode.WRITE_BARRIERED ? BarrierType.PRECISE : BarrierType.NONE);
         final boolean compressible = (op == Opcode.WRITE_OBJECT || op == Opcode.WRITE_BARRIERED);
-        final boolean initialize = (op == Opcode.INITIALIZE);
-        b.add(new JavaWriteNode(writeKind, address, location, value, barrier, compressible, initialize));
+        assert op != Opcode.INITIALIZE || location.isInit() : "must use init location for initializing";
+        b.add(new JavaWriteNode(writeKind, address, location, value, barrier, compressible));
     }
 
     protected AbstractCompareAndSwapNode casOp(JavaKind writeKind, JavaKind returnKind, AddressNode address, LocationIdentity location, ValueNode expectedValue, ValueNode newValue) {

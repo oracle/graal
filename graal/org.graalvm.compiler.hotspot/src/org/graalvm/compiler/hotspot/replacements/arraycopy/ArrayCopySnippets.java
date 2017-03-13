@@ -58,7 +58,8 @@ import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.UnsafeLoadNode;
+import org.graalvm.compiler.nodes.extended.RawLoadNode;
+import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -70,7 +71,6 @@ import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
-import org.graalvm.compiler.replacements.nodes.DirectObjectStoreNode;
 import org.graalvm.compiler.replacements.nodes.ExplodeLoopNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.util.UnmodifiableEconomicMap;
@@ -304,8 +304,8 @@ public class ArrayCopySnippets implements Snippets {
             ExplodeLoopNode.explodeLoop();
             for (int iteration = 0; iteration < length; iteration++) {
                 if (i >= 0) {
-                    Object a = UnsafeLoadNode.load(nonNullSrc, arrayBaseOffset + i + (long) srcPos * scale, elementKind, arrayLocation);
-                    DirectObjectStoreNode.storeObject(nonNullDest, arrayBaseOffset, i + (long) destPos * scale, a, arrayLocation, elementKind);
+                    Object a = RawLoadNode.load(nonNullSrc, arrayBaseOffset + i + (long) srcPos * scale, elementKind, arrayLocation);
+                    RawStoreNode.storeObject(nonNullDest, arrayBaseOffset + i + (long) destPos * scale, a, elementKind, arrayLocation, false);
                     i -= scale;
                 }
             }
@@ -315,8 +315,8 @@ public class ArrayCopySnippets implements Snippets {
             ExplodeLoopNode.explodeLoop();
             for (int iteration = 0; iteration < length; iteration++) {
                 if (i < end) {
-                    Object a = UnsafeLoadNode.load(nonNullSrc, arrayBaseOffset + i + (long) srcPos * scale, elementKind, arrayLocation);
-                    DirectObjectStoreNode.storeObject(nonNullDest, arrayBaseOffset, i + (long) destPos * scale, a, arrayLocation, elementKind);
+                    Object a = RawLoadNode.load(nonNullSrc, arrayBaseOffset + i + (long) srcPos * scale, elementKind, arrayLocation);
+                    RawStoreNode.storeObject(nonNullDest, arrayBaseOffset + i + (long) destPos * scale, a, elementKind, arrayLocation, false);
                     i += scale;
                 }
             }

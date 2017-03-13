@@ -60,10 +60,6 @@ public class NamedLocationIdentity extends LocationIdentity implements FormatWit
      */
     public static final LocationIdentity ARRAY_LENGTH_LOCATION = NamedLocationIdentity.immutable("[].length");
 
-    public static LocationIdentity any() {
-        return ANY_LOCATION;
-    }
-
     private final String name;
     private final boolean immutable;
 

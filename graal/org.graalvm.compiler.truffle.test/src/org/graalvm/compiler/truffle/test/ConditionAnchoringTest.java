@@ -36,7 +36,7 @@ import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.UnsafeLoadNode;
+import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
@@ -105,7 +105,7 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
     public void test(String name, int ids) {
         StructuredGraph graph = parseEager(name, AllowAssumptions.YES);
 
-        NodeIterable<UnsafeLoadNode> unsafeNodes = graph.getNodes().filter(UnsafeLoadNode.class);
+        NodeIterable<RawLoadNode> unsafeNodes = graph.getNodes().filter(RawLoadNode.class);
         assertThat(unsafeNodes, hasCount(1));
 
         // lower unsafe load
@@ -113,7 +113,7 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
         LoweringPhase lowering = new LoweringPhase(new CanonicalizerPhase(), StandardLoweringStage.HIGH_TIER);
         lowering.apply(graph, context);
 
-        unsafeNodes = graph.getNodes().filter(UnsafeLoadNode.class);
+        unsafeNodes = graph.getNodes().filter(RawLoadNode.class);
         NodeIterable<ConditionAnchorNode> conditionAnchors = graph.getNodes().filter(ConditionAnchorNode.class);
         NodeIterable<ReadNode> reads = graph.getNodes().filter(ReadNode.class);
         assertThat(unsafeNodes, isEmpty());

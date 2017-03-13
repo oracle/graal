@@ -46,8 +46,8 @@ import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.GuardedNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
-import org.graalvm.compiler.nodes.extended.UnsafeLoadNode;
-import org.graalvm.compiler.nodes.extended.UnsafeStoreNode;
+import org.graalvm.compiler.nodes.extended.RawLoadNode;
+import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.java.AccessFieldNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
@@ -145,8 +145,8 @@ public final class ReadEliminationClosure extends EffectsClosure<ReadElimination
                 processIdentity(state, write.getLocationIdentity());
             }
         } else if (node instanceof UnsafeAccessNode) {
-            if (node instanceof UnsafeLoadNode) {
-                UnsafeLoadNode load = (UnsafeLoadNode) node;
+            if (node instanceof RawLoadNode) {
+                RawLoadNode load = (RawLoadNode) node;
                 if (load.getLocationIdentity().isSingle()) {
                     ValueNode object = GraphUtil.unproxify(load.object());
                     UnsafeLoadCacheEntry identifier = new UnsafeLoadCacheEntry(object, load.offset(), load.getLocationIdentity());
@@ -160,8 +160,8 @@ public final class ReadEliminationClosure extends EffectsClosure<ReadElimination
                     }
                 }
             } else {
-                assert node instanceof UnsafeStoreNode;
-                UnsafeStoreNode write = (UnsafeStoreNode) node;
+                assert node instanceof RawStoreNode;
+                RawStoreNode write = (RawStoreNode) node;
                 if (write.getLocationIdentity().isSingle()) {
                     ValueNode object = GraphUtil.unproxify(write.object());
                     UnsafeLoadCacheEntry identifier = new UnsafeLoadCacheEntry(object, write.offset(), write.getLocationIdentity());
