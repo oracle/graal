@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,15 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public enum MetaType implements Type {
-
     UNKNOWN,
-    VOID,
     OPAQUE,
     LABEL,
     TOKEN,
@@ -45,52 +40,13 @@ public enum MetaType implements Type {
     X86_MMX;
 
     @Override
+    public int getBitSize() {
+        return 0;
+    }
+
+    @Override
     public void accept(TypeVisitor visitor) {
         visitor.visit(this);
-    }
-
-    @Override
-    public String toString() {
-        return name().toLowerCase();
-    }
-
-    @Override
-    public LLVMBaseType getLLVMBaseType() {
-        switch (this) {
-            case VOID:
-                return LLVMBaseType.VOID;
-            case OPAQUE:
-                return LLVMBaseType.ADDRESS;
-            default:
-                throw new AssertionError("Cannot resolve to LLVMBaseType: " + this);
-        }
-    }
-
-    @Override
-    public FrameSlotKind getFrameSlotKind() {
-        switch (this) {
-            case VOID:
-                throw new LLVMUnsupportedException(LLVMUnsupportedException.UnsupportedReason.PARSER_ERROR_VOID_SLOT);
-            default:
-                return FrameSlotKind.Object;
-        }
-    }
-
-    @Override
-    public LLVMFunctionDescriptor.LLVMRuntimeType getRuntimeType() {
-        switch (this) {
-            case VOID:
-                return LLVMFunctionDescriptor.LLVMRuntimeType.VOID;
-            case OPAQUE:
-                return LLVMFunctionDescriptor.LLVMRuntimeType.ADDRESS;
-            default:
-                throw new UnsupportedOperationException("Cannot resolve to Runtime Type: " + this);
-        }
-    }
-
-    @Override
-    public int getBits() {
-        return 0;
     }
 
     @Override

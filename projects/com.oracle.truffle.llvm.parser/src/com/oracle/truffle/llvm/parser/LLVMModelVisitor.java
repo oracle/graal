@@ -47,9 +47,7 @@ import com.oracle.truffle.llvm.parser.model.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
-import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -121,10 +119,7 @@ final class LLVMModelVisitor implements ModelVisitor {
             }
         }
 
-        LLVMRuntimeType llvmReturnType = method.getReturnType().getRuntimeType();
-        LLVMRuntimeType[] llvmParamTypes = LLVMBitcodeTypeHelper.toRuntimeTypes(method.getArgumentTypes());
-
-        LLVMFunctionDescriptor function = registry.lookupFunctionDescriptor(method.getName(), llvmReturnType, llvmParamTypes, method.isVarArg());
+        LLVMFunctionDescriptor function = registry.lookupFunctionDescriptor(method.getName(), method.getType());
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         function.setCallTarget(callTarget);
         visitor.addFunction(function);

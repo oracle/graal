@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,50 +29,37 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
-import java.util.Arrays;
-
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
-import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
-public class FunctionType implements Type, ValueSymbol {
+public final class FunctionType implements Type {
+    private final Type returnType;
 
-    private final Type type;
+    private final Type[] argumentTypes;
+    private final boolean isVarargs;
 
-    private final Type[] args;
+    public FunctionType(Type returnType, Type[] argumentTypes, boolean isVarargs) {
+        this.returnType = returnType;
+        this.argumentTypes = argumentTypes;
+        this.isVarargs = isVarargs;
+    }
 
-    private final boolean isVarArg;
+    public Type[] getArgumentTypes() {
+        return argumentTypes;
+    }
 
-    private String name = LLVMIdentifier.UNKNOWN;
+    public Type getReturnType() {
+        return returnType;
+    }
 
-    public FunctionType(Type type, Type[] args, boolean isVarArg) {
-        this.type = type;
-        this.args = args;
-        this.isVarArg = isVarArg;
+    @Override
+    public int getBitSize() {
+        return 0;
     }
 
     @Override
     public void accept(TypeVisitor visitor) {
         visitor.visit(this);
-    }
-
-    public Type[] getArgumentTypes() {
-        return args;
-    }
-
-    @Override
-    public LLVMBaseType getLLVMBaseType() {
-        return LLVMBaseType.FUNCTION_ADDRESS;
-    }
-
-    @Override
-    public Type getType() {
-        return new PointerType(Type.super.getType());
-    }
-
-    public Type getReturnType() {
-        return type;
     }
 
     @Override
@@ -86,54 +73,7 @@ public class FunctionType implements Type, ValueSymbol {
 
     @Override
     public int getSize(DataSpecConverter targetDataLayout) {
-        return 0;
-    }
-
-    public boolean isVarArg() {
-        return isVarArg;
-    }
-
-    @Override
-    public int getBits() {
-        return 0;
-    }
-
-    @Override
-    public void setName(String name) {
-        this.name = LLVMIdentifier.toGlobalIdentifier(name);
-    }
-
-    @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public LLVMFunctionDescriptor.LLVMRuntimeType getRuntimeType() {
-        return LLVMFunctionDescriptor.LLVMRuntimeType.FUNCTION_ADDRESS;
-    }
-
-    @Override
-    public int hashCode() {
-        int hash = 29;
-        hash = 17 * hash + Arrays.hashCode(args);
-        hash = 17 * hash + (isVarArg ? 1231 : 1237);
-        hash = 17 * hash + ((getReturnType() == null) ? 0 : getReturnType().hashCode());
-        return hash;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-
-        } else if (obj instanceof FunctionType) {
-            final FunctionType other = (FunctionType) obj;
-            return getReturnType().equals(other.getReturnType()) && Arrays.equals(args, other.args) && isVarArg == other.isVarArg && name.equals(other.name);
-
-        } else {
-            return false;
-        }
+        return LLVMHeap.FUNCTION_PTR_SIZE_BYTE;
     }
 
     @Override
@@ -142,15 +82,15 @@ public class FunctionType implements Type, ValueSymbol {
 
         sb.append(getReturnType()).append(" (");
 
-        for (int i = 0; i < args.length; i++) {
+        for (int i = 0; i < argumentTypes.length; i++) {
             if (i > 0) {
                 sb.append(", ");
             }
-            sb.append(args[i]);
+            sb.append(argumentTypes[i]);
         }
 
-        if (isVarArg) {
-            if (args.length > 0) {
+        if (isVarargs) {
+            if (argumentTypes.length > 0) {
                 sb.append(", ");
             }
             sb.append("...");
@@ -159,4 +99,5 @@ public class FunctionType implements Type, ValueSymbol {
 
         return sb.toString();
     }
+
 }

@@ -44,7 +44,8 @@ import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
 import com.oracle.truffle.llvm.parser.util.LLVMFrameIDs;
-import com.oracle.truffle.llvm.runtime.types.MetaType;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public final class StackAllocation {
 
@@ -87,13 +88,13 @@ public final class StackAllocation {
         @Override
         public void visit(FunctionDefinition functionDefinition) {
             final FrameDescriptor frame = new FrameDescriptor();
-            if (functionDefinition.getReturnType() != MetaType.VOID) {
+            if (!(functionDefinition.getType().getReturnType() instanceof VoidType)) {
                 frame.addFrameSlot(LLVMFrameIDs.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID);
             }
             frame.addFrameSlot(LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID, FrameSlotKind.Object);
 
             for (FunctionParameter parameter : functionDefinition.getParameters()) {
-                frame.addFrameSlot(parameter.getName(), parameter.getType().getFrameSlotKind());
+                frame.addFrameSlot(parameter.getName(), Type.getFrameSlotKind(parameter.getType()));
             }
 
             final StackAllocationFunctionVisitor functionVisitor = new StackAllocationFunctionVisitor(frame);
@@ -114,7 +115,7 @@ public final class StackAllocation {
         @Override
         public void visitValueInstruction(ValueInstruction valueInstruction) {
             final String slotName = valueInstruction.getName();
-            final FrameSlotKind slotKind = valueInstruction.getType().getFrameSlotKind();
+            final FrameSlotKind slotKind = Type.getFrameSlotKind(valueInstruction.getType());
             frame.addFrameSlot(slotName, slotKind);
         }
 

@@ -34,8 +34,6 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.Aggregat
 import com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint.FloatingPointConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
-import com.oracle.truffle.llvm.runtime.types.FloatingPointType;
-import com.oracle.truffle.llvm.runtime.types.IntegerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
@@ -44,11 +42,11 @@ public interface Constant extends Symbol {
     void accept(ConstantVisitor visitor);
 
     static Constant createFromData(Type type, long datum) {
-        if (type instanceof IntegerType) {
-            return IntegerConstant.fromDatum((IntegerType) type, datum);
+        if (Type.isIntegerType(type)) {
+            return IntegerConstant.fromDatum(type, datum);
 
-        } else if (type instanceof FloatingPointType) {
-            return FloatingPointConstant.create((FloatingPointType) type, new long[]{datum});
+        } else if (Type.isFloatingpointType(type)) {
+            return FloatingPointConstant.create(type, new long[]{datum});
 
         } else {
             throw new RuntimeException("No datum constant implementation for " + type);

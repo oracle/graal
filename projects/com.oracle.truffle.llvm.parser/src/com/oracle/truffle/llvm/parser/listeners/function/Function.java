@@ -31,24 +31,24 @@ package com.oracle.truffle.llvm.parser.listeners.function;
 
 import java.util.List;
 
-import com.oracle.truffle.llvm.parser.records.FunctionRecord;
 import com.oracle.truffle.llvm.parser.listeners.IRVersionController;
 import com.oracle.truffle.llvm.parser.listeners.ParserListener;
 import com.oracle.truffle.llvm.parser.listeners.Types;
 import com.oracle.truffle.llvm.parser.listeners.ValueSymbolTable;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.generators.FunctionGenerator;
+import com.oracle.truffle.llvm.parser.records.FunctionRecord;
 import com.oracle.truffle.llvm.parser.records.Records;
 import com.oracle.truffle.llvm.parser.scanner.Block;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
-import com.oracle.truffle.llvm.runtime.types.IntegerConstantType;
-import com.oracle.truffle.llvm.runtime.types.IntegerType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 
 public abstract class Function implements ParserListener {
 
@@ -286,7 +286,7 @@ public abstract class Function implements ParserListener {
         Type type;
         int lhs = getIndex(args[i++]);
         if (lhs < symbols.size()) {
-            type = symbols.get(lhs).getType();
+            type = symbols.get(lhs);
         } else {
             type = types.get(args[i++]);
         }
@@ -328,7 +328,7 @@ public abstract class Function implements ParserListener {
         Type operandType;
         int lhs = getIndex(args[i++]);
         if (lhs < symbols.size()) {
-            operandType = symbols.get(lhs).getType();
+            operandType = symbols.get(lhs);
         } else {
             operandType = types.get(args[i++]);
         }
@@ -336,8 +336,8 @@ public abstract class Function implements ParserListener {
         int opcode = (int) args[i];
 
         Type type = operandType instanceof VectorType
-                        ? new VectorType(IntegerType.BOOLEAN, ((VectorType) operandType).getLength())
-                        : IntegerType.BOOLEAN;
+                        ? new VectorType(PrimitiveType.I1, ((VectorType) operandType).getNumberOfElements())
+                        : PrimitiveType.I1;
 
         code.createCompare(type, opcode, lhs, rhs);
 
@@ -348,7 +348,7 @@ public abstract class Function implements ParserListener {
         int vector = getIndex(args[0]);
         int index = getIndex(args[1]);
 
-        Type type = ((VectorType) symbols.get(vector).getType()).getElementType();
+        Type type = ((VectorType) symbols.get(vector)).getElementType();
 
         code.createExtractElement(type, vector, index);
 
@@ -364,7 +364,7 @@ public abstract class Function implements ParserListener {
             throw new UnsupportedOperationException("Multiple indices are not yet supported!");
         }
 
-        Type type = ((AggregateType) symbols.get(aggregate).getType()).getElementType(index);
+        Type type = ((AggregateType) symbols.get(aggregate)).getElementType(index);
 
         code.createExtractValue(type, aggregate, index);
 
@@ -378,7 +378,7 @@ public abstract class Function implements ParserListener {
         int pointer = getIndex(args[i++]);
         int[] indices = getIndices(args, i);
 
-        Type type = new PointerType(getElementPointerType(symbols.get(pointer).getType(), indices));
+        Type type = new PointerType(getElementPointerType(symbols.get(pointer), indices));
 
         code.createGetElementPointer(
                         type,
@@ -394,7 +394,7 @@ public abstract class Function implements ParserListener {
         int pointer = getIndex(args[i++]);
         Type base;
         if (pointer < symbols.size()) {
-            base = symbols.get(pointer).getType();
+            base = symbols.get(pointer);
         } else {
             base = types.get(args[i++]);
         }
@@ -430,7 +430,7 @@ public abstract class Function implements ParserListener {
 
         Type symbol = symbols.get(vector);
 
-        code.createInsertElement(symbol.getType(), vector, index, value);
+        code.createInsertElement(symbol, vector, index, value);
 
         symbols.add(symbol);
     }
@@ -447,7 +447,7 @@ public abstract class Function implements ParserListener {
 
         Type symbol = symbols.get(aggregate);
 
-        code.createInsertValue(symbol.getType(), aggregate, index, value);
+        code.createInsertValue(symbol, aggregate, index, value);
 
         symbols.add(symbol);
     }
@@ -482,7 +482,7 @@ public abstract class Function implements ParserListener {
         Type type;
         int trueValue = getIndex(args[i++]);
         if (trueValue < symbols.size()) {
-            type = symbols.get(trueValue).getType();
+            type = symbols.get(trueValue);
         } else {
             type = types.get(args[i++]);
         }
@@ -499,8 +499,8 @@ public abstract class Function implements ParserListener {
         int vector2 = getIndex(args[1]);
         int mask = getIndex(args[2]);
 
-        Type subtype = ((VectorType) symbols.get(vector1).getType()).getElementType();
-        int length = ((VectorType) symbols.get(mask).getType()).getLength();
+        PrimitiveType subtype = ((VectorType) symbols.get(vector1)).getElementType();
+        int length = ((VectorType) symbols.get(mask)).getNumberOfElements();
         Type type = new VectorType(subtype, length);
 
         code.createShuffleVector(type, vector1, vector2, mask);
@@ -564,10 +564,12 @@ public abstract class Function implements ParserListener {
             } else {
                 StructureType structure = (StructureType) elementType;
                 Type idx = symbols.get(indice);
-                if (!(idx instanceof IntegerConstantType)) {
+                if (!(idx instanceof PrimitiveType)) {
                     throw new IllegalStateException("Cannot infer structure element from " + idx);
                 }
-                elementType = structure.getElementType((int) ((IntegerConstantType) idx).getValue());
+                Number index = (Number) ((PrimitiveType) idx).getConstant();
+                assert ((PrimitiveType) idx).getKind() == PrimitiveKind.I32;
+                elementType = structure.getElementType(index.intValue());
             }
         }
         return elementType;

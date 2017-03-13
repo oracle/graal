@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,25 +29,22 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
-import java.util.Objects;
-
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBlock;
-import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBlock.MetadataReference;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
-public class ArrayType implements AggregateType {
+public final class ArrayType extends AggregateType {
+
+    private static final int NO_LENGTH = -1;
 
     private final Type elementType;
-
     private final int length;
 
-    private MetadataReference metadata = MetadataBlock.voidRef;
-
-    public ArrayType(Type type, int size) {
-        super();
+    public ArrayType(Type type, int length) {
         this.elementType = type;
-        this.length = size;
+        this.length = length;
+    }
+
+    public ArrayType(Type type) {
+        this(type, NO_LENGTH);
     }
 
     @Override
@@ -56,32 +53,29 @@ public class ArrayType implements AggregateType {
     }
 
     @Override
-    public int getBits() {
-        return getElementType().getBits() * length;
+    public int getBitSize() {
+        return getElementType().getBitSize() * getNumberOfElements();
     }
 
     public Type getElementType() {
         return elementType;
     }
 
-    @Override
-    public Type getElementType(int idx) {
-        return getElementType();
+    public boolean hasLength() {
+        return length != NO_LENGTH;
     }
 
     @Override
-    public int getLength() {
+    public int getNumberOfElements() {
+        if (length == NO_LENGTH) {
+            throw new UnsupportedOperationException();
+        }
         return length;
     }
 
     @Override
-    public LLVMBaseType getLLVMBaseType() {
-        return LLVMBaseType.ARRAY;
-    }
-
-    @Override
-    public LLVMFunctionDescriptor.LLVMRuntimeType getRuntimeType() {
-        return LLVMFunctionDescriptor.LLVMRuntimeType.ARRAY;
+    public Type getElementType(int index) {
+        return elementType;
     }
 
     @Override
@@ -95,44 +89,13 @@ public class ArrayType implements AggregateType {
     }
 
     @Override
-    public int getIndexOffset(int index, DataSpecConverter targetDataLayout) {
+    public int getOffsetOf(int index, DataSpecConverter targetDataLayout) {
         return getElementType().getSize(targetDataLayout) * index;
     }
 
     @Override
-    public void setMetadataReference(MetadataReference metadata) {
-        this.metadata = metadata;
-    }
-
-    @Override
-    public MetadataReference getMetadataReference() {
-        return metadata;
-    }
-
-    @Override
-    public int hashCode() {
-        int hash = 7;
-        hash = 67 * hash + Objects.hashCode(this.getElementType());
-        hash = 67 * hash + this.length;
-        return hash;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-
-        } else if (obj instanceof ArrayType) {
-            final ArrayType other = (ArrayType) obj;
-            return length == other.length && Objects.equals(getElementType(), other.getElementType());
-
-        } else {
-            return false;
-        }
-    }
-
-    @Override
     public String toString() {
-        return String.format("[%d x %s]", getLength(), getElementType());
+        return String.format("[%d x %s]", getNumberOfElements(), getElementType());
     }
+
 }

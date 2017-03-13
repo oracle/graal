@@ -30,29 +30,22 @@
 package com.oracle.truffle.llvm.runtime.types.visitors;
 
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
-import com.oracle.truffle.llvm.runtime.types.BigIntegerConstantType;
-import com.oracle.truffle.llvm.runtime.types.FloatingPointType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.IntegerConstantType;
-import com.oracle.truffle.llvm.runtime.types.IntegerType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
+import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.runtime.types.metadata.MetadataConstantPointerType;
 import com.oracle.truffle.llvm.runtime.types.metadata.MetadataConstantType;
 
 public interface TypeVisitor {
 
-    void visit(BigIntegerConstantType bigIntegerConstantType);
-
-    void visit(FloatingPointType floatingPointType);
-
     void visit(FunctionType functionType);
 
-    void visit(IntegerConstantType integerConstantType);
-
-    void visit(IntegerType integerType);
+    void visit(PrimitiveType primitiveType);
 
     void visit(MetadataConstantType metadataConstantType);
 
@@ -67,5 +60,9 @@ public interface TypeVisitor {
     void visit(StructureType structureType);
 
     void visit(VectorType vectorType);
+
+    void visit(VariableBitWidthType vectorType);
+
+    void visit(VoidType vectorType);
 
 }

@@ -27,15 +27,32 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.instructions;
+package com.oracle.truffle.llvm.runtime.types;
 
-// see http://llvm.org/docs/LangRef.html#bitwise-binary-operations
-public enum LLVMLogicalInstructionType {
-    SHIFT_LEFT,
-    LOGICAL_SHIFT_RIGHT,
-    ARITHMETIC_SHIFT_RIGHT,
-    AND,
-    OR,
-    XOR;
+public final class Function {
 
+    private final String name;
+    private final FunctionType type;
+
+    public Function(FunctionType type, String name) {
+        this.type = type;
+        this.name = name;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    @Override
+    public String toString() {
+        return "FunctionDeclaration [name=" + getName() + ", types=" + type.toString() + "]";
+    }
+
+    public FunctionType getType() {
+        return type;
+    }
+
+    public boolean hasName() {
+        return name != null;
+    }
 }

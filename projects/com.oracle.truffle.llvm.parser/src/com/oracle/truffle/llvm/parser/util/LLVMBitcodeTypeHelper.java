@@ -31,11 +31,9 @@ package com.oracle.truffle.llvm.parser.util;
 
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
-import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
+import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionKind;
 import com.oracle.truffle.llvm.parser.model.enums.BinaryOperator;
 import com.oracle.truffle.llvm.parser.model.enums.CastOperator;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMBitcodeTypeHelper {
 
@@ -90,31 +88,23 @@ public final class LLVMBitcodeTypeHelper {
         }
     }
 
-    public static LLVMLogicalInstructionType toLogicalInstructionType(BinaryOperator operator) {
+    public static LLVMLogicalInstructionKind toLogicalInstructionType(BinaryOperator operator) {
         switch (operator) {
             case INT_SHIFT_LEFT:
-                return LLVMLogicalInstructionType.SHIFT_LEFT;
+                return LLVMLogicalInstructionKind.SHIFT_LEFT;
             case INT_LOGICAL_SHIFT_RIGHT:
-                return LLVMLogicalInstructionType.LOGICAL_SHIFT_RIGHT;
+                return LLVMLogicalInstructionKind.LOGICAL_SHIFT_RIGHT;
             case INT_ARITHMETIC_SHIFT_RIGHT:
-                return LLVMLogicalInstructionType.ARITHMETIC_SHIFT_RIGHT;
+                return LLVMLogicalInstructionKind.ARITHMETIC_SHIFT_RIGHT;
             case INT_AND:
-                return LLVMLogicalInstructionType.AND;
+                return LLVMLogicalInstructionKind.AND;
             case INT_OR:
-                return LLVMLogicalInstructionType.OR;
+                return LLVMLogicalInstructionKind.OR;
             case INT_XOR:
-                return LLVMLogicalInstructionType.XOR;
+                return LLVMLogicalInstructionKind.XOR;
             default:
                 return null;
         }
-    }
-
-    public static LLVMFunctionDescriptor.LLVMRuntimeType[] toRuntimeTypes(Type[] types) {
-        final LLVMFunctionDescriptor.LLVMRuntimeType[] llvmtypes = new LLVMFunctionDescriptor.LLVMRuntimeType[types.length];
-        for (int i = 0; i < types.length; i++) {
-            llvmtypes[i] = types[i].getType().getRuntimeType();
-        }
-        return llvmtypes;
     }
 
 }

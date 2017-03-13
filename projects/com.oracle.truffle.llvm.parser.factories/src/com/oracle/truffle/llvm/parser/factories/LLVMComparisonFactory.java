@@ -128,17 +128,18 @@ import com.oracle.truffle.llvm.nodes.op.compare.LLVMNeqNodeGen;
 import com.oracle.truffle.llvm.parser.instructions.LLVMFloatComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMIntegerComparisonType;
 import com.oracle.truffle.llvm.parser.model.enums.CompareOperator;
-import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
-import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
+import com.oracle.truffle.llvm.runtime.types.VectorType;
 
 final class LLVMComparisonFactory {
 
     private LLVMComparisonFactory() {
     }
 
-    static LLVMExpressionNode toCompareVectorNode(CompareOperator operator, Type type, LLVMExpressionNode lhs, LLVMExpressionNode rhs) {
-        final LLVMBaseType llvmtype = type.getLLVMBaseType();
+    static LLVMExpressionNode toCompareVectorNode(CompareOperator operator, Type llvmtype, LLVMExpressionNode lhs, LLVMExpressionNode rhs) {
 
         switch (operator) {
             case FP_FALSE:
@@ -215,15 +216,28 @@ final class LLVMComparisonFactory {
                 throw new RuntimeException("Missed a compare operator");
         }
 
-        if (LLVMTypeHelper.isVectorType(llvmtype)) {
+        if (llvmtype instanceof VectorType) {
             return LLVMComparisonFactory.createVectorComparison(lhs, rhs, llvmtype, comparison);
         } else {
             return LLVMComparisonFactory.createIntegerComparison(lhs, rhs, llvmtype, comparison);
         }
     }
 
-    private static LLVMExpressionNode createIntegerComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMIntegerComparisonType condition) {
-        switch (llvmType) {
+    private static LLVMExpressionNode createIntegerComparison(LLVMExpressionNode left, LLVMExpressionNode right, Type llvmType, LLVMIntegerComparisonType condition) {
+        if (llvmType instanceof PrimitiveType) {
+            return handlePrimitive(left, right, llvmType, condition);
+        } else if (llvmType instanceof VariableBitWidthType) {
+            return visitIVarComparison(left, right, condition);
+        } else if (Type.isFunctionOrFunctionPointer(llvmType)) {
+            return visitFunctionComparison(left, right, condition);
+        } else if (llvmType instanceof PointerType) {
+            return visitAddressComparison(left, right, condition);
+        }
+        throw new AssertionError(llvmType);
+    }
+
+    private static LLVMExpressionNode handlePrimitive(LLVMExpressionNode left, LLVMExpressionNode right, Type llvmType, LLVMIntegerComparisonType condition) throws AssertionError {
+        switch (((PrimitiveType) llvmType).getKind()) {
             case I1:
                 return visitI1Comparison(left, right, condition);
             case I8:
@@ -234,23 +248,16 @@ final class LLVMComparisonFactory {
                 return visitI32Comparison(left, right, condition);
             case I64:
                 return visitI64Comparison(left, right, condition);
-            case I_VAR_BITWIDTH:
-                return visitIVarComparison(left, right, condition);
-            case ADDRESS:
-                return visitAddressComparison(left, right, condition);
-            case FUNCTION_ADDRESS:
-                return visitFunctionComparison(left, right, condition);
             default:
                 throw new AssertionError(llvmType);
         }
     }
 
-    private static LLVMExpressionNode createVectorComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMIntegerComparisonType condition) {
-        switch (llvmType) {
-            case I32_VECTOR:
-                return visitI32VectorComparison(left, right, condition);
-            default:
-                throw new AssertionError(llvmType);
+    private static LLVMExpressionNode createVectorComparison(LLVMExpressionNode left, LLVMExpressionNode right, Type llvmType, LLVMIntegerComparisonType condition) {
+        if (llvmType instanceof VectorType && ((VectorType) llvmType).getElementType() == PrimitiveType.I32) {
+            return visitI32VectorComparison(left, right, condition);
+        } else {
+            throw new AssertionError(llvmType);
         }
     }
 
@@ -422,13 +429,13 @@ final class LLVMComparisonFactory {
         }
     }
 
-    private static LLVMExpressionNode createFloatComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMFloatComparisonType condition) {
+    private static LLVMExpressionNode createFloatComparison(LLVMExpressionNode left, LLVMExpressionNode right, Type llvmType, LLVMFloatComparisonType condition) {
         if (condition == LLVMFloatComparisonType.FALSE) {
             return new LLVMI1LiteralNode(false);
         } else if (condition == LLVMFloatComparisonType.TRUE) {
             return new LLVMI1LiteralNode(true);
         }
-        switch (llvmType) {
+        switch (((PrimitiveType) llvmType).getKind()) {
             case FLOAT:
                 return visitFloatComparison(left, right, condition);
             case DOUBLE:

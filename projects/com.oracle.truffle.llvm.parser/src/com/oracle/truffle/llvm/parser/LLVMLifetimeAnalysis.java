@@ -40,6 +40,7 @@ import java.util.Set;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
+import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.AllocateInstruction;
@@ -74,7 +75,6 @@ import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
 import com.oracle.truffle.llvm.parser.util.LLVMParserAsserts;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
-import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 
@@ -141,8 +141,10 @@ public final class LLVMLifetimeAnalysis {
             instruction.accept(new InstructionVisitor() {
 
                 private void resolve(Symbol symbol) {
-                    if (symbol.hasName() && !(symbol instanceof GlobalValueSymbol || symbol instanceof FunctionType)) {
-                        final FrameSlot frameSlot = frame.findFrameSlot(((ValueSymbol) symbol).getName());
+                    if (symbol.hasName() && !(symbol instanceof GlobalValueSymbol || symbol instanceof FunctionDefinition || symbol instanceof FunctionDeclaration)) {
+                        String name = ((ValueSymbol) symbol).getName();
+                        assert name != null;
+                        final FrameSlot frameSlot = frame.findFrameSlot(name);
                         if (frameSlot == null) {
                             throw new AssertionError("No Frameslot for ValueSymbol: " + symbol);
                         } else {
@@ -391,8 +393,10 @@ public final class LLVMLifetimeAnalysis {
                     if (i == bb.getInstructionCount() - 1) {
                         for (final LLVMPhiManager.Phi phi : bbPhis) {
                             final Symbol val = phi.getValue();
-                            if (val.hasName() && !(val instanceof GlobalValueSymbol || val instanceof FunctionType)) {
-                                uses.add(getFrameSlot(((ValueSymbol) val).getName()));
+                            if (val.hasName() && !(val instanceof GlobalValueSymbol || val instanceof FunctionDefinition || val instanceof FunctionDeclaration)) {
+                                String name = ((ValueSymbol) val).getName();
+                                assert name != null;
+                                uses.add(getFrameSlot(name));
                             }
                         }
                     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,39 +27,8 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.types;
+package com.oracle.truffle.llvm.runtime.types.util;
 
-public class LLVMType {
-    private final LLVMBaseType type;
-    private final LLVMType pointee;
+public class LLVMTypeSizeUtils {
 
-    public LLVMType(LLVMBaseType type) {
-        this(type, null);
-    }
-
-    LLVMType(LLVMBaseType type, LLVMType pointee) {
-        this.type = type;
-        this.pointee = pointee;
-    }
-
-    public boolean isPointer() {
-        return this.pointee != null;
-    }
-
-    public LLVMBaseType getType() {
-        return type;
-    }
-
-    public LLVMType getPointee() {
-        return pointee;
-    }
-
-    @Override
-    public String toString() {
-        if (isPointer()) {
-            return String.format("&%s", pointee);
-        } else {
-            return type.toString();
-        }
-    }
 }

@@ -32,13 +32,13 @@ package com.oracle.truffle.llvm.parser.listeners.metadata;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.truffle.llvm.parser.records.DwTagRecord;
-import com.oracle.truffle.llvm.parser.records.MetadataRecord;
 import com.oracle.truffle.llvm.parser.listeners.Types;
 import com.oracle.truffle.llvm.parser.model.generators.SymbolGenerator;
+import com.oracle.truffle.llvm.parser.records.DwTagRecord;
+import com.oracle.truffle.llvm.parser.records.MetadataRecord;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.types.DwLangNameRecord;
-import com.oracle.truffle.llvm.runtime.types.IntegerConstantType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBasicType;
 import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBlock;
@@ -93,7 +93,7 @@ public final class MetadataVersion {
 
             if (parsedArgs.peek() instanceof MetadataConstantType) {
                 createDwNode(parsedArgs);
-            } else if (parsedArgs.peek() instanceof IntegerConstantType) {
+            } else if (parsedArgs.peek() instanceof PrimitiveType && ((PrimitiveType) parsedArgs.peek()).isConstant() && Type.isIntegerType(((parsedArgs.peek())))) {
                 /*
                  * http://llvm.org/releases/3.2/docs/SourceLevelDebugging.html#LLVMDebugVersion
                  *
@@ -201,15 +201,15 @@ public final class MetadataVersion {
         }
 
         private static boolean asInt1(Type t) {
-            return ((IntegerConstantType) t).getValue() == 1;
+            return (int) ((PrimitiveType) t).getConstant() == 1;
         }
 
         private static int asInt32(Type t) {
-            return (int) ((IntegerConstantType) t).getValue();
+            return ((Number) ((PrimitiveType) t).getConstant()).intValue();
         }
 
         private static long asInt64(Type t) {
-            return ((IntegerConstantType) t).getValue();
+            return ((Number) ((PrimitiveType) t).getConstant()).longValue();
         }
 
         private void createDwNode(MetadataArgumentParser args) {

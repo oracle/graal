@@ -42,11 +42,10 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 public class LLVMContext extends ExecutionContext {
 
@@ -203,8 +202,8 @@ public class LLVMContext extends ExecutionContext {
         haveLoadedDynamicBitcodeLibraries = true;
     }
 
-    public static String getNativeSignature(LLVMRuntimeType retType, Type[] args, int skipArguments) {
-        return NativeLookup.prepareSignature(retType, args, skipArguments);
+    public static String getNativeSignature(FunctionType type, int skipArguments) {
+        return NativeLookup.prepareSignature(type, skipArguments);
     }
 
     public TruffleObject resolveAsNativeFunction(LLVMFunctionDescriptor descriptor) {

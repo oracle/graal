@@ -34,8 +34,8 @@ import java.util.List;
 
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public final class UnreachableInstruction extends TerminatingInstruction {
 
@@ -44,7 +44,7 @@ public final class UnreachableInstruction extends TerminatingInstruction {
 
     @Override
     public Type getType() {
-        return MetaType.VOID;
+        return VoidType.INSTANCE;
     }
 
     @Override

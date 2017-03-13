@@ -49,7 +49,10 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToIntN
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToLongNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToShortNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToTruffleObjectNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public abstract class ToLLVMNode extends Node {
 
@@ -560,9 +563,23 @@ public abstract class ToLLVMNode extends Node {
         }
     }
 
-    public static Class<?> convert(LLVMRuntimeType type) {
+    public static Class<?> convert(Type type) {
         Class<?> t;
-        switch (type) {
+        if (type instanceof PrimitiveType) {
+            t = getClassForPrimitive(type);
+        } else if (type instanceof PointerType) {
+            t = TruffleObject.class;
+        } else if (type instanceof VoidType) {
+            t = void.class;
+        } else {
+            throw UnsupportedTypeException.raise(new Object[]{type});
+        }
+        return t;
+    }
+
+    private static Class<?> getClassForPrimitive(Type type) {
+        Class<?> t;
+        switch (((PrimitiveType) type).getKind()) {
             case I1:
                 t = boolean.class;
                 break;
@@ -583,21 +600,6 @@ public abstract class ToLLVMNode extends Node {
                 break;
             case DOUBLE:
                 t = double.class;
-                break;
-            case I1_POINTER:
-            case I8_POINTER:
-            case I16_POINTER:
-            case I32_POINTER:
-            case I64_POINTER:
-            case HALF_POINTER:
-            case FLOAT_POINTER:
-            case DOUBLE_POINTER:
-            case ADDRESS:
-            case FUNCTION_ADDRESS:
-                t = TruffleObject.class;
-                break;
-            case VOID:
-                t = void.class;
                 break;
             default:
                 throw UnsupportedTypeException.raise(new Object[]{type});

@@ -29,13 +29,13 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public abstract class VoidInstruction extends Instruction {
 
     @Override
     public Type getType() {
-        return MetaType.VOID;
+        return VoidType.INSTANCE;
     }
 }

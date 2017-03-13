@@ -32,20 +32,21 @@ package com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint;
 import java.nio.ByteBuffer;
 
 import com.oracle.truffle.llvm.parser.model.symbols.constants.AbstractConstant;
-import com.oracle.truffle.llvm.runtime.types.FloatingPointType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public abstract class FloatingPointConstant extends AbstractConstant {
 
-    private static final int X86_FP80_BYTES = FloatingPointType.X86_FP80.width() / Byte.SIZE;
+    private static final int X86_FP80_BYTES = PrimitiveType.X86_FP80.getBitSize() / Byte.SIZE;
 
-    FloatingPointConstant(FloatingPointType type) {
+    FloatingPointConstant(Type type) {
         super(type);
     }
 
     public abstract String getStringValue();
 
-    public static FloatingPointConstant create(FloatingPointType type, long[] bits) {
-        switch (type) {
+    public static FloatingPointConstant create(Type type, long[] bits) {
+        switch (((PrimitiveType) type).getKind()) {
             case FLOAT:
                 return new FloatConstant(Float.intBitsToFloat((int) bits[0]));
 

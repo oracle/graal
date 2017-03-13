@@ -40,62 +40,48 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
+@NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+@NodeFields({@NodeField(type = int.class, name = "typeWidth"), @NodeField(type = Type.class, name = "targetType")})
 public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    @NodeFields({@NodeField(type = int.class, name = "typeWidth"), @NodeField(type = Type.class, name = "targetType")})
-    public abstract static class LLVMAddressI32GetElementPtrNode extends LLVMAddressGetElementPtrNode {
+    public abstract int getTypeWidth();
 
-        public abstract int getTypeWidth();
+    public abstract Type getTargetType();
 
-        public abstract Type getTargetType();
-
-        @Specialization
-        public LLVMAddress executePointee(LLVMAddress addr, int val) {
-            int incr = getTypeWidth() * val;
-            return addr.increment(incr, getTargetType());
-        }
-
-        @Specialization
-        public LLVMTruffleObject executeTruffleObject(LLVMTruffleObject addr, int val) {
-            int incr = getTypeWidth() * val;
-            return new LLVMTruffleObject(addr.getObject(), addr.getOffset() + incr, getTargetType());
-        }
-
-        @Specialization
-        public LLVMTruffleObject executeTruffleObject(TruffleObject addr, int val) {
-            int incr = getTypeWidth() * val;
-            return new LLVMTruffleObject(addr, incr, getTargetType());
-        }
-
+    @Specialization
+    public LLVMAddress executePointee(LLVMAddress addr, int val) {
+        int incr = getTypeWidth() * val;
+        return addr.increment(incr, getTargetType());
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    @NodeFields({@NodeField(type = int.class, name = "typeWidth"), @NodeField(type = Type.class, name = "targetType")})
-    public abstract static class LLVMAddressI64GetElementPtrNode extends LLVMAddressGetElementPtrNode {
+    @Specialization
+    public LLVMTruffleObject executeTruffleObject(LLVMTruffleObject addr, int val) {
+        int incr = getTypeWidth() * val;
+        return new LLVMTruffleObject(addr.getObject(), addr.getOffset() + incr, getTargetType());
+    }
 
-        public abstract int getTypeWidth();
+    @Specialization
+    public LLVMTruffleObject executeTruffleObject(TruffleObject addr, int val) {
+        int incr = getTypeWidth() * val;
+        return new LLVMTruffleObject(addr, incr, getTargetType());
+    }
 
-        public abstract Type getTargetType();
+    @Specialization
+    public LLVMAddress executePointee(LLVMAddress addr, long val) {
+        long incr = getTypeWidth() * val;
+        return addr.increment(incr, getTargetType());
+    }
 
-        @Specialization
-        public LLVMAddress executePointee(LLVMAddress addr, long val) {
-            long incr = getTypeWidth() * val;
-            return addr.increment(incr, getTargetType());
-        }
+    @Specialization
+    public LLVMTruffleObject executeTruffleObject(LLVMTruffleObject addr, long val) {
+        long incr = getTypeWidth() * val;
+        return new LLVMTruffleObject(addr.getObject(), addr.getOffset() + incr, getTargetType());
+    }
 
-        @Specialization
-        public LLVMTruffleObject executeTruffleObject(LLVMTruffleObject addr, long val) {
-            long incr = getTypeWidth() * val;
-            return new LLVMTruffleObject(addr.getObject(), addr.getOffset() + incr, getTargetType());
-        }
-
-        @Specialization
-        public LLVMTruffleObject executeTruffleObject(TruffleObject addr, long val) {
-            long incr = getTypeWidth() * val;
-            return new LLVMTruffleObject(addr, incr, getTargetType());
-        }
-
+    @Specialization
+    public LLVMTruffleObject executeTruffleObject(TruffleObject addr, long val) {
+        long incr = getTypeWidth() * val;
+        return new LLVMTruffleObject(addr, incr, getTargetType());
     }
 
 }

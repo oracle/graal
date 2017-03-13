@@ -33,8 +33,8 @@ import com.oracle.truffle.llvm.parser.model.enums.AtomicOrdering;
 import com.oracle.truffle.llvm.parser.model.enums.SynchronizationScope;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 public final class StoreInstruction extends Instruction {
@@ -105,7 +105,7 @@ public final class StoreInstruction extends Instruction {
 
     @Override
     public Type getType() {
-        return MetaType.VOID;
+        return VoidType.INSTANCE;
     }
 
     @Override

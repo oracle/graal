@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.types.metadata;
 
+import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
@@ -42,11 +43,6 @@ public class MetadataConstantPointerType implements Type {
     @Override
     public void accept(TypeVisitor visitor) {
         visitor.visit(this);
-    }
-
-    @Override
-    public int getBits() {
-        return 0;
     }
 
     public int getSymbolIndex() {
@@ -68,5 +64,20 @@ public class MetadataConstantPointerType implements Type {
     @Override
     public String toString() {
         return "!!" + symbolIndex;
+    }
+
+    @Override
+    public int getBitSize() {
+        return 0;
+    }
+
+    @Override
+    public int getAlignment(DataSpecConverter targetDataLayout) {
+        throw new IllegalStateException();
+    }
+
+    @Override
+    public int getSize(DataSpecConverter targetDataLayout) {
+        throw new IllegalStateException();
     }
 }

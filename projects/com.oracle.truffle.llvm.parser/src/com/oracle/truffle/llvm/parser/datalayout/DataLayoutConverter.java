@@ -34,8 +34,11 @@ import java.util.List;
 
 import com.oracle.truffle.llvm.parser.datalayout.DataLayoutParser.DataTypeSpecification;
 import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
-import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 
 public final class DataLayoutConverter {
 
@@ -54,14 +57,14 @@ public final class DataLayoutConverter {
 
         @Override
         public int getBitAlignment(Type baseType) {
-            if (baseType.getLLVMBaseType() == LLVMBaseType.I_VAR_BITWIDTH) {
+            if (baseType instanceof VariableBitWidthType) {
                 /*
                  * Handling of integer datatypes when the exact match not found
                  * http://releases.llvm.org/3.9.0/docs/LangRef.html#data-layout
                  */
                 DataTypeSpecification integerLayout = dataLayout.stream().filter(d -> d.getType() == DataLayoutType.INTEGER_WIDTHS).findFirst().orElseThrow(IllegalStateException::new);
                 int minPossibleSize = Arrays.stream(integerLayout.getValues()).max().orElseThrow(IllegalStateException::new);
-                int size = baseType.getBits();
+                int size = ((VariableBitWidthType) baseType).getBitSize();
                 for (int value : integerLayout.getValues()) {
                     if (size < value && minPossibleSize > value) {
                         minPossibleSize = value;
@@ -69,40 +72,42 @@ public final class DataLayoutConverter {
                 }
                 return minPossibleSize;
             } else {
-                return getDataTypeSpecification(baseType.getLLVMBaseType()).getValues()[1];
+                return getDataTypeSpecification(baseType).getValues()[1];
             }
         }
 
-        private DataTypeSpecification getDataTypeSpecification(LLVMBaseType baseType) {
-            // Checkstyle: stop magic number name check
-            switch (baseType) {
-                case I1:
-                    return locateDataTypeSpecification(DataLayoutType.INTEGER, 8); // 1 is rounded
-                                                                                   // up to 8
-                case I8:
-                    return locateDataTypeSpecification(DataLayoutType.INTEGER, 8);
-                case I16:
-                    return locateDataTypeSpecification(DataLayoutType.INTEGER, 16);
-                case I32:
-                    return locateDataTypeSpecification(DataLayoutType.INTEGER, 32);
-                case I64:
-                    return locateDataTypeSpecification(DataLayoutType.INTEGER, 64);
-                case HALF:
-                    return locateDataTypeSpecification(DataLayoutType.FLOAT, 16);
-                case FLOAT:
-                    return locateDataTypeSpecification(DataLayoutType.FLOAT, 32);
-                case DOUBLE:
-                    return locateDataTypeSpecification(DataLayoutType.FLOAT, 64);
-                case X86_FP80:
-                    return locateDataTypeSpecification(DataLayoutType.FLOAT, 80);
-                case ADDRESS:
-                    return locateDataTypeSpecification(DataLayoutType.POINTER);
-                case FUNCTION_ADDRESS:
-                    return locateDataTypeSpecification(DataLayoutType.POINTER);
-                default:
-                    throw new AssertionError(baseType);
+        private DataTypeSpecification getDataTypeSpecification(Type baseType) {
+            if (baseType instanceof PointerType) {
+                return locateDataTypeSpecification(DataLayoutType.POINTER);
+            } else if (baseType instanceof FunctionType) {
+                return locateDataTypeSpecification(DataLayoutType.POINTER);
+            } else if (baseType instanceof PrimitiveType) {
+                PrimitiveType primitiveType = (PrimitiveType) baseType;
+                switch (primitiveType.getKind()) {
+                    case I1:
+                        return locateDataTypeSpecification(DataLayoutType.INTEGER, 8); // 1 is
+                                                                                       // rounded
+                                                                                       // up to
+                                                                                       // 8
+                    case I8:
+                        return locateDataTypeSpecification(DataLayoutType.INTEGER, 8);
+                    case I16:
+                        return locateDataTypeSpecification(DataLayoutType.INTEGER, 16);
+                    case I32:
+                        return locateDataTypeSpecification(DataLayoutType.INTEGER, 32);
+                    case I64:
+                        return locateDataTypeSpecification(DataLayoutType.INTEGER, 64);
+                    case HALF:
+                        return locateDataTypeSpecification(DataLayoutType.FLOAT, 16);
+                    case FLOAT:
+                        return locateDataTypeSpecification(DataLayoutType.FLOAT, 32);
+                    case DOUBLE:
+                        return locateDataTypeSpecification(DataLayoutType.FLOAT, 64);
+                    case X86_FP80:
+                        return locateDataTypeSpecification(DataLayoutType.FLOAT, 80);
+                }
             }
-            // Checkstyle: resume magic number name check
+            throw new AssertionError(baseType);
         }
 
         private DataTypeSpecification locateDataTypeSpecification(DataLayoutType dataLayoutType) {

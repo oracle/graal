@@ -29,13 +29,13 @@
  */
 package com.oracle.truffle.llvm.parser.scanner;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Base64;
+
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 
 final class BitStream {
 

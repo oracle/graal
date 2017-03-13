@@ -35,24 +35,29 @@ import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMFl
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI32ProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI64ProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI8ProfiledValueNodeGen;
-import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 final class LLVMValueProfileFactory {
 
-    static LLVMExpressionNode createValueProfiledNode(LLVMExpressionNode argNode, LLVMBaseType paramType) {
-        switch (paramType) {
-            case I8:
-                return LLVMI8ProfiledValueNodeGen.create(argNode);
-            case I32:
-                return LLVMI32ProfiledValueNodeGen.create(argNode);
-            case I64:
-                return LLVMI64ProfiledValueNodeGen.create(argNode);
-            case FLOAT:
-                return LLVMFloatProfiledValueNodeGen.create(argNode);
-            case DOUBLE:
-                return LLVMDoubleProfiledValueNodeGen.create(argNode);
-            default:
-                return argNode;
+    static LLVMExpressionNode createValueProfiledNode(LLVMExpressionNode argNode, Type paramType) {
+        if (paramType instanceof PrimitiveType) {
+            switch (((PrimitiveType) paramType).getKind()) {
+                case I8:
+                    return LLVMI8ProfiledValueNodeGen.create(argNode);
+                case I32:
+                    return LLVMI32ProfiledValueNodeGen.create(argNode);
+                case I64:
+                    return LLVMI64ProfiledValueNodeGen.create(argNode);
+                case FLOAT:
+                    return LLVMFloatProfiledValueNodeGen.create(argNode);
+                case DOUBLE:
+                    return LLVMDoubleProfiledValueNodeGen.create(argNode);
+                default:
+                    return argNode;
+            }
+        } else {
+            return argNode;
         }
     }
 

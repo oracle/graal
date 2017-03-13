@@ -30,14 +30,14 @@
 package com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint;
 
 import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
-import com.oracle.truffle.llvm.runtime.types.FloatingPointType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 public final class DoubleConstant extends FloatingPointConstant {
 
     private final double value;
 
     DoubleConstant(double value) {
-        super(FloatingPointType.DOUBLE);
+        super(PrimitiveType.DOUBLE);
         this.value = value;
     }
 

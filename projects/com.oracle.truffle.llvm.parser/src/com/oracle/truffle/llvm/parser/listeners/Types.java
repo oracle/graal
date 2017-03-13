@@ -33,18 +33,19 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 
-import com.oracle.truffle.llvm.parser.records.TypesRecord;
 import com.oracle.truffle.llvm.parser.model.generators.ModuleGenerator;
 import com.oracle.truffle.llvm.parser.records.Records;
+import com.oracle.truffle.llvm.parser.records.TypesRecord;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
-import com.oracle.truffle.llvm.runtime.types.FloatingPointType;
+import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.IntegerType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class Types implements ParserListener, Iterable<Type> {
@@ -85,15 +86,15 @@ public final class Types implements ParserListener, Iterable<Type> {
                 return;
 
             case VOID:
-                type = MetaType.VOID;
+                type = VoidType.INSTANCE;
                 break;
 
             case FLOAT:
-                type = FloatingPointType.FLOAT;
+                type = PrimitiveType.FLOAT;
                 break;
 
             case DOUBLE:
-                type = FloatingPointType.DOUBLE;
+                type = PrimitiveType.DOUBLE;
                 break;
 
             case LABEL:
@@ -105,7 +106,7 @@ public final class Types implements ParserListener, Iterable<Type> {
                 break;
 
             case INTEGER:
-                type = new IntegerType((int) args[0]);
+                type = Type.getIntegerType((int) args[0]);
                 break;
 
             case POINTER: {
@@ -128,7 +129,7 @@ public final class Types implements ParserListener, Iterable<Type> {
                 break;
             }
             case HALF:
-                type = FloatingPointType.HALF;
+                type = PrimitiveType.HALF;
                 break;
 
             case ARRAY:
@@ -136,19 +137,19 @@ public final class Types implements ParserListener, Iterable<Type> {
                 break;
 
             case VECTOR:
-                type = new VectorType(get(args[1]), (int) args[0]);
+                type = new VectorType((PrimitiveType) get(args[1]), (int) args[0]);
                 break;
 
             case X86_FP80:
-                type = FloatingPointType.X86_FP80;
+                type = PrimitiveType.X86_FP80;
                 break;
 
             case FP128:
-                type = FloatingPointType.FP128;
+                type = PrimitiveType.F128;
                 break;
 
             case PPC_FP128:
-                type = FloatingPointType.PPC_FP128;
+                type = PrimitiveType.PPC_FP128;
                 break;
 
             case METADATA:
@@ -185,7 +186,7 @@ public final class Types implements ParserListener, Iterable<Type> {
                 break;
             }
             case FUNCTION:
-                type = new FunctionType(get(args[1]), toTypes(this, args, 2, args.length), args[0] != 0);
+                type = new FunctionType(get(args[1]), toTypes(this, args, 2, args.length), false);
                 break;
 
             case TOKEN:
@@ -221,10 +222,29 @@ public final class Types implements ParserListener, Iterable<Type> {
         @Override
         public void accept(TypeVisitor visitor) {
             // This is a private type only required for resolving
+            throw new IllegalStateException();
         }
 
         public int getIndex() {
             return idx;
+        }
+
+        @Override
+        public int getBitSize() {
+            // This is a private type only required for resolving
+            throw new IllegalStateException();
+        }
+
+        @Override
+        public int getAlignment(DataSpecConverter targetDataLayout) {
+            // This is a private type only required for resolving
+            throw new IllegalStateException();
+        }
+
+        @Override
+        public int getSize(DataSpecConverter targetDataLayout) {
+            // This is a private type only required for resolving
+            throw new IllegalStateException();
         }
     }
 
@@ -257,6 +277,24 @@ public final class Types implements ParserListener, Iterable<Type> {
 
         public String getName() {
             return name;
+        }
+
+        @Override
+        public int getBitSize() {
+            // This is a private type only required for resolving
+            throw new IllegalStateException();
+        }
+
+        @Override
+        public int getAlignment(DataSpecConverter targetDataLayout) {
+            // This is a private type only required for resolving
+            throw new IllegalStateException();
+        }
+
+        @Override
+        public int getSize(DataSpecConverter targetDataLayout) {
+            // This is a private type only required for resolving
+            throw new IllegalStateException();
         }
     }
 

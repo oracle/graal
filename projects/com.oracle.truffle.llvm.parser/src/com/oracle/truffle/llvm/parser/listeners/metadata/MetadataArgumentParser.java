@@ -33,11 +33,9 @@ import java.util.Iterator;
 import java.util.List;
 
 import com.oracle.truffle.llvm.parser.listeners.Types;
-import com.oracle.truffle.llvm.runtime.types.BigIntegerConstantType;
-import com.oracle.truffle.llvm.runtime.types.IntegerConstantType;
-import com.oracle.truffle.llvm.runtime.types.IntegerType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.metadata.MetadataConstantPointerType;
 import com.oracle.truffle.llvm.runtime.types.metadata.MetadataConstantType;
@@ -83,11 +81,9 @@ class MetadataArgumentParser implements Iterator<Type> {
     static Type typeValToType(Types types, List<Type> symbols, long typeId, long val) {
         Type typeOfArgument = types.get(typeId);
 
-        if (typeOfArgument instanceof IntegerConstantType) {
+        if (typeOfArgument instanceof PrimitiveType && ((PrimitiveType) typeOfArgument).isConstant()) {
             return symbols.get((int) val);
-        } else if (typeOfArgument instanceof BigIntegerConstantType) {
-            return symbols.get((int) val);
-        } else if (typeOfArgument instanceof IntegerType) {
+        } else if (Type.isIntegerType(typeOfArgument)) {
             return symbols.get((int) val);
         } else if (typeOfArgument instanceof MetaType) {
             return new MetadataConstantType(val);

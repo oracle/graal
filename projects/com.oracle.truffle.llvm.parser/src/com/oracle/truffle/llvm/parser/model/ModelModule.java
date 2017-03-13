@@ -57,9 +57,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.BigInteger
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
-import com.oracle.truffle.llvm.runtime.types.FloatingPointType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.IntegerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBlock;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
@@ -140,7 +138,7 @@ public final class ModelModule implements ModuleGenerator {
 
     @Override
     public void createFloatingPoint(Type type, long[] value) {
-        symbols.addSymbol(FloatingPointConstant.create((FloatingPointType) type, value));
+        symbols.addSymbol(FloatingPointConstant.create(type, value));
     }
 
     @Override
@@ -170,12 +168,12 @@ public final class ModelModule implements ModuleGenerator {
 
     @Override
     public void createInteger(Type type, long value) {
-        symbols.addSymbol(new IntegerConstant((IntegerType) type, value));
+        symbols.addSymbol(new IntegerConstant(type, value));
     }
 
     @Override
     public void createInteger(Type type, BigInteger value) {
-        symbols.addSymbol(new BigIntegerConstant((IntegerType) type, value));
+        symbols.addSymbol(new BigIntegerConstant(type, value));
     }
 
     @Override

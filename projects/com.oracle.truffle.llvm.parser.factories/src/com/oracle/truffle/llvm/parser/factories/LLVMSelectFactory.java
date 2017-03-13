@@ -41,12 +41,27 @@ import com.oracle.truffle.llvm.nodes.others.LLVMSelectNodeFactory.LLVMI32SelectN
 import com.oracle.truffle.llvm.nodes.others.LLVMSelectNodeFactory.LLVMI64SelectNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMSelectNodeFactory.LLVMI8SelectNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMVectorSelectNodeFactory.LLVMI32VectorSelectNodeGen;
-import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VectorType;
 
 final class LLVMSelectFactory {
 
-    static LLVMExpressionNode createSelect(LLVMBaseType llvmType, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue) {
-        switch (llvmType) {
+    static LLVMExpressionNode createSelect(Type llvmType, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue) {
+        if (Type.isFunctionOrFunctionPointer(llvmType)) {
+            return LLVMFunctionSelectNodeGen.create(condition, trueValue, falseValue);
+        } else if (llvmType instanceof PointerType) {
+            return LLVMAddressSelectNodeGen.create(condition, trueValue, falseValue);
+        } else if (llvmType instanceof PrimitiveType) {
+            return handlePrimitive(llvmType, condition, trueValue, falseValue);
+        } else {
+            throw new AssertionError(llvmType);
+        }
+    }
+
+    private static LLVMExpressionNode handlePrimitive(Type llvmType, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue) throws AssertionError {
+        switch (((PrimitiveType) llvmType).getKind()) {
             case I1:
                 return LLVMI1SelectNodeGen.create(condition, trueValue, falseValue);
             case I8:
@@ -63,21 +78,16 @@ final class LLVMSelectFactory {
                 return LLVMDoubleSelectNodeGen.create(condition, trueValue, falseValue);
             case X86_FP80:
                 return LLVM80BitFloatSelectNodeGen.create(condition, trueValue, falseValue);
-            case ADDRESS:
-                return LLVMAddressSelectNodeGen.create(condition, trueValue, falseValue);
-            case FUNCTION_ADDRESS:
-                return LLVMFunctionSelectNodeGen.create(condition, trueValue, falseValue);
             default:
                 throw new AssertionError(llvmType);
         }
     }
 
-    static LLVMExpressionNode createSelectVector(LLVMBaseType llvmType, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue) {
-        switch (llvmType) {
-            case I32_VECTOR:
-                return LLVMI32VectorSelectNodeGen.create(condition, trueValue, falseValue);
-            default:
-                throw new AssertionError(llvmType);
+    static LLVMExpressionNode createSelectVector(Type llvmType, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue) {
+        if (llvmType instanceof VectorType && ((VectorType) llvmType).getElementType() == PrimitiveType.I32) {
+            return LLVMI32VectorSelectNodeGen.create(condition, trueValue, falseValue);
+        } else {
+            throw new AssertionError(llvmType);
         }
     }
 

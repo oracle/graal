@@ -33,7 +33,6 @@ import com.oracle.truffle.llvm.parser.model.enums.BinaryOperator;
 import com.oracle.truffle.llvm.parser.model.enums.Flag;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.runtime.types.FloatingPointType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
@@ -86,7 +85,7 @@ public final class BinaryOperationInstruction extends ValueInstruction {
     }
 
     public static BinaryOperationInstruction fromSymbols(Symbols symbols, Type type, int opcode, int flags, int lhs, int rhs) {
-        final boolean isFloatingPoint = type instanceof FloatingPointType || (type instanceof VectorType && ((VectorType) type).getElementType() instanceof FloatingPointType);
+        final boolean isFloatingPoint = Type.isFloatingpointType(type) || (type instanceof VectorType && Type.isFloatingpointType(((VectorType) type).getElementType()));
         final BinaryOperator operator = BinaryOperator.decode(opcode, isFloatingPoint);
         final BinaryOperationInstruction inst = new BinaryOperationInstruction(type, operator, Flag.decode(operator, flags));
         inst.lhs = symbols.getSymbol(lhs, inst);

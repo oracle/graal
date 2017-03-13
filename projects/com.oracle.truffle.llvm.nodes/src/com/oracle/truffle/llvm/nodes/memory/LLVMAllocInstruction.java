@@ -40,7 +40,6 @@ import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMFrameUtil;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeFields({@NodeField(type = int.class, name = "size"), @NodeField(type = int.class, name = "alignment"), @NodeField(type = LLVMContext.class, name = "context"),
@@ -58,10 +57,10 @@ public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
     abstract Type getSymbolType();
 
     public abstract static class LLVMAllocaInstruction extends LLVMAllocInstruction {
-        @CompilationFinal(dimensions = 1) private LLVMBaseType[] types = null;
+        @CompilationFinal(dimensions = 1) private Type[] types = null;
         @CompilationFinal(dimensions = 1) private int[] offsets = null;
 
-        public void setTypes(LLVMBaseType[] types) {
+        public void setTypes(Type[] types) {
             this.types = types;
         }
 
@@ -69,7 +68,7 @@ public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
             this.offsets = offsets;
         }
 
-        public LLVMBaseType getType(int i) {
+        public Type getType(int i) {
             return types[i];
         }
 

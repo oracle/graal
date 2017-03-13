@@ -107,14 +107,14 @@ import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64XorNodeFactory.LLVMAMD64XorbNo
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64XorNodeFactory.LLVMAMD64XorlNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64XorNodeFactory.LLVMAMD64XorqNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64XorNodeFactory.LLVMAMD64XorwNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64ToRegisterNodeFactory.LLVMI16ToR64NodeGen;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64ToRegisterNodeFactory.LLVMI32ToR64NodeGen;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64ToRegisterNodeFactory.LLVMI8ToR64NodeGen;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI16RegisterNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI32RegisterNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI64RegisterNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStructWriteNode;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64ToRegisterNodeFactory.LLVMI16ToR64NodeGen;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64ToRegisterNodeFactory.LLVMI32ToR64NodeGen;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64ToRegisterNodeFactory.LLVMI8ToR64NodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI16NodeFactory.LLVMI64ToI16NodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI32NodeFactory.LLVMI64ToI32NodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI64NodeFactory.LLVMAnyToI64NodeGen;
@@ -148,11 +148,16 @@ import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI32NodeG
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI64NodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI8NodeGen;
 import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode;
-import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMI8StructWriteNode;
-import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMI16StructWriteNode;
 import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMI32StructWriteNode;
 import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMI64StructWriteNode;
+import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMI8StructWriteNode;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
+import com.oracle.truffle.llvm.runtime.types.StructureType;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 class AsmFactory {
     private static final int REG_START_INDEX = 1;
@@ -165,10 +170,10 @@ class AsmFactory {
     private LLVMExpressionNode result;
     private List<Argument> argInfo;
     private String asmFlags;
-    private LLVMBaseType[] argTypes;
-    private LLVMBaseType retType;
+    private Type[] argTypes;
+    private Type retType;
 
-    AsmFactory(LLVMExpressionNode[] args, LLVMBaseType[] argTypes, String asmFlags, LLVMBaseType retType) {
+    AsmFactory(LLVMExpressionNode[] args, Type[] argTypes, String asmFlags, Type retType) {
         this.args = args;
         this.argTypes = argTypes;
         this.asmFlags = asmFlags;
@@ -184,14 +189,14 @@ class AsmFactory {
         private final boolean input;
         private final boolean output;
         private final boolean memory;
-        private final LLVMBaseType type;
+        private final Type type;
         private final int index;
         private final int inIndex;
         private final int outIndex;
         private final String source;
         private final String register;
 
-        Argument(boolean input, boolean output, boolean memory, LLVMBaseType type, int index, int inIndex, int outIndex, String source, String register) {
+        Argument(boolean input, boolean output, boolean memory, Type type, int index, int inIndex, int outIndex, String source, String register) {
             this.input = input;
             this.output = output;
             this.memory = memory;
@@ -215,7 +220,7 @@ class AsmFactory {
             return memory;
         }
 
-        public LLVMBaseType getType() {
+        public Type getType() {
             return type;
         }
 
@@ -263,7 +268,7 @@ class AsmFactory {
 
         int index = REG_START_INDEX;
         LLVMAllocaInstruction alloca = null;
-        if (retType == LLVMBaseType.STRUCT) { // multiple out values
+        if (retType instanceof StructureType) { // multiple out values
             assert args[1] instanceof LLVMAllocaInstruction;
             alloca = (LLVMAllocaInstruction) args[1];
             index++;
@@ -316,12 +321,12 @@ class AsmFactory {
 
             int idIn = index;
             int idOut = outIndex;
-            LLVMBaseType type;
+            Type type;
             if (isInput) {
                 type = argTypes[index++];
-            } else if (retType == LLVMBaseType.STRUCT) {
+            } else if (retType instanceof StructureType) {
                 if (isMemory) {
-                    type = LLVMBaseType.ADDRESS;
+                    type = new PointerType(retType);
                     idOut = index++;
                 } else {
                     type = alloca.getType(outIndex++);
@@ -337,7 +342,7 @@ class AsmFactory {
             argInfo.add(new Argument(isInput, isOutput, isMemory, type, argInfo.size(), idIn, idOut, source, registerName));
         }
         assert index == argTypes.length;
-        assert retType == LLVMBaseType.STRUCT ? outIndex == alloca.getOffsets().length : outIndex == 0;
+        assert retType instanceof StructureType ? outIndex == alloca.getOffsets().length : outIndex == 0;
     }
 
     LLVMInlineAssemblyRootNode finishInline() {
@@ -378,28 +383,28 @@ class AsmFactory {
         LLVMExpressionNode src;
         LLVMExpressionNode out;
         AsmOperand dst = operand;
-        LLVMBaseType dstType;
+        Type dstType;
         assert operation.length() > 0;
         switch (operation.charAt(operation.length() - 1)) {
             case 'b':
-                src = getOperandLoad(LLVMBaseType.I8, operand);
-                dstType = LLVMBaseType.I8;
+                src = getOperandLoad(PrimitiveType.I8, operand);
+                dstType = PrimitiveType.I8;
                 break;
             case 'w':
-                src = getOperandLoad(LLVMBaseType.I16, operand);
-                dstType = LLVMBaseType.I16;
+                src = getOperandLoad(PrimitiveType.I16, operand);
+                dstType = PrimitiveType.I16;
                 break;
             case 'l':
-                src = getOperandLoad(LLVMBaseType.I32, operand);
-                dstType = LLVMBaseType.I32;
+                src = getOperandLoad(PrimitiveType.I32, operand);
+                dstType = PrimitiveType.I32;
                 break;
             case 'q':
-                src = getOperandLoad(LLVMBaseType.I64, operand);
-                dstType = LLVMBaseType.I64;
+                src = getOperandLoad(PrimitiveType.I64, operand);
+                dstType = PrimitiveType.I64;
                 break;
             default:
                 src = null;
-                dstType = LLVMBaseType.I64;
+                dstType = PrimitiveType.I64;
         }
         switch (operation) {
             case "incb":
@@ -451,115 +456,115 @@ class AsmFactory {
                 out = LLVMAMD64NotqNodeGen.create(src);
                 break;
             case "idivb":
-                out = LLVMAMD64IdivbNodeGen.create(getOperandLoad(LLVMBaseType.I16, new AsmRegisterOperand("ax")), src);
+                out = LLVMAMD64IdivbNodeGen.create(getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("ax")), src);
                 dst = new AsmRegisterOperand("ax");
-                dstType = LLVMBaseType.I16;
+                dstType = PrimitiveType.I16;
                 break;
             case "idivw": {
                 LLVMAMD64WriteI16RegisterNode rem = getRegisterStore("dx");
-                LLVMExpressionNode high = getOperandLoad(LLVMBaseType.I16, new AsmRegisterOperand("dx"));
-                out = LLVMAMD64IdivwNodeGen.create(rem, high, getOperandLoad(LLVMBaseType.I16, new AsmRegisterOperand("ax")), src);
+                LLVMExpressionNode high = getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("dx"));
+                out = LLVMAMD64IdivwNodeGen.create(rem, high, getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("ax")), src);
                 dst = new AsmRegisterOperand("ax");
-                dstType = LLVMBaseType.I16;
+                dstType = PrimitiveType.I16;
                 break;
             }
             case "idivl": {
                 LLVMAMD64WriteI32RegisterNode rem = getRegisterStore("edx");
-                LLVMExpressionNode high = getOperandLoad(LLVMBaseType.I32, new AsmRegisterOperand("edx"));
-                out = LLVMAMD64IdivlNodeGen.create(rem, high, getOperandLoad(LLVMBaseType.I32, new AsmRegisterOperand("eax")), src);
+                LLVMExpressionNode high = getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("edx"));
+                out = LLVMAMD64IdivlNodeGen.create(rem, high, getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("eax")), src);
                 dst = new AsmRegisterOperand("eax");
-                dstType = LLVMBaseType.I32;
+                dstType = PrimitiveType.I32;
                 break;
             }
             case "idivq": {
                 LLVMAMD64WriteI64RegisterNode rem = getRegisterStore("rdx");
-                LLVMExpressionNode high = getOperandLoad(LLVMBaseType.I32, new AsmRegisterOperand("rdx"));
-                out = LLVMAMD64IdivqNodeGen.create(rem, high, getOperandLoad(LLVMBaseType.I64, new AsmRegisterOperand("rax")), src);
+                LLVMExpressionNode high = getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("rdx"));
+                out = LLVMAMD64IdivqNodeGen.create(rem, high, getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rax")), src);
                 dst = new AsmRegisterOperand("rax");
-                dstType = LLVMBaseType.I64;
+                dstType = PrimitiveType.I64;
                 break;
             }
             case "imulb":
-                out = LLVMAMD64ImulbNodeGen.create(getOperandLoad(LLVMBaseType.I16, new AsmRegisterOperand("ax")), src);
+                out = LLVMAMD64ImulbNodeGen.create(getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("ax")), src);
                 dst = new AsmRegisterOperand("ax");
-                dstType = LLVMBaseType.I16;
+                dstType = PrimitiveType.I16;
                 break;
             case "imulw": {
                 LLVMAMD64WriteI16RegisterNode high = getRegisterStore("dx");
-                out = LLVMAMD64ImulwNodeGen.create(high, getOperandLoad(LLVMBaseType.I16, new AsmRegisterOperand("ax")), src);
+                out = LLVMAMD64ImulwNodeGen.create(high, getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("ax")), src);
                 dst = new AsmRegisterOperand("ax");
-                dstType = LLVMBaseType.I16;
+                dstType = PrimitiveType.I16;
                 break;
             }
             case "imull": {
                 LLVMAMD64WriteI32RegisterNode high = getRegisterStore("edx");
-                out = LLVMAMD64ImullNodeGen.create(high, getOperandLoad(LLVMBaseType.I32, new AsmRegisterOperand("eax")), src);
+                out = LLVMAMD64ImullNodeGen.create(high, getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("eax")), src);
                 dst = new AsmRegisterOperand("eax");
-                dstType = LLVMBaseType.I32;
+                dstType = PrimitiveType.I32;
                 break;
             }
             case "imulq": {
                 LLVMAMD64WriteI64RegisterNode high = getRegisterStore("rdx");
-                out = LLVMAMD64ImulqNodeGen.create(high, getOperandLoad(LLVMBaseType.I64, new AsmRegisterOperand("rax")), src);
+                out = LLVMAMD64ImulqNodeGen.create(high, getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rax")), src);
                 dst = new AsmRegisterOperand("rax");
-                dstType = LLVMBaseType.I64;
+                dstType = PrimitiveType.I64;
                 break;
             }
             // TODO: implement properly
             case "divb":
-                out = LLVMAMD64IdivbNodeGen.create(getOperandLoad(LLVMBaseType.I16, new AsmRegisterOperand("ax")), src);
+                out = LLVMAMD64IdivbNodeGen.create(getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("ax")), src);
                 dst = new AsmRegisterOperand("ax");
-                dstType = LLVMBaseType.I16;
+                dstType = PrimitiveType.I16;
                 break;
             case "divw": {
                 LLVMAMD64WriteI16RegisterNode rem = getRegisterStore("dx");
-                LLVMExpressionNode high = getOperandLoad(LLVMBaseType.I16, new AsmRegisterOperand("dx"));
-                out = LLVMAMD64IdivwNodeGen.create(rem, high, getOperandLoad(LLVMBaseType.I16, new AsmRegisterOperand("ax")), src);
+                LLVMExpressionNode high = getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("dx"));
+                out = LLVMAMD64IdivwNodeGen.create(rem, high, getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("ax")), src);
                 dst = new AsmRegisterOperand("ax");
-                dstType = LLVMBaseType.I16;
+                dstType = PrimitiveType.I16;
                 break;
             }
             case "divl": {
                 LLVMAMD64WriteI32RegisterNode rem = getRegisterStore("edx");
-                LLVMExpressionNode high = getOperandLoad(LLVMBaseType.I32, new AsmRegisterOperand("edx"));
-                out = LLVMAMD64IdivlNodeGen.create(rem, high, getOperandLoad(LLVMBaseType.I32, new AsmRegisterOperand("eax")), src);
+                LLVMExpressionNode high = getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("edx"));
+                out = LLVMAMD64IdivlNodeGen.create(rem, high, getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("eax")), src);
                 dst = new AsmRegisterOperand("eax");
-                dstType = LLVMBaseType.I32;
+                dstType = PrimitiveType.I32;
                 break;
             }
             case "divq": {
                 LLVMAMD64WriteI64RegisterNode rem = getRegisterStore("rdx");
-                LLVMExpressionNode high = getOperandLoad(LLVMBaseType.I32, new AsmRegisterOperand("rdx"));
-                out = LLVMAMD64IdivqNodeGen.create(rem, high, getOperandLoad(LLVMBaseType.I64, new AsmRegisterOperand("rax")), src);
+                LLVMExpressionNode high = getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("rdx"));
+                out = LLVMAMD64IdivqNodeGen.create(rem, high, getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rax")), src);
                 dst = new AsmRegisterOperand("rax");
-                dstType = LLVMBaseType.I64;
+                dstType = PrimitiveType.I64;
                 break;
             }
             case "mulb":
-                src = getOperandLoad(LLVMBaseType.I16, operand);
-                out = LLVMAMD64MulbNodeGen.create(getOperandLoad(LLVMBaseType.I16, new AsmRegisterOperand("ax")), src);
+                src = getOperandLoad(PrimitiveType.I16, operand);
+                out = LLVMAMD64MulbNodeGen.create(getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("ax")), src);
                 dst = new AsmRegisterOperand("ax");
-                dstType = LLVMBaseType.I16;
+                dstType = PrimitiveType.I16;
                 break;
             case "mulw": {
                 LLVMAMD64WriteI16RegisterNode high = getRegisterStore("dx");
-                out = LLVMAMD64MulwNodeGen.create(high, getOperandLoad(LLVMBaseType.I16, new AsmRegisterOperand("ax")), src);
+                out = LLVMAMD64MulwNodeGen.create(high, getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("ax")), src);
                 dst = new AsmRegisterOperand("ax");
-                dstType = LLVMBaseType.I16;
+                dstType = PrimitiveType.I16;
                 break;
             }
             case "mull": {
                 LLVMAMD64WriteI32RegisterNode high = getRegisterStore("edx");
-                out = LLVMAMD64MullNodeGen.create(high, getOperandLoad(LLVMBaseType.I32, new AsmRegisterOperand("eax")), src);
+                out = LLVMAMD64MullNodeGen.create(high, getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("eax")), src);
                 dst = new AsmRegisterOperand("eax");
-                dstType = LLVMBaseType.I32;
+                dstType = PrimitiveType.I32;
                 break;
             }
             case "mulq": {
                 LLVMAMD64WriteI64RegisterNode high = getRegisterStore("rdx");
-                out = LLVMAMD64MulqNodeGen.create(high, getOperandLoad(LLVMBaseType.I64, new AsmRegisterOperand("rax")), src);
+                out = LLVMAMD64MulqNodeGen.create(high, getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rax")), src);
                 dst = new AsmRegisterOperand("rax");
-                dstType = LLVMBaseType.I64;
+                dstType = PrimitiveType.I64;
                 break;
             }
             default:
@@ -575,32 +580,32 @@ class AsmFactory {
         LLVMExpressionNode srcB;
         LLVMExpressionNode out;
         AsmOperand dst = b;
-        LLVMBaseType dstType;
+        Type dstType;
         switch (operation.charAt(operation.length() - 1)) {
             case 'b':
-                srcA = getOperandLoad(LLVMBaseType.I8, a);
-                srcB = getOperandLoad(LLVMBaseType.I8, b);
-                dstType = LLVMBaseType.I8;
+                srcA = getOperandLoad(PrimitiveType.I8, a);
+                srcB = getOperandLoad(PrimitiveType.I8, b);
+                dstType = PrimitiveType.I8;
                 break;
             case 'w':
-                srcA = getOperandLoad(LLVMBaseType.I16, a);
-                srcB = getOperandLoad(LLVMBaseType.I16, b);
-                dstType = LLVMBaseType.I16;
+                srcA = getOperandLoad(PrimitiveType.I16, a);
+                srcB = getOperandLoad(PrimitiveType.I16, b);
+                dstType = PrimitiveType.I16;
                 break;
             case 'l':
-                srcA = getOperandLoad(LLVMBaseType.I32, a);
-                srcB = getOperandLoad(LLVMBaseType.I32, b);
-                dstType = LLVMBaseType.I32;
+                srcA = getOperandLoad(PrimitiveType.I32, a);
+                srcB = getOperandLoad(PrimitiveType.I32, b);
+                dstType = PrimitiveType.I32;
                 break;
             case 'q':
-                srcA = getOperandLoad(LLVMBaseType.I64, a);
-                srcB = getOperandLoad(LLVMBaseType.I64, b);
-                dstType = LLVMBaseType.I64;
+                srcA = getOperandLoad(PrimitiveType.I64, a);
+                srcB = getOperandLoad(PrimitiveType.I64, b);
+                dstType = PrimitiveType.I64;
                 break;
             default:
                 srcA = null;
                 srcB = null;
-                dstType = LLVMBaseType.I8;
+                dstType = PrimitiveType.I8;
         }
         switch (operation) {
             case "addb":
@@ -628,38 +633,38 @@ class AsmFactory {
                 out = LLVMAMD64SubqNodeGen.create(srcB, srcA);
                 break;
             case "idivb":
-                srcA = getOperandLoad(LLVMBaseType.I8, a);
-                srcB = getOperandLoad(LLVMBaseType.I16, b);
+                srcA = getOperandLoad(PrimitiveType.I8, a);
+                srcB = getOperandLoad(PrimitiveType.I16, b);
                 out = LLVMAMD64IdivbNodeGen.create(srcB, srcA);
                 dst = new AsmRegisterOperand("ax");
-                dstType = LLVMBaseType.I16;
+                dstType = PrimitiveType.I16;
                 break;
             case "idivw": {
                 LLVMAMD64WriteI16RegisterNode rem = getRegisterStore("dx");
-                LLVMExpressionNode high = getOperandLoad(LLVMBaseType.I16, new AsmRegisterOperand("dx"));
+                LLVMExpressionNode high = getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("dx"));
                 out = LLVMAMD64IdivwNodeGen.create(rem, high, srcB, srcA);
                 dst = new AsmRegisterOperand("ax");
                 break;
             }
             case "idivl": {
                 LLVMAMD64WriteI32RegisterNode rem = getRegisterStore("edx");
-                LLVMExpressionNode high = getOperandLoad(LLVMBaseType.I32, new AsmRegisterOperand("edx"));
+                LLVMExpressionNode high = getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("edx"));
                 out = LLVMAMD64IdivlNodeGen.create(rem, high, srcB, srcA);
                 dst = new AsmRegisterOperand("eax");
                 break;
             }
             case "idivq": {
                 LLVMAMD64WriteI64RegisterNode rem = getRegisterStore("rdx");
-                LLVMExpressionNode high = getOperandLoad(LLVMBaseType.I32, new AsmRegisterOperand("rdx"));
+                LLVMExpressionNode high = getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("rdx"));
                 out = LLVMAMD64IdivqNodeGen.create(rem, high, srcB, srcA);
                 dst = new AsmRegisterOperand("rax");
                 break;
             }
             case "imulb":
-                srcA = getOperandLoad(LLVMBaseType.I16, a);
-                srcB = getOperandLoad(LLVMBaseType.I8, b);
+                srcA = getOperandLoad(PrimitiveType.I16, a);
+                srcB = getOperandLoad(PrimitiveType.I8, b);
                 out = LLVMAMD64ImulbNodeGen.create(srcA, srcB);
-                dstType = LLVMBaseType.I16;
+                dstType = PrimitiveType.I16;
                 break;
             case "imulw": {
                 LLVMAMD64WriteI16RegisterNode high = getRegisterStore("dx");
@@ -778,23 +783,28 @@ class AsmFactory {
     public void createTernaryOperation(String op, AsmOperand a, AsmOperand b, AsmOperand c) {
     }
 
-    void addFrameSlot(String reg, LLVMBaseType type) {
+    void addFrameSlot(String reg, Type type) {
         if (!registers.contains(reg)) {
             registers.add(reg);
             FrameSlotKind kind;
-            switch (type) {
-                case I8:
-                    kind = FrameSlotKind.Byte;
-                    break;
-                case I32:
-                    kind = FrameSlotKind.Int;
-                    break;
-                case I64:
-                    kind = FrameSlotKind.Long;
-                    break;
-                default:
-                    kind = FrameSlotKind.Illegal;
-                    break;
+            if (type instanceof PrimitiveType) {
+                PrimitiveKind primitiveKind = ((PrimitiveType) type).getKind();
+                switch (primitiveKind) {
+                    case I8:
+                        kind = FrameSlotKind.Byte;
+                        break;
+                    case I32:
+                        kind = FrameSlotKind.Int;
+                        break;
+                    case I64:
+                        kind = FrameSlotKind.Long;
+                        break;
+                    default:
+                        kind = FrameSlotKind.Illegal;
+                        break;
+                }
+            } else {
+                kind = FrameSlotKind.Illegal;
             }
             this.frameDescriptor.addFrameSlot(reg, kind);
         }
@@ -803,7 +813,7 @@ class AsmFactory {
     private void getArguments() {
         LLVMAllocaInstruction alloca = null;
         LLVMStructWriteNode[] writeNodes = null;
-        if (retType == LLVMBaseType.STRUCT) {
+        if (retType instanceof StructureType) {
             assert args[1] instanceof LLVMAllocaInstruction;
             alloca = (LLVMAllocaInstruction) args[1];
             writeNodes = new LLVMStructWriteNode[alloca.getLength()];
@@ -817,9 +827,10 @@ class AsmFactory {
                 if (arg.isRegister()) {
                     slot = getRegisterSlot(arg.getRegister());
                     LLVMExpressionNode register = LLVMI64ReadNodeGen.create(slot);
-                    if (retType == LLVMBaseType.STRUCT) {
+                    if (retType instanceof StructureType) {
                         assert alloca.getType(arg.getOutIndex()) == arg.getType();
-                        switch (arg.getType()) {
+                        PrimitiveKind primitiveKind = ((PrimitiveType) arg.getType()).getKind();
+                        switch (primitiveKind) {
                             case I8:
                                 writeNodes[arg.getOutIndex()] = new LLVMI8StructWriteNode(LLVMI64ToI8NodeGen.create(register));
                                 break;
@@ -840,52 +851,32 @@ class AsmFactory {
                     }
                 } else {
                     slot = getArgumentSlot(arg.getIndex(), retType);
-                    switch (retType) {
-                        case I8:
-                            result = LLVMI8ReadNodeGen.create(slot);
-                            break;
-                        case I16:
-                            result = LLVMI16ReadNodeGen.create(slot);
-                            break;
-                        case I32:
-                            result = LLVMI32ReadNodeGen.create(slot);
-                            break;
-                        case I64:
-                            result = LLVMI64ReadNodeGen.create(slot);
-                            break;
-                        case STRUCT:
-                            switch (arg.getType()) {
-                                case I8:
-                                    writeNodes[arg.getOutIndex()] = new LLVMI8StructWriteNode(LLVMI8ReadNodeGen.create(slot));
-                                    break;
-                                case I16:
-                                    writeNodes[arg.getOutIndex()] = new LLVMI16StructWriteNode(LLVMI16ReadNodeGen.create(slot));
-                                    break;
-                                case I32:
-                                    writeNodes[arg.getOutIndex()] = new LLVMI32StructWriteNode(LLVMI32ReadNodeGen.create(slot));
-                                    break;
-                                case I64:
-                                    writeNodes[arg.getOutIndex()] = new LLVMI64StructWriteNode(LLVMI64ReadNodeGen.create(slot));
-                                    break;
-                                default:
-                                    throw new AsmParseException("invalid operand size");
-                            }
-                            break;
-                        case VOID:
-                            result = null;
-                            break;
-                        // FIXME: implement properly
-                        case FLOAT:
-                            result = LLVMFloatReadNodeGen.create(slot);
-                            break;
-                        case DOUBLE:
-                            result = LLVMDoubleReadNodeGen.create(slot);
-                            break;
-                        case ADDRESS:
-                            result = LLVMAddressReadNodeGen.create(slot);
-                            break;
-                        default:
-                            throw new AsmParseException("invalid operand size: " + retType);
+                    if (retType instanceof PrimitiveType) {
+                        handlePrimitive(slot);
+                    } else if (retType instanceof StructureType) {
+                        PrimitiveKind primitiveKind = ((PrimitiveType) arg.getType()).getKind();
+                        switch (primitiveKind) {
+                            case I8:
+                                writeNodes[arg.getOutIndex()] = new LLVMI8StructWriteNode(LLVMI8ReadNodeGen.create(slot));
+                                break;
+                            case I16:
+                                writeNodes[arg.getOutIndex()] = new LLVMI16StructWriteNode(LLVMI16ReadNodeGen.create(slot));
+                                break;
+                            case I32:
+                                writeNodes[arg.getOutIndex()] = new LLVMI32StructWriteNode(LLVMI32ReadNodeGen.create(slot));
+                                break;
+                            case I64:
+                                writeNodes[arg.getOutIndex()] = new LLVMI64StructWriteNode(LLVMI64ReadNodeGen.create(slot));
+                                break;
+                            default:
+                                throw new AsmParseException("invalid operand size");
+                        }
+                    } else if (retType instanceof PointerType) {
+                        result = LLVMAddressReadNodeGen.create(slot);
+                    } else if (retType instanceof VoidType) {
+                        result = null;
+                    } else {
+                        throw new AsmParseException("invalid operand size: " + retType);
                     }
                 }
             }
@@ -903,35 +894,17 @@ class AsmFactory {
                 }
                 slot = getArgumentSlot(arg.getIndex(), argTypes[arg.getInIndex()]);
                 LLVMExpressionNode argnode = LLVMArgNodeGen.create(arg.getInIndex());
-                switch (arg.getType()) {
-                    case I8:
-                        arguments.add(LLVMWriteI8NodeGen.create(argnode, slot));
-                        break;
-                    case I16:
-                        arguments.add(LLVMWriteI16NodeGen.create(argnode, slot));
-                        break;
-                    case I32:
-                        arguments.add(LLVMWriteI32NodeGen.create(argnode, slot));
-                        break;
-                    case I64:
-                        arguments.add(LLVMWriteI64NodeGen.create(argnode, slot));
-                        break;
-                    case FLOAT:
-                        arguments.add(LLVMWriteFloatNodeGen.create(argnode, slot));
-                        break;
-                    case DOUBLE:
-                        arguments.add(LLVMWriteDoubleNodeGen.create(argnode, slot));
-                        break;
-                    case ADDRESS:
-                        arguments.add(LLVMWriteAddressNodeGen.create(argnode, slot));
-                        break;
-                    default:
-                        throw new AsmParseException("invalid operand size: " + arg.getType());
+                if (arg.getType() instanceof PrimitiveType) {
+                    handlePrimitiveArgument(arg.getType(), slot, argnode);
+                } else if (arg.getType() instanceof PointerType) {
+                    arguments.add(LLVMWriteAddressNodeGen.create(argnode, slot));
+                } else {
+                    throw new AsmParseException("invalid operand size: " + arg.getType());
                 }
             }
         }
 
-        if (retType == LLVMBaseType.STRUCT) {
+        if (retType instanceof StructureType) {
             LLVMExpressionNode addrArg = LLVMArgNodeGen.create(1);
             FrameSlot slot = frameDescriptor.addFrameSlot("returnValue", FrameSlotKind.Object);
             LLVMWriteAddressNode writeAddr = LLVMWriteAddressNodeGen.create(addrArg, slot);
@@ -950,11 +923,61 @@ class AsmFactory {
             arguments.add(LLVMWriteI64NodeGen.create(node, slot));
         }
 
-        assert retType == LLVMBaseType.VOID || retType != null;
+        assert retType instanceof VoidType || retType != null;
+    }
+
+    private void handlePrimitiveArgument(Type argType, FrameSlot slot, LLVMExpressionNode argnode) {
+        switch (((PrimitiveType) argType).getKind()) {
+            case I8:
+                arguments.add(LLVMWriteI8NodeGen.create(argnode, slot));
+                break;
+            case I16:
+                arguments.add(LLVMWriteI16NodeGen.create(argnode, slot));
+                break;
+            case I32:
+                arguments.add(LLVMWriteI32NodeGen.create(argnode, slot));
+                break;
+            case I64:
+                arguments.add(LLVMWriteI64NodeGen.create(argnode, slot));
+                break;
+            case FLOAT:
+                arguments.add(LLVMWriteFloatNodeGen.create(argnode, slot));
+                break;
+            case DOUBLE:
+                arguments.add(LLVMWriteDoubleNodeGen.create(argnode, slot));
+                break;
+            default:
+                throw new AsmParseException("invalid operand size: " + argType);
+        }
+    }
+
+    private void handlePrimitive(FrameSlot slot) {
+        switch (((PrimitiveType) retType).getKind()) {
+            case I8:
+                result = LLVMI8ReadNodeGen.create(slot);
+                break;
+            case I16:
+                result = LLVMI16ReadNodeGen.create(slot);
+                break;
+            case I32:
+                result = LLVMI32ReadNodeGen.create(slot);
+                break;
+            case I64:
+                result = LLVMI64ReadNodeGen.create(slot);
+                break;
+            case FLOAT:
+                result = LLVMFloatReadNodeGen.create(slot);
+                break;
+            case DOUBLE:
+                result = LLVMDoubleReadNodeGen.create(slot);
+                break;
+            default:
+                throw new AsmParseException("invalid operand size: " + retType);
+        }
     }
 
     private LLVMExpressionNode castResult(LLVMExpressionNode register) {
-        switch (retType) {
+        switch (((PrimitiveType) retType).getKind()) {
             case I8:
                 return LLVMI64ToI8NodeGen.create(register);
             case I16:
@@ -968,13 +991,13 @@ class AsmFactory {
         }
     }
 
-    private LLVMExpressionNode getOperandLoad(LLVMBaseType type, AsmOperand operand) {
+    private LLVMExpressionNode getOperandLoad(Type type, AsmOperand operand) {
         if (operand instanceof AsmRegisterOperand) {
             AsmRegisterOperand op = (AsmRegisterOperand) operand;
             FrameSlot frame = getRegisterSlot(op.getBaseRegister());
             LLVMExpressionNode register = LLVMI64ReadNodeGen.create(frame);
             assert type == op.getWidth();
-            switch (op.getWidth()) {
+            switch (((PrimitiveType) op.getWidth()).getKind()) {
                 case I8:
                     return LLVMI64ToI8NodeGen.create(register);
                 case I16:
@@ -991,7 +1014,7 @@ class AsmFactory {
             if (op.isLabel()) {
                 throw new AsmParseException("labels not supported");
             } else {
-                switch (type) {
+                switch (((PrimitiveType) type).getKind()) {
                     case I8:
                         return LLVMAMD64I8NodeGen.create((byte) op.getValue());
                     case I16:
@@ -1009,7 +1032,7 @@ class AsmFactory {
             Argument info = argInfo.get(op.getIndex());
             FrameSlot frame = getArgumentSlot(op.getIndex(), type);
             if (info.isMemory()) {
-                switch (type) {
+                switch (((PrimitiveType) type).getKind()) {
                     case I8:
                         return LLVMI8ProfilingLoadNodeGen.create(LLVMAddressReadNodeGen.create(frame));
                     case I16:
@@ -1023,7 +1046,7 @@ class AsmFactory {
                 }
             } else {
                 assert type == info.getType();
-                switch (type) {
+                switch (((PrimitiveType) type).getKind()) {
                     case I8:
                         return LLVMI8ReadNodeGen.create(frame);
                     case I16:
@@ -1040,7 +1063,7 @@ class AsmFactory {
         throw new AsmParseException("unsupported operand type: " + operand);
     }
 
-    private LLVMExpressionNode getOperandStore(LLVMBaseType type, AsmOperand operand, LLVMExpressionNode from) {
+    private LLVMExpressionNode getOperandStore(Type type, AsmOperand operand, LLVMExpressionNode from) {
         if (operand instanceof AsmRegisterOperand) {
             AsmRegisterOperand op = (AsmRegisterOperand) operand;
             FrameSlot frame = getRegisterSlot(op.getBaseRegister());
@@ -1048,7 +1071,7 @@ class AsmFactory {
             int shift = op.getShift();
             LLVMExpressionNode out = null;
             assert type == op.getWidth();
-            switch (op.getWidth()) {
+            switch (((PrimitiveType) op.getWidth()).getKind()) {
                 case I8:
                     out = LLVMI8ToR64NodeGen.create(shift, register, from);
                     break;
@@ -1070,7 +1093,7 @@ class AsmFactory {
             Argument info = argInfo.get(op.getIndex());
             if (info.isMemory()) {
                 LLVMExpressionNode address = info.getAddress();
-                switch (type) {
+                switch (((PrimitiveType) type).getKind()) {
                     case I8:
                         return LLVMI8StoreNodeGen.create(address, from);
                     case I16:
@@ -1085,7 +1108,7 @@ class AsmFactory {
             } else {
                 assert type == info.getType();
                 FrameSlot frame = getArgumentSlot(op.getIndex(), type);
-                switch (type) {
+                switch (((PrimitiveType) type).getKind()) {
                     case I8:
                         return LLVMWriteI8NodeGen.create(from, frame);
                     case I16:
@@ -1108,7 +1131,7 @@ class AsmFactory {
         FrameSlot frame = getRegisterSlot(name);
         LLVMExpressionNode register = LLVMI64ReadNodeGen.create(frame);
         LLVMAMD64WriteRegisterNode node = null;
-        switch (op.getWidth()) {
+        switch (((PrimitiveType) op.getWidth()).getKind()) {
             case I16:
                 node = new LLVMAMD64WriteI16RegisterNode(frame, register);
                 break;
@@ -1127,7 +1150,7 @@ class AsmFactory {
     private FrameSlot getRegisterSlot(String name) {
         AsmRegisterOperand op = new AsmRegisterOperand(name);
         String baseRegister = op.getBaseRegister();
-        addFrameSlot(baseRegister, LLVMBaseType.I64);
+        addFrameSlot(baseRegister, PrimitiveType.I64);
         FrameSlot frame = frameDescriptor.findFrameSlot(baseRegister);
         return frame;
     }
@@ -1136,7 +1159,7 @@ class AsmFactory {
         return "$" + index;
     }
 
-    private FrameSlot getArgumentSlot(int index, LLVMBaseType type) {
+    private FrameSlot getArgumentSlot(int index, Type type) {
         Argument info = argInfo.get(index);
         assert info.isMemory() || type == info.getType();
 

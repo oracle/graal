@@ -36,9 +36,9 @@ import com.oracle.truffle.llvm.parser.listeners.Types;
 import com.oracle.truffle.llvm.parser.model.generators.FunctionGenerator;
 import com.oracle.truffle.llvm.parser.records.Records;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public final class FunctionVersion {
 
@@ -91,7 +91,7 @@ public final class FunctionVersion {
             final Type returnType = functionType.getReturnType();
             code.createCall(returnType, target, arguments, visibility, linkage);
 
-            if (returnType != MetaType.VOID) {
+            if (returnType != VoidType.INSTANCE) {
                 symbols.add(returnType);
             }
         }
@@ -154,7 +154,7 @@ public final class FunctionVersion {
             final int source = getIndex(args[i++]);
             final Type type;
             if (source < symbols.size()) {
-                type = ((PointerType) symbols.get(source).getType()).getPointeeType();
+                type = ((PointerType) symbols.get(source)).getPointeeType();
             } else {
                 type = ((PointerType) types.get(args[i++])).getPointeeType();
             }
@@ -179,7 +179,7 @@ public final class FunctionVersion {
                 arguments[j] = getIndex(args[i]);
             }
 
-            Type type = symbols.get(target).getType();
+            Type type = symbols.get(target);
             if (type instanceof PointerType) {
                 type = ((PointerType) type).getPointeeType();
             }
@@ -187,7 +187,7 @@ public final class FunctionVersion {
             final Type returnType = ((FunctionType) type).getReturnType();
             code.createCall(returnType, target, arguments, visibility, linkage);
 
-            if (returnType != MetaType.VOID) {
+            if (returnType != VoidType.INSTANCE) {
                 symbols.add(returnType);
             }
         }
@@ -198,7 +198,7 @@ public final class FunctionVersion {
             int source = getIndex(args[i++]);
             Type type;
             if (source < symbols.size()) {
-                type = ((PointerType) symbols.get(source).getType()).getPointeeType();
+                type = ((PointerType) symbols.get(source)).getPointeeType();
             } else {
                 type = ((PointerType) types.get(args[i++])).getPointeeType();
             }
