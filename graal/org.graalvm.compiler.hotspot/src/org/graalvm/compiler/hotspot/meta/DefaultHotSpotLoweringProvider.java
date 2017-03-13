@@ -125,7 +125,7 @@ import org.graalvm.compiler.nodes.extended.OSRLockNode;
 import org.graalvm.compiler.nodes.extended.OSRMonitorEnterNode;
 import org.graalvm.compiler.nodes.extended.OSRStartNode;
 import org.graalvm.compiler.nodes.extended.StoreHubNode;
-import org.graalvm.compiler.nodes.extended.UnsafeLoadNode;
+import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
 import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
 import org.graalvm.compiler.nodes.java.DynamicNewInstanceNode;
@@ -518,7 +518,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     }
 
     @Override
-    protected void lowerUnsafeLoadNode(UnsafeLoadNode load, LoweringTool tool) {
+    protected void lowerUnsafeLoadNode(RawLoadNode load, LoweringTool tool) {
         StructuredGraph graph = load.graph();
         if (!(load instanceof GuardedUnsafeLoadNode) && !graph.getGuardsStage().allowsFloatingGuards() && addReadBarrier(load)) {
             unsafeLoadSnippets.lower(load, tool);
@@ -687,7 +687,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         graph.replaceFixedWithFixed(node, foreignCallNode);
     }
 
-    private boolean addReadBarrier(UnsafeLoadNode load) {
+    private boolean addReadBarrier(RawLoadNode load) {
         if (runtime.getVMConfig().useG1GC && load.graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS && load.object().getStackKind() == JavaKind.Object &&
                         load.accessKind() == JavaKind.Object && !StampTool.isPointerAlwaysNull(load.object())) {
             ResolvedJavaType type = StampTool.typeOrNull(load.object());

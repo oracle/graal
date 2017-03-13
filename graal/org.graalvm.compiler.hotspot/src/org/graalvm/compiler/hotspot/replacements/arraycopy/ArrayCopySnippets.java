@@ -58,8 +58,8 @@ import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.UnsafeLoadNode;
-import org.graalvm.compiler.nodes.extended.UnsafeStoreNode;
+import org.graalvm.compiler.nodes.extended.RawLoadNode;
+import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -304,8 +304,8 @@ public class ArrayCopySnippets implements Snippets {
             ExplodeLoopNode.explodeLoop();
             for (int iteration = 0; iteration < length; iteration++) {
                 if (i >= 0) {
-                    Object a = UnsafeLoadNode.load(nonNullSrc, arrayBaseOffset + i + (long) srcPos * scale, elementKind, arrayLocation);
-                    UnsafeStoreNode.storeObject(nonNullDest, arrayBaseOffset + i + (long) destPos * scale, a, elementKind, arrayLocation);
+                    Object a = RawLoadNode.load(nonNullSrc, arrayBaseOffset + i + (long) srcPos * scale, elementKind, arrayLocation);
+                    RawStoreNode.storeObject(nonNullDest, arrayBaseOffset + i + (long) destPos * scale, a, elementKind, arrayLocation, false);
                     i -= scale;
                 }
             }
@@ -315,8 +315,8 @@ public class ArrayCopySnippets implements Snippets {
             ExplodeLoopNode.explodeLoop();
             for (int iteration = 0; iteration < length; iteration++) {
                 if (i < end) {
-                    Object a = UnsafeLoadNode.load(nonNullSrc, arrayBaseOffset + i + (long) srcPos * scale, elementKind, arrayLocation);
-                    UnsafeStoreNode.storeObject(nonNullDest, arrayBaseOffset + i + (long) destPos * scale, a, elementKind, arrayLocation);
+                    Object a = RawLoadNode.load(nonNullSrc, arrayBaseOffset + i + (long) srcPos * scale, elementKind, arrayLocation);
+                    RawStoreNode.storeObject(nonNullDest, arrayBaseOffset + i + (long) destPos * scale, a, elementKind, arrayLocation, false);
                     i += scale;
                 }
             }

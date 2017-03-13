@@ -54,8 +54,8 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     GraalHotSpotVMConfig(HotSpotVMConfigStore store) {
         super(store);
 
-        // assert narrowKlassShift == logKlassAlignment;
-        // assert narrowOopShift == logMinObjAlignment();
+        assert narrowKlassShift <= logKlassAlignment;
+        assert narrowOopShift <= logMinObjAlignment();
         oopEncoding = new CompressEncoding(narrowOopBase, narrowOopShift);
         klassEncoding = new CompressEncoding(narrowKlassBase, narrowKlassShift);
 

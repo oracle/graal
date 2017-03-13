@@ -49,14 +49,14 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * performed before the load.
  */
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
-public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable {
-    public static final NodeClass<UnsafeLoadNode> TYPE = NodeClass.create(UnsafeLoadNode.class);
+public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable {
+    public static final NodeClass<RawLoadNode> TYPE = NodeClass.create(RawLoadNode.class);
 
-    public UnsafeLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity) {
+    public RawLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity) {
         super(TYPE, StampFactory.forKind(accessKind.getStackKind()), object, offset, accessKind, locationIdentity, false);
     }
 
-    public UnsafeLoadNode(NodeClass<? extends UnsafeLoadNode> c, ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity) {
+    public RawLoadNode(NodeClass<? extends RawLoadNode> c, ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity) {
         super(c, StampFactory.forKind(accessKind.getStackKind()), object, offset, accessKind, locationIdentity, false);
     }
 
@@ -113,7 +113,7 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
 
     @Override
     protected ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity) {
-        return new UnsafeLoadNode(object(), location, accessKind(), identity);
+        return new RawLoadNode(object(), location, accessKind(), identity);
     }
 
     @NodeIntrinsic

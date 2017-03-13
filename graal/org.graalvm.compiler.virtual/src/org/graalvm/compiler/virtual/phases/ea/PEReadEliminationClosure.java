@@ -47,8 +47,8 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueProxyNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
-import org.graalvm.compiler.nodes.extended.UnsafeLoadNode;
-import org.graalvm.compiler.nodes.extended.UnsafeStoreNode;
+import org.graalvm.compiler.nodes.extended.RawLoadNode;
+import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
@@ -112,10 +112,10 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
             return processArrayLength((ArrayLengthNode) node, state, effects);
         } else if (node instanceof UnboxNode) {
             return processUnbox((UnboxNode) node, state, effects);
-        } else if (node instanceof UnsafeLoadNode) {
-            return processUnsafeLoad((UnsafeLoadNode) node, state, effects);
-        } else if (node instanceof UnsafeStoreNode) {
-            return processUnsafeStore((UnsafeStoreNode) node, state, effects);
+        } else if (node instanceof RawLoadNode) {
+            return processUnsafeLoad((RawLoadNode) node, state, effects);
+        } else if (node instanceof RawStoreNode) {
+            return processUnsafeStore((RawStoreNode) node, state, effects);
         } else if (node instanceof MemoryCheckpoint.Single) {
             COUNTER_MEMORYCHECKPOINT.increment();
             LocationIdentity identity = ((MemoryCheckpoint.Single) node).getLocationIdentity();
@@ -169,7 +169,7 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
         }
     }
 
-    private boolean processUnsafeLoad(UnsafeLoadNode load, PEReadEliminationBlockState state, GraphEffectList effects) {
+    private boolean processUnsafeLoad(RawLoadNode load, PEReadEliminationBlockState state, GraphEffectList effects) {
         if (load.offset().isConstant()) {
             ResolvedJavaType type = StampTool.typeOrNull(load.object());
             if (type != null && type.isArray()) {
@@ -190,7 +190,7 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
         return false;
     }
 
-    private boolean processUnsafeStore(UnsafeStoreNode store, PEReadEliminationBlockState state, GraphEffectList effects) {
+    private boolean processUnsafeStore(RawStoreNode store, PEReadEliminationBlockState state, GraphEffectList effects) {
         ResolvedJavaType type = StampTool.typeOrNull(store.object());
         if (type != null && type.isArray()) {
             LocationIdentity location = NamedLocationIdentity.getArrayLocation(type.getComponentType().getJavaKind());

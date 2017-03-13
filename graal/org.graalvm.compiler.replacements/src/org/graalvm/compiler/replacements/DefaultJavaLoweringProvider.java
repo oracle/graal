@@ -79,10 +79,10 @@ import org.graalvm.compiler.nodes.extended.JavaWriteNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
-import org.graalvm.compiler.nodes.extended.UnsafeLoadNode;
+import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.UnsafeMemoryLoadNode;
 import org.graalvm.compiler.nodes.extended.UnsafeMemoryStoreNode;
-import org.graalvm.compiler.nodes.extended.UnsafeStoreNode;
+import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.java.AccessIndexedNode;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
@@ -189,12 +189,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             lowerCompareAndSwapNode((UnsafeCompareAndSwapNode) n);
         } else if (n instanceof AtomicReadAndWriteNode) {
             lowerAtomicReadAndWriteNode((AtomicReadAndWriteNode) n);
-        } else if (n instanceof UnsafeLoadNode) {
-            lowerUnsafeLoadNode((UnsafeLoadNode) n, tool);
+        } else if (n instanceof RawLoadNode) {
+            lowerUnsafeLoadNode((RawLoadNode) n, tool);
         } else if (n instanceof UnsafeMemoryLoadNode) {
             lowerUnsafeMemoryLoadNode((UnsafeMemoryLoadNode) n);
-        } else if (n instanceof UnsafeStoreNode) {
-            lowerUnsafeStoreNode((UnsafeStoreNode) n);
+        } else if (n instanceof RawStoreNode) {
+            lowerUnsafeStoreNode((RawStoreNode) n);
         } else if (n instanceof UnsafeMemoryStoreNode) {
             lowerUnsafeMemoryStoreNode((UnsafeMemoryStoreNode) n);
         } else if (n instanceof JavaReadNode) {
@@ -532,7 +532,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     /**
      * @param tool utility for performing the lowering
      */
-    protected void lowerUnsafeLoadNode(UnsafeLoadNode load, LoweringTool tool) {
+    protected void lowerUnsafeLoadNode(RawLoadNode load, LoweringTool tool) {
         StructuredGraph graph = load.graph();
         if (load instanceof GuardedUnsafeLoadNode) {
             GuardedUnsafeLoadNode guardedLoad = (GuardedUnsafeLoadNode) load;
@@ -563,7 +563,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
     }
 
-    protected ReadNode createUnsafeRead(StructuredGraph graph, UnsafeLoadNode load, GuardingNode guard) {
+    protected ReadNode createUnsafeRead(StructuredGraph graph, RawLoadNode load, GuardingNode guard) {
         boolean compressible = load.accessKind() == JavaKind.Object;
         JavaKind readKind = load.accessKind();
         Stamp loadStamp = loadStamp(load.stamp(), readKind, compressible);
@@ -596,7 +596,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         graph.replaceFixedWithFixed(load, memoryRead);
     }
 
-    protected void lowerUnsafeStoreNode(UnsafeStoreNode store) {
+    protected void lowerUnsafeStoreNode(RawStoreNode store) {
         StructuredGraph graph = store.graph();
         boolean compressible = store.value().getStackKind() == JavaKind.Object;
         JavaKind valueKind = store.accessKind();
@@ -824,7 +824,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         return entryKind == JavaKind.Object ? BarrierType.PRECISE : BarrierType.NONE;
     }
 
-    protected BarrierType unsafeStoreBarrierType(UnsafeStoreNode store) {
+    protected BarrierType unsafeStoreBarrierType(RawStoreNode store) {
+        if (!store.needsBarrier()) {
+            return BarrierType.NONE;
+        }
         return storeBarrierType(store.object(), store.value());
     }
 

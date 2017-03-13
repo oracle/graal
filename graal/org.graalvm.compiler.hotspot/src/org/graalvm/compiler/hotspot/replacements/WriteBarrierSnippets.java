@@ -64,6 +64,7 @@ import org.graalvm.compiler.hotspot.nodes.GetObjectAddressNode;
 import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
 import org.graalvm.compiler.hotspot.nodes.SerialArrayRangeWriteBarrier;
 import org.graalvm.compiler.hotspot.nodes.SerialWriteBarrier;
+import org.graalvm.compiler.hotspot.nodes.VMErrorNode;
 import org.graalvm.compiler.hotspot.nodes.type.NarrowOopStamp;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -72,7 +73,6 @@ import org.graalvm.compiler.nodes.extended.FixedValueAnchorNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.extended.NullCheckNode;
-import org.graalvm.compiler.nodes.extended.UnsafeStoreNode;
 import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode.Address;
@@ -565,7 +565,7 @@ public class WriteBarrierSnippets implements Snippets {
     public static void validateObject(Object parent, Object child) {
         if (verifyOops(INJECTED_VMCONFIG) && child != null && !validateOop(VALIDATE_OBJECT, parent, child)) {
             log(true, "Verification ERROR, Parent: %p Child: %p\n", Word.objectToTrackedPointer(parent).rawValue(), Word.objectToTrackedPointer(child).rawValue());
-            UnsafeStoreNode.storeObject(null, 0, null, JavaKind.Object, LocationIdentity.any());
+            VMErrorNode.vmError("Verification ERROR, Parent: %p\n", Word.objectToTrackedPointer(parent).rawValue());
         }
     }
 
