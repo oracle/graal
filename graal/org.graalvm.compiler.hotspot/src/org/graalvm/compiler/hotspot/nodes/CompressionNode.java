@@ -214,6 +214,12 @@ public final class CompressionNode extends UnaryNode implements ConvertNode, LIR
             default:
                 throw GraalError.shouldNotReachHere();
         }
+
         gen.setResult(this, result);
+    }
+
+    @Override
+    public boolean mayNullCheckSkipConversion() {
+        return true;
     }
 }

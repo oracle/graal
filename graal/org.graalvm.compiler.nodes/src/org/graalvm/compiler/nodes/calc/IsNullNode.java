@@ -96,7 +96,7 @@ public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, 
 
         if (forValue instanceof ConvertNode) {
             ConvertNode convertNode = (ConvertNode) forValue;
-            if (convertNode.isLossless()) {
+            if (convertNode.mayNullCheckSkipConversion()) {
                 return IsNullNode.create(convertNode.getValue());
             }
         }

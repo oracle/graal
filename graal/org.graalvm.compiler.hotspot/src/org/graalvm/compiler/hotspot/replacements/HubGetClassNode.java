@@ -114,11 +114,16 @@ public final class HubGetClassNode extends FloatingNode implements Lowerable, Ca
         }
     }
 
+    /**
+     * Any concrete Klass* has a corresponding {@link java.lang.Class}.
+     */
     @Override
     public boolean isLossless() {
-        /*
-         * Any concrete Klass* has a corresponding java.lang.Class
-         */
+        return true;
+    }
+
+    @Override
+    public boolean mayNullCheckSkipConversion() {
         return true;
     }
 }

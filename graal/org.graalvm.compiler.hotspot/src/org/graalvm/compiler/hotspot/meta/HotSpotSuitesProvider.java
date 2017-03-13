@@ -56,10 +56,12 @@ import org.graalvm.compiler.phases.common.AddressLoweringPhase;
 import org.graalvm.compiler.phases.common.AddressLoweringPhase.AddressLowering;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.ExpandLogicPhase;
+import org.graalvm.compiler.phases.common.FixReadsPhase;
 import org.graalvm.compiler.phases.common.LoopSafepointInsertionPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.tiers.LowTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.tiers.SuitesCreator;
 
@@ -115,7 +117,11 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
             ret.getMidTier().appendPhase(new WriteBarrierVerificationPhase(config));
         }
 
-        ret.getLowTier().findPhase(ExpandLogicPhase.class).add(new AddressLoweringPhase(addressLowering));
+        ListIterator<BasePhase<? super LowTierContext>> findPhase = ret.getLowTier().findPhase(FixReadsPhase.class);
+        if (findPhase == null) {
+            findPhase = ret.getLowTier().findPhase(ExpandLogicPhase.class);
+        }
+        findPhase.add(new AddressLoweringPhase(addressLowering));
 
         return ret;
     }
