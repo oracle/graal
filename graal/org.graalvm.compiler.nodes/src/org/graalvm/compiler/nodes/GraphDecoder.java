@@ -37,8 +37,8 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.Fields;
+import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.util.TypeReader;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
 import org.graalvm.compiler.debug.Debug;
@@ -61,9 +61,9 @@ import org.graalvm.compiler.nodes.GraphDecoder.ProxyPlaceholder;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind;
-import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
+import org.graalvm.util.Equivalence;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -95,6 +95,8 @@ public class GraphDecoder {
         public final Graph.Mark methodStartMark;
         /** The encode graph that is decoded. */
         public final EncodedGraph encodedGraph;
+        /** The highest node order id that a fixed node has in the EncodedGraph. */
+        public final int maxFixedNodeOrderId;
         /** Access to the encoded graph. */
         public final TypeReader reader;
         /** The kind of loop explosion to be performed during decoding. */
@@ -131,6 +133,7 @@ public class GraphDecoder {
 
             if (encodedGraph != null) {
                 reader = UnsafeArrayTypeReader.create(encodedGraph.getEncoding(), encodedGraph.getStartOffset(), architecture.supportsUnalignedMemoryAccess());
+                maxFixedNodeOrderId = reader.getUVInt();
                 if (encodedGraph.nodeStartOffsets == null) {
                     int nodeCount = reader.getUVInt();
                     int[] nodeStartOffsets = new int[nodeCount];
@@ -141,6 +144,7 @@ public class GraphDecoder {
                 }
             } else {
                 reader = null;
+                maxFixedNodeOrderId = 0;
             }
 
             if (loopExplosion != LoopExplosionKind.NONE) {
@@ -193,7 +197,7 @@ public class GraphDecoder {
             this.loopBeginOrderId = -1;
 
             int nodeCount = methodScope.encodedGraph.nodeStartOffsets.length;
-            this.nodesToProcess = new BitSet(nodeCount);
+            this.nodesToProcess = new BitSet(methodScope.maxFixedNodeOrderId);
             this.initialCreatedNodes = new Node[nodeCount];
             this.createdNodes = new Node[nodeCount];
         }
@@ -207,7 +211,7 @@ public class GraphDecoder {
             this.nextIterations = nextIterations;
             this.iterationStates = iterationStates;
             this.loopBeginOrderId = loopBeginOrderId;
-            this.nodesToProcess = new BitSet(initialCreatedNodes.length);
+            this.nodesToProcess = new BitSet(methodScope.maxFixedNodeOrderId);
             this.initialCreatedNodes = initialCreatedNodes;
             this.createdNodes = Arrays.copyOf(createdNodes, createdNodes.length);
         }
@@ -1112,6 +1116,7 @@ public class GraphDecoder {
 
         /* Read the inputs of the node, possibly creating them recursively. */
         makeFloatingNodeInputs(methodScope, loopScope, node);
+
         /* Read the properties of the node. */
         readProperties(methodScope, node);
         /* There must not be any successors to read, since it is a non-fixed node. */

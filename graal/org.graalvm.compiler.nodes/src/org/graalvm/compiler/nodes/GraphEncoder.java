@@ -67,10 +67,11 @@ import jdk.vm.ci.code.Architecture;
  * encoding-local.
  *
  * The encoded graph has the following structure: First, all nodes and their edges are serialized.
- * The start offset of every node is then known. The raw node data is followed by a "table of
- * contents" that lists the start offset for every node.
+ * The start offset of every node is then known. The raw node data is followed by metadata, i.e.,
+ * the maximum fixed node order id and a "table of contents" that lists the start offset for every
+ * node.
  *
- * The beginning of that table of contents is the return value of {@link #encode} and stored in
+ * The beginning of this metadata is the return value of {@link #encode} and stored in
  * {@link EncodedGraph#getStartOffset()}. The order of nodes in the table of contents is the
  * {@link NodeOrder#orderIds orderId} of a node. Note that the orderId is not the regular node id
  * that every Graal graph node gets assigned. The orderId is computed and used just for encoding and
@@ -85,8 +86,8 @@ import jdk.vm.ci.code.Architecture;
  * <pre>
  * struct Node {
  *   unsigned typeId
- *   signed[] properties
  *   unsigned[] inputOrderIds
+ *   signed[] properties
  *   unsigned[] successorOrderIds
  * }
  * </pre>
@@ -275,18 +276,23 @@ public class GraphEncoder {
             }
         }
 
-        /* Write out the table of contents with the start offset for all nodes. */
-        int nodeTableStart = TypeConversion.asS4(writer.getBytesWritten());
+        /*
+         * Write out the metadata (maximum fixed node order id and the table of contents with the
+         * start offset for all nodes).
+         */
+        int metadataStart = TypeConversion.asS4(writer.getBytesWritten());
+        writer.putUV(nodeOrder.maxFixedNodeOrderId);
         writer.putUV(nodeCount);
         for (int i = 0; i < nodeCount; i++) {
             assert i == NULL_ORDER_ID || i == START_NODE_ORDER_ID || nodeStartOffsets[i] > 0;
-            writer.putUV(nodeTableStart - nodeStartOffsets[i]);
+            writer.putUV(metadataStart - nodeStartOffsets[i]);
         }
 
         /* Check that the decoding of the encode graph is the same as the input. */
-        assert verifyEncoding(graph, new EncodedGraph(getEncoding(), nodeTableStart, getObjects(), getNodeClasses(), graph.getAssumptions(), graph.getMethods()), architecture);
+        assert verifyEncoding(graph, new EncodedGraph(getEncoding(), metadataStart, getObjects(), getNodeClasses(), graph.getAssumptions(), graph.getMethods()),
+                        architecture);
 
-        return nodeTableStart;
+        return metadataStart;
     }
 
     public byte[] getEncoding() {
@@ -296,6 +302,7 @@ public class GraphEncoder {
     static class NodeOrder {
         protected final NodeMap<Integer> orderIds;
         protected int nextOrderId;
+        protected int maxFixedNodeOrderId;
 
         NodeOrder(StructuredGraph graph) {
             this.orderIds = new NodeMap<>(graph);
@@ -336,6 +343,7 @@ public class GraphEncoder {
                 }
             } while (current != null);
 
+            maxFixedNodeOrderId = nextOrderId - 1;
             for (Node node : graph.getNodes()) {
                 assert (node instanceof FixedNode) == (orderIds.get(node) != null) : "all fixed nodes must be ordered: " + node;
                 add(node);
