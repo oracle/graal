@@ -24,9 +24,15 @@
  */
 package com.oracle.truffle.api;
 
+import com.oracle.truffle.api.nodes.RootNode;
+
 /**
- * Represents the target of a call.
- * 
+ * Represents the target of a call. Do not subclass {@link CallTarget} directly but implement
+ * {@link RootNode} instead and create a {@link CallTarget target} using {@link Truffle}.
+ * {@link Truffle#getRuntime() getRuntime()}.{@link TruffleRuntime#createCallTarget(RootNode)
+ * createCallTarget(rootNode)}.
+ *
+ * @see RootNode
  * @since 0.8 or earlier
  */
 public interface CallTarget {

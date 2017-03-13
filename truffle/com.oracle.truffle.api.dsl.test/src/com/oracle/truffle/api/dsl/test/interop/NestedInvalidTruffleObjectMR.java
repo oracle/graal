@@ -27,7 +27,7 @@ import com.oracle.truffle.api.dsl.test.interop.ValidTruffleObject2.NestedInvalid
 import com.oracle.truffle.api.interop.MessageResolution;
 
 @ExpectError({"com.oracle.truffle.api.dsl.test.interop.ValidTruffleObject2.NestedInvalidTruffleObject cannot be used as a receiver as it is not a static inner class."})
-@MessageResolution(receiverType = NestedInvalidTruffleObject.class, language = TestTruffleLanguage.class)
+@MessageResolution(receiverType = NestedInvalidTruffleObject.class)
 public class NestedInvalidTruffleObjectMR {
 
 }

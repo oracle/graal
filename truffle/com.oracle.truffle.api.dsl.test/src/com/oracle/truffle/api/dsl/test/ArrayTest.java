@@ -45,7 +45,7 @@ public class ArrayTest {
     @Test
     public void testNode1() {
         final TestNode1 node = TestNode1NodeGen.create(null);
-        RootNode root = new RootNode(TestingLanguage.class, null, null) {
+        RootNode root = new RootNode(null) {
             @Child TestNode1 test = node;
 
             @Override

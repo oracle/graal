@@ -28,7 +28,8 @@ import com.oracle.truffle.api.TruffleLanguage;
 @TruffleLanguage.Registration(mimeType = "application/x-test", name = "InteropProcessorTest", version = "1.0")
 public final class TestTruffleLanguage extends TruffleLanguage<Object> {
 
-    public static final TestTruffleLanguage INSTANCE = new TestTruffleLanguage();
+    public TestTruffleLanguage() {
+    }
 
     @Override
     protected Object createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {

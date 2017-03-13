@@ -30,7 +30,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
 @SuppressWarnings("unused")
-@MessageResolution(receiverType = ValidTruffleObject11.class, language = TestTruffleLanguage.class)
+@MessageResolution(receiverType = ValidTruffleObject11.class)
 public class ValidTruffleObject11MR {
 
     @Resolve(message = "READ")

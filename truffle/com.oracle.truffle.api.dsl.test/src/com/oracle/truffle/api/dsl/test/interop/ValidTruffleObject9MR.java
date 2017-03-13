@@ -27,7 +27,7 @@ import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.Node;
 
-@MessageResolution(receiverType = ValidTruffleObject9.class, language = TestTruffleLanguage.class)
+@MessageResolution(receiverType = ValidTruffleObject9.class)
 public class ValidTruffleObject9MR {
     @ExpectError({"Unknown message type: unknownMsg"})
     @Resolve(message = "unknownMsg")

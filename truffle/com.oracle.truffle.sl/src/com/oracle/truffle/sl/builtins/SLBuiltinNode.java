@@ -43,6 +43,7 @@ package com.oracle.truffle.sl.builtins;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
+import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
@@ -60,7 +61,6 @@ import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
  * functions; there is no special function lookup or call node for builtin functions.
  */
 @NodeChild(value = "arguments", type = SLExpressionNode[].class)
-@NodeField(name = "context", type = SLContext.class)
 @GenerateNodeFactory
 public abstract class SLBuiltinNode extends SLExpressionNode {
 
@@ -68,5 +68,7 @@ public abstract class SLBuiltinNode extends SLExpressionNode {
      * Accessor for the {@link SLContext}. The implementation of this method is generated
      * automatically based on the {@link NodeField} annotation on the class.
      */
-    public abstract SLContext getContext();
+    public final SLContext getContext() {
+        return getRootNode().getLanguage(SLLanguage.class).getContextReference().get();
+    }
 }

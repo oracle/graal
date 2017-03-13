@@ -24,9 +24,10 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
@@ -37,7 +38,6 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.RootNode;
-import java.lang.reflect.Modifier;
 
 /**
  * Helper methods to simplify access to objects of {@link TruffleLanguage Truffle languages} from
@@ -164,7 +164,7 @@ public final class JavaInterop {
     @CompilerDirectives.TruffleBoundary
     @SuppressWarnings("unchecked")
     private static <T> T convertToJavaObject(Class<T> type, TruffleObject foreignObject) {
-        RootNode root = new TemporaryConvertRoot(TruffleLanguage.class, ToJavaNodeGen.create(), foreignObject, type);
+        RootNode root = new TemporaryConvertRoot(ToJavaNodeGen.create(), foreignObject, type);
         Object convertedValue = Truffle.getRuntime().createCallTarget(root).call();
         return (T) convertedValue;
     }
@@ -308,7 +308,7 @@ public final class JavaInterop {
      * @since 0.9
      */
     public static <T> T asJavaFunction(Class<T> functionalType, TruffleObject function) {
-        RootNode root = new TemporaryConvertRoot(TruffleLanguage.class, ToJavaNodeGen.create(), function, functionalType);
+        RootNode root = new TemporaryConvertRoot(ToJavaNodeGen.create(), function, functionalType);
         return functionalType.cast(Truffle.getRuntime().createCallTarget(root).call());
     }
 
@@ -451,9 +451,8 @@ public final class JavaInterop {
         private final Object value;
         private final Class<?> type;
 
-        @SuppressWarnings("rawtypes")
-        TemporaryConvertRoot(Class<? extends TruffleLanguage> lang, ToJavaNode node, Object value, Class<?> type) {
-            super(lang, null, null);
+        TemporaryConvertRoot(ToJavaNode node, Object value, Class<?> type) {
+            super(null);
             this.node = node;
             this.value = value;
             this.type = type;

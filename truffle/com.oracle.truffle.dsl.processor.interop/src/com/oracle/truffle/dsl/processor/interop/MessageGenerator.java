@@ -52,7 +52,6 @@ public abstract class MessageGenerator {
     protected final String clazzName;
     protected final String messageName;
     protected final String userClassName;
-    protected final String truffleLanguageFullClazzName;
     protected final String receiverClassName;
     protected final ProcessingEnvironment processingEnv;
     protected final ForeignAccessFactoryGenerator containingForeignAccessFactory;
@@ -65,7 +64,6 @@ public abstract class MessageGenerator {
         this.packageName = ElementUtils.getPackageName(element);
         this.messageName = resolveAnnotation.message();
         this.userClassName = ElementUtils.getQualifiedName(element);
-        this.truffleLanguageFullClazzName = Utils.getTruffleLanguageFullClassName(messageResolutionAnnotation);
         this.clazzName = Utils.getSimpleResolveClassName(element);
         this.containingForeignAccessFactory = containingForeignAccessFactory;
     }
@@ -164,14 +162,19 @@ public abstract class MessageGenerator {
     abstract String getRootNodeName();
 
     void appendRootNodeFactory(Writer w) throws IOException {
+        w.append("    @Deprecated\n");
+        w.append("    @SuppressWarnings(\"unused\")\n");
         w.append("    public static RootNode createRoot(Class<? extends TruffleLanguage<?>> language) {\n");
-        w.append("        return new ").append(getRootNodeName()).append("(language);\n");
+        w.append("        return createRoot();\n");
+        w.append("    }\n");
+        w.append("    public static RootNode createRoot() {\n");
+        w.append("        return new ").append(getRootNodeName()).append("();\n");
         w.append("    }\n");
 
     }
 
     public String getRootNodeFactoryInvokation() {
-        return packageName + "." + clazzName + ".createRoot(" + truffleLanguageFullClazzName + ".class)";
+        return packageName + "." + clazzName + ".createRoot()";
     }
 
     @Override

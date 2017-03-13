@@ -44,9 +44,10 @@ import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Info;
 import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.impl.Accessor.LanguageSupport;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode.EventChainNode;
@@ -109,6 +110,7 @@ final class InstrumentationHandler {
         if (!AccessorInstrumentHandler.nodesAccess().isInstrumentable(root)) {
             return;
         }
+        assert root.getLanguageInfo() != null;
         Source source = null;
         synchronized (sources) {
             if (!sourceBindings.isEmpty()) {
@@ -147,6 +149,7 @@ final class InstrumentationHandler {
         if (!AccessorInstrumentHandler.nodesAccess().isInstrumentable(root)) {
             return;
         }
+        assert root.getLanguageInfo() != null;
         executedRoots.add(root);
 
         // fast path no bindings attached
@@ -200,8 +203,8 @@ final class InstrumentationHandler {
         }
     }
 
-    Instrumenter forLanguage(TruffleLanguage.Env context, TruffleLanguage<?> language) {
-        return new LanguageClientInstrumenter<>(language, context);
+    Instrumenter forLanguage(TruffleLanguage.Info info) {
+        return new LanguageClientInstrumenter<>(info);
     }
 
     <T> EventBinding<T> addExecutionBinding(EventBinding<T> binding) {
@@ -509,24 +512,25 @@ final class InstrumentationHandler {
         return addOutputBinding(new EventBinding<>(instrumenter, null, stream, false), errorOutput);
     }
 
-    Set<Class<?>> getProvidedTags(Class<?> language) {
-        Set<Class<?>> tags = cachedProvidedTags.get(language);
+    Set<Class<?>> getProvidedTags(TruffleLanguage.Info language) {
+        LanguageSupport langAccess = AccessorInstrumentHandler.langAccess();
+        TruffleLanguage<?> lang = langAccess.getLanguage(langAccess.getEnv(language));
+        if (lang == null) {
+            return Collections.emptySet();
+        }
+        Class<?> languageClass = lang.getClass();
+        Set<Class<?>> tags = cachedProvidedTags.get(languageClass);
         if (tags == null) {
-            ProvidedTags languageTags = language.getAnnotation(ProvidedTags.class);
+            ProvidedTags languageTags = languageClass.getAnnotation(ProvidedTags.class);
             List<Class<?>> languageTagsList = languageTags != null ? Arrays.asList(languageTags.value()) : Collections.<Class<?>> emptyList();
             tags = Collections.unmodifiableSet(new HashSet<>(languageTagsList));
-            cachedProvidedTags.put(language, tags);
+            cachedProvidedTags.put(languageClass, tags);
         }
         return tags;
     }
 
     Set<Class<?>> getProvidedTags(RootNode root) {
-        Class<?> language = AccessorInstrumentHandler.nodesAccess().findLanguage(root);
-        if (language != null) {
-            return getProvidedTags(language);
-        } else {
-            return Collections.emptySet();
-        }
+        return getProvidedTags(root.getLanguageInfo());
     }
 
     private static boolean isInstrumentableNode(Node node, SourceSection sourceSection) {
@@ -898,12 +902,10 @@ final class InstrumentationHandler {
      */
     final class LanguageClientInstrumenter<T> extends AbstractInstrumenter {
 
-        private final TruffleLanguage.Env env;
-        private final TruffleLanguage<T> language;
+        private final TruffleLanguage.Info languageInfo;
 
-        LanguageClientInstrumenter(TruffleLanguage<T> language, TruffleLanguage.Env env) {
-            this.language = language;
-            this.env = env;
+        LanguageClientInstrumenter(TruffleLanguage.Info info) {
+            this.languageInfo = info;
         }
 
         @Override
@@ -912,26 +914,29 @@ final class InstrumentationHandler {
             if (mimeType == null) {
                 return false;
             }
-            return env.isMimeTypeSupported(mimeType);
+            return languageInfo.getMimeTypes().contains(mimeType);
         }
 
         @Override
         boolean isInstrumentableRoot(RootNode node) {
-            if (AccessorInstrumentHandler.nodesAccess().findLanguage(node.getRootNode()) != language.getClass()) {
+            Info langInfo = node.getLanguageInfo();
+            if (langInfo == null) {
                 return false;
             }
-            // TODO (chumer) check for the context instance
+            if (langInfo != languageInfo) {
+                return false;
+            }
             return true;
         }
 
         @Override
         public Set<Class<?>> queryTags(Node node) {
-            return queryTagsImpl(node, language.getClass());
+            return queryTagsImpl(node, languageInfo);
         }
 
         @Override
         void verifyFilter(SourceSectionFilter filter) {
-            Set<Class<?>> providedTags = getProvidedTags(language.getClass());
+            Set<Class<?>> providedTags = getProvidedTags(languageInfo);
             // filters must not reference tags not declared in @RequiredTags
             Set<Class<?>> referencedTags = filter.getReferencedTags();
             if (!providedTags.containsAll(referencedTags)) {
@@ -947,10 +952,11 @@ final class InstrumentationHandler {
                     sep = ", ";
                 }
                 builder.append("}");
-
+                LanguageSupport langAccess = AccessorInstrumentHandler.langAccess();
+                TruffleLanguage<?> lang = langAccess.getLanguage(langAccess.getEnv(languageInfo));
                 throw new IllegalArgumentException(String.format("The attached filter %s references the following tags %s which are not declared as provided by the language. " +
                                 "To fix this annotate the language class %s with @%s(%s).",
-                                filter, missingTags, language.getClass().getName(), ProvidedTags.class.getSimpleName(), builder));
+                                filter, missingTags, lang.getClass().getName(), ProvidedTags.class.getSimpleName(), builder));
             }
         }
 
@@ -991,7 +997,7 @@ final class InstrumentationHandler {
 
         abstract boolean isInstrumentableSource(Source source);
 
-        final Set<Class<?>> queryTagsImpl(Node node, Class<?> onlyLanguage) {
+        final Set<Class<?>> queryTagsImpl(Node node, TruffleLanguage.Info onlyLanguage) {
             SourceSection sourceSection = node.getSourceSection();
             if (!InstrumentationHandler.isInstrumentableNode(node, sourceSection)) {
                 return Collections.emptySet();
@@ -1002,8 +1008,7 @@ final class InstrumentationHandler {
                 return Collections.emptySet();
             }
 
-            Class<?> language = AccessorInstrumentHandler.nodesAccess().findLanguage(root);
-            if (onlyLanguage != null && language != onlyLanguage) {
+            if (onlyLanguage != null && root.getLanguageInfo() != onlyLanguage) {
                 throw new IllegalArgumentException("The language instrumenter cannot query tags of nodes of other languages.");
             }
             Set<Class<?>> providedTags = getProvidedTags(root);
@@ -1285,12 +1290,6 @@ final class InstrumentationHandler {
             return ACCESSOR.engineSupport();
         }
 
-        @SuppressWarnings("rawtypes")
-        protected CallTarget parse(Class<? extends TruffleLanguage> languageClass, Source code, Node context, String... argumentNames) {
-            final TruffleLanguage<?> truffleLanguage = engineSupport().findLanguageImpl(null, languageClass, code.getMimeType());
-            return langAccess().parse(truffleLanguage, code, context, argumentNames);
-        }
-
         @Override
         protected InstrumentSupport instrumentSupport() {
             return new InstrumentImpl();
@@ -1314,9 +1313,9 @@ final class InstrumentationHandler {
             }
 
             @Override
-            public void collectEnvServices(Set<Object> collectTo, Object vm, TruffleLanguage<?> impl, TruffleLanguage.Env env) {
-                InstrumentationHandler instrumentationHandler = (InstrumentationHandler) engineAccess().getInstrumentationHandler(vm);
-                Instrumenter instrumenter = instrumentationHandler.forLanguage(env, impl);
+            public void collectEnvServices(Set<Object> collectTo, Object languageShared, Info info) {
+                InstrumentationHandler instrumentationHandler = (InstrumentationHandler) engineAccess().getInstrumentationHandler(languageShared);
+                Instrumenter instrumenter = instrumentationHandler.forLanguage(info);
                 collectTo.add(instrumenter);
             }
 
@@ -1327,33 +1326,31 @@ final class InstrumentationHandler {
             }
 
             @Override
-            public void detachLanguageFromInstrumentation(Object vm, com.oracle.truffle.api.TruffleLanguage.Env env) {
-                InstrumentationHandler instrumentationHandler = (InstrumentationHandler) engineAccess().getInstrumentationHandler(vm);
-                instrumentationHandler.disposeInstrumenter(langAccess().findContext(env), false);
-            }
-
-            @Override
             public void onFirstExecution(RootNode rootNode) {
-                Object instrumentationHandler = engineAccess().getInstrumentationHandler(null);
-                /*
-                 * we want to still support cases where call targets are executed without an
-                 * enclosing engine.
-                 */
-                if (instrumentationHandler != null) {
-                    ((InstrumentationHandler) instrumentationHandler).onFirstExecution(rootNode);
+                InstrumentationHandler handler = getHandler(rootNode);
+                if (handler != null) {
+                    handler.onFirstExecution(rootNode);
                 }
             }
 
             @Override
             public void onLoad(RootNode rootNode) {
-                Object instrumentationHandler = engineAccess().getInstrumentationHandler(null);
-                /*
-                 * we want to still support cases where call targets are executed without an
-                 * enclosing engine.
-                 */
-                if (instrumentationHandler != null) {
-                    ((InstrumentationHandler) instrumentationHandler).onLoad(rootNode);
+                InstrumentationHandler handler = getHandler(rootNode);
+                if (handler != null) {
+                    handler.onLoad(rootNode);
                 }
+            }
+
+            private static InstrumentationHandler getHandler(RootNode rootNode) {
+                Info info = rootNode.getLanguageInfo();
+                if (info == null) {
+                    return null;
+                }
+                Object languageShared = langAccess().getLanguageShared(info);
+                if (languageShared == null) {
+                    return null;
+                }
+                return (InstrumentationHandler) engineAccess().getInstrumentationHandler(languageShared);
             }
         }
     }

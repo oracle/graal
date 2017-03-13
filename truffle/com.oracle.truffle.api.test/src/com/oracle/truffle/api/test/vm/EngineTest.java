@@ -25,13 +25,18 @@ package com.oracle.truffle.api.test.vm;
 import static com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.L1;
 import static com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.L1_ALT;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +49,8 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLanguage.Info;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -57,8 +64,6 @@ import com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.Ctx;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
-import java.util.Collections;
-import static org.junit.Assert.assertTrue;
 
 public class EngineTest {
     private Set<PolyglotEngine> toDispose = new HashSet<>();
@@ -467,7 +472,7 @@ public class EngineTest {
                 }
 
                 public CallTarget accessMessage(final Message tree) {
-                    RootNode root = new RootNode(TruffleLanguage.class, null, null) {
+                    RootNode root = new RootNode(null) {
                         @Override
                         public Object execute(VirtualFrame frame) {
                             if (tree == Message.IS_BOXED) {
@@ -505,8 +510,6 @@ public class EngineTest {
 
         static final String MIME_TYPE = "application/x-test-caching";
 
-        public static final CachingLanguage INSTANCE = new CachingLanguage();
-
         public CachingLanguage() {
         }
 
@@ -518,8 +521,8 @@ public class EngineTest {
         @Override
         protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
             final boolean boxed = request.getSource().getCode().equals("boxed");
-            final CachingLanguageChannel channel = findContext(createFindContextNode());
-            RootNode root = new RootNode(TruffleLanguage.class, null, null) {
+            final CachingLanguageChannel channel = getContextReference().get();
+            RootNode root = new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     return new CachingTruffleObject(channel, boxed);
@@ -541,6 +544,340 @@ public class EngineTest {
         @Override
         protected Object getLanguageGlobal(CachingLanguageChannel context) {
             return null;
+        }
+
+        @Override
+        protected boolean isObjectOfLanguage(Object object) {
+            return false;
+        }
+    }
+
+    @Test
+    public void languageInstancesAreNotShared() {
+        ForkingLanguage.constructorInvocationCount = 0;
+        ForkingLanguageChannel channel1 = new ForkingLanguageChannel(null);
+        PolyglotEngine vm1 = register(createBuilder().config(ForkingLanguage.MIME_TYPE, "channel", channel1).build());
+        register(vm1);
+        vm1.getLanguages().get(ForkingLanguage.MIME_TYPE).getGlobalObject();
+
+        assertEquals(1, ForkingLanguage.constructorInvocationCount);
+
+        ForkingLanguageChannel channel2 = new ForkingLanguageChannel(null);
+        PolyglotEngine vm2 = register(createBuilder().config(ForkingLanguage.MIME_TYPE, "channel", channel2).build());
+        register(vm2);
+        vm2.getLanguages().get(ForkingLanguage.MIME_TYPE).getGlobalObject();
+
+        assertEquals(2, ForkingLanguage.constructorInvocationCount);
+        assertNotSame(channel1.language, channel2.language);
+    }
+
+    @Test
+    public void basicForkTest() {
+        ForkingLanguageChannel channel = new ForkingLanguageChannel(null);
+        PolyglotEngine vm = register(createBuilder().config(ForkingLanguage.MIME_TYPE, "channel", channel).build());
+
+        PolyglotEngine uninitializedFork = vm.fork();
+        // language is not yet initialized -> no fork necessary
+        assertEquals(0, channel.forks.size());
+
+        assertEquals(channel.globalObject, vm.getLanguages().get(ForkingLanguage.MIME_TYPE).getGlobalObject().as(String.class));
+        assertEquals(1, channel.language.createContextCount);
+        assertEquals(0, channel.language.forkContextCount);
+        assertEquals(0, channel.language.disposeContextCount);
+
+        // unsure that the uninitialized fork creates its own context
+        uninitializedFork.getLanguages().get(ForkingLanguage.MIME_TYPE).getGlobalObject();
+        assertEquals(2, channel.language.createContextCount);
+        assertEquals(0, channel.language.forkContextCount);
+        assertEquals(0, channel.language.disposeContextCount);
+
+        List<PolyglotEngine> forks = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            forks.add(vm.fork());
+            assertEquals(channel.forks.size(), forks.size());
+
+            assertEquals(2, channel.language.createContextCount);
+            assertEquals(i + 1, channel.language.forkContextCount);
+            assertEquals(0, channel.language.disposeContextCount);
+            assertEquals(channel.forks.get(i).globalObject, forks.get(i).getLanguages().get(ForkingLanguage.MIME_TYPE).getGlobalObject().as(String.class));
+        }
+
+        for (ForkingLanguageChannel forkChannel : channel.forks) {
+            // the language instance is shared across all languages.
+            assertSame(channel.language, forkChannel.language);
+        }
+
+        int forksLeft = forks.size();
+        for (PolyglotEngine fork : forks) {
+            // test we can still safely access the global object
+            fork.getLanguages().get(ForkingLanguage.MIME_TYPE).getGlobalObject();
+
+            fork.dispose();
+            forksLeft--;
+            assertEquals(channel.forks.size(), forksLeft);
+
+            // test we can still safely access the global object of the origin vm
+            vm.getLanguages().get(ForkingLanguage.MIME_TYPE).getGlobalObject();
+            assertEquals(2, channel.language.createContextCount);
+            assertEquals(5, channel.language.forkContextCount);
+            assertEquals(forks.indexOf(fork) + 1, channel.language.disposeContextCount);
+        }
+    }
+
+    @Test(expected = UnsupportedOperationException.class)
+    public void forkUnsupportedFailsGracefully() {
+        ForkingLanguageChannel channel = new ForkingLanguageChannel(null);
+        PolyglotEngine vm = register(createBuilder().config(ForkingLanguage.MIME_TYPE, "channel", channel).build());
+
+        // fork supported when not initialized
+        try {
+            assertNotNull(vm.fork());
+        } catch (Exception e) {
+            fail();
+        }
+
+        vm.getLanguages().get(ForkingLanguage.MIME_TYPE).getGlobalObject();
+
+        channel.language.forkSupported = false;
+        vm.fork();
+    }
+
+    @Test
+    public void forkedSymbolsNotSharedButCopied() {
+        ForkingLanguageChannel channel = new ForkingLanguageChannel(null);
+        PolyglotEngine vm = register(createBuilder().config(ForkingLanguage.MIME_TYPE, "channel", channel).build());
+        channel.symbols.put("sym1", "symvalue1");
+        vm.getLanguages().get(ForkingLanguage.MIME_TYPE).getGlobalObject(); // initialize language
+
+        assertEquals("symvalue1", vm.findGlobalSymbol("sym1").as(String.class));
+
+        PolyglotEngine fork = vm.fork();
+
+        assertEquals("symvalue1", vm.findGlobalSymbol("sym1").as(String.class));
+        assertEquals("symvalue1", fork.findGlobalSymbol("sym1").as(String.class));
+
+        channel.forks.get(0).symbols.put("sym2", "symvalue2");
+
+        assertNull(vm.findGlobalSymbol("sym2"));
+        assertEquals("symvalue2", fork.findGlobalSymbol("sym2").as(String.class));
+
+        channel.symbols.put("sym2", "symvalue3");
+
+        assertEquals("symvalue3", vm.findGlobalSymbol("sym2").as(String.class));
+        assertEquals("symvalue2", fork.findGlobalSymbol("sym2").as(String.class));
+
+        assertEquals("symvalue1", vm.findGlobalSymbol("sym1").as(String.class));
+        assertEquals("symvalue1", fork.findGlobalSymbol("sym1").as(String.class));
+
+        PolyglotEngine forkfork = fork.fork();
+        assertEquals("symvalue1", forkfork.findGlobalSymbol("sym1").as(String.class));
+        assertEquals("symvalue2", forkfork.findGlobalSymbol("sym2").as(String.class));
+    }
+
+    @Test
+    public void forkInLanguageTest() {
+        ForkingLanguageChannel channel = new ForkingLanguageChannel(null);
+        PolyglotEngine vm = createBuilder().config(ForkingLanguage.MIME_TYPE, "channel", channel).build();
+
+        vm.eval(Source.newBuilder("").name("").mimeType(ForkingLanguage.MIME_TYPE).build()).get();
+
+        assertEquals(1, channel.languageForks.size());
+        assertFalse(channel.languageForks.get(0).disposed);
+
+        vm.dispose();
+        // make sure language forks are disposed with the engine that created it.
+        assertTrue(channel.languageForks.get(0).disposed);
+
+    }
+
+    @Test
+    public void testLanguageInfo() {
+        ForkingLanguageChannel channel = new ForkingLanguageChannel(null);
+        PolyglotEngine vm = createBuilder().config(ForkingLanguage.MIME_TYPE, "channel", channel).build();
+        vm.eval(Source.newBuilder("").name("").mimeType(ForkingLanguage.MIME_TYPE).build()).get();
+
+        assertNotNull(channel.info);
+        assertEquals(1, channel.info.getMimeTypes().size());
+        assertTrue(channel.info.getMimeTypes().contains(ForkingLanguage.MIME_TYPE));
+        assertEquals("forkinglanguage", channel.info.getName());
+        assertEquals("version", channel.info.getVersion());
+    }
+
+    @Test
+    public void testLanguageAccess() {
+        ForkingLanguageChannel channel = new ForkingLanguageChannel(null);
+        PolyglotEngine vm = createBuilder().config(ForkingLanguage.MIME_TYPE, "channel", channel).build();
+        vm.eval(Source.newBuilder("").name("").mimeType(ForkingLanguage.MIME_TYPE).build()).get();
+
+        RootNode root = new RootNode(channel.language) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return null;
+            }
+        };
+        try {
+            // no access using a TruffleLanguage hack
+            root.getLanguage(TruffleLanguage.class);
+            fail();
+        } catch (ClassCastException e) {
+        }
+
+        Class<?> oClass = Object.class;
+
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        Class<? extends TruffleLanguage> lang = (Class<? extends TruffleLanguage>) oClass;
+
+        try {
+            // no access using a TruffleLanguage class cast
+            root.getLanguage(lang);
+            fail();
+        } catch (ClassCastException e) {
+        }
+
+        oClass = SecretInterfaceType.class;
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        Class<? extends TruffleLanguage> secretInterface = (Class<? extends TruffleLanguage>) oClass;
+        try {
+            // no access using secret interface
+            root.getLanguage(secretInterface);
+            fail();
+        } catch (ClassCastException e) {
+        }
+
+        // this should work as expected
+        assertNotNull(root.getLanguage(ForkingLanguage.class));
+    }
+
+    interface SecretInterfaceType {
+
+    }
+
+    private static class ForkingLanguageChannel {
+
+        ForkingLanguage language;
+
+        private static int globalIndex = 0;
+
+        final String globalObject = "global" + globalIndex++;
+        final ForkingLanguageChannel parent;
+        final Map<String, String> symbols = new HashMap<>();
+        final List<ForkingLanguageChannel> forks = new ArrayList<>();
+        final List<ForkingLanguageChannel> languageForks = new ArrayList<>();
+
+        Env env;
+        Info info;
+
+        boolean disposed;
+
+        ForkingLanguageChannel(ForkingLanguageChannel parent) {
+            this.parent = parent;
+            if (parent != null) {
+                this.symbols.putAll(parent.symbols);
+            }
+        }
+
+    }
+
+    @TruffleLanguage.Registration(mimeType = ForkingLanguage.MIME_TYPE, version = "version", name = "forkinglanguage")
+    public static final class ForkingLanguage extends TruffleLanguage<ForkingLanguageChannel> implements SecretInterfaceType {
+
+        static final String MIME_TYPE = "application/x-test-forking";
+
+        static int constructorInvocationCount;
+
+        int createContextCount = 0;
+        int disposeContextCount = 0;
+        int forkContextCount = 0;
+
+        boolean forkSupported = true;
+
+        public ForkingLanguage() {
+            constructorInvocationCount++;
+        }
+
+        @Override
+        protected ForkingLanguageChannel createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
+            createContextCount++;
+            ForkingLanguageChannel channel = (ForkingLanguageChannel) env.getConfig().get("channel");
+            channel.env = env;
+            channel.language = this;
+            channel.info = new RootNode(this) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return null;
+                }
+            }.getLanguageInfo();
+
+            return channel;
+        }
+
+        @Override
+        protected ForkingLanguageChannel forkContext(ForkingLanguageChannel context) {
+            forkContextCount++;
+            if (!forkSupported) {
+                throw new UnsupportedOperationException();
+            }
+            ForkingLanguageChannel channel = new ForkingLanguageChannel(context);
+            channel.language = this;
+            context.forks.add(channel);
+            return channel;
+        }
+
+        @Override
+        protected void disposeContext(ForkingLanguageChannel context) {
+            disposeContextCount++;
+            context.disposed = true;
+            if (context.parent != null) {
+                context.parent.forks.remove(context);
+            }
+        }
+
+        @Override
+        protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
+            return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+                CallTarget target;
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    if (target == null) {
+                        int prevForkContextCount = forkContextCount;
+                        target = getContextReference().get().env.createFork(Truffle.getRuntime().createCallTarget(new RootNode(ForkingLanguage.this) {
+                            @Override
+                            public Object execute(VirtualFrame innerFrame) {
+                                return getContextReference().get();
+                            }
+                        }));
+                        assertEquals(prevForkContextCount + 1, forkContextCount);
+                        ForkingLanguageChannel forkedContext = (ForkingLanguageChannel) target.call();
+                        getContextReference().get().languageForks.add(forkedContext);
+                        assertEquals(getContextReference().get(), forkedContext.parent);
+                    }
+
+                    int prevForkContextCount = forkContextCount;
+                    CallTarget forkTarget = getContextReference().get().env.createFork(Truffle.getRuntime().createCallTarget(new RootNode(ForkingLanguage.this) {
+                        @Override
+                        public Object execute(VirtualFrame innerFrame) {
+                            return getContextReference().get();
+                        }
+                    }));
+                    assertEquals(prevForkContextCount + 1, forkContextCount);
+                    int prevDisposeCount = disposeContextCount;
+                    getContextReference().get().env.disposeFork(forkTarget);
+                    assertEquals(prevDisposeCount + 1, disposeContextCount);
+
+                    return null;
+                }
+            });
+        }
+
+        @Override
+        protected Object findExportedSymbol(ForkingLanguageChannel context, String globalName, boolean onlyExplicit) {
+            return context.symbols.get(globalName);
+        }
+
+        @Override
+        protected Object getLanguageGlobal(ForkingLanguageChannel context) {
+            return context.globalObject;
         }
 
         @Override

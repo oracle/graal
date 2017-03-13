@@ -28,7 +28,6 @@ import java.util.List;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -132,7 +131,7 @@ final class ArrayTruffleObject implements TruffleObject, ForeignAccess.Factory18
 
     private final class IndexNode extends RootNode {
         IndexNode() {
-            super(TruffleLanguage.class, null, null);
+            super(null);
         }
 
         @Override
@@ -148,7 +147,7 @@ final class ArrayTruffleObject implements TruffleObject, ForeignAccess.Factory18
 
     private final class InvokeNode extends RootNode {
         InvokeNode() {
-            super(TruffleLanguage.class, null, null);
+            super(null);
         }
 
         @Override
@@ -168,7 +167,7 @@ final class ArrayTruffleObject implements TruffleObject, ForeignAccess.Factory18
 
     private final class DuplNode extends RootNode {
         DuplNode() {
-            super(TruffleLanguage.class, null, null);
+            super(null);
         }
 
         @Override

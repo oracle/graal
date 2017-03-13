@@ -27,7 +27,7 @@ import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.Node;
 
-@MessageResolution(receiverType = ValidTruffleObject0.class, language = TestTruffleLanguage.class)
+@MessageResolution(receiverType = ValidTruffleObject0.class)
 public class ValidTruffleObject0MR {
     @Resolve(message = "com.oracle.truffle.api.dsl.test.interop.MyMessage")
     public abstract static class AcceptMyMessage extends Node {

@@ -66,7 +66,7 @@ public class AssumptionInvalidationTest {
         @Child private ValueNode child;
 
         TestRootNode(ValueNode child) {
-            super(TestingLanguage.class, null, null);
+            super(null);
             this.child = child;
         }
 

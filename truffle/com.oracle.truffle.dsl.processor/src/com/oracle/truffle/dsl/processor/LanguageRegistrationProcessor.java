@@ -148,10 +148,11 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
                 } else {
                     if (!foundConstructor) {
                         emitError("A TruffleLanguage subclass must have a public no argument constructor.", e);
+                    } else {
+                        assertNoErrorExpected(e);
                     }
                 }
 
-                assertNoErrorExpected(e);
                 registrations.add((TypeElement) e);
             }
         }

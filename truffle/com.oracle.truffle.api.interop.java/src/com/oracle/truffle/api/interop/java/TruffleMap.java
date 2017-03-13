@@ -24,9 +24,15 @@
  */
 package com.oracle.truffle.api.interop.java;
 
+import java.util.AbstractMap;
+import java.util.AbstractSet;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
@@ -35,12 +41,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import java.util.AbstractMap;
-import java.util.AbstractSet;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
 
 final class TruffleMap<K, V> extends AbstractMap<K, V> {
     private final TypeAndClass<K> keyType;
@@ -180,7 +180,7 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
         @Child private ToJavaNode toJavaNode;
 
         MapNode(Message msg) {
-            super(TruffleLanguage.class, null, null);
+            super(null);
             this.msg = msg;
             this.node = msg.createNode();
             this.toJavaNode = ToJavaNodeGen.create();

@@ -29,10 +29,12 @@ import static com.oracle.truffle.api.vm.PolyglotEngine.LOG;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -47,11 +49,11 @@ import com.oracle.truffle.api.vm.PolyglotEngine.Access;
  * Ahead-of-time initialization. If the JVM is started with {@link TruffleOptions#AOT}, it populates
  * cache with languages found in application classloader.
  */
-final class LanguageCache {
+final class LanguageCache implements Comparable<LanguageCache> {
     private static final boolean PRELOAD;
     private static final Map<String, LanguageCache> CACHE;
 
-    private static Map<String, LanguageCache> cache;
+    private static volatile Map<String, LanguageCache> cache;
     static final Collection<ClassLoader> AOT_LOADERS = TruffleOptions.AOT ? Access.loaders() : null;
     private final String className;
     private final Set<String> mimeTypes;
@@ -98,19 +100,7 @@ final class LanguageCache {
 
         if (PRELOAD) {
             this.languageClass = loadLanguageClass();
-            TruffleLanguage<?> eagerLanguage = null;
-            try {
-                // we need to test we can instantiate the class ahead of time.
-                // such that we can decide to potentially use the singleton if necessary
-                loadLanguage();
-            } catch (Exception e) {
-                eagerLanguage = readSingleton(languageClass);
-                if (eagerLanguage == null) {
-                    // no way to construct the language
-                    throw e;
-                }
-            }
-            this.singletonLanguage = eagerLanguage;
+            this.singletonLanguage = readSingleton(languageClass);
         } else {
             this.languageClass = null;
             this.singletonLanguage = null;
@@ -135,24 +125,38 @@ final class LanguageCache {
         if (PRELOAD) {
             return CACHE;
         }
-        if (cache != null) {
-            return cache;
+        if (cache == null) {
+            synchronized (LanguageCache.class) {
+                if (cache == null) {
+                    cache = createLanguages(null);
+                }
+            }
         }
-        return cache = createLanguages(null);
+        return cache;
     }
 
     private static Map<String, LanguageCache> createLanguages(ClassLoader additionalLoader) {
-        Map<String, LanguageCache> map = new LinkedHashMap<>();
+        List<LanguageCache> caches = new ArrayList<>();
         for (ClassLoader loader : (AOT_LOADERS == null ? Access.loaders() : AOT_LOADERS)) {
-            createLanguages(loader, map);
+            collectLanguages(loader, caches);
         }
         if (additionalLoader != null) {
-            createLanguages(additionalLoader, map);
+            collectLanguages(additionalLoader, caches);
         }
-        return map;
+        Map<String, LanguageCache> seenClasses = new HashMap<>();
+        for (LanguageCache languageCache : caches) {
+            seenClasses.put(languageCache.className, languageCache);
+        }
+        Map<String, LanguageCache> cacheToMimeType = new HashMap<>();
+        for (LanguageCache languageCache : caches) {
+            for (String mimeType : languageCache.getMimeTypes()) {
+                cacheToMimeType.put(mimeType, languageCache);
+            }
+        }
+        return cacheToMimeType;
     }
 
-    private static void createLanguages(ClassLoader loader, Map<String, LanguageCache> map) {
+    private static void collectLanguages(ClassLoader loader, List<LanguageCache> list) {
         if (loader == null) {
             return;
         }
@@ -180,12 +184,13 @@ final class LanguageCache {
                 if (name == null) {
                     break;
                 }
-                LanguageCache l = new LanguageCache(prefix, p, loader);
-                for (String mimeType : l.getMimeTypes()) {
-                    map.put(mimeType, l);
-                }
+                list.add(new LanguageCache(prefix, p, loader));
             }
         }
+    }
+
+    public int compareTo(LanguageCache o) {
+        return className.compareTo(o.className);
     }
 
     Set<String> getMimeTypes() {
@@ -208,29 +213,32 @@ final class LanguageCache {
         return interactive;
     }
 
-    TruffleLanguage<?> loadLanguage() {
+    LoadedLanguage loadLanguage() {
+        TruffleLanguage<?> instance;
+        boolean singleton = true;
         try {
             if (PRELOAD) {
-                if (singletonLanguage == null) {
-                    return languageClass.newInstance();
-                } else {
-                    return singletonLanguage;
+                instance = singletonLanguage;
+                if (instance == null) {
+                    instance = this.languageClass.newInstance();
+                    singleton = false;
                 }
             } else {
                 Class<? extends TruffleLanguage<?>> clazz = loadLanguageClass();
                 try {
-                    return clazz.newInstance();
-                } catch (Exception e) {
-                    TruffleLanguage<?> singleton = readSingleton(clazz);
-                    if (singleton == null) {
-                        throw e;
+                    instance = readSingleton(clazz);
+                    if (instance == null) {
+                        instance = clazz.newInstance();
+                        singleton = false;
                     }
-                    return singleton;
+                } catch (Exception e) {
+                    throw e;
                 }
             }
         } catch (Exception e) {
             throw new IllegalStateException("Cannot create instance of " + name + " language implementation. Public default constructor expected in " + className + ".", e);
         }
+        return new LoadedLanguage(instance, singleton);
     }
 
     @SuppressWarnings("unchecked")
@@ -255,6 +263,26 @@ final class LanguageCache {
         } catch (Exception ex) {
             return null;
         }
+    }
+
+    static final class LoadedLanguage {
+
+        private final TruffleLanguage<?> language;
+        private final boolean singleton;
+
+        LoadedLanguage(TruffleLanguage<?> language, boolean singleton) {
+            this.singleton = singleton;
+            this.language = language;
+        }
+
+        TruffleLanguage<?> getLanguage() {
+            return language;
+        }
+
+        boolean isSingleton() {
+            return singleton;
+        }
+
     }
 
 }

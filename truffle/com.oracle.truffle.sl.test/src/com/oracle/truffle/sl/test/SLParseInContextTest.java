@@ -51,7 +51,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
@@ -74,7 +73,6 @@ public class SLParseInContextTest {
 
     @TruffleLanguage.Registration(mimeType = "application/x-test-eval", name = "EvalLang", version = "1.0")
     public static final class EvalLang extends TruffleLanguage<Env> {
-        public static final EvalLang INSTANCE = new EvalLang();
 
         @Override
         protected Env createContext(Env env) {
@@ -98,14 +96,11 @@ public class SLParseInContextTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(new RootNode(EvalLang.class, null, null) {
-                @Node.Child private Node contextNode = INSTANCE.createFindContextNode();
-
+            return Truffle.getRuntime().createCallTarget(new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    Env env = INSTANCE.findContext(contextNode);
                     Source aPlusB = Source.newBuilder("a + b").mimeType("application/x-sl").name("plus.sl").build();
-                    return env.parse(aPlusB, "a", "b").call(30, 12);
+                    return getContextReference().get().parse(aPlusB, "a", "b").call(30, 12);
                 }
             });
         }

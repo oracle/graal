@@ -24,11 +24,15 @@
  */
 package com.oracle.truffle.api.vm;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -57,17 +61,17 @@ abstract class PolyglotRootNode extends RootNode {
     final PolyglotEngine engine;
 
     PolyglotRootNode(PolyglotEngine engine) {
-        super(TruffleLanguage.class, null, null);
+        super(null);
         this.engine = engine;
     }
 
     @Override
     public final Object execute(VirtualFrame frame) {
-        ContextStore prev = ExecutionImpl.executionStarted(engine.context());
+        Object prev = engine.enter();
         try {
             return executeImpl(frame);
         } finally {
-            ExecutionImpl.executionEnded(prev);
+            engine.leave(prev);
         }
     }
 
@@ -223,7 +227,6 @@ abstract class PolyglotRootNode extends RootNode {
         private static final Object[] EMPTY_ARRAY = new Object[0];
 
         @Child private DirectCallNode call;
-        private TruffleLanguage<?> fillLanguage;
         private final Language language;
         private final Source source;
 
@@ -237,12 +240,10 @@ abstract class PolyglotRootNode extends RootNode {
 
         @Override
         protected Object executeImpl(VirtualFrame frame) {
-            TruffleLanguage<?>[] fillLang = (TruffleLanguage[]) frame.getArguments()[0];
             if (call == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 initialize();
             }
-            fillLang[0] = fillLanguage;
             Object result = call.call(EMPTY_ARRAY);
 
             // TODO null is not valid value, wrap it using java interop
@@ -250,20 +251,39 @@ abstract class PolyglotRootNode extends RootNode {
             if (result == null) {
                 result = NULL_VALUE;
             }
+
+            if (source.isInteractive()) {
+                printResult(result);
+            }
+
             return result;
         }
 
+        @TruffleBoundary
+        private void printResult(Object result) {
+            String stringResult = Access.LANGS.toStringIfVisible(language.shared.getEnv(false), language.context(), result, true, false);
+            if (stringResult != null) {
+                try {
+                    OutputStream out = language.engine().shared.out();
+                    out.write(stringResult.getBytes(StandardCharsets.UTF_8));
+                    out.write(System.getProperty("line.separator").getBytes(StandardCharsets.UTF_8));
+                } catch (IOException ioex) {
+                    // out stream has problems.
+                    throw new IllegalStateException(ioex);
+                }
+            }
+        }
+
         private void initialize() {
-            TruffleLanguage<?> languageImpl = language.getImpl(true);
-            CallTarget target = Access.LANGS.parse(languageImpl, source, null);
+            this.language.getContext(true);
+            CallTarget target = Access.LANGS.parse(language.shared.getEnv(false), source, null);
             if (target == null) {
                 throw new NullPointerException("Parsing has not produced a CallTarget for " + source);
             }
-            fillLanguage = languageImpl;
-            call = insert(DirectCallNode.create(target));
+            this.call = insert(DirectCallNode.create(target));
         }
 
-        Object getEngine() {
+        PolyglotEngine getEngine() {
             return engine;
         }
     }

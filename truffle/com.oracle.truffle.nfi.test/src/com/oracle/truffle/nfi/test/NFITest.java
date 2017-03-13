@@ -24,12 +24,13 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import org.junit.Assert;
+import org.junit.BeforeClass;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
@@ -39,9 +40,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.nfi.NFILanguage;
-import org.junit.Assert;
-import org.junit.BeforeClass;
 
 public class NFITest {
 
@@ -64,7 +62,7 @@ public class NFITest {
         @Child Node bind = Message.createInvoke(1).createNode();
 
         private LookupAndBindNode() {
-            super(NFILanguage.class, null, new FrameDescriptor());
+            super(null);
         }
 
         @Override
@@ -85,7 +83,7 @@ public class NFITest {
     protected abstract static class TestRootNode extends RootNode {
 
         protected TestRootNode() {
-            super(NFILanguage.class, null, new FrameDescriptor());
+            super(null);
         }
 
         @TruffleBoundary

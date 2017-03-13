@@ -43,7 +43,7 @@ import com.oracle.truffle.api.nodes.Node;
 import java.util.Map;
 import java.util.Objects;
 
-@MessageResolution(receiverType = JavaObject.class, language = JavaInteropLanguage.class)
+@MessageResolution(receiverType = JavaObject.class)
 class JavaObjectMessageResolution {
 
     /**

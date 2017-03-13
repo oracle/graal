@@ -41,6 +41,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Info;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.impl.Accessor;
@@ -558,7 +559,11 @@ public abstract class Node implements NodeInterface, Cloneable {
      * language is unknown, returns "".
      *
      * @since 0.8 or earlier
+     * @deprecated in 0.25 use {@link #getRootNode() getRootNode()}.
+     *             {@link RootNode#getLanguageInfo() getLanguageInfo()}.{@link Info#getName()
+     *             getName()} instead
      */
+    @Deprecated
     public String getLanguage() {
         NodeInfo info = getClass().getAnnotation(NodeInfo.class);
         if (info != null && info.language() != null && info.language().length() > 0) {
@@ -585,8 +590,18 @@ public abstract class Node implements NodeInterface, Cloneable {
         }
 
         @Override
+        protected EngineSupport engineSupport() {
+            return super.engineSupport();
+        }
+
+        @Override
         protected Accessor.Nodes nodes() {
             return new AccessNodes();
+        }
+
+        @Override
+        protected LanguageSupport languageSupport() {
+            return super.languageSupport();
         }
 
         @Override
@@ -595,11 +610,6 @@ public abstract class Node implements NodeInterface, Cloneable {
         }
 
         static final class AccessNodes extends Accessor.Nodes {
-            @SuppressWarnings("rawtypes")
-            @Override
-            public Class<? extends TruffleLanguage> findLanguage(RootNode n) {
-                return n.language;
-            }
 
             @Override
             public boolean isInstrumentable(RootNode rootNode) {
@@ -620,6 +630,7 @@ public abstract class Node implements NodeInterface, Cloneable {
             public RootNode cloneUninitialized(RootNode rootNode) {
                 return rootNode.cloneUninitialized();
             }
+
         }
     }
 

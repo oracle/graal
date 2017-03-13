@@ -165,36 +165,26 @@ public final class Debugger {
 
     static final class AccessorDebug extends Accessor {
 
+        @Override
+        protected Nodes nodes() {
+            return super.nodes();
+        }
+
         /*
          * TODO get rid of this access and replace it with an API in {@link TruffleInstrument.Env}.
          * I don't think {@link CallTarget} is the right return type here as we want to make it
          * embeddable into the current AST.
          */
-        @SuppressWarnings("rawtypes")
         protected CallTarget parse(Source code, Node context, String... argumentNames) {
             RootNode rootNode = context.getRootNode();
-            Class<? extends TruffleLanguage> languageClass = nodes().findLanguage(rootNode);
-            if (languageClass == null) {
-                throw new IllegalStateException("Could not resolve language class for root node " + rootNode);
-            }
-            final TruffleLanguage<?> truffleLanguage = engineSupport().findLanguageImpl(null, languageClass, code.getMimeType());
-            return languageSupport().parse(truffleLanguage, code, context, argumentNames);
-        }
-
-        /*
-         * TODO we should have a way to identify a language in the instrumentation API without
-         * accessor.
-         */
-        @SuppressWarnings("rawtypes")
-        protected Class<? extends TruffleLanguage> findLanguage(RootNode rootNode) {
-            return nodes().findLanguage(rootNode);
+            return languageSupport().parse(languageSupport().getEnv(rootNode.getLanguageInfo()), code, context, argumentNames);
         }
 
         /*
          * TODO we should have a better way to publish services from instruments to languages.
          */
         protected Object findVM(com.oracle.truffle.api.TruffleLanguage.Env env) {
-            return languageSupport().getVM(env);
+            return languageSupport().getLanguageShared(languageSupport().getInfo(env));
         }
 
         /*

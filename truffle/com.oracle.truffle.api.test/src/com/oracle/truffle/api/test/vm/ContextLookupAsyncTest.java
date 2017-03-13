@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,40 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.test;
+package com.oracle.truffle.api.test.vm;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.TruffleLanguage;
+import java.util.concurrent.Executors;
 
-public final class TestingLanguage extends TruffleLanguage<Object> {
-    public static final TestingLanguage INSTANCE = new TestingLanguage();
+import org.junit.Test;
 
-    private TestingLanguage() {
+import com.oracle.truffle.api.vm.PolyglotEngine;
+
+public class ContextLookupAsyncTest extends ContextLookupTest {
+    @Test
+    public void marker() {
     }
 
     @Override
-    protected CallTarget parse(ParsingRequest env) {
-        throw new IllegalStateException();
+    protected PolyglotEngine.Builder createBuilder() {
+        return PolyglotEngine.newBuilder().executor(Executors.newSingleThreadExecutor());
     }
-
-    @Override
-    protected Object findExportedSymbol(Object context, String globalName, boolean onlyExplicit) {
-        return null;
-    }
-
-    @Override
-    protected Object getLanguageGlobal(Object context) {
-        return null;
-    }
-
-    @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return false;
-    }
-
-    @Override
-    protected Object createContext(Env env) {
-        return null;
-    }
-
 }

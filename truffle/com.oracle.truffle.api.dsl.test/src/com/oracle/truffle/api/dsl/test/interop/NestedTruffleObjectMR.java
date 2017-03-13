@@ -28,7 +28,7 @@ import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.Node;
 
-@MessageResolution(receiverType = NestedTruffleObject.class, language = TestTruffleLanguage.class)
+@MessageResolution(receiverType = NestedTruffleObject.class)
 public class NestedTruffleObjectMR {
     @Resolve(message = "READ")
     public abstract static class ReadNode8 extends Node {

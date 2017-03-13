@@ -27,6 +27,10 @@ package com.oracle.truffle.api.impl;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.Node;
 
+/**
+ * @deprecated
+ */
+@Deprecated
 public abstract class FindContextNode<C> extends Node {
     public abstract C executeFindContext();
 

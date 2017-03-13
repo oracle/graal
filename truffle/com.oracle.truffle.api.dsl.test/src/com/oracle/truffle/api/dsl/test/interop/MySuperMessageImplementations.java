@@ -28,7 +28,7 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.Node;
 
 @SuppressWarnings("unused")
-@MessageResolution(language = TestTruffleLanguage.class, receiverType = ValidTruffleObject0.class)
+@MessageResolution(receiverType = ValidTruffleObject0.class)
 public class MySuperMessageImplementations {
 
     @Resolve(message = "UNBOX")

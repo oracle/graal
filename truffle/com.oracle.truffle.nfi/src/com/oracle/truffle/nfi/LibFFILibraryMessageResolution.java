@@ -34,7 +34,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.LibFFILibraryMessageResolutionFactory.CachedLookupSymbolNodeGen;
 
-@MessageResolution(language = NFILanguage.class, receiverType = LibFFILibrary.class)
+@MessageResolution(receiverType = LibFFILibrary.class)
 class LibFFILibraryMessageResolution {
 
     abstract static class CachedLookupSymbolNode extends Node {

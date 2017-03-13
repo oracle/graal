@@ -22,24 +22,25 @@
  */
 package com.oracle.truffle.api.test.vm;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 
 import org.junit.Assert;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import org.junit.Test;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.vm.PolyglotEngine;
 
 public class InteractiveEvalTest {
 
@@ -145,7 +146,6 @@ public class InteractiveEvalTest {
 
     @TruffleLanguage.Registration(name = "DefaultInteractive", mimeType = "application/x-test-definteract", version = "1.0")
     public static class DefaultInteractiveLanguage extends TruffleLanguage<InteractiveContext> {
-        public static final DefaultInteractiveLanguage INSTANCE = new DefaultInteractiveLanguage();
 
         @Override
         protected InteractiveContext createContext(Env env) {
@@ -154,13 +154,11 @@ public class InteractiveEvalTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(new RootNode(DefaultInteractiveLanguage.class, null, null) {
-
-                @Child Node findContext = createFindContextNode();
+            return Truffle.getRuntime().createCallTarget(new RootNode(this) {
 
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    return findContext(findContext).getValue();
+                    return getContextReference().get().getValue();
                 }
             });
         }
@@ -183,7 +181,6 @@ public class InteractiveEvalTest {
 
     @TruffleLanguage.Registration(name = "SpecialInteractive", mimeType = "application/x-test-specinteract", version = "1.0", interactive = false)
     public static class SpecialInteractiveLanguage extends TruffleLanguage<InteractiveContext> {
-        public static final SpecialInteractiveLanguage INSTANCE = new SpecialInteractiveLanguage();
 
         @Override
         protected InteractiveContext createContext(Env env) {
@@ -193,13 +190,11 @@ public class InteractiveEvalTest {
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             Source code = request.getSource();
-            return Truffle.getRuntime().createCallTarget(new RootNode(DefaultInteractiveLanguage.class, null, null) {
-
-                @Child Node findContext = createFindContextNode();
+            return Truffle.getRuntime().createCallTarget(new RootNode(this) {
 
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    InteractiveContext ic = findContext(findContext);
+                    InteractiveContext ic = getContextReference().get();
                     Object value = ic.getValue();
                     if (code.isInteractive()) {
                         try {

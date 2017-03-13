@@ -34,7 +34,6 @@ import static org.junit.Assert.fail;
 
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
-import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -53,16 +52,13 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.interop.ForeignAccess.Factory18;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.interop.java.MethodMessage;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -2130,12 +2126,7 @@ public abstract class TruffleTCK {
             instr.setEnabled(true);
             try {
                 Value value = valueFunction.execute();
-                TckInstrument tckInstrument = instr.lookup(TckInstrument.class);
-                assertNotNull(tckInstrument);
-                TruffleInstrument.Env env = tckInstrument.getEnvironment();
-                assertNotNull(env);
-                Object metaObject = findMetaObject(env, value);
-                metaObjectStr = env.toString(createDummyNode(findTruffleLanguage(value)), metaObject);
+                metaObjectStr = value.getMetaObject().as(String.class);
             } finally {
                 instr.setEnabled(false);
             }
@@ -2144,27 +2135,6 @@ public abstract class TruffleTCK {
 
             assertEquals(mo, metaObjectStr);
         }
-    }
-
-    @SuppressWarnings("rawtypes")
-    private static Class<? extends TruffleLanguage> findTruffleLanguage(Value value) throws Exception {
-        Field targetField = PolyglotEngine.Value.class.getDeclaredField("language");
-        targetField.setAccessible(true);
-        return ((TruffleLanguage<?>[]) targetField.get(value))[0].getClass();
-    }
-
-    private static Object findMetaObject(Env env, Value value) throws Exception {
-        return env.findMetaObject(createDummyNode(findTruffleLanguage(value)), value.get());
-    }
-
-    private static Node createDummyNode(@SuppressWarnings("rawtypes") Class<? extends TruffleLanguage> lang) {
-        return new RootNode(lang, null, null) {
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return null;
-            }
-        };
     }
 
     /** @since 0.22 */
@@ -2184,12 +2154,23 @@ public abstract class TruffleTCK {
             assertNotNull(tckInstrument);
             TruffleInstrument.Env env = tckInstrument.getEnvironment();
             assertNotNull(env);
-            sourceLocation = env.findSourceLocation(createDummyNode(findTruffleLanguage(value)), value.get());
+            sourceLocation = value.getSourceLocation();
             assertNotNull(sourceLocation);
             List<SourceSection> lss = env.getInstrumenter().querySourceSections(SourceSectionFilter.ANY);
             assertTrue("Source section not among loaded sections", lss.contains(sourceLocation));
         } finally {
             instr.setEnabled(false);
+        }
+    }
+
+    /** @since 0.25 */
+    @Test
+    public void testForking() throws Exception {
+        PolyglotEngine engine = vm();
+        try {
+            engine.fork();
+        } catch (UnsupportedOperationException e) {
+            // valid if the language does not support forking
         }
     }
 

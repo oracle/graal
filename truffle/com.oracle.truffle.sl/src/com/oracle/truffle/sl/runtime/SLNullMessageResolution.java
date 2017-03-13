@@ -45,12 +45,14 @@ import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.sl.SLLanguage;
 
 /**
  * The class containing all message resolution implementations of {@link SLNull}.
  */
-@MessageResolution(receiverType = SLNull.class, language = SLLanguage.class)
+/**
+ * The class containing all message resolution implementations of {@link SLNull}.
+ */
+@MessageResolution(receiverType = SLNull.class)
 public class SLNullMessageResolution {
     /*
      * An SL function resolves the IS_NULL message.

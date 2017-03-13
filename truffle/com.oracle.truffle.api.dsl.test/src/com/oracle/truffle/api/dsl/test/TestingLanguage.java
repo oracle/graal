@@ -28,7 +28,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 
 public final class TestingLanguage extends TruffleLanguage<Object> {
-    public static final TestingLanguage INSTANCE = new TestingLanguage();
 
     private TestingLanguage() {
         super();

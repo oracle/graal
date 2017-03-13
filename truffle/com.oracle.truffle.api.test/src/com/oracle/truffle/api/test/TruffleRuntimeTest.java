@@ -63,10 +63,15 @@ public class TruffleRuntimeTest {
     }
 
     private static RootNode createTestRootNode(SourceSection sourceSection) {
-        return new RootNode(TestingLanguage.class, sourceSection, null) {
+        return new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 return 42;
+            }
+
+            @Override
+            public SourceSection getSourceSection() {
+                return sourceSection;
             }
         };
     }

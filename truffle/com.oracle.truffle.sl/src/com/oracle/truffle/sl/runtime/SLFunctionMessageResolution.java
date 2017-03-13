@@ -47,7 +47,6 @@ import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.call.SLDispatchNode;
 import com.oracle.truffle.sl.nodes.call.SLDispatchNodeGen;
 import com.oracle.truffle.sl.nodes.interop.SLTypeToForeignNode;
@@ -56,7 +55,10 @@ import com.oracle.truffle.sl.nodes.interop.SLTypeToForeignNodeGen;
 /**
  * The class containing all message resolution implementations of {@link SLFunction}.
  */
-@MessageResolution(receiverType = SLFunction.class, language = SLLanguage.class)
+/**
+ * The class containing all message resolution implementations of {@link SLFunction}.
+ */
+@MessageResolution(receiverType = SLFunction.class)
 public class SLFunctionMessageResolution {
     /*
      * An SL function resolves an EXECUTE message.

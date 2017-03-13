@@ -24,9 +24,12 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
+
 import java.io.ByteArrayOutputStream;
-import java.io.InputStreamReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.io.Reader;
@@ -50,11 +53,11 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
-import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.BaseNode;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Instrument;
 
 public class InstrumentationTest extends AbstractInstrumentationTest {
@@ -186,12 +189,13 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
     @TruffleLanguage.Registration(name = "", version = "", mimeType = "testLanguageInstrumentation")
     @ProvidedTags({InstrumentationTestLanguage.ExpressionNode.class, StandardTags.StatementTag.class})
-    public static class TestLanguageInstrumentationLanguage extends TruffleLanguage<Void> {
-
-        public static final TestLanguageInstrumentationLanguage INSTANCE = new TestLanguageInstrumentationLanguage();
+    public static class TestLanguageInstrumentationLanguage extends InstrumentationTestLanguage {
 
         static int installInstrumentsCounter = 0;
         static int createContextCounter = 0;
+
+        public TestLanguageInstrumentationLanguage() {
+        }
 
         private static void installInstruments(Instrumenter instrumenter) {
             installInstrumentsCounter++;
@@ -225,35 +229,25 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         }
 
         @Override
-        protected Void createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
+        protected Context createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
             createContextCounter++;
             Instrumenter instrumenter = env.lookup(Instrumenter.class);
             Assert.assertNotNull("Instrumenter found", instrumenter);
             installInstruments(instrumenter);
-            return null;
+            return super.createContext(env);
         }
 
         @Override
         protected CallTarget parse(ParsingRequest request) {
-            return Truffle.getRuntime().createCallTarget(new RootNode(TestLanguageInstrumentationLanguage.class, null, null) {
+            return Truffle.getRuntime().createCallTarget(new RootNode(this) {
 
-                @Child private BaseNode base = InstrumentationTestLanguage.parse(request.getSource());
+                @Child private BaseNode base = parse(request.getSource());
 
                 @Override
                 public Object execute(VirtualFrame frame) {
                     return base.execute(frame);
                 }
             });
-        }
-
-        @Override
-        protected Object findExportedSymbol(Void context, String globalName, boolean onlyExplicit) {
-            return null;
-        }
-
-        @Override
-        protected Object getLanguageGlobal(Void context) {
-            return null;
         }
 
         @Override
@@ -945,41 +939,63 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
     }
 
+    @Test
+    public void testInstrumentsWhenForked() throws IOException {
+        Instrument instrument = engine.getInstruments().get("testIsNodeTaggedWith1");
+        instrument.setEnabled(true);
+        TestIsNodeTaggedWith1 service = instrument.lookup(TestIsNodeTaggedWith1.class);
+
+        assertEquals(1, service.onCreateCalls);
+
+        Source otherLanguageSource = Source.newBuilder("STATEMENT(EXPRESSION)").name("unknown").mimeType("testIsNodeTaggedWith1").build();
+        run(otherLanguageSource);
+
+        PolyglotEngine forked = engine.fork();
+        assertEquals(1, service.onCreateCalls);
+
+        assertSame(instrument, forked.getInstruments().get("testIsNodeTaggedWith1"));
+        assertSame(service, forked.getInstruments().get("testIsNodeTaggedWith1").lookup(TestIsNodeTaggedWith1.class));
+
+        assertEquals(forked.getInstruments().size(), engine.getInstruments().size());
+        for (String key : forked.getInstruments().keySet()) {
+            assertSame(engine.getInstruments().get(key), forked.getInstruments().get(key));
+        }
+
+        assertEquals(0, service.onDisposeCalls);
+        engine.dispose();
+        assertEquals(0, service.onDisposeCalls);
+        forked.dispose();
+        // dispose if all engines are disposed
+        assertEquals(1, service.onDisposeCalls);
+        engine = null; // avoid disposal in @After event
+    }
+
     @TruffleLanguage.Registration(name = "", version = "", mimeType = "testIsNodeTaggedWith1")
     @ProvidedTags({InstrumentationTestLanguage.ExpressionNode.class, StandardTags.StatementTag.class})
-    public static class TestIsNodeTaggedWith1Language extends TruffleLanguage<Void> {
-
-        public static final TestIsNodeTaggedWith1Language INSTANCE = new TestIsNodeTaggedWith1Language();
+    public static class TestIsNodeTaggedWith1Language extends InstrumentationTestLanguage {
 
         static Instrumenter instrumenter;
 
+        public TestIsNodeTaggedWith1Language() {
+        }
+
         @Override
-        protected Void createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
+        protected Context createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
             instrumenter = env.lookup(Instrumenter.class);
-            return null;
+            return super.createContext(env);
         }
 
         @Override
         protected CallTarget parse(ParsingRequest request) {
-            return Truffle.getRuntime().createCallTarget(new RootNode(TestIsNodeTaggedWith1Language.class, null, null) {
+            return Truffle.getRuntime().createCallTarget(new RootNode(this) {
 
-                @Child private BaseNode base = InstrumentationTestLanguage.parse(request.getSource());
+                @Child private BaseNode base = parse(request.getSource());
 
                 @Override
                 public Object execute(VirtualFrame frame) {
                     return base.execute(frame);
                 }
             });
-        }
-
-        @Override
-        protected Object findExportedSymbol(Void context, String globalName, boolean onlyExplicit) {
-            return null;
-        }
-
-        @Override
-        protected Object getLanguageGlobal(Void context) {
-            return null;
         }
 
         @Override
@@ -995,8 +1011,13 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         static Node expressionNode;
         static Node statementNode;
 
+        int onCreateCalls = 0;
+        int onDisposeCalls = 0;
+
         @Override
         protected void onCreate(final Env env) {
+            onCreateCalls++;
+            env.registerService(this);
             env.registerService(env.getInstrumenter());
             env.getInstrumenter().attachFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventNodeFactory() {
 
@@ -1016,6 +1037,12 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                 }
             });
         }
+
+        @Override
+        protected void onDispose(Env env) {
+            onDisposeCalls++;
+        }
+
     }
 
     private static final class MyKillException extends ThreadDeath {

@@ -35,7 +35,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.TestingLanguage;
 
 public class NodeUtilTest {
 
@@ -289,7 +288,7 @@ public class NodeUtilTest {
         protected int visited;
 
         TestRootNode() {
-            super(TestingLanguage.class, null, null);
+            super(null);
         }
 
         @Override

@@ -80,7 +80,7 @@ public class ChildNodeTest {
         @Child private TestChildNode right;
 
         TestRootNode(TestChildNode left, TestChildNode right) {
-            super(TestingLanguage.class, null, null);
+            super(null);
             this.left = left;
             this.right = right;
         }

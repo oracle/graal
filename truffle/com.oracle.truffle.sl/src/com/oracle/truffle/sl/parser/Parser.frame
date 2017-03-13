@@ -34,6 +34,7 @@ import java.util.Map;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.sl.SLException;
+import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
@@ -54,9 +55,9 @@ public class Parser {
     public final Errors errors;
     private final SLNodeFactory factory;
     -->declarations
-    public Parser(Source source) {
+    public Parser(SLLanguage language, Source source) {
         this.scanner = new Scanner(source.getInputStream());
-        this.factory = new SLNodeFactory(source);
+        this.factory = new SLNodeFactory(language, source);
         errors = new Errors();
     }
 
@@ -137,8 +138,13 @@ public class Parser {
 -->initialization
     };
 
+	@Deprecated
     public static Map<String, SLRootNode> parseSL(Source source) {
-        Parser parser = new Parser(source);
+        return parseSL(null, source);
+    }
+
+    public static Map<String, SLRootNode> parseSL(SLLanguage language, Source source) {
+        Parser parser = new Parser(language, source);
         parser.Parse();
         if (parser.errors.errors.size() > 0) {
             StringBuilder msg = new StringBuilder("Error(s) parsing script:\n");

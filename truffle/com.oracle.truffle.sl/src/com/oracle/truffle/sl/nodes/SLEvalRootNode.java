@@ -44,6 +44,7 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
@@ -65,22 +66,24 @@ import com.oracle.truffle.sl.runtime.SLNull;
 public final class SLEvalRootNode extends SLRootNode {
 
     private final Map<String, SLRootNode> functions;
-    @CompilationFinal private SLContext context;
+    @CompilationFinal private boolean registered;
 
-    public SLEvalRootNode(FrameDescriptor frameDescriptor, SLExpressionNode bodyNode, SourceSection sourceSection, String name, Map<String, SLRootNode> functions) {
-        super(frameDescriptor, bodyNode, sourceSection, name);
+    private final ContextReference<SLContext> reference;
+
+    public SLEvalRootNode(SLLanguage language, FrameDescriptor frameDescriptor, SLExpressionNode bodyNode, SourceSection sourceSection, String name, Map<String, SLRootNode> functions) {
+        super(language, frameDescriptor, bodyNode, sourceSection, name);
         this.functions = functions;
+        this.reference = language.getContextReference();
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
         /* Lazy registrations of functions on first execution. */
-        if (context == null) {
+        if (!registered) {
             /* Function registration is a slow-path operation that must not be compiled. */
             CompilerDirectives.transferToInterpreterAndInvalidate();
-
-            context = SLLanguage.INSTANCE.findContext();
-            context.getFunctionRegistry().register(functions);
+            reference.get().getFunctionRegistry().register(functions);
+            registered = true;
         }
 
         if (getBodyNode() == null) {

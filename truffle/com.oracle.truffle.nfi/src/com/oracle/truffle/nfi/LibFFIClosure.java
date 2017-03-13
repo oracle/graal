@@ -149,7 +149,7 @@ final class LibFFIClosure {
         @Child EncodeRetNode encodeRet;
 
         private BufferRetClosureRootNode(LibFFISignature signature, TruffleObject receiver, Message message) {
-            super(NFILanguage.class, null, null);
+            super(null);
             callClosure = new CallClosureNode(signature, receiver, message);
             encodeRet = new EncodeRetNode(signature.getRetType());
         }
@@ -167,7 +167,7 @@ final class LibFFIClosure {
         @Child CallClosureNode callClosure;
 
         private ObjectRetClosureRootNode(LibFFISignature signature, TruffleObject receiver, Message message) {
-            super(NFILanguage.class, null, null);
+            super(null);
             callClosure = new CallClosureNode(signature, receiver, message);
         }
 
@@ -234,7 +234,7 @@ final class LibFFIClosure {
         @Child UnboxStringNode unboxString;
 
         private StringRetClosureRootNode(LibFFISignature signature, TruffleObject receiver, Message message) {
-            super(NFILanguage.class, null, null);
+            super(null);
             callClosure = new CallClosureNode(signature, receiver, message);
             unboxString = UnboxStringNodeGen.create();
         }
