@@ -50,8 +50,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 
 final class JavaInteropReflect {
     private static final Object[] EMPTY = {};
@@ -79,9 +79,6 @@ final class JavaInteropReflect {
                 }
             }
             throw (NoSuchFieldError) new NoSuchFieldError(ex.getMessage()).initCause(ex);
-        }
-        if (ToPrimitiveNode.temporary().isPrimitive(val)) {
-            return val;
         }
         return JavaInterop.asTruffleObject(val);
     }
@@ -159,18 +156,28 @@ final class JavaInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static String[] findPublicFieldsNames(Class<?> c, boolean onlyInstance) throws SecurityException {
+    static String[] findUniquePublicMemberNames(Class<?> c, boolean onlyInstance) throws SecurityException {
         Class<?> clazz = c;
         while ((clazz.getModifiers() & Modifier.PUBLIC) == 0) {
             clazz = clazz.getSuperclass();
         }
         final Field[] fields = clazz.getFields();
-        List<String> names = new ArrayList<>();
+        Collection<String> names = new LinkedHashSet<>();
         for (Field field : fields) {
             if (((field.getModifiers() & Modifier.STATIC) == 0) != onlyInstance) {
                 continue;
             }
             names.add(field.getName());
+        }
+        final Method[] methods = clazz.getMethods();
+        for (Method method : methods) {
+            if (method.getDeclaringClass() == Object.class) {
+                continue;
+            }
+            if (((method.getModifiers() & Modifier.STATIC) == 0) != onlyInstance) {
+                continue;
+            }
+            names.add(method.getName());
         }
         return names.toArray(new String[0]);
     }

@@ -217,6 +217,15 @@ public final class JavaInterop {
      * obj.y;
      * obj.name();
      * </pre>
+     * <p>
+     * One can also enumerate the properties of the object and see all three of them:
+     *
+     * <pre>
+     * <b>for</b> (<b>var</b> p <b>in</b> obj) {
+     *   print(p); <em>// yields x, y, name</em>
+     * }
+     * </pre>
+     * <p>
      *
      * When the <code>obj</code> represents a {@link Class}, then the created {@link TruffleObject}
      * will allow access to <b>public</b> and <b>static</b> fields and methods from the class.
