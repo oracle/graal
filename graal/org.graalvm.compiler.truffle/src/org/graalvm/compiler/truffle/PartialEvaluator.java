@@ -44,6 +44,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.SourceStackTraceBailoutException;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -68,9 +70,12 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
+import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
@@ -132,6 +137,7 @@ public class PartialEvaluator {
     private final ResolvedJavaMethod callRootMethod;
     private final GraphBuilderConfiguration configForParsing;
     private final InvocationPlugins decodingInvocationPlugins;
+    private final NodePlugin nodePlugin;
 
     public PartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, SnippetReflectionProvider snippetReflection, Architecture architecture,
                     InstrumentPhase.Instrumentation instrumentation) {
@@ -152,6 +158,7 @@ public class PartialEvaluator {
 
         this.configForParsing = createGraphBuilderConfig(configForRoot, true);
         this.decodingInvocationPlugins = createDecodingInvocationPlugins(configForRoot.getPlugins());
+        this.nodePlugin = new CompositeNodePlugin(configForRoot.getPlugins().getNodePlugins());
     }
 
     public Providers getProviders() {
@@ -416,7 +423,7 @@ public class PartialEvaluator {
             inlineInvokePlugins = new InlineInvokePlugin[]{replacements, inlineInvokePlugin};
         }
 
-        decoder.decode(graph, graph.method(), loopExplosionPlugin, decodingInvocationPlugins, inlineInvokePlugins, parameterPlugin);
+        decoder.decode(graph, graph.method(), loopExplosionPlugin, decodingInvocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugin);
 
         if (TruffleCompilerOptions.getValue(PrintTruffleExpansionHistogram)) {
             histogramPlugin.print(callTarget);
@@ -615,5 +622,139 @@ public class PartialEvaluator {
 
     private static void logPerformanceWarningImpl(OptimizedCallTarget target, String msg, String details, Map<String, Object> properties) {
         AbstractDebugCompilationListener.log(0, msg, String.format("%-60s|%s", target, details), properties);
+    }
+
+    public class CompositeNodePlugin implements NodePlugin {
+        private final NodePlugin[] nodePlugins;
+
+        public CompositeNodePlugin(NodePlugin[] nodePlugins) {
+            this.nodePlugins = nodePlugins;
+        }
+
+        @Override
+        public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+            for (NodePlugin plugin : nodePlugins) {
+                if (plugin.handleInvoke(b, method, args)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public boolean handleLoadField(GraphBuilderContext b, ValueNode object, ResolvedJavaField field) {
+            for (NodePlugin plugin : nodePlugins) {
+                if (plugin.handleLoadField(b, object, field)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public boolean handleStoreField(GraphBuilderContext b, ValueNode object, ResolvedJavaField field, ValueNode value) {
+            for (NodePlugin plugin : nodePlugins) {
+                if (plugin.handleStoreField(b, object, field, value)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public boolean handleLoadStaticField(GraphBuilderContext b, ResolvedJavaField field) {
+            for (NodePlugin plugin : nodePlugins) {
+                if (plugin.handleLoadStaticField(b, field)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public boolean handleStoreStaticField(GraphBuilderContext b, ResolvedJavaField field, ValueNode value) {
+            for (NodePlugin plugin : nodePlugins) {
+                if (plugin.handleStoreStaticField(b, field, value)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+//        @Override
+//        public boolean handleLoadIndexed(GraphBuilderContext b, ValueNode array, ValueNode index, JavaKind elementKind) {
+//            for (NodePlugin plugin : nodePlugins) {
+//                if (plugin.handleLoadIndexed(b, array, index, elementKind)) {
+//                    return true;
+//                }
+//            }
+//            return false;
+//        }
+
+        @Override
+        public boolean handleLoadIndexed(GraphBuilderContext b, ValueNode array, ValueNode index, JavaKind elementKind) {
+            b.addPush(elementKind.getStackKind(), new LoadIndexedNode(array.graph().getAssumptions(), array, index, elementKind));
+            return true;
+        }
+
+        @Override
+        public boolean handleStoreIndexed(GraphBuilderContext b, ValueNode array, ValueNode index, JavaKind elementKind, ValueNode value) {
+            for (NodePlugin plugin : nodePlugins) {
+                if (plugin.handleStoreIndexed(b, array, index, elementKind, value)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public boolean handleCheckCast(GraphBuilderContext b, ValueNode object, ResolvedJavaType type, JavaTypeProfile profile) {
+            for (NodePlugin plugin : nodePlugins) {
+                if (plugin.handleCheckCast(b, object, type, profile)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public boolean handleInstanceOf(GraphBuilderContext b, ValueNode object, ResolvedJavaType type, JavaTypeProfile profile) {
+            for (NodePlugin plugin : nodePlugins) {
+                if (plugin.handleInstanceOf(b, object, type, profile)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public boolean handleNewArray(GraphBuilderContext b, ResolvedJavaType elementType, ValueNode length) {
+            for (NodePlugin plugin : nodePlugins) {
+                if (plugin.handleNewArray(b, elementType, length)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public boolean handleNewMultiArray(GraphBuilderContext b, ResolvedJavaType type, ValueNode[] dimensions) {
+            for (NodePlugin plugin : nodePlugins) {
+                if (plugin.handleNewMultiArray(b, type, dimensions)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public boolean handleNewInstance(GraphBuilderContext b, ResolvedJavaType type) {
+            for (NodePlugin plugin : nodePlugins) {
+                if (plugin.handleNewInstance(b, type)) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 }
