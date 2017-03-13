@@ -67,10 +67,6 @@ public abstract class Accessor {
 
     }
 
-    public abstract static class DebugSupport {
-        public abstract void executionStarted(Object vm);
-    }
-
     public abstract static class DumpSupport {
         public abstract void dump(Node newNode, Node newChild, CharSequence reason);
     }
@@ -102,8 +98,6 @@ public abstract class Accessor {
         public abstract Object getInstrumentationHandler(Object vm);
 
         public abstract Iterable<? extends Object> importSymbols(Object vm, TruffleLanguage<?> queryingLang, String globalName);
-
-        public abstract void dispatchEvent(Object vm, Object event, int type);
 
         public abstract boolean isMimeTypeSupported(Object vm, String mimeType);
 
@@ -190,7 +184,6 @@ public abstract class Accessor {
     private static Accessor.EngineSupport SPI;
     private static Accessor.Nodes NODES;
     private static Accessor.InstrumentSupport INSTRUMENTHANDLER;
-    private static Accessor.DebugSupport DEBUG;
     private static Accessor.DumpSupport DUMP;
     private static Accessor.InteropSupport INTEROP;
     private static Accessor.JavaInteropSupport JAVAINTEROP;
@@ -294,11 +287,6 @@ public abstract class Accessor {
                 throw new IllegalStateException();
             }
             INSTRUMENTHANDLER = this.instrumentSupport();
-        } else if (this.getClass().getSimpleName().endsWith("Debug")) {
-            if (DEBUG != null) {
-                throw new IllegalStateException();
-            }
-            DEBUG = this.debugSupport();
         } else if (this.getClass().getSimpleName().endsWith("Frames")) {
             if (FRAMES != null) {
                 throw new IllegalStateException();
@@ -326,10 +314,6 @@ public abstract class Accessor {
 
     protected LanguageSupport languageSupport() {
         return API;
-    }
-
-    protected DebugSupport debugSupport() {
-        return DEBUG;
     }
 
     protected DumpSupport dumpSupport() {
@@ -362,10 +346,6 @@ public abstract class Accessor {
 
     static EngineSupport engineAccess() {
         return SPI;
-    }
-
-    static DebugSupport debugAccess() {
-        return DEBUG;
     }
 
     static Accessor.Nodes nodesAccess() {

@@ -24,30 +24,21 @@
  */
 package com.oracle.truffle.api.debug;
 
-import java.io.IOException;
 import java.io.PrintStream;
-import java.net.URI;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.impl.DebuggerInstrument;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
-import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -81,39 +72,15 @@ public final class Debugger {
 
     static final boolean TRACE = Boolean.getBoolean("truffle.debug.trace");
 
-    /**
-     * @since 0.9
-     * @deprecated use class literal {@link StatementTag} instead for tagging
-     */
-    @Deprecated public static final String HALT_TAG = "debug-HALT";
-
-    /**
-     * @since 0.9
-     * @deprecated use class literal {@link CallTag} instead for tagging
-     */
-    @Deprecated public static final String CALL_TAG = "debug-CALL";
-
     /*
      * The engine with this debugger was created.
      */
     private final PolyglotEngine sourceVM;
     private final Env env;
-    private final DebuggerSession legacySession;
-
-    /*
-     * Deprecation note. This map can go away with the removal if setLineBreakpoint.
-     */
-    private final Map<BreakpointLocation, Breakpoint> breakpointPerLocation = Collections.synchronizedMap(new HashMap<BreakpointLocation, Breakpoint>());
 
     Debugger(PolyglotEngine sourceVM, Env env) {
         this.env = env;
         this.sourceVM = sourceVM;
-        legacySession = new DebuggerSession(this, new SuspendedCallback() {
-            public void onSuspend(SuspendedEvent event) {
-                // TODO remove this Truffle > 0.16.
-                AccessorDebug.dispatchEvent(Debugger.this.sourceVM, event, EngineSupport.SUSPENDED_EVENT);
-            }
-        }, true);
     }
 
     /**
@@ -126,7 +93,7 @@ public final class Debugger {
      * @since 0.17
      */
     public DebuggerSession startSession(SuspendedCallback callback) {
-        return new DebuggerSession(this, callback, false);
+        return new DebuggerSession(this, callback);
     }
 
     /**
@@ -147,124 +114,6 @@ public final class Debugger {
         return Collections.unmodifiableList(sources);
     }
 
-    /**
-     * Gets all existing breakpoints, whatever their status, in natural sorted order. Modification
-     * save.
-     *
-     * @since 0.9
-     * @deprecated use {@link DebuggerSession#getBreakpoints()} instead. Note the behavior of the
-     *             returned collection changed.
-     */
-    @Deprecated
-    @TruffleBoundary
-    public Collection<Breakpoint> getBreakpoints() {
-        return getLegacySession().getLegacyBreakpoints();
-    }
-
-    /**
-     * Request a pause. As soon as the execution arrives at a node holding a debugger tag,
-     * {@link SuspendedEvent} is emitted.
-     * <p>
-     * This method can be called in any thread. When called from the {@link SuspendedEvent} callback
-     * thread, execution is paused on a nearest next node holding a debugger tag.
-     *
-     * @return <code>true</code> when pause was requested on the current execution,
-     *         <code>false</code> when there is no running execution to pause.
-     * @since 0.14
-     * @deprecated use debugger.{@link #startSession(SuspendedCallback) startSession(callback)}.
-     *             {@link DebuggerSession#suspendNextExecution() suspendNextExecution()} instead
-     */
-    @Deprecated
-    public boolean pause() {
-        getLegacySession().suspendNextExecution();
-        return true; // no way to support this anymore
-    }
-
-    /*
-     * CHumer deprecation note: I marked setLineBreakpoint as deprecated without replacement because
-     * with expanding breakpoint capabilities (breaking on a source without a line, breaking in an
-     * area, column based breaking) we are going to have overlapping breakpoints (breakpoints that
-     * hit the same location). Disambiguating them using the line would not make much sense in these
-     * cases. Therefore I've discarded all the overlapping checks in favor of arbitrary installs of
-     * breakpoints. A debugger client must then use its own technique to verify if a breakpoint is
-     * already installed at a particular line. SuspendendedEvents now also publish which breakpoints
-     * they have hit.
-     */
-    /**
-     * Sets a breakpoint to halt at a source line.
-     * <p>
-     * If a breakpoint <em>condition</em> is applied to the breakpoint, then the condition will be
-     * assumed to be in the same language as the code location where attached.
-     *
-     *
-     * @param ignoreCount number of hits to ignore before halting
-     * @param lineLocation where to set the breakpoint (source, line number)
-     * @param oneShot breakpoint disposes itself after fist hit, if {@code true}
-     * @return a new breakpoint, initially enabled
-     * @throws IOException if the breakpoint can not be set.
-     * @since 0.9
-     * @deprecated use {@link Breakpoint}.{@link Breakpoint#newBuilder(Source)
-     *             newBuilder(lineLocation.getSource))}.lineIs(lineLocation.getLineNumber()).build()
-     *             instead. You can install a breakpoint with
-     *             {@link DebuggerSession#install(Breakpoint)}.
-     */
-    @SuppressWarnings("deprecation")
-    @TruffleBoundary
-    @Deprecated
-    public Breakpoint setLineBreakpoint(int ignoreCount, com.oracle.truffle.api.source.LineLocation lineLocation, boolean oneShot) throws IOException {
-        return setLineBreakpointImpl(ignoreCount, lineLocation.getSource(), lineLocation.getLineNumber(), oneShot);
-    }
-
-    /**
-     * Sets a breakpoint to halt at a source line.
-     * <p>
-     * If a breakpoint <em>condition</em> is applied to the breakpoint, then the condition will be
-     * assumed to be in the same language as the code location where attached.
-     *
-     *
-     * @param ignoreCount number of hits to ignore before halting
-     * @param sourceUri URI of the source to set the breakpoint into
-     * @param line line number of the breakpoint
-     * @param oneShot breakpoint disposes itself after fist hit, if {@code true}
-     * @return a new breakpoint, initially enabled
-     * @throws IOException if the breakpoint can not be set.
-     * @since 0.14
-     * @deprecated use {@link Breakpoint}.{@link Breakpoint#newBuilder(Source) newBuilder(line)}
-     *             .lineIs(line).oneShot().build() instead. You can install a breakpoint with
-     *             {@link DebuggerSession#install(Breakpoint)}.
-     */
-    @TruffleBoundary
-    @Deprecated
-    public Breakpoint setLineBreakpoint(int ignoreCount, URI sourceUri, int line, boolean oneShot) throws IOException {
-        return setLineBreakpointImpl(ignoreCount, sourceUri, line, oneShot);
-    }
-
-    private Breakpoint setLineBreakpointImpl(int ignoreCount, Object key, int line, boolean oneShot) throws IOException {
-        Breakpoint breakpoint = breakpointPerLocation.get(new BreakpointLocation(key, line));
-        if (breakpoint != null) {
-            if (ignoreCount == breakpoint.getIgnoreCount()) {
-                throw new IOException("Breakpoint already set for " + key + " line: " + line);
-            }
-            breakpoint.setIgnoreCount(ignoreCount);
-            return breakpoint;
-        }
-        Breakpoint.Builder builder;
-        if (key instanceof Source) {
-            builder = Breakpoint.newBuilder((Source) key);
-        } else {
-            assert key instanceof URI;
-            builder = Breakpoint.newBuilder((URI) key);
-        }
-        builder.lineIs(line);
-        if (oneShot) {
-            builder.oneShot();
-        }
-        breakpoint = builder.build();
-        breakpointPerLocation.put(breakpoint.getLocationKey(), breakpoint);
-        getLegacySession().install(breakpoint);
-        return breakpoint;
-    }
-
     PolyglotEngine getSourceVM() {
         return sourceVM;
     }
@@ -275,19 +124,6 @@ public final class Debugger {
 
     Instrumenter getInstrumenter() {
         return env.getInstrumenter();
-    }
-
-    /**
-     * Returns the session that is used to support the deprecated {@link ExecutionEvent} API.
-     */
-    DebuggerSession getLegacySession() {
-        return legacySession;
-    }
-
-    void disposeBreakpoint(Breakpoint breakpoint) {
-        if (breakpoint.getSession() == getLegacySession()) {
-            breakpointPerLocation.remove(breakpoint.getLocationKey());
-        }
     }
 
     static void trace(String message, Object... parameters) {
@@ -328,29 +164,6 @@ public final class Debugger {
     }
 
     static final class AccessorDebug extends Accessor {
-        @Override
-        protected DebugSupport debugSupport() {
-            return new DebugImpl();
-        }
-
-        private static final class DebugImpl extends DebugSupport {
-
-            @SuppressWarnings("deprecation")
-            @Override
-            @TruffleBoundary
-            public void executionStarted(Object vm) {
-                final PolyglotEngine engine = (PolyglotEngine) vm;
-                dispatchEvent(engine, new ExecutionEvent(engine), EngineSupport.EXECUTION_EVENT);
-            }
-
-        }
-
-        /*
-         * TODO remove when deprecated API is removed.
-         */
-        static void dispatchEvent(PolyglotEngine vm, Object event, int type) {
-            ACCESSOR.engineSupport().dispatchEvent(vm, event, type);
-        }
 
         /*
          * TODO get rid of this access and replace it with an API in {@link TruffleInstrument.Env}.
