@@ -81,6 +81,7 @@ public final class IntegerStamp extends PrimitiveStamp {
     }
 
     public static IntegerStamp create(int bits, long lowerBoundInput, long upperBoundInput, long downMask, long upMask) {
+        assert (downMask & ~upMask) == 0 : String.format("\u21ca: %016x \u21c8: %016x", downMask, upMask);
 
         // Set lower bound, use masks to make it more precise
         long minValue = minValueForMasks(bits, downMask, upMask);
@@ -1218,6 +1219,10 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 return input;
                             }
 
+                            if (input.isEmpty()) {
+                                return StampFactory.forInteger(resultBits).empty();
+                            }
+
                             long downMask = CodeUtil.zeroExtend(stamp.downMask(), inputBits);
                             long upMask = CodeUtil.zeroExtend(stamp.upMask(), inputBits);
                             long lowerBound = stamp.unsignedLowerBound();
@@ -1228,6 +1233,9 @@ public final class IntegerStamp extends PrimitiveStamp {
                         @Override
                         public Stamp invertStamp(int inputBits, int resultBits, Stamp outStamp) {
                             IntegerStamp stamp = (IntegerStamp) outStamp;
+                            if (stamp.isEmpty()) {
+                                return StampFactory.forInteger(inputBits).empty();
+                            }
                             return StampFactory.forUnsignedInteger(inputBits, stamp.lowerBound(), stamp.upperBound(), stamp.downMask(), stamp.upMask());
                         }
                     },
