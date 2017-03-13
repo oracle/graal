@@ -38,6 +38,7 @@ import java.util.function.BiFunction;
 
 import org.graalvm.util.CollectionsUtil;
 import org.graalvm.util.EconomicMap;
+import org.graalvm.util.EconomicSet;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.MapCursor;
 import org.graalvm.util.ObjectSizeEstimate;
@@ -494,5 +495,42 @@ public class CollectionTest {
 
         Iterable<Object> emptyIterable = CollectionsUtil.concat(Collections.emptyList());
         Assert.assertFalse(emptyIterable.iterator().hasNext());
+    }
+
+    @Test
+    public void testSetRemoval() {
+        ArrayList<Integer> initialList = new ArrayList<>();
+        ArrayList<Integer> removalList = new ArrayList<>();
+        ArrayList<Integer> finalList = new ArrayList<>();
+        EconomicSet<Integer> set = EconomicSet.create(Equivalence.IDENTITY);
+        set.add(1);
+        set.add(2);
+        set.add(3);
+        set.add(4);
+        set.add(5);
+        set.add(6);
+        set.add(7);
+        set.add(8);
+        set.add(9);
+        Iterator<Integer> i1 = set.iterator();
+        while (i1.hasNext()) {
+            initialList.add(i1.next());
+        }
+        int size = 0;
+        Iterator<Integer> i2 = set.iterator();
+        while (i2.hasNext()) {
+            Integer elem = i2.next();
+            if (size++ < 8) {
+                i2.remove();
+            }
+            removalList.add(elem);
+        }
+        Iterator<Integer> i3 = set.iterator();
+        while (i3.hasNext()) {
+            finalList.add(i3.next());
+        }
+        Assert.assertEquals(initialList, removalList);
+        Assert.assertEquals(1, finalList.size());
+        Assert.assertEquals(new Integer(9), finalList.get(0));
     }
 }

@@ -495,16 +495,16 @@ public final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicS
 
         Object[] newEntries = new Object[size << 1];
         int z = 0;
-        int newNextIndex = -1;
+        int newNextIndex = remaining;
         for (int i = 0; i < totalEntries; ++i) {
             Object key = getKey(i);
+            if (i == nextIndex) {
+                newNextIndex = z;
+            }
             if (key != null) {
                 newEntries[z << 1] = key;
                 newEntries[(z << 1) + 1] = getValue(i);
                 z++;
-            }
-            if (i == nextIndex) {
-                newNextIndex = z;
             }
         }
 
