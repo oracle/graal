@@ -30,7 +30,6 @@ import java.util.EnumMap;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.PiNode;
@@ -57,49 +56,49 @@ public class BoxingSnippets implements Snippets {
     @Snippet
     public static Object booleanValueOf(boolean value, @ConstantParameter SnippetCounter valueOfCounter) {
         valueOfCounter.inc();
-        return PiNode.piCast(Boolean.valueOf(value), StampFactory.forNodeIntrinsic());
+        return PiNode.piCastToSnippetReplaceeStamp(Boolean.valueOf(value));
     }
 
     @Snippet
     public static Object byteValueOf(byte value, @ConstantParameter SnippetCounter valueOfCounter) {
         valueOfCounter.inc();
-        return PiNode.piCast(Byte.valueOf(value), StampFactory.forNodeIntrinsic());
+        return PiNode.piCastToSnippetReplaceeStamp(Byte.valueOf(value));
     }
 
     @Snippet
     public static Object charValueOf(char value, @ConstantParameter SnippetCounter valueOfCounter) {
         valueOfCounter.inc();
-        return PiNode.piCast(Character.valueOf(value), StampFactory.forNodeIntrinsic());
+        return PiNode.piCastToSnippetReplaceeStamp(Character.valueOf(value));
     }
 
     @Snippet
     public static Object doubleValueOf(double value, @ConstantParameter SnippetCounter valueOfCounter) {
         valueOfCounter.inc();
-        return PiNode.piCast(Double.valueOf(value), StampFactory.forNodeIntrinsic());
+        return PiNode.piCastToSnippetReplaceeStamp(Double.valueOf(value));
     }
 
     @Snippet
     public static Object floatValueOf(float value, @ConstantParameter SnippetCounter valueOfCounter) {
         valueOfCounter.inc();
-        return PiNode.piCast(Float.valueOf(value), StampFactory.forNodeIntrinsic());
+        return PiNode.piCastToSnippetReplaceeStamp(Float.valueOf(value));
     }
 
     @Snippet
     public static Object intValueOf(int value, @ConstantParameter SnippetCounter valueOfCounter) {
         valueOfCounter.inc();
-        return PiNode.piCast(Integer.valueOf(value), StampFactory.forNodeIntrinsic());
+        return PiNode.piCastToSnippetReplaceeStamp(Integer.valueOf(value));
     }
 
     @Snippet
     public static Object longValueOf(long value, @ConstantParameter SnippetCounter valueOfCounter) {
         valueOfCounter.inc();
-        return PiNode.piCast(Long.valueOf(value), StampFactory.forNodeIntrinsic());
+        return PiNode.piCastToSnippetReplaceeStamp(Long.valueOf(value));
     }
 
     @Snippet
     public static Object shortValueOf(short value, @ConstantParameter SnippetCounter valueOfCounter) {
         valueOfCounter.inc();
-        return PiNode.piCast(Short.valueOf(value), StampFactory.forNodeIntrinsic());
+        return PiNode.piCastToSnippetReplaceeStamp(Short.valueOf(value));
     }
 
     @Snippet
