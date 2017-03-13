@@ -28,8 +28,8 @@ import java.util.Deque;
 import java.util.List;
 import java.util.function.Predicate;
 
-import org.graalvm.compiler.common.PermanentBailoutException;
-import org.graalvm.compiler.common.RetryableBailoutException;
+import org.graalvm.compiler.core.common.PermanentBailoutException;
+import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.nodes.AbstractEndNode;

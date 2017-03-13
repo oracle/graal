@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,16 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes;
+package org.graalvm.compiler.core.common;
 
-import org.graalvm.compiler.core.common.CancellationBailoutException;
+import jdk.vm.ci.code.BailoutException;
 
-/**
- * An interface for supporting co-operative cancellation of tasks. An external entity gives a
- * Cancellable to a task and the task polls the Cancellable at regular intervals. If
- * {@link #isCancelled} returns true, then the task will promptly terminate by means of throwing a
- * {@link CancellationBailoutException}.
- */
-public interface Cancellable {
-    boolean isCancelled();
+public class RetryableBailoutException extends BailoutException {
+
+    private static final long serialVersionUID = -7145365025679144525L;
+
+    public RetryableBailoutException(String format, Object... args) {
+        super(false, format, args);
+    }
+
+    public RetryableBailoutException(String reason) {
+        super(false, reason);
+    }
+
+    public RetryableBailoutException(Throwable cause, String format) {
+        super(cause, format);
+    }
+
 }

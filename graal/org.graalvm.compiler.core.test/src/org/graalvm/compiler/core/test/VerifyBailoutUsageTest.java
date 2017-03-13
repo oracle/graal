@@ -30,8 +30,8 @@ import java.lang.reflect.Modifier;
 import org.junit.Test;
 
 import org.graalvm.compiler.api.test.Graal;
-import org.graalvm.compiler.common.PermanentBailoutException;
-import org.graalvm.compiler.common.RetryableBailoutException;
+import org.graalvm.compiler.core.common.PermanentBailoutException;
+import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugConfigScope;
 import org.graalvm.compiler.debug.GraalError;

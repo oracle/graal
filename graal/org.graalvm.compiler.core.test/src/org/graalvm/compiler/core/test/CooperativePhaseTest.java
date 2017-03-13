@@ -23,7 +23,8 @@
 package org.graalvm.compiler.core.test;
 
 import static org.graalvm.compiler.core.common.util.CompilationAlarm.Options.CompilationExpirationPeriod;
-import org.graalvm.compiler.common.RetryableBailoutException;
+
+import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.StructuredGraph;

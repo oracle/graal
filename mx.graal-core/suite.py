@@ -137,15 +137,6 @@ suite = {
 
     # ------------- Graal -------------
 
-    "org.graalvm.compiler.common" : {
-      "subDir" : "graal",
-      "sourceDirs" : ["src"],
-      "dependencies" : ["JVMCI_API"],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "1.8",
-      "workingSets" : "API,Graal",
-    },
-
     "org.graalvm.compiler.serviceprovider" : {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
@@ -233,7 +224,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.graph",
-        "org.graalvm.compiler.common",
       ],
       "annotationProcessors" : ["GRAAL_SERVICEPROVIDER_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -495,7 +485,10 @@ suite = {
     "org.graalvm.compiler.asm" : {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
-      "dependencies" : ["JVMCI_API"],
+      "dependencies" : [
+        "JVMCI_API",
+        "org.graalvm.compiler.core.common"
+      ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,Assembler",
@@ -505,7 +498,6 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.compiler.debug",
         "org.graalvm.compiler.asm",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -528,9 +520,7 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.compiler.debug",
         "org.graalvm.compiler.asm",
-        "org.graalvm.compiler.common"
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",

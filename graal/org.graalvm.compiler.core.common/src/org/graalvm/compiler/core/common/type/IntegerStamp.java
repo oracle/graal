@@ -31,6 +31,7 @@ import java.nio.ByteBuffer;
 import java.util.Formatter;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.FloatConvertOp;
@@ -80,6 +81,7 @@ public final class IntegerStamp extends PrimitiveStamp {
     }
 
     public static IntegerStamp create(int bits, long lowerBoundInput, long upperBoundInput, long downMask, long upMask) {
+        assert (downMask & ~upMask) == 0 : String.format("\u21ca: %016x \u21c8: %016x", downMask, upMask);
 
         // Set lower bound, use masks to make it more precise
         long minValue = minValueForMasks(bits, downMask, upMask);
@@ -289,18 +291,22 @@ public final class IntegerStamp extends PrimitiveStamp {
         StringBuilder str = new StringBuilder();
         str.append('i');
         str.append(getBits());
-        if (lowerBound == upperBound) {
-            str.append(" [").append(lowerBound).append(']');
-        } else if (lowerBound != CodeUtil.minValue(getBits()) || upperBound != CodeUtil.maxValue(getBits())) {
-            str.append(" [").append(lowerBound).append(" - ").append(upperBound).append(']');
-        }
-        if (downMask != 0) {
-            str.append(" \u21ca");
-            new Formatter(str).format("%016x", downMask);
-        }
-        if (upMask != CodeUtil.mask(getBits())) {
-            str.append(" \u21c8");
-            new Formatter(str).format("%016x", upMask);
+        if (hasValues()) {
+            if (lowerBound == upperBound) {
+                str.append(" [").append(lowerBound).append(']');
+            } else if (lowerBound != CodeUtil.minValue(getBits()) || upperBound != CodeUtil.maxValue(getBits())) {
+                str.append(" [").append(lowerBound).append(" - ").append(upperBound).append(']');
+            }
+            if (downMask != 0) {
+                str.append(" \u21ca");
+                new Formatter(str).format("%016x", downMask);
+            }
+            if (upMask != CodeUtil.mask(getBits())) {
+                str.append(" \u21c8");
+                new Formatter(str).format("%016x", upMask);
+            }
+        } else {
+            str.append("<empty>");
         }
         return str.toString();
     }
@@ -359,6 +365,24 @@ public final class IntegerStamp extends PrimitiveStamp {
             return prim.getJavaKind().isNumericInteger();
         }
         return false;
+    }
+
+    public long unsignedUpperBound() {
+        if (sameSignBounds()) {
+            return CodeUtil.zeroExtend(upperBound(), getBits());
+        }
+        return NumUtil.maxValueUnsigned(getBits());
+    }
+
+    public long unsignedLowerBound() {
+        if (sameSignBounds()) {
+            return CodeUtil.zeroExtend(lowerBound(), getBits());
+        }
+        return 0;
+    }
+
+    private boolean sameSignBounds() {
+        return NumUtil.sameSign(lowerBound, upperBound);
     }
 
     @Override
@@ -1191,22 +1215,28 @@ public final class IntegerStamp extends PrimitiveStamp {
                             assert inputBits == stamp.getBits();
                             assert inputBits <= resultBits;
 
-                            long downMask = CodeUtil.zeroExtend(stamp.downMask(), inputBits);
-                            long upMask = CodeUtil.zeroExtend(stamp.upMask(), inputBits);
-
-                            if (stamp.lowerBound() < 0 && stamp.upperBound() >= 0) {
-                                /* signed range including 0 and -1 */
-                                /*
-                                 * after sign extension, the whole range from 0 to MAX_INT is
-                                 * possible
-                                 */
-                                return IntegerStamp.stampForMask(resultBits, downMask, upMask);
+                            if (inputBits == resultBits) {
+                                return input;
                             }
 
-                            long lowerBound = CodeUtil.zeroExtend(stamp.lowerBound(), inputBits);
-                            long upperBound = CodeUtil.zeroExtend(stamp.upperBound(), inputBits);
+                            if (input.isEmpty()) {
+                                return StampFactory.forInteger(resultBits).empty();
+                            }
 
-                            return new IntegerStamp(resultBits, lowerBound, upperBound, downMask, upMask);
+                            long downMask = CodeUtil.zeroExtend(stamp.downMask(), inputBits);
+                            long upMask = CodeUtil.zeroExtend(stamp.upMask(), inputBits);
+                            long lowerBound = stamp.unsignedLowerBound();
+                            long upperBound = stamp.unsignedUpperBound();
+                            return IntegerStamp.create(resultBits, lowerBound, upperBound, downMask, upMask);
+                        }
+
+                        @Override
+                        public Stamp invertStamp(int inputBits, int resultBits, Stamp outStamp) {
+                            IntegerStamp stamp = (IntegerStamp) outStamp;
+                            if (stamp.isEmpty()) {
+                                return StampFactory.forInteger(inputBits).empty();
+                            }
+                            return StampFactory.forUnsignedInteger(inputBits, stamp.lowerBound(), stamp.upperBound(), stamp.downMask(), stamp.upMask());
                         }
                     },
 
@@ -1229,6 +1259,13 @@ public final class IntegerStamp extends PrimitiveStamp {
                             long upMask = CodeUtil.signExtend(stamp.upMask(), inputBits) & defaultMask;
 
                             return new IntegerStamp(resultBits, stamp.lowerBound(), stamp.upperBound(), downMask, upMask);
+                        }
+
+                        @Override
+                        public Stamp invertStamp(int inputBits, int resultBits, Stamp outStamp) {
+                            IntegerStamp stamp = (IntegerStamp) outStamp;
+                            long mask = CodeUtil.mask(inputBits);
+                            return StampFactory.forIntegerWithMask(inputBits, stamp.lowerBound(), stamp.upperBound(), stamp.downMask() & mask, stamp.upMask() & mask);
                         }
                     },
 

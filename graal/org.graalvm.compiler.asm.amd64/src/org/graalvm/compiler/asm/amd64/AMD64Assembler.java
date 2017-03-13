@@ -22,10 +22,10 @@
  */
 package org.graalvm.compiler.asm.amd64;
 
-import static org.graalvm.compiler.asm.NumUtil.isByte;
-import static org.graalvm.compiler.asm.NumUtil.isInt;
-import static org.graalvm.compiler.asm.NumUtil.isShiftCount;
-import static org.graalvm.compiler.asm.NumUtil.isUByte;
+import static org.graalvm.compiler.core.common.NumUtil.isByte;
+import static org.graalvm.compiler.core.common.NumUtil.isInt;
+import static org.graalvm.compiler.core.common.NumUtil.isShiftCount;
+import static org.graalvm.compiler.core.common.NumUtil.isUByte;
 import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseAddressNop;
 import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseNormalNop;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADD;
@@ -58,7 +58,7 @@ import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
 
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.Label;
-import org.graalvm.compiler.asm.NumUtil;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
 
 import jdk.vm.ci.amd64.AMD64;

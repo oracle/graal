@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,22 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.common;
+package org.graalvm.compiler.core.common;
 
-/**
- * A {@linkplain RetryableBailoutException} that will be thrown if an on-going compilation in the
- * compiler was cancelled.
- */
-public final class CancellationBailoutException extends RetryableBailoutException {
+import jdk.vm.ci.code.BailoutException;
 
-    private static final long serialVersionUID = 6551793589275293360L;
+public class PermanentBailoutException extends BailoutException {
 
-    public CancellationBailoutException() {
-        super("Compilation cancelled.");
+    private static final long serialVersionUID = -2683649650135362549L;
+
+    public PermanentBailoutException(String format, Object... args) {
+        super(true, format, args);
     }
 
-    public static void cancelCompilation() {
-        throw new CancellationBailoutException();
+    public PermanentBailoutException(String reason) {
+        super(true, reason);
     }
 
+    public PermanentBailoutException(Throwable cause, String format, Object... args) {
+        super(cause, format, args);
+    }
 }

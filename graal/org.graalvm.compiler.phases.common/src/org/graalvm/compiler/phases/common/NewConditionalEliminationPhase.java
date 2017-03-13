@@ -79,6 +79,7 @@ import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.java.TypeSwitchNode;
 import org.graalvm.compiler.nodes.spi.NodeWithState;
+import org.graalvm.compiler.nodes.spi.StampInverter;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
@@ -317,6 +318,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
         private void processBlock(Block block) {
             FixedNode n = block.getBeginNode();
             FixedNode endNode = block.getEndNode();
+            Debug.log("[Processing block %s]", block);
             while (n != endNode) {
                 if (n.isDeleted() || endNode.isDeleted()) {
                     // This branch was deleted!
@@ -841,14 +843,26 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
             assert guard != null;
             if (newStamp != null) {
                 ValueNode value = maybeProxiedValue;
+                Stamp stamp = newStamp;
                 ValueNode proxiedValue = null;
                 if (value instanceof PiNode) {
                     proxiedValue = value;
                 }
-                counterStampsRegistered.increment();
-                Debug.log("\t Saving stamp for node %s stamp %s guarded by %s", value, newStamp, guard == null ? "null" : guard);
-                map.setAndGrow(value, new InfoElement(newStamp, guard, proxiedValue, map.getAndGrow(value)));
-                undoOperations.push(value);
+                do {
+                    counterStampsRegistered.increment();
+                    Debug.log("\t Saving stamp for node %s stamp %s guarded by %s", value, stamp, guard);
+                    assert value instanceof LogicNode || stamp.isCompatible(value.stamp()) : stamp + " vs. " + value.stamp() + " (" + value + ")";
+                    map.setAndGrow(value, new InfoElement(stamp, guard, proxiedValue, map.getAndGrow(value)));
+                    undoOperations.push(value);
+                    if (value instanceof StampInverter) {
+                        StampInverter stampInverter = (StampInverter) value;
+                        value = stampInverter.getValue();
+                        stamp = stampInverter.invertStamp(stamp);
+                    } else {
+                        value = null;
+                        stamp = null;
+                    }
+                } while (value != null && stamp != null);
             }
         }
 

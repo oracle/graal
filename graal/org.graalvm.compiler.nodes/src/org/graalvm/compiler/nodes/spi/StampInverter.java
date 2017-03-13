@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,24 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.common;
+package org.graalvm.compiler.nodes.spi;
 
-import jdk.vm.ci.code.BailoutException;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.nodes.ValueNode;
 
-public class RetryableBailoutException extends BailoutException {
+public interface StampInverter {
 
-    private static final long serialVersionUID = -7145365025679144525L;
+    /**
+     * Computes the stamp of the input for the given output stamp.
+     */
+    Stamp invertStamp(Stamp outStamp);
 
-    public RetryableBailoutException(String format, Object... args) {
-        super(false, format, args);
-    }
-
-    public RetryableBailoutException(String reason) {
-        super(false, reason);
-    }
-
-    public RetryableBailoutException(Throwable cause, String format) {
-        super(cause, format);
-    }
-
+    /**
+     * Gets the input node.
+     */
+    ValueNode getValue();
 }

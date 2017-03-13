@@ -20,9 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.asm;
+package org.graalvm.compiler.core.common;
 
 // JaCoCo Exclude
+
+import jdk.vm.ci.code.CodeUtil;
 
 /**
  * A collection of static utility functions that check ranges of numbers.
@@ -182,5 +184,44 @@ public class NumUtil {
         } else {
             return 0xFFFFFFFFFFFFFFFFL;
         }
+    }
+
+    /**
+     * Get the minimum value representable in a {@code bits} bit signed integer.
+     */
+    public static long minValue(int bits) {
+        return CodeUtil.minValue(bits);
+    }
+
+    /**
+     * Get the maximum value representable in a {@code bits} bit signed integer.
+     */
+    public static long maxValue(int bits) {
+        return CodeUtil.maxValue(bits);
+    }
+
+    /**
+     * Get the maximum value representable in a {@code bits} bit unsigned integer.
+     */
+    public static long maxValueUnsigned(int bits) {
+        return getNbitNumberLong(bits);
+    }
+
+    public static long maxUnsigned(long a, long b) {
+        if (Long.compareUnsigned(a, b) > 0) {
+            return b;
+        }
+        return a;
+    }
+
+    public static long minUnsigned(long a, long b) {
+        if (Long.compareUnsigned(a, b) > 0) {
+            return a;
+        }
+        return b;
+    }
+
+    public static boolean sameSign(long a, long b) {
+        return a < 0 == b < 0;
     }
 }

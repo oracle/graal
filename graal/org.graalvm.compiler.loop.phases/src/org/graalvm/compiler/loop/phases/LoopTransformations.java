@@ -29,7 +29,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.graalvm.compiler.graph.Graph.Mark;
-import org.graalvm.compiler.common.RetryableBailoutException;
+import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.loop.LoopEx;
 import org.graalvm.compiler.loop.LoopFragmentWhole;

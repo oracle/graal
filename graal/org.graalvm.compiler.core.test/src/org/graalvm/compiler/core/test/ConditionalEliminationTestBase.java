@@ -22,8 +22,6 @@
  */
 package org.graalvm.compiler.core.test;
 
-import org.junit.Assert;
-
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -36,6 +34,7 @@ import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
+import org.junit.Assert;
 
 /**
  * Collection of tests for
@@ -43,11 +42,10 @@ import org.graalvm.compiler.phases.tiers.PhaseContext;
  * that triggered bugs in this phase.
  */
 public class ConditionalEliminationTestBase extends GraalCompilerTest {
-
     private final boolean disableSimplification;
 
     protected ConditionalEliminationTestBase() {
-        disableSimplification = true;
+        this(true);
     }
 
     protected ConditionalEliminationTestBase(boolean disableSimplification) {
@@ -70,15 +68,9 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
              */
             canonicalizer1.disableSimplification();
         }
-        if (applyLowering) {
-            new ConvertDeoptimizeToGuardPhase().apply(graph, context);
-            new LoweringPhase(canonicalizer1, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
-            canonicalizer1.apply(graph, context);
-        }
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
         try (Debug.Scope scope = Debug.scope("ConditionalEliminationTest", graph)) {
-            canonicalizer1.apply(graph, context);
-            new ConvertDeoptimizeToGuardPhase().apply(graph, context);
+            prepareGraph(graph, canonicalizer1, context, applyLowering);
             new IterativeConditionalEliminationPhase(canonicalizer, true).apply(graph, context);
             canonicalizer.apply(graph, context);
             canonicalizer.apply(graph, context);
@@ -88,27 +80,27 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
         }
         StructuredGraph referenceGraph = parseEager(referenceSnippet, AllowAssumptions.YES);
         try (Debug.Scope scope = Debug.scope("ConditionalEliminationTest.ReferenceGraph", referenceGraph)) {
-
-            new ConvertDeoptimizeToGuardPhase().apply(referenceGraph, context);
-
-            if (applyLowering) {
-                new ConvertDeoptimizeToGuardPhase().apply(referenceGraph, context);
-                new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(referenceGraph, context);
-                canonicalizer.apply(referenceGraph, context);
-            }
-
+            prepareGraph(referenceGraph, canonicalizer, context, applyLowering);
             if (applyConditionalEliminationOnReference) {
                 DominatorConditionalEliminationPhase.create(true).apply(referenceGraph, context);
-                canonicalizer.apply(referenceGraph, context);
-                canonicalizer.apply(referenceGraph, context);
-            } else {
-                canonicalizer.apply(referenceGraph, context);
             }
-
+            canonicalizer.apply(referenceGraph, context);
+            canonicalizer.apply(referenceGraph, context);
+            new ConvertDeoptimizeToGuardPhase().apply(graph, context);
         } catch (Throwable t) {
             Debug.handle(t);
         }
         assertEquals(referenceGraph, graph);
+    }
+
+    protected void prepareGraph(StructuredGraph graph, CanonicalizerPhase canonicalizer, PhaseContext context, boolean applyLowering) {
+        if (applyLowering) {
+            new ConvertDeoptimizeToGuardPhase().apply(graph, context);
+            new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+            canonicalizer.apply(graph, context);
+        }
+        canonicalizer.apply(graph, context);
+        new ConvertDeoptimizeToGuardPhase().apply(graph, context);
     }
 
     public void testProxies(String snippet, int expectedProxiesCreated) {
