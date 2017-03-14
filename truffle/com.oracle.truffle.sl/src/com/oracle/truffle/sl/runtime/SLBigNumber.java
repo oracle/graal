@@ -48,12 +48,12 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.sl.SLLanguage;
 import java.math.BigInteger;
 
-@MessageResolution(language = SLLanguage.class, receiverType = SLBigTruffleObject.class)
-public class SLBigTruffleObject implements TruffleObject {
+@MessageResolution(language = SLLanguage.class, receiverType = SLBigNumber.class)
+public final class SLBigNumber implements TruffleObject {
 
     private final BigInteger value;
 
-    public SLBigTruffleObject(BigInteger value) {
+    public SLBigNumber(BigInteger value) {
         this.value = value;
     }
 
@@ -63,16 +63,16 @@ public class SLBigTruffleObject implements TruffleObject {
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return SLBigTruffleObjectForeign.createAccess();
+        return SLBigNumberForeign.createAccess();
     }
 
     static boolean isInstance(TruffleObject obj) {
-        return obj instanceof SLBigTruffleObject;
+        return obj instanceof SLBigNumber;
     }
 
     @Resolve(message = "UNBOX")
     abstract static class UnboxBigNode extends Node {
-        Object access(SLBigTruffleObject obj) {
+        Object access(SLBigNumber obj) {
             return obj.value.doubleValue();
         }
     }
@@ -80,7 +80,7 @@ public class SLBigTruffleObject implements TruffleObject {
     @Resolve(message = "IS_BOXED")
     abstract static class IsBoxedBigNode extends Node {
         @SuppressWarnings("unused")
-        Object access(SLBigTruffleObject obj) {
+        Object access(SLBigNumber obj) {
             return true;
         }
     }

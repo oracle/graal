@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.sl.nodes.interop;
 
-import com.oracle.truffle.sl.runtime.SLBigTruffleObject;
+import com.oracle.truffle.sl.runtime.SLBigNumber;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
@@ -59,7 +59,7 @@ public abstract class SLTypeToForeignNode extends Node {
 
     @Specialization
     static TruffleObject fromObject(BigInteger value) {
-        return new SLBigTruffleObject(value);
+        return new SLBigNumber(value);
     }
 
     @Fallback

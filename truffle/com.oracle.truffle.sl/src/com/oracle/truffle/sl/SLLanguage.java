@@ -57,7 +57,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLEvalRootNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.parser.Parser;
-import com.oracle.truffle.sl.runtime.SLBigTruffleObject;
+import com.oracle.truffle.sl.runtime.SLBigNumber;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLNull;
@@ -155,8 +155,8 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         if (value == SLNull.SINGLETON) {
             return "NULL";
         }
-        if (value instanceof SLBigTruffleObject) {
-            return super.toString(context, ((SLBigTruffleObject) value).getValue());
+        if (value instanceof SLBigNumber) {
+            return super.toString(context, ((SLBigNumber) value).getValue());
         }
         if (value instanceof Long) {
             return Long.toString((Long) value);
@@ -166,7 +166,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     @Override
     protected Object findMetaObject(SLContext context, Object value) {
-        if (value instanceof Number || value instanceof SLBigTruffleObject) {
+        if (value instanceof Number || value instanceof SLBigNumber) {
             return "Number";
         }
         if (value instanceof Boolean) {

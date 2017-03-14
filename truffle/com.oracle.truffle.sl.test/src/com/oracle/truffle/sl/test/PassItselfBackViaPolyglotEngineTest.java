@@ -110,7 +110,7 @@ public class PassItselfBackViaPolyglotEngineTest {
 
         @Override
         public ForeignAccess getForeignAccess() {
-            return MyObjForeign.ACCESS;
+            return com.oracle.truffle.sl.test.MyObjForeign.ACCESS;
         }
 
         static boolean isInstance(TruffleObject obj) {
