@@ -73,9 +73,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
-import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
@@ -681,20 +679,14 @@ public class PartialEvaluator {
             return false;
         }
 
-//        @Override
-//        public boolean handleLoadIndexed(GraphBuilderContext b, ValueNode array, ValueNode index, JavaKind elementKind) {
-//            for (NodePlugin plugin : nodePlugins) {
-//                if (plugin.handleLoadIndexed(b, array, index, elementKind)) {
-//                    return true;
-//                }
-//            }
-//            return false;
-//        }
-
         @Override
         public boolean handleLoadIndexed(GraphBuilderContext b, ValueNode array, ValueNode index, JavaKind elementKind) {
-            b.addPush(elementKind.getStackKind(), new LoadIndexedNode(array.graph().getAssumptions(), array, index, elementKind));
-            return true;
+            for (NodePlugin plugin : nodePlugins) {
+                if (plugin.handleLoadIndexed(b, array, index, elementKind)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         @Override
