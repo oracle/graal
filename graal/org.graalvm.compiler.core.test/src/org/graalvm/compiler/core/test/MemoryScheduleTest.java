@@ -379,25 +379,6 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     }
 
     /**
-     * Here the read should float to the end (into the same block as the return).
-     */
-    public static int testArrayCopySnippet(Integer intValue, char[] a, char[] b, int len) {
-        System.arraycopy(a, 0, b, 0, len);
-        return intValue.intValue();
-    }
-
-    @Test
-    public void testArrayCopy() {
-        ScheduleResult schedule = getFinalSchedule("testArrayCopySnippet", TestMode.INLINED_WITHOUT_FRAMESTATES);
-        StructuredGraph graph = schedule.getCFG().getStartBlock().getBeginNode().graph();
-        assertDeepEquals(1, graph.getNodes(ReturnNode.TYPE).count());
-        ReturnNode ret = graph.getNodes(ReturnNode.TYPE).first();
-        assertTrue(ret.result() + " should be a FloatingReadNode", ret.result() instanceof FloatingReadNode);
-        assertDeepEquals(schedule.getCFG().blockFor(ret), schedule.getCFG().blockFor(ret.result()));
-        assertReadWithinAllReturnBlocks(schedule, true);
-    }
-
-    /**
      * Here the read should not float to the end.
      */
     public static int testIfRead1Snippet(int a) {
