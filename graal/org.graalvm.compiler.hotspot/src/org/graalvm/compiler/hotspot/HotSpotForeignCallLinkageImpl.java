@@ -228,9 +228,20 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
     }
 
     @Override
+    public Stub getStub() {
+        assert checkStubCondition();
+        return stub;
+    }
+
+    private boolean checkStubCondition() {
+        assert stub != null : "linkage without an address must be a stub - forgot to register a Stub associated with " + descriptor + "?";
+        return true;
+    }
+
+    @Override
     public void finalizeAddress(Backend backend) {
         if (address == 0) {
-            assert stub != null : "linkage without an address must be a stub - forgot to register a Stub associated with " + descriptor + "?";
+            assert checkStubCondition();
             InstalledCode code = stub.getCode(backend);
 
             EconomicSet<Register> destroyedRegisters = stub.getDestroyedCallerRegisters();
