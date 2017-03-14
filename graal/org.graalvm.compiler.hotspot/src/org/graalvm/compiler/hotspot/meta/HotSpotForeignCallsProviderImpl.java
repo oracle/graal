@@ -22,10 +22,13 @@
  */
 package org.graalvm.compiler.hotspot.meta;
 
-import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.PRESERVES_REGISTERS;
-import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Transition.SAFEPOINT;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCallee;
+import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.PRESERVES_REGISTERS;
+import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Transition.SAFEPOINT;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.LocationIdentity;
@@ -196,5 +199,17 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
     @Override
     public LIRKind getValueKind(JavaKind javaKind) {
         return LIRKind.fromJavaKind(codeCache.getTarget().arch, javaKind);
+    }
+
+    @Override
+    public List<Stub> getStubs() {
+        List<Stub> stubs = new ArrayList<>();
+        for (HotSpotForeignCallLinkage linkage : foreignCalls.getValues()) {
+            Stub stub = linkage.getStub();
+            if (stub != null) {
+                stubs.add(stub);
+            }
+        }
+        return stubs;
     }
 }

@@ -27,11 +27,8 @@ import static org.graalvm.compiler.core.GraalCompiler.emitFrontEnd;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.hotspot.HotSpotHostBackend.UNCOMMON_TRAP_HANDLER;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
 import java.util.ListIterator;
+
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.target.Backend;
@@ -76,8 +73,6 @@ import jdk.vm.ci.meta.TriState;
  * method.
  */
 public abstract class Stub {
-
-    private static final List<Stub> stubs = new ArrayList<>();
 
     /**
      * The linkage information for a call to this stub from compiled code.
@@ -129,14 +124,6 @@ public abstract class Stub {
         this.linkage = linkage;
         this.options = options;
         this.providers = providers;
-        stubs.add(this);
-    }
-
-    /**
-     * Gets an immutable view of all stubs that have been created.
-     */
-    public static Collection<Stub> getStubs() {
-        return Collections.unmodifiableList(stubs);
     }
 
     /**
