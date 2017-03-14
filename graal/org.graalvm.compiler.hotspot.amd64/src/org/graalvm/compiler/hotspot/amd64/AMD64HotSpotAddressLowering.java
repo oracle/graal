@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,25 +27,23 @@ import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
-import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
 import org.graalvm.compiler.core.amd64.AMD64AddressLowering;
 import org.graalvm.compiler.core.amd64.AMD64AddressNode;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugCounter;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.nodes.CompressionNode;
 import org.graalvm.compiler.hotspot.nodes.CompressionNode.CompressionOp;
 import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
 import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
-import org.graalvm.compiler.hotspot.nodes.type.NarrowOopStamp;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
@@ -56,6 +54,8 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaKind;
 
 public class AMD64HotSpotAddressLowering extends AMD64AddressLowering {
+
+    private static final DebugCounter counterFoldedUncompressDuringAddressLowering = Debug.counter("FoldedUncompressDuringAddressLowering");
 
     private final long heapBase;
     private final Register heapBaseRegister;
@@ -94,46 +94,33 @@ public class AMD64HotSpotAddressLowering extends AMD64AddressLowering {
 
     @Override
     protected boolean improve(AMD64AddressNode addr) {
+
+        boolean result = false;
+
+        while (super.improve(addr)) {
+            result = true;
+        }
+
         if (addr.getScale() == Scale.Times1) {
-            if (addr.getBase() == null && addr.getIndex() instanceof CompressionNode) {
-                if (improveUncompression(addr, (CompressionNode) addr.getIndex())) {
+            if (addr.getIndex() instanceof CompressionNode) {
+                if (improveUncompression(addr, (CompressionNode) addr.getIndex(), addr.getBase())) {
+                    counterFoldedUncompressDuringAddressLowering.increment();
                     return true;
                 }
             }
 
-            if (addr.getIndex() == null && addr.getBase() instanceof CompressionNode) {
-                if (improveUncompression(addr, (CompressionNode) addr.getBase())) {
+            if (addr.getBase() instanceof CompressionNode) {
+                if (improveUncompression(addr, (CompressionNode) addr.getBase(), addr.getIndex())) {
+                    counterFoldedUncompressDuringAddressLowering.increment();
                     return true;
-                }
-            }
-
-            if (addr.getIndex() == null && addr.getBase() instanceof PiNode) {
-                PiNode pi = (PiNode) addr.getBase();
-                if (pi.getOriginalNode() instanceof CompressionNode) {
-                    CompressionNode compression = (CompressionNode) pi.getOriginalNode();
-                    // Strip out the Pi and see if the compression can fold
-                    addr.setBase(compression);
-                    if (improveUncompression(addr, compression)) {
-                        /*
-                         * Move the pi onto the other side of the compression.
-                         */
-                        assert addr.getIndex() == compression.getValue();
-                        Stamp newStamp = NarrowOopStamp.compressed((AbstractObjectStamp) pi.stamp(), compression.getEncoding());
-                        PiNode newPi = compression.graph().unique(new PiNode(addr.getIndex(), newStamp, pi.getGuard() != null ? pi.getGuard().asNode() : null));
-                        addr.setIndex(newPi);
-                        return true;
-                    } else {
-                        // Can't fold the compression so restore the base
-                        addr.setBase(pi);
-                    }
                 }
             }
         }
 
-        return super.improve(addr);
+        return result;
     }
 
-    private boolean improveUncompression(AMD64AddressNode addr, CompressionNode compression) {
+    private boolean improveUncompression(AMD64AddressNode addr, CompressionNode compression, ValueNode other) {
         if (compression.getOp() == CompressionOp.Uncompress) {
             CompressEncoding encoding = compression.getEncoding();
             Scale scale = Scale.fromShift(encoding.getShift());
@@ -142,7 +129,7 @@ public class AMD64HotSpotAddressLowering extends AMD64AddressLowering {
             }
 
             if (heapBaseRegister != null && encoding.getBase() == heapBase) {
-                if (!generatePIC || compression.stamp() instanceof ObjectStamp) {
+                if ((!generatePIC || compression.stamp() instanceof ObjectStamp) && other == null) {
                     // With PIC it is only legal to do for oops since the base value may be
                     // different at runtime.
                     ValueNode base = compression.graph().unique(new HeapBaseNode(heapBaseRegister));
@@ -152,19 +139,23 @@ public class AMD64HotSpotAddressLowering extends AMD64AddressLowering {
                 }
             } else if (encoding.getBase() != 0 || (generatePIC && compression.stamp() instanceof KlassPointerStamp)) {
                 if (generatePIC) {
-                    ValueNode base = compression.graph().unique(new GraalHotSpotVMConfigNode(config, config.MARKID_NARROW_KLASS_BASE_ADDRESS, JavaKind.Long));
-                    addr.setBase(base);
+                    if (other == null) {
+                        ValueNode base = compression.graph().unique(new GraalHotSpotVMConfigNode(config, config.MARKID_NARROW_KLASS_BASE_ADDRESS, JavaKind.Long));
+                        addr.setBase(base);
+                    } else {
+                        return false;
+                    }
                 } else {
                     long disp = addr.getDisplacement() + encoding.getBase();
                     if (NumUtil.isInt(disp)) {
                         addr.setDisplacement((int) disp);
-                        addr.setBase(null);
+                        addr.setBase(other);
                     } else {
                         return false;
                     }
                 }
             } else {
-                addr.setBase(null);
+                addr.setBase(other);
             }
 
             addr.setScale(scale);
