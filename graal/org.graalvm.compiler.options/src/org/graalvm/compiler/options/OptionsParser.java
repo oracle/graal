@@ -27,6 +27,7 @@ import java.util.Formatter;
 import java.util.List;
 import java.util.ServiceLoader;
 
+import org.graalvm.util.CollectionsUtil;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.MapCursor;
 
@@ -35,6 +36,27 @@ import org.graalvm.util.MapCursor;
  * {@link OptionDescriptors}. The {@link OptionDescriptors} are loaded via a {@link ServiceLoader}.
  */
 public class OptionsParser {
+
+    /**
+     * Gets an iterable composed of the {@link ServiceLoader}s to be used when looking for
+     * {@link OptionDescriptors} providers.
+     */
+    public static Iterable<OptionDescriptors> getOptionsLoader() {
+        ServiceLoader<OptionDescriptors> graalLoader = ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader());
+        boolean java8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
+        if (java8OrEarlier) {
+            return graalLoader;
+        } else {
+            /*
+             * The Graal module (i.e., jdk.internal.vm.compiler) is loaded by the platform class
+             * loader on JDK 9. Other modules that extend Graal or are Graal dependencies (such as
+             * Truffle) are supplied via --module-path which means they are loaded by the app class
+             * loader. As such, we need to search the app class loader path as well.
+             */
+            ServiceLoader<OptionDescriptors> truffleLoader = ServiceLoader.load(OptionDescriptors.class, ClassLoader.getSystemClassLoader());
+            return CollectionsUtil.concat(graalLoader, truffleLoader);
+        }
+    }
 
     /**
      * Parses a map representing assignments of values to options.

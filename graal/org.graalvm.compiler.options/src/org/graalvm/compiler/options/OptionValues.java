@@ -28,7 +28,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.ServiceLoader;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
@@ -195,13 +194,13 @@ public class OptionValues {
      * @param out
      * @param namePrefix
      */
-    public void printHelp(ServiceLoader<OptionDescriptors> loader, PrintStream out, String namePrefix) {
+    public void printHelp(Iterable<OptionDescriptors> loader, PrintStream out, String namePrefix) {
         SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
         for (OptionDescriptors opts : loader) {
             for (OptionDescriptor desc : opts) {
                 String name = desc.getName();
                 OptionDescriptor existing = sortedOptions.put(name, desc);
-                assert existing == null : "Option named \"" + name + "\" has multiple definitions: " + existing.getLocation() + " and " + desc.getLocation();
+                assert existing == null || existing == desc : "Option named \"" + name + "\" has multiple definitions: " + existing.getLocation() + " and " + desc.getLocation();
             }
         }
         for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
