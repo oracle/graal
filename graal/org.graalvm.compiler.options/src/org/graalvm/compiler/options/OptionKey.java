@@ -55,7 +55,10 @@ public class OptionKey<T> {
         return descriptor;
     }
 
-    private boolean checkDescriptorExists() {
+    /**
+     * Checks that a descriptor exists for this key after triggering loading of descriptors.
+     */
+    protected boolean checkDescriptorExists() {
         OptionKey.Lazy.init();
         if (descriptor == null) {
             Formatter buf = new Formatter();
@@ -64,7 +67,7 @@ public class OptionKey<T> {
                             "org.graalvm.compiler.options.processor.OptionProcessor annotation processor.", Option.class.getName());
             StackTraceElement[] stackTrace = new Exception().getStackTrace();
             if (stackTrace.length > 2 &&
-                            stackTrace[1].getClassName().equals(getClass().getName()) &&
+                            stackTrace[1].getClassName().equals(OptionKey.class.getName()) &&
                             stackTrace[1].getMethodName().equals("getValue")) {
                 String caller = stackTrace[2].getClassName();
                 buf.format(" In suite.py, add GRAAL_OPTIONS_PROCESSOR to the \"annotationProcessors\" attribute of the project " +
