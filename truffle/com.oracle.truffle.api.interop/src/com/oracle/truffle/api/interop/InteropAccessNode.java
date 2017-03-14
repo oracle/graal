@@ -104,6 +104,7 @@ abstract class InteropAccessNode extends Node {
             return obj;
         }
         if (obj == null) {
+            CompilerDirectives.transferToInterpreter();
             return yieldAnError(null);
         }
         Class<?> clazz = obj.getClass();
@@ -118,6 +119,7 @@ abstract class InteropAccessNode extends Node {
                         clazz == String.class) {
             return obj;
         } else {
+            CompilerDirectives.transferToInterpreter();
             yieldAnError(obj.getClass());
             return null;
         }
