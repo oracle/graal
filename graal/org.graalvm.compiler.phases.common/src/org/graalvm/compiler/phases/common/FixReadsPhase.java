@@ -58,6 +58,7 @@ import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
 import org.graalvm.compiler.nodes.memory.FloatingAccessNode;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
+import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.Phase;
@@ -90,13 +91,22 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
 
         @Override
         protected void processNode(Node node) {
-            if (node instanceof FloatingAccessNode) {
+            if (node instanceof AbstractMergeNode) {
+                AbstractMergeNode mergeNode = (AbstractMergeNode) node;
+                for (MemoryPhiNode memoryPhi : mergeNode.memoryPhis().snapshot()) {
+                    // Memory phi nodes are no longer necessary at this point.
+                    memoryPhi.replaceAtUsages(null);
+                    memoryPhi.safeDelete();
+                }
+
+            } else if (node instanceof FloatingAccessNode) {
                 FloatingAccessNode floatingAccessNode = (FloatingAccessNode) node;
                 FixedAccessNode fixedAccess = floatingAccessNode.asFixedNode();
                 replaceCurrent(fixedAccess);
             } else if (node instanceof PiNode) {
                 PiNode piNode = (PiNode) node;
                 if (piNode.stamp().isCompatible(piNode.getOriginalNode().stamp())) {
+                    // Pi nodes are no longer necessary at this point.
                     piNode.replaceAndDelete(piNode.getOriginalNode());
                 }
             }
