@@ -950,7 +950,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         Source otherLanguageSource = Source.newBuilder("STATEMENT(EXPRESSION)").name("unknown").mimeType("testIsNodeTaggedWith1").build();
         run(otherLanguageSource);
 
-        PolyglotEngine forked = engine.fork();
+        PolyglotEngine forked = fork(engine);
         assertEquals(1, service.onCreateCalls);
 
         assertSame(instrument, forked.getInstruments().get("testIsNodeTaggedWith1"));

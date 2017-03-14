@@ -1109,18 +1109,20 @@ public abstract class TruffleLanguage<C> {
             return (C) AccessAPI.engineAccess().contextReferenceGet(languageShared);
         }
 
-        /**
-         * Returns <code>true</code> if this reference is expected to always return the same context
-         * instance. It returns <code>false</code> if the context returned by {@link #get()} can
-         * differ between {@link RootNode#execute(VirtualFrame) executions}. Therefore the current
-         * context should not be stored in a field of an AST unless the context reference is known
-         * to be always {@link ContextReference#isFinal() final} for the language. A context
-         * reference that that is non-final will never become final again. For further details
-         * please refer to the Context Mutability section in the {@link TruffleLanguage} javadoc.
-         *
-         * @since 0.25
-         */
-        public boolean isFinal() {
+                        /**
+                         * Returns <code>true</code> if this reference is expected to always return
+                         * the same context instance. It returns <code>false</code> if the context
+                         * returned by {@link #get()} can differ between
+                         * {@link RootNode#execute(VirtualFrame) executions}. Therefore the current
+                         * context should not be stored in a field of an AST unless the context
+                         * reference is known to be always {@link ContextReference#isFinal() final}
+                         * for the language. A context reference that that is non-final will never
+                         * become final again. For further details please refer to the Context
+                         * Mutability section in the {@link TruffleLanguage} javadoc.
+                         *
+                         * @since 0.25
+                         */
+                        /* NOTNOW public */ boolean isFinal() {
             return AccessAPI.engineAccess().contextReferenceFinal(languageShared);
         }
 

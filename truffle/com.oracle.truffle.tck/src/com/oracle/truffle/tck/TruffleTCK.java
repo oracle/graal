@@ -2163,17 +2163,6 @@ public abstract class TruffleTCK {
         }
     }
 
-    /** @since 0.25 */
-    @Test
-    public void testForking() throws Exception {
-        PolyglotEngine engine = vm();
-        try {
-            engine.fork();
-        } catch (UnsupportedOperationException e) {
-            // valid if the language does not support forking
-        }
-    }
-
     private static void putDoubles(byte[] buffer, double[] values) {
         for (int index = 0; index < values.length; index++) {
             int doubleSize = Double.SIZE / Byte.SIZE;

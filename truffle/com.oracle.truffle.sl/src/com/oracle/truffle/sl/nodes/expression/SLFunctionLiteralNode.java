@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl.nodes.expression;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -74,10 +75,12 @@ public final class SLFunctionLiteralNode extends SLExpressionNode {
     @CompilationFinal private SLFunction cachedFunction;
 
     private final ContextReference<SLContext> reference;
+    private final Assumption noForks;
 
     public SLFunctionLiteralNode(SLLanguage language, String functionName) {
         this.functionName = functionName;
         this.reference = language.getContextReference();
+        this.noForks = language.noForks;
     }
 
     @Override
@@ -91,7 +94,7 @@ public final class SLFunctionLiteralNode extends SLExpressionNode {
          * to skip the final context check if a function name globally (per TruffleLanguage
          * instance) always points to the same function.
          */
-        if (reference.isFinal()) {
+        if (noForks.isValid()) {
             if (cachedFunction == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 /* We are about to change a @CompilationFinal field. */

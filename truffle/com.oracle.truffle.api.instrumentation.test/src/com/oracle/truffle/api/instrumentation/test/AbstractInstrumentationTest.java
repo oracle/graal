@@ -39,6 +39,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
  */
 public abstract class AbstractInstrumentationTest {
 
+    private PolyglotEngine.Builder builder;
     protected PolyglotEngine engine;
 
     protected final ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -46,7 +47,13 @@ public abstract class AbstractInstrumentationTest {
 
     @Before
     public void setup() {
-        engine = PolyglotEngine.newBuilder().setOut(out).setErr(err).build();
+        builder = PolyglotEngine.newBuilder().setOut(out).setErr(err);
+        builder.config(InstrumentationTestLanguage.MIME_TYPE, "context", new Object[1]);
+        engine = builder.build();
+    }
+
+    protected final PolyglotEngine fork(PolyglotEngine engine) {
+        return builder.build();
     }
 
     protected void assertEnabledInstrument(String id) {

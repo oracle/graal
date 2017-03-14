@@ -27,14 +27,17 @@ import java.util.concurrent.Executors;
 import org.junit.Test;
 
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import java.util.concurrent.Executor;
 
 public class ContextLookupAsyncTest extends ContextLookupTest {
     @Test
     public void marker() {
     }
 
+    private final Executor exec = Executors.newSingleThreadExecutor();
+
     @Override
     protected PolyglotEngine.Builder createBuilder() {
-        return PolyglotEngine.newBuilder().executor(Executors.newSingleThreadExecutor());
+        return PolyglotEngine.newBuilder().executor(exec);
     }
 }

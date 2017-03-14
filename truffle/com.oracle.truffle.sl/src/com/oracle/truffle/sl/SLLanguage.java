@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl;
 
+import com.oracle.truffle.api.Assumption;
 import java.math.BigInteger;
 import java.util.Map;
 
@@ -65,6 +66,8 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     public static final String MIME_TYPE = "application/x-sl";
 
+    public final Assumption noForks = Truffle.getRuntime().createAssumption("No forks!");
+
     public SLLanguage() {
     }
 
@@ -73,8 +76,8 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         return new SLContext(this, env);
     }
 
-    @Override
     protected SLContext forkContext(SLContext context) {
+        noForks.invalidate();
         return context.fork();
     }
 

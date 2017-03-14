@@ -46,6 +46,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
+import static org.junit.Assert.assertNull;
 
 public class ContextLookupTest {
 
@@ -94,16 +95,19 @@ public class ContextLookupTest {
     @Test
     public void forkedLookupTest() throws Exception {
         LanguageLookupContext context = new LanguageLookupContext(null);
-        PolyglotEngine vm = createBuilder().config(LanguageLookup.MIME_TYPE, "channel", context).build();
+        final PolyglotEngine.Builder builder = createBuilder().config(LanguageLookup.MIME_TYPE, "channel", context);
+        PolyglotEngine vm = builder.build();
         vm.getLanguages().get(LanguageLookup.MIME_TYPE).getGlobalObject();
         LanguageLookup language = context.language;
         assertExpectedContext(vm, language, context);
 
         for (int i = 0; i < 5; i++) {
-            PolyglotEngine ie = vm.fork();
+            context.toFork = context;
+            PolyglotEngine ie = fork(context, context, builder);
             language.expectedFinal = false;
+            final LanguageLookupContext subContext = context.forks.get(0);
             for (int j = 0; j < 5; j++) {
-                PolyglotEngine je = ie.fork();
+                PolyglotEngine je = fork(context, subContext, builder);
                 assertExpectedContext(je, language, context.forks.get(0).forks.get(0));
                 je.dispose();
             }
@@ -111,6 +115,14 @@ public class ContextLookupTest {
             ie.dispose();
         }
         vm.dispose();
+    }
+
+    private PolyglotEngine fork(LanguageLookupContext original, LanguageLookupContext context, PolyglotEngine.Builder builder) {
+        original.toFork = context;
+        PolyglotEngine engine = builder.build();
+        engine.getLanguages().get(LanguageLookup.MIME_TYPE).getGlobalObject();
+        assertNull("Fork used", original.toFork);
+        return engine;
     }
 
     @Test
@@ -148,6 +160,7 @@ public class ContextLookupTest {
 
         final LanguageLookupContext parent;
         final List<LanguageLookupContext> forks = new ArrayList<>();
+        LanguageLookupContext toFork;
 
         LanguageLookupContext(LanguageLookupContext parent) {
             this.parent = parent;
@@ -177,6 +190,11 @@ public class ContextLookupTest {
         @Override
         protected LanguageLookupContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
             LanguageLookupContext channel = (LanguageLookupContext) env.getConfig().get("channel");
+            if (channel.toFork != null) {
+                LanguageLookupContext forking = channel.toFork;
+                channel.toFork = null;
+                return forkContext(forking);
+            }
             channel.language = this;
 
             try {
@@ -214,7 +232,7 @@ public class ContextLookupTest {
             }
             assertSame(expected, context);
             assertSame(expected, getContextReference().get());
-            assertEquals(expectedFinal, getContextReference().isFinal());
+            // assertEquals(expectedFinal, getContextReference().isFinal());
         }
 
         @Override
@@ -229,9 +247,7 @@ public class ContextLookupTest {
             return super.findSourceLocation(context, value);
         }
 
-        @Override
         protected LanguageLookupContext forkContext(LanguageLookupContext context) {
-            assertContext(context);
             LanguageLookupContext channel = new LanguageLookupContext(context);
             channel.language = this;
             context.forks.add(channel);

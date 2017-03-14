@@ -355,6 +355,7 @@ public class PolyglotEngine {
         private OutputStream out;
         private OutputStream err;
         private InputStream in;
+        private PolyglotShared shared;
         private final Map<String, Object> globals = new HashMap<>();
         private Executor executor;
         private List<Object[]> arguments;
@@ -495,7 +496,10 @@ public class PolyglotEngine {
             if (in == null) {
                 in = System.in;
             }
-            return new PolyglotEngine(new PolyglotShared(executor, globals, out, err, in, arguments));
+            if (shared == null) {
+                shared = new PolyglotShared(executor, globals, out, err, in, arguments);
+            }
+            return new PolyglotEngine(shared);
         }
     }
 
@@ -576,30 +580,32 @@ public class PolyglotEngine {
         return new ExecutorValue(l, compute);
     }
 
-    /**
-     * Creates a new instance of {@link PolyglotEngine} with the same configuration and state as the
-     * original engine. Both the original engine and the forked engine can be used independent of
-     * each other. Both engines maintain separate state, but languages may decide to share code
-     * between forked {@link Language language} instances. Therefore the performance characteristics
-     * between forked engines are not isolated. Forking is an optional operation and might fail with
-     * {@link UnsupportedOperationException} if any of the initialized languages does not support
-     * forking. Forking is guaranteed to be supported if no language was yet initialized. Every
-     * engine must be {@link #dispose() disposed} independently, i.e. engines are not disposed
-     * automatically with their original engine. Forked engines can only be executed on the same
-     * thread as the original engine.
-     * <p>
-     * {@link #getInstruments() Instruments} are shared between all forked engines.
-     * {@link Instrument#setEnabled(boolean) Enabling} instruments applies to the original and all
-     * forked engines equally. Only if all engines were disposed then the instruments are going to
-     * be disposed as well.
-     * <p>
-     * To support forking in language {@link TruffleLanguage#forkContext(Object)} must be
-     * implemented. Languages may create forks on their own by invoking
-     * {@link Env#createFork(CallTarget)}.
-     *
-     * @since 0.25
-     */
-    public PolyglotEngine fork() throws UnsupportedOperationException {
+                    /**
+                     * Creates a new instance of {@link PolyglotEngine} with the same configuration
+                     * and state as the original engine. Both the original engine and the forked
+                     * engine can be used independent of each other. Both engines maintain separate
+                     * state, but languages may decide to share code between forked {@link Language
+                     * language} instances. Therefore the performance characteristics between forked
+                     * engines are not isolated. Forking is an optional operation and might fail
+                     * with {@link UnsupportedOperationException} if any of the initialized
+                     * languages does not support forking. Forking is guaranteed to be supported if
+                     * no language was yet initialized. Every engine must be {@link #dispose()
+                     * disposed} independently, i.e. engines are not disposed automatically with
+                     * their original engine. Forked engines can only be executed on the same thread
+                     * as the original engine.
+                     * <p>
+                     * {@link #getInstruments() Instruments} are shared between all forked engines.
+                     * {@link Instrument#setEnabled(boolean) Enabling} instruments applies to the
+                     * original and all forked engines equally. Only if all engines were disposed
+                     * then the instruments are going to be disposed as well.
+                     * <p>
+                     * To support forking in language {@link TruffleLanguage#forkContext(Object)}
+                     * must be implemented. Languages may create forks on their own by invoking
+                     * {@link Env#createFork(CallTarget)}.
+                     *
+                     * @since 0.25
+                     */
+                    /* NOTNOW public */ PolyglotEngine fork() throws UnsupportedOperationException {
         assertNoCompilation();
         checkThread();
         ComputeInExecutor<PolyglotEngine> compute = new ComputeInExecutor<PolyglotEngine>(executor()) {

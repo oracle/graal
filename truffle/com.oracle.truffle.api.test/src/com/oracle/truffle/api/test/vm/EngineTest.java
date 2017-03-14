@@ -64,6 +64,7 @@ import com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.Ctx;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
+import java.util.concurrent.Callable;
 
 public class EngineTest {
     private Set<PolyglotEngine> toDispose = new HashSet<>();
@@ -555,14 +556,15 @@ public class EngineTest {
     @Test
     public void languageInstancesAreNotShared() {
         ForkingLanguage.constructorInvocationCount = 0;
-        ForkingLanguageChannel channel1 = new ForkingLanguageChannel(null);
-        PolyglotEngine vm1 = register(createBuilder().config(ForkingLanguage.MIME_TYPE, "channel", channel1).build());
+        final Builder builder = createBuilder();
+        ForkingLanguageChannel channel1 = new ForkingLanguageChannel(builder::build);
+        PolyglotEngine vm1 = register(builder.config(ForkingLanguage.MIME_TYPE, "channel", channel1).build());
         register(vm1);
         vm1.getLanguages().get(ForkingLanguage.MIME_TYPE).getGlobalObject();
 
         assertEquals(1, ForkingLanguage.constructorInvocationCount);
 
-        ForkingLanguageChannel channel2 = new ForkingLanguageChannel(null);
+        ForkingLanguageChannel channel2 = new ForkingLanguageChannel(builder::build);
         PolyglotEngine vm2 = register(createBuilder().config(ForkingLanguage.MIME_TYPE, "channel", channel2).build());
         register(vm2);
         vm2.getLanguages().get(ForkingLanguage.MIME_TYPE).getGlobalObject();
@@ -572,11 +574,14 @@ public class EngineTest {
     }
 
     @Test
-    public void basicForkTest() {
-        ForkingLanguageChannel channel = new ForkingLanguageChannel(null);
-        PolyglotEngine vm = register(createBuilder().config(ForkingLanguage.MIME_TYPE, "channel", channel).build());
+    public void basicForkTest() throws Exception {
+        final Builder builder = createBuilder();
+        ForkingLanguageChannel channel = new ForkingLanguageChannel(builder::build);
+        builder.config(ForkingLanguage.MIME_TYPE, "channel", channel);
+        PolyglotEngine vm = register(builder.build());
 
-        PolyglotEngine uninitializedFork = vm.fork();
+        PolyglotEngine uninitializedFork = builder.build();
+
         // language is not yet initialized -> no fork necessary
         assertEquals(0, channel.forks.size());
 
@@ -593,7 +598,7 @@ public class EngineTest {
 
         List<PolyglotEngine> forks = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
-            forks.add(vm.fork());
+            forks.add(channel.fork());
             assertEquals(channel.forks.size(), forks.size());
 
             assertEquals(2, channel.language.createContextCount);
@@ -625,13 +630,15 @@ public class EngineTest {
     }
 
     @Test(expected = UnsupportedOperationException.class)
-    public void forkUnsupportedFailsGracefully() {
-        ForkingLanguageChannel channel = new ForkingLanguageChannel(null);
-        PolyglotEngine vm = register(createBuilder().config(ForkingLanguage.MIME_TYPE, "channel", channel).build());
+    public void forkUnsupportedFailsGracefully() throws Exception {
+        final Builder builder = createBuilder();
+        ForkingLanguageChannel channel = new ForkingLanguageChannel(builder::build);
+        builder.config(ForkingLanguage.MIME_TYPE, "channel", channel);
+        PolyglotEngine vm = register(builder.build());
 
         // fork supported when not initialized
         try {
-            assertNotNull(vm.fork());
+            assertNotNull(channel.fork());
         } catch (Exception e) {
             fail();
         }
@@ -639,24 +646,27 @@ public class EngineTest {
         vm.getLanguages().get(ForkingLanguage.MIME_TYPE).getGlobalObject();
 
         channel.language.forkSupported = false;
-        vm.fork();
+        channel.fork();
     }
 
     @Test
-    public void forkedSymbolsNotSharedButCopied() {
-        ForkingLanguageChannel channel = new ForkingLanguageChannel(null);
-        PolyglotEngine vm = register(createBuilder().config(ForkingLanguage.MIME_TYPE, "channel", channel).build());
+    public void forkedSymbolsNotSharedButCopied() throws Exception {
+        final Builder builder = createBuilder();
+        ForkingLanguageChannel channel = new ForkingLanguageChannel(builder::build);
+        builder.config(ForkingLanguage.MIME_TYPE, "channel", channel);
+        PolyglotEngine vm = register(builder.build());
         channel.symbols.put("sym1", "symvalue1");
         vm.getLanguages().get(ForkingLanguage.MIME_TYPE).getGlobalObject(); // initialize language
 
         assertEquals("symvalue1", vm.findGlobalSymbol("sym1").as(String.class));
 
-        PolyglotEngine fork = vm.fork();
+        PolyglotEngine fork = channel.fork();
 
         assertEquals("symvalue1", vm.findGlobalSymbol("sym1").as(String.class));
         assertEquals("symvalue1", fork.findGlobalSymbol("sym1").as(String.class));
 
-        channel.forks.get(0).symbols.put("sym2", "symvalue2");
+        final ForkingLanguageChannel forkChannel = channel.forks.get(0);
+        forkChannel.symbols.put("sym2", "symvalue2");
 
         assertNull(vm.findGlobalSymbol("sym2"));
         assertEquals("symvalue2", fork.findGlobalSymbol("sym2").as(String.class));
@@ -669,15 +679,16 @@ public class EngineTest {
         assertEquals("symvalue1", vm.findGlobalSymbol("sym1").as(String.class));
         assertEquals("symvalue1", fork.findGlobalSymbol("sym1").as(String.class));
 
-        PolyglotEngine forkfork = fork.fork();
+        PolyglotEngine forkfork = forkChannel.fork();
         assertEquals("symvalue1", forkfork.findGlobalSymbol("sym1").as(String.class));
         assertEquals("symvalue2", forkfork.findGlobalSymbol("sym2").as(String.class));
     }
 
     @Test
     public void forkInLanguageTest() {
-        ForkingLanguageChannel channel = new ForkingLanguageChannel(null);
-        PolyglotEngine vm = createBuilder().config(ForkingLanguage.MIME_TYPE, "channel", channel).build();
+        final Builder builder = createBuilder();
+        ForkingLanguageChannel channel = new ForkingLanguageChannel(builder::build);
+        PolyglotEngine vm = builder.config(ForkingLanguage.MIME_TYPE, "channel", channel).build();
 
         vm.eval(Source.newBuilder("").name("").mimeType(ForkingLanguage.MIME_TYPE).build()).get();
 
@@ -692,8 +703,9 @@ public class EngineTest {
 
     @Test
     public void testLanguageInfo() {
-        ForkingLanguageChannel channel = new ForkingLanguageChannel(null);
-        PolyglotEngine vm = createBuilder().config(ForkingLanguage.MIME_TYPE, "channel", channel).build();
+        final Builder builder = createBuilder();
+        ForkingLanguageChannel channel = new ForkingLanguageChannel(builder::build);
+        PolyglotEngine vm = builder.config(ForkingLanguage.MIME_TYPE, "channel", channel).build();
         vm.eval(Source.newBuilder("").name("").mimeType(ForkingLanguage.MIME_TYPE).build()).get();
 
         assertNotNull(channel.info);
@@ -705,8 +717,9 @@ public class EngineTest {
 
     @Test
     public void testLanguageAccess() {
-        ForkingLanguageChannel channel = new ForkingLanguageChannel(null);
-        PolyglotEngine vm = createBuilder().config(ForkingLanguage.MIME_TYPE, "channel", channel).build();
+        final Builder builder = createBuilder();
+        ForkingLanguageChannel channel = new ForkingLanguageChannel(builder::build);
+        PolyglotEngine vm = builder.config(ForkingLanguage.MIME_TYPE, "channel", channel).build();
         vm.eval(Source.newBuilder("").name("").mimeType(ForkingLanguage.MIME_TYPE).build()).get();
 
         RootNode root = new RootNode(channel.language) {
@@ -768,12 +781,31 @@ public class EngineTest {
         Info info;
 
         boolean disposed;
+        ForkingLanguageChannel toFork;
+        Callable<PolyglotEngine> toCreate;
+
+        ForkingLanguageChannel(Callable<PolyglotEngine> toCreate) {
+            this((ForkingLanguageChannel) null);
+            this.toCreate = toCreate;
+        }
 
         ForkingLanguageChannel(ForkingLanguageChannel parent) {
             this.parent = parent;
             if (parent != null) {
                 this.symbols.putAll(parent.symbols);
             }
+        }
+
+        PolyglotEngine fork() throws Exception {
+            ForkingLanguageChannel channel = this;
+            while (channel.parent != null) {
+                channel = channel.parent;
+            }
+            channel.toFork = this;
+            PolyglotEngine fork = channel.toCreate.call();
+            fork.getLanguages().get(ForkingLanguage.MIME_TYPE).getGlobalObject();
+            assertNull("The toFork channel was used", channel.toFork);
+            return fork;
         }
 
     }
@@ -797,8 +829,13 @@ public class EngineTest {
 
         @Override
         protected ForkingLanguageChannel createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
-            createContextCount++;
             ForkingLanguageChannel channel = (ForkingLanguageChannel) env.getConfig().get("channel");
+            if (channel.toFork != null) {
+                ForkingLanguageChannel forking = channel.toFork;
+                channel.toFork = null;
+                return forkContext(forking);
+            }
+            createContextCount++;
             channel.env = env;
             channel.language = this;
             channel.info = new RootNode(this) {
@@ -811,7 +848,6 @@ public class EngineTest {
             return channel;
         }
 
-        @Override
         protected ForkingLanguageChannel forkContext(ForkingLanguageChannel context) {
             forkContextCount++;
             if (!forkSupported) {

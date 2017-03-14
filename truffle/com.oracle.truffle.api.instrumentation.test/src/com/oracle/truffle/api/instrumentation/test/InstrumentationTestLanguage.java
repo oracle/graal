@@ -113,10 +113,18 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context> {
 
     @Override
     protected Context createContext(TruffleLanguage.Env env) {
-        return new Context(env.out(), env.err());
+        Object[] sharedContext = (Object[]) env.getConfig().get("context");
+        if (sharedContext == null || sharedContext[0] == null) {
+            Context c = new Context(env.out(), env.err());
+            if (sharedContext != null) {
+                sharedContext[0] = c;
+            }
+            return c;
+        } else {
+            return forkContext((Context) sharedContext[0]);
+        }
     }
 
-    @Override
     protected Context forkContext(Context context) {
         return context;
     }
