@@ -41,12 +41,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.ServiceLoader;
 import java.util.Set;
 
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.test.GraalTest;
 import org.junit.Test;
 import org.objectweb.asm.ClassReader;
@@ -67,7 +67,7 @@ public class OptionsVerifierTest {
     public void verifyOptions() throws IOException {
         try (Classpath cp = new Classpath()) {
             HashSet<Class<?>> checked = new HashSet<>();
-            for (OptionDescriptors opts : ServiceLoader.load(OptionDescriptors.class, getClass().getClassLoader())) {
+            for (OptionDescriptors opts : OptionsParser.getOptionsLoader()) {
                 for (OptionDescriptor desc : opts) {
                     OptionsVerifier.checkClass(desc.getDeclaringClass(), desc, checked, cp);
                 }
