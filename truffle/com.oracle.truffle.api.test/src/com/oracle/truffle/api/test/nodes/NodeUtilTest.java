@@ -33,6 +33,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.TestingLanguage;
 
@@ -41,14 +42,15 @@ public class NodeUtilTest {
     @Test
     public void testRecursiveIterator1() {
         TestRootNode root = new TestRootNode();
-        root.child0 = new TestNode();
+        TestNode testNode = new TestNode();
+        root.child0 = testNode;
         root.adoptChildren();
 
         int count = iterate(NodeUtil.makeRecursiveIterator(root));
 
         assertThat(count, is(2));
         assertThat(root.visited, is(0));
-        assertThat(root.child0.visited, is(1));
+        assertThat(testNode.visited, is(1));
     }
 
     @Test
@@ -72,6 +74,181 @@ public class NodeUtilTest {
         Assert.assertSame(test11, test111.getParent());
     }
 
+    @Test
+    public void testForEachChild() {
+        TestRootNode root = new TestRootNode();
+        TestForEachNode testForEachNode = new TestForEachNode(1);
+        root.child0 = testForEachNode;
+        TestNode testNode1 = new TestNode();
+        testForEachNode.firstChild = testNode1;
+        TestNode testNode2 = new TestNode();
+        testForEachNode.children[0] = testNode2;
+        TestNode testNode3 = new TestNode();
+        testForEachNode.lastChild = testNode3;
+        root.adoptChildren();
+
+        int[] count = new int[1];
+        NodeUtil.forEachChild(root, new NodeVisitor() {
+            public boolean visit(Node node) {
+                Assert.assertSame(testForEachNode, node);
+                count[0]++;
+                return true;
+            }
+        });
+        Assert.assertEquals(1, count[0]);
+
+        count[0] = 0;
+        NodeUtil.forEachChild(testForEachNode, new NodeVisitor() {
+            public boolean visit(Node node) {
+                ((VisitableNode) node).visited++;
+                count[0]++;
+                return true;
+            }
+        });
+        Assert.assertEquals(3, count[0]);
+        Assert.assertEquals(1, testNode1.visited);
+        Assert.assertEquals(1, testNode2.visited);
+        Assert.assertEquals(1, testNode3.visited);
+    }
+
+    @Test
+    public void testAccept() {
+        TestRootNode root = new TestRootNode();
+        TestForEachNode testForEachNode = new TestForEachNode(1);
+        root.child0 = testForEachNode;
+        TestNode testNode1 = new TestNode();
+        testForEachNode.firstChild = testNode1;
+        TestNode testNode2 = new TestNode();
+        testForEachNode.children[0] = testNode2;
+        TestNode testNode3 = new TestNode();
+        testForEachNode.lastChild = testNode3;
+        root.adoptChildren();
+
+        int[] count = new int[1];
+        testForEachNode.accept(new NodeVisitor() {
+            public boolean visit(Node node) {
+                ((VisitableNode) node).visited++;
+                count[0]++;
+                return true;
+            }
+        });
+
+        Assert.assertEquals(4, count[0]);
+        Assert.assertEquals(1, testForEachNode.visited);
+        Assert.assertEquals(1, testNode1.visited);
+        Assert.assertEquals(1, testNode2.visited);
+        Assert.assertEquals(1, testNode3.visited);
+    }
+
+    @Test
+    public void testRecursiveIterator() {
+        TestRootNode root = new TestRootNode();
+        TestForEachNode testForEachNode = new TestForEachNode(1);
+        root.child0 = testForEachNode;
+        TestNode testNode1 = new TestNode();
+        testForEachNode.firstChild = testNode1;
+        TestNode testNode2 = new TestNode();
+        testForEachNode.children[0] = testNode2;
+        TestNode testNode3 = new TestNode();
+        testForEachNode.lastChild = testNode3;
+        root.adoptChildren();
+
+        int count = 0;
+        Iterable<Node> iterable = () -> NodeUtil.makeRecursiveIterator(testForEachNode);
+        for (Node node : iterable) {
+            ((VisitableNode) node).visited++;
+            count++;
+        }
+
+        Assert.assertEquals(4, count);
+        Assert.assertEquals(1, testForEachNode.visited);
+        Assert.assertEquals(1, testNode1.visited);
+        Assert.assertEquals(1, testNode2.visited);
+        Assert.assertEquals(1, testNode3.visited);
+    }
+
+    @Test
+    public void testChildren() {
+        TestRootNode root = new TestRootNode();
+        TestForEachNode testForEachNode = new TestForEachNode(1);
+        root.child0 = testForEachNode;
+        TestNode testNode1 = new TestNode();
+        testForEachNode.firstChild = testNode1;
+        TestNode testNode2 = new TestNode();
+        testForEachNode.children[0] = testNode2;
+        TestNode testNode3 = new TestNode();
+        testForEachNode.lastChild = testNode3;
+
+        int count = 0;
+        for (Node node : testForEachNode.getChildren()) {
+            ((VisitableNode) node).visited++;
+            count++;
+        }
+        Assert.assertEquals(3, count);
+        Assert.assertEquals(1, testNode1.visited);
+        Assert.assertEquals(1, testNode2.visited);
+        Assert.assertEquals(1, testNode3.visited);
+    }
+
+    @Test
+    public void testChildrenArray() {
+        // 2 children in the array
+        TestForEachNode test2children = new TestForEachNode(2);
+        TestNode both1 = new TestNode();
+        TestNode both2 = new TestNode();
+        test2children.children[0] = both1;
+        test2children.children[1] = both2;
+
+        int count = 0;
+        for (Node node : test2children.getChildren()) {
+            ((VisitableNode) node).visited++;
+            count++;
+        }
+        Assert.assertEquals(2, count);
+        Assert.assertEquals(1, both1.visited);
+        Assert.assertEquals(1, both2.visited);
+
+        // First null
+        TestNode testChild1 = new TestNode();
+        test2children.children[0] = null;
+        test2children.children[1] = testChild1;
+
+        count = 0;
+        for (Node node : test2children.getChildren()) {
+            ((VisitableNode) node).visited++;
+            count++;
+        }
+        Assert.assertEquals(1, count);
+        Assert.assertEquals(1, testChild1.visited);
+
+        // Second null
+        TestNode testChild2 = new TestNode();
+        test2children.children[0] = testChild2;
+        test2children.children[1] = null;
+
+        count = 0;
+        for (Node node : test2children.getChildren()) {
+            ((VisitableNode) node).visited++;
+            count++;
+        }
+        Assert.assertEquals(1, count);
+        Assert.assertEquals(1, testChild2.visited);
+
+        // Both null, go to next child
+        TestNode otherChild = new TestNode();
+        test2children.children[0] = null;
+        test2children.children[1] = null;
+        test2children.lastChild = otherChild;
+
+        count = 0;
+        for (Node node : test2children.getChildren()) {
+            ((VisitableNode) node).visited++;
+            count++;
+        }
+        Assert.assertEquals(1, count);
+        Assert.assertEquals(1, otherChild.visited);
+    }
+
     private static int iterate(Iterator<Node> iterator) {
         int iterationCount = 0;
         while (iterator.hasNext()) {
@@ -91,12 +268,14 @@ public class NodeUtilTest {
         return iterationCount;
     }
 
-    private static class TestNode extends Node {
+    private static class VisitableNode extends Node {
+        int visited = 0;
+    }
+
+    private static class TestNode extends VisitableNode {
 
         @Child TestNode child0;
         @Child TestNode child1;
-
-        private int visited;
 
         TestNode() {
         }
@@ -105,9 +284,9 @@ public class NodeUtilTest {
 
     private static class TestRootNode extends RootNode {
 
-        @Child TestNode child0;
+        @Child Node child0;
 
-        private int visited;
+        protected int visited;
 
         TestRootNode() {
             super(TestingLanguage.class, null, null);
@@ -116,6 +295,21 @@ public class NodeUtilTest {
         @Override
         public Object execute(VirtualFrame frame) {
             return null;
+        }
+
+    }
+
+    private static class TestForEachNode extends VisitableNode {
+
+        @Child private Node nullChild;
+        @SuppressWarnings("unused") private String data1;
+        @Child private Node firstChild;
+        @Children private final Node[] children;
+        @SuppressWarnings("unused") private boolean data2;
+        @Child private Node lastChild;
+
+        TestForEachNode(int childrenSize) {
+            this.children = new Node[childrenSize];
         }
 
     }

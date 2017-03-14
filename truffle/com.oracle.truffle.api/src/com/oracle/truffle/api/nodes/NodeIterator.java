@@ -52,7 +52,9 @@ final class NodeIterator implements Iterator<Node> {
             Object field = fields[fieldsIndex++];
             if (nodeClass.isChildField(field)) {
                 next = (Node) nodeClass.getFieldObject(field, node);
-                return;
+                if (next != null) {
+                    return;
+                }
             } else if (nodeClass.isChildrenField(field)) {
                 children = (Object[]) nodeClass.getFieldObject(field, node);
                 childrenIndex = 0;
@@ -69,15 +71,19 @@ final class NodeIterator implements Iterator<Node> {
     private boolean advanceChildren() {
         if (children == null) {
             return false;
-        } else if (childrenIndex < children.length) {
+        }
+
+        while (childrenIndex < children.length) {
             next = (Node) children[childrenIndex];
             childrenIndex++;
-            return true;
-        } else {
-            children = null;
-            childrenIndex = 0;
-            return false;
+            if (next != null) {
+                return true;
+            }
         }
+
+        children = null;
+        childrenIndex = 0;
+        return false;
     }
 
     public boolean hasNext() {
