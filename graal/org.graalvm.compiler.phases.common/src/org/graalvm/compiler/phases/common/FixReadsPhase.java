@@ -58,6 +58,7 @@ import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
 import org.graalvm.compiler.nodes.memory.FloatingAccessNode;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.BasePhase;
@@ -98,9 +99,9 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
                     memoryPhi.replaceAtUsages(null);
                     memoryPhi.safeDelete();
                 }
-
             } else if (node instanceof FloatingAccessNode) {
                 FloatingAccessNode floatingAccessNode = (FloatingAccessNode) node;
+                floatingAccessNode.setLastLocationAccess(null);
                 FixedAccessNode fixedAccess = floatingAccessNode.asFixedNode();
                 replaceCurrent(fixedAccess);
             } else if (node instanceof PiNode) {
@@ -109,6 +110,9 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
                     // Pi nodes are no longer necessary at this point.
                     piNode.replaceAndDelete(piNode.getOriginalNode());
                 }
+            } else if (node instanceof MemoryAccess) {
+                MemoryAccess memoryAccess = (MemoryAccess) node;
+                memoryAccess.setLastLocationAccess(null);
             }
         }
 
