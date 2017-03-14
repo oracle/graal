@@ -39,6 +39,6 @@ public class BoxedPrimitive implements TruffleObject {
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return BoxedPrimitiveMessageResolutionForeign.createAccess();
+        return BoxedPrimitiveMessageResolutionForeign.ACCESS;
     }
 }

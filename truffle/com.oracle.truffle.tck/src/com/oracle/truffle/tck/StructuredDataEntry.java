@@ -40,7 +40,7 @@ final class StructuredDataEntry implements TruffleObject {
     }
 
     public ForeignAccess getForeignAccess() {
-        return StructuredDataEntryMessageResolutionForeign.createAccess();
+        return StructuredDataEntryMessageResolutionForeign.ACCESS;
     }
 
     byte[] getBuffer() {
