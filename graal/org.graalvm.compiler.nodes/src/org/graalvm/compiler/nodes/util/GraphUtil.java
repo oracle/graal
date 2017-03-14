@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.code.SourceStackTraceBailoutException;
@@ -94,6 +95,7 @@ public class GraphUtil {
             EconomicSet<Node> unsafeNodes = null;
             Graph.NodeEventScope nodeEventScope = null;
             OptionValues options = node.getOptions();
+            StructuredGraph graph = node.graph();
             if (Graph.Options.VerifyGraalGraphEdges.getValue(options)) {
                 unsafeNodes = collectUnsafeNodes(node.graph());
             }
@@ -102,7 +104,7 @@ public class GraphUtil {
                 nodeEventScope = node.graph().trackNodeEvents(new Graph.NodeEventListener() {
                     @Override
                     public void event(Graph.NodeEvent e, Node n) {
-                        if (e == Graph.NodeEvent.ZERO_USAGES && isFloatingNode(n)) {
+                        if (e == Graph.NodeEvent.ZERO_USAGES && isFloatingNode(n) && !(n instanceof GuardNode)) {
                             collectedUnusedNodes.add(n);
                         }
                     }
@@ -112,7 +114,8 @@ public class GraphUtil {
             NodeWorkList worklist = killCFG(node, tool, null);
             if (worklist != null) {
                 for (Node n : worklist) {
-                    killCFG(n, tool, worklist);
+                    NodeWorkList list = killCFG(n, tool, worklist);
+                    assert list == worklist;
                 }
             }
             if (Graph.Options.VerifyGraalGraphEdges.getValue(options)) {
@@ -130,6 +133,7 @@ public class GraphUtil {
                     }
                 }
                 assert unusedNodes.isEmpty() : "New unused nodes: " + unusedNodes;
+                assert graph.getNodes().filter(PoisonNode.class).isEmpty();
             }
         } catch (Throwable t) {
             throw Debug.handle(t);
@@ -159,8 +163,26 @@ public class GraphUtil {
         if (node instanceof FixedNode) {
             newWorklist = killCFGLinear((FixedNode) node, newWorklist, tool);
         } else {
-            newWorklist = propagateKill(node, newWorklist);
-            Debug.dump(Debug.VERY_DETAILED_LOG_LEVEL, node.graph(), "killCFG (Floating) %s", node);
+            if (node instanceof PoisonNode && ((PoisonNode) node).processNonPhiUsagesFirst()) {
+                if (node.isAlive()) {
+                    if (node.hasNoUsages()) {
+                        node.safeDelete();
+                    } else {
+                        if (newWorklist == null) {
+                            newWorklist = node.graph().createIterativeNodeWorkList(false, 0);
+                        }
+                        for (Node usage : node.usages()) {
+                            if (isFloatingNode(usage) && !(usage instanceof PhiNode)) {
+                                newWorklist.add(usage);
+                            }
+                        }
+                        newWorklist.add(node);
+                    }
+                }
+            } else {
+                newWorklist = propagateKill(node, newWorklist);
+                Debug.dump(Debug.VERY_DETAILED_LOG_LEVEL, node.graph(), "killCFG (Floating) %s", node);
+            }
         }
         return newWorklist;
     }
@@ -195,7 +217,7 @@ public class GraphUtil {
                         next = (FixedNode) first;
                     } else {
                         if (newWorklist == null) {
-                            newWorklist = in.graph().createNodeWorkList();
+                            newWorklist = in.graph().createIterativeNodeWorkList(false, 0);
                         }
                         for (Node successor : current.successors()) {
                             newWorklist.add(successor);
@@ -230,9 +252,15 @@ public class GraphUtil {
     @NodeInfo(allowedUsageTypes = InputType.Unchecked)
     private static final class PoisonNode extends FloatingNode {
         public static final NodeClass<PoisonNode> TYPE = NodeClass.create(PoisonNode.class);
+        protected boolean loopPoison;
 
-        protected PoisonNode() {
+        protected PoisonNode(boolean loopPoison) {
             super(TYPE, StampFactory.forVoid());
+            this.loopPoison = loopPoison;
+        }
+
+        public boolean processNonPhiUsagesFirst() {
+            return !this.loopPoison;
         }
     }
 
@@ -259,7 +287,7 @@ public class GraphUtil {
                 begin.removeExits();
                 PoisonNode poison = null;
                 if (merge.phis().isNotEmpty()) {
-                    poison = graph.unique(new PoisonNode());
+                    poison = graph.addWithoutUnique(new PoisonNode(true));
                     for (PhiNode phi : merge.phis()) {
                         phi.replaceAtUsages(poison);
                     }
@@ -272,7 +300,7 @@ public class GraphUtil {
                 if (loopBody != null) {
                     // for small infinite loops, the body may already be killed while killing the
                     // LoopEnds
-                    newWorklist = killCFG(loopBody, tool, worklist);
+                    newWorklist = killCFG(loopBody, tool, newWorklist);
                 }
                 FrameState frameState = begin.stateAfter();
                 begin.safeDelete();
@@ -281,14 +309,27 @@ public class GraphUtil {
                 }
                 if (poison != null && poison.isAlive()) {
                     if (newWorklist == null) {
-                        newWorklist = graph.createNodeWorkList();
+                        newWorklist = graph.createIterativeNodeWorkList(false, 0);
                     }
                     // drain the worklist to finish the loop before adding the poison
+                    List<Node> waitingPoisons = null;
                     for (Node n : newWorklist) {
-                        killCFG(n, tool, newWorklist);
+                        if (n instanceof PoisonNode && ((PoisonNode) n).processNonPhiUsagesFirst() && n.hasUsages()) {
+                            assert n != poison;
+                            if (waitingPoisons == null) {
+                                waitingPoisons = new ArrayList<>(2);
+                            }
+                            waitingPoisons.add(n);
+                        } else {
+                            NodeWorkList list = killCFG(n, tool, newWorklist);
+                            assert list == newWorklist;
+                        }
                     }
                     if (poison.isAlive()) {
                         newWorklist.add(poison);
+                    }
+                    if (waitingPoisons != null) {
+                        newWorklist.addAll(waitingPoisons);
                     }
                 }
             } else if (merge instanceof LoopBeginNode && ((LoopBeginNode) merge).loopEnds().isEmpty()) {
@@ -301,9 +342,16 @@ public class GraphUtil {
                 graph.reduceDegenerateLoopBegin((LoopBeginNode) merge);
             } else if (merge.phiPredecessorCount() == 1) {
                 // not a merge anymore
-                if (tool != null) {
-                    for (PhiNode phi : merge.phis()) {
+                for (PhiNode phi : merge.phis()) {
+                    if (tool != null) {
                         tool.addToWorkList(phi.usages());
+                    }
+                    ValueNode value = phi.valueAt(0);
+                    if (value instanceof PoisonNode) {
+                        if (newWorklist == null) {
+                            newWorklist = graph.createIterativeNodeWorkList(false, 0);
+                        }
+                        newWorklist.add(value);
                     }
                 }
                 graph.reduceTrivialMerge(merge);
@@ -319,33 +367,39 @@ public class GraphUtil {
     private static NodeWorkList propagateKill(Node node, NodeWorkList workList) {
         NodeWorkList newWorkList = workList;
         if (node != null && node.isAlive()) {
-            for (Node usage : node.usages().snapshot()) {
-                assert usage.isAlive();
-                if (isFloatingNode(usage)) {
-                    boolean addUsage = false;
-                    if (usage instanceof PhiNode) {
-                        PhiNode phi = (PhiNode) usage;
-                        assert phi.merge() != null;
-                        if (phi.merge() == node) {
-                            // we reach the phi directly through he merge, queue it.
-                            addUsage = true;
+            if (node.hasUsages()) {
+                for (Node usage : node.usages().snapshot()) {
+                    assert usage.isAlive();
+                    if (isFloatingNode(usage)) {
+                        boolean addUsage = false;
+                        if (usage instanceof PhiNode) {
+                            PhiNode phi = (PhiNode) usage;
+                            assert phi.merge() != null;
+                            if (phi.merge() == node) {
+                                // we reach the phi directly through he merge, queue it.
+                                addUsage = true;
+                            } else {
+                                // we reach it though a value
+                                assert phi.values().contains(node);
+                                // let that be handled when we reach the corresponding End node
+                            }
                         } else {
-                            // we reach it though a value
-                            assert phi.values().contains(node);
-                            // let that be handled when we reach the corresponding End node
+                            addUsage = true;
                         }
-                    } else {
-                        addUsage = true;
-                    }
-                    if (addUsage) {
-                        if (newWorkList == null) {
-                            newWorkList = node.graph().createNodeWorkList();
+                        if (addUsage) {
+                            if (newWorkList == null) {
+                                newWorkList = node.graph().createIterativeNodeWorkList(false, 0);
+                            }
+                            newWorkList.add(usage);
+                        } else {
+                            usage.replaceFirstInput(node, node.graph().unique(new PoisonNode(false)));
+                            continue;
                         }
-                        newWorkList.add(usage);
                     }
+                    usage.replaceFirstInput(node, null);
                 }
-                usage.replaceFirstInput(node, null);
             }
+            assert node.hasNoUsages() : node + " " + node.usages().snapshot();
             killWithUnusedFloatingInputs(node, true);
         }
         return newWorkList;

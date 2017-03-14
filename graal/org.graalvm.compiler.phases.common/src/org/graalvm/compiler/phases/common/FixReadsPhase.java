@@ -321,6 +321,7 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
                 survivingSuccessor.replaceAtPredecessor(null);
                 node.replaceAtPredecessor(survivingSuccessor);
                 GraphUtil.killCFG(node);
+
                 counterIfsKilled.increment();
             }
         }
