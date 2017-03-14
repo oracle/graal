@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.options;
 
+import java.util.Formatter;
 import java.util.ServiceLoader;
 
 import org.graalvm.util.EconomicMap;
@@ -53,6 +54,26 @@ public class OptionKey<T> {
      */
     public final OptionDescriptor getDescriptor() {
         return descriptor;
+    }
+
+    private boolean checkDescriptorExists() {
+        OptionKey.Lazy.init();
+        if (descriptor == null) {
+            Formatter buf = new Formatter();
+            buf.format("Could not find a descriptor for an option key. The most likely cause is " +
+                            "a dependency on the %s annotation without a dependency on the " +
+                            "org.graalvm.compiler.options.processor.OptionProcessor annotation processor.", Option.class.getName());
+            StackTraceElement[] stackTrace = new Exception().getStackTrace();
+            if (stackTrace.length > 2 &&
+                            stackTrace[1].getClassName().equals(getClass().getName()) &&
+                            stackTrace[1].getMethodName().equals("getValue")) {
+                String caller = stackTrace[2].getClassName();
+                buf.format(" In suite.py, add GRAAL_OPTIONS_PROCESSOR to the \"annotationProcessors\" attribute of the project " +
+                                "containing %s.", caller);
+            }
+            throw new AssertionError(buf.toString());
+        }
+        return true;
     }
 
     /**
@@ -112,6 +133,7 @@ public class OptionKey<T> {
      * Gets the value of this option in {@code values}.
      */
     public T getValue(OptionValues values) {
+        assert checkDescriptorExists();
         return values.get(this);
     }
 
