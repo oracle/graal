@@ -25,6 +25,7 @@
 package com.oracle.truffle.api;
 
 import java.util.Collection;
+import java.util.Collections;
 
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -194,7 +195,9 @@ public interface TruffleRuntime {
      *             instrumentation framework. Deprecated in Truffle 0.15.
      */
     @Deprecated
-    Collection<RootCallTarget> getCallTargets();
+    default Collection<RootCallTarget> getCallTargets() {
+        return Collections.emptyList();
+    }
 
     /**
      * Internal API method. Do not use.
