@@ -30,12 +30,11 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.writeExceptionOop;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.writeExceptionPc;
 import static org.graalvm.compiler.hotspot.replacements.HotspotSnippetsOptions.LoadExceptionObjectInVM;
-import static org.graalvm.compiler.nodes.PiNode.piCast;
+import static org.graalvm.compiler.nodes.PiNode.piCastToSnippetReplaceeStamp;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -71,7 +70,7 @@ public class LoadExceptionObjectSnippets implements Snippets {
         Object exception = readExceptionOop(thread);
         writeExceptionOop(thread, null);
         writeExceptionPc(thread, Word.zero());
-        return piCast(exception, StampFactory.forNodeIntrinsic());
+        return piCastToSnippetReplaceeStamp(exception);
     }
 
     public static class Templates extends AbstractTemplates {

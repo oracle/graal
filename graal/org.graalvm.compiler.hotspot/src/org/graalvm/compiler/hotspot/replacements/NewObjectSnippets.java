@@ -57,7 +57,7 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotspotSnippetsOptions.ProfileAllocations;
 import static org.graalvm.compiler.hotspot.replacements.HotspotSnippetsOptions.ProfileAllocationsContext;
 import static org.graalvm.compiler.nodes.PiArrayNode.piArrayCast;
-import static org.graalvm.compiler.nodes.PiNode.piCast;
+import static org.graalvm.compiler.nodes.PiNode.piCastToSnippetReplaceeStamp;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
@@ -202,7 +202,7 @@ public class NewObjectSnippets implements Snippets {
     public static Object allocateInstance(@ConstantParameter int size, KlassPointer hub, Word prototypeMarkWord, @ConstantParameter boolean fillContents,
                     @ConstantParameter Register threadRegister, @ConstantParameter boolean constantSize, @ConstantParameter String typeContext, @ConstantParameter OptionValues options,
                     @ConstantParameter Counters counters) {
-        return piCast(allocateInstanceHelper(size, hub, prototypeMarkWord, fillContents, threadRegister, constantSize, typeContext, options, counters), StampFactory.forNodeIntrinsic());
+        return piCastToSnippetReplaceeStamp(allocateInstanceHelper(size, hub, prototypeMarkWord, fillContents, threadRegister, constantSize, typeContext, options, counters));
     }
 
     public static Object allocateInstanceHelper(int size, KlassPointer hub, Word prototypeMarkWord, boolean fillContents,
@@ -237,7 +237,7 @@ public class NewObjectSnippets implements Snippets {
         // just load it from the corresponding cell and avoid the resolution check. We have to use a
         // fixed load though, to prevent it from floating above the initialization.
         KlassPointer picHub = LoadConstantIndirectlyFixedNode.loadKlass(hub);
-        return piCast(allocateInstanceHelper(size, picHub, prototypeMarkWord, fillContents, threadRegister, constantSize, typeContext, options, counters), StampFactory.forNodeIntrinsic());
+        return piCastToSnippetReplaceeStamp(allocateInstanceHelper(size, picHub, prototypeMarkWord, fillContents, threadRegister, constantSize, typeContext, options, counters));
     }
 
     @Snippet
@@ -252,7 +252,7 @@ public class NewObjectSnippets implements Snippets {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
 
-        return PiNode.piCast(allocateInstanceDynamicHelper(type, fillContents, threadRegister, options, counters, nonNullType), StampFactory.forNodeIntrinsic());
+        return PiNode.piCastToSnippetReplaceeStamp(allocateInstanceDynamicHelper(type, fillContents, threadRegister, options, counters, nonNullType));
     }
 
     private static Object allocateInstanceDynamicHelper(Class<?> type, boolean fillContents, Register threadRegister, OptionValues options, Counters counters, Class<?> nonNullType) {
@@ -307,7 +307,7 @@ public class NewObjectSnippets implements Snippets {
                     @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister, @ConstantParameter boolean maybeUnroll, @ConstantParameter String typeContext,
                     @ConstantParameter OptionValues options, @ConstantParameter Counters counters) {
         Object result = allocateArrayImpl(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, maybeUnroll, typeContext, false, options, counters);
-        return piArrayCast(verifyOop(result), length, StampFactory.forNodeIntrinsic());
+        return piArrayCast(verifyOop(result), length);
     }
 
     private static Object allocateArrayImpl(KlassPointer hub, int length, Word prototypeMarkWord, int headerSize, int log2ElementSize, boolean fillContents, Register threadRegister,
@@ -396,7 +396,7 @@ public class NewObjectSnippets implements Snippets {
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift(INJECTED_VMCONFIG)) & layoutHelperLog2ElementSizeMask(INJECTED_VMCONFIG);
 
         Object result = allocateArrayImpl(nonNullKlass, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, false, "dynamic type", true, options, counters);
-        return piArrayCast(verifyOop(result), length, StampFactory.forNodeIntrinsic());
+        return piArrayCast(verifyOop(result), length);
     }
 
     /**

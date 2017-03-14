@@ -82,6 +82,8 @@ import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.PhiNode;
+import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.PiNode.Placeholder;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
@@ -1478,7 +1480,13 @@ public class SnippetTemplate {
     private void updateStamps(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates) {
         for (ValueNode stampNode : stampNodes) {
             Node stampDup = duplicates.get(stampNode);
-            ((ValueNode) stampDup).setStamp(replacee.stamp());
+            if (stampDup instanceof PiNode.Placeholder) {
+                PiNode.Placeholder placeholder = (Placeholder) stampDup;
+                PiNode pi = placeholder.getReplacement(replacee.stamp());
+                placeholder.replaceAndDelete(pi);
+            } else {
+                ((ValueNode) stampDup).setStamp(replacee.stamp());
+            }
         }
         for (ParameterNode paramNode : snippet.getNodes(ParameterNode.TYPE)) {
             for (Node usage : paramNode.usages()) {
