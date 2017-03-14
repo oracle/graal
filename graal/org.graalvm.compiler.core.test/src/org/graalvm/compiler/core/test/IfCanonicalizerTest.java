@@ -147,7 +147,7 @@ public class IfCanonicalizerTest extends GraalCompilerTest {
 
     @Test
     public void test6() {
-        testCombinedIf("test6Snippet", 3);
+        testCombinedIf("test6Snippet", 4);
         test("test6Snippet", new int[]{0});
     }
 

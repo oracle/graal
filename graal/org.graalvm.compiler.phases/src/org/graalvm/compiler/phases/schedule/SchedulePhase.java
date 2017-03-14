@@ -52,6 +52,7 @@ import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.GuardNode;
+import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.KillingBeginNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
@@ -63,12 +64,15 @@ import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.VirtualState;
+import org.graalvm.compiler.nodes.calc.ConvertNode;
+import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.cfg.HIRLoop;
 import org.graalvm.compiler.nodes.cfg.LocationSet;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.spi.ValueProxy;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -132,6 +136,7 @@ public final class SchedulePhase extends Phase {
 
     public static class Instance {
 
+        private static final double IMPLICIT_NULL_CHECK_OPPORTUNITY_PROBABILITY_FACTOR = 2;
         /**
          * Map from blocks to the nodes in each block.
          */
@@ -246,6 +251,7 @@ public final class SchedulePhase extends Phase {
 
             assert checkLatestEarliestRelation(currentNode, currentBlock, latestBlock);
             if (currentBlock != latestBlock) {
+
                 currentNodeMap.setAndGrow(currentNode, latestBlock);
 
                 if (constrainingLocation != null && latestBlock.canKill(constrainingLocation)) {
@@ -396,13 +402,18 @@ public final class SchedulePhase extends Phase {
                         sortIntoList(n, b, result, nodeMap, unprocessed, null);
                     } else if (nodeMap.get(n) == b && n instanceof FloatingReadNode) {
                         FloatingReadNode floatingReadNode = (FloatingReadNode) n;
-                        LocationIdentity location = floatingReadNode.getLocationIdentity();
-                        if (b.canKill(location)) {
-                            // This read can be killed in this block, add to watch list.
-                            if (watchList == null) {
-                                watchList = new ArrayList<>();
+                        if (isImplicitNullOpportunity(floatingReadNode, b)) {
+                            // Schedule at the beginning of the block.
+                            sortIntoList(floatingReadNode, b, result, nodeMap, unprocessed, null);
+                        } else {
+                            LocationIdentity location = floatingReadNode.getLocationIdentity();
+                            if (b.canKill(location)) {
+                                // This read can be killed in this block, add to watch list.
+                                if (watchList == null) {
+                                    watchList = new ArrayList<>();
+                                }
+                                watchList.add(floatingReadNode);
                             }
-                            watchList.add(floatingReadNode);
                         }
                     }
                 }
@@ -535,7 +546,50 @@ public final class SchedulePhase extends Phase {
                 }
             }
 
+            if (latestBlock != earliestBlock && currentNode instanceof FloatingReadNode) {
+
+                FloatingReadNode floatingReadNode = (FloatingReadNode) currentNode;
+                if (isImplicitNullOpportunity(floatingReadNode, earliestBlock) && earliestBlock.probability() < latestBlock.probability() * IMPLICIT_NULL_CHECK_OPPORTUNITY_PROBABILITY_FACTOR) {
+                    latestBlock = earliestBlock;
+                }
+            }
+
             selectLatestBlock(currentNode, earliestBlock, latestBlock, currentNodeMap, watchListMap, constrainingLocation, latestBlockToNodesMap);
+        }
+
+        private static boolean isImplicitNullOpportunity(FloatingReadNode floatingReadNode, Block block) {
+
+            Node pred = block.getBeginNode().predecessor();
+            if (pred instanceof IfNode) {
+                IfNode ifNode = (IfNode) pred;
+                if (ifNode.condition() instanceof IsNullNode) {
+                    IsNullNode isNullNode = (IsNullNode) ifNode.condition();
+                    if (getUnproxifiedUncompressed(floatingReadNode.getAddress().getBase()) == getUnproxifiedUncompressed(isNullNode.getValue())) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        private static Node getUnproxifiedUncompressed(Node node) {
+            Node result = node;
+            while (true) {
+                if (result instanceof ValueProxy) {
+                    ValueProxy valueProxy = (ValueProxy) result;
+                    result = valueProxy.getOriginalNode();
+                } else if (result instanceof ConvertNode) {
+                    ConvertNode convertNode = (ConvertNode) result;
+                    if (convertNode.mayNullCheckSkipConversion()) {
+                        result = convertNode.getValue();
+                    } else {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+            return result;
         }
 
         private static Block calcBlockForUsage(Node node, Node usage, Block startBlock, NodeMap<Block> currentNodeMap) {

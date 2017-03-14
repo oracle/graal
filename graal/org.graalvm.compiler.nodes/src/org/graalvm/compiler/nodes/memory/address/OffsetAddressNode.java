@@ -22,6 +22,8 @@
  */
 package org.graalvm.compiler.nodes.memory.address;
 
+import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
@@ -91,4 +93,21 @@ public class OffsetAddressNode extends AddressNode implements Canonicalizable {
 
     @NodeIntrinsic
     public static native Address address(Object base, long offset);
+
+    @Override
+    public long getMaxConstantDisplacement() {
+        Stamp curStamp = offset.stamp();
+        if (curStamp instanceof IntegerStamp) {
+            IntegerStamp integerStamp = (IntegerStamp) curStamp;
+            if (integerStamp.lowerBound() >= 0) {
+                return integerStamp.upperBound();
+            }
+        }
+        return Long.MAX_VALUE;
+    }
+
+    @Override
+    public ValueNode getIndex() {
+        return null;
+    }
 }
