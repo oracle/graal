@@ -54,12 +54,17 @@ import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
 
     @Children private final LLVMExpressionNode[] args;
+    @Children private final LLVMDataEscapeNode[] prepareValuesForEscape;
     @Child private Node foreignInvoke;
     @Child private ToLLVMNode toLLVM;
 
     public LLVMTruffleInvoke(ToLLVMNode toLLVM, LLVMExpressionNode[] args) {
         this.toLLVM = toLLVM;
         this.args = args;
+        this.prepareValuesForEscape = new LLVMDataEscapeNode[args.length];
+        for (int i = 0; i < prepareValuesForEscape.length; i++) {
+            prepareValuesForEscape[i] = LLVMDataEscapeNodeGen.create();
+        }
         this.foreignInvoke = Message.createInvoke(args.length).createNode();
     }
 
@@ -74,7 +79,7 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
     private Object doInvoke(VirtualFrame frame, TruffleObject value, String id) {
         Object[] evaluatedArgs = new Object[args.length];
         for (int i = 0; i < args.length; i++) {
-            evaluatedArgs[i] = args[i].executeGeneric(frame);
+            evaluatedArgs[i] = prepareValuesForEscape[i].executeWithTarget(args[i].executeGeneric(frame));
         }
         try {
             Object rawValue = ForeignAccess.sendInvoke(foreignInvoke, value, id, evaluatedArgs);

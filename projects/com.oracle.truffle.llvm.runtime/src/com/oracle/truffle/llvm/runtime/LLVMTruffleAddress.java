@@ -34,13 +34,11 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public class LLVMTruffleAddress implements TruffleObject {
+public final class LLVMTruffleAddress implements TruffleObject {
     private final LLVMAddress address;
-    private final Type type;
 
-    public LLVMTruffleAddress(LLVMAddress address, Type type) {
+    public LLVMTruffleAddress(LLVMAddress address) {
         this.address = address;
-        this.type = type;
     }
 
     public LLVMAddress getAddress() {
@@ -48,7 +46,7 @@ public class LLVMTruffleAddress implements TruffleObject {
     }
 
     public Type getType() {
-        return type;
+        return address.getType();
     }
 
     public static boolean isInstance(TruffleObject object) {

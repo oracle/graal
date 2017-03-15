@@ -51,6 +51,8 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
     private static final int FLOAT_SIZE = 4;
     private static final int DOUBLE_SIZE = 8;
 
+    @Child protected LLVMDataEscapeNode prepareValueForEscape = LLVMDataEscapeNodeGen.create();
+
     public Type getType(LLVMTruffleAddress receiver) {
         return receiver.getType();
     }
@@ -69,22 +71,22 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"index == cachedIndex", "typeGuard(receiver, cachedType)"})
-        public static Object doCachedTypeCachedOffset(LLVMTruffleAddress receiver, int index,
+        public Object doCachedTypeCachedOffset(LLVMTruffleAddress receiver, int index,
                         @Cached("getType(receiver)") Type cachedType,
                         @Cached("index") int cachedIndex) {
-            return doRead(receiver, cachedType, cachedIndex);
+            return prepareValueForEscape.executeWithTarget(doRead(receiver, cachedType, cachedIndex));
         }
 
         @Specialization(guards = {"typeGuard(receiver, cachedType)"}, replaces = "doCachedTypeCachedOffset")
-        public static Object doCachedType(LLVMTruffleAddress receiver, int index,
+        public Object doCachedType(LLVMTruffleAddress receiver, int index,
                         @Cached("getType(receiver)") Type cachedType) {
-            return doRead(receiver, cachedType, index);
+            return prepareValueForEscape.executeWithTarget(doRead(receiver, cachedType, index));
         }
 
         @Specialization(replaces = {"doCachedTypeCachedOffset", "doCachedType"})
         public Object doRegular(LLVMTruffleAddress receiver, int index) {
             LLVMPerformance.warn(this);
-            return doRead(receiver, receiver.getType(), index);
+            return prepareValueForEscape.executeWithTarget(doRead(receiver, receiver.getType(), index));
         }
 
         private static Object doRead(LLVMTruffleAddress receiver, Type cachedType, int cachedIndex) {
@@ -127,18 +129,18 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"index == cachedIndex", "typeGuard(receiver, cachedType)"})
-        public static Object doCachedTypeCachedOffset(LLVMTruffleAddress receiver, int index, Object value,
+        public Object doCachedTypeCachedOffset(LLVMTruffleAddress receiver, int index, Object value,
                         @Cached("getType(receiver)") Type cachedType,
                         @Cached("index") int cachedIndex,
                         @Cached("getToLLVMNode(cachedType)") ToLLVMNode toLLVM) {
-            return doFastWrite(receiver, cachedType, cachedIndex, value, toLLVM);
+            return prepareValueForEscape.executeWithTarget(doFastWrite(receiver, cachedType, cachedIndex, value, toLLVM));
         }
 
         @Specialization(guards = {"typeGuard(receiver, cachedType)"}, replaces = "doCachedTypeCachedOffset")
-        public static Object doCachedType(LLVMTruffleAddress receiver, int index, Object value,
+        public Object doCachedType(LLVMTruffleAddress receiver, int index, Object value,
                         @Cached("getType(receiver)") Type cachedType,
                         @Cached("getToLLVMNode(cachedType)") ToLLVMNode toLLVM) {
-            return doFastWrite(receiver, cachedType, index, value, toLLVM);
+            return prepareValueForEscape.executeWithTarget(doFastWrite(receiver, cachedType, index, value, toLLVM));
         }
 
         @Child private ToLLVMNode slowConvert;
@@ -150,7 +152,7 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 this.slowConvert = insert(ToLLVMNode.createNode(null));
             }
-            return doSlowWrite(receiver, receiver.getType(), index, value, slowConvert);
+            return prepareValueForEscape.executeWithTarget(doSlowWrite(receiver, receiver.getType(), index, value, slowConvert));
         }
 
         private static Object doFastWrite(LLVMTruffleAddress receiver, Type cachedType, int index, Object value, ToLLVMNode toLLVM) {

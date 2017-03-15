@@ -38,6 +38,8 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMDataEscapeNode;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMDataEscapeNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
@@ -94,9 +96,10 @@ public abstract class LLVMLookupDispatchNode extends Node {
     @Specialization(guards = "isForeignFunction(function)")
     protected Object doForeign(TruffleObject function, Object[] arguments,
                     @Cached("createCrossLanguageCallNode(arguments)") Node crossLanguageCallNode,
+                    @Cached("createLLVMDataEscapeNodes()") LLVMDataEscapeNode[] dataEscapeNodes,
                     @Cached("createToLLVMNode()") ToLLVMNode toLLVMNode) {
         try {
-            Object ret = ForeignAccess.sendExecute(crossLanguageCallNode, function, getForeignArguments(arguments));
+            Object ret = ForeignAccess.sendExecute(crossLanguageCallNode, function, getForeignArguments(dataEscapeNodes, arguments));
             return toLLVMNode.executeWithTarget(ret);
         } catch (InteropException e) {
             throw new IllegalStateException(e);
@@ -104,11 +107,19 @@ public abstract class LLVMLookupDispatchNode extends Node {
     }
 
     @ExplodeLoop
-    private Object[] getForeignArguments(Object[] arguments) {
+    private Object[] getForeignArguments(LLVMDataEscapeNode[] dataEscapeNodes, Object[] arguments) {
         assert arguments.length == type.getArgumentTypes().length;
         Object[] args = new Object[type.getArgumentTypes().length - 1];
         for (int i = 0; i < type.getArgumentTypes().length - 1; i++) {
-            args[i] = arguments[i + 1];
+            args[i] = dataEscapeNodes[i].executeWithTarget(arguments[i + 1]);
+        }
+        return args;
+    }
+
+    protected LLVMDataEscapeNode[] createLLVMDataEscapeNodes() {
+        LLVMDataEscapeNode[] args = new LLVMDataEscapeNode[type.getArgumentTypes().length - 1];
+        for (int i = 0; i < type.getArgumentTypes().length - 1; i++) {
+            args[i] = LLVMDataEscapeNodeGen.create();
         }
         return args;
     }

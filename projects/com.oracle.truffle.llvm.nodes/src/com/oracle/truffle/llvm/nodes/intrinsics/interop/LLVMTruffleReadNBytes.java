@@ -52,7 +52,7 @@ public abstract class LLVMTruffleReadNBytes extends LLVMIntrinsic {
             bytes[i] = LLVMMemory.getI8(adr);
             adr = adr.increment(Byte.BYTES);
         }
-        return bytes;
+        return new String(bytes);
     }
 
 }

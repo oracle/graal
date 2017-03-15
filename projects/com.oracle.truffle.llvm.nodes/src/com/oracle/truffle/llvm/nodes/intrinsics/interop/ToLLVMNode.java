@@ -49,6 +49,8 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToIntN
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToLongNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToShortNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToTruffleObjectNodeGen;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -558,6 +560,15 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
+        public LLVMAddress fromLLVMTruffleAddress(LLVMTruffleAddress obj) {
+            return obj.getAddress();
+        }
+
+        protected boolean notLLVMTruffleAddress(Object value) {
+            return !(value instanceof LLVMTruffleAddress);
+        }
+
+        @Specialization(guards = "notLLVMTruffleAddress(obj)")
         public TruffleObject fromTruffleObject(TruffleObject obj) {
             return obj;
         }
@@ -579,7 +590,7 @@ public abstract class ToLLVMNode extends Node {
 
     private static Class<?> getClassForPrimitive(Type type) {
         Class<?> t;
-        switch (((PrimitiveType) type).getKind()) {
+        switch (((PrimitiveType) type).getPrimitiveKind()) {
             case I1:
                 t = boolean.class;
                 break;
@@ -633,7 +644,11 @@ public abstract class ToLLVMNode extends Node {
             }
             return convertPrimitive(requestedType, attr);
         } else if (requestedType == TruffleObject.class) {
-            return value;
+            if (value instanceof LLVMTruffleAddress) {
+                return ((LLVMTruffleAddress) value).getAddress();
+            } else {
+                return value;
+            }
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Requested class: " + requestedType + " - but got value: " + value);

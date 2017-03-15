@@ -56,7 +56,7 @@ abstract class LLVMForeignCallNode extends LLVMExpressionNode {
     private final LLVMStack stack;
     private final LLVMContext context;
     @Child private ToLLVMNode slowConvertNode;
-    @Child private LLVMToNullNode toNull = LLVMToNullNodeGen.create();
+    @Child protected LLVMDataEscapeNode prepareValueForEscape = LLVMDataEscapeNodeGen.create();
 
     protected LLVMForeignCallNode(LLVMContext context) {
         this.stack = context.getStack();
@@ -74,7 +74,7 @@ abstract class LLVMForeignCallNode extends LLVMExpressionNode {
                     @Cached("createToLLVMNodes(function)") ToLLVMNode[] toLLVMNodes, @Cached("arguments.length") int cachedLength) {
         assert !(function.getType().getReturnType() instanceof StructureType);
         Object result = callNode.call(packArguments(arguments, toLLVMNodes, cachedLength));
-        return toNull.executeConvert(result, function.getType().getReturnType());
+        return prepareValueForEscape.executeWithTarget(result);
     }
 
     @Specialization
@@ -83,7 +83,7 @@ abstract class LLVMForeignCallNode extends LLVMExpressionNode {
         assert !(function.getType().getReturnType() instanceof StructureType);
         LLVMPerformance.warn(this);
         Object result = callNode.call(getCallTarget(function), packArguments(function, arguments, cachedLength));
-        return toNull.executeConvert(result, function.getType().getReturnType());
+        return prepareValueForEscape.executeWithTarget(result);
     }
 
     @SuppressWarnings("unused")
@@ -95,7 +95,7 @@ abstract class LLVMForeignCallNode extends LLVMExpressionNode {
                     @Cached("createToLLVMNodes(descriptor)") ToLLVMNode[] toLLVMNodes, @Cached("arguments.length") int cachedLength) {
         assert !(descriptor.getType().getReturnType() instanceof StructureType);
         Object result = callNode.call(packArguments(arguments, toLLVMNodes, cachedLength));
-        return toNull.executeConvert(result, descriptor.getType().getReturnType());
+        return prepareValueForEscape.executeWithTarget(result);
     }
 
     @Specialization
@@ -105,7 +105,7 @@ abstract class LLVMForeignCallNode extends LLVMExpressionNode {
         LLVMFunctionDescriptor descriptor = lookupFunction(function);
         assert !(descriptor.getType().getReturnType() instanceof StructureType);
         Object result = callNode.call(getCallTarget(descriptor), packArguments(descriptor, arguments, cachedLength));
-        return toNull.executeConvert(result, descriptor.getType().getReturnType());
+        return prepareValueForEscape.executeWithTarget(result);
     }
 
     protected LLVMFunctionDescriptor lookupFunction(LLVMFunctionHandle function) {
