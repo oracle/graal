@@ -355,7 +355,7 @@ public class PolyglotEngine {
         private OutputStream out;
         private OutputStream err;
         private InputStream in;
-        private PolyglotShared shared;
+        private PolyglotRuntime runtime;
         private final Map<String, Object> globals = new HashMap<>();
         private Executor executor;
         private List<Object[]> arguments;
@@ -480,6 +480,29 @@ public class PolyglotEngine {
         }
 
         /**
+         * Associates the {@linkplain #build() to be created} {@link PolyglotEngine engine} with its
+         * {@link PolyglotRuntime execution runtime}. By default each {@link PolyglotEngine engine}
+         * gets its own private runtime and as such it operates completely isolated - uninfluenced
+         * by other {@link PolyglotEngine engines} in the same virtual machine. By letting multiple
+         * {@link PolyglotEngine engines} to share the same {@link PolyglotRuntime runtime} one
+         * instructs the system to share resources - for example code and metadata needed for the
+         * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source) execution of scripts}.
+         * Sample usage:
+         * <p>
+         * {@codesnippet com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest}
+         * <p>
+         *
+         * @param runtime an instance of runtime to associate this engine with
+         * @return this builder
+         * @since 0.25
+         * @see PolyglotRuntime
+         */
+        public Builder runtime(PolyglotRuntime runtime) {
+            this.runtime = runtime;
+            return this;
+        }
+
+        /**
          * Creates an {@link PolyglotEngine engine} configured by builder methods.
          *
          * @return a new engine with all available languages installed
@@ -487,19 +510,13 @@ public class PolyglotEngine {
          */
         public PolyglotEngine build() {
             assertNoCompilation();
-            if (out == null) {
-                out = System.out;
-            }
-            if (err == null) {
-                err = System.err;
-            }
-            if (in == null) {
-                in = System.in;
-            }
-            if (shared == null) {
-                shared = new PolyglotShared(executor, globals, out, err, in, arguments);
-            }
-            return new PolyglotEngine(shared);
+            OutputStream realOut = out == null ? System.out : out;
+            OutputStream realErr = err == null ? System.err : err;
+            InputStream realIn = in == null ? System.in : in;
+            PolyglotRuntime realRuntime = runtime != null ? runtime : PolyglotRuntime.newBuilder().build();
+
+            PolyglotShared realShared = realRuntime.createShared(executor, globals, realOut, realErr, realIn, arguments);
+            return new PolyglotEngine(realShared);
         }
     }
 

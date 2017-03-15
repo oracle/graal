@@ -46,6 +46,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
+import com.oracle.truffle.api.vm.PolyglotRuntime;
 import static org.junit.Assert.assertNull;
 
 public class ContextLookupTest {
@@ -96,6 +97,7 @@ public class ContextLookupTest {
     public void forkedLookupTest() throws Exception {
         LanguageLookupContext context = new LanguageLookupContext(null);
         final PolyglotEngine.Builder builder = createBuilder().config(LanguageLookup.MIME_TYPE, "channel", context);
+        builder.runtime(PolyglotRuntime.newBuilder().build());
         PolyglotEngine vm = builder.build();
         vm.getLanguages().get(LanguageLookup.MIME_TYPE).getGlobalObject();
         LanguageLookup language = context.language;

@@ -33,27 +33,34 @@ import org.junit.Before;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.PolyglotRuntime;
 
 /**
  * Base class for instrumentation tests.
  */
 public abstract class AbstractInstrumentationTest {
-
-    private PolyglotEngine.Builder builder;
+    private final Object[] context = {null};
     protected PolyglotEngine engine;
 
     protected final ByteArrayOutputStream out = new ByteArrayOutputStream();
     protected final ByteArrayOutputStream err = new ByteArrayOutputStream();
+    final String langMimeType = InstrumentationTestLanguage.MIME_TYPE;
+
+    // BEGIN: com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest
+    private final PolyglotRuntime runtime = PolyglotRuntime.newBuilder().build();
+
+    PolyglotEngine createEngine(String mimeType) {
+        PolyglotEngine.Builder builder = PolyglotEngine.newBuilder();
+        builder.runtime(runtime);
+        builder.setOut(out).setErr(err);
+        builder.config(mimeType, "context", context);
+        return builder.build();
+    }
+    // END: com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest
 
     @Before
     public void setup() {
-        builder = PolyglotEngine.newBuilder().setOut(out).setErr(err);
-        builder.config(InstrumentationTestLanguage.MIME_TYPE, "context", new Object[1]);
-        engine = builder.build();
-    }
-
-    protected final PolyglotEngine fork(PolyglotEngine engine) {
-        return builder.build();
+        engine = createEngine(langMimeType);
     }
 
     protected void assertEnabledInstrument(String id) {
