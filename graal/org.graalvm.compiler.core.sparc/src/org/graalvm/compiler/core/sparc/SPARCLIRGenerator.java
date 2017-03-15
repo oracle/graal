@@ -234,9 +234,9 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     private void emitIntegerTest(Value a, Value b) {
         assert ((SPARCKind) a.getPlatformKind()).isInteger();
         if (LIRValueUtil.isVariable(b)) {
-            append(SPARCOP3Op.newBinaryVoid(Op3s.Andcc, load(b), loadNonConst(a)));
+            append(SPARCOP3Op.newBinaryVoid(Op3s.Andcc, load(b), loadSimm13(a)));
         } else {
-            append(SPARCOP3Op.newBinaryVoid(Op3s.Andcc, load(a), loadNonConst(b)));
+            append(SPARCOP3Op.newBinaryVoid(Op3s.Andcc, load(a), loadSimm13(b)));
         }
     }
 
@@ -244,6 +244,16 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         if (isJavaConstant(value)) {
             JavaConstant c = asJavaConstant(value);
             if (c.isNull() || SPARCAssembler.isSimm11(c)) {
+                return value;
+            }
+        }
+        return load(value);
+    }
+
+    private Value loadSimm13(Value value) {
+        if (isJavaConstant(value)) {
+            JavaConstant c = asJavaConstant(value);
+            if (c.isNull() || SPARCAssembler.isSimm13(c)) {
                 return value;
             }
         }
@@ -308,11 +318,11 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         Value right;
         if (LIRValueUtil.isVariable(b)) {
             left = load(b);
-            right = loadNonConst(a);
+            right = loadSimm13(a);
             mirrored = true;
         } else {
             left = load(a);
-            right = loadNonConst(b);
+            right = loadSimm13(b);
             mirrored = false;
         }
         int compareBytes = cmpKind.getSizeInBytes();
