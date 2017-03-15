@@ -33,11 +33,13 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -103,6 +105,9 @@ public abstract class LLVMDataEscapeNode extends Node {
 
     @Specialization
     public TruffleObject escapingAddress(LLVMAddress escapingValue) {
+        if (LLVMAddress.NULL_POINTER.equals(escapingValue)) {
+            return new LLVMTruffleNull();
+        }
         return new LLVMTruffleAddress(escapingValue);
     }
 
@@ -162,5 +167,10 @@ public abstract class LLVMDataEscapeNode extends Node {
     @Specialization
     public Object escapingTruffleObject(TruffleObject escapingValue) {
         return escapingValue;
+    }
+
+    @Specialization(guards = "escapingValue == null")
+    public Object escapingNull(Object escapingValue) {
+        return new LLVMTruffleNull();
     }
 }
