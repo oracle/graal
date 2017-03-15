@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.IntegerConvertOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.IntegerConvertOp.Narrow;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.IntegerConvertOp.SignExtend;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
@@ -35,6 +36,8 @@ import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.code.CodeUtil;
 
 /**
  * The {@code NarrowNode} converts an integer to a narrower integer.
@@ -112,7 +115,18 @@ public final class NarrowNode extends IntegerConvertNode<Narrow, SignExtend> {
                     return new ZeroExtendNode(other.getValue(), other.getInputBits(), getResultBits());
                 }
             }
+        } else if (forValue instanceof AndNode) {
+            AndNode andNode = (AndNode) forValue;
+            IntegerStamp yStamp = (IntegerStamp) andNode.getY().stamp();
+            IntegerStamp xStamp = (IntegerStamp) andNode.getX().stamp();
+            long relevantMask = CodeUtil.mask(this.getResultBits());
+            if ((relevantMask & yStamp.downMask()) == relevantMask) {
+                return create(andNode.getX(), this.getResultBits());
+            } else if ((relevantMask & xStamp.downMask()) == relevantMask) {
+                return create(andNode.getY(), this.getResultBits());
+            }
         }
+
         return this;
     }
 

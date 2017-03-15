@@ -236,6 +236,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     private GuardsStage guardsStage = GuardsStage.FLOATING_GUARDS;
     private boolean isAfterFloatingReadPhase = false;
     private boolean hasValueProxies = true;
+    private boolean allowShortCircuitOr = true;
     private final boolean useProfilingInfo;
     private final Cancellable cancellable;
     /**
@@ -426,6 +427,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         copy.setGuardsStage(getGuardsStage());
         copy.isAfterFloatingReadPhase = isAfterFloatingReadPhase;
         copy.hasValueProxies = hasValueProxies;
+        copy.allowShortCircuitOr = allowShortCircuitOr;
         EconomicMap<Node, Node> replacements = EconomicMap.create(Equivalence.IDENTITY);
         replacements.put(start, copy.start);
         UnmodifiableEconomicMap<Node, Node> duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), replacements);
@@ -700,6 +702,15 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     public void setHasValueProxies(boolean state) {
         assert !state : "cannot 'unapply' value proxy removal on graph";
         hasValueProxies = state;
+    }
+
+    public boolean allowShortCircuitOr() {
+        return allowShortCircuitOr;
+    }
+
+    public void setAllowShortCircuitOr(boolean state) {
+        assert !state : "cannot 'unapply' logic expansion";
+        allowShortCircuitOr = state;
     }
 
     /**

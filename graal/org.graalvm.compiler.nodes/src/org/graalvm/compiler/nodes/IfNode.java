@@ -641,7 +641,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 negateConditionalCondition = true;
             }
             if (otherValue != null) {
-                if (otherValue.isConstant()) {
+                if (otherValue.isConstant() && graph().allowShortCircuitOr()) {
                     double shortCutProbability = probability(trueSuccessor());
                     LogicNode newCondition = LogicNode.or(condition(), negateCondition, conditional.condition(), negateConditionalCondition, shortCutProbability);
                     return graph().unique(new ConditionalNode(newCondition, constant, otherValue));
@@ -823,7 +823,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     @SuppressWarnings("unchecked")
     private static LogicNode computeCondition(SimplifierTool tool, LogicNode condition, PhiNode phi, Node value) {
         if (condition instanceof ShortCircuitOrNode) {
-            if (condition.graph().getGuardsStage().areDeoptsFixed()) {
+            if (condition.graph().getGuardsStage().areDeoptsFixed() && condition.graph().allowShortCircuitOr()) {
                 ShortCircuitOrNode orNode = (ShortCircuitOrNode) condition;
                 LogicNode resultX = computeCondition(tool, orNode.x, phi, value);
                 LogicNode resultY = computeCondition(tool, orNode.y, phi, value);
