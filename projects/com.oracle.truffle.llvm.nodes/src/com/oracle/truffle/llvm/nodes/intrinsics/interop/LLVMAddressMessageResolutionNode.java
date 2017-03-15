@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMPerformance;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -58,7 +59,7 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
     }
 
     public boolean typeGuard(LLVMTruffleAddress receiver, Type type) {
-        return receiver.getType().equals(type);
+        return receiver.getType() == (type);
     }
 
     public ToLLVMNode getToLLVMNode(Type type) {
@@ -67,7 +68,7 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
 
     abstract static class LLVMAddressReadMessageResolutionNode extends LLVMAddressMessageResolutionNode {
 
-        public abstract Object executeWithTarget(VirtualFrame frame, LLVMTruffleAddress receiver, int index);
+        public abstract Object executeWithTarget(VirtualFrame frame, Object receiver, int index);
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"index == cachedIndex", "typeGuard(receiver, cachedType)"})
@@ -100,7 +101,7 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
         }
 
         private static Object doPrimitiveRead(int cachedIndex, LLVMAddress address, PrimitiveType primitiveType) {
-            switch (primitiveType.getKind()) {
+            switch (primitiveType.getPrimitiveKind()) {
                 case I1:
                     return LLVMMemory.getI1(address.increment(cachedIndex * I1_SIZE));
                 case I8:
@@ -121,11 +122,20 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
             }
         }
 
+        @Specialization
+        public Object doGlobal(LLVMGlobalVariableDescriptor receiver, int index) {
+            if (index != 0) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Index must be 0 for globals!");
+            }
+            return prepareValueForEscape.executeWithTarget(LLVMGlobalVariableDescriptor.doLoad(receiver));
+        }
+
     }
 
     abstract static class LLVMAddressWriteMessageResolutionNode extends LLVMAddressMessageResolutionNode {
 
-        public abstract Object executeWithTarget(VirtualFrame frame, LLVMTruffleAddress receiver, int index, Object value);
+        public abstract Object executeWithTarget(VirtualFrame frame, Object receiver, int index, Object value);
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"index == cachedIndex", "typeGuard(receiver, cachedType)"})
@@ -176,7 +186,7 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
         }
 
         private static Object doPrimitiveWrite(int index, Object v, LLVMAddress address, PrimitiveType primitiveType) {
-            switch (primitiveType.getKind()) {
+            switch (primitiveType.getPrimitiveKind()) {
                 case I1:
                     LLVMMemory.putI1(address.increment(index * I1_SIZE), (boolean) v);
                     return v;
@@ -202,6 +212,40 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
                     CompilerDirectives.transferToInterpreter();
                     throw new UnsupportedOperationException();
             }
+        }
+
+        @Specialization
+        public Object doGlobal(LLVMGlobalVariableDescriptor receiver, int index, LLVMAddress value) {
+            if (index != 0) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Index must be 0 for globals!");
+            }
+            LLVMGlobalVariableDescriptor.doUnmanagedStore(receiver, value);
+            return prepareValueForEscape.executeWithTarget(value);
+        }
+
+        @Specialization
+        public Object doGlobal(LLVMGlobalVariableDescriptor receiver, int index, LLVMTruffleAddress value) {
+            if (index != 0) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Index must be 0 for globals!");
+            }
+            LLVMGlobalVariableDescriptor.doUnmanagedStore(receiver, value.getAddress());
+            return value;
+        }
+
+        protected boolean notAnLLVMValue(Object value) {
+            return !(value instanceof LLVMAddress || value instanceof LLVMTruffleAddress);
+        }
+
+        @Specialization(guards = {"notAnLLVMValue(value)"})
+        public Object doGlobal(LLVMGlobalVariableDescriptor receiver, int index, Object value) {
+            if (index != 0) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Index must be 0 for globals!");
+            }
+            LLVMGlobalVariableDescriptor.doManagedStore(receiver, value);
+            return value;
         }
     }
 }

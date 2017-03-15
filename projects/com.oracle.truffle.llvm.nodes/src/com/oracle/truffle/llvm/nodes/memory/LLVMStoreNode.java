@@ -270,37 +270,14 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
         @Specialization
         public Object executeNative(LLVMAddress value) {
-            if (descriptor.needsTransition()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                descriptor.transition(true, false);
-                LLVMMemory.putAddress(descriptor.getNativeStorage(), value);
-                return null;
-            }
-            if (descriptor.isNative()) {
-                LLVMMemory.putAddress(descriptor.getNativeStorage(), value);
-                return null;
-            } else {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException("Sulong can't store a native address in a global variable " + descriptor.getName() + " that previously stored a Truffle object");
-            }
+            LLVMGlobalVariableDescriptor.doUnmanagedStore(descriptor, value);
+            return null;
         }
 
         @Specialization
         public Object executeManaged(Object value) {
-            if (descriptor.needsTransition()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                descriptor.transition(true, true);
-                descriptor.setManagedStorage(value);
-                return null;
-            }
-            if (descriptor.isManaged()) {
-                descriptor.setManagedStorage(value);
-                return null;
-            } else {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException("Sulong can't store a Truffle object in a global variable " + descriptor.getName() + " that previously stored a native address");
-            }
-
+            LLVMGlobalVariableDescriptor.doManagedStore(descriptor, value);
+            return null;
         }
     }
 

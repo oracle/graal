@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.load;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -146,18 +145,7 @@ public abstract class LLVMDirectLoadNode {
 
         @Override
         public Object executeGeneric(VirtualFrame frame) {
-            if (descriptor.needsTransition()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                descriptor.transition(false, false);
-            }
-            if (descriptor.isNative()) {
-                return LLVMMemory.getAddress(descriptor.getNativeStorage());
-            } else if (descriptor.isManaged()) {
-                return descriptor.getManagedStorage();
-            } else {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(descriptor.toString());
-            }
+            return LLVMGlobalVariableDescriptor.doLoad(descriptor);
         }
 
     }
