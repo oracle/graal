@@ -840,7 +840,8 @@ public abstract class TruffleLanguage<C> {
          * @see com.oracle.truffle.api.vm.PolyglotEngine#fork()
          * @since 0.25
          */
-        public CallTarget createFork(CallTarget root) throws UnsupportedOperationException {
+        /* NOT NOW */
+        CallTarget createFork(CallTarget root) throws UnsupportedOperationException {
             checkDisposed();
             return AccessAPI.engineAccess().fork(languageShared, root);
         }
@@ -851,7 +852,8 @@ public abstract class TruffleLanguage<C> {
          *
          * @since 0.25
          */
-        public void disposeFork(CallTarget forkTarget) {
+        /* NOT NOW */
+        void disposeFork(CallTarget forkTarget) {
             checkDisposed();
             AccessAPI.engineAccess().disposeFork(languageShared, forkTarget);
         }

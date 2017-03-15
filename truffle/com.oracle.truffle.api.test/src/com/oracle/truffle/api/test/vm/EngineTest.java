@@ -765,7 +765,7 @@ public class EngineTest {
 
     }
 
-    private static class ForkingLanguageChannel {
+    private static class ForkingLanguageChannel implements TruffleObject {
 
         ForkingLanguage language;
 
@@ -773,9 +773,10 @@ public class EngineTest {
 
         final String globalObject = "global" + globalIndex++;
         final ForkingLanguageChannel parent;
-        final Map<String, String> symbols = new HashMap<>();
+        final Map<String, Object> symbols = new HashMap<>();
         final List<ForkingLanguageChannel> forks = new ArrayList<>();
         final List<ForkingLanguageChannel> languageForks = new ArrayList<>();
+        final List<PolyglotEngine> dispose = new ArrayList<>();
 
         Env env;
         Info info;
@@ -794,18 +795,35 @@ public class EngineTest {
             if (parent != null) {
                 this.symbols.putAll(parent.symbols);
             }
+            this.symbols.put("thisContext", this);
         }
 
-        PolyglotEngine fork() throws Exception {
+        PolyglotEngine fork() {
             ForkingLanguageChannel channel = this;
             while (channel.parent != null) {
                 channel = channel.parent;
             }
             channel.toFork = this;
-            PolyglotEngine fork = channel.toCreate.call();
+            PolyglotEngine fork;
+            try {
+                fork = channel.toCreate.call();
+            } catch (Exception ex) {
+                throw raise(RuntimeException.class, ex);
+            }
             fork.getLanguages().get(ForkingLanguage.MIME_TYPE).getGlobalObject();
             assertNull("The toFork channel was used", channel.toFork);
+            dispose.add(fork);
             return fork;
+        }
+
+        @SuppressWarnings("unchecked")
+        private static <E extends Exception> E raise(Class<E> aClass, Exception ex) throws E {
+            throw (E) ex;
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return null;
         }
 
     }
@@ -866,39 +884,39 @@ public class EngineTest {
             if (context.parent != null) {
                 context.parent.forks.remove(context);
             }
+            for (PolyglotEngine eng : context.dispose) {
+                try {
+                    eng.dispose();
+                } catch (IllegalStateException ex) {
+                    // ignore
+                }
+            }
         }
 
         @Override
         protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
             return Truffle.getRuntime().createCallTarget(new RootNode(this) {
-                CallTarget target;
+                boolean initialized;
 
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    if (target == null) {
+                    if (!initialized) {
+                        initialized = true;
                         int prevForkContextCount = forkContextCount;
-                        target = getContextReference().get().env.createFork(Truffle.getRuntime().createCallTarget(new RootNode(ForkingLanguage.this) {
-                            @Override
-                            public Object execute(VirtualFrame innerFrame) {
-                                return getContextReference().get();
-                            }
-                        }));
+                        final ForkingLanguageChannel myContext = getContextReference().get();
+                        PolyglotEngine eng = myContext.fork();
                         assertEquals(prevForkContextCount + 1, forkContextCount);
-                        ForkingLanguageChannel forkedContext = (ForkingLanguageChannel) target.call();
+                        ForkingLanguageChannel forkedContext = eng.findGlobalSymbol("thisContext").as(ForkingLanguageChannel.class);
                         getContextReference().get().languageForks.add(forkedContext);
                         assertEquals(getContextReference().get(), forkedContext.parent);
                     }
 
                     int prevForkContextCount = forkContextCount;
-                    CallTarget forkTarget = getContextReference().get().env.createFork(Truffle.getRuntime().createCallTarget(new RootNode(ForkingLanguage.this) {
-                        @Override
-                        public Object execute(VirtualFrame innerFrame) {
-                            return getContextReference().get();
-                        }
-                    }));
+                    final ForkingLanguageChannel myContext = getContextReference().get();
+                    PolyglotEngine fork = myContext.fork();
                     assertEquals(prevForkContextCount + 1, forkContextCount);
                     int prevDisposeCount = disposeContextCount;
-                    getContextReference().get().env.disposeFork(forkTarget);
+                    fork.dispose();
                     assertEquals(prevDisposeCount + 1, disposeContextCount);
 
                     return null;
