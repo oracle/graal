@@ -25,50 +25,31 @@
 package com.oracle.truffle.api.vm;
 
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.vm.PolyglotEngine.Access;
 import com.oracle.truffle.api.vm.PolyglotEngine.Instrument;
 import com.oracle.truffle.api.vm.PolyglotEngine.LanguageShared;
-import com.oracle.truffle.api.vm.PolyglotEngine.SPIAccessor;
 
 /** State shared across multiple engines. */
 class PolyglotShared {
 
-    final ComputeInExecutor.Info executor;
-    final List<Object[]> config;
-    final InputStream in;
     private final List<LanguageShared> languages;
-    final DispatchOutputStream err;
-    final DispatchOutputStream out;
-    final Map<String, Object> globals;
     final Object instrumentationHandler;
     final Map<String, Instrument> instruments;
     final Object[] debugger = {null};
     final PolyglotEngineProfile engineProfile;
     final AtomicInteger instanceCount = new AtomicInteger(0);
 
-    PolyglotShared(Executor executor, Map<String, Object> globals, OutputStream out, OutputStream err, InputStream in, List<Object[]> config) {
-        this.executor = ComputeInExecutor.wrap(executor);
-        this.out = SPIAccessor.instrumentAccess().createDispatchOutput(out);
-        this.err = SPIAccessor.instrumentAccess().createDispatchOutput(err);
-        this.in = in;
-        this.globals = new HashMap<>(globals);
-        this.config = config;
-        this.instrumentationHandler = Access.INSTRUMENT.createInstrumentationHandler(this, this.out, this.err, in);
+    PolyglotShared(DispatchOutputStream out, DispatchOutputStream err, InputStream in) {
+        this.instrumentationHandler = Access.INSTRUMENT.createInstrumentationHandler(this, out, err, in);
         /*
          * TODO the engine profile needs to be shared between all engines that potentially share
          * code. Currently this is stored statically to be compatible with the legacy deprecated API
@@ -90,16 +71,8 @@ class PolyglotShared {
         this.instruments = createInstruments(InstrumentCache.load());
     }
 
-    OutputStream out() {
-        return out;
-    }
-
     PolyglotEngine currentVM() {
         return engineProfile.get();
-    }
-
-    List<Object[]> getConfig() {
-        return config;
     }
 
     List<LanguageShared> getLanguages() {
@@ -113,24 +86,6 @@ class PolyglotShared {
             instr.put(cache.getId(), instrument);
         }
         return Collections.unmodifiableMap(instr);
-    }
-
-    Env findEnv(@SuppressWarnings("rawtypes") Class<? extends TruffleLanguage> languageClazz, boolean failIfNotFound) {
-        for (LanguageShared languageDescription : languages) {
-            Env env = languageDescription.getEnv(false);
-            if (env != null && languageClazz.isInstance(languageDescription.getImpl(false))) {
-                return env;
-            }
-        }
-        if (failIfNotFound) {
-            Set<String> languageNames = new HashSet<>();
-            for (LanguageShared lang : languages) {
-                languageNames.add(lang.cache.getClassName());
-            }
-            throw new IllegalStateException("Cannot find language " + languageClazz + " among " + languages);
-        } else {
-            return null;
-        }
     }
 
 }

@@ -63,12 +63,14 @@ import com.oracle.truffle.sl.runtime.SLNull;
 @TruffleLanguage.Registration(name = "SL", version = "0.12", mimeType = SLLanguage.MIME_TYPE)
 @ProvidedTags({StandardTags.CallTag.class, StandardTags.StatementTag.class, StandardTags.RootTag.class, DebuggerTags.AlwaysHalt.class})
 public final class SLLanguage extends TruffleLanguage<SLContext> {
+    public static volatile int counter;
 
     public static final String MIME_TYPE = "application/x-sl";
 
     public final Assumption noForks = Truffle.getRuntime().createAssumption("No forks!");
 
     public SLLanguage() {
+        counter++;
     }
 
     @Override

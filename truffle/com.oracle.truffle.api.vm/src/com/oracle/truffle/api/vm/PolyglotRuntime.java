@@ -24,11 +24,8 @@
  */
 package com.oracle.truffle.api.vm;
 
+import com.oracle.truffle.api.impl.DispatchOutputStream;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Executor;
 
 /**
  * A runtime environment for one or more {@link PolyglotEngine} instances. By default multiple
@@ -65,9 +62,9 @@ public final class PolyglotRuntime {
         return new PolyglotRuntime().new Builder();
     }
 
-    PolyglotShared createShared(Executor executor, Map<String, Object> globals, OutputStream realOut, OutputStream realErr, InputStream realIn, List<Object[]> arguments) {
+    PolyglotShared createShared(DispatchOutputStream realOut, DispatchOutputStream realErr, InputStream realIn) {
         if (shared == null) {
-            shared = new PolyglotShared(executor, globals, realOut, realErr, realIn, arguments);
+            shared = new PolyglotShared(realOut, realErr, realIn);
         }
         return shared;
     }

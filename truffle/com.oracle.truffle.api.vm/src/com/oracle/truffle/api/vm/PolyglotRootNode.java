@@ -261,10 +261,10 @@ abstract class PolyglotRootNode extends RootNode {
 
         @TruffleBoundary
         private void printResult(Object result) {
-            String stringResult = Access.LANGS.toStringIfVisible(language.shared.getEnv(false), language.context(), result, true, false);
+            String stringResult = Access.LANGS.toStringIfVisible(language.getEnv(false), language.context(), result, true, false);
             if (stringResult != null) {
                 try {
-                    OutputStream out = language.engine().shared.out();
+                    OutputStream out = language.engine().out;
                     out.write(stringResult.getBytes(StandardCharsets.UTF_8));
                     out.write(System.getProperty("line.separator").getBytes(StandardCharsets.UTF_8));
                 } catch (IOException ioex) {
@@ -276,7 +276,7 @@ abstract class PolyglotRootNode extends RootNode {
 
         private void initialize() {
             this.language.getContext(true);
-            CallTarget target = Access.LANGS.parse(language.shared.getEnv(false), source, null);
+            CallTarget target = Access.LANGS.parse(language.getEnv(false), source, null);
             if (target == null) {
                 throw new NullPointerException("Parsing has not produced a CallTarget for " + source);
             }
