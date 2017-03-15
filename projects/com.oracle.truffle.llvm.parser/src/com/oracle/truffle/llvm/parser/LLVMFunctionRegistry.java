@@ -42,8 +42,10 @@ import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.parser.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.runtime.NativeLookup;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.MetaType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 /**
  * Manages Sulong functions and intrinsified native functions.
@@ -61,7 +63,7 @@ public final class LLVMFunctionRegistry {
         this.facade = facade;
         this.context = context;
         this.intrinsics = facade.getFunctionSubstitutionFactories();
-        lookupFunctionDescriptor(ZERO_FUNCTION, LLVMRuntimeType.ILLEGAL, new LLVMRuntimeType[0], false);
+        lookupFunctionDescriptor(ZERO_FUNCTION, new FunctionType(MetaType.UNKNOWN, new Type[0], false));
         registerIntrinsics(context.getNativeLookup());
     }
 
@@ -70,7 +72,7 @@ public final class LLVMFunctionRegistry {
             String intrinsicFunction = entry.getKey();
             NodeFactory<? extends LLVMExpressionNode> nodeFactory = entry.getValue();
 
-            LLVMFunctionDescriptor function = lookupFunctionDescriptor(intrinsicFunction, LLVMRuntimeType.ILLEGAL, new LLVMRuntimeType[0], false);
+            LLVMFunctionDescriptor function = lookupFunctionDescriptor(intrinsicFunction, new FunctionType(MetaType.UNKNOWN, new Type[0], false));
             RootNode functionRoot;
             List<Class<? extends Node>> executionSignature = nodeFactory.getExecutionSignature();
 
@@ -97,8 +99,8 @@ public final class LLVMFunctionRegistry {
         }
     }
 
-    public LLVMFunctionDescriptor lookupFunctionDescriptor(String name, LLVMRuntimeType returnType, LLVMRuntimeType[] paramTypes, boolean varArgs) {
-        return context.addFunction(name, i -> facade.createFunctionDescriptor(name, returnType, varArgs, paramTypes, i));
+    public LLVMFunctionDescriptor lookupFunctionDescriptor(String name, FunctionType type) {
+        return context.addFunction(name, i -> facade.createFunctionDescriptor(name, type, i));
     }
 
 }

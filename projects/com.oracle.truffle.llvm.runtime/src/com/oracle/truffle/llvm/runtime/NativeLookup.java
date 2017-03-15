@@ -42,11 +42,13 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public final class NativeLookup {
 
@@ -111,63 +113,39 @@ public final class NativeLookup {
         }
     }
 
-    private static String getNativeType(LLVMRuntimeType type) {
-        switch (type) {
-            case I1:
-            case I8:
-                return "SINT8";
-            case I16:
-                return "SINT16";
-            case I32:
-                return "SINT32";
-            case I64:
-                return "SINT64";
-            case FLOAT:
-                return "FLOAT";
-            case DOUBLE:
-                return "DOUBLE";
-            case VOID:
-                return "VOID";
-            case I1_POINTER:
-            case I8_POINTER:
-            case I16_POINTER:
-            case I32_POINTER:
-            case I64_POINTER:
-            case HALF_POINTER:
-            case FLOAT_POINTER:
-            case DOUBLE_POINTER:
-            case ADDRESS:
-            case STRUCT:
-            case FUNCTION_ADDRESS:
-                return "POINTER";
-            default:
-                throw new AssertionError(type.name());
-        }
-    }
+    private static String getNativeType(Type type) {
+        if (type instanceof FunctionType) {
+            return prepareSignature((FunctionType) type, 0);
+        } else if (type instanceof PointerType && ((PointerType) type).getPointeeType() instanceof FunctionType) {
+            FunctionType functionType = (FunctionType) ((PointerType) type).getPointeeType();
+            return prepareSignature(functionType, 0);
+        } else if (type instanceof PointerType) {
+            return "POINTER";
+        } else if (type instanceof PrimitiveType) {
+            PrimitiveType primitiveType = (PrimitiveType) type;
+            PrimitiveKind kind = primitiveType.getKind();
+            switch (kind) {
+                case I1:
+                case I8:
+                    return "SINT8";
+                case I16:
+                    return "SINT16";
+                case I32:
+                    return "SINT32";
+                case I64:
+                    return "SINT64";
+                case FLOAT:
+                    return "FLOAT";
+                case DOUBLE:
+                    return "DOUBLE";
+                default:
+                    throw new AssertionError(primitiveType);
 
-    private static String getNativeType(Type arg) {
-        switch (arg.getLLVMType().getType()) {
-            case I1:
-            case I8:
-                return "SINT8";
-            case I16:
-                return "SINT16";
-            case I32:
-                return "SINT32";
-            case I64:
-                return "SINT64";
-            case FLOAT:
-                return "FLOAT";
-            case DOUBLE:
-                return "DOUBLE";
-            case ADDRESS:
-                return "POINTER";
-            case FUNCTION_ADDRESS:
-                FunctionType functionType = (FunctionType) ((PointerType) arg).getPointeeType();
-                return prepareSignature(functionType.getReturnType().getRuntimeType(), functionType.getArgumentTypes(), 0);
-            default:
-                throw new AssertionError(arg);
+            }
+        } else if (type instanceof VoidType) {
+            return "VOID";
         }
+        throw new AssertionError(type);
     }
 
     private static String[] getNativeTypes(Type[] argTypes, int skipArguments) {
@@ -254,11 +232,11 @@ public final class NativeLookup {
         }
     }
 
-    static String prepareSignature(LLVMRuntimeType retType, Type[] args, int skipArguments) {
+    static String prepareSignature(FunctionType type, int skipArguments) {
         // TODO varargs
         CompilerAsserts.neverPartOfCompilation();
-        String nativeRet = getNativeType(retType);
-        String[] argTypes = getNativeTypes(args, skipArguments);
+        String nativeRet = getNativeType(type.getReturnType());
+        String[] argTypes = getNativeTypes(type.getArgumentTypes(), skipArguments);
         StringBuilder sb = new StringBuilder();
         sb.append("(");
         for (String a : argTypes) {

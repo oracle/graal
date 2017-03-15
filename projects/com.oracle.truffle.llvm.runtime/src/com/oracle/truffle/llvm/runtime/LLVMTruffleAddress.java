@@ -32,13 +32,13 @@ package com.oracle.truffle.llvm.runtime;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public class LLVMTruffleAddress implements TruffleObject {
     private final LLVMAddress address;
-    private final LLVMRuntimeType type;
+    private final Type type;
 
-    public LLVMTruffleAddress(LLVMAddress address, LLVMRuntimeType type) {
+    public LLVMTruffleAddress(LLVMAddress address, Type type) {
         this.address = address;
         this.type = type;
     }
@@ -47,7 +47,7 @@ public class LLVMTruffleAddress implements TruffleObject {
         return address;
     }
 
-    public LLVMRuntimeType getType() {
+    public Type getType() {
         return type;
     }
 

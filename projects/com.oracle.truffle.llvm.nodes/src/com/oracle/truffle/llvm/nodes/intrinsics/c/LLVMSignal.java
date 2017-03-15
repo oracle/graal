@@ -55,15 +55,16 @@ import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMAddressL
 import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMI32LiteralNode;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMThread;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.types.IntegerType;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
@@ -196,12 +197,12 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
                 LLVMExpressionNode[] args = {signalStack, sigNumArg};
 
                 Type argType0 = new PointerType(null);
-                Type argType1 = IntegerType.INTEGER;
+                Type argType1 = PrimitiveType.I32;
                 Type[] argsTypes = {argType0, argType1};
 
                 LLVMExpressionNode functionNode = LLVMFunctionLiteralNodeGen.create(context.lookup(function));
 
-                LLVMCallNode callNode = new LLVMCallNode(context, LLVMRuntimeType.VOID, functionNode, args, argsTypes);
+                LLVMCallNode callNode = new LLVMCallNode(context, new FunctionType(VoidType.INSTANCE, argsTypes, false), functionNode, args);
 
                 callTarget = Truffle.getRuntime().createCallTarget(
                                 new LLVMFunctionStartNode(callNode,

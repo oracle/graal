@@ -30,12 +30,6 @@
 
 package com.oracle.truffle.llvm.parser.scanner;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.parser.listeners.IRVersionController;
-import com.oracle.truffle.llvm.parser.listeners.ParserListener;
-import com.oracle.truffle.llvm.parser.model.ModelModule;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
-
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -43,6 +37,12 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.parser.listeners.IRVersionController;
+import com.oracle.truffle.llvm.parser.listeners.ParserListener;
+import com.oracle.truffle.llvm.parser.model.ModelModule;
+import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
 public final class LLVMScanner {
 

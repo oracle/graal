@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,66 +30,105 @@
 package com.oracle.truffle.llvm.runtime.types;
 
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public interface Type {
 
-    default LLVMType getLLVMType() {
-        if (this instanceof PointerType) {
-            final Type pointeeType = ((PointerType) this).getPointeeType();
-            if (pointeeType instanceof FunctionType) {
-                return new LLVMType(LLVMBaseType.FUNCTION_ADDRESS);
-            } else {
-                return new LLVMType(LLVMBaseType.ADDRESS, pointeeType == null ? null : pointeeType.getLLVMType());
-            }
-        }
-        return new LLVMType(this.getLLVMBaseType());
-    }
+    int getBitSize();
 
     void accept(TypeVisitor visitor);
 
-    default LLVMBaseType getLLVMBaseType() {
-        throw new AssertionError("Cannot resolve to LLVMBaseType: " + this);
+    int getAlignment(DataSpecConverter targetDataLayout);
+
+    int getSize(DataSpecConverter targetDataLayout);
+
+    static Type getIntegerType(int size) {
+        switch (size) {
+            case 1:
+                return PrimitiveType.I1;
+            case 8:
+                return PrimitiveType.I8;
+            case 16:
+                return PrimitiveType.I16;
+            case 32:
+                return PrimitiveType.I32;
+            case 64:
+                return PrimitiveType.I64;
+            default:
+                return new VariableBitWidthType(size);
+        }
     }
 
-    default int getIndexOffset(@SuppressWarnings("unused") int index, @SuppressWarnings("unused") DataSpecConverter targetDataLayout) {
-        throw new UnsupportedOperationException("Cannot index Type: " + this);
+    static boolean isFunctionOrFunctionPointer(Type type) {
+        return type instanceof FunctionType || (type instanceof PointerType && ((PointerType) type).getPointeeType() instanceof FunctionType);
     }
 
-    default Type getIndexType(@SuppressWarnings("unused") int index) {
-        throw new UnsupportedOperationException("Cannot index Type: " + this);
+    static Type createConstantForType(Type type, Object value) {
+        if (type instanceof PrimitiveType) {
+            return new PrimitiveType(((PrimitiveType) type).getKind(), value);
+        } else {
+            return new VariableBitWidthType(((VariableBitWidthType) type).getBitSize(), value);
+        }
     }
 
-    default FrameSlotKind getFrameSlotKind() {
+    static boolean isIntegerType(Type type) {
+        if (type instanceof PrimitiveType) {
+            PrimitiveType primitive = (PrimitiveType) type;
+            PrimitiveKind kind = primitive.getKind();
+            return kind == PrimitiveKind.I1 || kind == PrimitiveKind.I8 || kind == PrimitiveKind.I16 || kind == PrimitiveKind.I32 || kind == PrimitiveKind.I64;
+        }
+        return type instanceof VariableBitWidthType;
+    }
+
+    static boolean isFloatingpointType(Type type) {
+        if (type instanceof PrimitiveType) {
+            PrimitiveType primitive = (PrimitiveType) type;
+            PrimitiveKind kind = primitive.getKind();
+            return kind == PrimitiveKind.F128 || kind == PrimitiveKind.FLOAT || kind == PrimitiveKind.HALF || kind == PrimitiveKind.PPC_FP128 ||
+                            kind == PrimitiveKind.X86_FP80 || kind == PrimitiveKind.DOUBLE;
+        }
+        return false;
+    }
+
+    static FrameSlotKind getFrameSlotKind(Type type) {
+        if (type instanceof PrimitiveType) {
+            PrimitiveType primitive = (PrimitiveType) type;
+            PrimitiveKind kind = primitive.getKind();
+            switch (kind) {
+                case FLOAT:
+                    return FrameSlotKind.Float;
+                case DOUBLE:
+                    return FrameSlotKind.Double;
+                case I1:
+                    return FrameSlotKind.Boolean;
+                case I16:
+                case I32:
+                    return FrameSlotKind.Int;
+                case I64:
+                    return FrameSlotKind.Long;
+                case I8:
+                    return FrameSlotKind.Byte;
+                default:
+                    return FrameSlotKind.Object;
+
+            }
+        } else if (type instanceof VariableBitWidthType) {
+            switch (type.getBitSize()) {
+                case 1:
+                    return FrameSlotKind.Boolean;
+                case 8:
+                    return FrameSlotKind.Byte;
+                case 16:
+                case 32:
+                    return FrameSlotKind.Int;
+                case 64:
+                    return FrameSlotKind.Long;
+                default:
+                    return FrameSlotKind.Object;
+            }
+        }
         return FrameSlotKind.Object;
-    }
-
-    default LLVMFunctionDescriptor.LLVMRuntimeType getRuntimeType() {
-        throw new UnsupportedOperationException("Cannot resolve to Runtime Type: " + this);
-    }
-
-    default Type getType() {
-        return this;
-    }
-
-    /**
-     * This returns the bitlength of atomic types like integers or floats without consideration for
-     * alignment. To get the actual in-memory size of a type use {@link #getSize(DataSpecConverter)}
-     * .
-     *
-     * @return The bitwidth of this atomic type
-     */
-    default int getBits() {
-        throw new UnsupportedOperationException("Not implemented for this Type: " + this);
-    }
-
-    default int getAlignment(@SuppressWarnings("unused") DataSpecConverter targetDataLayout) {
-        throw new UnsupportedOperationException("Not implemented!");
-    }
-
-    default int getSize(@SuppressWarnings("unused") DataSpecConverter targetDataLayout) {
-        throw new UnsupportedOperationException("Not implemented!");
     }
 
     static int getPadding(int offset, int alignment) {
@@ -100,4 +139,5 @@ public interface Type {
         final int alignment = type.getAlignment(targetDataLayout);
         return getPadding(offset, alignment);
     }
+
 }

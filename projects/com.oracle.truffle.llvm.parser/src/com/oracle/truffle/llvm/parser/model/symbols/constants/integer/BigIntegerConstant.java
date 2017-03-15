@@ -33,13 +33,13 @@ import java.math.BigInteger;
 
 import com.oracle.truffle.llvm.parser.model.symbols.constants.AbstractConstant;
 import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
-import com.oracle.truffle.llvm.runtime.types.IntegerType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class BigIntegerConstant extends AbstractConstant {
 
     private final BigInteger value;
 
-    public BigIntegerConstant(IntegerType type, BigInteger value) {
+    public BigIntegerConstant(Type type, BigInteger value) {
         super(type);
         this.value = value;
     }
@@ -55,7 +55,7 @@ public final class BigIntegerConstant extends AbstractConstant {
 
     @Override
     public String toString() {
-        if (getType().getBits() == 1) {
+        if (getType().getBitSize() == 1) {
             return value.equals(BigInteger.ZERO) ? "false" : "true";
         }
         return value.toString();

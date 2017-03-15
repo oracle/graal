@@ -42,9 +42,8 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 @SuppressWarnings("unused")
 public abstract class LLVMLookupDispatchNode extends Node {
@@ -52,13 +51,11 @@ public abstract class LLVMLookupDispatchNode extends Node {
     protected static final int INLINE_CACHE_SIZE = 5;
 
     private final LLVMContext context;
-    private final LLVMRuntimeType retType;
-    private final Type[] argTypes;
+    private final FunctionType type;
 
-    protected LLVMLookupDispatchNode(LLVMContext context, LLVMRuntimeType retType, Type[] argTypes) {
+    protected LLVMLookupDispatchNode(LLVMContext context, FunctionType type) {
         this.context = context;
-        this.retType = retType;
-        this.argTypes = argTypes;
+        this.type = type;
     }
 
     public abstract Object executeDispatch(VirtualFrame frame, TruffleObject function, Object[] arguments);
@@ -91,7 +88,7 @@ public abstract class LLVMLookupDispatchNode extends Node {
     }
 
     protected LLVMDispatchNode createCachedDispatch() {
-        return LLVMDispatchNodeGen.create(context, retType, argTypes);
+        return LLVMDispatchNodeGen.create(context, type);
     }
 
     @Specialization(guards = "isForeignFunction(function)")
@@ -108,9 +105,9 @@ public abstract class LLVMLookupDispatchNode extends Node {
 
     @ExplodeLoop
     private Object[] getForeignArguments(Object[] arguments) {
-        assert arguments.length == argTypes.length;
-        Object[] args = new Object[argTypes.length - 1];
-        for (int i = 0; i < argTypes.length - 1; i++) {
+        assert arguments.length == type.getArgumentTypes().length;
+        Object[] args = new Object[type.getArgumentTypes().length - 1];
+        for (int i = 0; i < type.getArgumentTypes().length - 1; i++) {
             args[i] = arguments[i + 1];
         }
         return args;
@@ -125,7 +122,7 @@ public abstract class LLVMLookupDispatchNode extends Node {
     }
 
     protected ToLLVMNode createToLLVMNode() {
-        return ToLLVMNode.createNode(ToLLVMNode.convert(retType));
+        return ToLLVMNode.createNode(ToLLVMNode.convert(type.getReturnType()));
     }
 
 }

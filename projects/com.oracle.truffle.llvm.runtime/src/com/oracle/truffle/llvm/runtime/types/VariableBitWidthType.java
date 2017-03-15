@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,20 +29,59 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
-import java.math.BigInteger;
-import java.util.Objects;
-
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
-public final class BigIntegerConstantType implements Type {
+public final class VariableBitWidthType implements Type {
 
-    private final IntegerType type;
+    private final int bitWidth;
+    private final Object constant;
 
-    private final BigInteger value;
+    public VariableBitWidthType(int bitWidth) {
+        this(bitWidth, null);
+    }
 
-    public BigIntegerConstantType(IntegerType type, BigInteger value) {
-        this.type = type;
-        this.value = value;
+    VariableBitWidthType(int bitWidth, Object constant) {
+        this.bitWidth = bitWidth;
+        this.constant = constant;
+    }
+
+    public Object getConstant() {
+        return constant;
+    }
+
+    public boolean isConstant() {
+        return constant != null;
+    }
+
+    @Override
+    public int getBitSize() {
+        return bitWidth;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + bitWidth;
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        VariableBitWidthType other = (VariableBitWidthType) obj;
+        if (bitWidth != other.bitWidth) {
+            return false;
+        }
+        return true;
     }
 
     @Override
@@ -51,57 +90,27 @@ public final class BigIntegerConstantType implements Type {
     }
 
     @Override
-    public IntegerType getType() {
-        return type;
-    }
-
-    public BigInteger getValue() {
-        return value;
-    }
-
-    @Override
-    public int getBits() {
-        return type.getBits();
-    }
-
-    @Override
     public int getAlignment(DataSpecConverter targetDataLayout) {
         if (targetDataLayout != null) {
-            return targetDataLayout.getBitAlignment(type) / Byte.SIZE;
+            return targetDataLayout.getBitAlignment(this) / Byte.SIZE;
+
+        } else if (bitWidth <= Byte.SIZE) {
+            return Byte.BYTES;
+
+        } else if (bitWidth <= Short.SIZE) {
+            return Short.BYTES;
+
+        } else if (bitWidth <= Integer.SIZE) {
+            return Integer.BYTES;
 
         } else {
-            return type.getAlignment(targetDataLayout);
+            return Long.BYTES;
         }
     }
 
     @Override
     public int getSize(DataSpecConverter targetDataLayout) {
-        return type.getSize(targetDataLayout);
-    }
-
-    @Override
-    public int hashCode() {
-        int hash = 7;
-        hash = 41 * hash + ((type == null) ? 0 : type.hashCode());
-        hash = 41 * hash + ((value == null) ? 0 : value.hashCode());
-        return hash;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof BigIntegerConstantType) {
-            BigIntegerConstantType other = (BigIntegerConstantType) obj;
-            return Objects.equals(type, other.type) && Objects.equals(value, other.value);
-        }
-        return false;
-    }
-
-    @Override
-    public String toString() {
-        if (getType().getBits() == 1) {
-            return value.equals(BigInteger.ZERO) ? "i1 false" : "i1 true";
-        }
-        return String.format("%s %s", type, value);
+        return targetDataLayout.getSize(this);
     }
 
 }

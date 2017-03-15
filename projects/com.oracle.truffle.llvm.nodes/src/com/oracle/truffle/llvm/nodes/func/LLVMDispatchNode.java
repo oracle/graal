@@ -43,8 +43,7 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 @SuppressWarnings("unused")
 public abstract class LLVMDispatchNode extends Node {
@@ -52,20 +51,18 @@ public abstract class LLVMDispatchNode extends Node {
     protected static final int INLINE_CACHE_SIZE = 5;
 
     private final LLVMContext context;
-    private final LLVMRuntimeType retType;
-    private final Type[] argTypes;
+    private final FunctionType type;
     @CompilationFinal private String signature;
 
-    protected LLVMDispatchNode(LLVMContext context, LLVMRuntimeType retType, Type[] argTypes) {
+    protected LLVMDispatchNode(LLVMContext context, FunctionType type) {
         this.context = context;
-        this.retType = retType;
-        this.argTypes = argTypes;
+        this.type = type;
     }
 
     private String getSignature() {
         if (signature == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.signature = LLVMContext.getNativeSignature(retType, argTypes, LLVMCallNode.ARG_START_INDEX);
+            this.signature = LLVMContext.getNativeSignature(type, LLVMCallNode.ARG_START_INDEX);
         }
         return signature;
     }
@@ -132,21 +129,21 @@ public abstract class LLVMDispatchNode extends Node {
 
     protected Node createNativeCallNode() {
         CompilerAsserts.neverPartOfCompilation();
-        int argCount = argTypes.length - 1;
+        int argCount = type.getArgumentTypes().length - 1;
         return Message.createExecute(argCount).createNode();
     }
 
     @ExplodeLoop
     protected LLVMNativeConvertNode[] createToNativeNodes() {
-        LLVMNativeConvertNode[] ret = new LLVMNativeConvertNode[argTypes.length - 1];
-        for (int i = 1; i < argTypes.length; i++) {
-            ret[i - 1] = LLVMNativeConvertNode.createToNative(context, argTypes[i]);
+        LLVMNativeConvertNode[] ret = new LLVMNativeConvertNode[type.getArgumentTypes().length - 1];
+        for (int i = 1; i < type.getArgumentTypes().length; i++) {
+            ret[i - 1] = LLVMNativeConvertNode.createToNative(context, type.getArgumentTypes()[i]);
         }
         return ret;
     }
 
     protected LLVMNativeConvertNode createFromNativeNode() {
         CompilerAsserts.neverPartOfCompilation();
-        return LLVMNativeConvertNode.createFromNative(retType);
+        return LLVMNativeConvertNode.createFromNative(type.getReturnType());
     }
 }

@@ -68,12 +68,15 @@ import com.oracle.truffle.llvm.nodes.func.LLVMCallUnboxNodeFactory.LLVMVectorCal
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicExpressionNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.facade.NodeFactoryFacade;
-import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
-import com.oracle.truffle.llvm.runtime.types.LLVMType;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
+import com.oracle.truffle.llvm.runtime.types.VectorType;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 final class LLVMFunctionFactory {
 
@@ -84,16 +87,24 @@ final class LLVMFunctionFactory {
         return LLVMVoidReturnNodeGen.create(runtime.getReturnSlot());
     }
 
-    static LLVMControlFlowNode createNonVoidRet(LLVMParserRuntime runtime, LLVMExpressionNode retValue, Type resolvedType) {
+    static LLVMControlFlowNode createNonVoidRet(LLVMParserRuntime runtime, LLVMExpressionNode retValue, Type type) {
         FrameSlot retSlot = runtime.getReturnSlot();
         if (retValue == null || retSlot == null) {
             throw new AssertionError();
         }
-        LLVMBaseType type = resolvedType.getLLVMBaseType();
-        if (LLVMTypeHelper.isVectorType(type)) {
+        if (type instanceof VectorType) {
             return LLVMVectorRetNodeGen.create(retValue, retSlot);
-        } else {
-            switch (type) {
+        } else if (type instanceof VariableBitWidthType) {
+            return LLVMIVarBitRetNodeGen.create(retValue, retSlot);
+        } else if (Type.isFunctionOrFunctionPointer(type)) {
+            return LLVMFunctionRetNodeGen.create(retValue, retSlot);
+        } else if (type instanceof PointerType) {
+            return LLVMAddressRetNodeGen.create(retValue, retSlot);
+        } else if (type instanceof StructureType) {
+            int size = runtime.getByteSize(type);
+            return LLVMStructRetNodeGen.create(runtime.getHeapFunctions(), retValue, retSlot, size);
+        } else if (type instanceof PrimitiveType) {
+            switch (((PrimitiveType) type).getKind()) {
                 case I1:
                     return LLVMI1RetNodeGen.create(retValue, retSlot);
                 case I8:
@@ -104,28 +115,20 @@ final class LLVMFunctionFactory {
                     return LLVMI32RetNodeGen.create(retValue, retSlot);
                 case I64:
                     return LLVMI64RetNodeGen.create(retValue, retSlot);
-                case I_VAR_BITWIDTH:
-                    return LLVMIVarBitRetNodeGen.create(retValue, retSlot);
                 case FLOAT:
                     return LLVMFloatRetNodeGen.create(retValue, retSlot);
                 case DOUBLE:
                     return LLVMDoubleRetNodeGen.create(retValue, retSlot);
                 case X86_FP80:
                     return LLVM80BitFloatRetNodeGen.create(retValue, retSlot);
-                case ADDRESS:
-                    return LLVMAddressRetNodeGen.create(retValue, retSlot);
-                case FUNCTION_ADDRESS:
-                    return LLVMFunctionRetNodeGen.create(retValue, retSlot);
-                case STRUCT:
-                    int size = runtime.getByteSize(resolvedType);
-                    return LLVMStructRetNodeGen.create(runtime.getHeapFunctions(), retValue, retSlot, size);
                 default:
                     throw new AssertionError(type);
             }
         }
+        throw new AssertionError(type);
     }
 
-    static LLVMExpressionNode createFunctionArgNode(int argIndex, LLVMBaseType paramType) {
+    static LLVMExpressionNode createFunctionArgNode(int argIndex, Type paramType) {
         if (argIndex < 0) {
             throw new AssertionError();
         }
@@ -137,20 +140,28 @@ final class LLVMFunctionFactory {
         return LLVMArgNodeGen.create(argIndex);
     }
 
-    static LLVMExpressionNode createFunctionCall(LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, Type[] argTypes, LLVMBaseType llvmType) {
+    static LLVMExpressionNode createFunctionCall(LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType functionType) {
         LLVMCallNode unresolvedCallNode = new LLVMCallNode(LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()),
-                        LLVMTypeHelper.convertType(new LLVMType(llvmType)), functionNode, argNodes, argTypes);
-        return createUnresolvedNodeWrapping(llvmType, unresolvedCallNode);
+                        functionType, functionNode, argNodes);
+        return createUnresolvedNodeWrapping(functionType.getReturnType(), unresolvedCallNode);
 
     }
 
-    private static LLVMExpressionNode createUnresolvedNodeWrapping(LLVMBaseType llvmType, LLVMExpressionNode unresolvedCallNode) {
-        if (LLVMTypeHelper.isVectorType(llvmType)) {
+    private static LLVMExpressionNode createUnresolvedNodeWrapping(Type llvmType, LLVMExpressionNode unresolvedCallNode) {
+        if (llvmType instanceof VectorType) {
             return LLVMVectorCallUnboxNodeGen.create(unresolvedCallNode);
-        } else {
-            switch (llvmType) {
-                case VOID:
-                    return new LLVMVoidCallUnboxNode(unresolvedCallNode);
+        } else if (llvmType instanceof VariableBitWidthType) {
+            return LLVMVarBitCallUnboxNodeGen.create(unresolvedCallNode);
+        } else if (llvmType instanceof VoidType) {
+            return new LLVMVoidCallUnboxNode(unresolvedCallNode);
+        } else if (Type.isFunctionOrFunctionPointer(llvmType)) {
+            return LLVMFunctionCallUnboxNodeGen.create(unresolvedCallNode);
+        } else if (llvmType instanceof StructureType) {
+            return LLVMStructCallUnboxNodeGen.create(unresolvedCallNode);
+        } else if (llvmType instanceof PointerType) {
+            return LLVMAddressCallUnboxNodeGen.create(unresolvedCallNode);
+        } else if (llvmType instanceof PrimitiveType) {
+            switch (((PrimitiveType) llvmType).getKind()) {
                 case I1:
                     return LLVMI1CallUnboxNodeGen.create(unresolvedCallNode);
                 case I8:
@@ -161,44 +172,40 @@ final class LLVMFunctionFactory {
                     return LLVMI32CallUnboxNodeGen.create(unresolvedCallNode);
                 case I64:
                     return LLVMI64CallUnboxNodeGen.create(unresolvedCallNode);
-                case I_VAR_BITWIDTH:
-                    return LLVMVarBitCallUnboxNodeGen.create(unresolvedCallNode);
                 case FLOAT:
                     return LLVMFloatCallUnboxNodeGen.create(unresolvedCallNode);
                 case DOUBLE:
                     return LLVMDoubleCallUnboxNodeGen.create(unresolvedCallNode);
                 case X86_FP80:
                     return LLVM80BitFloatCallUnboxNodeGen.create(unresolvedCallNode);
-                case ADDRESS:
-                    return LLVMAddressCallUnboxNodeGen.create(unresolvedCallNode);
-                case FUNCTION_ADDRESS:
-                    return LLVMFunctionCallUnboxNodeGen.create(unresolvedCallNode);
-                case STRUCT:
-                    return LLVMStructCallUnboxNodeGen.create(unresolvedCallNode);
                 default:
                     throw new AssertionError(llvmType);
             }
         }
+        throw new AssertionError(llvmType);
     }
 
-    static RootNode createGlobalRootNodeWrapping(RootCallTarget mainCallTarget, LLVMRuntimeType returnType) {
-        switch (returnType) {
-            case I1:
-                return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnI1RootNode(mainCallTarget);
-            case I8:
-            case I16:
-            case I32:
-            case I64:
-            case FLOAT:
-            case DOUBLE:
-                return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnNumberRootNode(mainCallTarget);
-            case I_VAR_BITWIDTH:
-                return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnIVarBitRootNode(mainCallTarget);
-            case VOID:
-                return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnVoidRootNode(mainCallTarget);
-            default:
-                throw new AssertionError(returnType);
+    static RootNode createGlobalRootNodeWrapping(RootCallTarget mainCallTarget, Type returnType) {
+        if (returnType instanceof VoidType) {
+            return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnVoidRootNode(mainCallTarget);
+        } else if (returnType instanceof VariableBitWidthType) {
+            return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnIVarBitRootNode(mainCallTarget);
+        } else if (returnType instanceof PrimitiveType) {
+            switch (((PrimitiveType) returnType).getKind()) {
+                case I1:
+                    return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnI1RootNode(mainCallTarget);
+                case I8:
+                case I16:
+                case I32:
+                case I64:
+                case FLOAT:
+                case DOUBLE:
+                    return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnNumberRootNode(mainCallTarget);
+                default:
+                    throw new AssertionError(returnType);
+            }
         }
+        throw new AssertionError(returnType);
     }
 
     static LLVMExpressionNode createFunctionArgNode(NodeFactoryFacade facade, int i) {

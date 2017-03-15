@@ -43,7 +43,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.types.IntegerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMI32LoadNode extends LLVMExpressionNode {
@@ -74,7 +74,7 @@ public abstract class LLVMI32LoadNode extends LLVMExpressionNode {
 
         @Specialization
         public int executeI32(TruffleObject addr) {
-            return executeI32(new LLVMTruffleObject(addr, IntegerType.INTEGER));
+            return executeI32(new LLVMTruffleObject(addr, PrimitiveType.I32));
         }
 
     }
@@ -96,7 +96,7 @@ public abstract class LLVMI32LoadNode extends LLVMExpressionNode {
 
         @Specialization
         public int executeI32(TruffleObject addr) {
-            return executeI32(new LLVMTruffleObject(addr, IntegerType.INTEGER));
+            return executeI32(new LLVMTruffleObject(addr, PrimitiveType.I32));
         }
 
     }

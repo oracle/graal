@@ -60,8 +60,8 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInst
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 
@@ -118,7 +118,7 @@ public final class InstructionBlock implements ValueSymbol {
     }
 
     public void createCall(Type type, int target, int[] arguments, long visibility, long linkage) {
-        if (type == MetaType.VOID) {
+        if (type == VoidType.INSTANCE) {
             addInstruction(VoidCallInstruction.fromSymbols(function.getSymbols(), target, arguments, visibility, linkage));
         } else {
             addInstruction(CallInstruction.fromSymbols(function.getSymbols(), type, target, arguments, visibility, linkage));
@@ -220,7 +220,7 @@ public final class InstructionBlock implements ValueSymbol {
 
     @Override
     public Type getType() {
-        return MetaType.VOID;
+        return VoidType.INSTANCE;
     }
 
     @Override

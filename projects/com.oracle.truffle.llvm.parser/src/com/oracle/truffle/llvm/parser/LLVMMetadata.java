@@ -261,7 +261,7 @@ final class LLVMMetadata implements ModelVisitor {
             // either the symbol is an IntegerConstant, or null, which simply represents the value 0
             int parsedIndex = idx instanceof IntegerConstant ? (int) ((IntegerConstant) (idx)).getValue() : 0;
 
-            long offset = struct.getIndexOffset(parsedIndex, targetDataLayout) * Byte.SIZE;
+            long offset = struct.getOffsetOf(parsedIndex, targetDataLayout) * Byte.SIZE;
 
             MetadataReference ref = parseMetadataReferenceFromOffset(offset, node);
             if (ref.isPresent()) {

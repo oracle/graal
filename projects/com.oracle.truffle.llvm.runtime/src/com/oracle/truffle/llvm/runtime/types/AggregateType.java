@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,16 +29,38 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBlock;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBlock.MetadataReference;
 import com.oracle.truffle.llvm.runtime.types.metadata.MetadataReferenceType;
 
-public interface AggregateType extends Type, MetadataReferenceType {
+public abstract class AggregateType implements Type, MetadataReferenceType {
 
-    int getLength();
+    @CompilationFinal private MetadataReference metadata = MetadataBlock.voidRef;
+    @CompilationFinal private Assumption finalMetadata = Truffle.getRuntime().createAssumption();
 
-    Type getElementType(int index);
+    public abstract int getNumberOfElements();
+
+    public abstract Type getElementType(int index);
+
+    public abstract int getOffsetOf(int index, DataSpecConverter targetDataLayout);
 
     @Override
-    default Type getIndexType(int index) {
-        return getElementType(index);
+    public void setMetadataReference(MetadataReference metadata) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        finalMetadata.invalidate();
+        this.metadata = metadata;
+        finalMetadata = Truffle.getRuntime().createAssumption();
+    }
+
+    @Override
+    public MetadataReference getMetadataReference() {
+        if (!finalMetadata.isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+        }
+        return metadata;
     }
 }

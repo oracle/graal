@@ -55,8 +55,8 @@ import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions.MemCopyNode;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.types.IntegerType;
 
 @NodeChildren(value = {@NodeChild(type = LLVMExpressionNode.class, value = "pointerNode")})
 public abstract class LLVMStoreNode extends LLVMExpressionNode {
@@ -107,7 +107,7 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
         @Specialization
         public Object execute(TruffleObject address, byte value) {
-            execute(new LLVMTruffleObject(address, IntegerType.BYTE), value);
+            execute(new LLVMTruffleObject(address, PrimitiveType.I8), value);
             return null;
         }
     }
@@ -140,7 +140,7 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
         @Specialization
         public Object execute(TruffleObject address, int value) {
-            execute(new LLVMTruffleObject(address, IntegerType.INTEGER), value);
+            execute(new LLVMTruffleObject(address, PrimitiveType.I32), value);
             return null;
         }
 
@@ -217,16 +217,15 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
     public abstract static class LLVMAddressStoreNode extends LLVMStoreNode {
 
         @Specialization
-        public Object execute(LLVMAddress address, LLVMAddress value) {
+        public Object doAddress(LLVMAddress address, LLVMAddress value) {
             LLVMMemory.putAddress(address, value);
             return null;
         }
 
-        @SuppressWarnings("unused")
         @Specialization(guards = "!isLLVMAddress(value)")
         public void execute(LLVMAddress address, Object value) {
             CompilerDirectives.bailout("unsupported operation");
-            throw new UnsupportedOperationException("Sulong can't store a Truffle object in a native memory address " + address);
+            throw new UnsupportedOperationException("Sulong can't store a Truffle object in a native memory address " + address + " value: " + value);
         }
 
         @Specialization

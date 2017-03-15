@@ -35,10 +35,12 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.runtime.LLVMPerformance;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 abstract class LLVMAddressMessageResolutionNode extends Node {
     private static final int I1_SIZE = 1;
@@ -49,15 +51,15 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
     private static final int FLOAT_SIZE = 4;
     private static final int DOUBLE_SIZE = 8;
 
-    public LLVMRuntimeType getType(LLVMTruffleAddress receiver) {
+    public Type getType(LLVMTruffleAddress receiver) {
         return receiver.getType();
     }
 
-    public boolean typeGuard(LLVMTruffleAddress receiver, LLVMRuntimeType type) {
-        return receiver.getType() == type;
+    public boolean typeGuard(LLVMTruffleAddress receiver, Type type) {
+        return receiver.getType().equals(type);
     }
 
-    public ToLLVMNode getToLLVMNode(LLVMRuntimeType type) {
+    public ToLLVMNode getToLLVMNode(Type type) {
         return ToLLVMNode.createNode(ToLLVMNode.convert(type));
     }
 
@@ -68,14 +70,14 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
         @SuppressWarnings("unused")
         @Specialization(guards = {"index == cachedIndex", "typeGuard(receiver, cachedType)"})
         public static Object doCachedTypeCachedOffset(LLVMTruffleAddress receiver, int index,
-                        @Cached("getType(receiver)") LLVMRuntimeType cachedType,
+                        @Cached("getType(receiver)") Type cachedType,
                         @Cached("index") int cachedIndex) {
             return doRead(receiver, cachedType, cachedIndex);
         }
 
         @Specialization(guards = {"typeGuard(receiver, cachedType)"}, replaces = "doCachedTypeCachedOffset")
         public static Object doCachedType(LLVMTruffleAddress receiver, int index,
-                        @Cached("getType(receiver)") LLVMRuntimeType cachedType) {
+                        @Cached("getType(receiver)") Type cachedType) {
             return doRead(receiver, cachedType, index);
         }
 
@@ -85,22 +87,31 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
             return doRead(receiver, receiver.getType(), index);
         }
 
-        private static Object doRead(LLVMTruffleAddress receiver, LLVMRuntimeType cachedType, int cachedIndex) {
+        private static Object doRead(LLVMTruffleAddress receiver, Type cachedType, int cachedIndex) {
             LLVMAddress address = receiver.getAddress();
-            switch (cachedType) {
-                case I1_POINTER:
+            if (cachedType instanceof PointerType && ((PointerType) cachedType).getPointeeType() instanceof PrimitiveType) {
+                PrimitiveType primitiveType = (PrimitiveType) ((PointerType) cachedType).getPointeeType();
+                return doPrimitiveRead(cachedIndex, address, primitiveType);
+            }
+            CompilerDirectives.transferToInterpreter();
+            throw new UnsupportedOperationException();
+        }
+
+        private static Object doPrimitiveRead(int cachedIndex, LLVMAddress address, PrimitiveType primitiveType) {
+            switch (primitiveType.getKind()) {
+                case I1:
                     return LLVMMemory.getI1(address.increment(cachedIndex * I1_SIZE));
-                case I8_POINTER:
+                case I8:
                     return LLVMMemory.getI8(address.increment(cachedIndex * I8_SIZE));
-                case I16_POINTER:
+                case I16:
                     return LLVMMemory.getI16(address.increment(cachedIndex * I16_SIZE));
-                case I32_POINTER:
+                case I32:
                     return LLVMMemory.getI32(address.increment(cachedIndex * I32_SIZE));
-                case I64_POINTER:
+                case I64:
                     return LLVMMemory.getI64(address.increment(cachedIndex * I64_SIZE));
-                case FLOAT_POINTER:
+                case FLOAT:
                     return LLVMMemory.getFloat(address.increment(cachedIndex * FLOAT_SIZE));
-                case DOUBLE_POINTER:
+                case DOUBLE:
                     return LLVMMemory.getDouble(address.increment(cachedIndex * DOUBLE_SIZE));
                 default:
                     CompilerDirectives.transferToInterpreter();
@@ -117,7 +128,7 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
         @SuppressWarnings("unused")
         @Specialization(guards = {"index == cachedIndex", "typeGuard(receiver, cachedType)"})
         public static Object doCachedTypeCachedOffset(LLVMTruffleAddress receiver, int index, Object value,
-                        @Cached("getType(receiver)") LLVMRuntimeType cachedType,
+                        @Cached("getType(receiver)") Type cachedType,
                         @Cached("index") int cachedIndex,
                         @Cached("getToLLVMNode(cachedType)") ToLLVMNode toLLVM) {
             return doFastWrite(receiver, cachedType, cachedIndex, value, toLLVM);
@@ -125,7 +136,7 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
 
         @Specialization(guards = {"typeGuard(receiver, cachedType)"}, replaces = "doCachedTypeCachedOffset")
         public static Object doCachedType(LLVMTruffleAddress receiver, int index, Object value,
-                        @Cached("getType(receiver)") LLVMRuntimeType cachedType,
+                        @Cached("getType(receiver)") Type cachedType,
                         @Cached("getToLLVMNode(cachedType)") ToLLVMNode toLLVM) {
             return doFastWrite(receiver, cachedType, index, value, toLLVM);
         }
@@ -142,38 +153,47 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
             return doSlowWrite(receiver, receiver.getType(), index, value, slowConvert);
         }
 
-        private static Object doFastWrite(LLVMTruffleAddress receiver, LLVMRuntimeType cachedType, int index, Object value, ToLLVMNode toLLVM) {
+        private static Object doFastWrite(LLVMTruffleAddress receiver, Type cachedType, int index, Object value, ToLLVMNode toLLVM) {
             Object v = toLLVM.executeWithTarget(value);
             return doWrite(receiver, cachedType, index, v);
         }
 
-        private static Object doSlowWrite(LLVMTruffleAddress receiver, LLVMRuntimeType cachedType, int index, Object value, ToLLVMNode toLLVM) {
+        private static Object doSlowWrite(LLVMTruffleAddress receiver, Type cachedType, int index, Object value, ToLLVMNode toLLVM) {
             Object v = toLLVM.slowConvert(value, ToLLVMNode.convert(cachedType));
             return doWrite(receiver, cachedType, index, v);
         }
 
-        private static Object doWrite(LLVMTruffleAddress receiver, LLVMRuntimeType cachedType, int index, Object v) {
+        private static Object doWrite(LLVMTruffleAddress receiver, Type cachedType, int index, Object v) {
             LLVMAddress address = receiver.getAddress();
-            switch (cachedType) {
-                case I1_POINTER:
+            if (cachedType instanceof PointerType && ((PointerType) cachedType).getPointeeType() instanceof PrimitiveType) {
+                PrimitiveType primitiveType = (PrimitiveType) ((PointerType) cachedType).getPointeeType();
+                return doPrimitiveWrite(index, v, address, primitiveType);
+            }
+            CompilerDirectives.transferToInterpreter();
+            throw new UnsupportedOperationException();
+        }
+
+        private static Object doPrimitiveWrite(int index, Object v, LLVMAddress address, PrimitiveType primitiveType) {
+            switch (primitiveType.getKind()) {
+                case I1:
                     LLVMMemory.putI1(address.increment(index * I1_SIZE), (boolean) v);
                     return v;
-                case I8_POINTER:
+                case I8:
                     LLVMMemory.putI8(address.increment(index * I8_SIZE), (byte) v);
                     return v;
-                case I16_POINTER:
+                case I16:
                     LLVMMemory.putI16(address.increment(index * I16_SIZE), (short) v);
                     return v;
-                case I32_POINTER:
+                case I32:
                     LLVMMemory.putI32(address.increment(index * I32_SIZE), (int) v);
                     return v;
-                case I64_POINTER:
+                case I64:
                     LLVMMemory.putI64(address.increment(index * I64_SIZE), (long) v);
                     return v;
-                case FLOAT_POINTER:
+                case FLOAT:
                     LLVMMemory.putFloat(address.increment(index * FLOAT_SIZE), (float) v);
                     return v;
-                case DOUBLE_POINTER:
+                case DOUBLE:
                     LLVMMemory.putDouble(address.increment(index * DOUBLE_SIZE), (double) v);
                     return v;
                 default:
@@ -181,6 +201,5 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
                     throw new UnsupportedOperationException();
             }
         }
-
     }
 }

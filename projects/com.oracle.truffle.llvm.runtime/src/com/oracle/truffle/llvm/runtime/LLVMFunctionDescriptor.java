@@ -31,65 +31,28 @@ package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 public final class LLVMFunctionDescriptor extends LLVMFunction implements Comparable<LLVMFunctionDescriptor> {
 
-    public enum LLVMRuntimeType {
-        I1,
-        I8,
-        I16,
-        I32,
-        I64,
-        I_VAR_BITWIDTH,
-        HALF,
-        FLOAT,
-        DOUBLE,
-        X86_FP80,
-        ADDRESS,
-        STRUCT,
-        ARRAY,
-        FUNCTION_ADDRESS,
-        I1_VECTOR,
-        I8_VECTOR,
-        I16_VECTOR,
-        I32_VECTOR,
-        I64_VECTOR,
-        FLOAT_VECTOR,
-        DOUBLE_VECTOR,
-        VOID,
-        ILLEGAL,
-        I1_POINTER,
-        I8_POINTER,
-        I16_POINTER,
-        I32_POINTER,
-        I64_POINTER,
-        HALF_POINTER,
-        FLOAT_POINTER,
-        DOUBLE_POINTER;
-    }
-
     private final String functionName;
-    private final LLVMRuntimeType returnType;
-    private final LLVMRuntimeType[] parameterTypes;
-    private final boolean hasVarArgs;
+    private final FunctionType type;
     private final int functionId;
 
     private RootCallTarget callTarget;
     private TruffleObject nativeSymbol;
     private RootCallTarget intrinsic;
 
-    private LLVMFunctionDescriptor(String name, LLVMRuntimeType llvmReturnType, LLVMRuntimeType[] llvmParamTypes, boolean varArgs, int functionId) {
+    private LLVMFunctionDescriptor(String name, FunctionType type, int functionId) {
         this.functionName = name;
-        this.returnType = llvmReturnType;
-        this.parameterTypes = llvmParamTypes;
-        this.hasVarArgs = varArgs;
+        this.type = type;
         this.functionId = functionId;
         this.callTarget = null;
         this.nativeSymbol = null;
     }
 
-    public static LLVMFunctionDescriptor create(String name, LLVMRuntimeType llvmReturnType, LLVMRuntimeType[] llvmParamTypes, boolean varArgs, int functionId) {
-        LLVMFunctionDescriptor func = new LLVMFunctionDescriptor(name, llvmReturnType, llvmParamTypes, varArgs, functionId);
+    public static LLVMFunctionDescriptor create(String name, FunctionType type, int functionId) {
+        LLVMFunctionDescriptor func = new LLVMFunctionDescriptor(name, type, functionId);
         return func;
     }
 
@@ -122,16 +85,8 @@ public final class LLVMFunctionDescriptor extends LLVMFunction implements Compar
         return functionName;
     }
 
-    public LLVMRuntimeType getReturnType() {
-        return returnType;
-    }
-
-    public LLVMRuntimeType[] getParameterTypes() {
-        return parameterTypes;
-    }
-
-    public boolean isVarArgs() {
-        return hasVarArgs;
+    public FunctionType getType() {
+        return type;
     }
 
     /**

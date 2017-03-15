@@ -32,14 +32,14 @@ package com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint;
 import java.util.Arrays;
 
 import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
-import com.oracle.truffle.llvm.runtime.types.FloatingPointType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 public final class X86FP80Constant extends FloatingPointConstant {
 
     private final byte[] value;
 
     X86FP80Constant(byte[] value) {
-        super(FloatingPointType.X86_FP80);
+        super(PrimitiveType.X86_FP80);
         this.value = value;
     }
 

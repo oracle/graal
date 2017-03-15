@@ -29,9 +29,9 @@
  */
 package com.oracle.truffle.llvm.parser.scanner;
 
-import com.oracle.truffle.llvm.parser.listeners.ParserListener;
-
 import java.util.List;
+
+import com.oracle.truffle.llvm.parser.listeners.ParserListener;
 
 final class ScannerState {
 

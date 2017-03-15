@@ -80,7 +80,6 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
-import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 final class LLVMIntrinsicFactory {
 
@@ -132,8 +131,8 @@ final class LLVMIntrinsicFactory {
     // The nodes are directly inserted in the current LLVM AST for the moment. To change this later
     // one,
     // reuse the same intrinsic node classes but pass arg read nodes as there arguments.
-    static LLVMExpressionNode create(FunctionType declaration, LLVMExpressionNode[] argNodes, int numberOfExplicitArguments, LLVMParserRuntime runtime) {
-        return create(declaration.getName(), argNodes, numberOfExplicitArguments, runtime.getStackPointerSlot());
+    static LLVMExpressionNode create(String name, LLVMExpressionNode[] argNodes, int numberOfExplicitArguments, LLVMParserRuntime runtime) {
+        return create(name, argNodes, numberOfExplicitArguments, runtime.getStackPointerSlot());
     }
 
     private static LLVMExpressionNode create(String functionName, LLVMExpressionNode[] argNodes, int numberOfExplicitArguments, FrameSlot stack) {

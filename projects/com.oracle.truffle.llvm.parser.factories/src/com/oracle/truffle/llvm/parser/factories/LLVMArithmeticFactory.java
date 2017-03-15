@@ -119,23 +119,55 @@ import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI8VectorArithmeticNodeF
 import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI8VectorArithmeticNodeFactory.LLVMI8VectorRemNodeGen;
 import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI8VectorArithmeticNodeFactory.LLVMI8VectorSubNodeGen;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
-import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
+import com.oracle.truffle.llvm.runtime.types.VectorType;
 
 final class LLVMArithmeticFactory {
 
     private LLVMArithmeticFactory() {
     }
 
-    static LLVMExpressionNode createArithmeticOperation(LLVMExpressionNode left, LLVMExpressionNode right, LLVMArithmeticInstructionType type, LLVMBaseType llvmType) {
+    static LLVMExpressionNode createArithmeticOperation(LLVMExpressionNode left, LLVMExpressionNode right, LLVMArithmeticInstructionType type, Type llvmType) {
         if (left == null || right == null) {
             throw new AssertionError();
         }
         return createNode(left, right, llvmType, type);
     }
 
-    private static LLVMExpressionNode createNode(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMArithmeticInstructionType type)
+    private static LLVMExpressionNode createNode(LLVMExpressionNode left, LLVMExpressionNode right, Type llvmType, LLVMArithmeticInstructionType type)
                     throws AssertionError {
-        switch (llvmType) {
+        if (llvmType instanceof PrimitiveType) {
+            return handlePrimitive(left, right, llvmType, type);
+        } else if (llvmType instanceof VariableBitWidthType) {
+            return visitBinaryIVarInstruction(type, left, right);
+        } else if (llvmType instanceof VectorType) {
+            switch (((VectorType) llvmType).getElementType().getKind()) {
+                case I1:
+                    return visitBinaryI1VectorInstruction(type, left, right);
+                case I8:
+                    return visitBinaryI8VectorInstruction(type, left, right);
+                case I16:
+                    return visitBinaryI16VectorInstruction(type, left, right);
+                case I32:
+                    return visitBinaryI32VectorInstruction(type, left, right);
+                case I64:
+                    return visitBinaryI64VectorInstruction(type, left, right);
+                case FLOAT:
+                    return visitBinaryFloatVectorInstruction(type, left, right);
+                case DOUBLE:
+                    return visitBinaryDoubleVectorInstruction(type, left, right);
+                default:
+                    throw new AssertionError(llvmType);
+            }
+        } else {
+            throw new AssertionError(llvmType);
+        }
+    }
+
+    private static LLVMExpressionNode handlePrimitive(LLVMExpressionNode left, LLVMExpressionNode right, Type llvmType, LLVMArithmeticInstructionType type) throws AssertionError {
+        switch (((PrimitiveType) llvmType).getKind()) {
             case I1:
                 return visitBinaryI1Instruction(type, left, right);
             case I8:
@@ -146,28 +178,12 @@ final class LLVMArithmeticFactory {
                 return visitBinaryI32Instruction(type, left, right);
             case I64:
                 return visitBinaryI64Instruction(type, left, right);
-            case I_VAR_BITWIDTH:
-                return visitBinaryIVarInstruction(type, left, right);
             case FLOAT:
                 return visitBinaryFloatInstruction(type, left, right);
             case DOUBLE:
                 return visitBinaryDoubleInstruction(type, left, right);
             case X86_FP80:
                 return visitBinary80BitFloatInstruction(type, left, right);
-            case I1_VECTOR:
-                return visitBinaryI1VectorInstruction(type, left, right);
-            case I8_VECTOR:
-                return visitBinaryI8VectorInstruction(type, left, right);
-            case I16_VECTOR:
-                return visitBinaryI16VectorInstruction(type, left, right);
-            case I32_VECTOR:
-                return visitBinaryI32VectorInstruction(type, left, right);
-            case I64_VECTOR:
-                return visitBinaryI64VectorInstruction(type, left, right);
-            case FLOAT_VECTOR:
-                return visitBinaryFloatVectorInstruction(type, left, right);
-            case DOUBLE_VECTOR:
-                return visitBinaryDoubleVectorInstruction(type, left, right);
             default:
                 throw new AssertionError(llvmType);
         }

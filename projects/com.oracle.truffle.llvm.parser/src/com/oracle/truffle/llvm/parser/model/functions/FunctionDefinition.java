@@ -60,14 +60,13 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
-import com.oracle.truffle.llvm.runtime.types.FloatingPointType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.IntegerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBlock;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
+import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 
-public final class FunctionDefinition extends FunctionType implements Constant, FunctionGenerator {
+public final class FunctionDefinition implements Constant, FunctionGenerator, ValueSymbol {
 
     private final Symbols symbols = new Symbols();
 
@@ -81,10 +80,35 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
 
     private final Map<String, Type> namesToTypes;
 
-    public FunctionDefinition(FunctionType type, MetadataBlock metadata) {
-        super(type.getReturnType(), type.getArgumentTypes(), type.isVarArg());
+    private final FunctionType type;
+
+    private String name;
+
+    public FunctionDefinition(FunctionType type, String name, MetadataBlock metadata) {
+        this.type = type;
         this.metadata = metadata;
         namesToTypes = new HashMap<>();
+        this.name = name;
+    }
+
+    public FunctionDefinition(FunctionType type, MetadataBlock metadata) {
+        this(type, LLVMIdentifier.UNKNOWN, metadata);
+    }
+
+    @Override
+    public void setName(String name) {
+        this.name = LLVMIdentifier.toGlobalIdentifier(name);
+    }
+
+    @Override
+    public boolean hasName() {
+        return name != null;
+    }
+
+    @Override
+    public String getName() {
+        assert name != null;
+        return name;
     }
 
     @Override
@@ -110,8 +134,13 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
     }
 
     @Override
-    public void createParameter(Type type) {
-        FunctionParameter parameter = new FunctionParameter(type, parameters.size());
+    public FunctionType getType() {
+        return type;
+    }
+
+    @Override
+    public void createParameter(Type t) {
+        FunctionParameter parameter = new FunctionParameter(t, parameters.size());
         symbols.addSymbol(parameter);
         parameters.add(parameter);
     }
@@ -200,73 +229,73 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
     }
 
     @Override
-    public void createBinaryOperationExpression(Type type, int opcode, int lhs, int rhs) {
-        symbols.addSymbol(BinaryOperationConstant.fromSymbols(symbols, type, opcode, lhs, rhs));
+    public void createBinaryOperationExpression(Type t, int opcode, int lhs, int rhs) {
+        symbols.addSymbol(BinaryOperationConstant.fromSymbols(symbols, t, opcode, lhs, rhs));
     }
 
     @Override
-    public void createBlockAddress(Type type, int function, int block) {
-        symbols.addSymbol(BlockAddressConstant.fromSymbols(symbols, type, function, block));
+    public void createBlockAddress(Type t, int function, int block) {
+        symbols.addSymbol(BlockAddressConstant.fromSymbols(symbols, t, function, block));
     }
 
     @Override
-    public void createCastExpression(Type type, int opcode, int value) {
-        symbols.addSymbol(CastConstant.fromSymbols(symbols, type, opcode, value));
+    public void createCastExpression(Type t, int opcode, int value) {
+        symbols.addSymbol(CastConstant.fromSymbols(symbols, t, opcode, value));
     }
 
     @Override
-    public void createCompareExpression(Type type, int opcode, int lhs, int rhs) {
-        symbols.addSymbol(CompareConstant.fromSymbols(symbols, type, opcode, lhs, rhs));
+    public void createCompareExpression(Type t, int opcode, int lhs, int rhs) {
+        symbols.addSymbol(CompareConstant.fromSymbols(symbols, t, opcode, lhs, rhs));
     }
 
     @Override
-    public void createFloatingPoint(Type type, long[] bits) {
-        symbols.addSymbol(FloatingPointConstant.create((FloatingPointType) type, bits));
+    public void createFloatingPoint(Type t, long[] bits) {
+        symbols.addSymbol(FloatingPointConstant.create(t, bits));
     }
 
     @Override
-    public void createFromData(Type type, long[] data) {
-        symbols.addSymbol(Constant.createFromData(type, data));
+    public void createFromData(Type t, long[] data) {
+        symbols.addSymbol(Constant.createFromData(t, data));
     }
 
     @Override
-    public void creatFromString(Type type, String string, boolean isCString) {
-        symbols.addSymbol(new StringConstant(type, string, isCString));
+    public void creatFromString(Type t, String string, boolean isCString) {
+        symbols.addSymbol(new StringConstant(t, string, isCString));
     }
 
     @Override
-    public void createFromValues(Type type, int[] values) {
-        symbols.addSymbol(Constant.createFromValues(type, symbols, values));
+    public void createFromValues(Type t, int[] values) {
+        symbols.addSymbol(Constant.createFromValues(t, symbols, values));
     }
 
     @Override
-    public void createGetElementPointerExpression(Type type, int pointer, int[] indices, boolean isInbounds) {
-        symbols.addSymbol(GetElementPointerConstant.fromSymbols(symbols, type, pointer, indices, isInbounds));
+    public void createGetElementPointerExpression(Type t, int pointer, int[] indices, boolean isInbounds) {
+        symbols.addSymbol(GetElementPointerConstant.fromSymbols(symbols, t, pointer, indices, isInbounds));
     }
 
     @Override
-    public void createInlineASM(Type type, long[] asm) {
-        symbols.addSymbol(InlineAsmConstant.generate(type, asm));
+    public void createInlineASM(Type t, long[] asm) {
+        symbols.addSymbol(InlineAsmConstant.generate(t, asm));
     }
 
     @Override
-    public void createInteger(Type type, long value) {
-        symbols.addSymbol(new IntegerConstant((IntegerType) type, value));
+    public void createInteger(Type t, long value) {
+        symbols.addSymbol(new IntegerConstant(t, value));
     }
 
     @Override
-    public void createInteger(Type type, BigInteger value) {
-        symbols.addSymbol(new BigIntegerConstant((IntegerType) type, value));
+    public void createInteger(Type t, BigInteger value) {
+        symbols.addSymbol(new BigIntegerConstant(t, value));
     }
 
     @Override
-    public void createNull(Type type) {
-        symbols.addSymbol(new NullConstant(type));
+    public void createNull(Type t) {
+        symbols.addSymbol(new NullConstant(t));
     }
 
     @Override
-    public void createUndefined(Type type) {
-        symbols.addSymbol(new UndefinedConstant(type));
+    public void createUndefined(Type t) {
+        symbols.addSymbol(new UndefinedConstant(t));
     }
 
     @Override
@@ -300,4 +329,5 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
         CompilerAsserts.neverPartOfCompilation();
         return "FunctionDefinition [symbolCount=" + symbols.getSize() + ", parameters=" + parameters + ", blocks=" + blocks.length + ", currentBlock=" + currentBlock + ", name=" + getName() + "]";
     }
+
 }

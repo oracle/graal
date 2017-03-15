@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,93 +29,43 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
-import java.util.Objects;
-
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBlock;
-import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBlock.MetadataReference;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
-public class VectorType implements AggregateType {
+public class VectorType extends AggregateType {
 
-    private final Type elementType;
-
+    private final PrimitiveType elementType;
     private final int length;
 
-    private MetadataReference metadata = MetadataBlock.voidRef;
-
-    public VectorType(Type type, int length) {
-        this.elementType = type;
+    public VectorType(PrimitiveType elementType, int length) {
+        this.elementType = elementType;
         this.length = length;
     }
 
-    @Override
-    public void accept(TypeVisitor visitor) {
-        visitor.visit(this);
-    }
-
-    @Override
-    public int getBits() {
-        return getElementType().getBits() * length;
-    }
-
-    public Type getElementType() {
+    public PrimitiveType getElementType() {
         return elementType;
     }
 
     @Override
-    public int getLength() {
+    public int getBitSize() {
+        return getElementType().getBitSize() * length;
+    }
+
+    @Override
+    public int getNumberOfElements() {
         return length;
     }
 
     @Override
     public Type getElementType(int index) {
-        return getElementType();
+        if (index >= length) {
+            throw new ArrayIndexOutOfBoundsException();
+        }
+        return elementType;
     }
 
     @Override
-    public LLVMBaseType getLLVMBaseType() {
-        final LLVMBaseType llvmBaseType = this.getElementType().getLLVMBaseType();
-        switch (llvmBaseType) {
-            case I1:
-                return LLVMBaseType.I1_VECTOR;
-            case I8:
-                return LLVMBaseType.I8_VECTOR;
-            case I16:
-                return LLVMBaseType.I16_VECTOR;
-            case I32:
-                return LLVMBaseType.I32_VECTOR;
-            case I64:
-                return LLVMBaseType.I64_VECTOR;
-            case FLOAT:
-                return LLVMBaseType.FLOAT_VECTOR;
-            case DOUBLE:
-                return LLVMBaseType.DOUBLE_VECTOR;
-            default:
-                throw new UnsupportedOperationException("Unsupported Vector Element Type: " + getElementType());
-        }
-    }
-
-    @Override
-    public LLVMFunctionDescriptor.LLVMRuntimeType getRuntimeType() {
-        switch (getElementType().getRuntimeType()) {
-            case I1:
-                return LLVMFunctionDescriptor.LLVMRuntimeType.I1_VECTOR;
-            case I8:
-                return LLVMFunctionDescriptor.LLVMRuntimeType.I8_VECTOR;
-            case I16:
-                return LLVMFunctionDescriptor.LLVMRuntimeType.I16_VECTOR;
-            case I32:
-                return LLVMFunctionDescriptor.LLVMRuntimeType.I32_VECTOR;
-            case I64:
-                return LLVMFunctionDescriptor.LLVMRuntimeType.I64_VECTOR;
-            case FLOAT:
-                return LLVMFunctionDescriptor.LLVMRuntimeType.FLOAT_VECTOR;
-            case DOUBLE:
-                return LLVMFunctionDescriptor.LLVMRuntimeType.DOUBLE_VECTOR;
-            default:
-                throw new UnsupportedOperationException("Unsupported Vector Element Type: " + getElementType());
-        }
+    public void accept(TypeVisitor visitor) {
+        visitor.visit(this);
     }
 
     @Override
@@ -129,44 +79,12 @@ public class VectorType implements AggregateType {
     }
 
     @Override
-    public int getIndexOffset(int index, DataSpecConverter targetDataLayout) {
+    public int getOffsetOf(int index, DataSpecConverter targetDataLayout) {
         return getElementType().getSize(targetDataLayout) * index;
     }
 
     @Override
-    public void setMetadataReference(MetadataReference metadata) {
-        this.metadata = metadata;
-    }
-
-    @Override
-    public MetadataReference getMetadataReference() {
-        return metadata;
-    }
-
-    @Override
-    public int hashCode() {
-        int hash = 5;
-        hash = 59 * hash + Objects.hashCode(this.getElementType());
-        hash = 59 * hash + this.length;
-        return hash;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-
-        } else if (obj instanceof VectorType) {
-            final VectorType other = (VectorType) obj;
-            return length == other.length && getElementType().equals(other.getElementType());
-
-        } else {
-            return false;
-        }
-    }
-
-    @Override
     public String toString() {
-        return String.format("<%d x %s>", getLength(), getElementType());
+        return String.format("<%d x %s>", getNumberOfElements(), getElementType());
     }
 }

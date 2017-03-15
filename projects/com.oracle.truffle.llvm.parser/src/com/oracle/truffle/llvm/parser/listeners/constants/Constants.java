@@ -32,14 +32,11 @@ package com.oracle.truffle.llvm.parser.listeners.constants;
 import java.math.BigInteger;
 import java.util.List;
 
-import com.oracle.truffle.llvm.parser.records.ConstantsRecord;
 import com.oracle.truffle.llvm.parser.listeners.ParserListener;
 import com.oracle.truffle.llvm.parser.listeners.Types;
 import com.oracle.truffle.llvm.parser.model.generators.ConstantGenerator;
+import com.oracle.truffle.llvm.parser.records.ConstantsRecord;
 import com.oracle.truffle.llvm.parser.records.Records;
-import com.oracle.truffle.llvm.runtime.types.BigIntegerConstantType;
-import com.oracle.truffle.llvm.runtime.types.IntegerConstantType;
-import com.oracle.truffle.llvm.runtime.types.IntegerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public abstract class Constants implements ParserListener {
@@ -71,8 +68,8 @@ public abstract class Constants implements ParserListener {
 
             case NULL:
                 generator.createNull(type);
-                if (type instanceof IntegerType) {
-                    symbols.add(new IntegerConstantType((IntegerType) type, 0));
+                if (Type.isIntegerType(type)) {
+                    symbols.add(Type.createConstantForType(type, 0));
                     return;
                 }
                 break;
@@ -84,7 +81,7 @@ public abstract class Constants implements ParserListener {
             case INTEGER: {
                 long value = Records.toSignedValue(args[0]);
                 generator.createInteger(type, value);
-                symbols.add(new IntegerConstantType((IntegerType) type, value));
+                symbols.add(Type.createConstantForType(type, value));
                 return;
             }
             case WIDE_INTEGER: {
@@ -97,7 +94,7 @@ public abstract class Constants implements ParserListener {
                     value = value.add(temp);
                 }
                 generator.createInteger(type, value);
-                symbols.add(new BigIntegerConstantType((IntegerType) type, value));
+                symbols.add(Type.createConstantForType(type, value));
                 return;
             }
             case FLOAT:

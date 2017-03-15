@@ -32,10 +32,10 @@ package com.oracle.truffle.llvm.runtime.types.metadata;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.llvm.runtime.types.IntegerConstantType;
-import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.MetadataVisitor;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public final class MetadataBlock {
 
@@ -92,10 +92,10 @@ public final class MetadataBlock {
         if (t instanceof MetadataConstantType) {
             int index = (int) ((MetadataConstantType) t).getValue();
             return getReference(index);
-        } else if (t instanceof MetaType && t == MetaType.VOID) {
+        } else if (t instanceof VoidType) {
             return voidRef;
-        } else if (t instanceof IntegerConstantType) {
-            int index = (int) ((IntegerConstantType) t).getValue();
+        } else if (t instanceof PrimitiveType && ((PrimitiveType) t).isConstant()) {
+            int index = (int) ((PrimitiveType) t).getConstant();
             if (index == 0) { // We only allow 0 as integer constant
                 return voidRef;
             }

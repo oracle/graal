@@ -32,10 +32,10 @@ package com.oracle.truffle.llvm.parser.listeners.metadata;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.truffle.llvm.parser.records.MetadataRecord;
 import com.oracle.truffle.llvm.parser.listeners.ParserListener;
 import com.oracle.truffle.llvm.parser.listeners.Types;
 import com.oracle.truffle.llvm.parser.model.generators.SymbolGenerator;
+import com.oracle.truffle.llvm.parser.records.MetadataRecord;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.types.DwLangNameRecord;

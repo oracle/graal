@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.parser.listeners.module;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.llvm.parser.records.ModuleRecord;
 import com.oracle.truffle.llvm.parser.listeners.IRVersionController;
 import com.oracle.truffle.llvm.parser.listeners.Identification;
 import com.oracle.truffle.llvm.parser.listeners.ParserListener;
@@ -44,6 +43,7 @@ import com.oracle.truffle.llvm.parser.model.generators.ModuleGenerator;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.model.target.TargetInformation;
 import com.oracle.truffle.llvm.parser.model.target.TargetTriple;
+import com.oracle.truffle.llvm.parser.records.ModuleRecord;
 import com.oracle.truffle.llvm.parser.records.Records;
 import com.oracle.truffle.llvm.parser.scanner.Block;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;

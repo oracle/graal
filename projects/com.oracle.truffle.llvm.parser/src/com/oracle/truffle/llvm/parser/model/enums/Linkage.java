@@ -70,8 +70,7 @@ public enum Linkage {
         return EXTERNAL;
     }
 
-    @Override
-    public String toString() {
+    public String getIrString() {
         return irString;
     }
 }

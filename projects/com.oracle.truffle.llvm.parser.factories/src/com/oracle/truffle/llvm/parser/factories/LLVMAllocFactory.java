@@ -37,14 +37,14 @@ import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstructionFactory.LLVMI64A
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 final class LLVMAllocFactory {
 
-    static LLVMExpressionNode createAlloc(LLVMParserRuntime runtime, LLVMBaseType llvmType, LLVMExpressionNode numElements, int byteSize, int alignment, Type symbolType) {
+    static LLVMExpressionNode createAlloc(LLVMParserRuntime runtime, PrimitiveType llvmType, LLVMExpressionNode numElements, int byteSize, int alignment, Type symbolType) {
         LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
-        switch (llvmType) {
+        switch (llvmType.getKind()) {
             case I32:
                 return LLVMI32AllocaInstructionNodeGen.create(numElements, byteSize, alignment, context, runtime.getStackPointerSlot(), symbolType);
             case I64:

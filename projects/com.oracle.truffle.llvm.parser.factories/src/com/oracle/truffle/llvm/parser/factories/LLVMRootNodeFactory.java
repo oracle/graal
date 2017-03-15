@@ -39,10 +39,10 @@ import com.oracle.truffle.llvm.nodes.func.LLVMGlobalRootNode;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 class LLVMRootNodeFactory {
 
@@ -51,7 +51,7 @@ class LLVMRootNodeFactory {
                     RootCallTarget mainCallTarget,
                     Object[] args,
                     Source sourceFile,
-                    LLVMRuntimeType[] mainTypes) {
+                    Type[] mainTypes) {
         return createGlobalRootNode(
                         LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()),
                         runtime.getStackPointerSlot(),
@@ -69,12 +69,12 @@ class LLVMRootNodeFactory {
                     RootCallTarget mainCallTarget,
                     Object[] args,
                     Source sourceFile,
-                    LLVMRuntimeType[] mainTypes) {
+                    Type[] mainTypes) {
         Object[] arguments = createArgs(sourceFile, args, mainTypes);
         return new LLVMGlobalRootNode(stack, frame, context, mainCallTarget, arguments);
     }
 
-    private static Object[] createArgs(Source sourceFile, Object[] mainArgs, LLVMRuntimeType[] llvmRuntimeTypes) {
+    private static Object[] createArgs(Source sourceFile, Object[] mainArgs, Type[] llvmRuntimeTypes) {
         int mainArgsCount = mainArgs == null ? 0 : mainArgs.length;
         int argsCount = mainArgsCount + 1;
         if (llvmRuntimeTypes.length == 0) {

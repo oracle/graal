@@ -36,9 +36,9 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions.MemCopyNode;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 @NodeField(type = int.class, name = "numberExplicitArguments")
@@ -57,7 +57,7 @@ public abstract class LLVMX86_64BitVACopy extends LLVMExpressionNode {
         int varArgsStartIndex = 1 + getNumberExplicitArguments();
         int argumentsLength = frame.getArguments().length;
         if (varArgsStartIndex != argumentsLength) {
-            LLVMRuntimeType[] types = LLVMX86_64BitVAStart.getTypes(frame.getArguments(), varArgsStartIndex);
+            Type[] types = LLVMX86_64BitVAStart.getTypes(frame.getArguments(), varArgsStartIndex);
             int size = LLVMX86_64BitVAStart.getSize(types);
             memCopy.execute(dest, source, size);
         }

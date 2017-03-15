@@ -45,7 +45,7 @@ public class Parser {
 	private LLVMInlineAssemblyRootNode root;
 	-->declarations
 
-	public Parser(String asmSnippet, String asmFlags, LLVMExpressionNode[] args, LLVMBaseType[] argTypes, LLVMBaseType retType) {
+	public Parser(String asmSnippet, String asmFlags, LLVMExpressionNode[] args, Type[] argTypes, Type retType) {
 		this.scanner = new Scanner(new ByteArrayInputStream(asmSnippet.getBytes()));
 		errors = new Errors();
 		this.factory = new AsmFactory(args, argTypes, asmFlags, retType);

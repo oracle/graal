@@ -43,7 +43,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.types.FloatingPointType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMDoubleLoadNode extends LLVMExpressionNode {
@@ -74,7 +74,7 @@ public abstract class LLVMDoubleLoadNode extends LLVMExpressionNode {
 
         @Specialization
         public double executeDouble(TruffleObject addr) {
-            return executeDouble(new LLVMTruffleObject(addr, FloatingPointType.DOUBLE));
+            return executeDouble(new LLVMTruffleObject(addr, PrimitiveType.DOUBLE));
         }
     }
 
@@ -95,7 +95,7 @@ public abstract class LLVMDoubleLoadNode extends LLVMExpressionNode {
 
         @Specialization
         public double executeDouble(TruffleObject addr) {
-            return doForeignAccess(new LLVMTruffleObject(addr, FloatingPointType.DOUBLE));
+            return doForeignAccess(new LLVMTruffleObject(addr, PrimitiveType.DOUBLE));
         }
     }
 

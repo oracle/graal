@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,19 +29,18 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
-import java.util.Objects;
-
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
-public final class IntegerConstantType implements Type {
+public final class VoidType implements Type {
 
-    private final IntegerType type;
+    public static final VoidType INSTANCE = new VoidType();
 
-    private final long value;
+    private VoidType() {
+    }
 
-    public IntegerConstantType(IntegerType type, long value) {
-        this.type = type;
-        this.value = value;
+    @Override
+    public int getBitSize() {
+        return 0;
     }
 
     @Override
@@ -50,56 +49,17 @@ public final class IntegerConstantType implements Type {
     }
 
     @Override
-    public IntegerType getType() {
-        return type;
-    }
-
-    public long getValue() {
-        return value;
-    }
-
-    @Override
     public int getAlignment(DataSpecConverter targetDataLayout) {
-        if (targetDataLayout != null) {
-            return targetDataLayout.getBitAlignment(type) / Byte.SIZE;
-
-        } else {
-            return type.getAlignment(targetDataLayout);
-        }
-    }
-
-    @Override
-    public int getBits() {
-        return type.getBits();
+        return 0;
     }
 
     @Override
     public int getSize(DataSpecConverter targetDataLayout) {
-        return type.getSize(targetDataLayout);
-    }
-
-    @Override
-    public int hashCode() {
-        int hash = 13;
-        hash = 17 * hash + ((type == null) ? 0 : type.hashCode());
-        hash = 17 * hash + (int) (value ^ (value >>> 32));
-        return hash;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof IntegerConstantType) {
-            IntegerConstantType other = (IntegerConstantType) obj;
-            return Objects.equals(type, other.type) && Objects.equals(value, other.value);
-        }
-        return false;
+        return 0;
     }
 
     @Override
     public String toString() {
-        if (getType().getBits() == 1) {
-            return value == 0 ? "i1 false" : "i1 true";
-        }
-        return String.format("%s %d", type, value);
+        return "void";
     }
 }

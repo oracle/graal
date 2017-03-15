@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,28 +30,44 @@
 package com.oracle.truffle.llvm.runtime.types;
 
 import java.util.Arrays;
-import java.util.Objects;
 
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBlock;
-import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBlock.MetadataReference;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
-import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
-public class StructureType implements AggregateType, ValueSymbol {
+public final class StructureType extends AggregateType {
 
     private String name = LLVMIdentifier.UNKNOWN;
-
     private final boolean isPacked;
-
     private final Type[] types;
-
-    private MetadataReference metadata = MetadataBlock.voidRef;
 
     public StructureType(boolean isPacked, Type[] types) {
         this.isPacked = isPacked;
         this.types = types;
+    }
+
+    public Type[] getElementTypes() {
+        return types;
+    }
+
+    public boolean isPacked() {
+        return isPacked;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    @Override
+    public int getBitSize() {
+        if (isPacked) {
+            return Arrays.stream(types).mapToInt(Type::getBitSize).sum();
+        } else {
+            throw new UnsupportedOperationException("TargetDataLayout is necessary to compute Padding information!");
+        }
     }
 
     @Override
@@ -60,37 +76,13 @@ public class StructureType implements AggregateType, ValueSymbol {
     }
 
     @Override
-    public int getBits() {
-        if (isPacked) {
-            return Arrays.stream(types).mapToInt(Type::getBits).sum();
-        } else {
-            throw new UnsupportedOperationException("TargetDataLayout is necessary to compute Padding information!");
-        }
+    public int getNumberOfElements() {
+        return types.length;
     }
 
     @Override
     public Type getElementType(int index) {
         return types[index];
-    }
-
-    @Override
-    public int getLength() {
-        return types.length;
-    }
-
-    @Override
-    public LLVMBaseType getLLVMBaseType() {
-        return LLVMBaseType.STRUCT;
-    }
-
-    @Override
-    public LLVMFunctionDescriptor.LLVMRuntimeType getRuntimeType() {
-        return LLVMFunctionDescriptor.LLVMRuntimeType.STRUCT;
-    }
-
-    @Override
-    public String getName() {
-        return name;
     }
 
     @Override
@@ -117,7 +109,7 @@ public class StructureType implements AggregateType, ValueSymbol {
     }
 
     @Override
-    public int getIndexOffset(int index, DataSpecConverter targetDataLayout) {
+    public int getOffsetOf(int index, DataSpecConverter targetDataLayout) {
         int offset = 0;
         for (int i = 0; i < index; i++) {
             final Type elementType = types[i];
@@ -141,17 +133,12 @@ public class StructureType implements AggregateType, ValueSymbol {
     }
 
     @Override
-    public Type getType() {
-        return this;
-    }
-
-    public boolean isPacked() {
-        return isPacked;
-    }
-
-    @Override
-    public void setName(String name) {
-        this.name = LLVMIdentifier.toTypeIdentifier(name);
+    public String toString() {
+        if (name.equals(LLVMIdentifier.UNKNOWN)) {
+            return toDeclarationString();
+        } else {
+            return name;
+        }
     }
 
     private String toDeclarationString() {
@@ -183,53 +170,4 @@ public class StructureType implements AggregateType, ValueSymbol {
         return str.toString();
     }
 
-    @Override
-    public void setMetadataReference(MetadataReference metadata) {
-        this.metadata = metadata;
-    }
-
-    @Override
-    public MetadataReference getMetadataReference() {
-        return metadata;
-    }
-
-    @Override
-    public int hashCode() {
-        int hash = 11;
-        hash = 23 * hash + (isPacked ? 1231 : 1237);
-        for (Type type : types) {
-            /*
-             * Those types could create cycles, so we ignore them for hashCode() calculation.
-             */
-            if (type instanceof AggregateType || type instanceof PointerType || type instanceof FunctionType) {
-                hash = 23 * hash + 47;
-                continue;
-            }
-            hash = 23 * hash + type.hashCode();
-        }
-        return hash;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-
-        } else if (obj instanceof StructureType) {
-            final StructureType other = (StructureType) obj;
-            return Objects.equals(name, other.name) && isPacked == other.isPacked && Arrays.equals(types, other.types);
-
-        } else {
-            return false;
-        }
-    }
-
-    @Override
-    public String toString() {
-        if (name.equals(LLVMIdentifier.UNKNOWN)) {
-            return toDeclarationString();
-        } else {
-            return name;
-        }
-    }
 }

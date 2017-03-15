@@ -34,13 +34,14 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 class AsmRegisterOperand implements AsmOperand {
     private String register;
 
     private static final Map<String, String> mapping;
-    private static final Map<String, LLVMBaseType> width;
+    private static final Map<String, Type> width;
     private static final Map<String, Integer> shift;
     private static final Set<String> registers;
 
@@ -162,117 +163,117 @@ class AsmRegisterOperand implements AsmOperand {
         mapping.put("r15", "r15");
 
         width = new HashMap<>();
-        width.put("ah", LLVMBaseType.I8);
-        width.put("al", LLVMBaseType.I8);
-        width.put("ax", LLVMBaseType.I16);
-        width.put("eax", LLVMBaseType.I32);
-        width.put("rax", LLVMBaseType.I64);
-        width.put("r0d", LLVMBaseType.I32);
-        width.put("r0w", LLVMBaseType.I16);
-        width.put("r0l", LLVMBaseType.I8);
-        width.put("r0", LLVMBaseType.I64);
+        width.put("ah", PrimitiveType.I8);
+        width.put("al", PrimitiveType.I8);
+        width.put("ax", PrimitiveType.I16);
+        width.put("eax", PrimitiveType.I32);
+        width.put("rax", PrimitiveType.I64);
+        width.put("r0d", PrimitiveType.I32);
+        width.put("r0w", PrimitiveType.I16);
+        width.put("r0l", PrimitiveType.I8);
+        width.put("r0", PrimitiveType.I64);
 
-        width.put("ch", LLVMBaseType.I8);
-        width.put("cl", LLVMBaseType.I8);
-        width.put("cx", LLVMBaseType.I16);
-        width.put("ecx", LLVMBaseType.I32);
-        width.put("rcx", LLVMBaseType.I64);
-        width.put("r1d", LLVMBaseType.I32);
-        width.put("r1w", LLVMBaseType.I16);
-        width.put("r1l", LLVMBaseType.I8);
-        width.put("r1", LLVMBaseType.I64);
+        width.put("ch", PrimitiveType.I8);
+        width.put("cl", PrimitiveType.I8);
+        width.put("cx", PrimitiveType.I16);
+        width.put("ecx", PrimitiveType.I32);
+        width.put("rcx", PrimitiveType.I64);
+        width.put("r1d", PrimitiveType.I32);
+        width.put("r1w", PrimitiveType.I16);
+        width.put("r1l", PrimitiveType.I8);
+        width.put("r1", PrimitiveType.I64);
 
-        width.put("dh", LLVMBaseType.I8);
-        width.put("dl", LLVMBaseType.I8);
-        width.put("dx", LLVMBaseType.I16);
-        width.put("edx", LLVMBaseType.I32);
-        width.put("rdx", LLVMBaseType.I64);
-        width.put("r2d", LLVMBaseType.I32);
-        width.put("r2w", LLVMBaseType.I16);
-        width.put("r2l", LLVMBaseType.I8);
-        width.put("r2", LLVMBaseType.I64);
+        width.put("dh", PrimitiveType.I8);
+        width.put("dl", PrimitiveType.I8);
+        width.put("dx", PrimitiveType.I16);
+        width.put("edx", PrimitiveType.I32);
+        width.put("rdx", PrimitiveType.I64);
+        width.put("r2d", PrimitiveType.I32);
+        width.put("r2w", PrimitiveType.I16);
+        width.put("r2l", PrimitiveType.I8);
+        width.put("r2", PrimitiveType.I64);
 
-        width.put("bh", LLVMBaseType.I8);
-        width.put("bl", LLVMBaseType.I8);
-        width.put("bx", LLVMBaseType.I16);
-        width.put("ebx", LLVMBaseType.I32);
-        width.put("rbx", LLVMBaseType.I64);
-        width.put("r3d", LLVMBaseType.I32);
-        width.put("r3w", LLVMBaseType.I16);
-        width.put("r3l", LLVMBaseType.I8);
-        width.put("r3", LLVMBaseType.I64);
+        width.put("bh", PrimitiveType.I8);
+        width.put("bl", PrimitiveType.I8);
+        width.put("bx", PrimitiveType.I16);
+        width.put("ebx", PrimitiveType.I32);
+        width.put("rbx", PrimitiveType.I64);
+        width.put("r3d", PrimitiveType.I32);
+        width.put("r3w", PrimitiveType.I16);
+        width.put("r3l", PrimitiveType.I8);
+        width.put("r3", PrimitiveType.I64);
 
-        width.put("sp", LLVMBaseType.I16);
-        width.put("esp", LLVMBaseType.I32);
-        width.put("rsp", LLVMBaseType.I64);
-        width.put("r4d", LLVMBaseType.I32);
-        width.put("r4w", LLVMBaseType.I16);
-        width.put("r4l", LLVMBaseType.I8);
-        width.put("r4", LLVMBaseType.I64);
+        width.put("sp", PrimitiveType.I16);
+        width.put("esp", PrimitiveType.I32);
+        width.put("rsp", PrimitiveType.I64);
+        width.put("r4d", PrimitiveType.I32);
+        width.put("r4w", PrimitiveType.I16);
+        width.put("r4l", PrimitiveType.I8);
+        width.put("r4", PrimitiveType.I64);
 
-        width.put("bp", LLVMBaseType.I16);
-        width.put("ebp", LLVMBaseType.I32);
-        width.put("rbp", LLVMBaseType.I64);
-        width.put("r5d", LLVMBaseType.I32);
-        width.put("r5w", LLVMBaseType.I16);
-        width.put("r5l", LLVMBaseType.I8);
-        width.put("r5", LLVMBaseType.I64);
+        width.put("bp", PrimitiveType.I16);
+        width.put("ebp", PrimitiveType.I32);
+        width.put("rbp", PrimitiveType.I64);
+        width.put("r5d", PrimitiveType.I32);
+        width.put("r5w", PrimitiveType.I16);
+        width.put("r5l", PrimitiveType.I8);
+        width.put("r5", PrimitiveType.I64);
 
-        width.put("si", LLVMBaseType.I16);
-        width.put("esi", LLVMBaseType.I32);
-        width.put("rsi", LLVMBaseType.I64);
-        width.put("r6d", LLVMBaseType.I32);
-        width.put("r6w", LLVMBaseType.I16);
-        width.put("r6l", LLVMBaseType.I8);
-        width.put("r6", LLVMBaseType.I64);
+        width.put("si", PrimitiveType.I16);
+        width.put("esi", PrimitiveType.I32);
+        width.put("rsi", PrimitiveType.I64);
+        width.put("r6d", PrimitiveType.I32);
+        width.put("r6w", PrimitiveType.I16);
+        width.put("r6l", PrimitiveType.I8);
+        width.put("r6", PrimitiveType.I64);
 
-        width.put("di", LLVMBaseType.I16);
-        width.put("edi", LLVMBaseType.I32);
-        width.put("rdi", LLVMBaseType.I64);
-        width.put("r7d", LLVMBaseType.I32);
-        width.put("r7w", LLVMBaseType.I16);
-        width.put("r7l", LLVMBaseType.I8);
-        width.put("r7", LLVMBaseType.I64);
+        width.put("di", PrimitiveType.I16);
+        width.put("edi", PrimitiveType.I32);
+        width.put("rdi", PrimitiveType.I64);
+        width.put("r7d", PrimitiveType.I32);
+        width.put("r7w", PrimitiveType.I16);
+        width.put("r7l", PrimitiveType.I8);
+        width.put("r7", PrimitiveType.I64);
 
-        width.put("r8d", LLVMBaseType.I32);
-        width.put("r8w", LLVMBaseType.I16);
-        width.put("r8l", LLVMBaseType.I8);
-        width.put("r8", LLVMBaseType.I64);
+        width.put("r8d", PrimitiveType.I32);
+        width.put("r8w", PrimitiveType.I16);
+        width.put("r8l", PrimitiveType.I8);
+        width.put("r8", PrimitiveType.I64);
 
-        width.put("r9d", LLVMBaseType.I32);
-        width.put("r9w", LLVMBaseType.I16);
-        width.put("r9l", LLVMBaseType.I8);
-        width.put("r9", LLVMBaseType.I64);
+        width.put("r9d", PrimitiveType.I32);
+        width.put("r9w", PrimitiveType.I16);
+        width.put("r9l", PrimitiveType.I8);
+        width.put("r9", PrimitiveType.I64);
 
-        width.put("r10d", LLVMBaseType.I32);
-        width.put("r10w", LLVMBaseType.I16);
-        width.put("r10l", LLVMBaseType.I8);
-        width.put("r10", LLVMBaseType.I64);
+        width.put("r10d", PrimitiveType.I32);
+        width.put("r10w", PrimitiveType.I16);
+        width.put("r10l", PrimitiveType.I8);
+        width.put("r10", PrimitiveType.I64);
 
-        width.put("r11d", LLVMBaseType.I32);
-        width.put("r11w", LLVMBaseType.I16);
-        width.put("r11l", LLVMBaseType.I8);
-        width.put("r11", LLVMBaseType.I64);
+        width.put("r11d", PrimitiveType.I32);
+        width.put("r11w", PrimitiveType.I16);
+        width.put("r11l", PrimitiveType.I8);
+        width.put("r11", PrimitiveType.I64);
 
-        width.put("r12d", LLVMBaseType.I32);
-        width.put("r12w", LLVMBaseType.I16);
-        width.put("r12l", LLVMBaseType.I8);
-        width.put("r12", LLVMBaseType.I64);
+        width.put("r12d", PrimitiveType.I32);
+        width.put("r12w", PrimitiveType.I16);
+        width.put("r12l", PrimitiveType.I8);
+        width.put("r12", PrimitiveType.I64);
 
-        width.put("r13d", LLVMBaseType.I32);
-        width.put("r13w", LLVMBaseType.I16);
-        width.put("r13l", LLVMBaseType.I8);
-        width.put("r13", LLVMBaseType.I64);
+        width.put("r13d", PrimitiveType.I32);
+        width.put("r13w", PrimitiveType.I16);
+        width.put("r13l", PrimitiveType.I8);
+        width.put("r13", PrimitiveType.I64);
 
-        width.put("r14d", LLVMBaseType.I32);
-        width.put("r14w", LLVMBaseType.I16);
-        width.put("r14l", LLVMBaseType.I8);
-        width.put("r14", LLVMBaseType.I64);
+        width.put("r14d", PrimitiveType.I32);
+        width.put("r14w", PrimitiveType.I16);
+        width.put("r14l", PrimitiveType.I8);
+        width.put("r14", PrimitiveType.I64);
 
-        width.put("r15d", LLVMBaseType.I32);
-        width.put("r15w", LLVMBaseType.I16);
-        width.put("r15l", LLVMBaseType.I8);
-        width.put("r15", LLVMBaseType.I64);
+        width.put("r15d", PrimitiveType.I32);
+        width.put("r15w", PrimitiveType.I16);
+        width.put("r15l", PrimitiveType.I8);
+        width.put("r15", PrimitiveType.I64);
 
         shift = new HashMap<>();
         shift.put("ah", REG16_HI_SHIFT);
@@ -298,7 +299,7 @@ class AsmRegisterOperand implements AsmOperand {
         return getBaseRegister(getRegister());
     }
 
-    public LLVMBaseType getWidth() {
+    public Type getWidth() {
         return getWidth(getRegister());
     }
 
@@ -314,7 +315,7 @@ class AsmRegisterOperand implements AsmOperand {
         return mapping.get(reg);
     }
 
-    private static LLVMBaseType getWidth(String reg) {
+    private static Type getWidth(String reg) {
         return width.get(reg);
     }
 

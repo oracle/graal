@@ -36,11 +36,14 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions.MallocNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
 
@@ -64,30 +67,15 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
         OVERFLOW_AREA;
     }
 
-    private static VarArgArea getVarArgArea(LLVMRuntimeType type) {
-        switch (type) {
-            case I1:
-            case I8:
-            case I16:
-            case I32:
-            case I64:
-            case I1_POINTER:
-            case I8_POINTER:
-            case I16_POINTER:
-            case I32_POINTER:
-            case I64_POINTER:
-            case HALF_POINTER:
-            case FLOAT_POINTER:
-            case DOUBLE_POINTER:
-            case ADDRESS:
-                return VarArgArea.GP_AREA;
-            case FLOAT:
-            case DOUBLE:
-                return VarArgArea.FP_AREA;
-            case X86_FP80:
-                return VarArgArea.OVERFLOW_AREA;
-            default:
-                throw new AssertionError(type);
+    private static VarArgArea getVarArgArea(Type type) {
+        if (Type.isIntegerType(type) || type instanceof PointerType || type instanceof FunctionType) {
+            return VarArgArea.GP_AREA;
+        } else if (type == PrimitiveType.FLOAT || type == PrimitiveType.DOUBLE) {
+            return VarArgArea.FP_AREA;
+        } else if (type == PrimitiveType.X86_FP80) {
+            return VarArgArea.OVERFLOW_AREA;
+        } else {
+            throw new AssertionError(type);
         }
     }
 
@@ -107,7 +95,7 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
         int argumentsLength = realArguments.length;
         if (varArgsStartIndex != argumentsLength) {
             int nrVarArgs = argumentsLength - varArgsStartIndex;
-            LLVMRuntimeType[] types = getTypes(realArguments, varArgsStartIndex);
+            Type[] types = getTypes(realArguments, varArgsStartIndex);
             int gpOffset = 0;
             int fpOffset = X86_64BitVarArgs.MAX_GP_OFFSET;
             int overFlowOffset = 0;
@@ -140,7 +128,7 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
                         break;
                     case OVERFLOW_AREA:
                         currentAddress = overflowArea.increment(overFlowOffset);
-                        if (types[i] != LLVMRuntimeType.X86_FP80) {
+                        if (types[i] != PrimitiveType.X86_FP80) {
                             throw new AssertionError();
                         }
                         overFlowOffset += LONG_DOUBLE_SIZE;
@@ -161,15 +149,15 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
         return newArguments;
     }
 
-    static int getSize(LLVMRuntimeType[] types) {
+    static int getSize(Type[] types) {
         return X86_64BitVarArgs.MAX_FP_OFFSET + getOverFlowSize(types);
     }
 
-    private static int getOverFlowSize(LLVMRuntimeType[] types) {
+    private static int getOverFlowSize(Type[] types) {
         int overFlowSize = 0;
         int remainingFpArea = X86_64BitVarArgs.MAX_FP_OFFSET - X86_64BitVarArgs.MAX_GP_OFFSET;
         int remainingGpArea = X86_64BitVarArgs.MAX_GP_OFFSET;
-        for (LLVMRuntimeType type : types) {
+        for (Type type : types) {
             VarArgArea area = getVarArgArea(type);
             switch (area) {
                 case FP_AREA:
@@ -187,7 +175,7 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
                     }
                     break;
                 case OVERFLOW_AREA:
-                    if (type != LLVMRuntimeType.X86_FP80) {
+                    if (type != PrimitiveType.X86_FP80) {
                         throw new AssertionError();
                     }
                     overFlowSize += LONG_DOUBLE_SIZE;
@@ -199,9 +187,9 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
         return overFlowSize;
     }
 
-    static LLVMRuntimeType[] getTypes(Object[] arguments, int varArgsStartIndex) {
+    static Type[] getTypes(Object[] arguments, int varArgsStartIndex) {
         Object firstArgument = arguments[varArgsStartIndex];
-        LLVMRuntimeType[] types = new LLVMRuntimeType[arguments.length - varArgsStartIndex];
+        Type[] types = new Type[arguments.length - varArgsStartIndex];
         getArgumentType(firstArgument);
         for (int i = varArgsStartIndex, j = 0; i < arguments.length; i++, j++) {
             types[j] = getArgumentType(arguments[i]);
@@ -209,26 +197,26 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
         return types;
     }
 
-    private static LLVMRuntimeType getArgumentType(Object arg) {
-        LLVMRuntimeType type;
+    private static Type getArgumentType(Object arg) {
+        Type type;
         if (arg instanceof Boolean) {
-            type = LLVMRuntimeType.I1;
+            type = PrimitiveType.I1;
         } else if (arg instanceof Byte) {
-            type = LLVMRuntimeType.I8;
+            type = PrimitiveType.I8;
         } else if (arg instanceof Short) {
-            type = LLVMRuntimeType.I16;
+            type = PrimitiveType.I16;
         } else if (arg instanceof Integer) {
-            type = LLVMRuntimeType.I32;
+            type = PrimitiveType.I32;
         } else if (arg instanceof Long) {
-            type = LLVMRuntimeType.I64;
+            type = PrimitiveType.I64;
         } else if (arg instanceof Float) {
-            type = LLVMRuntimeType.FLOAT;
+            type = PrimitiveType.FLOAT;
         } else if (arg instanceof Double) {
-            type = LLVMRuntimeType.DOUBLE;
+            type = PrimitiveType.DOUBLE;
         } else if (arg instanceof LLVMAddress) {
-            type = LLVMRuntimeType.ADDRESS;
+            type = new PointerType(null);
         } else if (arg instanceof LLVM80BitFloat) {
-            type = LLVMRuntimeType.X86_FP80;
+            type = PrimitiveType.X86_FP80;
         } else {
             throw new AssertionError(arg);
         }
@@ -236,7 +224,7 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
     }
 
     @ExplodeLoop
-    void allocateOverflowArgArea(LLVMRuntimeType type, VirtualFrame frame, LLVMAddress address, int varArgsStartIndex, int nrVarArgs, int typeLength, final int nrVarArgsInRegisterArea) {
+    void allocateOverflowArgArea(Type type, VirtualFrame frame, LLVMAddress address, int varArgsStartIndex, int nrVarArgs, int typeLength, final int nrVarArgsInRegisterArea) {
         if (nrVarArgsInRegisterArea != nrVarArgs) {
             final int remainingVarArgs = nrVarArgs - nrVarArgsInRegisterArea;
             LLVMAddress stackArea = malloc.execute(typeLength * remainingVarArgs);
@@ -249,8 +237,18 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
         }
     }
 
-    private static void storeArgument(LLVMRuntimeType type, LLVMAddress currentAddress, Object object) {
-        switch (type) {
+    private static void storeArgument(Type type, LLVMAddress currentAddress, Object object) {
+        if (type instanceof PrimitiveType) {
+            doPrimitiveWrite(type, currentAddress, object);
+        } else if (type instanceof PointerType) {
+            LLVMMemory.putAddress(currentAddress, (LLVMAddress) object);
+        } else {
+            throw new AssertionError(type);
+        }
+    }
+
+    private static void doPrimitiveWrite(Type type, LLVMAddress currentAddress, Object object) throws AssertionError {
+        switch (((PrimitiveType) type).getKind()) {
             case I1:
                 LLVMMemory.putI1(currentAddress, (boolean) object);
                 break;
@@ -274,17 +272,6 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
                 break;
             case X86_FP80:
                 LLVMMemory.put80BitFloat(currentAddress, (LLVM80BitFloat) object);
-                break;
-            case I1_POINTER:
-            case I8_POINTER:
-            case I16_POINTER:
-            case I32_POINTER:
-            case I64_POINTER:
-            case HALF_POINTER:
-            case FLOAT_POINTER:
-            case DOUBLE_POINTER:
-            case ADDRESS:
-                LLVMMemory.putAddress(currentAddress, (LLVMAddress) object);
                 break;
             default:
                 throw new AssertionError(type);

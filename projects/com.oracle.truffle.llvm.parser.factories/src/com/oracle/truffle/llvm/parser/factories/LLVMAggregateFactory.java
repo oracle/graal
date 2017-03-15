@@ -56,7 +56,10 @@ import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtr
 import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractI64ValueNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractI8ValueNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
-import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
+import com.oracle.truffle.llvm.runtime.types.ArrayType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 final class LLVMAggregateFactory {
@@ -64,35 +67,38 @@ final class LLVMAggregateFactory {
     private LLVMAggregateFactory() {
     }
 
-    static LLVMExpressionNode createExtractValue(LLVMBaseType type, LLVMExpressionNode targetAddress) {
-        switch (type) {
-            case I1:
-                return LLVMExtractI1ValueNodeGen.create(targetAddress);
-            case I8:
-                return LLVMExtractI8ValueNodeGen.create(targetAddress);
-            case I16:
-                return LLVMExtractI16ValueNodeGen.create(targetAddress);
-            case I32:
-                return LLVMExtractI32ValueNodeGen.create(targetAddress);
-            case I64:
-                return LLVMExtractI64ValueNodeGen.create(targetAddress);
-            case FLOAT:
-                return LLVMExtractFloatValueNodeGen.create(targetAddress);
-            case DOUBLE:
-                return LLVMExtractDoubleValueNodeGen.create(targetAddress);
-            case X86_FP80:
-                return LLVMExtract80BitFloatValueNodeGen.create(targetAddress);
-            case ADDRESS:
-            case STRUCT:
-                return LLVMExtractAddressValueNodeGen.create(targetAddress);
-            default:
-                throw new AssertionError(type);
+    static LLVMExpressionNode createExtractValue(Type type, LLVMExpressionNode targetAddress) {
+        if (type instanceof PrimitiveType) {
+            switch (((PrimitiveType) type).getKind()) {
+                case I1:
+                    return LLVMExtractI1ValueNodeGen.create(targetAddress);
+                case I8:
+                    return LLVMExtractI8ValueNodeGen.create(targetAddress);
+                case I16:
+                    return LLVMExtractI16ValueNodeGen.create(targetAddress);
+                case I32:
+                    return LLVMExtractI32ValueNodeGen.create(targetAddress);
+                case I64:
+                    return LLVMExtractI64ValueNodeGen.create(targetAddress);
+                case FLOAT:
+                    return LLVMExtractFloatValueNodeGen.create(targetAddress);
+                case DOUBLE:
+                    return LLVMExtractDoubleValueNodeGen.create(targetAddress);
+                case X86_FP80:
+                    return LLVMExtract80BitFloatValueNodeGen.create(targetAddress);
+                default:
+                    throw new AssertionError(type);
+            }
+        } else if (type instanceof PointerType || type instanceof StructureType) {
+            return LLVMExtractAddressValueNodeGen.create(targetAddress);
+        } else {
+            throw new AssertionError(type);
         }
     }
 
     static LLVMExpressionNode createInsertValue(LLVMParserRuntime runtime, LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, int size, int offset,
-                    LLVMExpressionNode valueToInsert, LLVMBaseType llvmType) {
-        switch (llvmType) {
+                    LLVMExpressionNode valueToInsert, PrimitiveType llvmType) {
+        switch (llvmType.getKind()) {
             case FLOAT:
                 return new LLVMInsertFloatValueNode(runtime.getHeapFunctions(), sourceAggregate, resultAggregate, size, offset, valueToInsert);
             case DOUBLE:
@@ -124,37 +130,39 @@ final class LLVMAggregateFactory {
 
     private static LLVMStructWriteNode createStructWriteNode(LLVMParserRuntime runtime, LLVMExpressionNode parsedConstant, Type resolvedType) {
         int byteSize = runtime.getByteSize(resolvedType);
-        LLVMBaseType llvmType = resolvedType.getLLVMType().getType();
-        switch (llvmType) {
-            case I1:
-                return new LLVMI1StructWriteNode(parsedConstant);
-            case I8:
-                return new LLVMI8StructWriteNode(parsedConstant);
-            case I16:
-                return new LLVMI16StructWriteNode(parsedConstant);
-            case I32:
-                return new LLVMI32StructWriteNode(parsedConstant);
-            case I64:
-                return new LLVMI64StructWriteNode(parsedConstant);
-            case FLOAT:
-                return new LLVMFloatStructWriteNode(parsedConstant);
-            case DOUBLE:
-                return new LLVMDoubleStructWriteNode(parsedConstant);
-            case X86_FP80:
-                return new LLVM80BitFloatStructWriteNode(parsedConstant);
-            case ARRAY:
-            case STRUCT:
-                if (byteSize == 0) {
-                    return new LLVMEmptyStructWriteNode();
-                } else {
-                    return new LLVMCompoundStructWriteNode(runtime.getHeapFunctions(), parsedConstant, byteSize);
-                }
-            case ADDRESS:
-                return new LLVMAddressStructWriteNode(parsedConstant);
-            case FUNCTION_ADDRESS:
-                return new LLVMFunctionStructWriteNode(parsedConstant);
-            default:
-                throw new AssertionError(llvmType);
+        if (resolvedType instanceof PrimitiveType) {
+            switch (((PrimitiveType) resolvedType).getKind()) {
+                case I1:
+                    return new LLVMI1StructWriteNode(parsedConstant);
+                case I8:
+                    return new LLVMI8StructWriteNode(parsedConstant);
+                case I16:
+                    return new LLVMI16StructWriteNode(parsedConstant);
+                case I32:
+                    return new LLVMI32StructWriteNode(parsedConstant);
+                case I64:
+                    return new LLVMI64StructWriteNode(parsedConstant);
+                case FLOAT:
+                    return new LLVMFloatStructWriteNode(parsedConstant);
+                case DOUBLE:
+                    return new LLVMDoubleStructWriteNode(parsedConstant);
+                case X86_FP80:
+                    return new LLVM80BitFloatStructWriteNode(parsedConstant);
+                default:
+                    throw new AssertionError(resolvedType);
+            }
+        } else if (resolvedType instanceof ArrayType || resolvedType instanceof StructureType) {
+            if (byteSize == 0) {
+                return new LLVMEmptyStructWriteNode();
+            } else {
+                return new LLVMCompoundStructWriteNode(runtime.getHeapFunctions(), parsedConstant, byteSize);
+            }
+        } else if (Type.isFunctionOrFunctionPointer(resolvedType)) {
+            return new LLVMFunctionStructWriteNode(parsedConstant);
+        } else if (resolvedType instanceof PointerType) {
+            return new LLVMAddressStructWriteNode(parsedConstant);
+        } else {
+            throw new AssertionError(resolvedType);
         }
     }
 
