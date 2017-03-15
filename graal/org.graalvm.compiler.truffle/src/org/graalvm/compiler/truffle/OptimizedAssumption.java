@@ -134,12 +134,14 @@ public final class OptimizedAssumption extends AbstractAssumption {
         final int skip = 1;
         final int limit = TruffleCompilerOptions.getValue(TraceTruffleStackTraceLimit);
         StackTraceElement[] stackTrace = new Throwable().getStackTrace();
-        String suffix = stackTrace.length > skip + limit ? "\n  ..." : "";
         StringBuilder strb = new StringBuilder();
         String sep = "";
         for (int i = skip; i < stackTrace.length && i < skip + limit; i++) {
-            strb.append(sep).append(stackTrace[i].toString()).append(suffix);
+            strb.append(sep).append("  ").append(stackTrace[i].toString());
             sep = "\n";
+        }
+        if (stackTrace.length > skip + limit) {
+            strb.append("\n    ...");
         }
 
         TTY.out().out().println(strb);
