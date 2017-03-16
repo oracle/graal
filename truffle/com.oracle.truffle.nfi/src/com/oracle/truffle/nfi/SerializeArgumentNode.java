@@ -192,7 +192,7 @@ abstract class SerializeArgumentNode extends Node {
         }
     }
 
-    abstract static class SerializeObjectArgumentNode extends SerializeArgumentNode {
+    static class SerializeObjectArgumentNode extends SerializeArgumentNode {
 
         private final LibFFIType argType;
 
@@ -200,8 +200,8 @@ abstract class SerializeArgumentNode extends Node {
             this.argType = argType;
         }
 
-        @Specialization
-        protected Object serializeObject(NativeArgumentBuffer buffer, TruffleObject object) {
+        @Override
+        Object execute(NativeArgumentBuffer buffer, Object object) {
             argType.serialize(buffer, object);
             return null;
         }
