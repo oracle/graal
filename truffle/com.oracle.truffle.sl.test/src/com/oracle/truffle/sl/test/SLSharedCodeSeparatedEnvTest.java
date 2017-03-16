@@ -40,29 +40,34 @@
  */
 package com.oracle.truffle.sl.test;
 
+import com.oracle.truffle.api.instrumentation.EventBinding;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotRuntime;
 import com.oracle.truffle.sl.SLLanguage;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.concurrent.Executor;
 import org.junit.After;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import org.junit.Before;
 import org.junit.Test;
 
 public class SLSharedCodeSeparatedEnvTest implements Executor {
 
+    private ByteArrayOutputStream osRuntime;
     private ByteArrayOutputStream os1;
     private ByteArrayOutputStream os2;
     private PolyglotEngine e1;
     private PolyglotEngine e2;
-    private int instances;
     private int executes;
 
     @Before
     public void initializeEngines() {
-        PolyglotRuntime runtime = PolyglotRuntime.newBuilder().build();
+        osRuntime = new ByteArrayOutputStream();
+        PolyglotRuntime runtime = PolyglotRuntime.newBuilder().setOut(osRuntime).setErr(osRuntime).build();
 
         os1 = new ByteArrayOutputStream();
         os2 = new ByteArrayOutputStream();
@@ -80,11 +85,11 @@ public class SLSharedCodeSeparatedEnvTest implements Executor {
             executor(this).
             build();
 
-        instances = SLLanguage.counter;
     }
 
     @Test
     public void shareCodeUseDifferentOutputStreams() throws Exception {
+        int instances = SLLanguage.counter;
         Source sayHello = Source.newBuilder(
             "function main() {\n" +
             "  println(\"Ahoj\" + import(\"extra\"));" +
@@ -102,14 +107,48 @@ public class SLSharedCodeSeparatedEnvTest implements Executor {
         assertEquals("Ahoj2\n", os2.toString("UTF-8"));
 
         assertEquals("Executor used once", 1, executes);
+        assertEquals("One SLLanguage instance created", instances + 1, SLLanguage.counter);
+    }
+
+    @Test
+    public void instrumentsSeeOutputOfBoth() throws Exception {
+        PolyglotEngine.Instrument outInstr = e2.getInstruments().get("captureOutput");
+        outInstr.setEnabled(true);
+        ByteArrayOutputStream outConsumer = outInstr.lookup(ByteArrayOutputStream.class);
+        assertNotNull("Stream capturing is ready", outConsumer);
+
+        Source sayHello = Source.newBuilder(
+                        "function main() {\n" +
+                                        "  println(\"Ahoj\" + import(\"extra\"));" +
+                                        "}").mimeType("application/x-sl").name("sayHello.sl").build();
+        // @formatter:on
+
+        e1.eval(sayHello);
+        assertEquals("Ahoj1\n", os1.toString("UTF-8"));
+        assertEquals("", os2.toString("UTF-8"));
+
+        e2.eval(sayHello);
+        assertEquals("Ahoj1\n", os1.toString("UTF-8"));
+        assertEquals("Ahoj2\n", os2.toString("UTF-8"));
+
+        outInstr.setEnabled(false);
+
+        assertEquals("Output of instrument goes to osRuntime",
+                        "initializingOutputCapture\n" + "Ahoj1\n" + "Ahoj2\n" + "endOfOutputCapture\n",
+                        osRuntime.toString("UTF-8"));
+
+        assertEquals("Output of both engines and instruments is capturable",
+                        "initializingOutputCapture\n" +
+                                        "Ahoj1\n" +
+                                        "Ahoj2\n" +
+                                        "endOfOutputCapture\n",
+                        outConsumer.toString("UTF-8"));
     }
 
     @After
     public void cleanUpEngines() {
         e1.dispose();
         e2.dispose();
-
-        assertEquals("One SLLanguage instance created", instances + 1, SLLanguage.counter);
     }
 
     @Override
@@ -118,5 +157,45 @@ public class SLSharedCodeSeparatedEnvTest implements Executor {
         command.run();
     }
 
+    @TruffleInstrument.Registration(id = "captureOutput")
+    public static class CaptureOutput extends TruffleInstrument {
+        private EventBinding<ByteArrayOutputStream> binding;
 
+        @Override
+        protected void onCreate(final TruffleInstrument.Env env) {
+            final ByteArrayOutputStream capture = new ByteArrayOutputStream() {
+                @Override
+                public void write(byte[] b) throws IOException {
+                    super.write(b);
+                }
+
+                @Override
+                public void write(byte[] b, int off, int len) {
+                    super.write(b, off, len);
+                }
+
+                @Override
+                public synchronized void write(int b) {
+                    super.write(b);
+                }
+            };
+            binding = env.getInstrumenter().attachOutConsumer(capture);
+            env.registerService(capture);
+            try {
+                env.out().write("initializingOutputCapture\n".getBytes("UTF-8"));
+            } catch (IOException ex) {
+                throw new IllegalStateException(ex);
+            }
+        }
+
+        @Override
+        protected void onDispose(Env env) {
+            try {
+                env.out().write("endOfOutputCapture\n".getBytes("UTF-8"));
+            } catch (IOException ex) {
+                throw new IllegalStateException(ex);
+            }
+            binding.dispose();
+        }
+    }
 }

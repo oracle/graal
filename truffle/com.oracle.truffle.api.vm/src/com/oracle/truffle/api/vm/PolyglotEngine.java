@@ -298,8 +298,8 @@ public class PolyglotEngine {
         this.err = err;
 
         this.executor = ComputeInExecutor.wrap(executor);
-        this.globals  = new HashMap<>(globals);
-        this.config  = config;
+        this.globals = new HashMap<>(globals);
+        this.config = config;
 
         initLanguages();
     }
@@ -541,12 +541,34 @@ public class PolyglotEngine {
         public PolyglotEngine build() {
             assertNoCompilation();
 
-            DispatchOutputStream realOut = SPIAccessor.instrumentAccess().createDispatchOutput(out == null ? System.out : out);
-            DispatchOutputStream realErr = SPIAccessor.instrumentAccess().createDispatchOutput(err == null ? System.err : err);
-            InputStream realIn = in == null ? System.in : in;
-            PolyglotRuntime realRuntime = runtime != null ? runtime : PolyglotRuntime.newBuilder().build();
+            InputStream realIn;
+            DispatchOutputStream realOut;
+            DispatchOutputStream realErr;
 
-            PolyglotShared realShared = realRuntime.createShared(realOut, realErr, realIn);
+            PolyglotRuntime realRuntime = runtime;
+            if (realRuntime == null) {
+                realRuntime = PolyglotRuntime.newBuilder().setIn(in).setOut(out).setErr(err).build();
+
+                realIn = realRuntime.in;
+                realOut = realRuntime.out;
+                realErr = realRuntime.err;
+            } else {
+                if (out == null) {
+                    realOut = realRuntime.out;
+                } else {
+                    realOut = SPIAccessor.instrumentAccess().createDispatchOutput(out);
+                    SPIAccessor.engine().attachOutputConsumer(realOut, realRuntime.out);
+                }
+                if (err == null) {
+                    realErr = realRuntime.err;
+                } else {
+                    realErr = SPIAccessor.instrumentAccess().createDispatchOutput(err);
+                    SPIAccessor.engine().attachOutputConsumer(realErr, realRuntime.err);
+                }
+                realIn = in == null ? realRuntime.in : in;
+            }
+
+            PolyglotShared realShared = realRuntime.createShared();
             return new PolyglotEngine(realShared, executor, realIn, realOut, realErr, globals, arguments);
         }
     }
@@ -1703,6 +1725,10 @@ public class PolyglotEngine {
             return SPI.languageSupport();
         }
 
+        static EngineSupport engine() {
+            return EngineImpl.ENGINE;
+        }
+
         static InstrumentSupport instrumentAccess() {
             return SPI.instrumentSupport();
         }
@@ -1717,10 +1743,11 @@ public class PolyglotEngine {
 
         @Override
         protected EngineSupport engineSupport() {
-            return new EngineImpl();
+            return EngineImpl.ENGINE;
         }
 
         static final class EngineImpl extends EngineSupport {
+            static final EngineImpl ENGINE = new EngineImpl();
 
             @Override
             public boolean isDisposed(Object languageShared) {

@@ -190,6 +190,9 @@ public abstract class Accessor {
 
         @SuppressWarnings("static-method")
         public final DispatchOutputStream createDispatchOutput(OutputStream out) {
+            if (out instanceof DispatchOutputStream) {
+                return (DispatchOutputStream) out;
+            }
             return new DispatchOutputStream(out);
         }
     }

@@ -26,6 +26,7 @@ package com.oracle.truffle.api.vm;
 
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
 
 /**
  * A runtime environment for one or more {@link PolyglotEngine} instances. By default multiple
@@ -46,9 +47,19 @@ import java.io.InputStream;
  * @since 0.25
  */
 public final class PolyglotRuntime {
+    final DispatchOutputStream out;
+    final DispatchOutputStream err;
+    final InputStream in;
     private PolyglotShared shared;
 
     private PolyglotRuntime() {
+        this(null, null, null);
+    }
+
+    private PolyglotRuntime(DispatchOutputStream out, DispatchOutputStream err, InputStream in) {
+        this.out = out;
+        this.err = err;
+        this.in = in;
     }
 
     /**
@@ -62,9 +73,9 @@ public final class PolyglotRuntime {
         return new PolyglotRuntime().new Builder();
     }
 
-    PolyglotShared createShared(DispatchOutputStream realOut, DispatchOutputStream realErr, InputStream realIn) {
+    PolyglotShared createShared() {
         if (shared == null) {
-            shared = new PolyglotShared(realOut, realErr, realIn);
+            shared = new PolyglotShared(out, err, in);
         }
         return shared;
     }
@@ -75,7 +86,50 @@ public final class PolyglotRuntime {
      * @since 0.25
      */
     public final class Builder {
+        private OutputStream out;
+        private OutputStream err;
+        private InputStream in;
+
         private Builder() {
+        }
+
+        /**
+         * Configures default output for languages running in the {@link PolyglotEngine engine}
+         * being built, defaults to {@link System#out}.
+         *
+         * @param os the stream to use as output
+         * @return this builder
+         * @since 0.25
+         */
+        public PolyglotRuntime.Builder setOut(OutputStream os) {
+            out = os;
+            return this;
+        }
+
+        /**
+         * Configures error output for languages running in the {@link PolyglotRuntime runtime}
+         * being built, defaults to {@link System#err}.
+         *
+         * @param os the stream to use as output
+         * @return this builder
+         * @since 0.25
+         */
+        public PolyglotRuntime.Builder setErr(OutputStream os) {
+            err = os;
+            return this;
+        }
+
+        /**
+         * Configures default input for languages running in the {@link PolyglotRuntime runtime}
+         * being built, defaults to {@link System#in}.
+         *
+         * @param is the stream to use as input
+         * @return this builder
+         * @since 0.25
+         */
+        public PolyglotRuntime.Builder setIn(InputStream is) {
+            in = is;
+            return this;
         }
 
         /**
@@ -87,7 +141,10 @@ public final class PolyglotRuntime {
          * @since 0.25
          */
         public PolyglotRuntime build() {
-            return new PolyglotRuntime();
+            DispatchOutputStream realOut = PolyglotEngine.SPIAccessor.instrumentAccess().createDispatchOutput(out == null ? System.out : out);
+            DispatchOutputStream realErr = PolyglotEngine.SPIAccessor.instrumentAccess().createDispatchOutput(err == null ? System.err : err);
+            InputStream realIn = in == null ? System.in : in;
+            return new PolyglotRuntime(realOut, realErr, realIn);
         }
     }
 }

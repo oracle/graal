@@ -46,17 +46,21 @@ public abstract class AbstractInstrumentationTest {
     protected final ByteArrayOutputStream err = new ByteArrayOutputStream();
     final String langMimeType = InstrumentationTestLanguage.MIME_TYPE;
 
+    // @formatter:off
     // BEGIN: com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest
-    private final PolyglotRuntime runtime = PolyglotRuntime.newBuilder().build();
+    private final PolyglotRuntime runtime = PolyglotRuntime.newBuilder().
+        setOut(out).
+        setErr(err).
+        build();
 
     PolyglotEngine createEngine(String mimeType) {
         PolyglotEngine.Builder builder = PolyglotEngine.newBuilder();
         builder.runtime(runtime);
-        builder.setOut(out).setErr(err);
         builder.config(mimeType, "context", context);
         return builder.build();
     }
     // END: com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest
+    // @formatter:on
 
     @Before
     public void setup() {
