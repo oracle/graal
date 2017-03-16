@@ -115,6 +115,10 @@ In Proceedings of the 10th Workshop on Implementation, Compilation, Optimization
 
 ### 2014
 
+- Wei Zhang, Per Larsen, Stefan Brunthaler, Michael Franz
+[**Accelerating iterators in optimizing AST interpreters**](https://doi.org/10.1145/2660193.2660223)
+ In Proceedings of the 2014 ACM International Conference on Object Oriented Programming Systems Languages & Applications (OOPSLA '14)
+
 - Matthias Grimmer  
 [**High-performance language interoperability in multi-language runtimes**](http://dx.doi.org/10.1145/2660252.2660256)  
  In Proceedings of the companion publication of the 2014 ACM SIGPLAN conference on Systems, Programming, and Applications: Software for Humanity (SPLASH '14)
