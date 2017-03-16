@@ -258,7 +258,11 @@ public final class NativeLookup {
         TruffleObject symbol = descriptor.getNativeSymbol();
         if (symbol == null) {
             CompilerDirectives.transferToInterpreter();
-            symbol = getNativeFunction(descriptor.getName());
+            if (descriptor.isNullFunction()) {
+                symbol = new LLVMTruffleNull();
+            } else {
+                symbol = getNativeFunction(descriptor.getName());
+            }
             if (symbol == null) {
                 throw new RuntimeException("could not resolve external symbol " + descriptor.getName());
             }
