@@ -42,6 +42,15 @@ class BoxedPrimitiveMessageResolution {
         }
     }
 
+    @Resolve(message = "IS_BOXED")
+    abstract static class IsBoxedNode extends Node {
+
+        @SuppressWarnings("unused")
+        Object access(BoxedPrimitive boxed) {
+            return true;
+        }
+    }
+
     @CanResolve
     abstract static class CanResolveBoxedPrimitive extends Node {
 

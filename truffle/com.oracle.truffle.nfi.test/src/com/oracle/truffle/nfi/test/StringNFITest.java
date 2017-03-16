@@ -32,6 +32,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.nfi.test.interop.BoxedPrimitive;
 import com.oracle.truffle.nfi.test.interop.TestCallback;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
@@ -44,6 +45,14 @@ public class StringNFITest extends NFITest {
     public void testJavaStringArg() {
         TruffleObject function = lookupAndBind("string_arg", "(string):sint32");
         Object ret = sendExecute(function, "42");
+        Assert.assertThat("return value", ret, is(instanceOf(Integer.class)));
+        Assert.assertEquals("return value", 42, (int) (Integer) ret);
+    }
+
+    @Test
+    public void testBoxedStringArg() {
+        TruffleObject function = lookupAndBind("string_arg", "(string):sint32");
+        Object ret = sendExecute(function, new BoxedPrimitive("42"));
         Assert.assertThat("return value", ret, is(instanceOf(Integer.class)));
         Assert.assertEquals("return value", 42, (int) (Integer) ret);
     }
@@ -122,14 +131,13 @@ public class StringNFITest extends NFITest {
         }, 42);
     }
 
-    @Test
-    public void testStringCallback() {
+    private void testStringCallback(Object callbackRet) {
         TruffleObject strArgCallback = new TestCallback(1, (args) -> {
             Assert.assertEquals("string argument", "Hello, Truffle!", args[0]);
             return 42;
         });
         TruffleObject strRetCallback = new TestCallback(0, (args) -> {
-            return "Hello, Native!";
+            return callbackRet;
         });
 
         TruffleObject testFunction = lookupAndBind("string_callback", "( (string):sint32, ():string ) : sint32");
@@ -137,5 +145,47 @@ public class StringNFITest extends NFITest {
 
         Assert.assertThat("return value", ret, is(instanceOf(Integer.class)));
         Assert.assertEquals("return value", 42, (int) (Integer) ret);
+    }
+
+    @Test
+    public void testStringCallback() {
+        testStringCallback("Hello, Native!");
+    }
+
+    @Test
+    public void testBoxedStringCallback() {
+        testStringCallback(new BoxedPrimitive("Hello, Native!"));
+    }
+
+    @Test
+    public void testNativeStringCallback() {
+        Object ret = run(new TestRootNode() {
+
+            final TruffleObject stringRetConst = lookupAndBind("string_ret_const", "():string");
+            final TruffleObject nativeStringCallback = lookupAndBind("native_string_callback", "(():string) : string");
+
+            @Child Node executeStringRetConst = Message.createExecute(0).createNode();
+            @Child Node executeNativeStringCallback = Message.createExecute(1).createNode();
+
+            @Override
+            public Object executeTest(VirtualFrame frame) throws InteropException {
+                Object string = ForeignAccess.sendExecute(executeStringRetConst, stringRetConst);
+                TruffleObject callback = createCallback(string);
+                return ForeignAccess.sendExecute(executeNativeStringCallback, nativeStringCallback, callback);
+            }
+
+            @TruffleBoundary
+            private TruffleObject createCallback(Object obj) {
+                return new TestCallback(0, (args) -> {
+                    return obj;
+                });
+            }
+        });
+
+        Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
+        TruffleObject obj = (TruffleObject) ret;
+
+        Assert.assertTrue("isBoxed", JavaInterop.isBoxed(obj));
+        Assert.assertEquals("return value", "same", JavaInterop.unbox(obj));
     }
 }
