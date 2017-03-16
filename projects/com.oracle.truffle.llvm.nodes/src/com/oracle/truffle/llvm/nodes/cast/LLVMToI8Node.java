@@ -29,107 +29,127 @@
  */
 package com.oracle.truffle.llvm.nodes.cast;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 
 public abstract class LLVMToI8Node extends LLVMExpressionNode {
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI1ToI8Node extends LLVMToI8Node {
+    public abstract static class LLVMToI8NoZeroExtNode extends LLVMToI8Node {
 
         @Specialization
         public byte executeI8(boolean from) {
             return from ? (byte) -1 : 0;
         }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI1ToI8ZeroExtNode extends LLVMToI8Node {
-
-        @Specialization
-        public byte executeI8(boolean from) {
-            return (byte) (from ? 1 : 0);
-        }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI16ToI8Node extends LLVMToI8Node {
 
         @Specialization
         public byte executeI8(short from) {
             return (byte) from;
         }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI32ToI8Node extends LLVMToI8Node {
 
         @Specialization
         public byte executeI8(int from) {
             return (byte) from;
         }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI64ToI8Node extends LLVMToI8Node {
 
         @Specialization
         public byte executeI8(long from) {
             return (byte) from;
         }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMIVarToI8Node extends LLVMToI8Node {
 
         @Specialization
         public byte executeI8(LLVMIVarBit from) {
             return from.getByteValue();
         }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMFloatToI8Node extends LLVMToI8Node {
 
         @Specialization
         public byte executeI8(float from) {
             return (byte) from;
         }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMDoubleToI8Node extends LLVMToI8Node {
 
         @Specialization
         public byte executeI8(double from) {
             return (byte) from;
         }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVM80BitFloatToI8Node extends LLVMToI8Node {
 
         @Specialization
         public byte executeI8(LLVM80BitFloat from) {
             return from.getByteValue();
         }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMAddressToI8Node extends LLVMToI8Node {
-
-        @Specialization
-        public byte executeI8(boolean from) {
-            return (byte) (from ? 1 : 0);
-        }
 
         @Specialization
         public byte executeI8(LLVMAddress from) {
             return (byte) from.getVal();
+        }
+
+        @Specialization
+        public byte executeI8(LLVMFunctionDescriptor from) {
+            return (byte) from.getFunctionIndex();
+        }
+
+        @Specialization
+        public byte executeI8(LLVMFunctionHandle from) {
+            return (byte) from.getFunctionIndex();
+        }
+
+        @Specialization
+        public byte executeLLVMTruffleNull(@SuppressWarnings("unused") LLVMTruffleNull from) {
+            return 0;
+        }
+
+        @Child private Node isNull = Message.IS_NULL.createNode();
+        @Child private Node isBoxed = Message.IS_BOXED.createNode();
+        @Child private Node unbox = Message.UNBOX.createNode();
+        @Child private ToLLVMNode convert = ToLLVMNode.createNode(byte.class);
+
+        @Specialization(guards = "notLLVM(from)")
+        public byte executeTruffleObject(TruffleObject from) {
+            if (ForeignAccess.sendIsNull(isNull, from)) {
+                return 0;
+            } else if (ForeignAccess.sendIsBoxed(isBoxed, from)) {
+                try {
+                    return (byte) convert.executeWithTarget(ForeignAccess.sendUnbox(unbox, from));
+                } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException(e);
+                }
+            }
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException("Not convertable");
+        }
+
+        @Specialization
+        public byte executeUnbox(LLVMTruffleObject from) {
+            try {
+                byte head = (byte) convert.executeWithTarget(ForeignAccess.sendUnbox(unbox, from.getObject()));
+                return (byte) (head + from.getOffset());
+            } catch (UnsupportedMessageException e) {
+                throw new UnsupportedOperationException(e);
+            }
+        }
+    }
+
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
+    public abstract static class LLVMToI8ZeroExtNode extends LLVMToI8Node {
+
+        @Specialization
+        public byte executeI8(boolean from) {
+            return (byte) (from ? 1 : 0);
         }
     }
 

@@ -469,7 +469,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         for (int i = 0; i < cases.length; i++) {
             // the case value is always a long here regardless of the values actual type, implicit
             // casts to smaller types in the factoryfacade won't work
-            switch (llvmType.getKind()) {
+            switch (llvmType.getPrimitiveKind()) {
                 case I8:
                     cases[i] = factoryFacade.createLiteral(runtime, (byte) zwitch.getCaseValue(i), llvmType);
                     break;

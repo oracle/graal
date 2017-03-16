@@ -82,7 +82,7 @@ public final class PrimitiveType implements Type {
         return constant;
     }
 
-    public PrimitiveKind getKind() {
+    public PrimitiveKind getPrimitiveKind() {
         return kind;
     }
 

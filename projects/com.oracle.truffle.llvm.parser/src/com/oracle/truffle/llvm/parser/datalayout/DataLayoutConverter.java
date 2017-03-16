@@ -83,7 +83,7 @@ public final class DataLayoutConverter {
                 return locateDataTypeSpecification(DataLayoutType.POINTER);
             } else if (baseType instanceof PrimitiveType) {
                 PrimitiveType primitiveType = (PrimitiveType) baseType;
-                switch (primitiveType.getKind()) {
+                switch (primitiveType.getPrimitiveKind()) {
                     case I1:
                         return locateDataTypeSpecification(DataLayoutType.INTEGER, 8); // 1 is
                                                                                        // rounded

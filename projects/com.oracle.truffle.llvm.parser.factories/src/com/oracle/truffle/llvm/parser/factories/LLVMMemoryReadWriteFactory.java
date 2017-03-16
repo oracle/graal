@@ -92,7 +92,7 @@ final class LLVMMemoryReadWriteFactory {
 
     private static LLVMExpressionNode createLoad(Type resultType, LLVMExpressionNode loadTarget, int bits) {
         if (resultType instanceof PrimitiveType) {
-            switch (((PrimitiveType) resultType).getKind()) {
+            switch (((PrimitiveType) resultType).getPrimitiveKind()) {
                 case I1:
                     return new LLVMI1UninitializedLoadNode(loadTarget);
                 case I8:
@@ -130,7 +130,7 @@ final class LLVMMemoryReadWriteFactory {
     }
 
     private static LLVMExpressionNode createLoadVector(VectorType resultType, LLVMExpressionNode loadTarget, int size) {
-        switch (resultType.getElementType().getKind()) {
+        switch (resultType.getElementType().getPrimitiveKind()) {
             case I1:
                 return LLVMLoadI1VectorNodeGen.create(loadTarget, size);
             case I8:
@@ -156,7 +156,7 @@ final class LLVMMemoryReadWriteFactory {
 
     private static LLVMExpressionNode createStore(LLVMParserRuntime runtime, LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type, int size) {
         if (type instanceof PrimitiveType) {
-            switch (((PrimitiveType) type).getKind()) {
+            switch (((PrimitiveType) type).getPrimitiveKind()) {
                 case I1:
                     return LLVMI1StoreNodeGen.create(pointerNode, valueNode);
                 case I8:

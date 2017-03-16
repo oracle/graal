@@ -39,7 +39,7 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     @NodeField(type = int.class, name = "bits")
-    public abstract static class LLVMI8ToIVarNode extends LLVMToVarINode {
+    public abstract static class LLVMToIVarNoZeroExtNode extends LLVMToVarINode {
 
         public abstract int getBits();
 
@@ -47,35 +47,31 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
         public LLVMIVarBit executeI8(byte from) {
             return LLVMIVarBit.fromByte(getBits(), from);
         }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    @NodeField(type = int.class, name = "bits")
-    public abstract static class LLVMI16ToIVarNode extends LLVMToVarINode {
-
-        public abstract int getBits();
 
         @Specialization
         public LLVMIVarBit executeI16(short from) {
             return LLVMIVarBit.fromShort(getBits(), from);
         }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    @NodeField(type = int.class, name = "bits")
-    public abstract static class LLVMI32ToIVarNode extends LLVMToVarINode {
-
-        public abstract int getBits();
 
         @Specialization
         public LLVMIVarBit executeI32(int from) {
             return LLVMIVarBit.fromInt(getBits(), from);
         }
+
+        @Specialization
+        public LLVMIVarBit executeI32(long from) {
+            return LLVMIVarBit.fromLong(getBits(), from);
+        }
+
+        @Specialization
+        public LLVMIVarBit executeI8(LLVMIVarBit from) {
+            return LLVMIVarBit.create(getBits(), from.getSignExtendedBytes());
+        }
     }
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     @NodeField(type = int.class, name = "bits")
-    public abstract static class LLVMI32ToIVarZeroExtNode extends LLVMToVarINode {
+    public abstract static class LLVMToIVarZeroExtNode extends LLVMToVarINode {
 
         public abstract int getBits();
 
@@ -83,42 +79,10 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
         public LLVMIVarBit executeI32(int from) {
             return LLVMIVarBit.createZeroExt(getBits(), from);
         }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    @NodeField(type = int.class, name = "bits")
-    public abstract static class LLVMI64ToIVarNode extends LLVMToVarINode {
-
-        public abstract int getBits();
-
-        @Specialization
-        public LLVMIVarBit executeI32(long from) {
-            return LLVMIVarBit.fromLong(getBits(), from);
-        }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    @NodeField(type = int.class, name = "bits")
-    public abstract static class LLVMI64ToIVarZeroExtNode extends LLVMToVarINode {
-
-        public abstract int getBits();
 
         @Specialization
         public LLVMIVarBit executeI32(long from) {
             return LLVMIVarBit.createZeroExt(getBits(), from);
-        }
-
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    @NodeField(type = int.class, name = "bits")
-    public abstract static class LLVMIVarToIVarNode extends LLVMToVarINode {
-
-        public abstract int getBits();
-
-        @Specialization
-        public LLVMIVarBit executeI8(LLVMIVarBit from) {
-            return LLVMIVarBit.create(getBits(), from.getSignExtendedBytes());
         }
     }
 }

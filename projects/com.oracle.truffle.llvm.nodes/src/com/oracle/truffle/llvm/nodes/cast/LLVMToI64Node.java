@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.cast;
 
-import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -38,9 +38,12 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
@@ -48,7 +51,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 public abstract class LLVMToI64Node extends LLVMExpressionNode {
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMAnyToI64Node extends LLVMToI64Node {
+    public abstract static class LLVMToI64NoZeroExtNode extends LLVMToI64Node {
 
         @Specialization
         public long executeI64(boolean from) {
@@ -100,33 +103,51 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
             return from.getVal();
         }
 
-        @Specialization(guards = "!isLLVMFunctionDescriptor(from)")
-        public long executeUnbox(TruffleObject from,
-                        @Cached("createUnboxNode()") Node unboxNode) {
-            try {
-                return (long) ForeignAccess.sendUnbox(unboxNode, from);
-            } catch (UnsupportedMessageException e) {
-                throw new UnsupportedOperationException(e);
-            }
+        @Specialization
+        public long executeI64(LLVMFunctionDescriptor from) {
+            return from.getFunctionIndex();
         }
 
         @Specialization
-        public long executeUnbox(LLVMTruffleObject from,
-                        @Cached("createUnboxNode()") Node unboxNode) {
+        public long executeI64(LLVMFunctionHandle from) {
+            return from.getFunctionIndex();
+        }
+
+        @Specialization
+        public long executeLLVMTruffleNull(@SuppressWarnings("unused") LLVMTruffleNull from) {
+            return 0;
+        }
+
+        @Child private Node isNull = Message.IS_NULL.createNode();
+        @Child private Node isBoxed = Message.IS_BOXED.createNode();
+        @Child private Node unbox = Message.UNBOX.createNode();
+        @Child private ToLLVMNode convert = ToLLVMNode.createNode(long.class);
+
+        @Specialization(guards = "notLLVM(from)")
+        public long executeTruffleObject(TruffleObject from) {
+            if (ForeignAccess.sendIsNull(isNull, from)) {
+                return 0;
+            } else if (ForeignAccess.sendIsBoxed(isBoxed, from)) {
+                try {
+                    return (long) convert.executeWithTarget(ForeignAccess.sendUnbox(unbox, from));
+                } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException(e);
+                }
+            }
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException("Not convertable");
+        }
+
+        @Specialization
+        public long executeUnbox(LLVMTruffleObject from) {
             try {
-                long head = (long) ForeignAccess.sendUnbox(unboxNode, from.getObject());
+                long head = (long) convert.executeWithTarget(ForeignAccess.sendUnbox(unbox, from.getObject()));
                 return head + from.getOffset();
             } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
                 throw new UnsupportedOperationException(e);
             }
-        }
-
-        protected Node createUnboxNode() {
-            return Message.UNBOX.createNode();
-        }
-
-        protected boolean isLLVMFunctionDescriptor(TruffleObject object) {
-            return object instanceof LLVMFunctionDescriptor;
         }
 
         @Specialization
@@ -137,14 +158,10 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
             return composedValue;
         }
 
-        @Specialization
-        public long executeI64(LLVMFunctionDescriptor from) {
-            return from.getFunctionIndex();
-        }
     }
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMDoubleToI64BitCastNode extends LLVMToI64Node {
+    public abstract static class LLVMToI64BitNode extends LLVMToI64Node {
 
         @Specialization
         public long executeI64(double from) {
@@ -178,6 +195,19 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
         @Specialization
         public long executeI64(LLVMIVarBit from) {
             return from.getZeroExtendedLongValue();
+        }
+    }
+
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
+    public abstract static class LLVMToUnsignedI64Node extends LLVMToI32Node {
+
+        @Specialization
+        public long executeI64(double from) {
+            if (from >= Long.MAX_VALUE) {
+                return ((long) (Long.MAX_VALUE - from)) ^ 0x80000000_00000000L;
+            } else {
+                return (long) from;
+            }
         }
     }
 

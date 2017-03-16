@@ -46,7 +46,7 @@ public abstract class FloatingPointConstant extends AbstractConstant {
     public abstract String getStringValue();
 
     public static FloatingPointConstant create(Type type, long[] bits) {
-        switch (((PrimitiveType) type).getKind()) {
+        switch (((PrimitiveType) type).getPrimitiveKind()) {
             case FLOAT:
                 return new FloatConstant(Float.intBitsToFloat((int) bits[0]));
 

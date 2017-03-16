@@ -104,7 +104,7 @@ final class LLVMFunctionFactory {
             int size = runtime.getByteSize(type);
             return LLVMStructRetNodeGen.create(runtime.getHeapFunctions(), retValue, retSlot, size);
         } else if (type instanceof PrimitiveType) {
-            switch (((PrimitiveType) type).getKind()) {
+            switch (((PrimitiveType) type).getPrimitiveKind()) {
                 case I1:
                     return LLVMI1RetNodeGen.create(retValue, retSlot);
                 case I8:
@@ -161,7 +161,7 @@ final class LLVMFunctionFactory {
         } else if (llvmType instanceof PointerType) {
             return LLVMAddressCallUnboxNodeGen.create(unresolvedCallNode);
         } else if (llvmType instanceof PrimitiveType) {
-            switch (((PrimitiveType) llvmType).getKind()) {
+            switch (((PrimitiveType) llvmType).getPrimitiveKind()) {
                 case I1:
                     return LLVMI1CallUnboxNodeGen.create(unresolvedCallNode);
                 case I8:
@@ -191,7 +191,7 @@ final class LLVMFunctionFactory {
         } else if (returnType instanceof VariableBitWidthType) {
             return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnIVarBitRootNode(mainCallTarget);
         } else if (returnType instanceof PrimitiveType) {
-            switch (((PrimitiveType) returnType).getKind()) {
+            switch (((PrimitiveType) returnType).getPrimitiveKind()) {
                 case I1:
                     return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnI1RootNode(mainCallTarget);
                 case I8:

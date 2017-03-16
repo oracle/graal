@@ -44,7 +44,7 @@ final class LLVMAllocFactory {
 
     static LLVMExpressionNode createAlloc(LLVMParserRuntime runtime, PrimitiveType llvmType, LLVMExpressionNode numElements, int byteSize, int alignment, Type symbolType) {
         LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
-        switch (llvmType.getKind()) {
+        switch (llvmType.getPrimitiveKind()) {
             case I32:
                 return LLVMI32AllocaInstructionNodeGen.create(numElements, byteSize, alignment, context, runtime.getStackPointerSlot(), symbolType);
             case I64:

@@ -30,53 +30,56 @@
 package com.oracle.truffle.llvm.nodes.cast;
 
 import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
+@NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
+@NodeField(name = "type", type = Type.class)
 public abstract class LLVMToAddressNode extends LLVMExpressionNode {
 
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI1ToAddressNode extends LLVMToAddressNode {
+    public abstract Type getType();
 
-        @Specialization
-        public LLVMAddress executeI1(boolean from) {
-            return LLVMAddress.fromLong(from ? 1 : 0);
-        }
+    @Specialization
+    public LLVMAddress executeI1(boolean from) {
+        return LLVMAddress.fromLong(from ? 1 : 0);
     }
 
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI8ToAddressNode extends LLVMToAddressNode {
-
-        @Specialization
-        public LLVMAddress executeI8(byte from) {
-            return LLVMAddress.fromLong(from);
-        }
+    @Specialization
+    public LLVMAddress executeI8(byte from) {
+        return LLVMAddress.fromLong(from);
     }
 
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI64ToAddressNode extends LLVMToAddressNode {
-
-        @Specialization
-        public LLVMAddress executeI64(long from) {
-            return LLVMAddress.fromLong(from);
-        }
+    @Specialization
+    public LLVMAddress executeI64(long from) {
+        return LLVMAddress.fromLong(from);
     }
 
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMFunctionToAddressNode extends LLVMToAddressNode {
+    @Specialization
+    public LLVMAddress executeI64(LLVMFunctionDescriptor from) {
+        return LLVMAddress.fromLong(from.getFunctionIndex());
+    }
 
-        @Specialization
-        public LLVMAddress executeI64(LLVMFunctionDescriptor from) {
-            return LLVMAddress.fromLong(from.getFunctionIndex());
-        }
+    @Specialization
+    public LLVMAddress executeI64(LLVMFunctionHandle from) {
+        return LLVMAddress.fromLong(from.getFunctionIndex());
+    }
 
-        @Specialization
-        public LLVMAddress executeI64(LLVMFunctionHandle from) {
-            return LLVMAddress.fromLong(from.getFunctionIndex());
-        }
+    @Specialization
+    public LLVMAddress executeI64(@SuppressWarnings("unused") LLVMTruffleNull from) {
+        return LLVMAddress.NULL_POINTER;
+    }
+
+    @Specialization(guards = "notLLVM(from)")
+    public LLVMTruffleObject executeTruffleObject(TruffleObject from) {
+        return new LLVMTruffleObject(from, getType());
     }
 
 }

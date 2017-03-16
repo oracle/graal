@@ -69,7 +69,7 @@ final class LLVMAggregateFactory {
 
     static LLVMExpressionNode createExtractValue(Type type, LLVMExpressionNode targetAddress) {
         if (type instanceof PrimitiveType) {
-            switch (((PrimitiveType) type).getKind()) {
+            switch (((PrimitiveType) type).getPrimitiveKind()) {
                 case I1:
                     return LLVMExtractI1ValueNodeGen.create(targetAddress);
                 case I8:
@@ -98,7 +98,7 @@ final class LLVMAggregateFactory {
 
     static LLVMExpressionNode createInsertValue(LLVMParserRuntime runtime, LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, int size, int offset,
                     LLVMExpressionNode valueToInsert, PrimitiveType llvmType) {
-        switch (llvmType.getKind()) {
+        switch (llvmType.getPrimitiveKind()) {
             case FLOAT:
                 return new LLVMInsertFloatValueNode(runtime.getHeapFunctions(), sourceAggregate, resultAggregate, size, offset, valueToInsert);
             case DOUBLE:
@@ -131,7 +131,7 @@ final class LLVMAggregateFactory {
     private static LLVMStructWriteNode createStructWriteNode(LLVMParserRuntime runtime, LLVMExpressionNode parsedConstant, Type resolvedType) {
         int byteSize = runtime.getByteSize(resolvedType);
         if (resolvedType instanceof PrimitiveType) {
-            switch (((PrimitiveType) resolvedType).getKind()) {
+            switch (((PrimitiveType) resolvedType).getPrimitiveKind()) {
                 case I1:
                     return new LLVMI1StructWriteNode(parsedConstant);
                 case I8:

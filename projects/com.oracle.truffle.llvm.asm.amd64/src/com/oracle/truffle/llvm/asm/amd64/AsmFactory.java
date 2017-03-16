@@ -115,10 +115,10 @@ import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVM
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI32RegisterNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI64RegisterNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStructWriteNode;
-import com.oracle.truffle.llvm.nodes.cast.LLVMToI16NodeFactory.LLVMI64ToI16NodeGen;
-import com.oracle.truffle.llvm.nodes.cast.LLVMToI32NodeFactory.LLVMI64ToI32NodeGen;
-import com.oracle.truffle.llvm.nodes.cast.LLVMToI64NodeFactory.LLVMAnyToI64NodeGen;
-import com.oracle.truffle.llvm.nodes.cast.LLVMToI8NodeFactory.LLVMI64ToI8NodeGen;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToI16NodeFactory.LLVMToI16NoZeroExtNodeGen;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToI32NodeFactory.LLVMToI32NoZeroExtNodeGen;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToI64NodeFactory.LLVMToI64NoZeroExtNodeGen;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToI8NodeFactory.LLVMToI8NoZeroExtNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMInlineAssemblyRootNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstruction.LLVMAllocaInstruction;
@@ -788,7 +788,7 @@ class AsmFactory {
             registers.add(reg);
             FrameSlotKind kind;
             if (type instanceof PrimitiveType) {
-                PrimitiveKind primitiveKind = ((PrimitiveType) type).getKind();
+                PrimitiveKind primitiveKind = ((PrimitiveType) type).getPrimitiveKind();
                 switch (primitiveKind) {
                     case I8:
                         kind = FrameSlotKind.Byte;
@@ -829,16 +829,16 @@ class AsmFactory {
                     LLVMExpressionNode register = LLVMI64ReadNodeGen.create(slot);
                     if (retType instanceof StructureType) {
                         assert alloca.getType(arg.getOutIndex()) == arg.getType();
-                        PrimitiveKind primitiveKind = ((PrimitiveType) arg.getType()).getKind();
+                        PrimitiveKind primitiveKind = ((PrimitiveType) arg.getType()).getPrimitiveKind();
                         switch (primitiveKind) {
                             case I8:
-                                writeNodes[arg.getOutIndex()] = new LLVMI8StructWriteNode(LLVMI64ToI8NodeGen.create(register));
+                                writeNodes[arg.getOutIndex()] = new LLVMI8StructWriteNode(LLVMToI8NoZeroExtNodeGen.create(register));
                                 break;
                             case I16:
-                                writeNodes[arg.getOutIndex()] = new LLVMI16StructWriteNode(LLVMI64ToI16NodeGen.create(register));
+                                writeNodes[arg.getOutIndex()] = new LLVMI16StructWriteNode(LLVMToI16NoZeroExtNodeGen.create(register));
                                 break;
                             case I32:
-                                writeNodes[arg.getOutIndex()] = new LLVMI32StructWriteNode(LLVMI64ToI32NodeGen.create(register));
+                                writeNodes[arg.getOutIndex()] = new LLVMI32StructWriteNode(LLVMToI32NoZeroExtNodeGen.create(register));
                                 break;
                             case I64:
                                 writeNodes[arg.getOutIndex()] = new LLVMI64StructWriteNode(register);
@@ -854,7 +854,7 @@ class AsmFactory {
                     if (retType instanceof PrimitiveType) {
                         handlePrimitive(slot);
                     } else if (retType instanceof StructureType) {
-                        PrimitiveKind primitiveKind = ((PrimitiveType) arg.getType()).getKind();
+                        PrimitiveKind primitiveKind = ((PrimitiveType) arg.getType()).getPrimitiveKind();
                         switch (primitiveKind) {
                             case I8:
                                 writeNodes[arg.getOutIndex()] = new LLVMI8StructWriteNode(LLVMI8ReadNodeGen.create(slot));
@@ -889,7 +889,7 @@ class AsmFactory {
                     slot = getRegisterSlot(reg);
                     todoRegisters.remove(reg);
                     LLVMExpressionNode argnode = LLVMArgNodeGen.create(arg.getInIndex());
-                    LLVMExpressionNode node = LLVMAnyToI64NodeGen.create(argnode);
+                    LLVMExpressionNode node = LLVMToI64NoZeroExtNodeGen.create(argnode);
                     arguments.add(LLVMWriteI64NodeGen.create(node, slot));
                 }
                 slot = getArgumentSlot(arg.getIndex(), argTypes[arg.getInIndex()]);
@@ -927,7 +927,7 @@ class AsmFactory {
     }
 
     private void handlePrimitiveArgument(Type argType, FrameSlot slot, LLVMExpressionNode argnode) {
-        switch (((PrimitiveType) argType).getKind()) {
+        switch (((PrimitiveType) argType).getPrimitiveKind()) {
             case I8:
                 arguments.add(LLVMWriteI8NodeGen.create(argnode, slot));
                 break;
@@ -952,7 +952,7 @@ class AsmFactory {
     }
 
     private void handlePrimitive(FrameSlot slot) {
-        switch (((PrimitiveType) retType).getKind()) {
+        switch (((PrimitiveType) retType).getPrimitiveKind()) {
             case I8:
                 result = LLVMI8ReadNodeGen.create(slot);
                 break;
@@ -977,13 +977,13 @@ class AsmFactory {
     }
 
     private LLVMExpressionNode castResult(LLVMExpressionNode register) {
-        switch (((PrimitiveType) retType).getKind()) {
+        switch (((PrimitiveType) retType).getPrimitiveKind()) {
             case I8:
-                return LLVMI64ToI8NodeGen.create(register);
+                return LLVMToI8NoZeroExtNodeGen.create(register);
             case I16:
-                return LLVMI64ToI16NodeGen.create(register);
+                return LLVMToI16NoZeroExtNodeGen.create(register);
             case I32:
-                return LLVMI64ToI32NodeGen.create(register);
+                return LLVMToI32NoZeroExtNodeGen.create(register);
             case I64:
                 return register;
             default:
@@ -997,13 +997,13 @@ class AsmFactory {
             FrameSlot frame = getRegisterSlot(op.getBaseRegister());
             LLVMExpressionNode register = LLVMI64ReadNodeGen.create(frame);
             assert type == op.getWidth();
-            switch (((PrimitiveType) op.getWidth()).getKind()) {
+            switch (((PrimitiveType) op.getWidth()).getPrimitiveKind()) {
                 case I8:
-                    return LLVMI64ToI8NodeGen.create(register);
+                    return LLVMToI8NoZeroExtNodeGen.create(register);
                 case I16:
-                    return LLVMI64ToI16NodeGen.create(register);
+                    return LLVMToI16NoZeroExtNodeGen.create(register);
                 case I32:
-                    return LLVMI64ToI32NodeGen.create(register);
+                    return LLVMToI32NoZeroExtNodeGen.create(register);
                 case I64:
                     return register;
                 default:
@@ -1014,7 +1014,7 @@ class AsmFactory {
             if (op.isLabel()) {
                 throw new AsmParseException("labels not supported");
             } else {
-                switch (((PrimitiveType) type).getKind()) {
+                switch (((PrimitiveType) type).getPrimitiveKind()) {
                     case I8:
                         return LLVMAMD64I8NodeGen.create((byte) op.getValue());
                     case I16:
@@ -1032,7 +1032,7 @@ class AsmFactory {
             Argument info = argInfo.get(op.getIndex());
             FrameSlot frame = getArgumentSlot(op.getIndex(), type);
             if (info.isMemory()) {
-                switch (((PrimitiveType) type).getKind()) {
+                switch (((PrimitiveType) type).getPrimitiveKind()) {
                     case I8:
                         return LLVMI8ProfilingLoadNodeGen.create(LLVMAddressReadNodeGen.create(frame));
                     case I16:
@@ -1046,7 +1046,7 @@ class AsmFactory {
                 }
             } else {
                 assert type == info.getType();
-                switch (((PrimitiveType) type).getKind()) {
+                switch (((PrimitiveType) type).getPrimitiveKind()) {
                     case I8:
                         return LLVMI8ReadNodeGen.create(frame);
                     case I16:
@@ -1071,7 +1071,7 @@ class AsmFactory {
             int shift = op.getShift();
             LLVMExpressionNode out = null;
             assert type == op.getWidth();
-            switch (((PrimitiveType) op.getWidth()).getKind()) {
+            switch (((PrimitiveType) op.getWidth()).getPrimitiveKind()) {
                 case I8:
                     out = LLVMI8ToR64NodeGen.create(shift, register, from);
                     break;
@@ -1093,7 +1093,7 @@ class AsmFactory {
             Argument info = argInfo.get(op.getIndex());
             if (info.isMemory()) {
                 LLVMExpressionNode address = info.getAddress();
-                switch (((PrimitiveType) type).getKind()) {
+                switch (((PrimitiveType) type).getPrimitiveKind()) {
                     case I8:
                         return LLVMI8StoreNodeGen.create(address, from);
                     case I16:
@@ -1108,7 +1108,7 @@ class AsmFactory {
             } else {
                 assert type == info.getType();
                 FrameSlot frame = getArgumentSlot(op.getIndex(), type);
-                switch (((PrimitiveType) type).getKind()) {
+                switch (((PrimitiveType) type).getPrimitiveKind()) {
                     case I8:
                         return LLVMWriteI8NodeGen.create(from, frame);
                     case I16:
@@ -1131,7 +1131,7 @@ class AsmFactory {
         FrameSlot frame = getRegisterSlot(name);
         LLVMExpressionNode register = LLVMI64ReadNodeGen.create(frame);
         LLVMAMD64WriteRegisterNode node = null;
-        switch (((PrimitiveType) op.getWidth()).getKind()) {
+        switch (((PrimitiveType) op.getWidth()).getPrimitiveKind()) {
             case I16:
                 node = new LLVMAMD64WriteI16RegisterNode(frame, register);
                 break;

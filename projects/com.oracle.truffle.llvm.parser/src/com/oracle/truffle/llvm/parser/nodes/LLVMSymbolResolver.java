@@ -164,7 +164,7 @@ public final class LLVMSymbolResolver {
         final Type type = constant.getType();
         final long lVal = constant.getValue();
         if (type instanceof PrimitiveType) {
-            switch (((PrimitiveType) type).getKind()) {
+            switch (((PrimitiveType) type).getPrimitiveKind()) {
                 case I1:
                     return runtime.getNodeFactoryFacade().createSimpleConstantNoArray(runtime, lVal != 0, type);
                 case I8:
@@ -197,7 +197,7 @@ public final class LLVMSymbolResolver {
 
     private LLVMExpressionNode toFloat(FloatingPointConstant constant) {
         final Type type = constant.getType();
-        switch (((PrimitiveType) type).getKind()) {
+        switch (((PrimitiveType) type).getPrimitiveKind()) {
             case FLOAT:
                 final float fVal = ((FloatConstant) constant).getValue();
                 return runtime.getNodeFactoryFacade().createSimpleConstantNoArray(runtime, fVal, type);
@@ -308,7 +308,7 @@ public final class LLVMSymbolResolver {
 
     private LLVMExpressionNode toNullValue(Type type) {
         if (type instanceof PrimitiveType) {
-            switch (((PrimitiveType) type).getKind()) {
+            switch (((PrimitiveType) type).getPrimitiveKind()) {
                 case I1:
                     return runtime.getNodeFactoryFacade().createSimpleConstantNoArray(runtime, false, type);
                 case I8:

@@ -42,7 +42,7 @@ final class LLVMValueProfileFactory {
 
     static LLVMExpressionNode createValueProfiledNode(LLVMExpressionNode argNode, Type paramType) {
         if (paramType instanceof PrimitiveType) {
-            switch (((PrimitiveType) paramType).getKind()) {
+            switch (((PrimitiveType) paramType).getPrimitiveKind()) {
                 case I8:
                     return LLVMI8ProfiledValueNodeGen.create(argNode);
                 case I32:

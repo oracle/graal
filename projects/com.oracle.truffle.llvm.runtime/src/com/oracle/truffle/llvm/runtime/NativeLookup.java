@@ -123,7 +123,7 @@ public final class NativeLookup {
             return "POINTER";
         } else if (type instanceof PrimitiveType) {
             PrimitiveType primitiveType = (PrimitiveType) type;
-            PrimitiveKind kind = primitiveType.getKind();
+            PrimitiveKind kind = primitiveType.getPrimitiveKind();
             switch (kind) {
                 case I1:
                 case I8:

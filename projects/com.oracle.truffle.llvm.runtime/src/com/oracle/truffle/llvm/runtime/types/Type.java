@@ -66,7 +66,7 @@ public interface Type {
 
     static Type createConstantForType(Type type, Object value) {
         if (type instanceof PrimitiveType) {
-            return new PrimitiveType(((PrimitiveType) type).getKind(), value);
+            return new PrimitiveType(((PrimitiveType) type).getPrimitiveKind(), value);
         } else {
             return new VariableBitWidthType(((VariableBitWidthType) type).getBitSize(), value);
         }
@@ -75,7 +75,7 @@ public interface Type {
     static boolean isIntegerType(Type type) {
         if (type instanceof PrimitiveType) {
             PrimitiveType primitive = (PrimitiveType) type;
-            PrimitiveKind kind = primitive.getKind();
+            PrimitiveKind kind = primitive.getPrimitiveKind();
             return kind == PrimitiveKind.I1 || kind == PrimitiveKind.I8 || kind == PrimitiveKind.I16 || kind == PrimitiveKind.I32 || kind == PrimitiveKind.I64;
         }
         return type instanceof VariableBitWidthType;
@@ -84,7 +84,7 @@ public interface Type {
     static boolean isFloatingpointType(Type type) {
         if (type instanceof PrimitiveType) {
             PrimitiveType primitive = (PrimitiveType) type;
-            PrimitiveKind kind = primitive.getKind();
+            PrimitiveKind kind = primitive.getPrimitiveKind();
             return kind == PrimitiveKind.F128 || kind == PrimitiveKind.FLOAT || kind == PrimitiveKind.HALF || kind == PrimitiveKind.PPC_FP128 ||
                             kind == PrimitiveKind.X86_FP80 || kind == PrimitiveKind.DOUBLE;
         }
@@ -94,7 +94,7 @@ public interface Type {
     static FrameSlotKind getFrameSlotKind(Type type) {
         if (type instanceof PrimitiveType) {
             PrimitiveType primitive = (PrimitiveType) type;
-            PrimitiveKind kind = primitive.getKind();
+            PrimitiveKind kind = primitive.getPrimitiveKind();
             switch (kind) {
                 case FLOAT:
                     return FrameSlotKind.Float;

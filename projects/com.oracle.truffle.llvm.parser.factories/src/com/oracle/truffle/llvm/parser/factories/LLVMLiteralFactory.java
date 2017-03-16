@@ -106,7 +106,7 @@ final class LLVMLiteralFactory {
                 throw new AssertionError("Not a Simple Constant: " + constant);
             }
         } else if (type instanceof PrimitiveType) {
-            switch (((PrimitiveType) type).getKind()) {
+            switch (((PrimitiveType) type).getPrimitiveKind()) {
                 case I1:
                     return new LLVMI1LiteralNode((boolean) constant);
                 case I8:
@@ -194,7 +194,7 @@ final class LLVMLiteralFactory {
     static LLVMExpressionNode createVectorLiteralNode(List<LLVMExpressionNode> listValues, VectorType type) {
         LLVMExpressionNode[] vals = listValues.toArray(new LLVMExpressionNode[listValues.size()]);
         PrimitiveType vectorElementType = type.getElementType();
-        switch (vectorElementType.getKind()) {
+        switch (vectorElementType.getPrimitiveKind()) {
             case I1:
                 return LLVMVectorI1LiteralNodeGen.create(vals);
             case I8:
@@ -216,7 +216,7 @@ final class LLVMLiteralFactory {
 
     static LLVMExpressionNode createZeroVectorInitializer(int nrElements, VectorType type) {
         PrimitiveType llvmType = type.getElementType();
-        switch (llvmType.getKind()) {
+        switch (llvmType.getPrimitiveKind()) {
             case I1:
                 LLVMExpressionNode[] i1Vals = createI1LiteralNodes(nrElements, false);
                 return LLVMVectorI1LiteralNodeGen.create(i1Vals);
@@ -255,7 +255,7 @@ final class LLVMLiteralFactory {
                 throw new AssertionError(value.getClass());
             }
         } else if (type instanceof PrimitiveType) {
-            switch (((PrimitiveType) type).getKind()) {
+            switch (((PrimitiveType) type).getPrimitiveKind()) {
                 case I1:
                     return new LLVMI1LiteralNode((boolean) value);
                 case I8:
@@ -289,7 +289,7 @@ final class LLVMLiteralFactory {
             throw new AssertionError(elementType + " has size of 0!");
         }
         if (elementType instanceof PrimitiveType) {
-            switch (((PrimitiveType) elementType).getKind()) {
+            switch (((PrimitiveType) elementType).getPrimitiveKind()) {
                 case I8:
                     return LLVMI8ArrayLiteralNodeGen.create(arrayValues.toArray(new LLVMExpressionNode[nrElements]), byteLength, arrayAlloc);
                 case I16:

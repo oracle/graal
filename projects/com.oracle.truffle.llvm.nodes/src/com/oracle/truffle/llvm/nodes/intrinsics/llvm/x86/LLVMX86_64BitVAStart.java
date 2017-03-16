@@ -248,7 +248,7 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
     }
 
     private static void doPrimitiveWrite(Type type, LLVMAddress currentAddress, Object object) throws AssertionError {
-        switch (((PrimitiveType) type).getKind()) {
+        switch (((PrimitiveType) type).getPrimitiveKind()) {
             case I1:
                 LLVMMemory.putI1(currentAddress, (boolean) object);
                 break;

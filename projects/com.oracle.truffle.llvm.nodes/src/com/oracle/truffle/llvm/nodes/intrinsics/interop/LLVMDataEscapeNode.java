@@ -31,12 +31,12 @@ package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
@@ -165,6 +165,15 @@ public abstract class LLVMDataEscapeNode extends Node {
     }
 
     @Specialization
+    public Object escapingTruffleObject(LLVMGlobalVariableDescriptor escapingValue) {
+        return escapingValue;
+    }
+
+    public boolean notLLVM(TruffleObject v) {
+        return LLVMExpressionNode.notLLVM(v);
+    }
+
+    @Specialization(guards = "notLLVM(escapingValue)")
     public Object escapingTruffleObject(TruffleObject escapingValue) {
         return escapingValue;
     }

@@ -37,80 +37,63 @@ import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI8ToLLVM80BitFloatNode extends LLVMTo80BitFloatingNode {
+    public abstract static class LLVMSignedToLLVM80BitFloatNode extends LLVMTo80BitFloatingNode {
 
         @Specialization
         public LLVM80BitFloat execute80BitFloat(byte from) {
             return LLVM80BitFloat.fromByte(from);
         }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI8ToLLVM80BitFloatZeroExtNode extends LLVMTo80BitFloatingNode {
-
-        @Specialization
-        public LLVM80BitFloat execute80BitFloat(byte from) {
-            return LLVM80BitFloat.fromUnsignedByte(from);
-        }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI16ToLLVM80BitFloatNode extends LLVMTo80BitFloatingNode {
 
         @Specialization
         public LLVM80BitFloat executeLLVM80BitFloatNode(short from) {
             return LLVM80BitFloat.fromShort(from);
         }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI32ToLLVM80BitFloatNode extends LLVMTo80BitFloatingNode {
 
         @Specialization
         public LLVM80BitFloat executeLLVM80BitFloatNode(int from) {
             return LLVM80BitFloat.fromInt(from);
         }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI32ToLLVM80BitFloatUnsignedNode extends LLVMTo80BitFloatingNode {
-
-        @Specialization
-        public LLVM80BitFloat executeLLVM80BitFloatNode(int from) {
-            return LLVM80BitFloat.fromUnsignedInt(from);
-        }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI64ToLLVM80BitFloatNode extends LLVMTo80BitFloatingNode {
 
         @Specialization
         public LLVM80BitFloat executeLLVM80BitFloatNode(long from) {
             return LLVM80BitFloat.fromLong(from);
         }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI64ToLLVM80BitFloatUnsignedNode extends LLVMTo80BitFloatingNode {
-
-        @Specialization
-        public LLVM80BitFloat executeLLVM80BitFloatNode(long from) {
-            return LLVM80BitFloat.fromUnsignedLong(from);
-        }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMFloatToLLVM80BitFloatNode extends LLVMTo80BitFloatingNode {
 
         @Specialization
         public LLVM80BitFloat executeLLVM80BitFloatNode(float from) {
             // TODO implement
             throw new AssertionError(from);
         }
+
+        @Specialization
+        public LLVM80BitFloat executeLLVM80BitFloatNode(double from) {
+            return LLVM80BitFloat.fromDouble(from);
+        }
     }
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMDoubleToLLVM80BitFloatNode extends LLVMTo80BitFloatingNode {
+    public abstract static class LLVMUnsignedToLLVM80BitFloatNode extends LLVMTo80BitFloatingNode {
+
+        @Specialization
+        public LLVM80BitFloat execute80BitFloat(byte from) {
+            return LLVM80BitFloat.fromUnsignedByte(from);
+        }
+
+        @Specialization
+        public LLVM80BitFloat executeLLVM80BitFloatNode(int from) {
+            return LLVM80BitFloat.fromUnsignedInt(from);
+        }
+
+        @Specialization
+        public LLVM80BitFloat executeLLVM80BitFloatNode(long from) {
+            return LLVM80BitFloat.fromUnsignedLong(from);
+        }
+
+        @Specialization
+        public LLVM80BitFloat executeLLVM80BitFloatNode(float from) {
+            // TODO implement
+            throw new AssertionError(from);
+        }
 
         @Specialization
         public LLVM80BitFloat executeLLVM80BitFloatNode(double from) {

@@ -380,7 +380,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
         } else if (retType instanceof PointerType) {
             return new LLVMAddressUnsupportedInlineAssemblerNode();
         } else if (retType instanceof PrimitiveType) {
-            switch (((PrimitiveType) retType).getKind()) {
+            switch (((PrimitiveType) retType).getPrimitiveKind()) {
                 case I1:
                     return new LLVMI1UnsupportedInlineAssemblerNode();
                 case I8:
