@@ -79,7 +79,7 @@ final class LLVMFrameReadWriteFactory {
 
     static LLVMExpressionNode createFrameRead(Type llvmType, FrameSlot frameSlot) {
         if (llvmType instanceof PrimitiveType) {
-            switch (((PrimitiveType) llvmType).getKind()) {
+            switch (((PrimitiveType) llvmType).getPrimitiveKind()) {
                 case I1:
                     return LLVMI1ReadNodeGen.create(frameSlot);
                 case I8:
@@ -98,7 +98,7 @@ final class LLVMFrameReadWriteFactory {
                     return LLVM80BitFloatReadNodeGen.create(frameSlot);
             }
         } else if (llvmType instanceof VectorType) {
-            switch (((VectorType) llvmType).getElementType().getKind()) {
+            switch (((VectorType) llvmType).getElementType().getPrimitiveKind()) {
                 case I1:
                     return LLVMI1VectorReadNodeGen.create(frameSlot);
                 case I8:
@@ -146,7 +146,7 @@ final class LLVMFrameReadWriteFactory {
     }
 
     private static LLVMExpressionNode handlePrimitive(Type llvmType, LLVMExpressionNode result, FrameSlot slot) throws AssertionError {
-        switch (((PrimitiveType) llvmType).getKind()) {
+        switch (((PrimitiveType) llvmType).getPrimitiveKind()) {
             case I1:
                 return LLVMWriteI1NodeGen.create(result, slot);
             case I8:

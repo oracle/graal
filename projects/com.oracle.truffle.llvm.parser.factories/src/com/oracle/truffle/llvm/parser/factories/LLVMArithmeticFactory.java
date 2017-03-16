@@ -143,7 +143,7 @@ final class LLVMArithmeticFactory {
         } else if (llvmType instanceof VariableBitWidthType) {
             return visitBinaryIVarInstruction(type, left, right);
         } else if (llvmType instanceof VectorType) {
-            switch (((VectorType) llvmType).getElementType().getKind()) {
+            switch (((VectorType) llvmType).getElementType().getPrimitiveKind()) {
                 case I1:
                     return visitBinaryI1VectorInstruction(type, left, right);
                 case I8:
@@ -167,7 +167,7 @@ final class LLVMArithmeticFactory {
     }
 
     private static LLVMExpressionNode handlePrimitive(LLVMExpressionNode left, LLVMExpressionNode right, Type llvmType, LLVMArithmeticInstructionType type) throws AssertionError {
-        switch (((PrimitiveType) llvmType).getKind()) {
+        switch (((PrimitiveType) llvmType).getPrimitiveKind()) {
             case I1:
                 return visitBinaryI1Instruction(type, left, right);
             case I8:

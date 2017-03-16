@@ -54,7 +54,7 @@ public abstract class LLVMTruffleReadBytes extends LLVMIntrinsic {
             bytes[count++] = c;
             adr = adr.increment(Byte.BYTES);
         }
-        return bytes;
+        return new String(bytes);
     }
 
 }

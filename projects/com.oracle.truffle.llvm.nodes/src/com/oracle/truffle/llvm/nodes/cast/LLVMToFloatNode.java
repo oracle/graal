@@ -37,61 +37,61 @@ import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 public abstract class LLVMToFloatNode extends LLVMExpressionNode {
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI8ToFloatNode extends LLVMToFloatNode {
+    public abstract static class LLVMToFloatNoZeroExtNode extends LLVMToFloatNode {
 
         @Specialization
         public float executeDouble(byte from) {
             return from;
         }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI8ToFloatZeroExtNode extends LLVMToFloatNode {
-
-        @Specialization
-        public float executeDouble(byte from) {
-            return from & LLVMExpressionNode.I8_MASK;
-        }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI16ToFloatNode extends LLVMToFloatNode {
 
         @Specialization
         public float executeFloat(short from) {
             return from;
         }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI16ToFloatZeroExtNode extends LLVMToFloatNode {
-
-        @Specialization
-        public float executeDouble(short from) {
-            return from & LLVMExpressionNode.I16_MASK;
-        }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI32ToFloatNode extends LLVMToFloatNode {
 
         @Specialization
         public float executeFloat(int from) {
             return from;
         }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI32ToFloatUnsignedNode extends LLVMToFloatNode {
 
         @Specialization
-        public float executeFloat(int from) {
-            return from & LLVMExpressionNode.I32_MASK;
+        public float executeFloat(long from) {
+            return from;
+        }
+
+        @Specialization
+        public float executeFloat(double from) {
+            return (float) from;
+        }
+
+        @Specialization
+        public float executeFloat(LLVM80BitFloat from) {
+            return from.getFloatValue();
         }
     }
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI32ToFloatBitNode extends LLVMToFloatNode {
+    public abstract static class LLVMToFloatZeroExtNode extends LLVMToFloatNode {
+
+        @Specialization
+        public float executeDouble(byte from) {
+            return from & LLVMExpressionNode.I8_MASK;
+        }
+
+        @Specialization
+        public float executeDouble(short from) {
+            return from & LLVMExpressionNode.I16_MASK;
+        }
+
+        @Specialization
+        public float executeFloat(int from) {
+            return from;
+        }
+
+    }
+
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
+    public abstract static class LLVMToFloatBitNode extends LLVMToFloatNode {
 
         @Specialization
         public float executeFloat(int from) {
@@ -100,18 +100,14 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
     }
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI64ToFloatNode extends LLVMToFloatNode {
-
-        @Specialization
-        public float executeFloat(long from) {
-            return from;
-        }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI64ToFloatUnsignedNode extends LLVMToFloatNode {
+    public abstract static class LLVMToFloatUnsignedNode extends LLVMToFloatNode {
 
         private static final float LEADING_BIT = 0x1.0p63f;
+
+        @Specialization
+        public float executeFloat(int from) {
+            return from & LLVMExpressionNode.I32_MASK;
+        }
 
         @Specialization
         public float executeFloat(long from) {
@@ -120,24 +116,6 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
                 val += LEADING_BIT;
             }
             return val;
-        }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMDoubleToFloatNode extends LLVMToFloatNode {
-
-        @Specialization
-        public float executeFloat(double from) {
-            return (float) from;
-        }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVM80BitFloatToFloatNode extends LLVMToFloatNode {
-
-        @Specialization
-        public float executeFloat(LLVM80BitFloat from) {
-            return from.getFloatValue();
         }
     }
 

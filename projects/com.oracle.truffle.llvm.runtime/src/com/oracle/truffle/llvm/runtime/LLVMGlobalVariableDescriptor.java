@@ -29,11 +29,62 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
-public class LLVMGlobalVariableDescriptor {
+public final class LLVMGlobalVariableDescriptor implements TruffleObject {
+
+    public static void doUnmanagedStore(LLVMGlobalVariableDescriptor descriptor, LLVMAddress value) {
+        if (descriptor.needsTransition()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            descriptor.transition(true, false);
+            LLVMMemory.putAddress(descriptor.getNativeStorage(), value);
+            return;
+        }
+        if (descriptor.isNative()) {
+            LLVMMemory.putAddress(descriptor.getNativeStorage(), value);
+            return;
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException("Sulong can't store a native address in a global variable " + descriptor.getName() + " that previously stored a Truffle object");
+        }
+    }
+
+    public static void doManagedStore(LLVMGlobalVariableDescriptor descriptor, Object value) {
+        if (descriptor.needsTransition()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            descriptor.transition(true, true);
+            descriptor.setManagedStorage(value);
+            return;
+        }
+        if (descriptor.isManaged()) {
+            descriptor.setManagedStorage(value);
+            return;
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException("Sulong can't store a Truffle object in a global variable " + descriptor.getName() + " that previously stored a native address");
+        }
+    }
+
+    public static Object doLoad(LLVMGlobalVariableDescriptor descriptor) {
+        if (descriptor.needsTransition()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            descriptor.transition(false, false);
+        }
+        if (descriptor.isNative()) {
+            return LLVMMemory.getAddress(descriptor.getNativeStorage());
+        } else if (descriptor.isManaged()) {
+            return descriptor.getManagedStorage();
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException(descriptor.toString());
+        }
+    }
 
     /*
      * Global variables can be either declared in the managed source code, or they can be external.
@@ -67,8 +118,6 @@ public class LLVMGlobalVariableDescriptor {
         DECLARED,
         INITIAL_NATIVE,
         NATIVE,
-        MANAGED_UNINIT,
-        MANAGED_CACHED,
         MANAGED
     }
 
@@ -82,6 +131,7 @@ public class LLVMGlobalVariableDescriptor {
      */
 
     @CompilationFinal private State state;
+    @CompilationFinal private Assumption stateAssmuption;
 
     /*
      * The native storage address is compilation final. If the global variable state is not final,
@@ -92,12 +142,12 @@ public class LLVMGlobalVariableDescriptor {
     @CompilationFinal private LLVMAddress nativeStorage;
 
     private Object managedStorage;
-    @CompilationFinal private Object managedStorageCached;
 
     public LLVMGlobalVariableDescriptor(String name, NativeResolver nativeResolver) {
         this.name = name;
         this.nativeResolver = nativeResolver;
         state = State.UNKNOWN;
+        stateAssmuption = Truffle.getRuntime().createAssumption();
     }
 
     public String getName() {
@@ -105,25 +155,41 @@ public class LLVMGlobalVariableDescriptor {
     }
 
     public boolean needsTransition() {
+        if (!stateAssmuption.isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+        }
         return state == State.UNKNOWN || state == State.DECLARED || state == State.INITIAL_NATIVE;
     }
 
     public boolean isNative() {
+        if (!stateAssmuption.isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+        }
         return state == State.NATIVE;
     }
 
     public boolean isManaged() {
-        return state == State.MANAGED || state == State.MANAGED_CACHED || state == State.MANAGED_UNINIT;
+        if (!stateAssmuption.isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+        }
+        return state == State.MANAGED;
     }
 
     public void declare(LLVMAddress setNativeStorage) {
         assert state == State.UNKNOWN : this;
+
+        this.stateAssmuption.invalidate();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        this.stateAssmuption = Truffle.getRuntime().createAssumption();
+
         state = State.DECLARED;
         nativeStorage = setNativeStorage;
     }
 
     public void transition(boolean write, boolean managed) {
-        CompilerAsserts.neverPartOfCompilation();
+        this.stateAssmuption.invalidate();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        this.stateAssmuption = Truffle.getRuntime().createAssumption();
 
         if (state == State.UNKNOWN) {
             /*
@@ -143,7 +209,7 @@ public class LLVMGlobalVariableDescriptor {
                 /*
                  * If we're writing a managed value then the state just goes straight to managed.
                  */
-                state = State.MANAGED_UNINIT;
+                state = State.MANAGED;
             } else {
                 /*
                  * If we're writing and the global variable has been declared in managed code, then
@@ -166,34 +232,28 @@ public class LLVMGlobalVariableDescriptor {
     }
 
     public LLVMAddress getNativeStorage() {
+        if (!stateAssmuption.isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+        }
         assert state == State.INITIAL_NATIVE || state == State.NATIVE || state == State.DECLARED : this;
         return nativeStorage;
     }
 
     public Object getManagedStorage() {
-        assert state == State.MANAGED || state == State.MANAGED_CACHED : this;
-        if (state == State.MANAGED_CACHED) {
-            return managedStorageCached;
-        } else {
-            return managedStorage;
+        if (!stateAssmuption.isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
         }
+        assert state == State.MANAGED;
+        return managedStorage;
     }
 
     public void setManagedStorage(Object object) {
-        assert state == State.MANAGED || state == State.MANAGED_CACHED || state == State.MANAGED_UNINIT : this;
-        assert !(object instanceof LLVMAddress);
-        if (state == State.MANAGED_UNINIT) {
+        if (!stateAssmuption.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            state = State.MANAGED_CACHED;
-            managedStorageCached = object;
-            return;
-        } else if (state == State.MANAGED_CACHED) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            state = State.MANAGED;
-            managedStorage = object;
-        } else {
-            managedStorage = object;
         }
+        assert state == State.MANAGED;
+        assert !(object instanceof LLVMAddress);
+        managedStorage = object;
     }
 
     @Override
@@ -202,7 +262,29 @@ public class LLVMGlobalVariableDescriptor {
     }
 
     public boolean isDeclared() {
+        if (!stateAssmuption.isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+        }
         return state == State.DECLARED;
+    }
+
+    public static boolean isInstance(TruffleObject object) {
+        return object instanceof LLVMGlobalVariableDescriptor;
+    }
+
+    @CompilationFinal private static ForeignAccess ACCESS;
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        if (ACCESS == null) {
+            try {
+                Class<?> accessor = Class.forName("com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMGlobalVariableDescriptorMessageResolutionAccessor");
+                ACCESS = (ForeignAccess) accessor.getField("ACCESS").get(null);
+            } catch (Exception e) {
+                throw new AssertionError(e);
+            }
+        }
+        return ACCESS;
     }
 
 }

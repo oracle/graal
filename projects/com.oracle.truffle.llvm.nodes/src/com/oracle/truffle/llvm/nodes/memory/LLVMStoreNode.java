@@ -50,6 +50,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
@@ -228,13 +229,29 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
             throw new UnsupportedOperationException("Sulong can't store a Truffle object in a native memory address " + address + " value: " + value);
         }
 
+        protected boolean notLLVMAddress(Object value) {
+            return !(value instanceof LLVMAddress);
+        }
+
         @Specialization
+        public Object execute(LLVMTruffleObject address, LLVMAddress value) {
+            doForeignAccess(address, LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES, new LLVMTruffleAddress(value));
+            return null;
+        }
+
+        @Specialization(guards = "notLLVMAddress(value)")
         public Object execute(LLVMTruffleObject address, Object value) {
             doForeignAccess(address, LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES, value);
             return null;
         }
 
         @Specialization
+        public Object execute(TruffleObject address, LLVMAddress value) {
+            doForeignAccess(address, new LLVMTruffleAddress(value));
+            return null;
+        }
+
+        @Specialization(guards = "notLLVMAddress(value)")
         public Object execute(TruffleObject address, Object value) {
             doForeignAccess(address, value);
             return null;
@@ -253,37 +270,14 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
         @Specialization
         public Object executeNative(LLVMAddress value) {
-            if (descriptor.needsTransition()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                descriptor.transition(true, false);
-                LLVMMemory.putAddress(descriptor.getNativeStorage(), value);
-                return null;
-            }
-            if (descriptor.isNative()) {
-                LLVMMemory.putAddress(descriptor.getNativeStorage(), value);
-                return null;
-            } else {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException("Sulong can't store a native address in a global variable " + descriptor.getName() + " that previously stored a Truffle object");
-            }
+            LLVMGlobalVariableDescriptor.doUnmanagedStore(descriptor, value);
+            return null;
         }
 
         @Specialization
         public Object executeManaged(Object value) {
-            if (descriptor.needsTransition()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                descriptor.transition(true, true);
-                descriptor.setManagedStorage(value);
-                return null;
-            }
-            if (descriptor.isManaged()) {
-                descriptor.setManagedStorage(value);
-                return null;
-            } else {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException("Sulong can't store a Truffle object in a global variable " + descriptor.getName() + " that previously stored a native address");
-            }
-
+            LLVMGlobalVariableDescriptor.doManagedStore(descriptor, value);
+            return null;
         }
     }
 

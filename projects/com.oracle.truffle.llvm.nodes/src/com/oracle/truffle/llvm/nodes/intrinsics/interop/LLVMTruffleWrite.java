@@ -81,13 +81,14 @@ public final class LLVMTruffleWrite {
     public abstract static class LLVMTruffleWriteToName extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
+        @Child protected LLVMDataEscapeNode prepareValueForEscape = LLVMDataEscapeNodeGen.create();
 
         @SuppressWarnings("unused")
         @Specialization(limit = "2", guards = "constantPointer(id, cachedPtr)")
         public Object executeIntrinsicCached(LLVMTruffleObject value, LLVMAddress id, Object v, @Cached("pointerOf(id)") long cachedPtr,
                         @Cached("readString(id)") String cachedId) {
             checkLLVMTruffleObject(value);
-            doWrite(foreignWrite, value.getObject(), cachedId, v);
+            doWrite(foreignWrite, value.getObject(), cachedId, prepareValueForEscape.executeWithTarget(v));
             return null;
         }
 
@@ -95,7 +96,7 @@ public final class LLVMTruffleWrite {
         public Object executeIntrinsic(LLVMTruffleObject value, LLVMAddress id, Object v) {
             LLVMPerformance.warn(this);
             checkLLVMTruffleObject(value);
-            doWrite(foreignWrite, value.getObject(), id, v);
+            doWrite(foreignWrite, value.getObject(), id, prepareValueForEscape.executeWithTarget(v));
             return null;
         }
 
@@ -103,14 +104,14 @@ public final class LLVMTruffleWrite {
         @Specialization(limit = "2", guards = "constantPointer(id, cachedPtr)")
         public Object executeIntrinsicTruffleObjectCached(TruffleObject value, LLVMAddress id, Object v, @Cached("pointerOf(id)") long cachedPtr,
                         @Cached("readString(id)") String cachedId) {
-            doWrite(foreignWrite, value, cachedId, v);
+            doWrite(foreignWrite, value, cachedId, prepareValueForEscape.executeWithTarget(v));
             return null;
         }
 
         @Specialization
         public Object executeIntrinsicTruffleObject(TruffleObject value, LLVMAddress id, Object v) {
             LLVMPerformance.warn(this);
-            doWrite(foreignWrite, value, id, v);
+            doWrite(foreignWrite, value, id, prepareValueForEscape.executeWithTarget(v));
             return null;
         }
     }
@@ -119,17 +120,18 @@ public final class LLVMTruffleWrite {
     public abstract static class LLVMTruffleWriteToIndex extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
+        @Child protected LLVMDataEscapeNode prepareValueForEscape = LLVMDataEscapeNodeGen.create();
 
         @Specialization
         public Object executeIntrinsic(LLVMTruffleObject value, int id, Object v) {
             checkLLVMTruffleObject(value);
-            doWriteIdx(foreignWrite, value.getObject(), id, v);
+            doWriteIdx(foreignWrite, value.getObject(), id, prepareValueForEscape.executeWithTarget(v));
             return null;
         }
 
         @Specialization
         public Object executeIntrinsic(TruffleObject value, int id, Object v) {
-            doWriteIdx(foreignWrite, value, id, v);
+            doWriteIdx(foreignWrite, value, id, prepareValueForEscape.executeWithTarget(v));
             return null;
         }
     }

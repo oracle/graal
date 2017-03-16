@@ -568,7 +568,7 @@ public abstract class Function implements ParserListener {
                     throw new IllegalStateException("Cannot infer structure element from " + idx);
                 }
                 Number index = (Number) ((PrimitiveType) idx).getConstant();
-                assert ((PrimitiveType) idx).getKind() == PrimitiveKind.I32;
+                assert ((PrimitiveType) idx).getPrimitiveKind() == PrimitiveKind.I32;
                 elementType = structure.getElementType(index.intValue());
             }
         }

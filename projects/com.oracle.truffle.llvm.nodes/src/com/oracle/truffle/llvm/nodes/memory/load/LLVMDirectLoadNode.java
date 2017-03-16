@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.load;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -43,6 +42,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleManagedMalloc.ManagedMallocObject;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
@@ -87,6 +87,8 @@ public abstract class LLVMDirectLoadNode {
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMAddressDirectLoadNode extends LLVMExpressionNode {
 
+        @Child protected ToLLVMNode toLLVM = ToLLVMNode.createNode(TruffleObject.class);
+
         @Specialization
         public LLVMAddress executeAddress(LLVMAddress addr) {
             return LLVMMemory.getAddress(addr);
@@ -99,13 +101,13 @@ public abstract class LLVMDirectLoadNode {
 
         @Specialization(guards = "objectIsManagedMalloc(addr)")
         public Object executeIndirectedManagedMalloc(LLVMTruffleObject addr) {
-            return ((ManagedMallocObject) addr.getObject()).get((int) (addr.getOffset() / LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES));
+            return toLLVM.executeWithTarget(((ManagedMallocObject) addr.getObject()).get((int) (addr.getOffset() / LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES)));
         }
 
         @Specialization(guards = "!objectIsManagedMalloc(addr)")
         public Object executeIndirectedForeign(LLVMTruffleObject addr, @Cached("createForeignReadNode()") Node foreignRead) {
             try {
-                return ForeignAccess.sendRead(foreignRead, addr.getObject(), addr.getOffset());
+                return toLLVM.executeWithTarget(ForeignAccess.sendRead(foreignRead, addr.getObject(), addr.getOffset()));
             } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                 throw new UnsupportedOperationException(e);
             }
@@ -114,7 +116,7 @@ public abstract class LLVMDirectLoadNode {
         @Specialization(guards = "!isManagedMalloc(addr)")
         public Object executeForeign(TruffleObject addr, @Cached("createForeignReadNode()") Node foreignRead) {
             try {
-                return ForeignAccess.sendRead(foreignRead, addr, 0);
+                return toLLVM.executeWithTarget(ForeignAccess.sendRead(foreignRead, addr, 0));
             } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                 throw new UnsupportedOperationException(e);
             }
@@ -143,18 +145,7 @@ public abstract class LLVMDirectLoadNode {
 
         @Override
         public Object executeGeneric(VirtualFrame frame) {
-            if (descriptor.needsTransition()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                descriptor.transition(false, false);
-            }
-            if (descriptor.isNative()) {
-                return LLVMMemory.getAddress(descriptor.getNativeStorage());
-            } else if (descriptor.isManaged()) {
-                return descriptor.getManagedStorage();
-            } else {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(descriptor.toString());
-            }
+            return LLVMGlobalVariableDescriptor.doLoad(descriptor);
         }
 
     }

@@ -29,92 +29,103 @@
  */
 package com.oracle.truffle.llvm.nodes.cast;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
 
 public abstract class LLVMToI16Node extends LLVMExpressionNode {
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI1ToI16Node extends LLVMToI16Node {
+    public abstract static class LLVMToI16NoZeroExtNode extends LLVMToI16Node {
 
         @Specialization
         public short executeI16(boolean from) {
             return (short) (from ? -1 : 0);
         }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI1ToI16ZeroExtNode extends LLVMToI16Node {
-
-        @Specialization
-        public short executeI16(boolean from) {
-            return (short) (from ? 1 : 0);
-        }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI8ToI16Node extends LLVMToI16Node {
 
         @Specialization
         public short executeI16(byte from) {
             return from;
         }
+
+        @Specialization
+        public short executeI16(int from) {
+            return (short) from;
+        }
+
+        @Specialization
+        public short executeI16(long from) {
+            return (short) from;
+        }
+
+        @Specialization
+        public short executeI16(LLVMIVarBit from) {
+            return from.getShortValue();
+        }
+
+        @Specialization
+        public short executeI16(float from) {
+            return (short) from;
+        }
+
+        @Specialization
+        public short executeI16(double from) {
+            return (short) from;
+        }
+
+        @Specialization
+        public short executeLLVMAddress(LLVMAddress from) {
+            return (short) from.getVal();
+        }
+
+        @Specialization
+        public short executeLLVMTruffleNull(@SuppressWarnings("unused") LLVMTruffleNull from) {
+            return 0;
+        }
+
+        @Child private Node isNull = Message.IS_NULL.createNode();
+        @Child private Node isBoxed = Message.IS_BOXED.createNode();
+        @Child private Node unbox = Message.UNBOX.createNode();
+        @Child private ToLLVMNode toShort = ToLLVMNode.createNode(short.class);
+
+        @Specialization(guards = "notLLVM(from)")
+        public short executeTruffleObject(TruffleObject from) {
+            if (ForeignAccess.sendIsNull(isNull, from)) {
+                return 0;
+            } else if (ForeignAccess.sendIsBoxed(isBoxed, from)) {
+                try {
+                    return (short) toShort.executeWithTarget(ForeignAccess.sendUnbox(unbox, from));
+                } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException(e);
+                }
+            }
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException("Not convertable");
+        }
     }
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI8ToI16ZeroExtNode extends LLVMToI16Node {
+    public abstract static class LLVMToI16ZeroExtNode extends LLVMToI16Node {
+
+        @Specialization
+        public short executeI16(boolean from) {
+            return (short) (from ? 1 : 0);
+        }
 
         @Specialization
         public short executeI16(byte from) {
             return (short) (from & LLVMExpressionNode.I8_MASK);
         }
     }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI32ToI16Node extends LLVMToI16Node {
-
-        @Specialization
-        public short executeI16(int from) {
-            return (short) from;
-        }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI64ToI16Node extends LLVMToI16Node {
-
-        @Specialization
-        public short executeI16(long from) {
-            return (short) from;
-        }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMIVarToI16Node extends LLVMToI16Node {
-
-        @Specialization
-        public short executeI16(LLVMIVarBit from) {
-            return from.getShortValue();
-        }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMFloatToI16Node extends LLVMToI16Node {
-
-        @Specialization
-        public short executeI16(float from) {
-            return (short) from;
-        }
-    }
-
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMDoubleToI16Node extends LLVMToI16Node {
-
-        @Specialization
-        public short executeI16(double from) {
-            return (short) from;
-        }
-    }
-
 }

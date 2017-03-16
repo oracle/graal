@@ -33,60 +33,37 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 
+@NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
 public abstract class LLVMToI1Node extends LLVMExpressionNode {
 
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI8ToI1Node extends LLVMToI1Node {
-
-        @Specialization
-        public boolean executeI1(byte from) {
-            return (from & 1) != 0;
-        }
+    @Specialization
+    public boolean executeI1(byte from) {
+        return (from & 1) != 0;
     }
 
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI16ToI1Node extends LLVMToI1Node {
-
-        @Specialization
-        public boolean executeI1(short from) {
-            return (from & 1) != 0;
-        }
+    @Specialization
+    public boolean executeI1(short from) {
+        return (from & 1) != 0;
     }
 
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI32ToI1Node extends LLVMToI1Node {
-
-        @Specialization
-        public boolean executeI1(int from) {
-            return (from & 1) != 0;
-        }
+    @Specialization
+    public boolean executeI1(int from) {
+        return (from & 1) != 0;
     }
 
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMI64ToI1Node extends LLVMToI1Node {
-
-        @Specialization
-        public boolean executeI1(long from) {
-            return (from & 1) != 0;
-        }
+    @Specialization
+    public boolean executeI1(long from) {
+        return (from & 1) != 0;
     }
 
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMFloatToI1Node extends LLVMToI1Node {
-
-        @Specialization
-        public boolean executeI1(float from) {
-            return from != 0;
-        }
+    @Specialization
+    public boolean executeI1(float from) {
+        return from != 0;
     }
 
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMDoubleToI1Node extends LLVMToI1Node {
-
-        @Specialization
-        public boolean executeI1(double from) {
-            return from != 0;
-        }
+    @Specialization
+    public boolean executeI1(double from) {
+        return from != 0;
     }
 
 }

@@ -27,37 +27,24 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint;
+package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-import java.nio.ByteBuffer;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
 
-import com.oracle.truffle.llvm.parser.model.symbols.constants.AbstractConstant;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
-import com.oracle.truffle.llvm.runtime.types.Type;
+@MessageResolution(receiverType = LLVMTruffleAddress.class, language = LLVMLanguage.class)
+public class LLVMNullMessageResolution {
 
-public abstract class FloatingPointConstant extends AbstractConstant {
-
-    private static final int X86_FP80_BYTES = PrimitiveType.X86_FP80.getBitSize() / Byte.SIZE;
-
-    FloatingPointConstant(Type type) {
-        super(type);
-    }
-
-    public abstract String getStringValue();
-
-    public static FloatingPointConstant create(Type type, long[] bits) {
-        switch (((PrimitiveType) type).getPrimitiveKind()) {
-            case FLOAT:
-                return new FloatConstant(Float.intBitsToFloat((int) bits[0]));
-
-            case DOUBLE:
-                return new DoubleConstant(Double.longBitsToDouble(bits[0]));
-
-            case X86_FP80:
-                return new X86FP80Constant(ByteBuffer.allocate(X86_FP80_BYTES).putLong(bits[0]).putShort((short) bits[1]).array());
-
-            default:
-                throw new UnsupportedOperationException("Unsupported Floating Point Type: " + type);
+    @Resolve(message = "IS_NULL")
+    public abstract static class ForeignNullIsNull extends Node {
+        @SuppressWarnings("unused")
+        protected boolean access(VirtualFrame frame, LLVMTruffleNull receiver) {
+            return true;
         }
     }
 }

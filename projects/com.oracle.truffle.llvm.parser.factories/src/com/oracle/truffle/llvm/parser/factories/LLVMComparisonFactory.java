@@ -237,7 +237,7 @@ final class LLVMComparisonFactory {
     }
 
     private static LLVMExpressionNode handlePrimitive(LLVMExpressionNode left, LLVMExpressionNode right, Type llvmType, LLVMIntegerComparisonType condition) throws AssertionError {
-        switch (((PrimitiveType) llvmType).getKind()) {
+        switch (((PrimitiveType) llvmType).getPrimitiveKind()) {
             case I1:
                 return visitI1Comparison(left, right, condition);
             case I8:
@@ -435,7 +435,7 @@ final class LLVMComparisonFactory {
         } else if (condition == LLVMFloatComparisonType.TRUE) {
             return new LLVMI1LiteralNode(true);
         }
-        switch (((PrimitiveType) llvmType).getKind()) {
+        switch (((PrimitiveType) llvmType).getPrimitiveKind()) {
             case FLOAT:
                 return visitFloatComparison(left, right, condition);
             case DOUBLE:

@@ -109,7 +109,7 @@ final class LLVMLogicalFactory {
                     throws AssertionError {
         if (llvmType instanceof VectorType) {
             PrimitiveType elementType = ((VectorType) llvmType).getElementType();
-            switch (elementType.getKind()) {
+            switch (elementType.getPrimitiveKind()) {
                 case I1:
                     return visitLogicalI1VectorInstruction(type, left, right);
                 case I8:
@@ -132,7 +132,7 @@ final class LLVMLogicalFactory {
     }
 
     private static LLVMExpressionNode handlePrimitive(LLVMExpressionNode left, LLVMExpressionNode right, Type llvmType, LLVMLogicalInstructionKind type) throws AssertionError {
-        switch (((PrimitiveType) llvmType).getKind()) {
+        switch (((PrimitiveType) llvmType).getPrimitiveKind()) {
             case I1:
                 return visitLogicalI1Instruction(type, left, right);
             case I8:

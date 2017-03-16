@@ -123,7 +123,7 @@ public final class NativeLookup {
             return "POINTER";
         } else if (type instanceof PrimitiveType) {
             PrimitiveType primitiveType = (PrimitiveType) type;
-            PrimitiveKind kind = primitiveType.getKind();
+            PrimitiveKind kind = primitiveType.getPrimitiveKind();
             switch (kind) {
                 case I1:
                 case I8:
@@ -258,7 +258,11 @@ public final class NativeLookup {
         TruffleObject symbol = descriptor.getNativeSymbol();
         if (symbol == null) {
             CompilerDirectives.transferToInterpreter();
-            symbol = getNativeFunction(descriptor.getName());
+            if (descriptor.isNullFunction()) {
+                symbol = new LLVMTruffleNull();
+            } else {
+                symbol = getNativeFunction(descriptor.getName());
+            }
             if (symbol == null) {
                 throw new RuntimeException("could not resolve external symbol " + descriptor.getName());
             }

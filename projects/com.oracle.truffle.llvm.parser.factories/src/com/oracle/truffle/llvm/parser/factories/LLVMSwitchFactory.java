@@ -43,7 +43,7 @@ final class LLVMSwitchFactory {
 
     static LLVMControlFlowNode createSwitch(LLVMExpressionNode cond, int defaultLabel, int[] otherLabels, LLVMExpressionNode[] cases,
                     PrimitiveType llvmType, LLVMExpressionNode[] phiWriteNodes) {
-        switch (llvmType.getKind()) {
+        switch (llvmType.getPrimitiveKind()) {
             case I8:
                 LLVMExpressionNode[] i8Cases = Arrays.copyOf(cases, cases.length, LLVMExpressionNode[].class);
                 return new LLVMI8SwitchNode(cond, i8Cases, otherLabels, defaultLabel, phiWriteNodes);

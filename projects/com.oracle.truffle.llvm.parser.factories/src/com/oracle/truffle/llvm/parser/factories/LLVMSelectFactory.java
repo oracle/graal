@@ -61,7 +61,7 @@ final class LLVMSelectFactory {
     }
 
     private static LLVMExpressionNode handlePrimitive(Type llvmType, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue) throws AssertionError {
-        switch (((PrimitiveType) llvmType).getKind()) {
+        switch (((PrimitiveType) llvmType).getPrimitiveKind()) {
             case I1:
                 return LLVMI1SelectNodeGen.create(condition, trueValue, falseValue);
             case I8:

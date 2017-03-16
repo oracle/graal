@@ -41,6 +41,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
@@ -345,7 +346,7 @@ public final class LLVMInteropTest {
         final Object[] result = new Object[]{null};
         runner.export(JavaInterop.asTruffleFunction(FuncEInterface.class, x -> result[0] = x), "foo");
         Assert.assertEquals(36, runner.run());
-        Assert.assertArrayEquals(new byte[]{102, 111, 111, 0, 32, 98, 97, 114, -128, 32}, (byte[]) result[0]);
+        Assert.assertEquals(new String(new byte[]{102, 111, 111, 0, 32, 98, 97, 114, -128, 32}), (result[0]));
     }
 
     // implicit interop
@@ -521,7 +522,7 @@ public final class LLVMInteropTest {
         }
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test(expected = UnsupportedMessageException.class)
     public void test042() throws Exception {
         Runner runner = new Runner("interop042");
         try {

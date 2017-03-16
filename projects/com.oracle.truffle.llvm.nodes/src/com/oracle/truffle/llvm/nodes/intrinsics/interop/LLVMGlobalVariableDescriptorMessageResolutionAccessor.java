@@ -27,37 +27,12 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint;
+package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-import java.nio.ByteBuffer;
+import com.oracle.truffle.api.interop.ForeignAccess;
 
-import com.oracle.truffle.llvm.parser.model.symbols.constants.AbstractConstant;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
-import com.oracle.truffle.llvm.runtime.types.Type;
+public class LLVMGlobalVariableDescriptorMessageResolutionAccessor {
 
-public abstract class FloatingPointConstant extends AbstractConstant {
+    public static final ForeignAccess ACCESS = LLVMGlobalVariableDescriptorMessageResolutionForeign.ACCESS;
 
-    private static final int X86_FP80_BYTES = PrimitiveType.X86_FP80.getBitSize() / Byte.SIZE;
-
-    FloatingPointConstant(Type type) {
-        super(type);
-    }
-
-    public abstract String getStringValue();
-
-    public static FloatingPointConstant create(Type type, long[] bits) {
-        switch (((PrimitiveType) type).getPrimitiveKind()) {
-            case FLOAT:
-                return new FloatConstant(Float.intBitsToFloat((int) bits[0]));
-
-            case DOUBLE:
-                return new DoubleConstant(Double.longBitsToDouble(bits[0]));
-
-            case X86_FP80:
-                return new X86FP80Constant(ByteBuffer.allocate(X86_FP80_BYTES).putLong(bits[0]).putShort((short) bits[1]).array());
-
-            default:
-                throw new UnsupportedOperationException("Unsupported Floating Point Type: " + type);
-        }
-    }
 }

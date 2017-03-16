@@ -27,38 +27,35 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.factories;
+package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMDoubleProfiledValueNodeGen;
-import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMFloatProfiledValueNodeGen;
-import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI32ProfiledValueNodeGen;
-import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI64ProfiledValueNodeGen;
-import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI8ProfiledValueNodeGen;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
 
-final class LLVMValueProfileFactory {
+public final class LLVMTruffleNull implements TruffleObject {
 
-    static LLVMExpressionNode createValueProfiledNode(LLVMExpressionNode argNode, Type paramType) {
-        if (paramType instanceof PrimitiveType) {
-            switch (((PrimitiveType) paramType).getPrimitiveKind()) {
-                case I8:
-                    return LLVMI8ProfiledValueNodeGen.create(argNode);
-                case I32:
-                    return LLVMI32ProfiledValueNodeGen.create(argNode);
-                case I64:
-                    return LLVMI64ProfiledValueNodeGen.create(argNode);
-                case FLOAT:
-                    return LLVMFloatProfiledValueNodeGen.create(argNode);
-                case DOUBLE:
-                    return LLVMDoubleProfiledValueNodeGen.create(argNode);
-                default:
-                    return argNode;
-            }
-        } else {
-            return argNode;
-        }
+    public static boolean isInstance(TruffleObject object) {
+        return object instanceof LLVMTruffleNull;
     }
 
+    @CompilationFinal private static ForeignAccess ACCESS;
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        if (ACCESS == null) {
+            try {
+                Class<?> accessor = getLLVMAddressMessageResolutionAccessorClass();
+                ACCESS = (ForeignAccess) accessor.getField("ACCESS").get(null);
+            } catch (Exception e) {
+                throw new AssertionError(e);
+            }
+        }
+        return ACCESS;
+    }
+
+    // needed by SVM
+    private static Class<?> getLLVMAddressMessageResolutionAccessorClass() throws ClassNotFoundException {
+        return Class.forName("com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMNullMessageResolutionAccessor");
+    }
 }
