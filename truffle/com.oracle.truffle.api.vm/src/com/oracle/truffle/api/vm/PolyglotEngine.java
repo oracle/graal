@@ -213,7 +213,7 @@ public class PolyglotEngine {
     private final Map<String, Language> mimeTypeToLanguage;
     /* Used for fast context lookup */
     @CompilationFinal(dimensions = 1) final Language[] languageArray;
-    final PolyglotShared shared;
+    final PolyglotRuntime shared;
     private final List<PolyglotEngine> languageEngineForks;
     final InputStream in;
     final DispatchOutputStream err;
@@ -281,7 +281,7 @@ public class PolyglotEngine {
     /**
      * Constructor used from the builder.
      */
-    PolyglotEngine(PolyglotShared shared, Executor executor, InputStream in, DispatchOutputStream out, DispatchOutputStream err, Map<String, Object> globals, List<Object[]> config) {
+    PolyglotEngine(PolyglotRuntime shared, Executor executor, InputStream in, DispatchOutputStream out, DispatchOutputStream err, Map<String, Object> globals, List<Object[]> config) {
         assertNoCompilation();
         this.initThread = Thread.currentThread();
         this.shared = shared;
@@ -568,8 +568,7 @@ public class PolyglotEngine {
                 realIn = in == null ? realRuntime.in : in;
             }
 
-            PolyglotShared realShared = realRuntime.createShared();
-            return new PolyglotEngine(realShared, executor, realIn, realOut, realErr, globals, arguments);
+            return new PolyglotEngine(realRuntime, executor, realIn, realOut, realErr, globals, arguments);
         }
     }
 
@@ -1322,12 +1321,12 @@ public class PolyglotEngine {
      */
     public final class Instrument {
 
-        private final PolyglotShared engineShared;
+        private final PolyglotRuntime engineShared;
         private final InstrumentCache info;
         private final Object instrumentLock = new Object();
         private volatile boolean enabled;
 
-        Instrument(PolyglotShared engineShared, InstrumentCache cache) {
+        Instrument(PolyglotRuntime engineShared, InstrumentCache cache) {
             this.engineShared = engineShared;
             this.info = cache;
         }
@@ -1655,14 +1654,14 @@ public class PolyglotEngine {
     static final class LanguageShared {
 
         final LanguageCache cache;
-        private final PolyglotShared engineShared;
+        private final PolyglotRuntime engineShared;
         private final PolyglotEngineProfile engineProfile;
         private volatile TruffleLanguage<?> language;
         private final int languageId;
         private final Assumption contextFinalAssumption;
         private LoadedLanguage loadedLanguage;
 
-        LanguageShared(PolyglotShared engineShared, LanguageCache cache, int languageId) {
+        LanguageShared(PolyglotRuntime engineShared, LanguageCache cache, int languageId) {
             this.engineShared = engineShared;
             this.engineProfile = engineShared.engineProfile;
             assert engineProfile != null;
@@ -1771,7 +1770,7 @@ public class PolyglotEngine {
 
             @Override
             public Env getEnvForInstrument(Object vm, String mimeType) {
-                Language lang = ((PolyglotShared) vm).currentVM().findLanguage(mimeType, true);
+                Language lang = ((PolyglotRuntime) vm).currentVM().findLanguage(mimeType, true);
                 lang.getContext(true);
                 Env env = lang.getEnv(false);
                 assert env != null;

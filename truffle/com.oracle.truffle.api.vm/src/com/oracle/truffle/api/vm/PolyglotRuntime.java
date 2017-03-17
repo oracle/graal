@@ -27,6 +27,13 @@ package com.oracle.truffle.api.vm;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A runtime environment for one or more {@link PolyglotEngine} instances. By default multiple
@@ -47,19 +54,62 @@ import java.io.OutputStream;
  * @since 0.25
  */
 public final class PolyglotRuntime {
+    private final List<PolyglotEngine.LanguageShared> languages;
+    final Object instrumentationHandler;
+    final Map<String, PolyglotEngine.Instrument> instruments;
+    final Object[] debugger = {null};
+    final PolyglotEngineProfile engineProfile;
+    final AtomicInteger instanceCount = new AtomicInteger(0);
     final DispatchOutputStream out;
     final DispatchOutputStream err;
     final InputStream in;
-    private PolyglotShared shared;
 
     private PolyglotRuntime() {
         this(null, null, null);
     }
 
-    private PolyglotRuntime(DispatchOutputStream out, DispatchOutputStream err, InputStream in) {
+    PolyglotRuntime(DispatchOutputStream out, DispatchOutputStream err, InputStream in) {
+        this.instrumentationHandler = PolyglotEngine.Access.INSTRUMENT.createInstrumentationHandler(this, out, err, in);
+        /*
+         * TODO the engine profile needs to be shared between all engines that potentially share
+         * code. Currently this is stored statically to be compatible with the legacy deprecated API
+         * TruffleLanguage#createFindContextNode() and the deprecated RootNode constructor. As soon
+         * as this deprecated API is removed and EngineImpl#findVM() can be removed as well, we can
+         * allocate this context store profile for each shared vm.
+         */
+        this.engineProfile = PolyglotEngine.GLOBAL_PROFILE;
+        List<PolyglotEngine.LanguageShared> languageList = new ArrayList<>();
+        /* We want to create a language instance but per LanguageCache and not per mime type. */
+        List<LanguageCache> convertedLanguages = new ArrayList<>(new HashSet<>(LanguageCache.languages().values()));
+        Collections.sort(convertedLanguages);
+
+        int languageIndex = 0;
+        for (LanguageCache languageCache : convertedLanguages) {
+            languageList.add(new PolyglotEngine.LanguageShared(this, languageCache, languageIndex++));
+        }
+        this.languages = languageList;
+        this.instruments = createInstruments(InstrumentCache.load());
+
         this.out = out;
         this.err = err;
         this.in = in;
+    }
+
+    PolyglotEngine currentVM() {
+        return engineProfile.get();
+    }
+
+    List<PolyglotEngine.LanguageShared> getLanguages() {
+        return languages;
+    }
+
+    private Map<String, PolyglotEngine.Instrument> createInstruments(List<InstrumentCache> instrumentCaches) {
+        Map<String, PolyglotEngine.Instrument> instr = new LinkedHashMap<>();
+        for (InstrumentCache cache : instrumentCaches) {
+            PolyglotEngine.Instrument instrument = PolyglotEngine.UNUSABLE_ENGINE.new Instrument(this, cache);
+            instr.put(cache.getId(), instrument);
+        }
+        return Collections.unmodifiableMap(instr);
     }
 
     /**
@@ -71,13 +121,6 @@ public final class PolyglotRuntime {
      */
     public static Builder newBuilder() {
         return new PolyglotRuntime().new Builder();
-    }
-
-    PolyglotShared createShared() {
-        if (shared == null) {
-            shared = new PolyglotShared(out, err, in);
-        }
-        return shared;
     }
 
     /**
