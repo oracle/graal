@@ -91,6 +91,11 @@ public abstract class SwitchNode extends ControlSplitNode {
     }
 
     @Override
+    public int getSuccessorCount() {
+        return successors.count();
+    }
+
+    @Override
     public double probability(AbstractBeginNode successor) {
         double sum = 0;
         for (int i = 0; i < keySuccessors.length; i++) {
@@ -99,6 +104,39 @@ public abstract class SwitchNode extends ControlSplitNode {
             }
         }
         return sum;
+    }
+
+    @Override
+    public boolean setProbability(AbstractBeginNode successor, double value) {
+        assert value <= 1.0 && value >= 0.0 : value;
+        assert assertProbabilities();
+
+        double sum = 0;
+        double otherSum = 0;
+        for (int i = 0; i < keySuccessors.length; i++) {
+            if (successors.get(keySuccessors[i]) == successor) {
+                sum += keyProbabilities[i];
+            } else {
+                otherSum += keyProbabilities[i];
+            }
+        }
+
+        if (otherSum == 0 || sum == 0) {
+            // Cannot correctly adjust probabilities.
+            return false;
+        }
+
+        double delta = value - sum;
+
+        for (int i = 0; i < keySuccessors.length; i++) {
+            if (successors.get(keySuccessors[i]) == successor) {
+                keyProbabilities[i] = Math.max(0.0, keyProbabilities[i] + (delta * keyProbabilities[i]) / sum);
+            } else {
+                keyProbabilities[i] = Math.max(0.0, keyProbabilities[i] - (delta * keyProbabilities[i]) / otherSum);
+            }
+        }
+        assert assertProbabilities();
+        return true;
     }
 
     public ValueNode value() {

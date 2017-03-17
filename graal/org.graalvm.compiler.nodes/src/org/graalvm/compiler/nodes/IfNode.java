@@ -1215,4 +1215,21 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     public AbstractBeginNode getSuccessor(boolean result) {
         return result ? this.trueSuccessor() : this.falseSuccessor();
     }
+
+    @Override
+    public boolean setProbability(AbstractBeginNode successor, double value) {
+        if (successor == this.trueSuccessor()) {
+            this.setTrueSuccessorProbability(value);
+            return true;
+        } else if (successor == this.falseSuccessor()) {
+            this.setTrueSuccessorProbability(1.0 - value);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public int getSuccessorCount() {
+        return 2;
+    }
 }
