@@ -270,4 +270,10 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
     public ValueNode classInit() {
         return classInit;
     }
+
+    @Override
+    public boolean setProbability(AbstractBeginNode successor, double value) {
+        // Cannot set probability for exception invokes.
+        return false;
+    }
 }

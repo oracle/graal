@@ -74,6 +74,12 @@ public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode i
         return successor == next ? 1 : 0;
     }
 
+    @Override
+    public boolean setProbability(AbstractBeginNode successor, double value) {
+        // Successor probabilities for arithmetic split nodes are fixed.
+        return false;
+    }
+
     public AbstractBeginNode getNext() {
         return next;
     }
