@@ -838,10 +838,10 @@ public class StandardGraphBuilderPlugins {
             for (JavaKind kind : JavaKind.values()) {
                 if ((kind.isPrimitive() && kind != JavaKind.Void) || kind == JavaKind.Object) {
                     Class<?> javaClass = kind == JavaKind.Object ? Object.class : kind.toJavaClass();
-                    r.register2("consume", Receiver.class, javaClass, blackholePlugin);
+                    r.registerOptional2("consume", Receiver.class, javaClass, blackholePlugin);
                 }
             }
-            r.register2("consume", Receiver.class, Object[].class, blackholePlugin);
+            r.registerOptional2("consume", Receiver.class, Object[].class, blackholePlugin);
         }
     }
 
