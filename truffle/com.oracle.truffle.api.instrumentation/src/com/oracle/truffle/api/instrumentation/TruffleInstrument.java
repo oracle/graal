@@ -35,8 +35,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.LanguageInfo;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.Info;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AccessorInstrumentHandler;
 import com.oracle.truffle.api.nodes.Node;
@@ -321,7 +321,7 @@ public abstract class TruffleInstrument {
 
         @SuppressWarnings("static-method")
         private TruffleLanguage.Env getLangEnv(Node node) {
-            Info languageInfo = node.getRootNode().getLanguageInfo();
+            LanguageInfo languageInfo = node.getRootNode().getLanguageInfo();
             if (languageInfo == null) {
                 throw new IllegalArgumentException("No language available for given node.");
             }

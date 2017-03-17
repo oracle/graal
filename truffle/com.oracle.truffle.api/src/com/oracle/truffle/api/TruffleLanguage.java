@@ -696,56 +696,6 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Represents public information about this language.
-     *
-     * @since 0.25
-     */
-    public static final class Info {
-
-        private final String name;
-        private final String version;
-        private final Set<String> mimeTypes;
-        final Env env;
-
-        private Info(Env env, String name, String version, Set<String> mimeTypes) {
-            this.name = name;
-            this.version = version;
-            this.mimeTypes = mimeTypes;
-            this.env = env;
-        }
-
-        /**
-         * Returns the unique name of the language. This name is equivalent to the name returned by
-         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Language#getName()}.
-         *
-         * @since 0.25
-         */
-        public String getName() {
-            return name;
-        }
-
-        /**
-         * Returns the version of the language. This version is equivalent to the name returned by
-         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Language#getVersion()}.
-         *
-         * @since 0.25
-         */
-        public String getVersion() {
-            return version;
-        }
-
-        /**
-         * Returns the MIME types supported by this language. This set is equivalent to the set
-         * returned by {@link com.oracle.truffle.api.vm.PolyglotEngine.Language#getMimeTypes()}.
-         *
-         * @since 0.25
-         */
-        public Set<String> getMimeTypes() {
-            return mimeTypes;
-        }
-    }
-
-    /**
      * Represents execution environment of the {@link TruffleLanguage}. Each active
      * {@link TruffleLanguage} receives instance of the environment before any code is executed upon
      * it. The environment has knowledge of all active languages and can exchange symbols between
@@ -762,7 +712,7 @@ public abstract class TruffleLanguage<C> {
         private final OutputStream out;
         private final Map<String, Object> config;
         private List<Object> services;
-        private TruffleLanguage.Info info;
+        private LanguageInfo info;
 
         private Env(Object languageShared, TruffleLanguage<Object> lang, OutputStream out, OutputStream err, InputStream in, Map<String, Object> config) {
             this.languageShared = languageShared;
@@ -1118,7 +1068,7 @@ public abstract class TruffleLanguage<C> {
                         String name,
                         String version, Set<String> mimeTypes) {
             Env env = new Env(languageShared, (TruffleLanguage<Object>) language, stdOut, stdErr, stdIn, config);
-            Info info = new Info(env, name, version, mimeTypes);
+            LanguageInfo info = new LanguageInfo(env, name, version, mimeTypes);
             env.info = info;
             LinkedHashSet<Object> collectedServices = new LinkedHashSet<>();
             AccessAPI.instrumentAccess().collectEnvServices(collectedServices, languageShared, info);
@@ -1138,7 +1088,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public Info getInfo(Env env) {
+        public LanguageInfo getInfo(Env env) {
             return env.info;
         }
 
@@ -1283,13 +1233,13 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public Info getLanguageInfo(TruffleLanguage<?> language) {
+        public LanguageInfo getLanguageInfo(TruffleLanguage<?> language) {
             return language.env.info;
         }
 
         @Override
         @SuppressWarnings("rawtypes")
-        public Info getLegacyLanguageInfo(Class<? extends TruffleLanguage> languageClass) {
+        public LanguageInfo getLegacyLanguageInfo(Class<? extends TruffleLanguage> languageClass) {
             Object vm = AccessAPI.engineAccess().getCurrentVM();
             if (vm == null) {
                 return null;
@@ -1308,7 +1258,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public Env getEnv(Info info) {
+        public Env getEnv(LanguageInfo info) {
             return info.env;
         }
 
@@ -1361,7 +1311,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public Object getLanguageShared(Info info) {
+        public Object getLanguageShared(LanguageInfo info) {
             return info.env.languageShared;
         }
 

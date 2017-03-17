@@ -31,11 +31,11 @@ import java.util.Map;
 import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.LanguageInfo;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.TruffleLanguage.Info;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -149,13 +149,13 @@ public abstract class Accessor {
 
         public abstract TruffleLanguage<?> getLanguage(Env env);
 
-        public abstract TruffleLanguage.Env getEnv(TruffleLanguage.Info info);
+        public abstract TruffleLanguage.Env getEnv(LanguageInfo info);
 
-        public abstract TruffleLanguage.Info getInfo(TruffleLanguage.Env env);
+        public abstract LanguageInfo getInfo(TruffleLanguage.Env env);
 
-        public abstract Info getLanguageInfo(TruffleLanguage<?> language);
+        public abstract LanguageInfo getLanguageInfo(TruffleLanguage<?> language);
 
-        public abstract TruffleLanguage.Info getLegacyLanguageInfo(@SuppressWarnings("rawtypes") Class<? extends TruffleLanguage> languageClass);
+        public abstract LanguageInfo getLegacyLanguageInfo(@SuppressWarnings("rawtypes") Class<? extends TruffleLanguage> languageClass);
 
         public abstract CallTarget parse(Env env, Source code, Node context, String... argumentNames);
 
@@ -165,7 +165,7 @@ public abstract class Accessor {
 
         public abstract Object forkContext(Env env, Object context);
 
-        public abstract Object getLanguageShared(Info env);
+        public abstract Object getLanguageShared(LanguageInfo env);
 
         public abstract Object findMetaObject(Env env, Object context, Object value, boolean resolveContext);
 
@@ -182,7 +182,7 @@ public abstract class Accessor {
 
         public abstract Object createInstrumentationHandler(Object vm, DispatchOutputStream out, DispatchOutputStream err, InputStream in);
 
-        public abstract void collectEnvServices(Set<Object> collectTo, Object languageShared, Info languageInfo);
+        public abstract void collectEnvServices(Set<Object> collectTo, Object languageShared, LanguageInfo languageInfo);
 
         public abstract void onFirstExecution(RootNode rootNode);
 

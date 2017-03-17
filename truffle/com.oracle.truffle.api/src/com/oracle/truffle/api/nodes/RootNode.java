@@ -30,6 +30,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerOptions;
+import com.oracle.truffle.api.LanguageInfo;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -111,7 +112,7 @@ public abstract class RootNode extends Node {
      * TruffleLanguage for languages that are not yet migrated. We use this env reference instead
      * for compatibility.
      */
-    private final TruffleLanguage.Info languageInfo;
+    private final LanguageInfo languageInfo;
     private RootCallTarget callTarget;
     @CompilationFinal private FrameDescriptor frameDescriptor;
     private final SourceSection sourceSection;
@@ -208,7 +209,7 @@ public abstract class RootNode extends Node {
      *
      * @since 0.25
      */
-    public final TruffleLanguage.Info getLanguageInfo() {
+    public final LanguageInfo getLanguageInfo() {
         return languageInfo;
     }
 

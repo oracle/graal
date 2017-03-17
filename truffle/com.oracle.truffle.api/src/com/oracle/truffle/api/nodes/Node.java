@@ -39,9 +39,9 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.LanguageInfo;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.Info;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.impl.Accessor;
@@ -560,7 +560,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      *
      * @since 0.8 or earlier
      * @deprecated in 0.25 use {@link #getRootNode() getRootNode()}.
-     *             {@link RootNode#getLanguageInfo() getLanguageInfo()}.{@link Info#getName()
+     *             {@link RootNode#getLanguageInfo() getLanguageInfo()}.{@link LanguageInfo#getName()
      *             getName()} instead
      */
     @Deprecated

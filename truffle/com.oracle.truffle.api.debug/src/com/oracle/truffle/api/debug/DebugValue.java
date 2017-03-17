@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.LanguageInfo;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.interop.InteropException;
@@ -229,7 +229,7 @@ public abstract class DebugValue {
 
     abstract RootNode getSourceRoot();
 
-    final TruffleLanguage.Info getLanguageInfo() {
+    final LanguageInfo getLanguageInfo() {
         RootNode root = getSourceRoot();
         if (root != null) {
             return root.getLanguageInfo();

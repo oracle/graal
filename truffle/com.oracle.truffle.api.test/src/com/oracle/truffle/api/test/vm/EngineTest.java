@@ -47,9 +47,9 @@ import org.junit.After;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.LanguageInfo;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.Info;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -785,7 +785,7 @@ public class EngineTest {
         final List<ForkingLanguageChannel> languageForks = new ArrayList<>();
         final List<PolyglotEngine> dispose = new ArrayList<>();
 
-        Info info;
+        LanguageInfo info;
 
         boolean disposed;
         ForkingLanguageChannel toFork;
