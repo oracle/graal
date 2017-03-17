@@ -26,6 +26,7 @@ import static org.graalvm.compiler.core.GraalCompiler.emitBackEnd;
 import static org.graalvm.compiler.core.GraalCompiler.emitFrontEnd;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.hotspot.HotSpotHostBackend.UNCOMMON_TRAP_HANDLER;
+import static org.graalvm.util.CollectionsUtil.allMatch;
 
 import java.util.ListIterator;
 
@@ -89,9 +90,19 @@ public abstract class Stub {
      */
     private EconomicSet<Register> destroyedCallerRegisters;
 
+    private static boolean checkRegisterSetEquivalency(EconomicSet<Register> a, EconomicSet<Register> b) {
+        if (a == b) {
+            return true;
+        }
+        if (a.size() != b.size()) {
+            return false;
+        }
+        return allMatch(a, e -> b.contains(e));
+    }
+
     public void initDestroyedCallerRegisters(EconomicSet<Register> registers) {
         assert registers != null;
-        assert destroyedCallerRegisters == null || registers.equals(destroyedCallerRegisters) : "cannot redefine";
+        assert destroyedCallerRegisters == null || checkRegisterSetEquivalency(registers, destroyedCallerRegisters) : "cannot redefine";
         destroyedCallerRegisters = registers;
     }
 

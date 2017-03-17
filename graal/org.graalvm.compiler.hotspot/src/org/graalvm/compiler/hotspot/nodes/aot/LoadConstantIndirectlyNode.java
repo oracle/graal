@@ -55,14 +55,14 @@ public class LoadConstantIndirectlyNode extends FloatingNode implements Canonica
     protected HotSpotConstantLoadAction action;
 
     public LoadConstantIndirectlyNode(ValueNode value) {
-        super(TYPE, value.stamp().unrestricted());
+        super(TYPE, value.stamp());
         this.value = value;
         this.constant = null;
         this.action = HotSpotConstantLoadAction.RESOLVE;
     }
 
     public LoadConstantIndirectlyNode(ValueNode value, HotSpotConstantLoadAction action) {
-        super(TYPE, value.stamp().unrestricted());
+        super(TYPE, value.stamp());
         this.value = value;
         this.constant = null;
         this.action = action;
