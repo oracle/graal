@@ -66,6 +66,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
+import com.oracle.truffle.api.vm.PolyglotRuntime;
 import com.oracle.truffle.tck.Schema.Type;
 import com.oracle.truffle.tck.impl.LongBinaryOperation;
 import com.oracle.truffle.tck.impl.ObjectBinaryOperation;
@@ -2122,7 +2123,7 @@ public abstract class TruffleTCK {
         for (int i = 0; i < ids.length; i += 2) {
             PolyglotEngine.Value valueFunction = findGlobalSymbol(ids[i]);
             String metaObjectStr;
-            PolyglotEngine.Instrument instr = vm().getInstruments().get(TckInstrument.ID);
+            PolyglotRuntime.Instrument instr = vm().getRuntime().getInstruments().get(TckInstrument.ID);
             instr.setEnabled(true);
             try {
                 Value value = valueFunction.execute();
@@ -2146,7 +2147,7 @@ public abstract class TruffleTCK {
         }
         PolyglotEngine.Value valueFunction = findGlobalSymbol(id);
         SourceSection sourceLocation;
-        PolyglotEngine.Instrument instr = vm().getInstruments().get(TckInstrument.ID);
+        PolyglotRuntime.Instrument instr = vm().getRuntime().getInstruments().get(TckInstrument.ID);
         instr.setEnabled(true);
         try {
             Value value = valueFunction.execute();

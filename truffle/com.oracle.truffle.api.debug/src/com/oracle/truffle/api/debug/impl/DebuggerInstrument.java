@@ -28,7 +28,7 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.api.vm.PolyglotEngine.Instrument;
+import com.oracle.truffle.api.vm.PolyglotRuntime.Instrument;
 
 /**
  * Instrument for registered for the debugger. Do not use directly.
@@ -59,7 +59,7 @@ public final class DebuggerInstrument extends TruffleInstrument {
      * @since 0.17
      */
     public static Debugger getDebugger(PolyglotEngine engine, DebuggerFactory factory) {
-        Instrument instrument = engine.getInstruments().get(ID);
+        Instrument instrument = engine.getRuntime().getInstruments().get(ID);
         if (instrument == null) {
             throw new IllegalStateException("Debugger is not installed.");
         }

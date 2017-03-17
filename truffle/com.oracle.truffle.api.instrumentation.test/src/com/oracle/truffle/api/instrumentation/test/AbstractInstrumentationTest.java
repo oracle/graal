@@ -68,7 +68,7 @@ public abstract class AbstractInstrumentationTest {
     }
 
     protected void assertEnabledInstrument(String id) {
-        Assert.assertTrue(engine.getInstruments().get(id).isEnabled());
+        Assert.assertTrue(engine.getRuntime().getInstruments().get(id).isEnabled());
     }
 
     protected String run(Source source) throws IOException {

@@ -112,7 +112,7 @@ public class SLSharedCodeSeparatedEnvTest implements Executor {
 
     @Test
     public void instrumentsSeeOutputOfBoth() throws Exception {
-        PolyglotEngine.Instrument outInstr = e2.getInstruments().get("captureOutput");
+        PolyglotRuntime.Instrument outInstr = e2.getRuntime().getInstruments().get("captureOutput");
         outInstr.setEnabled(true);
         ByteArrayOutputStream outConsumer = outInstr.lookup(ByteArrayOutputStream.class);
         assertNotNull("Stream capturing is ready", outConsumer);
