@@ -23,15 +23,16 @@
 package org.graalvm.compiler.truffle.test;
 
 import static org.graalvm.compiler.core.common.util.Util.JAVA_SPECIFICATION_VERSION;
+import static org.graalvm.compiler.test.SubprocessUtil.formatExecutedCommand;
+import static org.graalvm.compiler.test.SubprocessUtil.getVMCommandLine;
+import static org.graalvm.compiler.test.SubprocessUtil.withoutDebuggerArguments;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.lang.ProcessBuilder.Redirect;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -48,8 +49,6 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionValuesAccess;
 import org.graalvm.compiler.options.OptionsParser;
-import org.graalvm.compiler.test.SubprocessUtil;
-import org.graalvm.util.CollectionsUtil;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -90,9 +89,6 @@ public class LazyInitializationTest {
         spawnUnitTests("com.oracle.truffle.sl.test.SLFactorialTest");
     }
 
-    private static final String VERBOSE_PROPERTY = "LazyInitializationTest.verbose";
-    private static final boolean VERBOSE = Boolean.getBoolean(VERBOSE_PROPERTY);
-
     private static final Pattern CLASS_INIT_LOG_PATTERN = Pattern.compile("\\[info\\]\\[class,init\\] \\d+ Initializing '([^']+)'");
 
     /**
@@ -120,15 +116,7 @@ public class LazyInitializationTest {
      * Spawn a new VM, execute unit tests, and check which classes are loaded.
      */
     private void spawnUnitTests(String... tests) throws IOException, InterruptedException {
-        ArrayList<String> args = new ArrayList<>(SubprocessUtil.getVMCommandLine());
-
-        // Remove debugger arguments
-        for (Iterator<String> i = args.iterator(); i.hasNext();) {
-            String arg = i.next();
-            if (arg.equals("-Xdebug") || arg.startsWith("-Xrunjdwp:")) {
-                i.remove();
-            }
-        }
+        List<String> args = withoutDebuggerArguments(getVMCommandLine());
 
         boolean usesJvmciCompiler = args.contains("-jvmci") || args.contains("-XX:+UseJVMCICompiler");
         Assume.assumeFalse("This test can only run if JVMCI is not one of the default compilers", usesJvmciCompiler);
@@ -142,23 +130,15 @@ public class LazyInitializationTest {
         ArrayList<String> loadedGraalClassNames = new ArrayList<>();
 
         ProcessBuilder processBuilder = new ProcessBuilder(args);
-        if (VERBOSE) {
-            processBuilder.redirectError(Redirect.INHERIT);
-        }
+        processBuilder.redirectErrorStream(true);
 
-        if (VERBOSE) {
-            System.out.println("\n=============================================================================");
-            System.out.println(CollectionsUtil.mapAndJoin(args, e -> String.valueOf(e), " "));
-            System.out.println("-----------------------------------------------------------------------------");
-        }
         Process process = processBuilder.start();
         int testCount = 0;
         BufferedReader stdout = new BufferedReader(new InputStreamReader(process.getInputStream()));
+        List<String> outputLines = new ArrayList<>();
         String line;
         while ((line = stdout.readLine()) != null) {
-            if (VERBOSE) {
-                System.out.println(line);
-            }
+            outputLines.add(line);
             String loadedClass = extractClass(line);
             if (loadedClass != null) {
                 if (isGraalClass(loadedClass)) {
@@ -171,15 +151,22 @@ public class LazyInitializationTest {
                 testCount = Integer.parseInt(line.substring(start, end));
             }
         }
-        if (VERBOSE) {
-            System.out.println("=============================================================================");
+
+        String dashes = "-------------------------------------------------------";
+
+        int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            Assert.fail(String.format("non-zero exit code %d for command:%n%s", exitCode, formatExecutedCommand(args, outputLines, dashes, dashes)));
+        }
+        if (testCount == 0) {
+            Assert.fail(String.format("no tests found in output of command:%n%s", testCount, formatExecutedCommand(args, outputLines, dashes, dashes)));
         }
 
-        String suffix = VERBOSE ? "" : " (use -D" + VERBOSE_PROPERTY + "=true to debug)";
-        Assert.assertEquals("exit code" + suffix, 0, process.waitFor());
-        Assert.assertNotEquals("test count" + suffix, 0, testCount);
-
-        checkAllowedGraalClasses(loadedGraalClassNames, suffix);
+        try {
+            checkAllowedGraalClasses(loadedGraalClassNames);
+        } catch (AssertionError e) {
+            throw new AssertionError(String.format("Failure for command:%n%s", formatExecutedCommand(args, outputLines, dashes, dashes)), e);
+        }
     }
 
     private static boolean isGraalClass(String className) {
@@ -193,7 +180,7 @@ public class LazyInitializationTest {
         }
     }
 
-    private void checkAllowedGraalClasses(List<String> loadedGraalClassNames, String errorMessageSuffix) {
+    private void checkAllowedGraalClasses(List<String> loadedGraalClassNames) {
         HashSet<Class<?>> whitelist = new HashSet<>();
         List<Class<?>> loadedGraalClasses = new ArrayList<>();
 
@@ -234,7 +221,7 @@ public class LazyInitializationTest {
             }
         }
         if (!forbiddenClasses.isEmpty()) {
-            Assert.fail("loaded forbidden classes:\n    " + forbiddenClasses.stream().collect(Collectors.joining("\n    ")) + "\n" + errorMessageSuffix);
+            Assert.fail("loaded forbidden classes:\n    " + forbiddenClasses.stream().collect(Collectors.joining("\n    ")) + "\n");
         }
     }
 
