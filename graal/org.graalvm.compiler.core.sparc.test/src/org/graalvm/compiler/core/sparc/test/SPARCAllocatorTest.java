@@ -48,7 +48,7 @@ public class SPARCAllocatorTest extends AllocatorTest {
     }
 
     public static long test1snippet(long x) {
-        return x + 5;
+        return x + 41;
     }
 
     @Test
@@ -57,7 +57,7 @@ public class SPARCAllocatorTest extends AllocatorTest {
     }
 
     public static long test2snippet(long x) {
-        return x * 5;
+        return x * 41;
     }
 
     @Test
@@ -66,7 +66,7 @@ public class SPARCAllocatorTest extends AllocatorTest {
     }
 
     public static long test3snippet(long x) {
-        return x / 3 + x % 3;
+        return x / 41 + x % 41;
     }
 
 }
