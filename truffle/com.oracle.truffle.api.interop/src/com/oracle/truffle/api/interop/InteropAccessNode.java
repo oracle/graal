@@ -100,8 +100,13 @@ abstract class InteropAccessNode extends Node {
     }
 
     private static Object checkInteropType(Object obj) {
+        assert checkInteropTypeImpl(obj);
+        return obj;
+    }
+
+    private static boolean checkInteropTypeImpl(Object obj) {
         if (obj instanceof TruffleObject) {
-            return obj;
+            return true;
         }
         if (obj == null) {
             CompilerDirectives.transferToInterpreter();
@@ -117,15 +122,14 @@ abstract class InteropAccessNode extends Node {
                         clazz == Character.class ||
                         clazz == Boolean.class ||
                         clazz == String.class) {
-            return obj;
+            return true;
         } else {
             CompilerDirectives.transferToInterpreter();
-            yieldAnError(obj.getClass());
-            return null;
+            return yieldAnError(obj.getClass());
         }
     }
 
-    private static Object yieldAnError(Class<?> clazz) {
+    private static boolean yieldAnError(Class<?> clazz) {
         CompilerDirectives.transferToInterpreter();
         StringBuilder sb = new StringBuilder();
         sb.append(clazz == null ? "null" : clazz.getName());
