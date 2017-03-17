@@ -49,7 +49,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Info;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -786,7 +785,6 @@ public class EngineTest {
         final List<ForkingLanguageChannel> languageForks = new ArrayList<>();
         final List<PolyglotEngine> dispose = new ArrayList<>();
 
-        Env env;
         Info info;
 
         boolean disposed;
@@ -824,7 +822,7 @@ public class EngineTest {
             return fork;
         }
 
-        @SuppressWarnings("unchecked")
+        @SuppressWarnings("all")
         private static <E extends Exception> E raise(Class<E> aClass, Exception ex) throws E {
             throw (E) ex;
         }
@@ -862,7 +860,6 @@ public class EngineTest {
                 return forkContext(forking);
             }
             createContextCount++;
-            channel.env = env;
             channel.language = this;
             channel.info = new RootNode(this) {
                 @Override

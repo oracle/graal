@@ -56,7 +56,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class PolyglotRuntime {
     private final List<PolyglotEngine.LanguageShared> languages;
     final Object instrumentationHandler;
-    final Map<String, PolyglotEngine.Instrument> instruments;
+    @SuppressWarnings("deprecation") final Map<String, PolyglotEngine.Instrument> instruments;
     final Object[] debugger = {null};
     final PolyglotEngineProfile engineProfile;
     final AtomicInteger instanceCount = new AtomicInteger(0);
@@ -103,6 +103,7 @@ public final class PolyglotRuntime {
         return languages;
     }
 
+    @SuppressWarnings("deprecation")
     private Map<String, PolyglotEngine.Instrument> createInstruments(List<InstrumentCache> instrumentCaches) {
         Map<String, PolyglotEngine.Instrument> instr = new LinkedHashMap<>();
         for (InstrumentCache cache : instrumentCaches) {

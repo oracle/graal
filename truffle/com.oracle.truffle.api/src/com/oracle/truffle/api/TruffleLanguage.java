@@ -297,49 +297,6 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Forks a {@link #createContext(Env) created} context by returning an instance that behaves
-     * like an equivalent copy of the given context. By default forking throws an
-     * {@link UnsupportedOperationException} to indicate that forking is unsupported for this
-     * language. Forks are requested only for language contexts that have been
-     * {@link #createContext(Env) created}. Please note that the context might not yet be
-     * {@link #initializeContext(Object) initialized}.
-     * <p>
-     * The forked context offers the same functionality and data as the given context. Every
-     * operation that is performed on the original context must be functional in the forked context
-     * and return the same value. Language specific configuration parameters {@link Env#getConfig()}
-     * can be used to diverge from this default behavior. For example, not supporting certain
-     * modifications to the context after forking for performance reasons.
-     * <p>
-     * Valid techniques to implement forking are:
-     * <ul>
-     * <li><b>Copy data and code:</b> Create a full copy of the original context including stored
-     * code / {@link CallTarget call targets}. References to mutable state from one context to the
-     * other are entirely eliminated. Copying code and data is a memory intensive operation but
-     * allows to assume always {@link ContextReference#isFinal() final} context references.
-     * <li><b>Copy data, share code:</b> Create a copy of all mutable data of the original context
-     * but share code / {@link CallTarget call targets} with the other instance. Using this strategy
-     * the code must be prepared for {@link ContextReference#isFinal() non-final} context
-     * references.
-     * <li><b>Copy on write:</b> Creates a copy lazily if either the original or forked context is
-     * modified. This is the most efficient way of implementing forking, as it uses minimal memory,
-     * but might allow to cache certain context operations, by assuming that the original is still
-     * unmodified. Using this strategy the code must be prepared for
-     * {@link ContextReference#isFinal() non-final} context references.
-     * </ul>
-     * <p>
-     * Forking is invoked by an engines fork method or via
-     * {@link TruffleLanguage.Env#createFork(CallTarget)}. Forked contexts are
-     * {@link #disposeContext(Object) disposed} when it is requested by the engine.
-     *
-     * @see TruffleLanguage
-     * @see ContextReference
-     * @since 0.25
-     */
-    protected C forkContext(@SuppressWarnings("unused") C context) {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
      * Parses the provided source and generates appropriate AST. The parsing should execute no user
      * code, it should only create the {@link Node} tree to represent the source. If the provided
      * source does not correspond naturally to a call target, the returned call target should create
@@ -1367,7 +1324,7 @@ public abstract class TruffleLanguage<C> {
 
         @Override
         public Object forkContext(Env env, Object context) {
-            return env.lang.forkContext(context);
+            throw new UnsupportedOperationException();
         }
 
         @Override
@@ -1439,11 +1396,13 @@ class TruffleLanguageSnippets {
 
         @Override
         protected Context createContext(Env env) {
+            if (Boolean.TRUE.equals(env.getConfig().get("fork"))) {
+                return forkContext((Context) env.getConfig().get("context"));
+            }
             return new Context(env);
         }
 
-        @Override
-        protected Context forkContext(Context context) {
+        private Context forkContext(Context context) {
             // our language needs to support forking
             return context.fork();
         }

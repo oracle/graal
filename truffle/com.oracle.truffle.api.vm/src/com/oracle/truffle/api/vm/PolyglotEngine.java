@@ -522,13 +522,13 @@ public class PolyglotEngine {
          * {@codesnippet com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest}
          * <p>
          *
-         * @param runtime an instance of runtime to associate this engine with
+         * @param sharedRuntime an instance of runtime to associate this engine with
          * @return this builder
          * @since 0.25
          * @see PolyglotRuntime
          */
-        public Builder runtime(PolyglotRuntime runtime) {
-            this.runtime = runtime;
+        public Builder runtime(PolyglotRuntime sharedRuntime) {
+            this.runtime = sharedRuntime;
             return this;
         }
 
@@ -983,7 +983,7 @@ public class PolyglotEngine {
         return sharedToLanguage.get(env);
     }
 
-    Env findEnv(@SuppressWarnings("rawtypes") Class<? extends TruffleLanguage> languageClazz, boolean failIfNotFound) {
+    Env findEnv(Class<? extends TruffleLanguage> languageClazz, boolean failIfNotFound) {
         for (Language lang : languageArray) {
             Env env = lang.getEnv(false);
             if (env != null && languageClazz.isInstance(lang.getImpl(false))) {
@@ -1809,7 +1809,7 @@ public class PolyglotEngine {
                 rootNode.engine.disposeImpl();
             }
 
-            private LanguageShared findShared(Object obj) {
+            private static LanguageShared findShared(Object obj) {
                 return ((Language) obj).shared;
             }
         }

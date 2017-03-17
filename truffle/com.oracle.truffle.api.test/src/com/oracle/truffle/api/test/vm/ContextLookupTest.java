@@ -119,7 +119,7 @@ public class ContextLookupTest {
         vm.dispose();
     }
 
-    private PolyglotEngine fork(LanguageLookupContext original, LanguageLookupContext context, PolyglotEngine.Builder builder) {
+    private static PolyglotEngine fork(LanguageLookupContext original, LanguageLookupContext context, PolyglotEngine.Builder builder) {
         original.toFork = context;
         PolyglotEngine engine = builder.build();
         engine.getLanguages().get(LanguageLookup.MIME_TYPE).getGlobalObject();

@@ -35,7 +35,7 @@ public class CoverageExampleTest extends AbstractInstrumentationTest {
 
     @Before
     public void setupInstrument() {
-        engine.getInstruments().get(CoverageExample.ID).setEnabled(true);
+        engine.getRuntime().getInstruments().get(CoverageExample.ID).setEnabled(true);
     }
 
     @Test

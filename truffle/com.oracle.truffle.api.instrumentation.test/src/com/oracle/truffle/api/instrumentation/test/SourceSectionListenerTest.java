@@ -40,7 +40,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.vm.PolyglotEngine.Instrument;
+import com.oracle.truffle.api.vm.PolyglotRuntime;
 
 public class SourceSectionListenerTest extends AbstractInstrumentationTest {
 
@@ -60,7 +60,7 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
     }
 
     private void testLoadSourceSectionImpl(int runTimes) throws IOException {
-        Instrument instrument = engine.getInstruments().get("testLoadSourceSection1");
+        PolyglotRuntime.Instrument instrument = engine.getRuntime().getInstruments().get("testLoadSourceSection1");
         SourceSection[] sourceSections1 = sections("STATEMENT(EXPRESSION, EXPRESSION)", "STATEMENT(EXPRESSION, EXPRESSION)", "EXPRESSION");
 
         final SourceSectionFilter statementFilter = SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build();
@@ -208,7 +208,7 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
 
     @Test
     public void testLoadSourceSectionException() throws IOException {
-        engine.getInstruments().get("testLoadSourceSectionException").setEnabled(true);
+        engine.getRuntime().getInstruments().get("testLoadSourceSectionException").setEnabled(true);
         run("STATEMENT");
         Assert.assertTrue(getErr().contains("TestLoadSourceSectionExceptionClass"));
     }
