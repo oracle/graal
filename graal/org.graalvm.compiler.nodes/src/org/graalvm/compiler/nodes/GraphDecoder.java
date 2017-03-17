@@ -99,13 +99,9 @@ public class GraphDecoder {
         public final TypeReader reader;
         /** The kind of loop explosion to be performed during decoding. */
         public final LoopExplosionKind loopExplosion;
-        /** A list of tasks to run before the method scope is closed. */
-        public final List<Runnable> cleanupTasks;
 
         /** All return nodes encountered during decoding. */
-        public final List<ReturnNode> returnNodes;
-        /** The exception unwind node encountered during decoding, or null. */
-        public final List<UnwindNode> unwindNodes;
+        public final List<ControlSinkNode> returnAndUnwindNodes;
 
         /** All merges created during loop explosion. */
         public final EconomicSet<Node> loopExplosionMerges;
@@ -121,9 +117,7 @@ public class GraphDecoder {
             this.methodStartMark = graph.getMark();
             this.encodedGraph = encodedGraph;
             this.loopExplosion = loopExplosion;
-            this.cleanupTasks = new ArrayList<>(2);
-            this.returnNodes = new ArrayList<>(1);
-            this.unwindNodes = new ArrayList<>(0);
+            this.returnAndUnwindNodes = new ArrayList<>(2);
 
             if (encodedGraph != null) {
                 reader = UnsafeArrayTypeReader.create(encodedGraph.getEncoding(), encodedGraph.getStartOffset(), architecture.supportsUnalignedMemoryAccess());
@@ -146,6 +140,10 @@ public class GraphDecoder {
             } else {
                 loopExplosionMerges = null;
             }
+        }
+
+        public boolean isInlinedMethod() {
+            return false;
         }
     }
 
@@ -381,10 +379,6 @@ public class GraphDecoder {
             registerNode(loopScope, GraphEncoder.START_NODE_ORDER_ID, firstNode, false, false);
             loopScope.nodesToProcess.set(GraphEncoder.START_NODE_ORDER_ID);
         }
-
-        if (methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE) {
-            methodScope.cleanupTasks.add(new LoopDetector(graph, methodScope, startNode));
-        }
         return loopScope;
     }
 
@@ -418,14 +412,22 @@ public class GraphDecoder {
             }
 
             /*
-             * Finished with an inlined method. Perform all registered end-of-method cleanup tasks
-             * and continue with loop that contained the call.
+             * Finished with an inlined method. Perform end-of-method cleanup tasks.
              */
-            for (Runnable task : methodScope.cleanupTasks) {
-                task.run();
+            if (methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE) {
+                LoopDetector loopDetector = new LoopDetector(graph, methodScope);
+                loopDetector.run();
             }
+            if (methodScope.isInlinedMethod()) {
+                finishInlining(methodScope);
+            }
+
+            /* continue with the caller */
             loopScope = methodScope.callerLoopScope;
         }
+    }
+
+    protected void finishInlining(@SuppressWarnings("unused") MethodScope inlineScope) {
     }
 
     private static void propagateCreatedNodes(LoopScope loopScope) {
@@ -558,11 +560,8 @@ public class GraphDecoder {
             InvokeData invokeData = readInvokeData(methodScope, nodeOrderId, (Invoke) node);
             resultScope = handleInvoke(methodScope, loopScope, invokeData);
 
-        } else if (node instanceof ReturnNode) {
-            methodScope.returnNodes.add((ReturnNode) node);
-        } else if (node instanceof UnwindNode) {
-            methodScope.unwindNodes.add((UnwindNode) node);
-
+        } else if (node instanceof ReturnNode || node instanceof UnwindNode) {
+            methodScope.returnAndUnwindNodes.add((ControlSinkNode) node);
         } else {
             handleFixedNode(methodScope, loopScope, nodeOrderId, node);
         }
@@ -1327,15 +1326,13 @@ class LoopDetector implements Runnable {
 
     private final StructuredGraph graph;
     private final MethodScope methodScope;
-    private final FixedNode startInstruction;
 
     private Loop irreducibleLoopHandler;
     private IntegerSwitchNode irreducibleLoopSwitch;
 
-    protected LoopDetector(StructuredGraph graph, MethodScope methodScope, FixedNode startInstruction) {
+    protected LoopDetector(StructuredGraph graph, MethodScope methodScope) {
         this.graph = graph;
         this.methodScope = methodScope;
-        this.startInstruction = startInstruction;
     }
 
     @Override
@@ -1385,8 +1382,8 @@ class LoopDetector implements Runnable {
         NodeBitMap visited = graph.createNodeBitMap();
         NodeBitMap active = graph.createNodeBitMap();
         Deque<Node> stack = new ArrayDeque<>();
-        visited.mark(startInstruction);
-        stack.push(startInstruction);
+        visited.mark(methodScope.loopExplosionHead);
+        stack.push(methodScope.loopExplosionHead);
 
         while (!stack.isEmpty()) {
             Node current = stack.peek();

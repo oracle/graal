@@ -30,7 +30,6 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -54,6 +53,7 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -155,6 +155,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             this.arguments = arguments;
         }
 
+        @Override
         public boolean isInlinedMethod() {
             return caller != null;
         }
@@ -620,33 +621,36 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                         loopExplosionPlugin, arguments);
 
         /*
-         * After decoding all the nodes of the inlined method, we need to re-wire the return and
-         * unwind nodes. Since inlining is non-recursive, this cannot be done at the end of this
-         * method, but must be registered as a cleanup task that runs when all nodes of the inlined
-         * methods have been decoded.
-         */
-        inlineScope.cleanupTasks.add(() -> finishInlining(methodScope, loopScope, invokeData, inlineMethod, inlineScope));
-
-        /*
          * Do the actual inlining by returning the initial loop scope for the inlined method scope.
          */
         return createInitialLoopScope(inlineScope, predecessor);
     }
 
-    protected void finishInlining(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, ResolvedJavaMethod inlineMethod, PEMethodScope inlineScope) {
+    @Override
+    protected void finishInlining(MethodScope is) {
+        PEMethodScope inlineScope = (PEMethodScope) is;
+        ResolvedJavaMethod inlineMethod = inlineScope.method;
+        PEMethodScope methodScope = inlineScope.caller;
+        LoopScope loopScope = inlineScope.callerLoopScope;
+        InvokeData invokeData = inlineScope.invokeData;
         Invoke invoke = invokeData.invoke;
         FixedNode invokeNode = invoke.asNode();
 
         ValueNode exceptionValue = null;
-        List<UnwindNode> unwindNodes = inlineScope.unwindNodes;
-        Iterator<UnwindNode> iter = unwindNodes.iterator();
-        while (iter.hasNext()) {
-            if (iter.next().isDeleted()) {
-                iter.remove();
+        int returnNodeCount = 0;
+        int unwindNodeCount = 0;
+        List<ControlSinkNode> returnAndUnwindNodes = inlineScope.returnAndUnwindNodes;
+        for (int i = 0; i < returnAndUnwindNodes.size(); i++) {
+            FixedNode fixedNode = returnAndUnwindNodes.get(i);
+            if (fixedNode instanceof ReturnNode) {
+                returnNodeCount++;
+            } else if (fixedNode.isAlive()) {
+                assert fixedNode instanceof UnwindNode;
+                unwindNodeCount++;
             }
         }
 
-        if (!unwindNodes.isEmpty()) {
+        if (unwindNodeCount > 0) {
             FixedNode unwindReplacement;
             if (invoke instanceof InvokeWithExceptionNode) {
                 /* Decoding continues for the exception handler. */
@@ -656,9 +660,9 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 unwindReplacement = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
             }
 
-            if (unwindNodes.size() == 1) {
+            if (unwindNodeCount == 1) {
                 /* Only one UnwindNode, we can use the exception directly. */
-                UnwindNode unwindNode = unwindNodes.get(0);
+                UnwindNode unwindNode = getSingleMatchingNode(returnAndUnwindNodes, returnNodeCount > 0, UnwindNode.class);
                 exceptionValue = unwindNode.exception();
                 unwindNode.replaceAndDelete(unwindReplacement);
 
@@ -670,7 +674,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                  * return values.
                  */
                 MergeNode unwindMergeNode = graph.add(new MergeNode());
-                exceptionValue = InliningUtil.mergeValueProducers(unwindMergeNode, unwindNodes, unwindNode -> unwindNode.exception());
+                exceptionValue = InliningUtil.mergeValueProducers(unwindMergeNode, getMatchingNodes(returnAndUnwindNodes, returnNodeCount > 0, UnwindNode.class, unwindNodeCount),
+                                unwindNode -> unwindNode.exception());
                 unwindMergeNode.setNext(unwindReplacement);
 
                 ensureExceptionStateDecoded(inlineScope);
@@ -682,22 +687,19 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         assert !(invoke instanceof InvokeWithExceptionNode) || ((InvokeWithExceptionNode) invoke).exceptionEdge() == null;
 
         ValueNode returnValue;
-        List<ReturnNode> returnNodes = inlineScope.returnNodes;
-        if (!returnNodes.isEmpty()) {
-            if (returnNodes.size() == 1) {
-                ReturnNode returnNode = returnNodes.get(0);
-                returnValue = returnNode.result();
-                FixedNode n = nodeAfterInvoke(methodScope, loopScope, invokeData, AbstractBeginNode.prevBegin(returnNode));
-                returnNode.replaceAndDelete(n);
-            } else {
-                AbstractMergeNode merge = graph.add(new MergeNode());
-                merge.setStateAfter((FrameState) ensureNodeCreated(methodScope, loopScope, invokeData.stateAfterOrderId));
-                returnValue = InliningUtil.mergeReturns(merge, returnNodes);
-                FixedNode n = nodeAfterInvoke(methodScope, loopScope, invokeData, merge);
-                merge.setNext(n);
-            }
-        } else {
+        if (returnNodeCount == 0) {
             returnValue = null;
+        } else if (returnNodeCount == 1) {
+            ReturnNode returnNode = getSingleMatchingNode(returnAndUnwindNodes, unwindNodeCount > 0, ReturnNode.class);
+            returnValue = returnNode.result();
+            FixedNode n = nodeAfterInvoke(methodScope, loopScope, invokeData, AbstractBeginNode.prevBegin(returnNode));
+            returnNode.replaceAndDelete(n);
+        } else {
+            AbstractMergeNode merge = graph.add(new MergeNode());
+            merge.setStateAfter((FrameState) ensureNodeCreated(methodScope, loopScope, invokeData.stateAfterOrderId));
+            returnValue = InliningUtil.mergeReturns(merge, getMatchingNodes(returnAndUnwindNodes, unwindNodeCount > 0, ReturnNode.class, returnNodeCount));
+            FixedNode n = nodeAfterInvoke(methodScope, loopScope, invokeData, merge);
+            merge.setNext(n);
         }
         invokeNode.replaceAtUsages(returnValue);
 
@@ -721,6 +723,39 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL) && DumpDuringGraphBuilding.getValue(options)) {
             Debug.dump(Debug.INFO_LOG_LEVEL, graph, "Inline finished: %s.%s", inlineMethod.getDeclaringClass().getUnqualifiedName(), inlineMethod.getName());
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T getSingleMatchingNode(List<ControlSinkNode> returnAndUnwindNodes, boolean hasNonMatchingEntries, Class<T> clazz) {
+        if (!hasNonMatchingEntries) {
+            assert returnAndUnwindNodes.size() == 1;
+            return (T) returnAndUnwindNodes.get(0);
+        }
+
+        for (int i = 0; i < returnAndUnwindNodes.size(); i++) {
+            ControlSinkNode node = returnAndUnwindNodes.get(i);
+            if (clazz.isInstance(node)) {
+                return (T) node;
+            }
+        }
+        throw GraalError.shouldNotReachHere();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> List<T> getMatchingNodes(List<ControlSinkNode> returnAndUnwindNodes, boolean hasNonMatchingEntries, Class<T> clazz, int resultCount) {
+        if (!hasNonMatchingEntries) {
+            return (List<T>) returnAndUnwindNodes;
+        }
+
+        List<T> result = new ArrayList<>(resultCount);
+        for (int i = 0; i < returnAndUnwindNodes.size(); i++) {
+            ControlSinkNode node = returnAndUnwindNodes.get(i);
+            if (clazz.isInstance(node)) {
+                result.add((T) node);
+            }
+        }
+        assert result.size() == resultCount;
+        return result;
     }
 
     private static RuntimeException tooDeepInlining(PEMethodScope methodScope) {
