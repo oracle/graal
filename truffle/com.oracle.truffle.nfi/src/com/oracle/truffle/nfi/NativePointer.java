@@ -37,6 +37,6 @@ class NativePointer implements TruffleObject {
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return NativePointerMessageResolutionForeign.createAccess();
+        return NativePointerMessageResolutionForeign.ACCESS;
     }
 }

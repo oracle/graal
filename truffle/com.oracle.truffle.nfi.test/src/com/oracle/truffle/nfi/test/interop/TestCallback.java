@@ -56,6 +56,6 @@ public class TestCallback implements TruffleObject {
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return TestCallbackMessageResolutionForeign.createAccess();
+        return TestCallbackMessageResolutionForeign.ACCESS;
     }
 }

@@ -41,7 +41,7 @@ final class JavaObject implements TruffleObject {
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return JavaObjectMessageResolutionForeign.createAccess();
+        return JavaObjectMessageResolutionForeign.ACCESS;
     }
 
     @Override

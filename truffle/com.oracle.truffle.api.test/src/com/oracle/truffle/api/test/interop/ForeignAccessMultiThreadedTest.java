@@ -23,19 +23,21 @@
 package com.oracle.truffle.api.test.interop;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 
-public class ForeignAccessSingleThreadedTest implements ForeignAccess.Factory, TruffleObject {
+public class ForeignAccessMultiThreadedTest implements ForeignAccess.Factory, TruffleObject {
     ForeignAccess fa;
     private int cnt;
 
@@ -44,23 +46,19 @@ public class ForeignAccessSingleThreadedTest implements ForeignAccess.Factory, T
         Thread t = new Thread("Initializer") {
             @Override
             public void run() {
-                fa = ForeignAccess.create(ForeignAccessSingleThreadedTest.this);
+                fa = ForeignAccess.create(ForeignAccessMultiThreadedTest.this);
             }
         };
         t.start();
         t.join();
     }
 
-    @Test(expected = AssertionError.class)
-    public void accessNodeFromWrongThread() {
+    @Test
+    public void accessNodeFromOtherThread() {
         Node n = Message.IS_EXECUTABLE.createNode();
-        Object ret = ForeignAccess.sendIsExecutable(n, this);
-        fail("Should throw an exception: " + ret);
-    }
-
-    @After
-    public void noCallsToFactory() {
-        assertEquals("No calls to accessMessage or canHandle", 0, cnt);
+        ForeignAccess.sendIsExecutable(n, this);
+        // access from different thread allowed.
+        assertEquals(2, cnt);
     }
 
     @Override
@@ -70,8 +68,18 @@ public class ForeignAccessSingleThreadedTest implements ForeignAccess.Factory, T
     }
 
     @Override
+    @SuppressWarnings("rawtypes")
     public CallTarget accessMessage(Message tree) {
         cnt++;
+        if (tree == Message.IS_EXECUTABLE) {
+            Class<? extends TruffleLanguage> lang = TruffleLanguage.class;
+            return Truffle.getRuntime().createCallTarget(new RootNode(lang, null, null) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return Boolean.FALSE;
+                }
+            });
+        }
         return null;
     }
 

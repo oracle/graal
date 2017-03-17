@@ -81,6 +81,6 @@ public final class SLNull implements TruffleObject {
      */
     @Override
     public ForeignAccess getForeignAccess() {
-        return SLNullMessageResolutionForeign.createAccess();
+        return SLNullMessageResolutionForeign.ACCESS;
     }
 }
