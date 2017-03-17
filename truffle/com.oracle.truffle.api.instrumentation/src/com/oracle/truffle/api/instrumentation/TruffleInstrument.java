@@ -285,9 +285,10 @@ public abstract class TruffleInstrument {
          * @return a human readable string representation of the value.
          * @since 0.17
          */
+        @SuppressWarnings("static-method")
         public String toString(Node node, Object value) {
             final TruffleLanguage.Env env = getLangEnv(node);
-            return AccessorInstrumentHandler.langAccess().toStringIfVisible(env, null, value, false, true);
+            return AccessorInstrumentHandler.langAccess().toStringIfVisible(env, value, false);
         }
 
         /**
@@ -301,9 +302,10 @@ public abstract class TruffleInstrument {
          * @return the meta-object, or <code>null</code>
          * @since 0.22
          */
+        @SuppressWarnings("static-method")
         public Object findMetaObject(Node node, Object value) {
             final TruffleLanguage.Env env = getLangEnv(node);
-            return AccessorInstrumentHandler.langAccess().findMetaObject(env, null, value, true);
+            return AccessorInstrumentHandler.langAccess().findMetaObject(env, value);
         }
 
         /**
@@ -314,18 +316,18 @@ public abstract class TruffleInstrument {
          * @return a source location of the object, or <code>null</code>
          * @since 0.22
          */
+        @SuppressWarnings("static-method")
         public SourceSection findSourceLocation(Node node, Object value) {
             final TruffleLanguage.Env env = getLangEnv(node);
-            return AccessorInstrumentHandler.langAccess().findSourceLocation(env, null, value, true);
+            return AccessorInstrumentHandler.langAccess().findSourceLocation(env, value);
         }
 
-        @SuppressWarnings("static-method")
-        private TruffleLanguage.Env getLangEnv(Node node) {
+        private static TruffleLanguage.Env getLangEnv(Node node) {
             LanguageInfo languageInfo = node.getRootNode().getLanguageInfo();
             if (languageInfo == null) {
                 throw new IllegalArgumentException("No language available for given node.");
             }
-            return AccessorInstrumentHandler.langAccess().getEnv(languageInfo);
+            return AccessorInstrumentHandler.engineAccess().getEnvForInstrument(languageInfo);
         }
 
     }

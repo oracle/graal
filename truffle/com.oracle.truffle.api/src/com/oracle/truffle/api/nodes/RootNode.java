@@ -83,7 +83,6 @@ import com.oracle.truffle.api.source.SourceSection;
  * <li><i>one</i> {@link TruffleLanguage language}
  * <li><i>one</i> {@link CallTarget call target}
  * <li><i>many</i> {@link TruffleLanguage#createContext(Env) created} language contexts
- * <li><i>many</i> {@link TruffleLanguage#forkContext(Object) forked} language contexts
  * </ul>
  *
  * <h4>Instrumentation</h4>
@@ -191,7 +190,7 @@ public abstract class RootNode extends Node {
             return null;
         }
         LanguageSupport langSupport = Node.ACCESSOR.languageSupport();
-        TruffleLanguage<?> language = langSupport.getLanguage(langSupport.getEnv(languageInfo));
+        TruffleLanguage<?> language = langSupport.getSpi(languageInfo);
         if (language.getClass() != languageClass) {
             if (!languageClass.isInstance(language) || languageClass == TruffleLanguage.class || !TruffleLanguage.class.isAssignableFrom(languageClass)) {
                 CompilerDirectives.transferToInterpreter();

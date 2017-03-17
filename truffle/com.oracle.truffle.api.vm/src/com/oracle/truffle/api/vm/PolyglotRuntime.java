@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.vm;
 
-import com.oracle.truffle.api.impl.DispatchOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -34,41 +33,47 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.LanguageInfo;
+import com.oracle.truffle.api.impl.DispatchOutputStream;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.vm.LanguageCache.LoadedLanguage;
+import com.oracle.truffle.api.vm.PolyglotEngine.Access;
+import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 
 /**
- * A runtime environment for one or more {@link PolyglotEngine} instances. By default multiple
- * {@linkplain PolyglotEngine engines} operate independently - e.g. they have their own isolated
- * {@linkplain PolyglotRuntime runtime}. However, sometimes it may be useful (for example to save
- * valuable resources needed for code and various other metadata) to group a set of
- * {@linkplain PolyglotEngine engines} into a single {@linkplain PolyglotRuntime runtime}. One can
- * do it like this:
+ * A runtime environment for one or more {@link PolyglotEngine} instances. Engines associated with a
+ * runtime are allowed to cache/share resources between them.
+ *
+ * Usage:
  * <p>
- * {@codesnippet com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest}
+ * {@codesnippet com.oracle.truffle.api.vm.PolyglotEngineSnippets#createEngines}
  * <p>
- * The above example prepares a single instance of the {@link PolyglotRuntime runtime} and
- * {@link PolyglotEngine.Builder#runtime(com.oracle.truffle.api.vm.PolyglotRuntime) uses it} when
- * configuring {@linkplain PolyglotEngine.Builder engine builder} in the <code>createEngine</code>
- * method. The method may be called multiple times yielding engines sharing essential execution
- * resources behind the scene.
+ * The above example prepares three engines that share the {@link PolyglotRuntime runtime}.
  *
  * @since 0.25
+ * @see PolyglotEngine
  */
 public final class PolyglotRuntime {
-    private final List<PolyglotEngine.LanguageShared> languages;
+    private final List<LanguageShared> languages;
     final Object instrumentationHandler;
     @SuppressWarnings("deprecation") final Map<String, PolyglotEngine.Instrument> instruments;
     final Object[] debugger = {null};
     final PolyglotEngineProfile engineProfile;
-    final AtomicInteger instanceCount = new AtomicInteger(0);
+    private final AtomicInteger instanceCount = new AtomicInteger(0);
     final DispatchOutputStream out;
     final DispatchOutputStream err;
     final InputStream in;
+    volatile boolean disposed;
+    final boolean automaticDispose;
 
     private PolyglotRuntime() {
-        this(null, null, null);
+        this(null, null, null, false);
     }
 
-    PolyglotRuntime(DispatchOutputStream out, DispatchOutputStream err, InputStream in) {
+    PolyglotRuntime(DispatchOutputStream out, DispatchOutputStream err, InputStream in, boolean automaticDispose) {
         this.instrumentationHandler = PolyglotEngine.Access.INSTRUMENT.createInstrumentationHandler(this, out, err, in);
         /*
          * TODO the engine profile needs to be shared between all engines that potentially share
@@ -78,15 +83,16 @@ public final class PolyglotRuntime {
          * allocate this context store profile for each shared vm.
          */
         this.engineProfile = PolyglotEngine.GLOBAL_PROFILE;
-        List<PolyglotEngine.LanguageShared> languageList = new ArrayList<>();
+        List<LanguageShared> languageList = new ArrayList<>();
         /* We want to create a language instance but per LanguageCache and not per mime type. */
         List<LanguageCache> convertedLanguages = new ArrayList<>(new HashSet<>(LanguageCache.languages().values()));
         Collections.sort(convertedLanguages);
 
         int languageIndex = 0;
         for (LanguageCache languageCache : convertedLanguages) {
-            languageList.add(new PolyglotEngine.LanguageShared(this, languageCache, languageIndex++));
+            languageList.add(new LanguageShared(this, languageCache, languageIndex++));
         }
+        this.automaticDispose = automaticDispose;
         this.languages = languageList;
         this.instruments = createInstruments(InstrumentCache.load());
 
@@ -99,8 +105,19 @@ public final class PolyglotRuntime {
         return engineProfile.get();
     }
 
-    List<PolyglotEngine.LanguageShared> getLanguages() {
+    List<LanguageShared> getLanguages() {
         return languages;
+    }
+
+    void notifyEngineDisposed() {
+        instanceCount.decrementAndGet();
+        if (automaticDispose) {
+            dispose();
+        }
+    }
+
+    void notifyEngineCreated() {
+        instanceCount.incrementAndGet();
     }
 
     @SuppressWarnings("deprecation")
@@ -126,6 +143,32 @@ public final class PolyglotRuntime {
     }
 
     /**
+     * Disposes the runtime and with it all created instruments. Throws
+     * {@link IllegalStateException} if not all engines created using this runtime are not yet
+     * {@link PolyglotEngine#dispose() disposed}.
+     * {@link PolyglotEngine.Builder#runtime(PolyglotRuntime) Default/private} runtimes of an engine
+     * are disposed automatically with the engine.
+     *
+     * @since 0.25
+     */
+    public synchronized void dispose() {
+        if (instanceCount.get() > 0) {
+            throw new IllegalStateException("Cannot dispose runtime if not all engine instances are disposed.");
+        }
+        if (!disposed) {
+            disposed = true;
+            // only dispose instruments if all engine group is disposed
+            for (PolyglotRuntime.Instrument instrument : getInstruments().values()) {
+                try {
+                    instrument.setEnabledImpl(false, false);
+                } catch (Exception | Error ex) {
+                    PolyglotEngine.LOG.log(Level.SEVERE, "Error disposing " + instrument, ex);
+                }
+            }
+        }
+    }
+
+    /**
      * Starts creation of a new runtime instance. Call any methods of the {@link Builder} and finish
      * the creation by calling {@link Builder#build()}.
      *
@@ -136,9 +179,62 @@ public final class PolyglotRuntime {
         return new PolyglotRuntime().new Builder();
     }
 
+    static final class LanguageShared {
+
+        final LanguageCache cache;
+        final PolyglotRuntime runtime;
+        final PolyglotEngineProfile engineProfile;
+        final int languageId;
+        volatile LanguageInfo language;
+
+        LanguageShared(PolyglotRuntime engineShared, LanguageCache cache, int languageId) {
+            this.runtime = engineShared;
+            this.engineProfile = engineShared.engineProfile;
+            assert engineProfile != null;
+            this.cache = cache;
+            this.languageId = languageId;
+        }
+
+        Language currentLanguage() {
+            return runtime.currentVM().findLanguage(this);
+        }
+
+        Object getCurrentContext() {
+            // is on fast-path
+            final PolyglotEngine engine = engineProfile.get();
+            Object context = PolyglotEngine.UNSET_CONTEXT;
+            if (engine != null) {
+                context = engine.languageArray[languageId].context;
+            }
+            if (context == PolyglotEngine.UNSET_CONTEXT) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(
+                                "The language context is not yet initialized or already disposed. ");
+            }
+            return context;
+        }
+
+        PolyglotRuntime getRuntime() {
+            return runtime;
+        }
+
+        LanguageInfo getLanguage() {
+            if (language == null) {
+                synchronized (this) {
+                    if (language == null) {
+                        LoadedLanguage loadedLanguage = cache.loadLanguage();
+                        this.language = Access.LANGS.initializeLanguage(this, loadedLanguage.getLanguage(), loadedLanguage.isSingleton(), cache.getName(), cache.getVersion(), cache.getMimeTypes());
+                    }
+                }
+            }
+            return language;
+        }
+
+    }
+
     /**
      * Builder for creating new instance of a {@link PolyglotRuntime}.
-     * 
+     *
      * @since 0.25
      */
     public final class Builder {
@@ -200,7 +296,14 @@ public final class PolyglotRuntime {
             DispatchOutputStream realOut = PolyglotEngine.SPIAccessor.instrumentAccess().createDispatchOutput(out == null ? System.out : out);
             DispatchOutputStream realErr = PolyglotEngine.SPIAccessor.instrumentAccess().createDispatchOutput(err == null ? System.err : err);
             InputStream realIn = in == null ? System.in : in;
-            return new PolyglotRuntime(realOut, realErr, realIn);
+            return new PolyglotRuntime(realOut, realErr, realIn, false);
+        }
+
+        PolyglotRuntime build(boolean autoDispose) {
+            DispatchOutputStream realOut = PolyglotEngine.SPIAccessor.instrumentAccess().createDispatchOutput(out == null ? System.out : out);
+            DispatchOutputStream realErr = PolyglotEngine.SPIAccessor.instrumentAccess().createDispatchOutput(err == null ? System.err : err);
+            InputStream realIn = in == null ? System.in : in;
+            return new PolyglotRuntime(realOut, realErr, realIn, autoDispose);
         }
     }
 
@@ -278,9 +381,7 @@ public final class PolyglotRuntime {
          * <p>
          * Here is an example for locating a hypothetical <code>DebuggerController</code>:
          *
-         * {
-         *
-         * @codesnippet DebuggerExampleTest}
+         * {@codesnippet DebuggerExampleTest}
          *
          * @param <T> the type of the service
          * @param type class of the service that is being requested

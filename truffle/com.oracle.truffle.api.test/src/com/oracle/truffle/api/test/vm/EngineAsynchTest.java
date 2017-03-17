@@ -49,7 +49,7 @@ public class EngineAsynchTest extends EngineTest {
         private final Executor delegate;
         private final Thread worker;
 
-        public RecurrentExecutor(Executor delegate) {
+        RecurrentExecutor(Executor delegate) {
             this.delegate = delegate;
             final Thread[] arr = {null};
             CountDownLatch cdl = new CountDownLatch(1);

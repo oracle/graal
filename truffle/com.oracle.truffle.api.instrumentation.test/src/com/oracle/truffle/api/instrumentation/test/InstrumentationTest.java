@@ -967,6 +967,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         engine.dispose();
         assertEquals(0, service.onDisposeCalls);
         forked.dispose();
+        forked.getRuntime().dispose();
         // dispose if all engines are disposed
         assertEquals(1, service.onDisposeCalls);
         engine = null; // avoid disposal in @After event

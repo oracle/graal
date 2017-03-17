@@ -106,6 +106,10 @@ final class InstrumentationHandler {
         this.in = in;
     }
 
+    Object getSourceVM() {
+        return sourceVM;
+    }
+
     void onLoad(RootNode root) {
         if (!AccessorInstrumentHandler.nodesAccess().isInstrumentable(root)) {
             return;
@@ -514,7 +518,7 @@ final class InstrumentationHandler {
 
     Set<Class<?>> getProvidedTags(LanguageInfo language) {
         LanguageSupport langAccess = AccessorInstrumentHandler.langAccess();
-        TruffleLanguage<?> lang = langAccess.getLanguage(langAccess.getEnv(language));
+        TruffleLanguage<?> lang = langAccess.getSpi(language);
         if (lang == null) {
             return Collections.emptySet();
         }
@@ -953,7 +957,7 @@ final class InstrumentationHandler {
                 }
                 builder.append("}");
                 LanguageSupport langAccess = AccessorInstrumentHandler.langAccess();
-                TruffleLanguage<?> lang = langAccess.getLanguage(langAccess.getEnv(languageInfo));
+                TruffleLanguage<?> lang = langAccess.getSpi(languageInfo);
                 throw new IllegalArgumentException(String.format("The attached filter %s references the following tags %s which are not declared as provided by the language. " +
                                 "To fix this annotate the language class %s with @%s(%s).",
                                 filter, missingTags, lang.getClass().getName(), ProvidedTags.class.getSimpleName(), builder));

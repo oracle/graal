@@ -41,6 +41,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 
 import org.junit.After;
@@ -64,7 +65,6 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
 import com.oracle.truffle.api.vm.PolyglotRuntime;
-import java.util.concurrent.Callable;
 
 public class EngineTest {
     private final PolyglotRuntime testRuntime = PolyglotRuntime.newBuilder().build();

@@ -177,14 +177,14 @@ public final class Debugger {
          */
         protected CallTarget parse(Source code, Node context, String... argumentNames) {
             RootNode rootNode = context.getRootNode();
-            return languageSupport().parse(languageSupport().getEnv(rootNode.getLanguageInfo()), code, context, argumentNames);
+            return languageSupport().parse(engineSupport().getEnvForInstrument(rootNode.getLanguageInfo()), code, context, argumentNames);
         }
 
         /*
          * TODO we should have a better way to publish services from instruments to languages.
          */
         protected Object findVM(com.oracle.truffle.api.TruffleLanguage.Env env) {
-            return languageSupport().getLanguageShared(languageSupport().getInfo(env));
+            return languageSupport().getLanguageShared(languageSupport().getLanguageInfo(env));
         }
 
         /*

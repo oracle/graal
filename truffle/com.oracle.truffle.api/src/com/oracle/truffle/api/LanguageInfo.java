@@ -36,13 +36,15 @@ public final class LanguageInfo {
     private final String name;
     private final String version;
     private final Set<String> mimeTypes;
-    final TruffleLanguage.Env env;
+    private final Object engineObject;
+    private final TruffleLanguage<?> spi;
 
-    LanguageInfo(TruffleLanguage.Env env, String name, String version, Set<String> mimeTypes) {
+    LanguageInfo(Object engineObject, TruffleLanguage<?> language, String name, String version, Set<String> mimeTypes) {
+        this.engineObject = engineObject;
+        this.spi = language;
         this.name = name;
         this.version = version;
         this.mimeTypes = mimeTypes;
-        this.env = env;
     }
 
     /**
@@ -73,5 +75,13 @@ public final class LanguageInfo {
      */
     public Set<String> getMimeTypes() {
         return mimeTypes;
+    }
+
+    Object getEngineObject() {
+        return engineObject;
+    }
+
+    TruffleLanguage<?> getSpi() {
+        return spi;
     }
 }

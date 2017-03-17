@@ -560,8 +560,8 @@ public abstract class Node implements NodeInterface, Cloneable {
      *
      * @since 0.8 or earlier
      * @deprecated in 0.25 use {@link #getRootNode() getRootNode()}.
-     *             {@link RootNode#getLanguageInfo() getLanguageInfo()}.{@link LanguageInfo#getName()
-     *             getName()} instead
+     *             {@link RootNode#getLanguageInfo() getLanguageInfo()}.
+     *             {@link LanguageInfo#getName() getName()} instead
      */
     @Deprecated
     public String getLanguage() {

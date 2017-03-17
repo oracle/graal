@@ -39,6 +39,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest;
 import com.oracle.truffle.api.instrumentation.test.examples.DebuggerController.Callback;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.vm.PolyglotRuntime;
 import com.oracle.truffle.api.vm.PolyglotRuntime.Instrument;
 
 public final class DebuggerExampleTest extends AbstractInstrumentationTest {
@@ -47,7 +48,8 @@ public final class DebuggerExampleTest extends AbstractInstrumentationTest {
     @Before
     public void setupDebugger() throws IOException {
         // BEGIN: DebuggerExampleTest
-        Instrument instrument = engine.getRuntime().getInstruments().get(DebuggerExample.ID);
+        PolyglotRuntime runtime = engine.getRuntime();
+        Instrument instrument = runtime.getInstruments().get(DebuggerExample.ID);
         instrument.setEnabled(true);
         debugger = instrument.lookup(DebuggerController.class);
         // END: DebuggerExampleTest
