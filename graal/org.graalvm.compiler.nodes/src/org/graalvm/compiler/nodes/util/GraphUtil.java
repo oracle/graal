@@ -38,6 +38,7 @@ import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.graph.NodeStack;
 import org.graalvm.compiler.graph.NodeWorkList;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
@@ -47,6 +48,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
+import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
@@ -70,8 +72,10 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
 import org.graalvm.util.Equivalence;
+import org.graalvm.util.MapCursor;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodePosition;
@@ -86,6 +90,129 @@ public class GraphUtil {
     public static class Options {
         @Option(help = "Verify that there are no new unused nodes when performing killCFG", type = OptionType.Debug)//
         public static final OptionKey<Boolean> VerifyKillCFGUnusedNodes = new OptionKey<>(false);
+        @Option(help = "", type = OptionType.Debug)//
+        public static final OptionKey<Boolean> UseNewKillCFG = new OptionKey<>(true);
+    }
+
+    private static void killCFGInner2(FixedNode node) {
+        EconomicSet<Node> markedNodes = EconomicSet.create();
+        EconomicMap<AbstractMergeNode, List<AbstractEndNode>> unmarkedMerges = EconomicMap.create();
+        NodeStack workStack = new NodeStack();
+
+        // Detach this node from CFG
+        node.replaceAtPredecessor(null);
+
+        // Mark fixed Nodes
+        workStack.push(node);
+        while (!workStack.isEmpty()) {
+            Node fixedNode = workStack.pop();
+            markedNodes.add(fixedNode);
+            if (fixedNode instanceof AbstractMergeNode) {
+                unmarkedMerges.removeKey((AbstractMergeNode) fixedNode);
+            }
+            while (fixedNode instanceof FixedWithNextNode) {
+                fixedNode = ((FixedWithNextNode) fixedNode).next();
+                if (fixedNode != null) {
+                    markedNodes.add(fixedNode);
+                }
+            }
+            if (fixedNode instanceof ControlSplitNode) {
+                for (Node successor : fixedNode.successors()) {
+                    workStack.push(successor);
+                }
+            } else if (fixedNode instanceof AbstractEndNode) {
+                AbstractEndNode end = (AbstractEndNode) fixedNode;
+                AbstractMergeNode merge = end.merge();
+                if (merge != null) {
+                    assert !markedNodes.contains(merge) || (merge instanceof LoopBeginNode && end instanceof LoopEndNode) : merge;
+                    if (merge instanceof LoopBeginNode) {
+                        if (end == ((LoopBeginNode) merge).forwardEnd()) {
+                            workStack.push(merge);
+                            continue;
+                        }
+                        if (markedNodes.contains(merge)) {
+                            continue;
+                        }
+                    }
+                    List<AbstractEndNode> endsSeen = unmarkedMerges.get(merge);
+                    if (endsSeen == null) {
+                        endsSeen = new ArrayList<>(merge.forwardEndCount());
+                        unmarkedMerges.put(merge, endsSeen);
+                    }
+                    endsSeen.add(end);
+                    if (!(end instanceof LoopEndNode) && endsSeen.size() == merge.forwardEndCount()) {
+                        assert merge.forwardEnds().filter(n -> !markedNodes.contains(n)).isEmpty();
+                        // all this merge's forward ends are marked: it needs to be killed
+                        workStack.push(merge);
+                    }
+                }
+            }
+        }
+
+        StructuredGraph graph = node.graph();
+
+        // Fix surviving affected merges
+        MapCursor<AbstractMergeNode, List<AbstractEndNode>> cursor = unmarkedMerges.getEntries();
+        while (cursor.advance()) {
+            AbstractMergeNode merge = cursor.getKey();
+            for (AbstractEndNode end : cursor.getValue()) {
+                merge.removeEnd(end);
+            }
+            if (merge.phiPredecessorCount() == 1) {
+                if (merge instanceof LoopBeginNode) {
+                    LoopBeginNode loopBegin = (LoopBeginNode) merge;
+                    assert merge.forwardEndCount() == 1;
+                    for (LoopExitNode loopExit : loopBegin.loopExits().snapshot()) {
+                        if (markedNodes.contains(loopExit)) {
+                            /*
+                             * disconnect from loop begin so that reduceDegenerateLoopBegin doesn't
+                             * transform it into a new beginNode
+                             */
+                            loopExit.replaceFirstInput(loopBegin, null);
+                        }
+                    }
+                    graph.reduceDegenerateLoopBegin((LoopBeginNode) merge);
+                } else {
+                    graph.reduceTrivialMerge(merge);
+                }
+            } else {
+                assert merge.phiPredecessorCount() > 1 : merge;
+            }
+        }
+
+        Debug.dump(Debug.DETAILED_LOG_LEVEL, graph, "After fixing merges (killCFG %s)", node);
+
+        assert workStack.isEmpty();
+        // Mark non-fixed nodes
+        for (Node marked : markedNodes) {
+            workStack.push(marked);
+        }
+        while (!workStack.isEmpty()) {
+            Node marked = workStack.pop();
+            for (Node usage : marked.usages()) {
+                if (!markedNodes.contains(usage)) {
+                    workStack.push(usage);
+                    markedNodes.add(usage);
+                }
+            }
+        }
+
+        // Detach marked nodes from non-marked nodes
+        for (Node marked : markedNodes) {
+            for (Node input : marked.inputs()) {
+                if (!markedNodes.contains(input)) {
+                    marked.replaceFirstInput(input, null);
+                    tryKillUnused(input);
+                }
+            }
+        }
+        Debug.dump(Debug.VERY_DETAILED_LOG_LEVEL, graph, "After disconnecting non-marked inputs (killCFG %s)", node);
+        // Kill marked nodes
+        for (Node marked : markedNodes) {
+            if (marked.isAlive()) {
+                marked.markDeleted();
+            }
+        }
     }
 
     @SuppressWarnings("try")
@@ -111,13 +238,12 @@ public class GraphUtil {
                 });
             }
             Debug.dump(Debug.VERY_DETAILED_LOG_LEVEL, node.graph(), "Before killCFG %s", node);
-            NodeWorkList worklist = killCFG(node, tool, null);
-            if (worklist != null) {
-                for (Node n : worklist) {
-                    NodeWorkList list = killCFG(n, tool, worklist);
-                    assert list == worklist;
-                }
+            if (GraphUtil.Options.UseNewKillCFG.getValue(graph.getOptions())) {
+                killCFGInner2(node);
+            } else {
+                killCFGInner(node, tool);
             }
+            Debug.dump(Debug.VERY_DETAILED_LOG_LEVEL, node.graph(), "After killCFG %s", node);
             if (Graph.Options.VerifyGraalGraphEdges.getValue(options)) {
                 EconomicSet<Node> newUnsafeNodes = collectUnsafeNodes(node.graph());
                 newUnsafeNodes.removeAll(unsafeNodes);
@@ -137,6 +263,16 @@ public class GraphUtil {
             }
         } catch (Throwable t) {
             throw Debug.handle(t);
+        }
+    }
+
+    private static void killCFGInner(FixedNode node, SimplifierTool tool) {
+        NodeWorkList worklist = killCFG(node, tool, null);
+        if (worklist != null) {
+            for (Node n : worklist) {
+                NodeWorkList list = killCFG(n, tool, worklist);
+                assert list == worklist;
+            }
         }
     }
 

@@ -304,7 +304,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
      * @return an {@link NodeIterable iterable} for all non-null successor edges.
      */
     public NodeIterable<Node> successors() {
-        assert !this.isDeleted();
+        assert !this.isDeleted() : this;
         return nodeClass.getSuccessorIterable(this);
     }
 
@@ -673,7 +673,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         if (graph != null) {
             assert !graph.isFrozen();
             NodeEventListener listener = graph.nodeEventListener;
-            if (listener != null) {
+            if (listener != null && node.isAlive()) {
                 listener.inputChanged(node);
             }
             if (Fingerprint.ENABLED) {
