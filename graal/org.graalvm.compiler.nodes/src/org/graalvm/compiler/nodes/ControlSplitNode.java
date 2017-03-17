@@ -54,4 +54,9 @@ public abstract class ControlSplitNode extends FixedNode implements IterableNode
      * @return the primary successor
      */
     public abstract AbstractBeginNode getPrimarySuccessor();
+
+    /**
+     * Returns the number of successors.
+     */
+    public abstract int getSuccessorCount();
 }

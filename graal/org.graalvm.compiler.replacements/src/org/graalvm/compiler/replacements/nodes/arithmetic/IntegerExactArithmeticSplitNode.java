@@ -118,4 +118,9 @@ public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode i
             floatingNode.replaceAndDelete(split);
         }
     }
+
+    @Override
+    public int getSuccessorCount() {
+        return 2;
+    }
 }

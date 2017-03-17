@@ -276,4 +276,9 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
         // Cannot set probability for exception invokes.
         return false;
     }
+
+    @Override
+    public int getSuccessorCount() {
+        return 2;
+    }
 }
