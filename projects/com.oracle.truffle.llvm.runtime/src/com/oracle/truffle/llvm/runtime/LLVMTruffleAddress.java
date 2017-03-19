@@ -72,4 +72,10 @@ public final class LLVMTruffleAddress implements TruffleObject {
     private static Class<?> getLLVMAddressMessageResolutionAccessorClass() throws ClassNotFoundException {
         return Class.forName("com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMAddressMessageResolutionAccessor");
     }
+
+    @Override
+    public String toString() {
+        return address.toString();
+    }
+
 }
