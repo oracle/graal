@@ -31,7 +31,12 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
@@ -51,6 +56,8 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
     private final int numberOfExplicitArguments;
     @Child private LLVMExpressionNode target;
     @Child private MallocNode malloc;
+    @Child private Node isBoxedNode = Message.IS_BOXED.createNode();
+    @Child private Node unboxNode = Message.UNBOX.createNode();
 
     public LLVMX86_64BitVAStart(LLVMHeapFunctions heapFunctions, int numberOfExplicitArguments, LLVMExpressionNode target) {
         if (numberOfExplicitArguments < 0) {
@@ -92,6 +99,7 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
         initOffsets(address);
         int varArgsStartIndex = numberOfExplicitArguments;
         Object[] realArguments = getRealArguments(frame);
+        unboxArguments(realArguments);
         int argumentsLength = realArguments.length;
         if (varArgsStartIndex != argumentsLength) {
             int nrVarArgs = argumentsLength - varArgsStartIndex;
@@ -147,6 +155,19 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
         Object[] newArguments = new Object[arguments.length - 1];
         System.arraycopy(arguments, LLVMCallNode.ARG_START_INDEX, newArguments, 0, newArguments.length);
         return newArguments;
+    }
+
+    private void unboxArguments(Object[] arguments) {
+        for (int n = 0; n < arguments.length; n++) {
+            Object argument = arguments[n];
+            if (argument instanceof TruffleObject && ForeignAccess.sendIsBoxed(isBoxedNode, (TruffleObject) argument)) {
+                try {
+                    arguments[n] = ForeignAccess.sendUnbox(unboxNode, (TruffleObject) argument);
+                } catch (UnsupportedMessageException e) {
+                    throw new AssertionError(e);
+                }
+            }
+        }
     }
 
     static int getSize(Type[] types) {
