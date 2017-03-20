@@ -133,9 +133,10 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
         try (Debug.Scope scope = Debug.scope("GraphPETest", testMethod)) {
             GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getDefault(getDefaultGraphBuilderPlugins()).withEagerResolving(true);
             registerPlugins(graphBuilderConfig.getPlugins().getInvocationPlugins());
-            CachingPEGraphDecoder decoder = new CachingPEGraphDecoder(getProviders(), graphBuilderConfig, OptimisticOptimizations.NONE, AllowAssumptions.YES, getTarget().arch, getInitialOptions());
-
             targetGraph = new StructuredGraph.Builder(getInitialOptions(), AllowAssumptions.YES).method(testMethod).build();
+            CachingPEGraphDecoder decoder = new CachingPEGraphDecoder(getTarget().arch, targetGraph, getProviders(), graphBuilderConfig, OptimisticOptimizations.NONE, AllowAssumptions.YES,
+                            getInitialOptions());
+
             decoder.decode(targetGraph, testMethod, null, null, new InlineInvokePlugin[]{new InlineAll()}, null);
             Debug.dump(Debug.BASIC_LOG_LEVEL, targetGraph, "Target Graph");
             targetGraph.verify();

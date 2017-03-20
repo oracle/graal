@@ -85,8 +85,6 @@ public class GraphDecoder {
     protected class MethodScope {
         /** The loop that contains the call. Only non-null during method inlining. */
         public final LoopScope callerLoopScope;
-        /** The target graph where decoded nodes are added to. */
-        public final StructuredGraph graph;
         /**
          * Mark for nodes that were present before the decoding of this method started. Note that
          * nodes that were decoded after the mark can still be part of an outer method, since
@@ -112,8 +110,6 @@ public class GraphDecoder {
         /** All merges created during loop explosion. */
         public final EconomicSet<Node> loopExplosionMerges;
 
-        /** The canonicalizer tool used for all canonicalizations in this scope */
-        public final CanonicalizerTool canonicalizerTool;
         /**
          * The start of explosion, and the merge point for when irreducible loops are detected. Only
          * used when {@link MethodScope#loopExplosion} is {@link LoopExplosionKind#MERGE_EXPLODE}.
@@ -122,11 +118,9 @@ public class GraphDecoder {
 
         protected MethodScope(LoopScope callerLoopScope, StructuredGraph graph, EncodedGraph encodedGraph, LoopExplosionKind loopExplosion) {
             this.callerLoopScope = callerLoopScope;
-            this.graph = graph;
             this.methodStartMark = graph.getMark();
             this.encodedGraph = encodedGraph;
             this.loopExplosion = loopExplosion;
-            this.canonicalizerTool = createCanonicalizerTool(graph);
             this.cleanupTasks = new ArrayList<>(2);
             this.returnNodes = new ArrayList<>(1);
             this.unwindNodes = new ArrayList<>(0);
@@ -346,24 +340,23 @@ public class GraphDecoder {
     }
 
     protected final Architecture architecture;
+    /** The target graph where decoded nodes are added to. */
+    protected final StructuredGraph graph;
     private final EconomicMap<NodeClass<?>, ArrayDeque<Node>> reusableFloatingNodes;
 
-    public GraphDecoder(Architecture architecture) {
+    public GraphDecoder(Architecture architecture, StructuredGraph graph) {
         this.architecture = architecture;
+        this.graph = graph;
         reusableFloatingNodes = EconomicMap.create(Equivalence.IDENTITY);
     }
 
-    protected CanonicalizerTool createCanonicalizerTool(@SuppressWarnings("unused") StructuredGraph graph) {
-        return null;
-    }
-
     @SuppressWarnings("try")
-    public final void decode(StructuredGraph graph, EncodedGraph encodedGraph) {
+    public final void decode(EncodedGraph encodedGraph) {
         try (Debug.Scope scope = Debug.scope("GraphDecoder", graph)) {
             MethodScope methodScope = new MethodScope(null, graph, encodedGraph, LoopExplosionKind.NONE);
             decode(createInitialLoopScope(methodScope, null));
             cleanupGraph(methodScope);
-            assert methodScope.graph.verify();
+            assert graph.verify();
         } catch (Throwable ex) {
             Debug.handle(ex);
         }
@@ -384,13 +377,13 @@ public class GraphDecoder {
             startNode.setNext(firstNode);
             loopScope.nodesToProcess.set(GraphEncoder.FIRST_NODE_ORDER_ID);
         } else {
-            firstNode = methodScope.graph.start();
+            firstNode = graph.start();
             registerNode(loopScope, GraphEncoder.START_NODE_ORDER_ID, firstNode, false, false);
             loopScope.nodesToProcess.set(GraphEncoder.START_NODE_ORDER_ID);
         }
 
         if (methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE) {
-            methodScope.cleanupTasks.add(new LoopDetector(methodScope, startNode));
+            methodScope.cleanupTasks.add(new LoopDetector(graph, methodScope, startNode));
         }
         return loopScope;
     }
@@ -656,7 +649,7 @@ public class GraphDecoder {
             }
         }
 
-        MergeNode merge = methodScope.graph.add(new MergeNode());
+        MergeNode merge = graph.add(new MergeNode());
         methodScope.loopExplosionMerges.add(merge);
 
         if (methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE) {
@@ -669,11 +662,11 @@ public class GraphDecoder {
 
             List<ValueNode> newFrameStateValues = new ArrayList<>();
             for (ValueNode frameStateValue : frameState.values) {
-                if (frameStateValue == null || frameStateValue.isConstant() || !methodScope.graph.isNew(methodScope.methodStartMark, frameStateValue)) {
+                if (frameStateValue == null || frameStateValue.isConstant() || !graph.isNew(methodScope.methodStartMark, frameStateValue)) {
                     newFrameStateValues.add(frameStateValue);
 
                 } else {
-                    ProxyPlaceholder newFrameStateValue = methodScope.graph.unique(new ProxyPlaceholder(frameStateValue, merge));
+                    ProxyPlaceholder newFrameStateValue = graph.unique(new ProxyPlaceholder(frameStateValue, merge));
                     newFrameStateValues.add(newFrameStateValue);
 
                     /*
@@ -691,7 +684,7 @@ public class GraphDecoder {
                 }
             }
 
-            FrameState newFrameState = methodScope.graph.add(new FrameState(frameState.outerFrameState(), frameState.getCode(), frameState.bci, newFrameStateValues, frameState.localsSize(),
+            FrameState newFrameState = graph.add(new FrameState(frameState.outerFrameState(), frameState.getCode(), frameState.bci, newFrameStateValues, frameState.localsSize(),
                             frameState.stackSize(), frameState.rethrowException(), frameState.duringCall(), frameState.monitorIds(), frameState.virtualObjectMappings()));
 
             frameState.replaceAtUsagesAndDelete(newFrameState);
@@ -722,7 +715,7 @@ public class GraphDecoder {
     }
 
     protected FixedNode handleLoopExplosionEnd(MethodScope methodScope, LoopScope loopScope, LoopEndNode loopEnd) {
-        EndNode replacementNode = methodScope.graph.add(new EndNode());
+        EndNode replacementNode = graph.add(new EndNode());
         loopEnd.replaceAtPredecessor(replacementNode);
         loopEnd.safeDelete();
 
@@ -771,7 +764,7 @@ public class GraphDecoder {
         assert loopExit.stateAfter() == null;
         int stateAfterOrderId = readOrderId(methodScope);
 
-        BeginNode begin = methodScope.graph.add(new BeginNode());
+        BeginNode begin = graph.add(new BeginNode());
 
         FixedNode loopExitSuccessor = loopExit.next();
         loopExit.replaceAtPredecessor(begin);
@@ -782,14 +775,14 @@ public class GraphDecoder {
              * This exit might end up as a loop exit of a loop detected after partial evaluation. We
              * need to be able to create a FrameState and the necessary proxy nodes in this case.
              */
-            loopExitPlaceholder = methodScope.graph.add(new MergeNode());
+            loopExitPlaceholder = graph.add(new MergeNode());
             methodScope.loopExplosionMerges.add(loopExitPlaceholder);
 
-            EndNode end = methodScope.graph.add(new EndNode());
+            EndNode end = graph.add(new EndNode());
             begin.setNext(end);
             loopExitPlaceholder.addForwardEnd(end);
 
-            begin = methodScope.graph.add(new BeginNode());
+            begin = graph.add(new BeginNode());
             loopExitPlaceholder.setNext(begin);
         }
 
@@ -807,10 +800,10 @@ public class GraphDecoder {
 
         } else if (existingExit instanceof BeginNode) {
             /* Second loop iteration that exits. Create the merge. */
-            merge = methodScope.graph.add(new MergeNode());
+            merge = graph.add(new MergeNode());
             registerNode(outerScope, loopExitOrderId, merge, true, false);
             /* Add the first iteration. */
-            EndNode firstEnd = methodScope.graph.add(new EndNode());
+            EndNode firstEnd = graph.add(new EndNode());
             ((BeginNode) existingExit).setNext(firstEnd);
             merge.addForwardEnd(firstEnd);
             merge.setNext(loopExitSuccessor);
@@ -821,7 +814,7 @@ public class GraphDecoder {
         }
 
         if (merge != null) {
-            EndNode end = methodScope.graph.add(new EndNode());
+            EndNode end = graph.add(new EndNode());
             begin.setNext(end);
             merge.addForwardEnd(end);
         }
@@ -840,7 +833,7 @@ public class GraphDecoder {
 
             if (loopExitPlaceholder != null) {
                 if (!phiInput.isConstant()) {
-                    phiInput = methodScope.graph.unique(new ProxyPlaceholder(phiInput, loopExitPlaceholder));
+                    phiInput = graph.unique(new ProxyPlaceholder(phiInput, loopExitPlaceholder));
                 }
                 registerNode(loopScope, proxyOrderId, phiInput, true, false);
             }
@@ -857,7 +850,7 @@ public class GraphDecoder {
 
             } else if (!merge.isPhiAtMerge(existing)) {
                 /* Now we have two different values, so we need to create a phi node. */
-                PhiNode phi = methodScope.graph.addWithoutUnique(new ValuePhiNode(proxy.stamp(), merge));
+                PhiNode phi = graph.addWithoutUnique(new ValuePhiNode(proxy.stamp(), merge));
                 /* Add the inputs from all previous exits. */
                 for (int j = 0; j < merge.phiPredecessorCount() - 1; j++) {
                     phi.addInput(existing);
@@ -1072,7 +1065,7 @@ public class GraphDecoder {
              * We need these nodes as they were in the original graph, without any canonicalization
              * or value numbering.
              */
-            node = methodScope.graph.addWithoutUnique(node);
+            node = graph.addWithoutUnique(node);
         } else {
             /* Allow subclasses to canonicalize and intercept nodes. */
             Node newNode = handleFloatingNodeBeforeAdd(methodScope, loopScope, node);
@@ -1089,12 +1082,12 @@ public class GraphDecoder {
         return node;
     }
 
-    protected Node addFloatingNode(MethodScope methodScope, Node node) {
+    protected Node addFloatingNode(@SuppressWarnings("unused") MethodScope methodScope, Node node) {
         /*
          * We want to exactly reproduce the encoded graph. Even though nodes should be unique in the
          * encoded graph, this is not always guaranteed.
          */
-        return methodScope.graph.addWithoutUnique(node);
+        return graph.addWithoutUnique(node);
     }
 
     /**
@@ -1220,7 +1213,7 @@ public class GraphDecoder {
         long readerByteIndex = methodScope.reader.getByteIndex();
         methodScope.reader.setByteIndex(methodScope.encodedGraph.nodeStartOffsets[nodeOrderId]);
         NodeClass<?> nodeClass = methodScope.encodedGraph.getNodeClasses()[methodScope.reader.getUVInt()];
-        node = (FixedNode) methodScope.graph.add(nodeClass.allocateInstance());
+        node = (FixedNode) graph.add(nodeClass.allocateInstance());
         /* Properties and edges are not filled yet, the node remains uninitialized. */
         methodScope.reader.setByteIndex(readerByteIndex);
 
@@ -1277,11 +1270,11 @@ public class GraphDecoder {
      * @param methodScope The current method.
      */
     protected void cleanupGraph(MethodScope methodScope) {
-        assert verifyEdges(methodScope);
+        assert verifyEdges();
     }
 
-    protected boolean verifyEdges(MethodScope methodScope) {
-        for (Node node : methodScope.graph.getNodes()) {
+    protected boolean verifyEdges() {
+        for (Node node : graph.getNodes()) {
             assert node.isAlive();
             for (Node i : node.inputs()) {
                 assert i.isAlive();
@@ -1332,20 +1325,22 @@ class LoopDetector implements Runnable {
         boolean irreducible;
     }
 
+    private final StructuredGraph graph;
     private final MethodScope methodScope;
     private final FixedNode startInstruction;
 
     private Loop irreducibleLoopHandler;
     private IntegerSwitchNode irreducibleLoopSwitch;
 
-    protected LoopDetector(MethodScope methodScope, FixedNode startInstruction) {
+    protected LoopDetector(StructuredGraph graph, MethodScope methodScope, FixedNode startInstruction) {
+        this.graph = graph;
         this.methodScope = methodScope;
         this.startInstruction = startInstruction;
     }
 
     @Override
     public void run() {
-        Debug.dump(Debug.VERBOSE_LOG_LEVEL, methodScope.graph, "Before loop detection");
+        Debug.dump(Debug.VERBOSE_LOG_LEVEL, graph, "Before loop detection");
 
         List<Loop> orderedLoops = findLoops();
         assert orderedLoops.get(orderedLoops.size() - 1) == irreducibleLoopHandler : "outermost loop must be the last element in the list";
@@ -1368,11 +1363,11 @@ class LoopDetector implements Runnable {
             } else {
                 insertLoopNodes(loop);
             }
-            Debug.dump(Debug.VERBOSE_LOG_LEVEL, methodScope.graph, "After handling of loop %s", loop.header);
+            Debug.dump(Debug.VERBOSE_LOG_LEVEL, graph, "After handling of loop %s", loop.header);
         }
 
         logIrreducibleLoops();
-        Debug.dump(Debug.VERBOSE_LOG_LEVEL, methodScope.graph, "After loop detection");
+        Debug.dump(Debug.VERBOSE_LOG_LEVEL, graph, "After loop detection");
     }
 
     private List<Loop> findLoops() {
@@ -1387,8 +1382,8 @@ class LoopDetector implements Runnable {
          */
         irreducibleLoopHandler = findOrCreateLoop(unorderedLoops, methodScope.loopExplosionHead);
 
-        NodeBitMap visited = methodScope.graph.createNodeBitMap();
-        NodeBitMap active = methodScope.graph.createNodeBitMap();
+        NodeBitMap visited = graph.createNodeBitMap();
+        NodeBitMap active = graph.createNodeBitMap();
         Deque<Node> stack = new ArrayDeque<>();
         visited.mark(startInstruction);
         stack.push(startInstruction);
@@ -1462,7 +1457,7 @@ class LoopDetector implements Runnable {
          */
 
         List<Node> possibleExits = new ArrayList<>();
-        NodeBitMap visited = methodScope.graph.createNodeBitMap();
+        NodeBitMap visited = graph.createNodeBitMap();
         Deque<Node> stack = new ArrayDeque<>();
         for (EndNode loopEnd : loop.ends) {
             stack.push(loopEnd);
@@ -1474,7 +1469,7 @@ class LoopDetector implements Runnable {
             if (current == loop.header) {
                 continue;
             }
-            if (!methodScope.graph.isNew(methodScope.methodStartMark, current)) {
+            if (!graph.isNew(methodScope.methodStartMark, current)) {
                 /*
                  * The current node is before the method that contains the exploded loop. The loop
                  * must have a second entry point, i.e., it is an irreducible loop.
@@ -1582,8 +1577,8 @@ class LoopDetector implements Runnable {
         FrameState stateAfter = merge.stateAfter().duplicate();
         FixedNode afterMerge = merge.next();
         merge.setNext(null);
-        EndNode preLoopEnd = methodScope.graph.add(new EndNode());
-        LoopBeginNode loopBegin = methodScope.graph.add(new LoopBeginNode());
+        EndNode preLoopEnd = graph.add(new EndNode());
+        LoopBeginNode loopBegin = graph.add(new LoopBeginNode());
 
         merge.setNext(preLoopEnd);
         /* Add the single non-loop predecessor of the loop header. */
@@ -1600,7 +1595,7 @@ class LoopDetector implements Runnable {
         List<PhiNode> loopBeginPhis = new ArrayList<>(mergePhis.size());
         for (int i = 0; i < mergePhis.size(); i++) {
             PhiNode mergePhi = mergePhis.get(i);
-            PhiNode loopBeginPhi = methodScope.graph.addWithoutUnique(new ValuePhiNode(mergePhi.stamp(), loopBegin));
+            PhiNode loopBeginPhi = graph.addWithoutUnique(new ValuePhiNode(mergePhi.stamp(), loopBegin));
             mergePhi.replaceAtUsages(loopBeginPhi);
             /*
              * The first input of the new phi function is the original phi function, for the one
@@ -1618,7 +1613,7 @@ class LoopDetector implements Runnable {
             }
 
             merge.removeEnd(endNode);
-            LoopEndNode loopEnd = methodScope.graph.add(new LoopEndNode(loopBegin));
+            LoopEndNode loopEnd = graph.add(new LoopEndNode(loopBegin));
             endNode.replaceAndDelete(loopEnd);
         }
 
@@ -1630,7 +1625,7 @@ class LoopDetector implements Runnable {
             AbstractMergeNode loopExplosionMerge = exit.merge();
             assert methodScope.loopExplosionMerges.contains(loopExplosionMerge);
 
-            LoopExitNode loopExit = methodScope.graph.add(new LoopExitNode(loopBegin));
+            LoopExitNode loopExit = graph.add(new LoopExitNode(loopBegin));
             exit.replaceAtPredecessor(loopExit);
             loopExit.setNext(exit);
             assignLoopExitState(loopExit, loopExplosionMerge, exit);
@@ -1671,7 +1666,7 @@ class LoopDetector implements Runnable {
                 realValue = ProxyPlaceholder.unwrap(value);
             }
 
-            if (realValue == null || realValue.isConstant() || loopBeginValues.contains(realValue) || !methodScope.graph.isNew(methodScope.methodStartMark, realValue)) {
+            if (realValue == null || realValue.isConstant() || loopBeginValues.contains(realValue) || !graph.isNew(methodScope.methodStartMark, realValue)) {
                 newValues.add(realValue);
             } else {
                 /*
@@ -1682,7 +1677,7 @@ class LoopDetector implements Runnable {
                                 "Value flowing out of loop, but we are not prepared to insert a ProxyNode");
 
                 ProxyPlaceholder proxyPlaceholder = (ProxyPlaceholder) value;
-                ValueProxyNode proxy = ProxyNode.forValue(proxyPlaceholder.value, loopExit, methodScope.graph);
+                ValueProxyNode proxy = ProxyNode.forValue(proxyPlaceholder.value, loopExit, graph);
                 proxyPlaceholder.setValue(proxy);
                 newValues.add(proxy);
             }
@@ -1692,7 +1687,7 @@ class LoopDetector implements Runnable {
                         oldState.duringCall(), oldState.monitorIds(), oldState.virtualObjectMappings());
 
         assert loopExit.stateAfter() == null;
-        loopExit.setStateAfter(methodScope.graph.add(newState));
+        loopExit.setStateAfter(graph.add(newState));
     }
 
     /**
@@ -1763,7 +1758,7 @@ class LoopDetector implements Runnable {
             assert irreducibleLoopHandler.header.phis().isEmpty();
 
             /* The new phi function for the loop variable. */
-            loopVariablePhi = methodScope.graph.addWithoutUnique(new ValuePhiNode(explosionHeadValue.stamp().unrestricted(), irreducibleLoopHandler.header));
+            loopVariablePhi = graph.addWithoutUnique(new ValuePhiNode(explosionHeadValue.stamp().unrestricted(), irreducibleLoopHandler.header));
             for (int i = 0; i < irreducibleLoopHandler.header.phiPredecessorCount(); i++) {
                 loopVariablePhi.addInput(explosionHeadValue);
             }
@@ -1781,7 +1776,7 @@ class LoopDetector implements Runnable {
                     newFrameStateValues.add(explosionHeadValues.get(i));
                 }
             }
-            FrameState newFrameState = methodScope.graph.add(
+            FrameState newFrameState = graph.add(
                             new FrameState(oldFrameState.outerFrameState(), oldFrameState.getCode(), oldFrameState.bci, newFrameStateValues, oldFrameState.localsSize(),
                                             oldFrameState.stackSize(), oldFrameState.rethrowException(), oldFrameState.duringCall(), oldFrameState.monitorIds(),
                                             oldFrameState.virtualObjectMappings()));
@@ -1793,7 +1788,7 @@ class LoopDetector implements Runnable {
              */
             FixedNode handlerNext = irreducibleLoopHandler.header.next();
             irreducibleLoopHandler.header.setNext(null);
-            BeginNode handlerBegin = methodScope.graph.add(new BeginNode());
+            BeginNode handlerBegin = graph.add(new BeginNode());
             handlerBegin.setNext(handlerNext);
             dispatchTable.put(asInt(explosionHeadValue), handlerBegin);
 
@@ -1801,8 +1796,8 @@ class LoopDetector implements Runnable {
              * We know that there will always be a matching key in the switch. But Graal always
              * wants a default successor, so we build a dummy block that just deoptimizes.
              */
-            unreachableDefaultSuccessor = methodScope.graph.add(new BeginNode());
-            DeoptimizeNode deopt = methodScope.graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.UnreachedCode));
+            unreachableDefaultSuccessor = graph.add(new BeginNode());
+            DeoptimizeNode deopt = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.UnreachedCode));
             unreachableDefaultSuccessor.setNext(deopt);
 
         } else {
@@ -1837,8 +1832,8 @@ class LoopDetector implements Runnable {
 
         /* Insert our loop into the dispatch state machine. */
         assert loop.header.phis().isEmpty();
-        BeginNode dispatchBegin = methodScope.graph.add(new BeginNode());
-        EndNode dispatchEnd = methodScope.graph.add(new EndNode());
+        BeginNode dispatchBegin = graph.add(new BeginNode());
+        EndNode dispatchEnd = graph.add(new EndNode());
         dispatchBegin.setNext(dispatchEnd);
         loop.header.addForwardEnd(dispatchEnd);
         int intLoopValue = asInt(loopValue);
@@ -1854,7 +1849,7 @@ class LoopDetector implements Runnable {
         }
 
         /* Build and insert the switch node. */
-        irreducibleLoopSwitch = methodScope.graph.add(createSwitch(loopVariablePhi, dispatchTable, unreachableDefaultSuccessor));
+        irreducibleLoopSwitch = graph.add(createSwitch(loopVariablePhi, dispatchTable, unreachableDefaultSuccessor));
         irreducibleLoopHandler.header.setNext(irreducibleLoopSwitch);
     }
 
