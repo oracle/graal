@@ -188,7 +188,7 @@ import java.lang.reflect.Method;
  *
  * @since 0.9
  */
-@SuppressWarnings({"rawtypes", "deprecation"})
+@SuppressWarnings({"rawtypes"})
 public class PolyglotEngine {
     static final Logger LOG = Logger.getLogger(PolyglotEngine.class.getName());
     private static final SPIAccessor SPI = new SPIAccessor();
@@ -198,7 +198,6 @@ public class PolyglotEngine {
     private final InputStream in;
     private final DispatchOutputStream err;
     private final DispatchOutputStream out;
-    private final EventConsumer<?>[] handlers;
     private final Map<String, Object> globals;
     private final Object instrumentationHandler;
     private final Map<String, Instrument> instruments;
@@ -231,7 +230,6 @@ public class PolyglotEngine {
         this.err = null;
         this.out = null;
         this.langs = null;
-        this.handlers = null;
         this.globals = null;
         this.executor = null;
         this.instrumentationHandler = null;
@@ -244,13 +242,12 @@ public class PolyglotEngine {
     /**
      * Real constructor used from the builder.
      */
-    PolyglotEngine(Executor executor, Map<String, Object> globals, OutputStream out, OutputStream err, InputStream in, EventConsumer<?>[] handlers, List<Object[]> config) {
+    PolyglotEngine(Executor executor, Map<String, Object> globals, OutputStream out, OutputStream err, InputStream in, List<Object[]> config) {
         assertNoTruffle();
         this.executor = ComputeInExecutor.wrap(executor);
         this.out = SPIAccessor.instrumentAccess().createDispatchOutput(out);
         this.err = SPIAccessor.instrumentAccess().createDispatchOutput(err);
         this.in = in;
-        this.handlers = handlers;
         this.initThread = Thread.currentThread();
         this.globals = new HashMap<>(globals);
         this.config = config;
@@ -338,7 +335,6 @@ public class PolyglotEngine {
         private OutputStream out;
         private OutputStream err;
         private InputStream in;
-        private final List<EventConsumer<?>> handlers = new ArrayList<>();
         private final Map<String, Object> globals = new HashMap<>();
         private Executor executor;
         private List<Object[]> arguments;
@@ -382,22 +378,6 @@ public class PolyglotEngine {
          */
         public Builder setIn(InputStream is) {
             in = is;
-            return this;
-        }
-
-        /**
-         * Registers another instance of {@link EventConsumer} into the to be created
-         * {@link PolyglotEngine}.
-         *
-         * @param handler the handler to register
-         * @return this builder
-         * @since 0.9
-         * @deprecated all event types that use this API have been deprecated.
-         */
-        @Deprecated
-        public Builder onEvent(EventConsumer<?> handler) {
-            Objects.requireNonNull(handler);
-            handlers.add(handler);
             return this;
         }
 
@@ -495,7 +475,7 @@ public class PolyglotEngine {
             if (in == null) {
                 in = System.in;
             }
-            return new PolyglotEngine(executor, globals, out, err, in, handlers.toArray(new EventConsumer[0]), arguments);
+            return new PolyglotEngine(executor, globals, out, err, in, arguments);
         }
     }
 
@@ -847,43 +827,6 @@ public class PolyglotEngine {
         return true;
     }
 
-    @SuppressWarnings("unchecked")
-    void dispatch(Object ev, int type) {
-        if (type == Accessor.EngineSupport.EXECUTION_EVENT) {
-            dispatchExecutionEvent(ev);
-        }
-        if (type == Accessor.EngineSupport.SUSPENDED_EVENT) {
-            dispatchSuspendedEvent(ev);
-        }
-        Class clazz = ev.getClass();
-        dispatch(clazz, ev);
-    }
-
-    /**
-     * just to make javac happy.
-     *
-     * @param event
-     */
-    void dispatchSuspendedEvent(Object event) {
-    }
-
-    /**
-     * just to make javac happy.
-     *
-     * @param event
-     */
-    void dispatchExecutionEvent(Object event) {
-    }
-
-    @SuppressWarnings("unchecked")
-    <Event> void dispatch(Class<Event> type, Event event) {
-        for (EventConsumer handler : handlers) {
-            if (handler.type == type) {
-                handler.on(event);
-            }
-        }
-    }
-
     /**
      * A future value wrapper. A user level wrapper around values returned by evaluation of various
      * {@link PolyglotEngine} functions like {@link PolyglotEngine#findGlobalSymbol(String)} and
@@ -995,6 +938,7 @@ public class PolyglotEngine {
                     Object unwrappedConvered = ConvertedObject.original(unwrapped);
                     return representation.cast(Access.LANGS.toStringIfVisible(language[0], findEnv(clazz), unwrappedConvered, null));
                 }
+                unwrapped = Objects.toString(unwrapped);
             }
             if (ConvertedObject.isInstance(representation, unwrapped)) {
                 return ConvertedObject.cast(representation, unwrapped);
@@ -1460,7 +1404,6 @@ public class PolyglotEngine {
     static class Access {
         static final Accessor.LanguageSupport LANGS = SPIAccessor.langs();
         static final Accessor.InstrumentSupport INSTRUMENT = SPIAccessor.instrumentAccess();
-        static final Accessor.DebugSupport DEBUG = SPIAccessor.debugAccess();
         static final Accessor.JavaInteropSupport JAVA_INTEROP = SPIAccessor.javaInteropAccess();
 
         static Collection<ClassLoader> loaders() {
@@ -1475,10 +1418,6 @@ public class PolyglotEngine {
 
         static InstrumentSupport instrumentAccess() {
             return SPI.instrumentSupport();
-        }
-
-        static DebugSupport debugAccess() {
-            return SPI.debugSupport();
         }
 
         static JavaInteropSupport javaInteropAccess() {
@@ -1524,12 +1463,6 @@ public class PolyglotEngine {
             public Env findEnv(Object obj, Class<? extends TruffleLanguage> languageClass) {
                 PolyglotEngine vm = (PolyglotEngine) obj;
                 return vm.findEnv(languageClass);
-            }
-
-            @Override
-            public void dispatchEvent(Object obj, Object event, int type) {
-                PolyglotEngine vm = (PolyglotEngine) obj;
-                vm.dispatch(event, type);
             }
 
             @Override

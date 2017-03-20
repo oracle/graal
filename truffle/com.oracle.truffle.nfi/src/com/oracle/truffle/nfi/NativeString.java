@@ -45,6 +45,6 @@ class NativeString implements TruffleObject {
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return NativeStringMessageResolutionForeign.createAccess();
+        return NativeStringMessageResolutionForeign.ACCESS;
     }
 }

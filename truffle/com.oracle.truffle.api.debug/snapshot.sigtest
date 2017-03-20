@@ -8,8 +8,6 @@ meth public boolean isDisposed()
 meth public boolean isEnabled()
 meth public boolean isOneShot()
 meth public boolean isResolved()
-meth public com.oracle.truffle.api.debug.Breakpoint$State getState()
- anno 0 java.lang.Deprecated()
 meth public int getHitCount()
 meth public int getIgnoreCount()
 meth public java.lang.String getCondition()
@@ -34,21 +32,6 @@ meth public com.oracle.truffle.api.debug.Breakpoint$Builder lineIs(int)
 meth public com.oracle.truffle.api.debug.Breakpoint$Builder oneShot()
 supr java.lang.Object
 hfds ignoreCount,key,line,oneShot,sourceSection
-
-CLSS public final static !enum com.oracle.truffle.api.debug.Breakpoint$State
- outer com.oracle.truffle.api.debug.Breakpoint
- anno 0 java.lang.Deprecated()
-fld public final static com.oracle.truffle.api.debug.Breakpoint$State DISABLED
-fld public final static com.oracle.truffle.api.debug.Breakpoint$State DISABLED_UNRESOLVED
-fld public final static com.oracle.truffle.api.debug.Breakpoint$State DISPOSED
-fld public final static com.oracle.truffle.api.debug.Breakpoint$State ENABLED
-fld public final static com.oracle.truffle.api.debug.Breakpoint$State ENABLED_UNRESOLVED
-meth public java.lang.String getName()
-meth public java.lang.String toString()
-meth public static com.oracle.truffle.api.debug.Breakpoint$State valueOf(java.lang.String)
-meth public static com.oracle.truffle.api.debug.Breakpoint$State[] values()
-supr java.lang.Enum<com.oracle.truffle.api.debug.Breakpoint$State>
-hfds name
 
 CLSS public final com.oracle.truffle.api.debug.DebugStackFrame
 intf java.lang.Iterable<com.oracle.truffle.api.debug.DebugValue>
@@ -77,19 +60,7 @@ supr java.lang.Object
 hcls HeapValue,PropertyValue,StackValue
 
 CLSS public final com.oracle.truffle.api.debug.Debugger
-fld public final static java.lang.String CALL_TAG = "debug-CALL"
- anno 0 java.lang.Deprecated()
-fld public final static java.lang.String HALT_TAG = "debug-HALT"
- anno 0 java.lang.Deprecated()
-meth public boolean pause()
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.debug.Breakpoint setLineBreakpoint(int,com.oracle.truffle.api.source.LineLocation,boolean) throws java.io.IOException
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.debug.Breakpoint setLineBreakpoint(int,java.net.URI,int,boolean) throws java.io.IOException
- anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.debug.DebuggerSession startSession(com.oracle.truffle.api.debug.SuspendedCallback)
-meth public java.util.Collection<com.oracle.truffle.api.debug.Breakpoint> getBreakpoints()
- anno 0 java.lang.Deprecated()
 meth public java.util.List<com.oracle.truffle.api.source.Source> getLoadedSources()
 meth public static com.oracle.truffle.api.debug.Debugger find(com.oracle.truffle.api.TruffleLanguage$Env)
 meth public static com.oracle.truffle.api.debug.Debugger find(com.oracle.truffle.api.vm.PolyglotEngine)
@@ -120,14 +91,6 @@ CLSS public final com.oracle.truffle.api.debug.DebuggerTags$AlwaysHalt
  outer com.oracle.truffle.api.debug.DebuggerTags
 supr java.lang.Object
 
-CLSS public final com.oracle.truffle.api.debug.ExecutionEvent
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.debug.Debugger getDebugger()
-meth public void prepareContinue()
-meth public void prepareStepInto()
-supr java.lang.Object
-hfds engine
-
 CLSS public abstract interface com.oracle.truffle.api.debug.SuspendedCallback
 meth public abstract void onSuspend(com.oracle.truffle.api.debug.SuspendedEvent)
 
@@ -135,26 +98,12 @@ CLSS public final com.oracle.truffle.api.debug.SuspendedEvent
 meth public boolean isHaltedBefore()
 meth public com.oracle.truffle.api.debug.DebugStackFrame getTopStackFrame()
 meth public com.oracle.truffle.api.debug.DebugValue getReturnValue()
-meth public com.oracle.truffle.api.debug.Debugger getDebugger()
- anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.debug.DebuggerSession getSession()
-meth public com.oracle.truffle.api.frame.MaterializedFrame getFrame()
- anno 0 java.lang.Deprecated()
-meth public com.oracle.truffle.api.nodes.Node getNode()
- anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.source.SourceSection getSourceSection()
 meth public java.lang.Iterable<com.oracle.truffle.api.debug.DebugStackFrame> getStackFrames()
-meth public java.lang.Object eval(java.lang.String,com.oracle.truffle.api.frame.FrameInstance) throws java.io.IOException
- anno 0 java.lang.Deprecated()
 meth public java.lang.String toString()
-meth public java.lang.String toString(java.lang.Object,com.oracle.truffle.api.frame.FrameInstance)
- anno 0 java.lang.Deprecated()
 meth public java.lang.Throwable getBreakpointConditionException(com.oracle.truffle.api.debug.Breakpoint)
 meth public java.util.List<com.oracle.truffle.api.debug.Breakpoint> getBreakpoints()
-meth public java.util.List<com.oracle.truffle.api.frame.FrameInstance> getStack()
- anno 0 java.lang.Deprecated()
-meth public java.util.List<java.lang.String> getRecentWarnings()
- anno 0 java.lang.Deprecated()
 meth public void prepareContinue()
 meth public void prepareKill()
 meth public void prepareStepInto(int)

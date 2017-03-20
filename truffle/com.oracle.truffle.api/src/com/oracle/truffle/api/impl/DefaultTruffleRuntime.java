@@ -24,13 +24,10 @@
  */
 package com.oracle.truffle.api.impl;
 
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Objects;
+import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
-import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -50,7 +47,6 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
-import java.util.ServiceConfigurationError;
 
 /**
  * Default implementation of the Truffle runtime if the virtual machine does not provide a better
@@ -62,7 +58,6 @@ import java.util.ServiceConfigurationError;
 public final class DefaultTruffleRuntime implements TruffleRuntime {
 
     private final ThreadLocal<DefaultFrameInstance> stackTraces = new ThreadLocal<>();
-    private final Map<RootCallTarget, Void> callTargets = Collections.synchronizedMap(new WeakHashMap<RootCallTarget, Void>());
     private final DefaultTVMCI tvmci = new DefaultTVMCI();
 
     public DefaultTruffleRuntime() {
@@ -83,7 +78,6 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
         DefaultCallTarget target = new DefaultCallTarget(rootNode);
         rootNode.setCallTarget(target);
         getTvmci().onLoad(target);
-        callTargets.put(target, null);
         return target;
     }
 
@@ -150,12 +144,6 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
         } else {
             return null;
         }
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public Collection<RootCallTarget> getCallTargets() {
-        return Collections.unmodifiableSet(callTargets.keySet());
     }
 
     @Override

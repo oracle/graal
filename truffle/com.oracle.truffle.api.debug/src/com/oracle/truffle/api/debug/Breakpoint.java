@@ -26,7 +26,6 @@ package com.oracle.truffle.api.debug;
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.Comparator;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -102,71 +101,6 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
  * @since 0.9
  */
 public final class Breakpoint {
-
-    /**
-     * A general model of the states occupied by a {@link Breakpoint} during its lifetime.
-     *
-     * @since 0.9
-     * @deprecated use {@link Breakpoint#isEnabled()}, {@link Breakpoint#isDisposed()} or
-     *             {@link Breakpoint#isResolved()} instead.
-     */
-    @Deprecated
-    public enum State {
-
-        /**
-         * No matching source locations have been identified, but it is enables so that the
-         * breakpoint will become active when any matching source locations appear.
-         */
-        ENABLED_UNRESOLVED("Enabled/Unresolved"),
-
-        /**
-         * No matching source locations have been identified, and it is disabled. The breakpoint
-         * will become associated with any matching source locations that appear, but will not
-         * become active until explicitly enabled.
-         */
-        DISABLED_UNRESOLVED("Disabled/Unresolved"),
-
-        /**
-         * Matching source locations have been identified and the breakpoint is active at them.
-         */
-        ENABLED("Enabled"),
-
-        /**
-         * Matching source locations have been identified, but he breakpoint is disabled. It will
-         * not be active until explicitly enabled.
-         */
-        DISABLED("Disabled"),
-
-        /**
-         * The breakpoint is permanently inactive.
-         */
-        DISPOSED("Disposed");
-
-        private final String name;
-
-        State(String name) {
-            this.name = name;
-        }
-
-        /** @since 0.9 */
-        public String getName() {
-            return name;
-        }
-
-        /** @since 0.9 */
-        @Override
-        public String toString() {
-            return name;
-        }
-    }
-
-    static final Comparator<Breakpoint> COMPARATOR = new Comparator<Breakpoint>() {
-
-        public int compare(Breakpoint o1, Breakpoint o2) {
-            return o1.locationKey.compareTo(o2.locationKey);
-        }
-
-    };
 
     private static final Breakpoint BUILDER_INSTANCE = new Breakpoint();
 
@@ -323,37 +257,6 @@ public final class Breakpoint {
                 session.disposeBreakpoint(this);
             }
             disposed = true;
-        }
-    }
-
-    /*
-     * Deprecation Note: State was redundant to setEnabled and isEnabled. So I it is better to go
-     * with isEnabled(), isDisposed(), isResolved()
-     */
-    /**
-     * Gets current state of the breakpoint.
-     *
-     * @since 0.9
-     * @deprecated use {@link Breakpoint#isEnabled()}, {@link Breakpoint#isDisposed()} or
-     *             {@link Breakpoint#isResolved()} instead.
-     */
-    @Deprecated
-    public State getState() {
-        if (isDisposed()) {
-            return State.DISPOSED;
-        }
-        if (isEnabled()) {
-            if (isResolved()) {
-                return State.ENABLED;
-            } else {
-                return State.ENABLED_UNRESOLVED;
-            }
-        } else {
-            if (isResolved()) {
-                return State.DISABLED;
-            } else {
-                return State.DISABLED_UNRESOLVED;
-            }
         }
     }
 

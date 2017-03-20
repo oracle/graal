@@ -31,6 +31,6 @@ public class NullObject implements TruffleObject {
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return NullObjectMessageResolutionForeign.createAccess();
+        return NullObjectMessageResolutionForeign.ACCESS;
     }
 }

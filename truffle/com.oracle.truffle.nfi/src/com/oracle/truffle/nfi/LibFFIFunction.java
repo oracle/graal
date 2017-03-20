@@ -51,6 +51,6 @@ class LibFFIFunction implements TruffleObject {
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return LibFFIFunctionMessageResolutionForeign.createAccess();
+        return LibFFIFunctionMessageResolutionForeign.ACCESS;
     }
 }

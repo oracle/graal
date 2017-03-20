@@ -67,7 +67,7 @@ public class RegisterPackageNFITest extends NFITest {
 
         @Override
         public ForeignAccess getForeignAccess() {
-            return FunctionRegistryMessageResolutionForeign.createAccess();
+            return FunctionRegistryMessageResolutionForeign.ACCESS;
         }
     }
 

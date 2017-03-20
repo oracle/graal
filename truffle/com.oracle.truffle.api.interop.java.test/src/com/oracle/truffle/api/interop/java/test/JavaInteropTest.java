@@ -141,7 +141,7 @@ public class JavaInteropTest {
 
     }
 
-    private static CallTarget sendKeys() {
+    static CallTarget sendKeys() {
         final Node keysNode = Message.KEYS.createNode();
 
         class SendKeys extends RootNode {
@@ -199,16 +199,42 @@ public class JavaInteropTest {
 
         public int x;
         public static int y;
+
+        public int readX() {
+            return x;
+        }
+
+        void writeX(int value) {
+            this.x = value;
+        }
+
+        public static int readY() {
+            return y;
+        }
+
+        static void writeY(int value) {
+            y = value;
+        }
     }
 
     @Test
     public void accessAllPublicPropertiesDirectly() {
-        TruffleObject pojo = JavaInterop.asTruffleObject(new PublicPOJO());
+        final PublicPOJO orig = new PublicPOJO();
+        final TruffleObject pojo = JavaInterop.asTruffleObject(orig);
         CallTarget callKeys = sendKeys();
         TruffleObject result = (TruffleObject) callKeys.call(pojo);
         List<?> propertyNames = JavaInterop.asJavaObject(List.class, result);
-        assertEquals("One instance field", 1, propertyNames.size());
+        assertEquals("One instance field and one method", 2, propertyNames.size());
         assertEquals("One field x", "x", propertyNames.get(0));
+        assertEquals("One method to access x", "readX", propertyNames.get(1));
+
+        TruffleObject readX = (TruffleObject) message(Message.READ, pojo, "readX");
+        Boolean isExecutable = (Boolean) message(Message.IS_EXECUTABLE, readX);
+        assertTrue("Method can be executed " + readX, isExecutable);
+
+        orig.writeX(10);
+        final Object value = message(Message.createExecute(0), readX);
+        assertEquals(10, value);
     }
 
     @Test
@@ -217,8 +243,9 @@ public class JavaInteropTest {
         CallTarget callKeys = sendKeys();
         TruffleObject result = (TruffleObject) callKeys.call(pojo);
         List<?> propertyNames = JavaInterop.asJavaObject(List.class, result);
-        assertEquals("One static field", 1, propertyNames.size());
+        assertEquals("One static field and one method", 2, propertyNames.size());
         assertEquals("One field y", "y", propertyNames.get(0));
+        assertEquals("One method to read y", "readY", propertyNames.get(1));
     }
 
     @Test

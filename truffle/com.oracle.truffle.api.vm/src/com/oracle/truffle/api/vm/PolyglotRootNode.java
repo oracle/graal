@@ -64,7 +64,6 @@ abstract class PolyglotRootNode extends RootNode {
     @Override
     public final Object execute(VirtualFrame frame) {
         ContextStore prev = ExecutionImpl.executionStarted(engine.context());
-        Access.DEBUG.executionStarted(engine);
         try {
             return executeImpl(frame);
         } finally {

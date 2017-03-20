@@ -123,6 +123,6 @@ public final class SLFunction implements TruffleObject {
      */
     @Override
     public ForeignAccess getForeignAccess() {
-        return SLFunctionMessageResolutionForeign.createAccess();
+        return SLFunctionMessageResolutionForeign.ACCESS;
     }
 }

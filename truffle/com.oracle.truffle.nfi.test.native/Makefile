@@ -29,7 +29,7 @@ default: ${TARGET}
 OBJECTS=bin/array.o bin/null.o bin/numeric.o bin/object.o bin/package.o bin/string.o bin/varargs.o
 
 CFLAGS+=-g -fPIC -Wall -Werror
-LDFLAGS+=-g
+LDFLAGS+=-g -lm
 
 ifeq (${OS},darwin)
 LDFLAGS+=-undefined dynamic_lookup

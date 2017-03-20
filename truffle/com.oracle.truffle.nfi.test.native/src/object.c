@@ -86,3 +86,8 @@ int free_and_get_content(struct NativeEnv *env, struct NativeStorage *storage) {
     free(storage);
     return ret;
 }
+
+TruffleObject pass_object(TruffleObject objArg, TruffleObject (*getObject)(), TruffleObject (*verifyObject)(TruffleObject, TruffleObject)) {
+    TruffleObject objLocal = getObject();
+    return verifyObject(objArg, objLocal);
+}
