@@ -63,7 +63,7 @@ public final class SLBigNumber implements TruffleObject {
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return SLBigNumberForeign.createAccess();
+        return SLBigNumberForeign.ACCESS;
     }
 
     static boolean isInstance(TruffleObject obj) {

@@ -75,7 +75,7 @@ public class JavaInteropNullTest {
 
         @Override
         public ForeignAccess getForeignAccess() {
-            return TestNullMessageResolutionForeign.createAccess();
+            return TestNullMessageResolutionForeign.ACCESS;
         }
     }
 
