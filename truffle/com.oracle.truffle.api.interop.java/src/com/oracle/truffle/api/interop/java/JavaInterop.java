@@ -147,6 +147,8 @@ public final class JavaInterop {
      * @return instance of requested interface granting access to specified
      *         <code>foreignObject</code>, can be <code>null</code>, if the foreignObject parameter
      *         was <code>null</code>
+     * @exception ClassCastException if the <code>foreignObject</code> cannot be converted to
+     *                requested <code>type</code>
      * @since 0.9
      */
     public static <T> T asJavaObject(Class<T> type, TruffleObject foreignObject) {

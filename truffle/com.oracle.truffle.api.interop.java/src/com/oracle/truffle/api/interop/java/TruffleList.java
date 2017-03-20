@@ -109,7 +109,7 @@ final class TruffleList<T> extends AbstractList<T> {
                 } else if (msg == Message.READ) {
                     ret = ForeignAccess.sendRead(node, receiver, args[2]);
                 } else if (msg == Message.WRITE) {
-                    ret = ForeignAccess.sendWrite(node, receiver, args[2], args[3]);
+                    ret = ForeignAccess.sendWrite(node, receiver, args[2], JavaInterop.asTruffleValue(args[3]));
                 } else {
                     CompilerDirectives.transferToInterpreter();
                     throw UnsupportedMessageException.raise(msg);

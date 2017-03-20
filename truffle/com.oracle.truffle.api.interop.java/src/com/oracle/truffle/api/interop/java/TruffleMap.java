@@ -201,7 +201,7 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
                 } else if (msg == Message.READ) {
                     ret = ForeignAccess.sendRead(node, receiver, args[2]);
                 } else if (msg == Message.WRITE) {
-                    ret = ForeignAccess.sendWrite(node, receiver, args[2], args[3]);
+                    ret = ForeignAccess.sendWrite(node, receiver, args[2], JavaInterop.asTruffleValue(args[3]));
                 } else if (msg == Message.KEYS) {
                     ret = ForeignAccess.sendKeys(node, receiver);
                 } else {

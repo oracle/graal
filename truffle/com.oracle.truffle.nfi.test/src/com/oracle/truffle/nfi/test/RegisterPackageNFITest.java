@@ -34,6 +34,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.NFILanguage;
 import java.util.HashMap;
@@ -90,7 +91,7 @@ public class RegisterPackageNFITest extends NFITest {
 
             Object access(FunctionRegistry receiver, Object[] args) {
                 register(receiver, (String) args[0], (String) args[1], (TruffleObject) args[2]);
-                return null;
+                return JavaInterop.asTruffleObject(null);
             }
         }
 
