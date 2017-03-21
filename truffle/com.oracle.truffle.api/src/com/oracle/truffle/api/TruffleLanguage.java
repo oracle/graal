@@ -85,6 +85,11 @@ import com.oracle.truffle.api.source.SourceSection;
  * does not affect language semantics. Languages are strongly discouraged from using static mutable
  * state in their languages. Instead language implementation instances should be used instead.
  * <p>
+ * The methods in {@link TruffleLanguage} might be invoked from multiple threads. However, one
+ * context instance is guaranteed to be invoked only from one single thread. Therefore context
+ * objects don't need to be thread-safe. Code that is shared using the {@link TruffleLanguage}
+ * instance needs to be prepared to be accessed from multiple threads.
+ * <p>
  * Whenever an engine is disposed then each initialized context will be disposed
  * {@link #disposeContext(Object) disposed}.
  *

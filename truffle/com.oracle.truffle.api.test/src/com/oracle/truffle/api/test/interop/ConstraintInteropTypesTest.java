@@ -122,7 +122,7 @@ public class ConstraintInteropTypesTest {
     abstract static class Dummy extends TruffleLanguage<Object> {
     }
 
-    @MessageResolution(language = Dummy.class, receiverType = BrokenTruffleObject.class)
+    @MessageResolution(receiverType = BrokenTruffleObject.class)
     static final class BrokenTruffleObject implements TruffleObject {
 
         final Object value;

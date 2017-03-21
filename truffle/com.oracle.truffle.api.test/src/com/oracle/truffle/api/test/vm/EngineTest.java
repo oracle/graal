@@ -822,8 +822,8 @@ public class EngineTest {
             return fork;
         }
 
-        @SuppressWarnings("all")
-        private static <E extends Exception> E raise(Class<E> aClass, Exception ex) throws E {
+        @SuppressWarnings("unchecked")
+        private static <E extends Exception> E raise(@SuppressWarnings("unused") Class<E> aClass, Exception ex) throws E {
             throw (E) ex;
         }
 

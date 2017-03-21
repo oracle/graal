@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -44,8 +45,12 @@ import com.oracle.truffle.api.vm.PolyglotEngine.Access;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 
 /**
- * A runtime environment for one or more {@link PolyglotEngine} instances. Engines associated with a
- * runtime are allowed to cache/share resources between them.
+ * A runtime environment for one or more {@link PolyglotEngine} instances. By default a constructed
+ * {@link PolyglotEngine} provides data and code isolation. However, if the same runtime is used to
+ * construct multiple engines then code can be shared between them. Languages can also decide to
+ * share immutable parts of their data between engines of a runtime. As a consequence memory
+ * consumption for an engine is expected to be lower if they are constructed with the same runtime.
+ * Methods of {@link PolyglotRuntime} can be safely used from multiple-threads.
  *
  * Usage:
  * <p>
@@ -55,6 +60,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine.Language;
  *
  * @since 0.25
  * @see PolyglotEngine
+ * @see TruffleLanguage More information for language implementors.
  */
 public final class PolyglotRuntime {
     private final List<LanguageShared> languages;

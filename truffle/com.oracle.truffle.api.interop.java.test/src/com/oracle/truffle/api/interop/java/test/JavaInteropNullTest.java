@@ -39,7 +39,6 @@ import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.api.interop.java.test.InvokeAndReadExecTest.Dummy;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -79,14 +78,13 @@ public class JavaInteropNullTest {
         }
     }
 
-    @MessageResolution(language = Dummy.class, receiverType = TestNull.class)
+    @MessageResolution(receiverType = TestNull.class)
     static class TestNullMessageResolution {
 
         @Resolve(message = "IS_NULL")
         abstract static class TestNullIsNull extends Node {
-            @SuppressWarnings("unused")
             boolean access(TestNull str) {
-                return true;
+                return str != null;
             }
         }
 
