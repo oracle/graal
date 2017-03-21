@@ -70,6 +70,11 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
         }
 
         @Specialization
+        public double executeDouble(double from) {
+            return from;
+        }
+
+        @Specialization
         public double executeDouble(LLVM80BitFloat from) {
             return from.getDoubleValue();
         }
@@ -103,6 +108,11 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
             return from;
         }
 
+        @Specialization
+        public double executeDouble(double from) {
+            return from;
+        }
+
     }
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
@@ -123,6 +133,11 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
             }
             return val;
         }
+
+        @Specialization
+        public double executeDouble(double from) {
+            return from;
+        }
     }
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
@@ -131,6 +146,11 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
         @Specialization
         public double executeDouble(long from) {
             return Double.longBitsToDouble(from);
+        }
+
+        @Specialization
+        public double executeDouble(double from) {
+            return from;
         }
     }
 

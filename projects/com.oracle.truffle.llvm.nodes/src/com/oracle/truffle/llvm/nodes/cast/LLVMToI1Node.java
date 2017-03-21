@@ -66,4 +66,9 @@ public abstract class LLVMToI1Node extends LLVMExpressionNode {
         return from != 0;
     }
 
+    @Specialization
+    public boolean executeLLVMFunction(boolean from) {
+        return from;
+    }
+
 }

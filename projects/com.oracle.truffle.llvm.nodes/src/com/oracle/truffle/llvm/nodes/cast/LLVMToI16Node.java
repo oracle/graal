@@ -51,6 +51,11 @@ public abstract class LLVMToI16Node extends LLVMExpressionNode {
     public abstract static class LLVMToI16NoZeroExtNode extends LLVMToI16Node {
 
         @Specialization
+        public short executeLLVMFunction(short from) {
+            return from;
+        }
+
+        @Specialization
         public short executeI16(boolean from) {
             return (short) (from ? -1 : 0);
         }
@@ -138,6 +143,11 @@ public abstract class LLVMToI16Node extends LLVMExpressionNode {
         @Specialization
         public short executeI16(byte from) {
             return (short) (from & LLVMExpressionNode.I8_MASK);
+        }
+
+        @Specialization
+        public short executeLLVMFunction(short from) {
+            return from;
         }
     }
 }

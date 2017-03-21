@@ -71,4 +71,9 @@ public abstract class LLVMToFunctionNode extends LLVMExpressionNode {
         throw new IllegalStateException("Not a function");
     }
 
+    @Specialization
+    public LLVMFunction executeLLVMFunction(LLVMFunction from) {
+        return from;
+    }
+
 }

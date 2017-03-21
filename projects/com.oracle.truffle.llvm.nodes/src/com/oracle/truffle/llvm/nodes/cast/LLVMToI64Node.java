@@ -167,6 +167,11 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
         public long executeI64(double from) {
             return Double.doubleToRawLongBits(from);
         }
+
+        @Specialization
+        public long executeI64(long from) {
+            return from;
+        }
     }
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
@@ -196,6 +201,11 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
         public long executeI64(LLVMIVarBit from) {
             return from.getZeroExtendedLongValue();
         }
+
+        @Specialization
+        public long executeI64(long from) {
+            return from;
+        }
     }
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
@@ -208,6 +218,11 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
             } else {
                 return (long) from;
             }
+        }
+
+        @Specialization
+        public long executeI64(long from) {
+            return from;
         }
     }
 

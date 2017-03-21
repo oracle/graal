@@ -47,6 +47,8 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 @SuppressWarnings({"static-method"})
@@ -696,6 +698,56 @@ public final class LLVMInteropTest {
         staticStorage = null;
         runner.run();
         Assert.assertSame(original, staticStorage);
+    }
+
+    @Test
+    public void test057() {
+        Runner runner = new Runner("interop057");
+        Object[] a = new Object[]{0, 1, 2, 3, 4, 5, 6, 7, 8};
+        TruffleObject to = JavaInterop.asTruffleObject(a);
+        runner.export(to, "foreign");
+        Assert.assertEquals(0, runner.run());
+        Assert.assertEquals(101, a[0]);
+        Assert.assertEquals(102, a[1]);
+    }
+
+    @Test
+    public void test058() {
+        Runner runner = new Runner("interop058");
+        Object[] a = new Object[]{0, 1, 2, 3, 4, 5, 6, 7, 8};
+        TruffleObject to = JavaInterop.asTruffleObject(a);
+        runner.export(to, "foreign");
+        Assert.assertEquals(0, runner.run());
+        Assert.assertEquals(101, a[0]);
+        Assert.assertEquals(102, a[1]);
+    }
+
+    @Test
+    public void test059() {
+        Runner runner = new Runner("interop059");
+        Object[] a = new Object[]{0, 1, 2, 3, 4, 5, 6, 7, 8};
+        TruffleObject to = JavaInterop.asTruffleObject(a);
+        runner.export(to, "foreign");
+        Assert.assertEquals(0, runner.run());
+        Assert.assertEquals(101, ((LLVMTruffleAddress) a[0]).getAddress().getVal());
+        Assert.assertEquals(102, ((LLVMTruffleAddress) a[1]).getAddress().getVal());
+    }
+
+    @Test
+    public void test060() {
+        Runner runner = new Runner("interop060");
+        Object[] a = new Object[]{0, 1, 2, 3, 4, 5, 6, 7, 8};
+        TruffleObject to = JavaInterop.asTruffleObject(a);
+        runner.export(to, "foreign");
+        Assert.assertEquals(0, runner.run());
+        Assert.assertEquals(101, ((LLVMTruffleAddress) a[0]).getAddress().getVal());
+        Assert.assertEquals(102, ((LLVMTruffleAddress) a[1]).getAddress().getVal());
+    }
+
+    @Test
+    public void test061() {
+        Runner runner = new Runner("interop061");
+        Assert.assertEquals(0, runner.run());
     }
 
     @Test

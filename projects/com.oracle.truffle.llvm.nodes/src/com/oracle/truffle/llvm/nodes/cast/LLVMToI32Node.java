@@ -144,6 +144,11 @@ public abstract class LLVMToI32Node extends LLVMExpressionNode {
             throw new IllegalStateException("Not convertable");
         }
 
+        @Specialization
+        public int executeI32(int from) {
+            return from;
+        }
+
     }
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
@@ -168,6 +173,11 @@ public abstract class LLVMToI32Node extends LLVMExpressionNode {
         public int executeI32(LLVMIVarBit from) {
             return from.getZeroExtendedIntValue();
         }
+
+        @Specialization
+        public int executeI32(int from) {
+            return from;
+        }
     }
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
@@ -176,6 +186,11 @@ public abstract class LLVMToI32Node extends LLVMExpressionNode {
         @Specialization
         public int executeI32(float from) {
             return Float.floatToIntBits(from);
+        }
+
+        @Specialization
+        public int executeI32(int from) {
+            return from;
         }
     }
 
@@ -188,6 +203,11 @@ public abstract class LLVMToI32Node extends LLVMExpressionNode {
                 return (int) (from + Integer.MIN_VALUE) - Integer.MIN_VALUE;
             }
             return (int) from;
+        }
+
+        @Specialization
+        public int executeI32(int from) {
+            return from;
         }
     }
 }

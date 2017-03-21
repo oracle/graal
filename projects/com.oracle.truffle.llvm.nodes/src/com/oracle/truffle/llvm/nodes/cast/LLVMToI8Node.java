@@ -144,6 +144,11 @@ public abstract class LLVMToI8Node extends LLVMExpressionNode {
             throw new IllegalStateException("Not convertable");
         }
 
+        @Specialization
+        public byte executeI8(byte from) {
+            return from;
+        }
+
     }
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
@@ -152,6 +157,11 @@ public abstract class LLVMToI8Node extends LLVMExpressionNode {
         @Specialization
         public byte executeI8(boolean from) {
             return (byte) (from ? 1 : 0);
+        }
+
+        @Specialization
+        public byte executeI8(byte from) {
+            return from;
         }
     }
 

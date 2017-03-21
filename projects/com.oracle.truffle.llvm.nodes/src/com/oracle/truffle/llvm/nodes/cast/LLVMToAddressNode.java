@@ -73,6 +73,11 @@ public abstract class LLVMToAddressNode extends LLVMExpressionNode {
     }
 
     @Specialization
+    public LLVMAddress executeLLVMAddress(LLVMAddress from) {
+        return from;
+    }
+
+    @Specialization
     public LLVMAddress executeI64(@SuppressWarnings("unused") LLVMTruffleNull from) {
         return LLVMAddress.NULL_POINTER;
     }
