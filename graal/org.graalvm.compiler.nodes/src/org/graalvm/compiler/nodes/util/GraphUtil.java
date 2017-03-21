@@ -90,12 +90,39 @@ public class GraphUtil {
     private static void killCFGInner(FixedNode node) {
         EconomicSet<Node> markedNodes = EconomicSet.create();
         EconomicMap<AbstractMergeNode, List<AbstractEndNode>> unmarkedMerges = EconomicMap.create();
-        NodeStack workStack = new NodeStack();
 
         // Detach this node from CFG
         node.replaceAtPredecessor(null);
 
-        // Mark fixed Nodes
+        markFixedNodes(node, markedNodes, unmarkedMerges);
+
+        fixSurvivingAffectedMerges(markedNodes, unmarkedMerges);
+
+        Debug.dump(Debug.DETAILED_LOG_LEVEL, node.graph(), "After fixing merges (killCFG %s)", node);
+
+        // Mark non-fixed nodes
+        markUsages(markedNodes);
+
+        // Detach marked nodes from non-marked nodes
+        for (Node marked : markedNodes) {
+            for (Node input : marked.inputs()) {
+                if (!markedNodes.contains(input)) {
+                    marked.replaceFirstInput(input, null);
+                    tryKillUnused(input);
+                }
+            }
+        }
+        Debug.dump(Debug.VERY_DETAILED_LOG_LEVEL, node.graph(), "After disconnecting non-marked inputs (killCFG %s)", node);
+        // Kill marked nodes
+        for (Node marked : markedNodes) {
+            if (marked.isAlive()) {
+                marked.markDeleted();
+            }
+        }
+    }
+
+    private static void markFixedNodes(FixedNode node, EconomicSet<Node> markedNodes, EconomicMap<AbstractMergeNode, List<AbstractEndNode>> unmarkedMerges) {
+        NodeStack workStack = new NodeStack();
         workStack.push(node);
         while (!workStack.isEmpty()) {
             Node fixedNode = workStack.pop();
@@ -141,10 +168,9 @@ public class GraphUtil {
                 }
             }
         }
+    }
 
-        StructuredGraph graph = node.graph();
-
-        // Fix surviving affected merges
+    private static void fixSurvivingAffectedMerges(EconomicSet<Node> markedNodes, EconomicMap<AbstractMergeNode, List<AbstractEndNode>> unmarkedMerges) {
         MapCursor<AbstractMergeNode, List<AbstractEndNode>> cursor = unmarkedMerges.getEntries();
         while (cursor.advance()) {
             AbstractMergeNode merge = cursor.getKey();
@@ -164,19 +190,18 @@ public class GraphUtil {
                             loopExit.replaceFirstInput(loopBegin, null);
                         }
                     }
-                    graph.reduceDegenerateLoopBegin((LoopBeginNode) merge);
+                    merge.graph().reduceDegenerateLoopBegin(loopBegin);
                 } else {
-                    graph.reduceTrivialMerge(merge);
+                    merge.graph().reduceTrivialMerge(merge);
                 }
             } else {
                 assert merge.phiPredecessorCount() > 1 : merge;
             }
         }
+    }
 
-        Debug.dump(Debug.DETAILED_LOG_LEVEL, graph, "After fixing merges (killCFG %s)", node);
-
-        assert workStack.isEmpty();
-        // Mark non-fixed nodes
+    private static void markUsages(EconomicSet<Node> markedNodes) {
+        NodeStack workStack = new NodeStack(markedNodes.size() + 4);
         for (Node marked : markedNodes) {
             workStack.push(marked);
         }
@@ -187,23 +212,6 @@ public class GraphUtil {
                     workStack.push(usage);
                     markedNodes.add(usage);
                 }
-            }
-        }
-
-        // Detach marked nodes from non-marked nodes
-        for (Node marked : markedNodes) {
-            for (Node input : marked.inputs()) {
-                if (!markedNodes.contains(input)) {
-                    marked.replaceFirstInput(input, null);
-                    tryKillUnused(input);
-                }
-            }
-        }
-        Debug.dump(Debug.VERY_DETAILED_LOG_LEVEL, graph, "After disconnecting non-marked inputs (killCFG %s)", node);
-        // Kill marked nodes
-        for (Node marked : markedNodes) {
-            if (marked.isAlive()) {
-                marked.markDeleted();
             }
         }
     }
