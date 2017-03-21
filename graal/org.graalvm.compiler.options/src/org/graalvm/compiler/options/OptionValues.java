@@ -44,12 +44,7 @@ public class OptionValues {
 
     private final EconomicMap<OptionKey<?>, Object> values = newOptionMap();
 
-    protected OptionValues set(OptionKey<?> key, Object value) {
-        values.put(key, encodeNull(value));
-        return this;
-    }
-
-    boolean containsKey(OptionKey<?> key) {
+    protected boolean containsKey(OptionKey<?> key) {
         return values.containsKey(key);
     }
 
@@ -105,8 +100,12 @@ public class OptionValues {
         }
     }
 
+    protected <T> T get(OptionKey<T> key) {
+        return get(values, key);
+    }
+
     @SuppressWarnings("unchecked")
-    <T> T get(OptionKey<T> key) {
+    protected static <T> T get(EconomicMap<OptionKey<?>, Object> values, OptionKey<T> key) {
         Object value = values.get(key);
         if (value == null) {
             return key.getDefaultValue();
@@ -116,16 +115,20 @@ public class OptionValues {
 
     private static final Object NULL = new Object();
 
-    private static Object encodeNull(Object value) {
+    protected static Object encodeNull(Object value) {
         return value == null ? NULL : value;
     }
 
-    private static Object decodeNull(Object value) {
+    protected static Object decodeNull(Object value) {
         return value == NULL ? null : value;
     }
 
     @Override
     public String toString() {
+        return toString(values);
+    }
+
+    public static String toString(EconomicMap<OptionKey<?>, Object> values) {
         Comparator<OptionKey<?>> comparator = new Comparator<OptionKey<?>>() {
             @Override
             public int compare(OptionKey<?> o1, OptionKey<?> o2) {
