@@ -195,7 +195,7 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
         }
         if (level.ordinal() > CompilationLevel.Simple.ordinal()) {
             String declaringClassName = declaringClass.getName();
-            if (declaringClassName.startsWith("jdk.vm.ci") || declaringClassName.startsWith("org.graalvm.compiler") || declaringClassName.startsWith("com.oracle.graal")) {
+            if (declaringClassName.startsWith("jdk.vm.ci") || declaringClassName.startsWith("org.graalvm") || declaringClassName.startsWith("com.oracle.graal")) {
                 return CompilationLevel.Simple;
             }
         }
