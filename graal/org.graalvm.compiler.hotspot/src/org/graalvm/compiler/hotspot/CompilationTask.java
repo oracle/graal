@@ -33,6 +33,7 @@ import static org.graalvm.compiler.core.phases.HighTier.Options.Inline;
 import static org.graalvm.compiler.debug.Debug.INFO_LOG_LEVEL;
 import static org.graalvm.compiler.debug.DelegatingDebugConfig.Feature.DUMP_METHOD;
 import static org.graalvm.compiler.debug.DelegatingDebugConfig.Level.DUMP;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Dump;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.DumpPath;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.ForceDebugEnable;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintCFGFileName;
@@ -192,8 +193,14 @@ public class CompilationTask {
             }
 
             if (!Debug.isEnabled()) {
-                TTY.printf("Error while processing %s.%nRe-run with -D%s%s=true to capture graph dumps upon a compilation failure.%n", this,
+                TTY.printf("Error while processing %s.%nRe-run with -D%s%s=true to capture graph dumps upon a compilation failure.%n", CompilationTask.this,
                                 HotSpotGraalOptionValues.GRAAL_OPTION_PROPERTY_PREFIX, ForceDebugEnable.getName());
+                return false;
+            }
+
+            if (Dump.hasBeenSet(options)) {
+                // If dumping is explicitly enabled, Graal is being debugged
+                // so don't interfere with what the user is expecting to see.
                 return false;
             }
 
@@ -209,7 +216,7 @@ public class CompilationTask {
                 return false;
             }
 
-            TTY.println("Retrying " + this);
+            TTY.println("Retrying " + CompilationTask.this);
             retryDumpHandlers = new ArrayList<>();
             retryOptions = new OptionValues(options,
                             PrintGraphFile, true,
@@ -232,11 +239,6 @@ public class CompilationTask {
         @Override
         public OptionValues getOptions() {
             return retryOptions;
-        }
-
-        @Override
-        public String toString() {
-            return CompilationTask.this.toString();
         }
     }
 
