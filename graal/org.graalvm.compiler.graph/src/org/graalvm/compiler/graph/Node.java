@@ -673,7 +673,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         if (graph != null) {
             assert !graph.isFrozen();
             NodeEventListener listener = graph.nodeEventListener;
-            if (listener != null && node.isAlive()) {
+            if (listener != null) {
                 listener.inputChanged(node);
             }
             if (Fingerprint.ENABLED) {
