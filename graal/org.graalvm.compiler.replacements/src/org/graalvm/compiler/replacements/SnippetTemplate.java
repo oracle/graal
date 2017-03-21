@@ -1364,6 +1364,21 @@ public class SnippetTemplate {
      */
     @SuppressWarnings("try")
     public UnmodifiableEconomicMap<Node, Node> instantiate(MetaAccessProvider metaAccess, FixedNode replacee, UsageReplacer replacer, Arguments args) {
+        return instantiate(metaAccess, replacee, replacer, args, true);
+    }
+
+    /**
+     * Replaces a given fixed node with this specialized snippet.
+     *
+     * @param metaAccess
+     * @param replacee the node that will be replaced
+     * @param replacer object that replaces the usages of {@code replacee}
+     * @param args the arguments to be bound to the flattened positional parameters of the snippet
+     * @param killReplacee is true, the replacee node is deleted
+     * @return the map of duplicated nodes (original -&gt; duplicate)
+     */
+    @SuppressWarnings("try")
+    public UnmodifiableEconomicMap<Node, Node> instantiate(MetaAccessProvider metaAccess, FixedNode replacee, UsageReplacer replacer, Arguments args, boolean killReplacee) {
         assert assertSnippetKills(replacee);
         try (DebugCloseable a = args.info.instantiationTimer.start(); DebugCloseable b = instantiationTimer.start()) {
             args.info.instantiationCounter.increment();
@@ -1458,8 +1473,10 @@ public class SnippetTemplate {
                 }
             }
 
-            // Remove the replacee from its graph
-            GraphUtil.killCFG(replacee);
+            if (killReplacee) {
+                // Remove the replacee from its graph
+                GraphUtil.killCFG(replacee);
+            }
 
             Debug.dump(Debug.INFO_LOG_LEVEL, replaceeGraph, "After lowering %s with %s", replacee, this);
             return duplicates;
