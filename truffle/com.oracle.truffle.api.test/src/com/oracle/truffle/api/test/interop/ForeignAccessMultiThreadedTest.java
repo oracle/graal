@@ -29,7 +29,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -68,12 +67,10 @@ public class ForeignAccessMultiThreadedTest implements ForeignAccess.Factory, Tr
     }
 
     @Override
-    @SuppressWarnings("rawtypes")
     public CallTarget accessMessage(Message tree) {
         cnt++;
         if (tree == Message.IS_EXECUTABLE) {
-            Class<? extends TruffleLanguage> lang = TruffleLanguage.class;
-            return Truffle.getRuntime().createCallTarget(new RootNode(lang, null, null) {
+            return Truffle.getRuntime().createCallTarget(new RootNode(null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     return Boolean.FALSE;

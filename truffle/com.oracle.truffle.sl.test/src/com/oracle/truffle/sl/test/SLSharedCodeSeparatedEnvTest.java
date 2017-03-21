@@ -170,7 +170,7 @@ public class SLSharedCodeSeparatedEnvTest implements Executor {
                 }
 
                 @Override
-                public void write(byte[] b, int off, int len) {
+                public synchronized void write(byte[] b, int off, int len) {
                     super.write(b, off, len);
                 }
 

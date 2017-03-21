@@ -40,10 +40,9 @@
  */
 package com.oracle.truffle.sl;
 
-import com.oracle.truffle.api.Assumption;
-import java.math.BigInteger;
 import java.util.Map;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;

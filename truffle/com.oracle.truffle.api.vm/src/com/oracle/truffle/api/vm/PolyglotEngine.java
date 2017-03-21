@@ -1023,7 +1023,7 @@ public class PolyglotEngine {
                 if (language != null) {
                     PolyglotEngine prev = enter();
                     try {
-                        string = Access.LANGS.toStringIfVisible(language.getEnv(false), unwrappedConvered, false);
+                        string = Access.LANGS.toStringIfVisible(language.getEnv(false), unwrappedConverted, false);
                     } finally {
                         leave(prev);
                     }
@@ -1756,11 +1756,11 @@ class PolyglotEngineSnippets {
     @SuppressWarnings("unused")
     static void createEngines(String mimeType) {
     // BEGIN: com.oracle.truffle.api.vm.PolyglotEngineSnippets#createEngines
-    PolyglotRuntime runtime = PolyglotRuntime.newBuilder()
-                    .setOut(out).setErr(err).build();
+    PolyglotRuntime runtime = PolyglotRuntime.newBuilder().
+                    setOut(out).setErr(err).build();
 
-    Builder builder = PolyglotEngine.newBuilder()
-                    .runtime(runtime);
+    Builder builder = PolyglotEngine.newBuilder().
+                    runtime(runtime);
     PolyglotEngine engine1 = builder.build();
     PolyglotEngine engine2 = builder.build();
     PolyglotEngine engine3 = builder.build();

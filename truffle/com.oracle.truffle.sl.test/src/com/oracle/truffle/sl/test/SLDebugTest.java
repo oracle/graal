@@ -575,7 +575,7 @@ public class SLDebugTest {
         assertTrue(done[0]);
     }
 
-    private void assertNumber(Object real, double expected) {
+    private static void assertNumber(Object real, double expected) {
         if (real instanceof Number) {
             assertEquals(expected, ((Number) real).doubleValue(), 0.1);
         } else {
