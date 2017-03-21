@@ -38,6 +38,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
@@ -225,28 +226,61 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
         }
     }
 
+    @Child private Node isNull1 = Message.IS_NULL.createNode();
+    @Child private Node isNull2 = Message.IS_NULL.createNode();
+
     @Specialization
     public boolean doCompare(LLVMTruffleObject val1, LLVMAddress val2) {
-        CompilerDirectives.transferToInterpreter();
-        throw new IllegalStateException("Cannot compare foreign with C data: " + val1 + " " + val2);
+        TruffleObject truffleObject = val1.getObject();
+        long offset = val1.getOffset();
+        return doForeignAndAddress(val2, truffleObject, offset);
+    }
+
+    private final BranchProfile branchProfile1 = BranchProfile.create();
+    private final BranchProfile branchProfile2 = BranchProfile.create();
+    private final BranchProfile branchProfile3 = BranchProfile.create();
+
+    private boolean doForeignAndAddress(LLVMAddress val2, TruffleObject truffleObject, long offset) {
+        try {
+            if (ForeignAccess.sendIsNull(isNull1, truffleObject) && offset == 0 && val2.getVal() == 0) {
+                branchProfile1.enter();
+                return op.compare(0, 0);
+            } else if ((!ForeignAccess.sendIsNull(isNull1, truffleObject) || offset != 0) && val2.getVal() == 0) {
+                branchProfile2.enter();
+                return op.compare(1, 0);
+            } else if (ForeignAccess.sendIsBoxed(isBoxed1, truffleObject)) {
+                branchProfile3.enter();
+                long v1 = (long) toLLVM1.executeWithTarget(ForeignAccess.sendUnbox(unbox1, truffleObject)) + offset;
+                return op.compare(v1, val2.getVal());
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Cannot compare foreign with C data: " + truffleObject + " " + val2);
+            }
+        } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException(e);
+        }
     }
 
     @Specialization
     public boolean doCompare(LLVMAddress val1, LLVMTruffleObject val2) {
-        CompilerDirectives.transferToInterpreter();
-        throw new IllegalStateException("Cannot compare foreign with C data: " + val1 + " " + val2);
+        TruffleObject truffleObject = val2.getObject();
+        long offset = val2.getOffset();
+        return doForeignAndAddress(val1, truffleObject, offset);
     }
 
     @Specialization
+    @SuppressWarnings("unused")
     public boolean doCompare(LLVMTruffleObject val1, LLVMGlobalVariableDescriptor val2) {
-        CompilerDirectives.transferToInterpreter();
-        throw new IllegalStateException("Cannot compare foreign with C data: " + val1 + " " + val2);
+        // the address of a global can never be a foreign object
+        return false;
     }
 
     @Specialization
+    @SuppressWarnings("unused")
     public boolean doCompare(LLVMGlobalVariableDescriptor val1, LLVMTruffleObject val2) {
-        CompilerDirectives.transferToInterpreter();
-        throw new IllegalStateException("Cannot compare foreign with C data: " + val1 + " " + val2);
+        // the address of a global can never be a foreign object
+        return false;
     }
 
     @Specialization(guards = {"notLLVM(val1)", "notLLVM(val2)"})
@@ -256,14 +290,12 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
 
     @Specialization(guards = {"notLLVM(val2)"})
     public boolean doCompare(LLVMAddress val1, TruffleObject val2) {
-        CompilerDirectives.transferToInterpreter();
-        throw new IllegalStateException("Cannot compare foreign with C data: " + val1 + " " + val2);
+        return doForeignAndAddress(val1, val2, 0);
     }
 
     @Specialization(guards = {"notLLVM(val1)"})
     public boolean doCompare(TruffleObject val1, LLVMAddress val2) {
-        CompilerDirectives.transferToInterpreter();
-        throw new IllegalStateException("Cannot compare foreign with C data: " + val1 + " " + val2);
+        return doForeignAndAddress(val2, val1, 0);
     }
 
     @SuppressWarnings("unused")

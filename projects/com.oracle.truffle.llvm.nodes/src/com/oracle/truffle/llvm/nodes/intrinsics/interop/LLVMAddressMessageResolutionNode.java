@@ -65,7 +65,8 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
     }
 
     public ToLLVMNode getToLLVMNode(Type type) {
-        return ToLLVMNode.createNode(ToLLVMNode.convert(type));
+        PrimitiveType primitiveType = (PrimitiveType) ((PointerType) type).getPointeeType();
+        return ToLLVMNode.createNode(ToLLVMNode.convert(primitiveType));
     }
 
     abstract static class LLVMAddressReadMessageResolutionNode extends LLVMAddressMessageResolutionNode {

@@ -45,6 +45,8 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMDataEscapeNode;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
@@ -66,10 +68,11 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
     @Child protected Node foreignWrite = Message.WRITE.createNode();
+    @Child protected LLVMDataEscapeNode dataEscape = LLVMDataEscapeNodeGen.create();
 
     protected void doForeignAccess(LLVMTruffleObject addr, int stride, Object value) {
         try {
-            ForeignAccess.sendWrite(foreignWrite, addr.getObject(), (int) (addr.getOffset() / stride), value);
+            ForeignAccess.sendWrite(foreignWrite, addr.getObject(), (int) (addr.getOffset() / stride), dataEscape.executeWithTarget(value));
         } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException e) {
             throw new IllegalStateException(e);
         }
@@ -77,7 +80,7 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
     protected void doForeignAccess(TruffleObject addr, Object value) {
         try {
-            ForeignAccess.sendWrite(foreignWrite, addr, 0, value);
+            ForeignAccess.sendWrite(foreignWrite, addr, 0, dataEscape.executeWithTarget(value));
         } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException e) {
             throw new IllegalStateException(e);
         }
@@ -341,6 +344,18 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         public Object doAddress(LLVMGlobalVariableDescriptor address, LLVMGlobalVariableDescriptor value) {
             LLVMMemory.putAddress(address.getNativeAddress(), value.getNativeAddress());
+            return null;
+        }
+
+        @Specialization(guards = "notLLVM(value)")
+        public Object doAddress(LLVMGlobalVariableDescriptor address, TruffleObject value) {
+            address.storeTruffleObject(value);
+            return null;
+        }
+
+        @Specialization
+        public Object doAddress(LLVMGlobalVariableDescriptor address, LLVMTruffleObject value) {
+            address.storeLLVMTruffleObject(value);
             return null;
         }
 
