@@ -44,14 +44,14 @@ import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
-import com.oracle.truffle.api.LanguageInfo;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.impl.Accessor.LanguageSupport;
+import com.oracle.truffle.api.impl.Accessor.Nodes;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode.EventChainNode;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
@@ -517,8 +517,8 @@ final class InstrumentationHandler {
     }
 
     Set<Class<?>> getProvidedTags(LanguageInfo language) {
-        LanguageSupport langAccess = AccessorInstrumentHandler.langAccess();
-        TruffleLanguage<?> lang = langAccess.getSpi(language);
+        Nodes nodesAccess = AccessorInstrumentHandler.nodesAccess();
+        TruffleLanguage<?> lang = nodesAccess.getLanguageSpi(language);
         if (lang == null) {
             return Collections.emptySet();
         }
@@ -956,8 +956,8 @@ final class InstrumentationHandler {
                     sep = ", ";
                 }
                 builder.append("}");
-                LanguageSupport langAccess = AccessorInstrumentHandler.langAccess();
-                TruffleLanguage<?> lang = langAccess.getSpi(languageInfo);
+                Nodes langAccess = AccessorInstrumentHandler.nodesAccess();
+                TruffleLanguage<?> lang = langAccess.getLanguageSpi(languageInfo);
                 throw new IllegalArgumentException(String.format("The attached filter %s references the following tags %s which are not declared as provided by the language. " +
                                 "To fix this annotate the language class %s with @%s(%s).",
                                 filter, missingTags, lang.getClass().getName(), ProvidedTags.class.getSimpleName(), builder));
@@ -1350,7 +1350,7 @@ final class InstrumentationHandler {
                 if (info == null) {
                     return null;
                 }
-                Object languageShared = langAccess().getLanguageShared(info);
+                Object languageShared = nodesAccess().getEngineObject(info);
                 if (languageShared == null) {
                     return null;
                 }

@@ -36,7 +36,7 @@ final class FindContextNodeImpl<C> extends com.oracle.truffle.api.impl.FindConte
 
     FindContextNodeImpl(Env env) {
         this.env = env;
-        this.languageShared = (LanguageShared) Access.LANGS.getLanguageShared(Access.LANGS.getLanguageInfo(env));
+        this.languageShared = (LanguageShared) Access.NODES.getEngineObject(Access.LANGS.getLanguageInfo(env));
     }
 
     @SuppressWarnings("unchecked")
@@ -48,6 +48,6 @@ final class FindContextNodeImpl<C> extends com.oracle.truffle.api.impl.FindConte
     @SuppressWarnings("unchecked")
     @Override
     public TruffleLanguage<C> getTruffleLanguage() {
-        return (TruffleLanguage<C>) Access.LANGS.getSpi(Access.LANGS.getLanguageInfo(env));
+        return (TruffleLanguage<C>) Access.NODES.getLanguageSpi(Access.LANGS.getLanguageInfo(env));
     }
 }

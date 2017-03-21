@@ -36,9 +36,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.LanguageInfo;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.vm.LanguageCache.LoadedLanguage;
 import com.oracle.truffle.api.vm.PolyglotEngine.Access;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;

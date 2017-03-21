@@ -22,9 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.nodes;
 
 import java.util.Set;
+
+import com.oracle.truffle.api.TruffleLanguage;
 
 /**
  * Represents public information about a language.

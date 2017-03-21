@@ -50,6 +50,7 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.ReadOnlyArrayList;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -644,7 +645,7 @@ public abstract class TruffleLanguage<C> {
         this.singletonLanguage = singleton;
         if (!singleton) {
             this.languageInfo = language;
-            this.reference = new ContextReference<>(languageInfo.getEngineObject());
+            this.reference = new ContextReference<>(API.nodes().getEngineObject(languageInfo));
         }
     }
 
@@ -687,7 +688,7 @@ public abstract class TruffleLanguage<C> {
         private Env(Object vmObject, LanguageInfo language, OutputStream out, OutputStream err, InputStream in, Map<String, Object> config) {
             this.vmObject = vmObject;
             this.language = language;
-            this.spi = (TruffleLanguage<Object>) language.getSpi();
+            this.spi = (TruffleLanguage<Object>) API.nodes().getLanguageSpi(language);
             this.in = in;
             this.err = err;
             this.out = out;
@@ -966,6 +967,10 @@ public abstract class TruffleLanguage<C> {
             return API.instrumentSupport();
         }
 
+        static Nodes nodesAccess() {
+            return API.nodes();
+        }
+
         @Override
         protected LanguageSupport languageSupport() {
             return new LanguageImpl();
@@ -981,7 +986,7 @@ public abstract class TruffleLanguage<C> {
 
         @Override
         public LanguageInfo initializeLanguage(Object vm, TruffleLanguage<?> language, boolean legacyLanguage, String name, String version, Set<String> mimeTypes) {
-            LanguageInfo info = new LanguageInfo(vm, language, name, version, mimeTypes);
+            LanguageInfo info = AccessAPI.nodesAccess().createLanguageInfo(vm, language, name, version, mimeTypes);
             language.initialize(info, legacyLanguage);
             return info;
         }
@@ -995,7 +1000,7 @@ public abstract class TruffleLanguage<C> {
         public Env createEnv(Object vmObject, LanguageInfo language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config) {
             Env env = new Env(vmObject, language, stdOut, stdErr, stdIn, config);
             LinkedHashSet<Object> collectedServices = new LinkedHashSet<>();
-            AccessAPI.instrumentAccess().collectEnvServices(collectedServices, language.getEngineObject(), language);
+            AccessAPI.instrumentAccess().collectEnvServices(collectedServices, API.nodes().getEngineObject(language), language);
             env.services = new ArrayList<>(collectedServices);
             env.context = env.getSpi().createContext(env);
             return env;
@@ -1029,7 +1034,7 @@ public abstract class TruffleLanguage<C> {
             }
 
             final Source source = Source.newBuilder(code).name("eval in context").mimeType("content/unknown").build();
-            CallTarget target = info.getSpi().parse(source, node, mFrame);
+            CallTarget target = API.nodes().getLanguageSpi(info).parse(source, node, mFrame);
 
             RootNode exec;
             if (target instanceof RootCallTarget) {
@@ -1177,11 +1182,6 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public TruffleLanguage<?> getSpi(LanguageInfo env) {
-            return env.getSpi();
-        }
-
-        @Override
         public Object languageGlobal(TruffleLanguage.Env env) {
             return env.getLanguageGlobal();
         }
@@ -1204,11 +1204,6 @@ public abstract class TruffleLanguage<C> {
         @Override
         public SourceSection findSourceLocation(Env env, Object obj) {
             return env.findSourceLocation(obj);
-        }
-
-        @Override
-        public Object getLanguageShared(LanguageInfo info) {
-            return info.getEngineObject();
         }
 
     }

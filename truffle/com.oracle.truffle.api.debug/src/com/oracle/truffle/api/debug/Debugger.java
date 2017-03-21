@@ -184,7 +184,7 @@ public final class Debugger {
          * TODO we should have a better way to publish services from instruments to languages.
          */
         protected Object findVM(com.oracle.truffle.api.TruffleLanguage.Env env) {
-            return languageSupport().getLanguageShared(languageSupport().getLanguageInfo(env));
+            return nodes().getEngineObject(languageSupport().getLanguageInfo(env));
         }
 
         /*

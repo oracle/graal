@@ -27,10 +27,10 @@ package com.oracle.truffle.api.instrumentation;
 import java.io.IOException;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.LanguageInfo;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AccessorInstrumentHandler;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;

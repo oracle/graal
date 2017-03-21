@@ -47,7 +47,6 @@ import java.util.logging.Logger;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.LanguageInfo;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -59,6 +58,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -895,7 +895,7 @@ public class PolyglotEngine {
             Env env = lang.getEnv(false);
             if (env != null) {
                 assert lang.shared.language != null;
-                TruffleLanguage<?> spi = SPIAccessor.langs().getSpi(lang.shared.language);
+                TruffleLanguage<?> spi = SPIAccessor.nodesAccess().getLanguageSpi(lang.shared.language);
                 if (languageClazz.isInstance(spi)) {
                     return env;
                 }
@@ -1137,7 +1137,7 @@ public class PolyglotEngine {
                 protected Object compute() {
                     Object prev = enter();
                     try {
-                        return Access.LANGS.findMetaObject(language.getEnv(true), value());
+                        return Access.LANGS.findMetaObject(language.getEnv(true), ConvertedObject.original(value()));
                     } finally {
                         leave(prev);
                     }
@@ -1167,7 +1167,7 @@ public class PolyglotEngine {
                 protected SourceSection compute() {
                     Object prev = enter();
                     try {
-                        return Access.LANGS.findSourceLocation(language.getEnv(true), value());
+                        return Access.LANGS.findSourceLocation(language.getEnv(true), ConvertedObject.original(value()));
                     } finally {
                         leave(prev);
                     }
@@ -1438,6 +1438,7 @@ public class PolyglotEngine {
 
     static class Access {
         static final Accessor.LanguageSupport LANGS = SPIAccessor.langs();
+        static final Accessor.Nodes NODES = SPIAccessor.nodesAccess();
         static final Accessor.InstrumentSupport INSTRUMENT = SPIAccessor.instrumentAccess();
         static final Accessor.JavaInteropSupport JAVA_INTEROP = SPIAccessor.javaInteropAccess();
 
@@ -1453,6 +1454,10 @@ public class PolyglotEngine {
 
         static EngineSupport engine() {
             return EngineImpl.ENGINE;
+        }
+
+        static Nodes nodesAccess() {
+            return SPI.nodes();
         }
 
         static InstrumentSupport instrumentAccess() {
@@ -1500,7 +1505,7 @@ public class PolyglotEngine {
 
             @Override
             public Env getEnvForInstrument(LanguageInfo language) {
-                return ((LanguageShared) langs().getLanguageShared(language)).currentLanguage().getEnv(true);
+                return ((LanguageShared) nodesAccess().getEngineObject(language)).currentLanguage().getEnv(true);
             }
 
             @Override

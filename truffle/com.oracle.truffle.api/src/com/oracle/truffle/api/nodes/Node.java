@@ -31,6 +31,7 @@ import java.lang.annotation.Target;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -39,7 +40,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.LanguageInfo;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
@@ -629,6 +629,21 @@ public abstract class Node implements NodeInterface, Cloneable {
             @Override
             public RootNode cloneUninitialized(RootNode rootNode) {
                 return rootNode.cloneUninitialized();
+            }
+
+            @Override
+            public Object getEngineObject(LanguageInfo languageInfo) {
+                return languageInfo.getEngineObject();
+            }
+
+            @Override
+            public TruffleLanguage<?> getLanguageSpi(LanguageInfo languageInfo) {
+                return languageInfo.getSpi();
+            }
+
+            @Override
+            public LanguageInfo createLanguageInfo(Object vm, TruffleLanguage<?> language, String name, String version, Set<String> mimeTypes) {
+                return new LanguageInfo(vm, language, name, version, mimeTypes);
             }
 
         }

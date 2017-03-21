@@ -31,7 +31,6 @@ import java.util.Map;
 import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.LanguageInfo;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -39,6 +38,7 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -63,6 +63,12 @@ public abstract class Accessor {
         public abstract boolean isCloneUninitializedSupported(RootNode rootNode);
 
         public abstract RootNode cloneUninitialized(RootNode rootNode);
+
+        public abstract Object getEngineObject(LanguageInfo languageInfo);
+
+        public abstract TruffleLanguage<?> getLanguageSpi(LanguageInfo languageInfo);
+
+        public abstract LanguageInfo createLanguageInfo(Object vm, TruffleLanguage<?> language, String name, String version, Set<String> mimeTypes);
 
     }
 
@@ -147,8 +153,6 @@ public abstract class Accessor {
 
         public abstract void dispose(Env env);
 
-        public abstract TruffleLanguage<?> getSpi(LanguageInfo env);
-
         public abstract LanguageInfo getLanguageInfo(TruffleLanguage.Env env);
 
         public abstract LanguageInfo getLanguageInfo(TruffleLanguage<?> language);
@@ -158,8 +162,6 @@ public abstract class Accessor {
         public abstract CallTarget parse(Env env, Source code, Node context, String... argumentNames);
 
         public abstract String toStringIfVisible(Env env, Object obj, boolean checkVisibility);
-
-        public abstract Object getLanguageShared(LanguageInfo env);
 
         public abstract Object findMetaObject(Env env, Object value);
 
@@ -412,7 +414,7 @@ public abstract class Accessor {
      */
     static <T extends TruffleLanguage<?>> T findLanguageByClass(Object vm, Class<T> languageClass) {
         Env env = SPI.findEnv(vm, languageClass, true);
-        TruffleLanguage<?> language = API.getSpi(API.getLanguageInfo(env));
+        TruffleLanguage<?> language = NODES.getLanguageSpi(API.getLanguageInfo(env));
         return languageClass.cast(language);
     }
 
