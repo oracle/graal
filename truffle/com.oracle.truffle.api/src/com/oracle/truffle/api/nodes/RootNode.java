@@ -27,6 +27,7 @@ package com.oracle.truffle.api.nodes;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerOptions;
@@ -125,6 +126,7 @@ public abstract class RootNode extends Node {
      */
     @Deprecated
     protected RootNode(Class<? extends TruffleLanguage> language, SourceSection sourceSection, FrameDescriptor frameDescriptor) {
+        CompilerAsserts.neverPartOfCompilation();
         if (!TruffleLanguage.class.isAssignableFrom(language)) {
             throw new IllegalStateException();
         }
@@ -165,6 +167,7 @@ public abstract class RootNode extends Node {
      * @since 0.25
      */
     protected RootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        CompilerAsserts.neverPartOfCompilation();
         if (language != null) {
             this.languageInfo = Node.ACCESSOR.languageSupport().getLanguageInfo(language);
         } else {
