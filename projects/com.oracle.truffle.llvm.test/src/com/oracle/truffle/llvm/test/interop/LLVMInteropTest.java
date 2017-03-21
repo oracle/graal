@@ -547,6 +547,158 @@ public final class LLVMInteropTest {
     }
 
     @Test
+    public void test044() {
+        Runner runner = new Runner("interop044");
+        runner.export(JavaInterop.asTruffleObject(new Object()), "a");
+        runner.export(JavaInterop.asTruffleObject(14), "b");
+        runner.export(JavaInterop.asTruffleObject(14.5), "c");
+        Assert.assertEquals(0, runner.run());
+    }
+
+    @Test
+    public void test045a() {
+        Runner runner = new Runner("interop045");
+        runner.export(JavaInterop.asTruffleObject(14), "a");
+        runner.export(JavaInterop.asTruffleObject(15), "b");
+        Assert.assertEquals(1, runner.run());
+    }
+
+    @Test
+    public void test046a() {
+        Runner runner = new Runner("interop046");
+        runner.export(JavaInterop.asTruffleObject(14), "a");
+        runner.export(JavaInterop.asTruffleObject(14), "b");
+        Assert.assertEquals(1, runner.run());
+    }
+
+    @Test
+    public void test046b() {
+        Runner runner = new Runner("interop046");
+        TruffleObject object = JavaInterop.asTruffleObject(new Object());
+        runner.export(object, "a");
+        runner.export(object, "b");
+        Assert.assertEquals(1, runner.run());
+    }
+
+    @Test
+    public void test047a() {
+        Runner runner = new Runner("interop047");
+        runner.export(JavaInterop.asTruffleObject(14), "a");
+        runner.export(JavaInterop.asTruffleObject(15), "b");
+        Assert.assertEquals(0, runner.run());
+    }
+
+    @Test
+    public void test048a() {
+        Runner runner = new Runner("interop048");
+        runner.export(JavaInterop.asTruffleObject(14), "a");
+        runner.export(JavaInterop.asTruffleObject(15), "b");
+        Assert.assertEquals(0, runner.run());
+    }
+
+    @Test
+    public void test048b() {
+        Runner runner = new Runner("interop048");
+        TruffleObject object = JavaInterop.asTruffleObject(new Object());
+        runner.export(object, "a");
+        runner.export(object, "b");
+        Assert.assertEquals(1, runner.run());
+    }
+
+    @Test
+    public void test049a() {
+        Runner runner = new Runner("interop049");
+        runner.export(JavaInterop.asTruffleObject(14), "a");
+        runner.export(JavaInterop.asTruffleObject(14), "b");
+        Assert.assertEquals(0, runner.run());
+    }
+
+    @Test
+    public void test049b() {
+        Runner runner = new Runner("interop049");
+        TruffleObject object = JavaInterop.asTruffleObject(new Object());
+        runner.export(object, "a");
+        runner.export(object, "b");
+        Assert.assertEquals(0, runner.run());
+    }
+
+    @Test
+    public void test050a() {
+        Runner runner = new Runner("interop050");
+        runner.export(JavaInterop.asTruffleObject(14), "a");
+        runner.export(JavaInterop.asTruffleObject(14), "b");
+        Assert.assertEquals(1, runner.run());
+    }
+
+    @Test
+    public void test050b() {
+        Runner runner = new Runner("interop050");
+        TruffleObject object = JavaInterop.asTruffleObject(new Object());
+        runner.export(object, "a");
+        runner.export(object, "b");
+        Assert.assertEquals(1, runner.run());
+    }
+
+    static Object staticStorage;
+
+    interface ReturnObject {
+        void storeObject(Object o);
+    }
+
+    @Test
+    public void test051a() {
+        Runner runner = new Runner("interop051");
+        testGlobal(runner);
+    }
+
+    @Test
+    public void test052a() {
+        Runner runner = new Runner("interop052");
+        testGlobal(runner);
+    }
+
+    @Test
+    public void test053a() {
+        Runner runner = new Runner("interop053");
+        testGlobal(runner);
+    }
+
+    @Test
+    public void test054a() {
+        Runner runner = new Runner("interop054");
+        testGlobal(runner);
+    }
+
+    @Test
+    public void test055a() {
+        Runner runner = new Runner("interop055");
+        testGlobal(runner);
+    }
+
+    @Test
+    public void test056a() {
+        Runner runner = new Runner("interop056");
+        testGlobal(runner);
+    }
+
+    private void testGlobal(Runner runner) {
+        TruffleObject returnObject = JavaInterop.asTruffleFunction(ReturnObject.class, new ReturnObject() {
+
+            @Override
+            public void storeObject(Object o) {
+                staticStorage = o;
+            }
+        });
+        Object original = new Object();
+        TruffleObject object = JavaInterop.asTruffleObject(original);
+        runner.export(object, "object");
+        runner.export(returnObject, "returnObject");
+        staticStorage = null;
+        runner.run();
+        Assert.assertSame(original, staticStorage);
+    }
+
+    @Test
     public void testStrlen() throws Exception {
         Runner runner = new Runner("strlen");
         try {

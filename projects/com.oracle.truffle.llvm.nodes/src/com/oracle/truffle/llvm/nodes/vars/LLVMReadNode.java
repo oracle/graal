@@ -34,7 +34,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMFrameUtil;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
@@ -158,8 +157,8 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
         protected abstract FrameSlot getSlot();
 
         @Specialization
-        protected TruffleObject readI32(VirtualFrame frame) {
-            return (TruffleObject) FrameUtil.getObjectSafe(frame, getSlot());
+        protected Object readI32(VirtualFrame frame) {
+            return FrameUtil.getObjectSafe(frame, getSlot());
         }
     }
 

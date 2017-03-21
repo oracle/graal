@@ -41,6 +41,7 @@ import com.oracle.truffle.api.profiles.IntValueProfile;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -60,45 +61,28 @@ public abstract class LLVMI32LoadNode extends LLVMExpressionNode {
         }
     }
 
-    public abstract static class LLVMI32DirectLoadNode extends LLVMI32LoadNode {
+    private final IntValueProfile profile = IntValueProfile.createIdentityProfile();
 
-        @Specialization
-        public int executeI32(LLVMAddress addr) {
-            return LLVMMemory.getI32(addr);
-        }
-
-        @Specialization
-        public int executeI32(LLVMTruffleObject addr) {
-            return doForeignAccess(addr);
-        }
-
-        @Specialization
-        public int executeI32(TruffleObject addr) {
-            return executeI32(new LLVMTruffleObject(addr, PrimitiveType.I32));
-        }
-
+    @Specialization
+    public int executeI32(LLVMAddress addr) {
+        int val = LLVMMemory.getI32(addr);
+        return profile.profile(val);
     }
 
-    public abstract static class LLVMI32ProfilingLoadNode extends LLVMI32LoadNode {
+    @Specialization
+    public int executeI32(LLVMGlobalVariableDescriptor addr) {
+        int val = LLVMMemory.getI32(addr.getNativeAddress());
+        return profile.profile(val);
+    }
 
-        private final IntValueProfile profile = IntValueProfile.createIdentityProfile();
+    @Specialization
+    public int executeI32(LLVMTruffleObject addr) {
+        return doForeignAccess(addr);
+    }
 
-        @Specialization
-        public int executeI32(LLVMAddress addr) {
-            int val = LLVMMemory.getI32(addr);
-            return profile.profile(val);
-        }
-
-        @Specialization
-        public int executeI32(LLVMTruffleObject addr) {
-            return doForeignAccess(addr);
-        }
-
-        @Specialization
-        public int executeI32(TruffleObject addr) {
-            return executeI32(new LLVMTruffleObject(addr, PrimitiveType.I32));
-        }
-
+    @Specialization
+    public int executeI32(TruffleObject addr) {
+        return executeI32(new LLVMTruffleObject(addr, PrimitiveType.I32));
     }
 
 }

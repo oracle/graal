@@ -33,7 +33,6 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 
@@ -121,7 +120,7 @@ public abstract class LLVMSelectNode {
     public abstract static class LLVMAddressSelectNode extends LLVMExpressionNode {
 
         @Specialization
-        public LLVMAddress execute(boolean cond, LLVMAddress trueBranch, LLVMAddress elseBranch) {
+        public Object execute(boolean cond, Object trueBranch, Object elseBranch) {
             return cond ? trueBranch : elseBranch;
         }
 

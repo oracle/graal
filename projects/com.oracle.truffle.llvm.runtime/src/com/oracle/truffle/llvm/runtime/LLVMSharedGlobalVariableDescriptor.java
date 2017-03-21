@@ -27,21 +27,40 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
+package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
 
-@GenerateNodeFactory
-@NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "size"), @NodeChild(type = LLVMExpressionNode.class, value = "expected")})
-public abstract class LLVMLifetimeEnd extends LLVMExpressionNode {
+public final class LLVMSharedGlobalVariableDescriptor implements TruffleObject {
 
-    @Specialization
-    public Object executeI1(@SuppressWarnings("unused") long size, @SuppressWarnings("unused") Object ptr) {
-        return null;
+    private final LLVMGlobalVariableDescriptor descriptor;
+
+    public LLVMSharedGlobalVariableDescriptor(LLVMGlobalVariableDescriptor descriptor) {
+        this.descriptor = descriptor;
     }
 
+    public LLVMGlobalVariableDescriptor getDescriptor() {
+        return descriptor;
+    }
+
+    public static boolean isInstance(TruffleObject object) {
+        return object instanceof LLVMSharedGlobalVariableDescriptor;
+    }
+
+    @CompilationFinal private static ForeignAccess ACCESS;
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        if (ACCESS == null) {
+            try {
+                Class<?> accessor = Class.forName("com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMGlobalVariableDescriptorMessageResolutionAccessor");
+                ACCESS = (ForeignAccess) accessor.getField("ACCESS").get(null);
+            } catch (Exception e) {
+                throw new AssertionError(e);
+            }
+        }
+        return ACCESS;
+    }
 }

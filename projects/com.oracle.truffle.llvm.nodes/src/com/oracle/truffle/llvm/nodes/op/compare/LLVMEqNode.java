@@ -32,10 +32,7 @@ package com.oracle.truffle.llvm.nodes.op.compare;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
@@ -69,41 +66,6 @@ public abstract class LLVMEqNode extends LLVMExpressionNode {
     @Specialization
     public boolean executeI1(LLVMIVarBit val1, LLVMIVarBit val2) {
         return val1.compare(val2) == 0;
-    }
-
-    @Specialization
-    public boolean executeI1(LLVMAddress val1, LLVMAddress val2) {
-        return val1.equals(val2);
-    }
-
-    @Specialization(guards = {"!isLLVMFunction(val1)", "!isLLVMFunction(val2)"})
-    public boolean executeI1(TruffleObject val1, TruffleObject val2) {
-        return val1 == val2;
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization(guards = "isCNull(val1)")
-    public boolean executeI1(LLVMAddress val1, TruffleObject val2) {
-        return false;
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization(guards = "isCNull(val2)")
-    public boolean executeI1(TruffleObject val1, LLVMAddress val2) {
-        return false;
-    }
-
-    protected static boolean isCNull(LLVMAddress val) {
-        return val.getVal() == 0;
-    }
-
-    @Specialization
-    public boolean executeI1(LLVMFunction val1, LLVMFunction val2) {
-        return val1.getFunctionIndex() == val2.getFunctionIndex();
-    }
-
-    protected static boolean isLLVMFunction(TruffleObject object) {
-        return object instanceof LLVMFunction;
     }
 
 }

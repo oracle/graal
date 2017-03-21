@@ -45,14 +45,7 @@ import com.oracle.truffle.llvm.nodes.op.compare.LLVM80BitFloatCompareNodeFactory
 import com.oracle.truffle.llvm.nodes.op.compare.LLVM80BitFloatCompareNodeFactory.LLVM80BitFloatUltNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVM80BitFloatCompareNodeFactory.LLVM80BitFloatUneNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVM80BitFloatCompareNodeFactory.LLVM80BitFloatUnoNodeGen;
-import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressCompareNodeFactory.LLVMAddressSgeNodeGen;
-import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressCompareNodeFactory.LLVMAddressSgtNodeGen;
-import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressCompareNodeFactory.LLVMAddressSleNodeGen;
-import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressCompareNodeFactory.LLVMAddressSltNodeGen;
-import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressCompareNodeFactory.LLVMAddressUgeNodeGen;
-import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressCompareNodeFactory.LLVMAddressUgtNodeGen;
-import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressCompareNodeFactory.LLVMAddressUleNodeGen;
-import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressCompareNodeFactory.LLVMAddressUltNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressCompareNode;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMDoubleCompareNodeFactory.LLVMDoubleOeqNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMDoubleCompareNodeFactory.LLVMDoubleOgeNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMDoubleCompareNodeFactory.LLVMDoubleOgtNodeGen;
@@ -394,25 +387,25 @@ final class LLVMComparisonFactory {
     private static LLVMExpressionNode visitAddressComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMIntegerComparisonType condition) {
         switch (condition) {
             case EQUALS:
-                return LLVMEqNodeGen.create(left, right);
+                return LLVMAddressCompareNode.create(LLVMAddressCompareNode.Kind.EQ, left, right);
             case NOT_EQUALS:
-                return LLVMNeqNodeGen.create(left, right);
+                return LLVMAddressCompareNode.create(LLVMAddressCompareNode.Kind.NEQ, left, right);
             case UNSIGNED_GREATER_THAN:
-                return LLVMAddressUgtNodeGen.create(left, right);
+                return LLVMAddressCompareNode.create(LLVMAddressCompareNode.Kind.UGT, left, right);
             case UNSIGNED_GREATER_EQUALS:
-                return LLVMAddressUgeNodeGen.create(left, right);
+                return LLVMAddressCompareNode.create(LLVMAddressCompareNode.Kind.UGE, left, right);
             case UNSIGNED_LESS_THAN:
-                return LLVMAddressUltNodeGen.create(left, right);
+                return LLVMAddressCompareNode.create(LLVMAddressCompareNode.Kind.ULT, left, right);
             case UNSIGNED_LESS_EQUALS:
-                return LLVMAddressUleNodeGen.create(left, right);
+                return LLVMAddressCompareNode.create(LLVMAddressCompareNode.Kind.ULE, left, right);
             case SIGNED_GREATER_THAN:
-                return LLVMAddressSgtNodeGen.create(left, right);
+                return LLVMAddressCompareNode.create(LLVMAddressCompareNode.Kind.SGT, left, right);
             case SIGNED_GREATER_EQUALS:
-                return LLVMAddressSgeNodeGen.create(left, right);
+                return LLVMAddressCompareNode.create(LLVMAddressCompareNode.Kind.SGE, left, right);
             case SIGNED_LESS_THAN:
-                return LLVMAddressSltNodeGen.create(left, right);
+                return LLVMAddressCompareNode.create(LLVMAddressCompareNode.Kind.SLT, left, right);
             case SIGNED_LESS_EQUALS:
-                return LLVMAddressSleNodeGen.create(left, right);
+                return LLVMAddressCompareNode.create(LLVMAddressCompareNode.Kind.SLE, left, right);
             default:
                 throw new AssertionError(condition);
         }
@@ -421,9 +414,9 @@ final class LLVMComparisonFactory {
     private static LLVMExpressionNode visitFunctionComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMIntegerComparisonType condition) {
         switch (condition) {
             case EQUALS:
-                return LLVMEqNodeGen.create(left, right);
+                return LLVMAddressCompareNode.create(LLVMAddressCompareNode.Kind.EQ, left, right);
             case NOT_EQUALS:
-                return LLVMNeqNodeGen.create(left, right);
+                return LLVMAddressCompareNode.create(LLVMAddressCompareNode.Kind.NEQ, left, right);
             default:
                 throw new AssertionError(condition);
         }

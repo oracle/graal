@@ -69,8 +69,8 @@ public class LLVMFrameUtil {
         return FrameUtil.getDoubleSafe(frame, frameSlot);
     }
 
-    public static LLVMAddress getAddress(VirtualFrame frame, FrameSlot frameSlot) {
-        return (LLVMAddress) FrameUtil.getObjectSafe(frame, frameSlot);
+    public static Object getAddress(VirtualFrame frame, FrameSlot frameSlot) {
+        return FrameUtil.getObjectSafe(frame, frameSlot);
     }
 
     public static LLVMIVarBit getIVarbit(VirtualFrame frame, FrameSlot frameSlot) {
@@ -82,7 +82,7 @@ public class LLVMFrameUtil {
     }
 
     public static LLVMAddress allocateMemory(LLVMStack stack, VirtualFrame frame, FrameSlot stackPointerSlot, int size, int alignment, Type type) {
-        LLVMAddress stackPointer = LLVMFrameUtil.getAddress(frame, stackPointerSlot);
+        LLVMAddress stackPointer = (LLVMAddress) LLVMFrameUtil.getAddress(frame, stackPointerSlot);
         AllocationResult allocResult = stack.allocateMemory(stackPointer, size, alignment, type);
         frame.setObject(stackPointerSlot, allocResult.getStackPointer());
         return allocResult.getAllocatedMemory();

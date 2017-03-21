@@ -40,6 +40,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToBooleanNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToByteNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToCharNodeGen;
@@ -50,7 +51,10 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToLong
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToShortNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToTruffleObjectNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -564,11 +568,21 @@ public abstract class ToLLVMNode extends Node {
             return obj.getAddress();
         }
 
-        protected boolean notLLVMTruffleAddress(Object value) {
-            return !(value instanceof LLVMTruffleAddress);
+        @Specialization
+        public LLVMGlobalVariableDescriptor fromSharedDescriptor(LLVMSharedGlobalVariableDescriptor shared) {
+            return shared.getDescriptor();
         }
 
-        @Specialization(guards = "notLLVMTruffleAddress(obj)")
+        @Specialization
+        public LLVMAddress fromNull(@SuppressWarnings("unused") LLVMTruffleNull n) {
+            return LLVMAddress.fromLong(0);
+        }
+
+        protected boolean notLLVM(TruffleObject value) {
+            return LLVMExpressionNode.notLLVM(value);
+        }
+
+        @Specialization(guards = "notLLVM(obj)")
         public TruffleObject fromTruffleObject(TruffleObject obj) {
             return obj;
         }

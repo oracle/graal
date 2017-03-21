@@ -34,6 +34,7 @@ import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
@@ -55,6 +56,11 @@ public class LLVMLoadVectorNode {
         public LLVMI1Vector executeI1Vector(LLVMAddress addr) {
             return LLVMMemory.getI1Vector(addr, getSize());
         }
+
+        @Specialization
+        public LLVMI1Vector executeI1Vector(LLVMGlobalVariableDescriptor addr) {
+            return LLVMMemory.getI1Vector(addr.getNativeAddress(), getSize());
+        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -62,6 +68,11 @@ public class LLVMLoadVectorNode {
     public abstract static class LLVMLoadI8VectorNode extends LLVMExpressionNode {
 
         public abstract int getSize();
+
+        @Specialization
+        public LLVMI8Vector executeI8Vector(LLVMGlobalVariableDescriptor addr) {
+            return LLVMMemory.getI8Vector(addr.getNativeAddress(), getSize());
+        }
 
         @Specialization
         public LLVMI8Vector executeI8Vector(LLVMAddress addr) {
@@ -76,6 +87,11 @@ public class LLVMLoadVectorNode {
         public abstract int getSize();
 
         @Specialization
+        public LLVMI16Vector executeI16Vector(LLVMGlobalVariableDescriptor addr) {
+            return LLVMMemory.getI16Vector(addr.getNativeAddress(), getSize());
+        }
+
+        @Specialization
         public LLVMI16Vector executeI16Vector(LLVMAddress addr) {
             return LLVMMemory.getI16Vector(addr, getSize());
         }
@@ -86,6 +102,11 @@ public class LLVMLoadVectorNode {
     public abstract static class LLVMLoadI32VectorNode extends LLVMExpressionNode {
 
         public abstract int getSize();
+
+        @Specialization
+        public LLVMI32Vector executeI32Vector(LLVMGlobalVariableDescriptor addr) {
+            return LLVMMemory.getI32Vector(addr.getNativeAddress(), getSize());
+        }
 
         @Specialization
         public LLVMI32Vector executeI32Vector(LLVMAddress addr) {
@@ -100,6 +121,11 @@ public class LLVMLoadVectorNode {
         public abstract int getSize();
 
         @Specialization
+        public LLVMI64Vector executeI64Vector(LLVMGlobalVariableDescriptor addr) {
+            return LLVMMemory.getI64Vector(addr.getNativeAddress(), getSize());
+        }
+
+        @Specialization
         public LLVMI64Vector executeI64Vector(LLVMAddress addr) {
             return LLVMMemory.getI64Vector(addr, getSize());
         }
@@ -112,6 +138,11 @@ public class LLVMLoadVectorNode {
         public abstract int getSize();
 
         @Specialization
+        public LLVMFloatVector executeFloatVector(LLVMGlobalVariableDescriptor addr) {
+            return LLVMMemory.getFloatVector(addr.getNativeAddress(), getSize());
+        }
+
+        @Specialization
         public LLVMFloatVector executeFloatVector(LLVMAddress addr) {
             return LLVMMemory.getFloatVector(addr, getSize());
         }
@@ -122,6 +153,11 @@ public class LLVMLoadVectorNode {
     public abstract static class LLVMLoadDoubleVectorNode extends LLVMExpressionNode {
 
         public abstract int getSize();
+
+        @Specialization
+        public LLVMDoubleVector executeDoubleVector(LLVMGlobalVariableDescriptor addr) {
+            return LLVMMemory.getDoubleVector(addr.getNativeAddress(), getSize());
+        }
 
         @Specialization
         public LLVMDoubleVector executeDoubleVector(LLVMAddress addr) {

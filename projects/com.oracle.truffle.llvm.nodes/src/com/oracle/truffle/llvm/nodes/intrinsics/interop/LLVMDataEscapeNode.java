@@ -38,6 +38,7 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
@@ -166,7 +167,7 @@ public abstract class LLVMDataEscapeNode extends Node {
 
     @Specialization
     public Object escapingTruffleObject(LLVMGlobalVariableDescriptor escapingValue) {
-        return escapingValue;
+        return new LLVMSharedGlobalVariableDescriptor(escapingValue);
     }
 
     public boolean notLLVM(TruffleObject v) {

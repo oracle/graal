@@ -36,6 +36,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions.MemCopyNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -50,6 +51,11 @@ public abstract class LLVMX86_64BitVACopy extends LLVMExpressionNode {
 
     protected LLVMX86_64BitVACopy(LLVMHeapFunctions heapFunctions) {
         memCopy = heapFunctions.createMemCopyNode();
+    }
+
+    @Specialization
+    public Object executeVoid(VirtualFrame frame, LLVMGlobalVariableDescriptor dest, LLVMGlobalVariableDescriptor source) {
+        return executeVoid(frame, dest.getNativeAddress(), source.getNativeAddress());
     }
 
     @Specialization

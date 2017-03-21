@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions.MemCopyNode;
 
@@ -56,6 +57,27 @@ public abstract class LLVMMemMove {
         @Specialization
         public Object executeVoid(LLVMAddress dest, LLVMAddress source, long length, int align, boolean isVolatile) {
             memMove.execute(dest, source, length);
+            return null;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization
+        public Object executeVoid(LLVMGlobalVariableDescriptor dest, LLVMAddress source, long length, int align, boolean isVolatile) {
+            memMove.execute(dest.getNativeAddress(), source, length);
+            return null;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization
+        public Object executeVoid(LLVMAddress dest, LLVMGlobalVariableDescriptor source, long length, int align, boolean isVolatile) {
+            memMove.execute(dest, source.getNativeAddress(), length);
+            return null;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization
+        public Object executeVoid(LLVMGlobalVariableDescriptor dest, LLVMGlobalVariableDescriptor source, long length, int align, boolean isVolatile) {
+            memMove.execute(dest.getNativeAddress(), source.getNativeAddress(), length);
             return null;
         }
 

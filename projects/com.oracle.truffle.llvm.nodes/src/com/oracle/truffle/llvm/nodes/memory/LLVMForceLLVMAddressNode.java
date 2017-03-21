@@ -27,21 +27,24 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
+package com.oracle.truffle.llvm.nodes.memory;
 
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 
-@GenerateNodeFactory
-@NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "size"), @NodeChild(type = LLVMExpressionNode.class, value = "expected")})
-public abstract class LLVMLifetimeEnd extends LLVMExpressionNode {
+public abstract class LLVMForceLLVMAddressNode extends Node {
+
+    public abstract LLVMAddress executeWithTarget(Object object);
 
     @Specialization
-    public Object executeI1(@SuppressWarnings("unused") long size, @SuppressWarnings("unused") Object ptr) {
-        return null;
+    public LLVMAddress doAddressCase(LLVMAddress a) {
+        return a;
     }
 
+    @Specialization
+    public LLVMAddress doAddressCase(LLVMGlobalVariableDescriptor a) {
+        return a.getNativeAddress();
+    }
 }

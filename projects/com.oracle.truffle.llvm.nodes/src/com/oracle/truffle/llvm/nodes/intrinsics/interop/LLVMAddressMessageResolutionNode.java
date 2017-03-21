@@ -33,7 +33,9 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMPerformance;
@@ -128,7 +130,7 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("Index must be 0 for globals!");
             }
-            return prepareValueForEscape.executeWithTarget(LLVMGlobalVariableDescriptor.doLoad(receiver));
+            return prepareValueForEscape.executeWithTarget(receiver.load());
         }
 
     }
@@ -220,7 +222,7 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("Index must be 0 for globals!");
             }
-            LLVMGlobalVariableDescriptor.doUnmanagedStore(receiver, value);
+            receiver.storeLLVMAddress(value);
             return prepareValueForEscape.executeWithTarget(value);
         }
 
@@ -230,21 +232,21 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("Index must be 0 for globals!");
             }
-            LLVMGlobalVariableDescriptor.doUnmanagedStore(receiver, value.getAddress());
+            receiver.storeLLVMAddress(value.getAddress());
             return value;
         }
 
-        protected boolean notAnLLVMValue(Object value) {
-            return !(value instanceof LLVMAddress || value instanceof LLVMTruffleAddress);
+        protected boolean notAnLLVMValue(TruffleObject value) {
+            return LLVMExpressionNode.notLLVM(value);
         }
 
         @Specialization(guards = {"notAnLLVMValue(value)"})
-        public Object doGlobal(LLVMGlobalVariableDescriptor receiver, int index, Object value) {
+        public Object doGlobal(LLVMGlobalVariableDescriptor receiver, int index, TruffleObject value) {
             if (index != 0) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("Index must be 0 for globals!");
             }
-            LLVMGlobalVariableDescriptor.doManagedStore(receiver, value);
+            receiver.storeTruffleObject(value);
             return value;
         }
     }

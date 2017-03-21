@@ -38,10 +38,10 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMAddressMessageResolu
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMAddressMessageResolutionNode.LLVMAddressWriteMessageResolutionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMAddressMessageResolutionNodeFactory.LLVMAddressReadMessageResolutionNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMAddressMessageResolutionNodeFactory.LLVMAddressWriteMessageResolutionNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariableDescriptor;
 
-@MessageResolution(receiverType = LLVMGlobalVariableDescriptor.class, language = LLVMLanguage.class)
+@MessageResolution(receiverType = LLVMSharedGlobalVariableDescriptor.class, language = LLVMLanguage.class)
 public class LLVMGlobalVariableDescriptorMessageResolution {
 
     @Resolve(message = "READ")
@@ -49,12 +49,12 @@ public class LLVMGlobalVariableDescriptorMessageResolution {
 
         @Child private LLVMAddressReadMessageResolutionNode node;
 
-        protected Object access(VirtualFrame frame, LLVMGlobalVariableDescriptor receiver, int index) {
+        protected Object access(VirtualFrame frame, LLVMSharedGlobalVariableDescriptor receiver, int index) {
             if (node == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 node = insert(LLVMAddressReadMessageResolutionNodeGen.create());
             }
-            return node.executeWithTarget(frame, receiver, index);
+            return node.executeWithTarget(frame, receiver.getDescriptor(), index);
         }
     }
 
@@ -63,12 +63,12 @@ public class LLVMGlobalVariableDescriptorMessageResolution {
 
         @Child private LLVMAddressWriteMessageResolutionNode node;
 
-        protected Object access(VirtualFrame frame, LLVMGlobalVariableDescriptor receiver, int index, Object value) {
+        protected Object access(VirtualFrame frame, LLVMSharedGlobalVariableDescriptor receiver, int index, Object value) {
             if (node == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 node = insert(LLVMAddressWriteMessageResolutionNodeGen.create());
             }
-            return node.executeWithTarget(frame, receiver, index, value);
+            return node.executeWithTarget(frame, receiver.getDescriptor(), index, value);
         }
 
     }

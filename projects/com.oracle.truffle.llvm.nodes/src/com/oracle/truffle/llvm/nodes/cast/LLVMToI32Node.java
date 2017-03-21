@@ -42,6 +42,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
@@ -112,6 +113,16 @@ public abstract class LLVMToI32Node extends LLVMExpressionNode {
             return 0;
         }
 
+        @Specialization
+        public int executeLLVMAddress(LLVMGlobalVariableDescriptor from) {
+            return (int) from.getNativeAddress().getVal();
+        }
+
+        @Specialization
+        public int executeLLVMTruffleObject(LLVMTruffleObject from) {
+            return (int) (executeTruffleObject(from.getObject()) + from.getOffset());
+        }
+
         @Child private Node isNull = Message.IS_NULL.createNode();
         @Child private Node isBoxed = Message.IS_BOXED.createNode();
         @Child private Node unbox = Message.UNBOX.createNode();
@@ -131,16 +142,6 @@ public abstract class LLVMToI32Node extends LLVMExpressionNode {
             }
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Not convertable");
-        }
-
-        @Specialization
-        public int executeUnbox(LLVMTruffleObject from) {
-            try {
-                int head = (int) convert.executeWithTarget(ForeignAccess.sendUnbox(unbox, from.getObject()));
-                return (int) (head + from.getOffset());
-            } catch (UnsupportedMessageException e) {
-                throw new UnsupportedOperationException(e);
-            }
         }
 
     }

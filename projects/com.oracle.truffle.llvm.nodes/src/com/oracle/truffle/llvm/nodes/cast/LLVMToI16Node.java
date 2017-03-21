@@ -40,8 +40,10 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 
 public abstract class LLVMToI16Node extends LLVMExpressionNode {
 
@@ -86,6 +88,16 @@ public abstract class LLVMToI16Node extends LLVMExpressionNode {
         @Specialization
         public short executeLLVMAddress(LLVMAddress from) {
             return (short) from.getVal();
+        }
+
+        @Specialization
+        public short executeLLVMAddress(LLVMGlobalVariableDescriptor from) {
+            return (short) from.getNativeAddress().getVal();
+        }
+
+        @Specialization
+        public short executeLLVMTruffleObject(LLVMTruffleObject from) {
+            return (short) (executeTruffleObject(from.getObject()) + from.getOffset());
         }
 
         @Specialization

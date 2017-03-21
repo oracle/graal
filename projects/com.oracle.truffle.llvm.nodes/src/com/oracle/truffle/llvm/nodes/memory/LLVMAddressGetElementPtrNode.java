@@ -37,6 +37,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -56,12 +57,18 @@ public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
     }
 
     @Specialization
+    public LLVMAddress executePointee(LLVMGlobalVariableDescriptor addr, int val) {
+        int incr = getTypeWidth() * val;
+        return addr.getNativeAddress().increment(incr, new PointerType(getTargetType()));
+    }
+
+    @Specialization
     public LLVMTruffleObject executeTruffleObject(LLVMTruffleObject addr, int val) {
         int incr = getTypeWidth() * val;
         return new LLVMTruffleObject(addr.getObject(), addr.getOffset() + incr, new PointerType(getTargetType()));
     }
 
-    @Specialization
+    @Specialization(guards = "notLLVM(addr)")
     public LLVMTruffleObject executeTruffleObject(TruffleObject addr, int val) {
         int incr = getTypeWidth() * val;
         return new LLVMTruffleObject(addr, incr, new PointerType(getTargetType()));
@@ -79,10 +86,16 @@ public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
         return new LLVMTruffleObject(addr.getObject(), addr.getOffset() + incr, new PointerType(getTargetType()));
     }
 
-    @Specialization
+    @Specialization(guards = "notLLVM(addr)")
     public LLVMTruffleObject executeTruffleObject(TruffleObject addr, long val) {
         long incr = getTypeWidth() * val;
         return new LLVMTruffleObject(addr, incr, new PointerType(getTargetType()));
+    }
+
+    @Specialization
+    public LLVMAddress executePointee(LLVMGlobalVariableDescriptor addr, long val) {
+        long incr = getTypeWidth() * val;
+        return addr.getNativeAddress().increment(incr, new PointerType(getTargetType()));
     }
 
 }

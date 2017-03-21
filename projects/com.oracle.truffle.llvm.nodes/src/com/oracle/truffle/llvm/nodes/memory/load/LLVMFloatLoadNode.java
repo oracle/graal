@@ -41,6 +41,7 @@ import com.oracle.truffle.api.profiles.FloatValueProfile;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -60,45 +61,27 @@ public abstract class LLVMFloatLoadNode extends LLVMExpressionNode {
         }
     }
 
-    public abstract static class LLVMFloatDirectLoadNode extends LLVMFloatLoadNode {
+    private final FloatValueProfile profile = FloatValueProfile.createRawIdentityProfile();
 
-        @Specialization
-        public float executeFloat(LLVMAddress addr) {
-            return LLVMMemory.getFloat(addr);
-        }
-
-        @Specialization
-        public float executeFloat(LLVMTruffleObject addr) {
-            return doForeignAccess(addr);
-        }
-
-        @Specialization
-        public float executeFloat(TruffleObject addr) {
-            return executeFloat(new LLVMTruffleObject(addr, PrimitiveType.FLOAT));
-        }
-
+    @Specialization
+    public float executeFloat(LLVMGlobalVariableDescriptor addr) {
+        return executeFloat(addr.getNativeAddress());
     }
 
-    public abstract static class LLVMFloatProfilingLoadNode extends LLVMFloatLoadNode {
+    @Specialization
+    public float executeFloat(LLVMAddress addr) {
+        float val = LLVMMemory.getFloat(addr);
+        return profile.profile(val);
+    }
 
-        private final FloatValueProfile profile = FloatValueProfile.createRawIdentityProfile();
+    @Specialization
+    public float executeFloat(LLVMTruffleObject addr) {
+        return doForeignAccess(addr);
+    }
 
-        @Specialization
-        public float executeFloat(LLVMAddress addr) {
-            float val = LLVMMemory.getFloat(addr);
-            return profile.profile(val);
-        }
-
-        @Specialization
-        public float executeFloat(LLVMTruffleObject addr) {
-            return doForeignAccess(addr);
-        }
-
-        @Specialization
-        public float executeFloat(TruffleObject addr) {
-            return executeFloat(new LLVMTruffleObject(addr, PrimitiveType.FLOAT));
-        }
-
+    @Specialization
+    public float executeFloat(TruffleObject addr) {
+        return executeFloat(new LLVMTruffleObject(addr, PrimitiveType.FLOAT));
     }
 
 }
