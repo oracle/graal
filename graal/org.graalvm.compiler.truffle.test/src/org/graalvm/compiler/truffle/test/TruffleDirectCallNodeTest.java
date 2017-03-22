@@ -36,7 +36,7 @@ public class TruffleDirectCallNodeTest {
 
     @Test
     public void testCanBeClonedWithoutParent() {
-        final RootNode rootNode = new RootNode(MockLanguage.class, null, null) {
+        final RootNode rootNode = new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 return 42;

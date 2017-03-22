@@ -274,7 +274,7 @@ public class DFAPartialEvaluationTest extends PartialEvaluationTest {
         private final TRegexDFAExecutorNode executorNode;
 
         public TRegexRootNode(FrameDescriptor frameDescriptor, TRegexDFAExecutorNode executorNode) {
-            super(MockLanguage.class, null, frameDescriptor);
+            super(null, frameDescriptor);
             this.executorNode = executorNode;
         }
 

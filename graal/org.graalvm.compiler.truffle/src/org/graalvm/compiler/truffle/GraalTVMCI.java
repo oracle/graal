@@ -23,7 +23,6 @@
 package org.graalvm.compiler.truffle;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.nodes.Node;
@@ -48,11 +47,6 @@ final class GraalTVMCI extends TVMCI {
                 ((OptimizedCallTarget) target).onLoopCount(count);
             }
         }
-    }
-
-    @SuppressWarnings("rawtypes")
-    Class<? extends TruffleLanguage> findLanguage(RootNode root) {
-        return super.findLanguageClass(root);
     }
 
     void onFirstExecution(OptimizedCallTarget callTarget) {
