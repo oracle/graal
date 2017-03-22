@@ -146,10 +146,10 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
             protected void run(StructuredGraph graph, HighTierContext context) {
                 EncodedGraph encodedGraph = GraphEncoder.encodeSingleGraph(graph, runtime.getTarget().arch);
 
-                SimplifyingGraphDecoder graphDecoder = new SimplifyingGraphDecoder(context.getMetaAccess(), context.getConstantReflection(), context.getConstantFieldProvider(),
-                                context.getStampProvider(), !ImmutableCode.getValue(graph.getOptions()), runtime.getTarget().arch);
                 StructuredGraph targetGraph = new StructuredGraph.Builder(graph.getOptions(), AllowAssumptions.YES).method(graph.method()).build();
-                graphDecoder.decode(targetGraph, encodedGraph);
+                SimplifyingGraphDecoder graphDecoder = new SimplifyingGraphDecoder(runtime.getTarget().arch, targetGraph, context.getMetaAccess(), context.getConstantReflection(),
+                                context.getConstantFieldProvider(), context.getStampProvider(), !ImmutableCode.getValue(graph.getOptions()));
+                graphDecoder.decode(encodedGraph);
             }
 
             @Override
