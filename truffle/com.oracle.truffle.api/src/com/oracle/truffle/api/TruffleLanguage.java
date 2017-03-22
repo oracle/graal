@@ -95,13 +95,24 @@ import com.oracle.truffle.api.source.SourceSection;
  *
  * <h4>Cardinalities</h4>
  *
- * <i>One</i> language implementation instance refers to other classes using the following
+ * <i>One</i> host virtual machine depends on other system instances using the following
  * cardinalities:
- * <ul>
- * <li><i>many</i> {@linkplain #createContext(Env) created} language contexts
- * <li><i>many</i> {@linkplain TruffleRuntime#createCallTarget(RootNode) created} {@link CallTarget
- * call targets} potentially shared between contexts.
- * </ul>
+ *
+ * <pre>
+ * K = number of installed languages
+ * I = number of installed instruments
+ * N = unbounded
+ *
+ * - 1:Host VM Processs
+ *   - N:PolyglotRuntime
+ *     - K:TruffleLanguage
+ *     - I:PolyglotRuntime.Instrument
+ *       - 1:TruffleInstrument
+ *   - N:PolyglotEngine
+ *     - 1:Thread
+ *     - K:PolyglotEngine.Language
+ *       - 1:Language Context
+ * </pre>
  *
  * <h4>Language Configuration</h4>
  *
