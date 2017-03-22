@@ -40,11 +40,9 @@
  */
 package com.oracle.truffle.sl.nodes.expression;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -75,51 +73,22 @@ public final class SLFunctionLiteralNode extends SLExpressionNode {
     @CompilationFinal private SLFunction cachedFunction;
 
     private final ContextReference<SLContext> reference;
-    private final Assumption noForks;
 
     public SLFunctionLiteralNode(SLLanguage language, String functionName) {
         this.functionName = functionName;
         this.reference = language.getContextReference();
-        this.noForks = language.noForks;
     }
 
     @Override
     public SLFunction executeGeneric(VirtualFrame frame) {
-        /*
-         * Function caching only works if SL runs with a final context. A final context is a context
-         * that is guaranteed to not change for one instance of ContextReference. SimpleLanguage
-         * supports forking in TruffleLanguage and therefore must be prepared for multiple contexts.
-         * If the context reference is not final then we need to to do a slow lookup each time the
-         * literal is invoked. To optimize this further, one could add a global cache in SLLanguage
-         * to skip the final context check if a function name globally (per TruffleLanguage
-         * instance) always points to the same function.
-         */
-        if (noForks.isValid()) {
-            if (cachedFunction == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                /* We are about to change a @CompilationFinal field. */
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                /* First execution of the node: lookup the function in the function registry. */
-                cachedFunction = reference.get().getFunctionRegistry().lookup(functionName, true);
-            }
-            return cachedFunction;
-        } else {
-            if (cachedFunction != null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                cachedFunction = null;
-            }
-            return slowLookup(reference.get());
+        if (cachedFunction == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            /* We are about to change a @CompilationFinal field. */
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            /* First execution of the node: lookup the function in the function registry. */
+            cachedFunction = reference.get().getFunctionRegistry().lookup(functionName, true);
         }
-    }
-
-    /*
-     * The lookup in the context performs an Java HashMap lookup and therefore needs to be behind a
-     * TruffleBoundary to stop partially evaluating. Without the boundary the compilation can fail
-     * because HashMap is not designed for Partial Evaluation.
-     */
-    @TruffleBoundary
-    private SLFunction slowLookup(SLContext context) {
-        return context.getFunctionRegistry().lookup(functionName, true);
+        return cachedFunction;
     }
 
 }

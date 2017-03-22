@@ -87,16 +87,6 @@ public final class SLFunction implements TruffleObject {
         this.callTargetStable = new CyclicAssumption(name);
     }
 
-    private SLFunction(SLFunction forked) {
-        this.name = forked.name;
-        this.callTarget = forked.callTarget;
-        this.callTargetStable = new CyclicAssumption(name);
-    }
-
-    protected SLFunction fork() {
-        return new SLFunction(this);
-    }
-
     public String getName() {
         return name;
     }

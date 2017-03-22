@@ -42,7 +42,6 @@ package com.oracle.truffle.sl;
 
 import java.util.Map;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -66,8 +65,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     public static final String MIME_TYPE = "application/x-sl";
 
-    public final Assumption noForks = Truffle.getRuntime().createAssumption("No forks!");
-
     public SLLanguage() {
         counter++;
     }
@@ -75,11 +72,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     @Override
     protected SLContext createContext(Env env) {
         return new SLContext(this, env);
-    }
-
-    protected SLContext forkContext(SLContext context) {
-        noForks.invalidate();
-        return context.fork();
     }
 
     @Override
