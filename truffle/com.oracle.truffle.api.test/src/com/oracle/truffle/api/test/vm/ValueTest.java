@@ -41,11 +41,12 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
 import org.junit.After;
 
 public class ValueTest implements Executor {
-    private final List<Runnable> pending = new LinkedList<>();
+    private List<Runnable> pending = new LinkedList<>();
     private PolyglotEngine engine;
 
     @After
     public void dispose() {
+        pending = null;
         if (engine != null) {
             engine.dispose();
         }
@@ -128,7 +129,11 @@ public class ValueTest implements Executor {
 
     @Override
     public void execute(Runnable command) {
-        pending.add(command);
+        if (pending != null) {
+            pending.add(command);
+        } else {
+            command.run();
+        }
     }
 
     private void flush() {

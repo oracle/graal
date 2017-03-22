@@ -38,18 +38,6 @@ import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 final class Utils {
 
-    static String getTruffleLanguageFullClassName(MessageResolution message) {
-        String truffleLanguageFullClazzName;
-        try {
-            truffleLanguageFullClazzName = message.language().getName();
-            throw new AssertionError();
-        } catch (MirroredTypeException mte) {
-            // This exception is always thrown: use the mirrors to inspect the class
-            truffleLanguageFullClazzName = ElementUtils.getQualifiedName(mte.getTypeMirror());
-        }
-        return truffleLanguageFullClazzName;
-    }
-
     static String getReceiverTypeFullClassName(MessageResolution message) {
         String receiverTypeFullClassName;
         try {

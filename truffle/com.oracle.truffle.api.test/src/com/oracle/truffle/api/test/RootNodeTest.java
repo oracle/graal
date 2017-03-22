@@ -23,12 +23,14 @@
 package com.oracle.truffle.api.test;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
@@ -60,10 +62,48 @@ public class RootNodeTest {
         Assert.assertEquals(42, result);
     }
 
+    @Test(expected = IllegalStateException.class)
+    public void testNotReplacable1() {
+        TestRootNode rootNode = new TestRootNode();
+        rootNode.replace(rootNode);
+    }
+
+    @Test(expected = IllegalStateException.class)
+    @Ignore
+    public void testNotReplacable2() {
+        TestRootNode2 rootNode = new TestRootNode2();
+        rootNode.rootNodeAsChild = new TestRootNode();
+        rootNode.adoptChildren();
+    }
+
+    @Test(expected = IllegalStateException.class)
+    @Ignore
+    public void testNotReplacable3() {
+        TestRootNode2 rootNode = new TestRootNode2();
+        rootNode.rootNodeAsChild = new Node() {
+        };
+        rootNode.adoptChildren();
+        rootNode.rootNodeAsChild.replace(new TestRootNode());
+    }
+
     class TestRootNode extends RootNode {
 
         TestRootNode() {
-            super(TestingLanguage.class, null, null);
+            super(null);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return 42;
+        }
+    }
+
+    class TestRootNode2 extends RootNode {
+
+        @Child Node rootNodeAsChild;
+
+        TestRootNode2() {
+            super(null);
         }
 
         @Override

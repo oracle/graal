@@ -38,7 +38,7 @@ import com.oracle.truffle.nfi.NativePointerMessageResolutionFactory.SignatureCac
 import com.oracle.truffle.nfi.types.NativeSignature;
 import com.oracle.truffle.nfi.types.Parser;
 
-@MessageResolution(language = NFILanguage.class, receiverType = NativePointer.class)
+@MessageResolution(receiverType = NativePointer.class)
 class NativePointerMessageResolution {
 
     abstract static class SignatureCacheNode extends Node {

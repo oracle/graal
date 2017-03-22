@@ -79,14 +79,10 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.SLMain;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
-import com.oracle.truffle.sl.parser.Parser;
 import com.oracle.truffle.sl.runtime.SLContext;
-import com.oracle.truffle.sl.runtime.SLFunction;
-import com.oracle.truffle.sl.runtime.SLNull;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 import com.oracle.truffle.sl.test.SLTestRunner.TestCase;
 
@@ -321,21 +317,11 @@ public class SLTestRunner extends ParentRunner<TestCase> {
 
         /* Parse the SL source file. */
 
-        Source source = Source.newBuilder(path.toFile()).build();
-        context.getFunctionRegistry().register(Parser.parseSL(source));
-
-        /* Lookup our main entry point, which is per definition always named "main". */
-        SLFunction mainFunction = context.getFunctionRegistry().lookup("main", false);
-        if (mainFunction == null) {
-            throw new SLException("No function main() defined in SL source file.");
-        }
+        Source source = Source.newBuilder(path.toFile()).interactive().build();
 
         /* Call the main entry point, without any arguments. */
         try {
-            Object result = mainFunction.getCallTarget().call();
-            if (result != SLNull.SINGLETON) {
-                out.println(result);
-            }
+            engine.eval(source);
         } catch (UnsupportedSpecializationException ex) {
             out.println(SLMain.formatTypeError(ex));
         } catch (SLUndefinedNameException ex) {

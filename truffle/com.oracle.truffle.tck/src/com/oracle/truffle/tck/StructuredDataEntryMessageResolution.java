@@ -27,9 +27,8 @@ package com.oracle.truffle.tck;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.tck.impl.TckLanguage;
 
-@MessageResolution(receiverType = StructuredDataEntry.class, language = TckLanguage.class)
+@MessageResolution(receiverType = StructuredDataEntry.class)
 class StructuredDataEntryMessageResolution {
 
     @Resolve(message = "READ")

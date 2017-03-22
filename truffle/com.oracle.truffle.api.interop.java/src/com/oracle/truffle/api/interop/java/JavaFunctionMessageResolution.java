@@ -37,7 +37,7 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 
-@MessageResolution(receiverType = JavaFunctionObject.class, language = JavaInteropLanguage.class)
+@MessageResolution(receiverType = JavaFunctionObject.class)
 class JavaFunctionMessageResolution {
 
     @Resolve(message = "EXECUTE")

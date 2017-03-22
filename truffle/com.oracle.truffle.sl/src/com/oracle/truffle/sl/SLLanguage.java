@@ -40,13 +40,10 @@
  */
 package com.oracle.truffle.sl;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.util.Map;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebuggerTags;
@@ -65,25 +62,24 @@ import com.oracle.truffle.sl.runtime.SLNull;
 @TruffleLanguage.Registration(name = "SL", version = "0.12", mimeType = SLLanguage.MIME_TYPE)
 @ProvidedTags({StandardTags.CallTag.class, StandardTags.StatementTag.class, StandardTags.RootTag.class, DebuggerTags.AlwaysHalt.class})
 public final class SLLanguage extends TruffleLanguage<SLContext> {
+    public static volatile int counter;
 
     public static final String MIME_TYPE = "application/x-sl";
 
-    /**
-     * The singleton instance of the language.
-     */
-    public static final SLLanguage INSTANCE = new SLLanguage();
+    public final Assumption noForks = Truffle.getRuntime().createAssumption("No forks!");
 
-    /**
-     * No instances allowed apart from the {@link #INSTANCE singleton instance}.
-     */
-    private SLLanguage() {
+    public SLLanguage() {
+        counter++;
     }
 
     @Override
     protected SLContext createContext(Env env) {
-        BufferedReader in = new BufferedReader(new InputStreamReader(env.in()));
-        PrintWriter out = new PrintWriter(env.out(), true);
-        return new SLContext(env, in, out);
+        return new SLContext(this, env);
+    }
+
+    protected SLContext forkContext(SLContext context) {
+        noForks.invalidate();
+        return context.fork();
     }
 
     @Override
@@ -95,7 +91,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
          * the functions with the SLContext happens lazily in SLEvalRootNode.
          */
         if (request.getArgumentNames().isEmpty()) {
-            functions = Parser.parseSL(source);
+            functions = Parser.parseSL(this, source);
         } else {
             StringBuilder sb = new StringBuilder();
             sb.append("function main(");
@@ -109,7 +105,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             sb.append(request.getSource().getCode());
             sb.append(";}");
             Source decoratedSource = Source.newBuilder(sb.toString()).mimeType(request.getSource().getMimeType()).name(request.getSource().getName()).build();
-            functions = Parser.parseSL(decoratedSource);
+            functions = Parser.parseSL(this, decoratedSource);
         }
 
         SLRootNode main = functions.get("main");
@@ -121,13 +117,13 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
              * we cannot use the original SLRootNode for the main function. Instead, we create a new
              * SLEvalRootNode that does everything we need.
              */
-            evalMain = new SLEvalRootNode(main.getFrameDescriptor(), main.getBodyNode(), main.getSourceSection(), main.getName(), functions);
+            evalMain = new SLEvalRootNode(this, main.getFrameDescriptor(), main.getBodyNode(), main.getSourceSection(), main.getName(), functions);
         } else {
             /*
              * Even without a main function, "evaluating" the parsed source needs to register the
              * functions into the SLContext.
              */
-            evalMain = new SLEvalRootNode(null, null, null, "[no_main]", functions);
+            evalMain = new SLEvalRootNode(this, null, null, null, "[no_main]", functions);
         }
         return Truffle.getRuntime().createCallTarget(evalMain);
     }
@@ -143,6 +139,11 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
          * The context itself is the global function registry. SL does not have global variables.
          */
         return context;
+    }
+
+    @Override
+    protected boolean isVisible(SLContext context, Object value) {
+        return value != SLNull.SINGLETON;
     }
 
     @Override
@@ -193,8 +194,4 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         return null;
     }
 
-    public SLContext findContext() {
-        CompilerAsserts.neverPartOfCompilation();
-        return super.findContext(super.createFindContextNode());
-    }
 }

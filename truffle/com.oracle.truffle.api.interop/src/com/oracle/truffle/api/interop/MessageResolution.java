@@ -78,7 +78,9 @@ public @interface MessageResolution {
      * @return class of the language object
      *
      * @since 0.13
+     * @deprecated in 0.25 without replacement
      */
-    Class<? extends TruffleLanguage<?>> language();
+    @Deprecated
+    Class<?> language() default TruffleLanguage.class;
 
 }

@@ -62,8 +62,8 @@ public final class UnaryGenerator extends MessageGenerator {
     @Override
     void appendRootNode(Writer w) throws IOException {
         w.append("    private static final class ").append(unaryRootNode).append(" extends RootNode {\n");
-        w.append("        protected ").append(unaryRootNode).append("(Class<? extends TruffleLanguage<?>> language) {\n");
-        w.append("            super(language, null, null);\n");
+        w.append("        protected ").append(unaryRootNode).append("() {\n");
+        w.append("            super(null);\n");
         w.append("        }\n");
         w.append("\n");
         w.append("        @Child private ").append(clazzName).append(" node = ").append(packageName).append(".").append(clazzName).append("NodeGen.create();");

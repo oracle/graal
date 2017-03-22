@@ -24,15 +24,15 @@
  */
 package com.oracle.truffle.tck;
 
+import java.util.concurrent.ScheduledExecutorService;
+
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.tck.impl.TckLanguage;
-import java.util.concurrent.ScheduledExecutorService;
 
-@MessageResolution(language = TckLanguage.class, receiverType = CountAndKill.class)
+@MessageResolution(receiverType = CountAndKill.class)
 final class CountAndKill implements TruffleObject {
     final ScheduledExecutorService onZero;
     int countDown;

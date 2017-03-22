@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.sl.SLLanguage;
-import com.oracle.truffle.sl.parser.Parser;
 
 /**
  * Builtin function to define (or redefine) functions. The provided source code is parsed the same
@@ -64,7 +63,7 @@ public abstract class SLDefineFunctionBuiltin extends SLBuiltinNode {
             build();
         // @formatter:on
         /* The same parsing code as for parsing the initial source. */
-        getContext().getFunctionRegistry().register(Parser.parseSL(source));
+        getContext().getFunctionRegistry().register(source);
 
         return code;
     }

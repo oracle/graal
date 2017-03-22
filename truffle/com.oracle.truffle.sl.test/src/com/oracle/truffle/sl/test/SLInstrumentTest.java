@@ -44,6 +44,7 @@ import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.PolyglotRuntime;
 import com.oracle.truffle.sl.SLLanguage;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -84,7 +85,7 @@ public class SLInstrumentTest {
         Assert.assertEquals(engineOutput, engineOut.toString());
 
         // Check output
-        PolyglotEngine.Instrument outInstr = engine.getInstruments().get("testOutputHandlerInstrument");
+        PolyglotRuntime.Instrument outInstr = engine.getRuntime().getInstruments().get("testOutputHandlerInstrument");
         outInstr.setEnabled(true);
         TruffleInstrument.Env env = outInstr.lookup(Streams.class).env;
         ByteArrayOutputStream consumedOut = new ByteArrayOutputStream();

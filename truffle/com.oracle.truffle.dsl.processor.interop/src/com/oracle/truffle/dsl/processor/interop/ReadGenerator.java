@@ -51,8 +51,8 @@ public final class ReadGenerator extends MessageGenerator {
     @Override
     void appendRootNode(Writer w) throws IOException {
         w.append("    private static final class ").append(READ_ROOT_NODE).append(" extends RootNode {\n");
-        w.append("        protected ").append(READ_ROOT_NODE).append("(Class<? extends TruffleLanguage<?>> language) {\n");
-        w.append("            super(language, null, null);\n");
+        w.append("        protected ").append(READ_ROOT_NODE).append("() {\n");
+        w.append("            super(null);\n");
         w.append("        }\n");
         w.append("\n");
         w.append("        @Child private ").append(clazzName).append(" node = ").append(packageName).append(".").append(clazzName).append("NodeGen.create();");

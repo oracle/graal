@@ -29,9 +29,8 @@ import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.nfi.NFILanguage;
 
-@MessageResolution(language = NFILanguage.class, receiverType = NullObject.class)
+@MessageResolution(receiverType = NullObject.class)
 class NullObjectMessageResolution {
 
     @Resolve(message = "IS_NULL")

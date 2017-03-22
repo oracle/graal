@@ -24,10 +24,12 @@
  */
 package com.oracle.truffle.api.interop.java.test;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -37,11 +39,8 @@ import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.api.interop.java.test.InvokeAndReadExecTest.Dummy;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class JavaInteropNullTest {
 
@@ -56,7 +55,7 @@ public class JavaInteropNullTest {
         @Child Node execute = Message.createExecute(1).createNode();
 
         TestRootNode(TruffleObject receiver) {
-            super(Dummy.class, null, new FrameDescriptor());
+            super(null);
             this.receiver = receiver;
         }
 
@@ -79,14 +78,13 @@ public class JavaInteropNullTest {
         }
     }
 
-    @MessageResolution(language = Dummy.class, receiverType = TestNull.class)
+    @MessageResolution(receiverType = TestNull.class)
     static class TestNullMessageResolution {
 
         @Resolve(message = "IS_NULL")
         abstract static class TestNullIsNull extends Node {
-            @SuppressWarnings("unused")
             boolean access(TestNull str) {
-                return true;
+                return str != null;
             }
         }
 

@@ -55,6 +55,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.PolyglotRuntime;
 import com.oracle.truffle.tools.Profiler.Counter.TimeKind;
 
 /**
@@ -97,7 +98,7 @@ public final class Profiler {
     };
 
     static Profiler find(PolyglotEngine engine, boolean create) {
-        PolyglotEngine.Instrument instrument = engine.getInstruments().get(ProfilerInstrument.ID);
+        PolyglotRuntime.Instrument instrument = engine.getRuntime().getInstruments().get(ProfilerInstrument.ID);
         if (instrument == null) {
             throw new IllegalStateException();
         }

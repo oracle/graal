@@ -112,6 +112,9 @@ public final class ForeignAccessFactoryGenerator {
         w.append("import com.oracle.truffle.api.interop.ForeignAccess;").append("\n");
         w.append("import com.oracle.truffle.api.interop.TruffleObject;").append("\n");
         w.append("import com.oracle.truffle.api.CallTarget;").append("\n");
+        if (hasLanguageCheckNode()) {
+            w.append("import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;").append("\n");
+        }
         w.append("import com.oracle.truffle.api.Truffle;").append("\n");
         if (!(messageHandlers.containsKey(Message.IS_BOXED) &&
                         messageHandlers.containsKey(Message.IS_NULL) &&
@@ -141,6 +144,9 @@ public final class ForeignAccessFactoryGenerator {
 
     private void appendFactoryCanHandle(Writer w) throws IOException {
         w.append("  @Override").append("\n");
+        if (hasLanguageCheckNode()) {
+            w.append("  @TruffleBoundary").append("\n");
+        }
         w.append("  public boolean canHandle(TruffleObject obj) {").append("\n");
         if (hasLanguageCheckNode()) {
             w.append("    return (boolean) Truffle.getRuntime().createCallTarget(").append(languageCheckFactoryInvokation).append(").call(obj);\n");

@@ -49,14 +49,22 @@ import java.util.Map;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLRootNode;
+import com.oracle.truffle.sl.parser.Parser;
 
 /**
  * Manages the mapping from function names to {@link SLFunction function objects}.
  */
 public final class SLFunctionRegistry {
 
+    private final SLLanguage language;
     private final Map<String, SLFunction> functions = new HashMap<>();
+
+    public SLFunctionRegistry(SLLanguage language) {
+        this.language = language;
+    }
 
     /**
      * Returns the canonical {@link SLFunction} object for the given name. If it does not exist yet,
@@ -65,7 +73,7 @@ public final class SLFunctionRegistry {
     public SLFunction lookup(String name, boolean createIfNotPresent) {
         SLFunction result = functions.get(name);
         if (result == null && createIfNotPresent) {
-            result = new SLFunction(name);
+            result = new SLFunction(language, name);
             functions.put(name, result);
         }
         return result;
@@ -89,6 +97,10 @@ public final class SLFunctionRegistry {
         }
     }
 
+    public void register(Source newFunctions) {
+        register(Parser.parseSL(language, newFunctions));
+    }
+
     /**
      * Returns the sorted list of all functions, for printing purposes only.
      */
@@ -100,5 +112,13 @@ public final class SLFunctionRegistry {
             }
         });
         return result;
+    }
+
+    public SLFunctionRegistry fork() {
+        SLFunctionRegistry registry = new SLFunctionRegistry(language);
+        for (SLFunction f : functions.values()) {
+            registry.functions.put(f.getName(), f.fork());
+        }
+        return registry;
     }
 }

@@ -33,7 +33,6 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.vm.InitializationTest.TestLanguage;
 
 public class LoopNodeTest {
 
@@ -138,7 +137,7 @@ public class LoopNodeTest {
                 }
             }
         };
-        RootNode root = new RootNode(TestLanguage.INSTANCE.getClass(), null, null) {
+        RootNode root = new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 return node.execute(frame);

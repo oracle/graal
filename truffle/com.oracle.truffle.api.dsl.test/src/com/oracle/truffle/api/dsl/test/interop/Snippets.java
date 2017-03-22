@@ -62,8 +62,7 @@ public static class ExampleTruffleObject implements TruffleObject {
 }
 
 // BEGIN: com.oracle.truffle.api.dsl.test.interop.Snippets.ExampleTruffleObjectMR
-@MessageResolution(receiverType = ExampleTruffleObject.class,
-                   language = TestTruffleLanguage.class)
+@MessageResolution(receiverType = ExampleTruffleObject.class)
 public static class ExampleTruffleObjectMR {
 
      @Resolve(message = "READ")

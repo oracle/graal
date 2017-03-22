@@ -423,7 +423,7 @@ public class StackTraceTest {
         @Child private TestCallNode callNode;
 
         TestRootNode(TestCallNode callNode) {
-            super(TestingLanguage.INSTANCE.getClass(), null, null);
+            super(null);
             this.callNode = callNode;
             getFrameDescriptor().addFrameSlot("demo");
         }

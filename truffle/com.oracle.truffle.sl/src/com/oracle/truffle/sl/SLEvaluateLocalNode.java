@@ -50,8 +50,8 @@ final class SLEvaluateLocalNode extends RootNode {
     private final String variable;
     private final MaterializedFrame inspectFrame;
 
-    SLEvaluateLocalNode(String variableName, MaterializedFrame frame) {
-        super(SLLanguage.class, null, null);
+    SLEvaluateLocalNode(SLLanguage language, String variableName, MaterializedFrame frame) {
+        super(language);
         this.variable = variableName;
         this.inspectFrame = frame;
     }

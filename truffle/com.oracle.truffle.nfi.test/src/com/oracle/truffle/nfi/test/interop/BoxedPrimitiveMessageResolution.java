@@ -29,9 +29,8 @@ import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.nfi.NFILanguage;
 
-@MessageResolution(language = NFILanguage.class, receiverType = BoxedPrimitive.class)
+@MessageResolution(receiverType = BoxedPrimitive.class)
 class BoxedPrimitiveMessageResolution {
 
     @Resolve(message = "UNBOX")

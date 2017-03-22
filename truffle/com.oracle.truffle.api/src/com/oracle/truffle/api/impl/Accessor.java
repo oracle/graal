@@ -26,6 +26,7 @@ package com.oracle.truffle.api.impl;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
@@ -37,11 +38,11 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import java.util.Collection;
 
 /**
  * Communication between PolyglotEngine, TruffleLanguage API/SPI, and other services.
@@ -54,8 +55,6 @@ public abstract class Accessor {
     }
 
     public abstract static class Nodes {
-        @SuppressWarnings("rawtypes")
-        public abstract Class<? extends TruffleLanguage> findLanguage(RootNode n);
 
         public abstract boolean isInstrumentable(RootNode rootNode);
 
@@ -64,6 +63,12 @@ public abstract class Accessor {
         public abstract boolean isCloneUninitializedSupported(RootNode rootNode);
 
         public abstract RootNode cloneUninitialized(RootNode rootNode);
+
+        public abstract Object getEngineObject(LanguageInfo languageInfo);
+
+        public abstract TruffleLanguage<?> getLanguageSpi(LanguageInfo languageInfo);
+
+        public abstract LanguageInfo createLanguageInfo(Object vm, TruffleLanguage<?> language, String name, String version, Set<String> mimeTypes);
 
     }
 
@@ -87,26 +92,21 @@ public abstract class Accessor {
         public static final int EXECUTION_EVENT = 1;
         public static final int SUSPENDED_EVENT = 2;
 
-        public abstract <C> FindContextNode<C> createFindContextNode(TruffleLanguage<C> lang);
+        @SuppressWarnings("deprecation")
+        public abstract <C> com.oracle.truffle.api.impl.FindContextNode<C> createFindContextNode(TruffleLanguage<C> lang);
 
         @SuppressWarnings("rawtypes")
-        public abstract Env findEnv(Object vm, Class<? extends TruffleLanguage> languageClass);
+        public abstract Env findEnv(Object vm, Class<? extends TruffleLanguage> languageClass, boolean failIfNotFound);
 
-        @SuppressWarnings("rawtypes")
-        public abstract TruffleLanguage<?> findLanguageImpl(Object known, Class<? extends TruffleLanguage> languageClass, String mimeType);
+        public abstract Object getInstrumentationHandler(Object languageShared);
 
-        public abstract Object getInstrumentationHandler(Object vm);
+        public abstract Iterable<? extends Object> importSymbols(Object languageShared, Env env, String globalName);
 
-        public abstract Iterable<? extends Object> importSymbols(Object vm, TruffleLanguage<?> queryingLang, String globalName);
-
-        public abstract boolean isMimeTypeSupported(Object vm, String mimeType);
+        public abstract boolean isMimeTypeSupported(Object languageShared, String mimeType);
 
         public abstract void registerDebugger(Object vm, Object debugger);
 
         public abstract boolean isEvalRoot(RootNode target);
-
-        @SuppressWarnings("rawtypes")
-        public abstract Object findLanguage(Class<? extends TruffleLanguage> language);
 
         public abstract Object findOriginalObject(Object truffleObject);
 
@@ -121,10 +121,29 @@ public abstract class Accessor {
         public final void detachOutputConsumer(DispatchOutputStream dos, OutputStream out) {
             dos.detach(out);
         }
+
+        public abstract Object getCurrentVM();
+
+        public abstract Env getEnvForLanguage(Object languageShared, String mimeType);
+
+        public abstract Env getEnvForInstrument(Object vm, String mimeType);
+
+        public abstract Env getEnvForInstrument(LanguageInfo language);
+
+        public abstract Object contextReferenceGet(Object reference);
+
+        public abstract boolean isDisposed(Object vmInstance);
+
     }
 
     public abstract static class LanguageSupport {
-        public abstract Env attachEnv(Object vm, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config);
+
+        public abstract LanguageInfo initializeLanguage(Object vmObject, TruffleLanguage<?> language, boolean legacyLanguage, String name,
+                        String version, Set<String> mimeTypes);
+
+        public abstract Env createEnv(Object vmObject, LanguageInfo info, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config);
+
+        public abstract void postInitEnv(Env env);
 
         public abstract Object evalInContext(Object sourceVM, String code, Node node, MaterializedFrame frame);
 
@@ -132,23 +151,24 @@ public abstract class Accessor {
 
         public abstract Object languageGlobal(TruffleLanguage.Env env);
 
-        public abstract void dispose(TruffleLanguage<?> impl, Env env);
+        public abstract void dispose(Env env);
 
-        public abstract TruffleLanguage<?> findLanguage(Env env);
+        public abstract LanguageInfo getLanguageInfo(TruffleLanguage.Env env);
 
-        public abstract CallTarget parse(TruffleLanguage<?> truffleLanguage, Source code, Node context, String... argumentNames);
+        public abstract LanguageInfo getLanguageInfo(TruffleLanguage<?> language);
 
-        public abstract String toStringIfVisible(TruffleLanguage<?> language, Env env, Object obj, Source interactiveSource);
+        public abstract LanguageInfo getLegacyLanguageInfo(@SuppressWarnings("rawtypes") Class<? extends TruffleLanguage> languageClass);
 
-        public abstract Object findContext(Env env);
+        public abstract CallTarget parse(Env env, Source code, Node context, String... argumentNames);
 
-        public abstract void postInitEnv(Env env);
+        public abstract String toStringIfVisible(Env env, Object obj, boolean checkVisibility);
 
-        public abstract Object getVM(Env env);
+        public abstract Object findMetaObject(Env env, Object value);
 
-        public abstract Object findMetaObject(TruffleLanguage<?> language, Env env, Object value);
+        public abstract SourceSection findSourceLocation(Env env, Object value);
 
-        public abstract SourceSection findSourceLocation(TruffleLanguage<?> language, Env env, Object value);
+        public abstract Object getContext(Env env);
+
     }
 
     public abstract static class InstrumentSupport {
@@ -160,9 +180,7 @@ public abstract class Accessor {
 
         public abstract Object createInstrumentationHandler(Object vm, DispatchOutputStream out, DispatchOutputStream err, InputStream in);
 
-        public abstract void collectEnvServices(Set<Object> collectTo, Object vm, TruffleLanguage<?> impl, Env context);
-
-        public abstract void detachLanguageFromInstrumentation(Object vm, Env context);
+        public abstract void collectEnvServices(Set<Object> collectTo, Object languageShared, LanguageInfo languageInfo);
 
         public abstract void onFirstExecution(RootNode rootNode);
 
@@ -170,6 +188,9 @@ public abstract class Accessor {
 
         @SuppressWarnings("static-method")
         public final DispatchOutputStream createDispatchOutput(OutputStream out) {
+            if (out instanceof DispatchOutputStream) {
+                return (DispatchOutputStream) out;
+            }
             return new DispatchOutputStream(out);
         }
     }
@@ -388,9 +409,13 @@ public abstract class Accessor {
         }
     }
 
+    /*
+     * Do not remove: This is accessed reflectively in AccessorTest
+     */
     static <T extends TruffleLanguage<?>> T findLanguageByClass(Object vm, Class<T> languageClass) {
-        Env env = SPI.findEnv(vm, languageClass);
-        TruffleLanguage<?> language = API.findLanguage(env);
+        Env env = SPI.findEnv(vm, languageClass, true);
+        TruffleLanguage<?> language = NODES.getLanguageSpi(API.getLanguageInfo(env));
         return languageClass.cast(language);
     }
+
 }

@@ -24,6 +24,15 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.junit.Assert;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -36,13 +45,6 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.nfi.NFILanguage;
-import java.util.HashMap;
-import java.util.Map;
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.CoreMatchers.is;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class RegisterPackageNFITest extends NFITest {
 
@@ -71,7 +73,7 @@ public class RegisterPackageNFITest extends NFITest {
         }
     }
 
-    @MessageResolution(language = NFILanguage.class, receiverType = FunctionRegistry.class)
+    @MessageResolution(receiverType = FunctionRegistry.class)
     static class FunctionRegistryMessageResolution {
 
         @Resolve(message = "EXECUTE")

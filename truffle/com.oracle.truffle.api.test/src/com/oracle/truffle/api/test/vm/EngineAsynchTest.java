@@ -27,6 +27,8 @@ import java.util.concurrent.Executors;
 import org.junit.Test;
 
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
 
 public class EngineAsynchTest extends EngineTest {
     @Test
@@ -40,6 +42,37 @@ public class EngineAsynchTest extends EngineTest {
 
     @Override
     protected PolyglotEngine.Builder createBuilder() {
-        return PolyglotEngine.newBuilder().executor(Executors.newSingleThreadExecutor());
+        return PolyglotEngine.newBuilder().executor(new RecurrentExecutor(Executors.newSingleThreadExecutor()));
+    }
+
+    private static class RecurrentExecutor implements Executor {
+        private final Executor delegate;
+        private final Thread worker;
+
+        RecurrentExecutor(Executor delegate) {
+            this.delegate = delegate;
+            final Thread[] arr = {null};
+            CountDownLatch cdl = new CountDownLatch(1);
+            delegate.execute(() -> {
+                arr[0] = Thread.currentThread();
+                cdl.countDown();
+            });
+            try {
+                cdl.await();
+            } catch (InterruptedException ex) {
+                throw new IllegalStateException(ex);
+            }
+            this.worker = arr[0];
+        }
+
+        @Override
+        public void execute(Runnable command) {
+            if (Thread.currentThread() == worker) {
+                command.run();
+            } else {
+                delegate.execute(command);
+            }
+        }
+
     }
 }

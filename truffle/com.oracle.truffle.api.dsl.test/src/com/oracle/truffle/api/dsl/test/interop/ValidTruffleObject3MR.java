@@ -29,7 +29,7 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.Node;
 
 @SuppressWarnings("unused")
-@MessageResolution(receiverType = ValidTruffleObject3.class, language = TestTruffleLanguage.class)
+@MessageResolution(receiverType = ValidTruffleObject3.class)
 public class ValidTruffleObject3MR {
     @ExpectError("Inconsistent argument length.")
     @Resolve(message = "com.oracle.truffle.api.dsl.test.interop.MyMessage")

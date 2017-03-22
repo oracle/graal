@@ -88,8 +88,8 @@ public class InstrumentationMultiThreadingTest {
                         while (!terminated.get()) {
                             PolyglotEngine engine = engineRef.get();
                             if (engine != null) {
-                                engine.getInstruments().get("testAsyncAttachement1").setEnabled(index % 2 == 0);
-                                engine.getInstruments().get("testAsyncAttachement2").setEnabled(index % 2 == 1);
+                                engine.getRuntime().getInstruments().get("testAsyncAttachement1").setEnabled(index % 2 == 0);
+                                engine.getRuntime().getInstruments().get("testAsyncAttachement2").setEnabled(index % 2 == 1);
                             }
                         }
                     }
@@ -100,8 +100,8 @@ public class InstrumentationMultiThreadingTest {
             for (Future<?> future : futures) {
                 future.get();
             }
-            engineRef.get().getInstruments().get("testAsyncAttachement1").setEnabled(false);
-            engineRef.get().getInstruments().get("testAsyncAttachement2").setEnabled(false);
+            engineRef.get().getRuntime().getInstruments().get("testAsyncAttachement1").setEnabled(false);
+            engineRef.get().getRuntime().getInstruments().get("testAsyncAttachement2").setEnabled(false);
         }
 
         Assert.assertEquals(0, createDisposeCount.get());

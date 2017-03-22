@@ -93,7 +93,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context> {
 
     public static final String MIME_TYPE = "application/x-truffle-instrumentation-test-language";
     public static final String FILENAME_EXTENSION = ".titl";
-    public static final InstrumentationTestLanguage INSTANCE = new InstrumentationTestLanguage();
 
     public static final Class<?> EXPRESSION = ExpressionNode.class;
     public static final Class<?> DEFINE = DefineNode.class;
@@ -109,17 +108,25 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context> {
     // used to test that no getSourceSection calls happen in certain situations
     private static int rootSourceSectionQueryCount;
 
+    public InstrumentationTestLanguage() {
+    }
+
     @Override
     protected Context createContext(TruffleLanguage.Env env) {
-        return new Context(env.out(), env.err());
+        Object[] sharedContext = (Object[]) env.getConfig().get("context");
+        if (sharedContext == null || sharedContext[0] == null) {
+            Context c = new Context(env.out(), env.err());
+            if (sharedContext != null) {
+                sharedContext[0] = c;
+            }
+            return c;
+        } else {
+            return forkContext((Context) sharedContext[0]);
+        }
     }
 
-    public Node createFindContextNode0() {
-        return super.createFindContextNode();
-    }
-
-    public Context findContext0(Node contextNode) {
-        return findContext(contextNode);
+    protected Context forkContext(Context context) {
+        return context;
     }
 
     @Override
@@ -132,22 +139,24 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context> {
         } catch (LanguageError e) {
             throw new IOException(e);
         }
-        return Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode("", outer, node));
+        return Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(this, "", outer, node));
     }
 
-    public static BaseNode parse(Source code) {
-        return new Parser(code).parse();
+    public BaseNode parse(Source code) {
+        return new Parser(this, code).parse();
     }
 
     private static final class Parser {
 
         private static final char EOF = (char) -1;
 
+        private final InstrumentationTestLanguage lang;
         private final Source source;
         private final String code;
         private int current;
 
-        Parser(Source source) {
+        Parser(InstrumentationTestLanguage lang, Source source) {
+            this.lang = lang;
             this.source = source;
             this.code = source.getCode();
         }
@@ -235,10 +244,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context> {
             return false;
         }
 
-        private static BaseNode createNode(String tag, String[] idents, SourceSection sourceSection, BaseNode[] childArray) throws AssertionError {
+        private BaseNode createNode(String tag, String[] idents, SourceSection sourceSection, BaseNode[] childArray) throws AssertionError {
             switch (tag) {
                 case "DEFINE":
-                    return new DefineNode(idents[0], sourceSection, childArray);
+                    return new DefineNode(lang, idents[0], sourceSection, childArray);
                 case "CALL":
                     return new CallNode(idents[0], childArray);
                 case "LOOP":
@@ -310,18 +319,20 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context> {
     private static class InstrumentationTestRootNode extends RootNode {
 
         private final String name;
+        private final SourceSection sourceSection;
         @Children private final BaseNode[] expressions;
 
-        protected InstrumentationTestRootNode(String name, SourceSection sourceSection, BaseNode... expressions) {
-            super(InstrumentationTestLanguage.class, sourceSection, null);
+        protected InstrumentationTestRootNode(InstrumentationTestLanguage lang, String name, SourceSection sourceSection, BaseNode... expressions) {
+            super(lang);
             this.name = name;
+            this.sourceSection = sourceSection;
             this.expressions = expressions;
         }
 
         @Override
         public SourceSection getSourceSection() {
             rootSourceSectionQueryCount++;
-            return super.getSourceSection();
+            return sourceSection;
         }
 
         @Override
@@ -426,12 +437,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context> {
         private final String identifier;
         private final CallTarget target;
 
-        @Child private Node contextNode;
-
-        DefineNode(String identifier, SourceSection source, BaseNode[] children) {
+        DefineNode(InstrumentationTestLanguage lang, String identifier, SourceSection source, BaseNode[] children) {
             this.identifier = identifier;
-            this.target = Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(identifier, source, children));
-            this.contextNode = InstrumentationTestLanguage.INSTANCE.createFindContextNode0();
+            this.target = Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(lang, identifier, source, children));
         }
 
         @Override
@@ -442,7 +450,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context> {
 
         @TruffleBoundary
         private void defineFunction() {
-            Context context = InstrumentationTestLanguage.INSTANCE.findContext(contextNode);
+            Context context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
             if (context.callTargets.containsKey(identifier)) {
                 if (context.callTargets.get(identifier) != target) {
                     throw new IllegalArgumentException("Identifier redefinition not supported.");
@@ -456,13 +464,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context> {
     private static class CallNode extends InstrumentedNode {
 
         @Child private DirectCallNode callNode;
-        @Child private Node contextNode;
-
         private final String identifier;
 
         CallNode(String identifier, BaseNode[] children) {
             super(children);
-            this.contextNode = InstrumentationTestLanguage.INSTANCE.createFindContextNode0();
             this.identifier = identifier;
         }
 
@@ -470,7 +475,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context> {
         public Object execute(VirtualFrame frame) {
             if (callNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                Context context = InstrumentationTestLanguage.INSTANCE.findContext(contextNode);
+                Context context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
                 CallTarget target = context.callTargets.get(identifier);
                 callNode = insert(Truffle.getRuntime().createDirectCallNode(target));
             }
@@ -573,7 +578,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context> {
         private final Output where;
         private final String what;
         @CompilationFinal private PrintWriter writer;
-        @Child private Node contextNode;
 
         PrintNode(String where, String what, BaseNode[] children) {
             super(children);
@@ -584,14 +588,13 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context> {
                 this.where = Output.valueOf(where);
                 this.what = what;
             }
-            this.contextNode = InstrumentationTestLanguage.INSTANCE.createFindContextNode0();
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
             if (writer == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                Context context = InstrumentationTestLanguage.INSTANCE.findContext(contextNode);
+                Context context = getRootNode().getLanguage(InstrumentationTestLanguage.class).getContextReference().get();
                 switch (where) {
                     case OUT:
                         writer = new PrintWriter(new OutputStreamWriter(context.out));

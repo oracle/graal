@@ -24,10 +24,19 @@
  */
 package com.oracle.truffle.api.interop.java;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.Proxy;
+import java.util.Collection;
+import java.util.LinkedHashSet;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -43,15 +52,6 @@ import com.oracle.truffle.api.interop.java.JavaInteropReflectFactory.MethodNodeG
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.Proxy;
-import java.util.Collection;
-import java.util.LinkedHashSet;
 
 final class JavaInteropReflect {
     private static final Object[] EMPTY = {};
@@ -225,7 +225,7 @@ final class JavaInteropReflect {
                 target = JavaInterop.ACCESSOR.engine().lookupOrRegisterComputation(symbol, null, JavaInteropReflect.class);
                 if (target == null) {
                     Node executeMain = Message.createExecute(args.length).createNode();
-                    RootNode symbolNode = new ToJavaNode.TemporaryRoot(TruffleLanguage.class, executeMain);
+                    RootNode symbolNode = new ToJavaNode.TemporaryRoot(executeMain);
                     target = JavaInterop.ACCESSOR.engine().lookupOrRegisterComputation(symbol, symbolNode, JavaInteropReflect.class);
                 }
             }
@@ -284,7 +284,7 @@ final class JavaInteropReflect {
         @Child private Node node;
 
         MethodNode(String name, Message message, TypeAndClass<?> returnType) {
-            super(TruffleLanguage.class, null, null);
+            super(null);
             this.name = name;
             this.toJavaNode = ToJavaNodeGen.create();
             this.message = message;

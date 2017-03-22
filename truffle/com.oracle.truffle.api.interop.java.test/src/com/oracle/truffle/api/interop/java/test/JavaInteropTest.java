@@ -43,7 +43,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
@@ -146,7 +145,7 @@ public class JavaInteropTest {
 
         class SendKeys extends RootNode {
             SendKeys() {
-                super(TruffleLanguage.class, null, null);
+                super(null);
             }
 
             @Override
@@ -538,7 +537,7 @@ public class JavaInteropTest {
 
     static Object message(final Message m, TruffleObject receiver, Object... arr) {
         Node n = m.createNode();
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(TruffleLanguage.class, n, receiver, arr));
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(n, receiver, arr));
         return callTarget.call();
     }
 
@@ -547,9 +546,8 @@ public class JavaInteropTest {
         private final TruffleObject function;
         private final Object[] args;
 
-        @SuppressWarnings("rawtypes")
-        TemporaryRoot(Class<? extends TruffleLanguage> lang, Node foreignAccess, TruffleObject function, Object... args) {
-            super(lang, null, null);
+        TemporaryRoot(Node foreignAccess, TruffleObject function, Object... args) {
+            super(null);
             this.foreignAccess = foreignAccess;
             this.function = function;
             this.args = args;

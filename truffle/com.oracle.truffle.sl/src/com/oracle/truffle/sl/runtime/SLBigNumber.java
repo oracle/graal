@@ -40,15 +40,15 @@
  */
 package com.oracle.truffle.sl.runtime;
 
+import java.math.BigInteger;
+
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.sl.SLLanguage;
-import java.math.BigInteger;
 
-@MessageResolution(language = SLLanguage.class, receiverType = SLBigNumber.class)
+@MessageResolution(receiverType = SLBigNumber.class)
 public final class SLBigNumber implements TruffleObject {
 
     private final BigInteger value;

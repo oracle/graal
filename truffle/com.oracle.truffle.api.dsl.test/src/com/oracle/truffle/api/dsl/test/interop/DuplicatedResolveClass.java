@@ -33,7 +33,7 @@ import com.oracle.truffle.api.nodes.Node;
 @SuppressWarnings("unused")
 public class DuplicatedResolveClass {
 
-    @MessageResolution(receiverType = ValidTruffleObject12.class, language = TestTruffleLanguage.class)
+    @MessageResolution(receiverType = ValidTruffleObject12.class)
     public static class TruffleObjectMR1 {
         @Resolve(message = "READ")
         public abstract static class ReadNodeDuplicated extends Node {
@@ -52,7 +52,7 @@ public class DuplicatedResolveClass {
         }
     }
 
-    @MessageResolution(receiverType = ValidTruffleObject12.class, language = TestTruffleLanguage.class)
+    @MessageResolution(receiverType = ValidTruffleObject12.class)
     public static class TruffleObjectMR2 {
         @Resolve(message = "READ")
         @ExpectError("Message resolution class with same name already exists")

@@ -103,7 +103,7 @@ public class ExchangingObjectsForbiddenTest {
         myEngine.dispose();
     }
 
-    @MessageResolution(language = MyLang.class, receiverType = MyObj.class)
+    @MessageResolution(receiverType = MyObj.class)
     static final class MyObj implements TruffleObject {
         private Object value;
 

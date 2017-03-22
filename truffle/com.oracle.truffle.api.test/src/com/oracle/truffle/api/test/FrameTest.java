@@ -101,7 +101,7 @@ public class FrameTest {
         @Child TestChildNode right;
 
         TestRootNode(FrameDescriptor descriptor, TestChildNode left, TestChildNode right) {
-            super(TestingLanguage.class, null, descriptor);
+            super(null, descriptor);
             this.left = left;
             this.right = right;
         }
@@ -165,7 +165,7 @@ public class FrameTest {
         class FrameRootNode extends RootNode {
 
             FrameRootNode() {
-                super(TestingLanguage.class, null, null);
+                super(null);
             }
 
             @Override

@@ -33,7 +33,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.tck.impl.TckLanguage;
 
 @SuppressWarnings("unused")
-@MessageResolution(receiverType = ComplexNumber.class, language = TckLanguage.class)
+@MessageResolution(receiverType = ComplexNumber.class)
 class ComplexNumberMessageResolution {
     @Resolve(message = "GET_SIZE")
     abstract static class ComplexGetSizeNode extends Node {

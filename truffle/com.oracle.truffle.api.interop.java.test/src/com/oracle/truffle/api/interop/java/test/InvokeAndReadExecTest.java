@@ -56,7 +56,7 @@ public class InvokeAndReadExecTest {
         assertEquals("Executed Hi", t2.test("Hi"));
     }
 
-    @MessageResolution(language = Dummy.class, receiverType = InvokeObject.class)
+    @MessageResolution(receiverType = InvokeObject.class)
     static final class InvokeObject implements TruffleObject {
 
         @Resolve(message = "INVOKE")
@@ -80,7 +80,7 @@ public class InvokeAndReadExecTest {
         }
     }
 
-    @MessageResolution(language = Dummy.class, receiverType = ReadExecObject.class)
+    @MessageResolution(receiverType = ReadExecObject.class)
     static final class ReadExecObject implements TruffleObject {
         @Resolve(message = "READ")
         abstract static class ReadImpl extends Node {
