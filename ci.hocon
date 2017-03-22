@@ -62,9 +62,7 @@ maven-deploy-dry-run : ${common} ${java8Downloads} {
 }
 
 deploy-binary : ${common} ${java8Downloads} {
-  capabilities : [linux, amd64]
   targets : [post-merge]
-  name : postmerge-deploy-binary
   setup : [
      ["mx", "--strict-compliance", "build"]
   ]
@@ -120,7 +118,9 @@ builds = [
   ${common} ${java8Downloads} {run : [["mx", "-v", "testgraal"]], capabilities : [linux, amd64], targets : [gate], name: "gate-testgraal8"},
   ${common} ${java8Downloads} {run : [["mx", "-v", "testdownstream", "--repo", "https://github.com/graalvm/truffleruby.git", "--mx-command", "ruby_testdownstream"]], capabilities : [linux, amd64], targets : [post-merge], name: "gate-rubytruffle"},
   ${maven-deploy-dry-run}
-  ${deploy-binary}
+  ${deploy-binary} {capabilities : [linux, amd64], name : "postmerge-deploy-binary-linux-amd64"}
+  ${deploy-binary} {capabilities : [darwin, amd64], name : "postmerge-deploy-binary-darwin-amd64"}
+  ${deploy-binary} {capabilities : [solaris, sparcv9], name : "postmerge-deploy-binary-solaris-sparcv9"}
   ${solaris} ${java8Downloads} ${gateLite} {
     capabilities : [solaris, sparcv9],
     targets : [ gate ],
