@@ -41,6 +41,7 @@ import com.oracle.truffle.api.profiles.ByteValueProfile;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -60,44 +61,28 @@ public abstract class LLVMI8LoadNode extends LLVMExpressionNode {
         }
     }
 
-    public abstract static class LLVMI8DirectLoadNode extends LLVMI8LoadNode {
+    private final ByteValueProfile profile = ByteValueProfile.createIdentityProfile();
 
-        @Specialization
-        public byte executeI8(LLVMAddress addr) {
-            return LLVMMemory.getI8(addr);
-        }
-
-        @Specialization
-        public byte executeI8(LLVMTruffleObject addr) {
-            return doForeignAccess(addr);
-        }
-
-        @Specialization
-        public byte executeI8(TruffleObject addr) {
-            return executeI8(new LLVMTruffleObject(addr, PrimitiveType.I8));
-        }
-
+    @Specialization
+    public byte executeI8(LLVMAddress addr) {
+        byte val = LLVMMemory.getI8(addr);
+        return profile.profile(val);
     }
 
-    public abstract static class LLVMI8ProfilingLoadNode extends LLVMI8LoadNode {
+    @Specialization
+    public byte executeI8(LLVMGlobalVariableDescriptor addr) {
+        byte val = LLVMMemory.getI8(addr.getNativeAddress());
+        return profile.profile(val);
+    }
 
-        private final ByteValueProfile profile = ByteValueProfile.createIdentityProfile();
+    @Specialization
+    public byte executeI8(LLVMTruffleObject addr) {
+        return doForeignAccess(addr);
+    }
 
-        @Specialization
-        public byte executeI8(LLVMAddress addr) {
-            byte val = LLVMMemory.getI8(addr);
-            return profile.profile(val);
-        }
-
-        @Specialization
-        public byte executeI8(LLVMTruffleObject addr) {
-            return doForeignAccess(addr);
-        }
-
-        @Specialization
-        public byte executeI8(TruffleObject addr) {
-            return executeI8(new LLVMTruffleObject(addr, PrimitiveType.I8));
-        }
+    @Specialization
+    public byte executeI8(TruffleObject addr) {
+        return executeI8(new LLVMTruffleObject(addr, PrimitiveType.I8));
     }
 
 }

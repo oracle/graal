@@ -29,12 +29,198 @@
  */
 package com.oracle.truffle.llvm.nodes.base;
 
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
+import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions.MemCopyNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
 public abstract class LLVMStructWriteNode extends Node {
 
-    public abstract Object executeWrite(VirtualFrame frame, LLVMAddress address);
+    public abstract Object executeWrite(VirtualFrame frame, Object address, Object value);
+
+    public abstract static class LLVMPrimitiveStructWriteNode extends LLVMStructWriteNode {
+
+        @Specialization
+        public Object executeWrite(LLVMAddress address, boolean value) {
+            LLVMMemory.putI1(address, value);
+            return null;
+        }
+
+        @Specialization
+        public Object executeWrite(LLVMAddress address, byte value) {
+            LLVMMemory.putI8(address, value);
+            return null;
+        }
+
+        @Specialization
+        public Object executeWrite(LLVMAddress address, short value) {
+            LLVMMemory.putI16(address, value);
+            return null;
+        }
+
+        @Specialization
+        public Object executeWrite(LLVMAddress address, int value) {
+            LLVMMemory.putI32(address, value);
+            return null;
+        }
+
+        @Specialization
+        public Object executeWrite(LLVMAddress address, long value) {
+            LLVMMemory.putI64(address, value);
+            return null;
+        }
+
+        @Specialization
+        public Object executeWrite(LLVMAddress address, float value) {
+            LLVMMemory.putFloat(address, value);
+            return null;
+        }
+
+        @Specialization
+        public Object executeWrite(LLVMAddress address, double value) {
+            LLVMMemory.putDouble(address, value);
+            return null;
+        }
+
+        @Specialization
+        public Object executeWrite(LLVMAddress address, LLVM80BitFloat value) {
+            LLVMMemory.put80BitFloat(address, value);
+            return null;
+        }
+
+        // global variable descriptor
+
+        @Specialization
+        public Object executeWrite(LLVMGlobalVariableDescriptor address, boolean value) {
+            LLVMMemory.putI1(address.getNativeAddress(), value);
+            return null;
+        }
+
+        @Specialization
+        public Object executeWrite(LLVMGlobalVariableDescriptor address, byte value) {
+            LLVMMemory.putI8(address.getNativeAddress(), value);
+            return null;
+        }
+
+        @Specialization
+        public Object executeWrite(LLVMGlobalVariableDescriptor address, short value) {
+            LLVMMemory.putI16(address.getNativeAddress(), value);
+            return null;
+        }
+
+        @Specialization
+        public Object executeWrite(LLVMGlobalVariableDescriptor address, int value) {
+            LLVMMemory.putI32(address.getNativeAddress(), value);
+            return null;
+        }
+
+        @Specialization
+        public Object executeWrite(LLVMGlobalVariableDescriptor address, long value) {
+            LLVMMemory.putI64(address.getNativeAddress(), value);
+            return null;
+        }
+
+        @Specialization
+        public Object executeWrite(LLVMGlobalVariableDescriptor address, float value) {
+            LLVMMemory.putFloat(address.getNativeAddress(), value);
+            return null;
+        }
+
+        @Specialization
+        public Object executeWrite(LLVMGlobalVariableDescriptor address, double value) {
+            LLVMMemory.putDouble(address.getNativeAddress(), value);
+            return null;
+        }
+
+        @Specialization
+        public Object executeWrite(LLVMGlobalVariableDescriptor address, LLVM80BitFloat value) {
+            LLVMMemory.put80BitFloat(address.getNativeAddress(), value);
+            return null;
+        }
+
+        @Specialization
+        public Object executeWrite(LLVMAddress address, LLVMAddress value) {
+            LLVMMemory.putAddress(address, value);
+            return null;
+        }
+
+        @Specialization
+        public Object executeWrite(LLVMGlobalVariableDescriptor address, LLVMAddress value) {
+            LLVMMemory.putAddress(address.getNativeAddress(), value);
+            return null;
+        }
+
+        @Specialization
+        public Object executeWrite(LLVMAddress address, LLVMGlobalVariableDescriptor value) {
+            LLVMMemory.putAddress(address, value.getNativeAddress());
+            return null;
+        }
+
+        @Specialization
+        public Object executeWrite(LLVMGlobalVariableDescriptor address, LLVMGlobalVariableDescriptor value) {
+            LLVMMemory.putAddress(address.getNativeAddress(), value.getNativeAddress());
+            return null;
+        }
+
+        @Specialization
+        public Object executeWrite(LLVMAddress address, LLVMFunction value) {
+            LLVMHeap.putFunctionIndex(address, value.getFunctionIndex());
+            return null;
+        }
+    }
+
+    public abstract static class LLVMCompoundStructWriteNode extends LLVMStructWriteNode {
+
+        private int size;
+
+        @Child private MemCopyNode memCopy;
+
+        public LLVMCompoundStructWriteNode(LLVMHeapFunctions heapFunctions, int size) {
+            this.size = size;
+            this.memCopy = heapFunctions.createMemCopyNode();
+        }
+
+        @Specialization
+        public Object executeWrite(LLVMAddress address, LLVMAddress value) {
+            memCopy.execute(address, value, size);
+            return null;
+        }
+
+        @Specialization
+        public Object executeWrite(LLVMGlobalVariableDescriptor address, LLVMAddress value) {
+            memCopy.execute(address.getNativeAddress(), value, size);
+            return null;
+        }
+
+        @Specialization
+        public Object executeWrite(LLVMAddress address, LLVMGlobalVariableDescriptor value) {
+            memCopy.execute(address, value.getNativeAddress(), size);
+            return null;
+        }
+
+        @Specialization
+        public Object executeWrite(LLVMGlobalVariableDescriptor address, LLVMGlobalVariableDescriptor value) {
+            memCopy.execute(address.getNativeAddress(), value.getNativeAddress(), size);
+            return null;
+        }
+
+    }
+
+    public abstract static class LLVMEmptyStructWriteNode extends LLVMStructWriteNode {
+
+        @Specialization
+        @SuppressWarnings("unused")
+        public Object executeWrite(LLVMAddress address, Object value) {
+            return null;
+        }
+
+    }
 
 }

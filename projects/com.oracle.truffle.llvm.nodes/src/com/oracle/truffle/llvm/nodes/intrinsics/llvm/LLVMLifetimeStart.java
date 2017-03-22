@@ -34,14 +34,13 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 
 @GenerateNodeFactory
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "size"), @NodeChild(type = LLVMExpressionNode.class, value = "expected")})
 public abstract class LLVMLifetimeStart extends LLVMExpressionNode {
 
     @Specialization
-    public Object executeI1(@SuppressWarnings("unused") long size, @SuppressWarnings("unused") LLVMAddress ptr) {
+    public Object executeI1(@SuppressWarnings("unused") long size, @SuppressWarnings("unused") Object ptr) {
         return null;
     }
 

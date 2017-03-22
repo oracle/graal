@@ -137,7 +137,7 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
             throw new IllegalArgumentException("Can't truffle_managed_malloc for more than 2^31 objects");
         }
 
-        return new ManagedMallocObject((int) (roundedSize / LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES));
+        return new ManagedMallocObject((int) (roundedSize));
     }
 
 }

@@ -29,69 +29,300 @@
  */
 package com.oracle.truffle.llvm.nodes.op.compare;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
 
-    public abstract static class LLVMAddressUltNode extends LLVMAddressCompareNode {
-        @Specialization
-        public boolean executeI1(LLVMAddress val1, LLVMAddress val2) {
-            return val1.unsignedLessThan(val2);
+    public enum Kind {
+        ULT,
+        UGT,
+        UGE,
+        ULE,
+        SLE,
+        SGT,
+        SGE,
+        SLT,
+        EQ,
+        NEQ,
+    }
+
+    public static LLVMAddressCompareNode create(Kind kind, LLVMExpressionNode l, LLVMExpressionNode r) {
+        switch (kind) {
+            case SLT:
+                return LLVMAddressCompareNodeGen.create(new AddressCompare() {
+
+                    @Override
+                    public boolean compare(LLVMAddress val1, LLVMAddress val2) {
+                        return val1.signedLessThan(val2);
+                    }
+
+                }, l, r);
+
+            case SGE:
+                return LLVMAddressCompareNodeGen.create(new AddressCompare() {
+
+                    @Override
+                    public boolean compare(LLVMAddress val1, LLVMAddress val2) {
+                        return val1.signedGreaterEquals(val2);
+                    }
+
+                }, l, r);
+            case SGT:
+                return LLVMAddressCompareNodeGen.create(new AddressCompare() {
+
+                    @Override
+                    public boolean compare(LLVMAddress val1, LLVMAddress val2) {
+                        return val1.signedGreaterThan(val2);
+                    }
+
+                }, l, r);
+            case SLE:
+                return LLVMAddressCompareNodeGen.create(new AddressCompare() {
+
+                    @Override
+                    public boolean compare(LLVMAddress val1, LLVMAddress val2) {
+                        return val1.signedLessEquals(val2);
+                    }
+
+                }, l, r);
+            case UGE:
+                return LLVMAddressCompareNodeGen.create(new AddressCompare() {
+
+                    @Override
+                    public boolean compare(LLVMAddress val1, LLVMAddress val2) {
+                        return val1.unsignedGreaterEquals(val2);
+                    }
+
+                }, l, r);
+            case UGT:
+                return LLVMAddressCompareNodeGen.create(new AddressCompare() {
+
+                    @Override
+                    public boolean compare(LLVMAddress val1, LLVMAddress val2) {
+                        return val1.unsignedGreaterThan(val2);
+                    }
+
+                }, l, r);
+            case ULE:
+                return LLVMAddressCompareNodeGen.create(new AddressCompare() {
+
+                    @Override
+                    public boolean compare(LLVMAddress val1, LLVMAddress val2) {
+                        return val1.unsignedLessEquals(val2);
+                    }
+
+                }, l, r);
+            case ULT:
+                return LLVMAddressCompareNodeGen.create(new AddressCompare() {
+
+                    @Override
+                    public boolean compare(LLVMAddress val1, LLVMAddress val2) {
+                        return val1.unsignedLessThan(val2);
+                    }
+
+                }, l, r);
+
+            case EQ:
+                return LLVMAddressCompareNodeGen.create(new AddressCompare() {
+
+                    @Override
+                    public boolean compare(LLVMAddress val1, LLVMAddress val2) {
+                        return val1.getVal() == val2.getVal();
+                    }
+
+                }, l, r);
+
+            case NEQ:
+                return LLVMAddressCompareNodeGen.create(new AddressCompare() {
+
+                    @Override
+                    public boolean compare(LLVMAddress val1, LLVMAddress val2) {
+                        return val1.getVal() != val2.getVal();
+                    }
+
+                }, l, r);
+            default:
+                throw new AssertionError();
+
         }
     }
 
-    public abstract static class LLVMAddressUgtNode extends LLVMAddressCompareNode {
-        @Specialization
-        public boolean executeI1(LLVMAddress val1, LLVMAddress val2) {
-            return val1.unsignedGreaterThan(val2);
+    protected abstract static class AddressCompare {
+
+        abstract boolean compare(LLVMAddress val1, LLVMAddress val2);
+
+        boolean compare(long val1, long val2) {
+            return compare(LLVMAddress.fromLong(val1), LLVMAddress.fromLong(val2));
+        }
+
+    }
+
+    private final AddressCompare op;
+
+    public LLVMAddressCompareNode(AddressCompare op) {
+        this.op = op;
+    }
+
+    @Specialization
+    public boolean doCompare(LLVMAddress val1, LLVMAddress val2) {
+        return op.compare(val1, val2);
+    }
+
+    @Specialization
+    public boolean doCompare(LLVMGlobalVariableDescriptor val1, LLVMAddress val2) {
+        return op.compare(val1.getNativeAddress(), val2);
+    }
+
+    @Specialization
+    public boolean doCompare(LLVMAddress val1, LLVMGlobalVariableDescriptor val2) {
+        return op.compare(val1, val2.getNativeAddress());
+    }
+
+    @Specialization
+    public boolean doCompare(LLVMGlobalVariableDescriptor val1, LLVMGlobalVariableDescriptor val2) {
+        return op.compare(val1.getNativeAddress(), val2.getNativeAddress());
+    }
+
+    @Child private Node unbox1 = Message.UNBOX.createNode();
+    @Child private Node unbox2 = Message.UNBOX.createNode();
+    @Child private Node isBoxed1 = Message.IS_BOXED.createNode();
+    @Child private Node isBoxed2 = Message.IS_BOXED.createNode();
+    @Child private ToLLVMNode toLLVM1 = ToLLVMNode.createNode(long.class);
+    @Child private ToLLVMNode toLLVM2 = ToLLVMNode.createNode(long.class);
+
+    @Specialization
+    public boolean doCompare(LLVMTruffleObject val1, LLVMTruffleObject val2) {
+        return internalCompare(val1.getObject(), val1.getOffset(), val2.getObject(), val2.getOffset());
+    }
+
+    private boolean internalCompare(TruffleObject to1, long offset1, TruffleObject to2, long offset2) {
+        try {
+            if (ForeignAccess.sendIsBoxed(isBoxed1, to1) && ForeignAccess.sendIsBoxed(isBoxed2, to2)) {
+                long v1 = (long) toLLVM1.executeWithTarget(ForeignAccess.sendUnbox(unbox1, to1));
+                long v2 = (long) toLLVM2.executeWithTarget(ForeignAccess.sendUnbox(unbox2, to2));
+                return op.compare(v1 + offset1, v2 + offset2);
+            } else {
+                return op.compare(to1.hashCode() + offset1, to2.hashCode() + offset2);
+            }
+        } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException(e);
         }
     }
 
-    public abstract static class LLVMAddressUgeNode extends LLVMAddressCompareNode {
-        @Specialization
-        public boolean executeI1(LLVMAddress val1, LLVMAddress val2) {
-            return val1.unsignedGreaterEquals(val2);
+    @Child private Node isNull1 = Message.IS_NULL.createNode();
+    @Child private Node isNull2 = Message.IS_NULL.createNode();
+
+    @Specialization
+    public boolean doCompare(LLVMTruffleObject val1, LLVMAddress val2) {
+        TruffleObject truffleObject = val1.getObject();
+        long offset = val1.getOffset();
+        return doForeignAndAddress(val2, truffleObject, offset);
+    }
+
+    private final BranchProfile branchProfile1 = BranchProfile.create();
+    private final BranchProfile branchProfile2 = BranchProfile.create();
+    private final BranchProfile branchProfile3 = BranchProfile.create();
+
+    private boolean doForeignAndAddress(LLVMAddress val2, TruffleObject truffleObject, long offset) {
+        try {
+            if (ForeignAccess.sendIsNull(isNull1, truffleObject) && offset == 0 && val2.getVal() == 0) {
+                branchProfile1.enter();
+                return op.compare(0, 0);
+            } else if ((!ForeignAccess.sendIsNull(isNull1, truffleObject) || offset != 0) && val2.getVal() == 0) {
+                branchProfile2.enter();
+                return op.compare(1, 0);
+            } else if (ForeignAccess.sendIsBoxed(isBoxed1, truffleObject)) {
+                branchProfile3.enter();
+                long v1 = (long) toLLVM1.executeWithTarget(ForeignAccess.sendUnbox(unbox1, truffleObject)) + offset;
+                return op.compare(v1, val2.getVal());
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Cannot compare foreign with C data: " + truffleObject + " " + val2);
+            }
+        } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException(e);
         }
     }
 
-    public abstract static class LLVMAddressUleNode extends LLVMAddressCompareNode {
-        @Specialization
-        public boolean executeI1(LLVMAddress val1, LLVMAddress val2) {
-            return val1.unsignedLessEquals(val2);
-        }
+    @Specialization
+    public boolean doCompare(LLVMAddress val1, LLVMTruffleObject val2) {
+        TruffleObject truffleObject = val2.getObject();
+        long offset = val2.getOffset();
+        return doForeignAndAddress(val1, truffleObject, offset);
     }
 
-    public abstract static class LLVMAddressSleNode extends LLVMAddressCompareNode {
-        @Specialization
-        public boolean executeI1(LLVMAddress val1, LLVMAddress val2) {
-            return val1.signedLessEquals(val2);
-        }
+    @Specialization
+    @SuppressWarnings("unused")
+    public boolean doCompare(LLVMTruffleObject val1, LLVMGlobalVariableDescriptor val2) {
+        // the address of a global can never be a foreign object
+        return false;
     }
 
-    public abstract static class LLVMAddressSltNode extends LLVMAddressCompareNode {
-        @Specialization
-        public boolean executeI1(LLVMAddress val1, LLVMAddress val2) {
-            return val1.signedLessThan(val2);
-        }
+    @Specialization
+    @SuppressWarnings("unused")
+    public boolean doCompare(LLVMGlobalVariableDescriptor val1, LLVMTruffleObject val2) {
+        // the address of a global can never be a foreign object
+        return false;
     }
 
-    public abstract static class LLVMAddressSgtNode extends LLVMAddressCompareNode {
-        @Specialization
-        public boolean executeI1(LLVMAddress val1, LLVMAddress val2) {
-            return val1.signedGreaterThan(val2);
-        }
+    @Specialization(guards = {"notLLVM(val1)", "notLLVM(val2)"})
+    public boolean doCompare(TruffleObject val1, TruffleObject val2) {
+        return internalCompare(val1, 0, val2, 0);
     }
 
-    public abstract static class LLVMAddressSgeNode extends LLVMAddressCompareNode {
-        @Specialization
-        public boolean executeI1(LLVMAddress val1, LLVMAddress val2) {
-            return val1.signedGreaterEquals(val2);
-        }
+    @Specialization(guards = {"notLLVM(val2)"})
+    public boolean doCompare(LLVMAddress val1, TruffleObject val2) {
+        return doForeignAndAddress(val1, val2, 0);
+    }
+
+    @Specialization(guards = {"notLLVM(val1)"})
+    public boolean doCompare(TruffleObject val1, LLVMAddress val2) {
+        return doForeignAndAddress(val2, val1, 0);
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"notLLVM(val2)"})
+    public boolean doCompare(LLVMGlobalVariableDescriptor val1, TruffleObject val2) {
+        return false;
+    }
+
+    @Specialization(guards = {"notLLVM(val2)"})
+    public boolean doCompare(LLVMTruffleObject val1, TruffleObject val2) {
+        return internalCompare(val1.getObject(), val1.getOffset(), val2, 0);
+    }
+
+    @Specialization(guards = {"notLLVM(val1)"})
+    public boolean doCompare(TruffleObject val1, LLVMTruffleObject val2) {
+        return internalCompare(val1, 0, val2.getObject(), val2.getOffset());
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"notLLVM(val1)"})
+    public boolean doCompare(TruffleObject val1, LLVMGlobalVariableDescriptor val2) {
+        return false;
+    }
+
+    @Specialization
+    public boolean executeI1(LLVMFunction val1, LLVMFunction val2) {
+        return op.compare(val1.getFunctionIndex(), val2.getFunctionIndex());
     }
 
 }

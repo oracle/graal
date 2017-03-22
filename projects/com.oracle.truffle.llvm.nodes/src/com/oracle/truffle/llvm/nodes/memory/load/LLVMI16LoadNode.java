@@ -29,10 +29,8 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.load;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -41,8 +39,8 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
-import com.oracle.truffle.llvm.nodes.memory.load.LLVMI16LoadNodeFactory.LLVMI16DirectLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -63,91 +61,24 @@ public abstract class LLVMI16LoadNode extends LLVMExpressionNode {
         }
     }
 
-    public abstract static class LLVMI16DirectLoadNode extends LLVMI16LoadNode {
-
-        @Specialization
-        public short executeI16(LLVMAddress addr) {
-            return LLVMMemory.getI16(addr);
-        }
-
-        @Specialization
-        public short executeI16(LLVMTruffleObject addr) {
-            return doForeignAccess(addr);
-        }
-
-        @Specialization
-        public short executeI16(TruffleObject addr) {
-            return executeI16(new LLVMTruffleObject(addr, PrimitiveType.I16));
-        }
-
+    @Specialization
+    public short executeShort(LLVMGlobalVariableDescriptor addr) {
+        return executeShort(addr.getNativeAddress());
     }
 
-    public static class LLVMI16UninitializedLoadNode extends LLVMI16LoadNode {
-
-        @Child private LLVMExpressionNode addressNode;
-
-        public LLVMI16UninitializedLoadNode(LLVMExpressionNode addressNode) {
-            this.addressNode = addressNode;
-        }
-
-        @Override
-        public short executeI16(VirtualFrame frame) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            Object addr = addressNode.executeGeneric(frame);
-            short val;
-            if (addr instanceof LLVMAddress) {
-                val = LLVMMemory.getI16((LLVMAddress) addr);
-            } else if (addr instanceof LLVMTruffleObject) {
-                val = doForeignAccess((LLVMTruffleObject) addr);
-            } else {
-                val = doForeignAccess(new LLVMTruffleObject((TruffleObject) addr, PrimitiveType.I16));
-            }
-            replace(new LLVMI16ProfilingLoadNode(addressNode, val));
-            return val;
-        }
-
-        @Override
-        public Object executeGeneric(VirtualFrame frame) {
-            return executeI16(frame);
-        }
-
+    @Specialization
+    public short executeShort(LLVMAddress addr) {
+        return LLVMMemory.getI16(addr);
     }
 
-    public static class LLVMI16ProfilingLoadNode extends LLVMI16LoadNode {
+    @Specialization
+    public short executeShort(LLVMTruffleObject addr) {
+        return doForeignAccess(addr);
+    }
 
-        private final short profiledValue;
-        @Child private LLVMExpressionNode addressNode;
-
-        public LLVMI16ProfilingLoadNode(LLVMExpressionNode addressNode, short profiledValue) {
-            this.addressNode = addressNode;
-            this.profiledValue = profiledValue;
-        }
-
-        @Override
-        public short executeI16(VirtualFrame frame) {
-            Object addr = addressNode.executeGeneric(frame);
-            short value;
-            if (addr instanceof LLVMAddress) {
-                value = LLVMMemory.getI16((LLVMAddress) addr);
-            } else if (addr instanceof LLVMTruffleObject) {
-                value = doForeignAccess((LLVMTruffleObject) addr);
-            } else {
-                value = doForeignAccess(new LLVMTruffleObject((TruffleObject) addr, PrimitiveType.I16));
-            }
-            if (value == profiledValue) {
-                return profiledValue;
-            } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                replace(LLVMI16DirectLoadNodeGen.create(addressNode));
-                return value;
-            }
-        }
-
-        @Override
-        public Object executeGeneric(VirtualFrame frame) {
-            return executeI16(frame);
-        }
-
+    @Specialization
+    public short executeShort(TruffleObject addr) {
+        return executeShort(new LLVMTruffleObject(addr, PrimitiveType.I16));
     }
 
 }

@@ -41,6 +41,7 @@ import com.oracle.truffle.api.profiles.DoubleValueProfile;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -60,43 +61,26 @@ public abstract class LLVMDoubleLoadNode extends LLVMExpressionNode {
         }
     }
 
-    public abstract static class LLVMDoubleDirectLoadNode extends LLVMDoubleLoadNode {
+    private final DoubleValueProfile profile = DoubleValueProfile.createRawIdentityProfile();
 
-        @Specialization
-        public double executeDouble(LLVMAddress addr) {
-            return LLVMMemory.getDouble(addr);
-        }
-
-        @Specialization
-        public double executeDouble(LLVMTruffleObject addr) {
-            return doForeignAccess(addr);
-        }
-
-        @Specialization
-        public double executeDouble(TruffleObject addr) {
-            return executeDouble(new LLVMTruffleObject(addr, PrimitiveType.DOUBLE));
-        }
+    @Specialization
+    public double executeDouble(LLVMGlobalVariableDescriptor addr) {
+        return executeDouble(addr.getNativeAddress());
     }
 
-    public abstract static class LLVMDoubleProfilingLoadNode extends LLVMDoubleLoadNode {
-
-        private final DoubleValueProfile profile = DoubleValueProfile.createRawIdentityProfile();
-
-        @Specialization
-        public double executeDouble(LLVMAddress addr) {
-            double value = LLVMMemory.getDouble(addr);
-            return profile.profile(value);
-        }
-
-        @Specialization
-        public double executeDouble(LLVMTruffleObject addr) {
-            return doForeignAccess(addr);
-        }
-
-        @Specialization
-        public double executeDouble(TruffleObject addr) {
-            return doForeignAccess(new LLVMTruffleObject(addr, PrimitiveType.DOUBLE));
-        }
+    @Specialization
+    public double executeDouble(LLVMAddress addr) {
+        double value = LLVMMemory.getDouble(addr);
+        return profile.profile(value);
     }
 
+    @Specialization
+    public double executeDouble(LLVMTruffleObject addr) {
+        return doForeignAccess(addr);
+    }
+
+    @Specialization
+    public double executeDouble(TruffleObject addr) {
+        return doForeignAccess(new LLVMTruffleObject(addr, PrimitiveType.DOUBLE));
+    }
 }

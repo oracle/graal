@@ -41,6 +41,7 @@ import com.oracle.truffle.api.profiles.LongValueProfile;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -61,45 +62,28 @@ public abstract class LLVMI64LoadNode extends LLVMExpressionNode {
         }
     }
 
-    public abstract static class LLVMI64DirectLoadNode extends LLVMI64LoadNode {
+    private final LongValueProfile profile = LongValueProfile.createIdentityProfile();
 
-        @Specialization
-        public long executeI64(LLVMAddress addr) {
-            return LLVMMemory.getI64(addr);
-        }
-
-        @Specialization
-        public long executeI64(LLVMTruffleObject addr) {
-            return doForeignAccess(addr);
-        }
-
-        @Specialization
-        public long executeI64(TruffleObject addr) {
-            return executeI64(new LLVMTruffleObject(addr, PrimitiveType.I64));
-        }
-
+    @Specialization
+    public long executeI64(LLVMAddress addr) {
+        long val = LLVMMemory.getI64(addr);
+        return profile.profile(val);
     }
 
-    public abstract static class LLVMI64ProfilingLoadNode extends LLVMI64LoadNode {
+    @Specialization
+    public long executeI64(LLVMGlobalVariableDescriptor addr) {
+        long val = LLVMMemory.getI64(addr.getNativeAddress());
+        return profile.profile(val);
+    }
 
-        private final LongValueProfile profile = LongValueProfile.createIdentityProfile();
+    @Specialization
+    public long executeI64(LLVMTruffleObject addr) {
+        return doForeignAccess(addr);
+    }
 
-        @Specialization
-        public long executeI64(LLVMAddress addr) {
-            long val = LLVMMemory.getI64(addr);
-            return profile.profile(val);
-        }
-
-        @Specialization
-        public long executeI64(LLVMTruffleObject addr) {
-            return doForeignAccess(addr);
-        }
-
-        @Specialization
-        public long executeI64(TruffleObject addr) {
-            return executeI64(new LLVMTruffleObject(addr, PrimitiveType.I64));
-        }
-
+    @Specialization
+    public long executeI64(TruffleObject addr) {
+        return executeI64(new LLVMTruffleObject(addr, PrimitiveType.I64));
     }
 
 }

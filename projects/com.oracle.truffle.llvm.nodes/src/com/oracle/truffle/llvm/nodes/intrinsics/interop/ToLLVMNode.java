@@ -40,6 +40,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToBooleanNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToByteNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToCharNodeGen;
@@ -49,8 +50,12 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToIntN
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToLongNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToShortNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToTruffleObjectNodeGen;
+import com.oracle.truffle.llvm.runtime.ForeignBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -90,6 +95,9 @@ public abstract class ToLLVMNode extends Node {
     public abstract Object executeWithTarget(Object value);
 
     abstract static class ToIntNode extends ToLLVMNode {
+
+        @Child private ToIntNode toInt;
+
         @Specialization
         public int fromInt(int value) {
             return value;
@@ -131,6 +139,15 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
+        public int fromForeignPrimitive(ForeignBoxedPrimitive boxed) {
+            if (toInt == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toInt = ToIntNodeGen.create();
+            }
+            return (int) toInt.executeWithTarget(boxed.getValue());
+        }
+
+        @Specialization
         public int fromTruffleObject(TruffleObject obj) {
             try {
                 Object unboxed = ForeignAccess.sendUnbox(unbox, obj);
@@ -143,6 +160,8 @@ public abstract class ToLLVMNode extends Node {
     }
 
     abstract static class ToLongNode extends ToLLVMNode {
+        @Child private ToLongNode toLong;
+
         @Specialization
         public long fromInt(int value) {
             return value;
@@ -184,6 +203,15 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
+        public long fromForeignPrimitive(ForeignBoxedPrimitive boxed) {
+            if (toLong == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toLong = ToLongNodeGen.create();
+            }
+            return (long) toLong.executeWithTarget(boxed.getValue());
+        }
+
+        @Specialization
         public long fromTruffleObject(TruffleObject obj) {
             try {
                 Object unboxed = ForeignAccess.sendUnbox(unbox, obj);
@@ -196,6 +224,9 @@ public abstract class ToLLVMNode extends Node {
     }
 
     abstract static class ToShortNode extends ToLLVMNode {
+
+        @Child private ToShortNode toShort;
+
         @Specialization
         public short fromInt(int value) {
             return (short) value;
@@ -237,6 +268,15 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
+        public short fromForeignPrimitive(ForeignBoxedPrimitive boxed) {
+            if (toShort == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toShort = ToShortNodeGen.create();
+            }
+            return (short) toShort.executeWithTarget(boxed.getValue());
+        }
+
+        @Specialization
         public long fromTruffleObject(TruffleObject obj) {
             try {
                 Object unboxed = ForeignAccess.sendUnbox(unbox, obj);
@@ -249,6 +289,9 @@ public abstract class ToLLVMNode extends Node {
     }
 
     abstract static class ToByteNode extends ToLLVMNode {
+
+        @Child private ToByteNode toByte;
+
         @Specialization
         public byte fromInt(int value) {
             return (byte) value;
@@ -290,6 +333,15 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
+        public byte fromForeignPrimitive(ForeignBoxedPrimitive boxed) {
+            if (toByte == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toByte = ToByteNodeGen.create();
+            }
+            return (byte) toByte.executeWithTarget(boxed.getValue());
+        }
+
+        @Specialization
         public byte fromTruffleObject(TruffleObject obj) {
             try {
                 Object unboxed = ForeignAccess.sendUnbox(unbox, obj);
@@ -302,6 +354,9 @@ public abstract class ToLLVMNode extends Node {
     }
 
     abstract static class ToCharNode extends ToLLVMNode {
+
+        @Child private ToCharNode toChar;
+
         @Specialization
         public char fromInt(int value) {
             return (char) value;
@@ -343,6 +398,15 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
+        public char fromForeignPrimitive(ForeignBoxedPrimitive boxed) {
+            if (toChar == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toChar = ToCharNodeGen.create();
+            }
+            return (char) toChar.executeWithTarget(boxed.getValue());
+        }
+
+        @Specialization
         public char fromTruffleObject(TruffleObject obj) {
             try {
                 Object unboxed = ForeignAccess.sendUnbox(unbox, obj);
@@ -355,6 +419,8 @@ public abstract class ToLLVMNode extends Node {
     }
 
     abstract static class ToFloatNode extends ToLLVMNode {
+        @Child private ToFloatNode toFloat;
+
         @Specialization
         public float fromInt(int value) {
             return value;
@@ -396,6 +462,15 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
+        public float fromForeignPrimitive(ForeignBoxedPrimitive boxed) {
+            if (toFloat == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toFloat = ToFloatNodeGen.create();
+            }
+            return (float) toFloat.executeWithTarget(boxed.getValue());
+        }
+
+        @Specialization
         public float fromTruffleObject(TruffleObject obj) {
             try {
                 Object unboxed = ForeignAccess.sendUnbox(unbox, obj);
@@ -408,6 +483,8 @@ public abstract class ToLLVMNode extends Node {
     }
 
     abstract static class ToDoubleNode extends ToLLVMNode {
+        @Child private ToDoubleNode toDouble;
+
         @Specialization
         public double fromInt(int value) {
             return value;
@@ -449,6 +526,15 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
+        public double fromForeignPrimitive(ForeignBoxedPrimitive boxed) {
+            if (toDouble == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toDouble = ToDoubleNodeGen.create();
+            }
+            return (double) toDouble.executeWithTarget(boxed.getValue());
+        }
+
+        @Specialization
         public double fromTruffleObject(TruffleObject obj) {
             try {
                 Object unboxed = ForeignAccess.sendUnbox(unbox, obj);
@@ -461,6 +547,9 @@ public abstract class ToLLVMNode extends Node {
     }
 
     abstract static class ToBooleanNode extends ToLLVMNode {
+
+        @Child private ToBooleanNode toBoolean;
+
         @Specialization
         public boolean fromInt(int value) {
             return value != 0;
@@ -502,6 +591,15 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
+        public boolean fromForeignPrimitive(ForeignBoxedPrimitive boxed) {
+            if (toBoolean == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toBoolean = ToBooleanNodeGen.create();
+            }
+            return (boolean) toBoolean.executeWithTarget(boxed.getValue());
+        }
+
+        @Specialization
         public boolean fromTruffleObject(TruffleObject obj) {
             try {
                 Object unboxed = ForeignAccess.sendUnbox(unbox, obj);
@@ -515,43 +613,43 @@ public abstract class ToLLVMNode extends Node {
 
     abstract static class ToTruffleObject extends ToLLVMNode {
         @Specialization
-        public int fromInt(int value) {
-            return value;
+        public TruffleObject fromInt(int value) {
+            return new ForeignBoxedPrimitive(value);
         }
 
         @Specialization
-        public char fromChar(char value) {
-            return value;
+        public TruffleObject fromChar(char value) {
+            return new ForeignBoxedPrimitive(value);
         }
 
         @Specialization
-        public long fromLong(long value) {
-            return value;
+        public TruffleObject fromLong(long value) {
+            return new ForeignBoxedPrimitive(value);
         }
 
         @Specialization
-        public byte fromByte(byte value) {
-            return value;
+        public TruffleObject fromByte(byte value) {
+            return new ForeignBoxedPrimitive(value);
         }
 
         @Specialization
-        public short fromShort(short value) {
-            return value;
+        public TruffleObject fromShort(short value) {
+            return new ForeignBoxedPrimitive(value);
         }
 
         @Specialization
-        public float fromFloat(float value) {
-            return value;
+        public TruffleObject fromFloat(float value) {
+            return new ForeignBoxedPrimitive(value);
         }
 
         @Specialization
-        public double fromDouble(double value) {
-            return value;
+        public TruffleObject fromDouble(double value) {
+            return new ForeignBoxedPrimitive(value);
         }
 
         @Specialization
-        public boolean fromBoolean(boolean value) {
-            return value;
+        public TruffleObject fromBoolean(boolean value) {
+            return new ForeignBoxedPrimitive(value);
         }
 
         @Specialization
@@ -564,11 +662,21 @@ public abstract class ToLLVMNode extends Node {
             return obj.getAddress();
         }
 
-        protected boolean notLLVMTruffleAddress(Object value) {
-            return !(value instanceof LLVMTruffleAddress);
+        @Specialization
+        public LLVMGlobalVariableDescriptor fromSharedDescriptor(LLVMSharedGlobalVariableDescriptor shared) {
+            return shared.getDescriptor();
         }
 
-        @Specialization(guards = "notLLVMTruffleAddress(obj)")
+        @Specialization
+        public LLVMAddress fromNull(@SuppressWarnings("unused") LLVMTruffleNull n) {
+            return LLVMAddress.fromLong(0);
+        }
+
+        protected boolean notLLVM(TruffleObject value) {
+            return LLVMExpressionNode.notLLVM(value);
+        }
+
+        @Specialization(guards = "notLLVM(obj)")
         public TruffleObject fromTruffleObject(TruffleObject obj) {
             return obj;
         }
@@ -646,6 +754,8 @@ public abstract class ToLLVMNode extends Node {
         } else if (requestedType == TruffleObject.class) {
             if (value instanceof LLVMTruffleAddress) {
                 return ((LLVMTruffleAddress) value).getAddress();
+            } else if (isPrimitiveType(value.getClass())) {
+                return new ForeignBoxedPrimitive(value);
             } else {
                 return value;
             }

@@ -34,7 +34,6 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 
 @GenerateNodeFactory
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
@@ -42,7 +41,7 @@ public abstract class LLVMPrefetch extends LLVMExpressionNode {
 
     @SuppressWarnings("unused")
     @Specialization
-    public Object executeVoid(LLVMAddress address, int rw, int locality, int cacheType) {
+    public Object executeVoid(Object address, int rw, int locality, int cacheType) {
         return null;
     }
 

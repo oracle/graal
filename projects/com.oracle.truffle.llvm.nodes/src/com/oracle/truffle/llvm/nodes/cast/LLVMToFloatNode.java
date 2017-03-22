@@ -68,6 +68,11 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
         public float executeFloat(LLVM80BitFloat from) {
             return from.getFloatValue();
         }
+
+        @Specialization
+        public float executeDouble(float from) {
+            return from;
+        }
     }
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
@@ -88,6 +93,11 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
             return from;
         }
 
+        @Specialization
+        public float executeDouble(float from) {
+            return from;
+        }
+
     }
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
@@ -96,6 +106,11 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
         @Specialization
         public float executeFloat(int from) {
             return Float.intBitsToFloat(from);
+        }
+
+        @Specialization
+        public float executeDouble(float from) {
+            return from;
         }
     }
 
@@ -116,6 +131,11 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
                 val += LEADING_BIT;
             }
             return val;
+        }
+
+        @Specialization
+        public float executeDouble(float from) {
+            return from;
         }
     }
 

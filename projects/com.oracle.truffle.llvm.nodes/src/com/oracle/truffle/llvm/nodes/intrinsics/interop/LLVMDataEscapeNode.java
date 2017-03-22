@@ -34,12 +34,15 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.ForeignBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -104,6 +107,11 @@ public abstract class LLVMDataEscapeNode extends Node {
     }
 
     @Specialization
+    public Object escapingString(ForeignBoxedPrimitive escapingValue) {
+        return escapingValue.getValue();
+    }
+
+    @Specialization
     public TruffleObject escapingAddress(LLVMAddress escapingValue) {
         if (LLVMAddress.NULL_POINTER.equals(escapingValue)) {
             return new LLVMTruffleNull();
@@ -165,15 +173,34 @@ public abstract class LLVMDataEscapeNode extends Node {
     }
 
     @Specialization
+    public TruffleObject escapingTruffleObject(LLVMTruffleAddress address) {
+        return address;
+    }
+
+    @Specialization
+    public TruffleObject escapingTruffleObject(LLVMTruffleObject address) {
+        if (address.getOffset() == 0) {
+            return address.getObject();
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException("TruffleObject after pointer arithmetic must not leave Sulong.");
+        }
+    }
+
+    @Specialization
     public Object escapingTruffleObject(LLVMGlobalVariableDescriptor escapingValue) {
-        return escapingValue;
+        return new LLVMSharedGlobalVariableDescriptor(escapingValue);
     }
 
     public boolean notLLVM(TruffleObject v) {
         return LLVMExpressionNode.notLLVM(v);
     }
 
-    @Specialization(guards = "notLLVM(escapingValue)")
+    public boolean notBoxedPrimitive(TruffleObject v) {
+        return !(v instanceof ForeignBoxedPrimitive);
+    }
+
+    @Specialization(guards = {"notLLVM(escapingValue)", "notBoxedPrimitive(escapingValue)"})
     public Object escapingTruffleObject(TruffleObject escapingValue) {
         return escapingValue;
     }

@@ -34,10 +34,17 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleReadBytes extends LLVMIntrinsic {
+
+    @Specialization
+    public Object executeIntrinsic(LLVMGlobalVariableDescriptor value) {
+        return executeIntrinsic(value.getNativeAddress());
+    }
+
     @Specialization
     public Object executeIntrinsic(LLVMAddress value) {
         byte c;

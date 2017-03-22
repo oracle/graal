@@ -40,13 +40,20 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 
 public abstract class LLVMToI16Node extends LLVMExpressionNode {
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMToI16NoZeroExtNode extends LLVMToI16Node {
+
+        @Specialization
+        public short executeLLVMFunction(short from) {
+            return from;
+        }
 
         @Specialization
         public short executeI16(boolean from) {
@@ -89,6 +96,16 @@ public abstract class LLVMToI16Node extends LLVMExpressionNode {
         }
 
         @Specialization
+        public short executeLLVMAddress(LLVMGlobalVariableDescriptor from) {
+            return (short) from.getNativeAddress().getVal();
+        }
+
+        @Specialization
+        public short executeLLVMTruffleObject(LLVMTruffleObject from) {
+            return (short) (executeTruffleObject(from.getObject()) + from.getOffset());
+        }
+
+        @Specialization
         public short executeLLVMTruffleNull(@SuppressWarnings("unused") LLVMTruffleNull from) {
             return 0;
         }
@@ -126,6 +143,11 @@ public abstract class LLVMToI16Node extends LLVMExpressionNode {
         @Specialization
         public short executeI16(byte from) {
             return (short) (from & LLVMExpressionNode.I8_MASK);
+        }
+
+        @Specialization
+        public short executeLLVMFunction(short from) {
+            return from;
         }
     }
 }

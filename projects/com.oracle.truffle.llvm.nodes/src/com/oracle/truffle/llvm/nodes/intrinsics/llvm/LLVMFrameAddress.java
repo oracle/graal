@@ -45,7 +45,7 @@ public abstract class LLVMFrameAddress extends LLVMExpressionNode {
     abstract FrameSlot getStackSlot();
 
     @Specialization
-    public LLVMAddress executePointee(VirtualFrame frame, int frameLevel) {
+    public Object executePointee(VirtualFrame frame, int frameLevel) {
         if (frameLevel == 0) {
             return LLVMFrameUtil.getAddress(frame, getStackSlot());
         } else {

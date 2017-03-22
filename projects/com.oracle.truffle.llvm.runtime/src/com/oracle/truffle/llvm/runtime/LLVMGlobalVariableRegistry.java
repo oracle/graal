@@ -37,6 +37,6 @@ public final class LLVMGlobalVariableRegistry {
     private final Map<String, LLVMGlobalVariableDescriptor> descriptors = new HashMap<>();
 
     public synchronized LLVMGlobalVariableDescriptor lookupOrAdd(String name, NativeResolver nativeResolver) {
-        return descriptors.computeIfAbsent(name, k -> new LLVMGlobalVariableDescriptor(name, nativeResolver));
+        return descriptors.computeIfAbsent(name, k -> LLVMGlobalVariableDescriptor.create(name, nativeResolver));
     }
 }

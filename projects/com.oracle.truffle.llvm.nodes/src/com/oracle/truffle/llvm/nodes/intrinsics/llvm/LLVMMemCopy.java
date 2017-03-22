@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions.MemCopyNode;
 
@@ -59,6 +60,27 @@ public abstract class LLVMMemCopy {
             return null;
         }
 
+        @SuppressWarnings("unused")
+        @Specialization
+        public Object executeVoid(LLVMGlobalVariableDescriptor target, LLVMAddress source, int length, int align, boolean isVolatile) {
+            memCopy.execute(target.getNativeAddress(), source, length);
+            return null;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization
+        public Object executeVoid(LLVMAddress target, LLVMGlobalVariableDescriptor source, int length, int align, boolean isVolatile) {
+            memCopy.execute(target, source.getNativeAddress(), length);
+            return null;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization
+        public Object executeVoid(LLVMGlobalVariableDescriptor target, LLVMGlobalVariableDescriptor source, int length, int align, boolean isVolatile) {
+            memCopy.execute(target.getNativeAddress(), source.getNativeAddress(), length);
+            return null;
+        }
+
     }
 
     @GenerateNodeFactory
@@ -79,6 +101,28 @@ public abstract class LLVMMemCopy {
             memCopy.execute(target, source, length);
             return null;
         }
+
+        @SuppressWarnings("unused")
+        @Specialization
+        public Object executeVoid(LLVMGlobalVariableDescriptor target, LLVMAddress source, long length, int align, boolean isVolatile) {
+            memCopy.execute(target.getNativeAddress(), source, length);
+            return null;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization
+        public Object executeVoid(LLVMAddress target, LLVMGlobalVariableDescriptor source, long length, int align, boolean isVolatile) {
+            memCopy.execute(target, source.getNativeAddress(), length);
+            return null;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization
+        public Object executeVoid(LLVMGlobalVariableDescriptor target, LLVMGlobalVariableDescriptor source, long length, int align, boolean isVolatile) {
+            memCopy.execute(target.getNativeAddress(), source.getNativeAddress(), length);
+            return null;
+        }
+
     }
 
 }

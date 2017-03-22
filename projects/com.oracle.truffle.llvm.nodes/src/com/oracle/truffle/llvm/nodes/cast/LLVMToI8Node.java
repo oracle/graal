@@ -42,6 +42,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
@@ -112,6 +113,16 @@ public abstract class LLVMToI8Node extends LLVMExpressionNode {
             return 0;
         }
 
+        @Specialization
+        public byte executeLLVMAddress(LLVMGlobalVariableDescriptor from) {
+            return (byte) from.getNativeAddress().getVal();
+        }
+
+        @Specialization
+        public byte executeLLVMTruffleObject(LLVMTruffleObject from) {
+            return (byte) (executeTruffleObject(from.getObject()) + from.getOffset());
+        }
+
         @Child private Node isNull = Message.IS_NULL.createNode();
         @Child private Node isBoxed = Message.IS_BOXED.createNode();
         @Child private Node unbox = Message.UNBOX.createNode();
@@ -134,14 +145,10 @@ public abstract class LLVMToI8Node extends LLVMExpressionNode {
         }
 
         @Specialization
-        public byte executeUnbox(LLVMTruffleObject from) {
-            try {
-                byte head = (byte) convert.executeWithTarget(ForeignAccess.sendUnbox(unbox, from.getObject()));
-                return (byte) (head + from.getOffset());
-            } catch (UnsupportedMessageException e) {
-                throw new UnsupportedOperationException(e);
-            }
+        public byte executeI8(byte from) {
+            return from;
         }
+
     }
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
@@ -150,6 +157,11 @@ public abstract class LLVMToI8Node extends LLVMExpressionNode {
         @Specialization
         public byte executeI8(boolean from) {
             return (byte) (from ? 1 : 0);
+        }
+
+        @Specialization
+        public byte executeI8(byte from) {
+            return from;
         }
     }
 
