@@ -183,7 +183,7 @@ public class GraphDecoder {
         protected LoopScope(MethodScope methodScope) {
             this.methodScope = methodScope;
             this.outer = null;
-            this.nextIterations = methodScope.loopExplosion == LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN ? new ArrayDeque<>() : null;
+            this.nextIterations = methodScope.loopExplosion == LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN ? new ArrayDeque<>(2) : null;
             this.loopDepth = 0;
             this.loopIteration = 0;
             this.iterationStates = null;
@@ -545,7 +545,7 @@ public class GraphDecoder {
                     resultScope = new LoopScope(methodScope, loopScope, loopScope.loopDepth + 1, 0, mergeOrderId,
                                     methodScope.loopExplosion != LoopExplosionKind.NONE ? Arrays.copyOf(loopScope.createdNodes, loopScope.createdNodes.length) : null,
                                     methodScope.loopExplosion != LoopExplosionKind.NONE ? Arrays.copyOf(loopScope.createdNodes, loopScope.createdNodes.length) : loopScope.createdNodes, //
-                                    methodScope.loopExplosion != LoopExplosionKind.NONE ? new ArrayDeque<>() : null, //
+                                    methodScope.loopExplosion != LoopExplosionKind.NONE ? new ArrayDeque<>(2) : null, //
                                     methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE ? EconomicMap.create(Equivalence.DEFAULT) : null);
                     phiInputScope = resultScope;
                     phiNodeScope = resultScope;
@@ -1143,7 +1143,7 @@ public class GraphDecoder {
     private void releaseFloatingNode(Node node) {
         ArrayDeque<Node> cachedNodes = reusableFloatingNodes.get(node.getNodeClass());
         if (cachedNodes == null) {
-            cachedNodes = new ArrayDeque<>();
+            cachedNodes = new ArrayDeque<>(2);
             reusableFloatingNodes.put(node.getNodeClass(), cachedNodes);
         }
         cachedNodes.push(node);
@@ -1322,7 +1322,7 @@ class LoopDetector implements Runnable {
          * The ends, i.e., the source of backward branches. The {@link EndNode#successors successor}
          * is the {@link #header loop header}.
          */
-        List<EndNode> ends = new ArrayList<>();
+        List<EndNode> ends = new ArrayList<>(2);
         /**
          * Exits of the loop. The successor is a {@link MergeNode} marked in
          * {@link MethodScope#loopExplosionMerges}.
@@ -1542,7 +1542,6 @@ class LoopDetector implements Runnable {
          * necessary into a loop because it computes loop information based on bytecodes, before the
          * actual parsing.
          */
-
         for (Node succ : possibleExits) {
             if (!visited.contains(succ)) {
                 stack.push(succ);
@@ -1776,7 +1775,7 @@ class LoopDetector implements Runnable {
              * to the old FrameState: the loop variable is replaced with the phi function.
              */
             FrameState oldFrameState = explosionHeadState;
-            List<ValueNode> newFrameStateValues = new ArrayList<>();
+            List<ValueNode> newFrameStateValues = new ArrayList<>(explosionHeadValues.size());
             for (int i = 0; i < explosionHeadValues.size(); i++) {
                 if (i == loopVariableIndex) {
                     newFrameStateValues.add(loopVariablePhi);
@@ -1784,6 +1783,7 @@ class LoopDetector implements Runnable {
                     newFrameStateValues.add(explosionHeadValues.get(i));
                 }
             }
+
             FrameState newFrameState = graph.add(
                             new FrameState(oldFrameState.outerFrameState(), oldFrameState.getCode(), oldFrameState.bci, newFrameStateValues, oldFrameState.localsSize(),
                                             oldFrameState.stackSize(), oldFrameState.rethrowException(), oldFrameState.duringCall(), oldFrameState.monitorIds(),
