@@ -177,6 +177,10 @@ final class InstrumentCache {
         return services.contains(clazz.getName()) || services.contains(clazz.getCanonicalName());
     }
 
+    String[] services() {
+        return services.toArray(new String[0]);
+    }
+
     private void loadClass() {
         try {
             instrumentClass = Class.forName(className, true, loader);
