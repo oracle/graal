@@ -101,21 +101,18 @@ public abstract class TruffleInstrument {
     /**
      * Invoked once on each newly allocated {@link TruffleInstrument} instance.
      * <p>
-     * This method is an opportunity for the instrument to
-     * {@link Env#registerService(java.lang.Object) register} additional <em>services</em>: objects
-     * exposed via {@link com.oracle.truffle.api.vm.PolyglotEngine.Instrument#lookup} query.
-     * <p>
-     * For example, the following code defines an abstract debugger controller that could be made
-     * available as a service:
+     * The method may {@link Env#registerService(java.lang.Object) register} additional
+     * {@link Registration#services() services} - e.g. objects to be exposed via
+     * {@link com.oracle.truffle.api.vm.PolyglotRuntime.Instrument#lookup lookup query}. For example
+     * to expose a debugger one could define an abstract debugger controller:
      * </p>
      *
      * {@codesnippet DebuggerController}
      *
-     * The following code {@link Env#registerService(java.lang.Object) registers} a
-     * {@link TruffleInstrument} class that implements the controller (details not shown) and
-     * instantiates the controller during a call to
-     * {@link #onCreate(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env) onCreate(Env)}
-     * .
+     * and declare it as a {@link Registration#services() service} associated with the instrument,
+     * implement it, instantiate and {@link Env#registerService(java.lang.Object) register} in own's
+     * instrument {@link #onCreate(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env)
+     * onCreate} method:
      *
      * {@codesnippet DebuggerExample}
      *
@@ -358,6 +355,23 @@ public abstract class TruffleInstrument {
          */
         String version() default "";
 
+        /**
+         * Declarative list of classes this instrument is known to provide. The instrument is
+         * supposed to override its
+         * {@link #onCreate(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env) onCreate}
+         * method and instantiate and {@link Env#registerService(java.lang.Object) register} all
+         * here in defined services.
+         * <p>
+         * Instruments
+         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Instrument#setEnabled(boolean) get
+         * automatically enabled} when their registered
+         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Instrument#lookup(java.lang.Class)
+         * service is requested}.
+         *
+         * @since 0.25
+         * @return list of service types that this instrument can provide
+         */
+        Class<?>[] services() default {};
     }
 
     static {

@@ -172,7 +172,7 @@ public abstract class Accessor {
     }
 
     public abstract static class InstrumentSupport {
-        public abstract void addInstrument(Object instrumentationHandler, Object key, Class<?> instrumentClass);
+        public abstract void addInstrument(Object instrumentationHandler, Object key, Class<?> instrumentClass, String[] expectedServices);
 
         public abstract void disposeInstrument(Object instrumentationHandler, Object key, boolean cleanupRequired);
 

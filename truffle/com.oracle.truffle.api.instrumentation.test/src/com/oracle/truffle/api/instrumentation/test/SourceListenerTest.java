@@ -39,6 +39,7 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import static org.junit.Assert.assertTrue;
 import com.oracle.truffle.api.vm.PolyglotRuntime;
 
 public class SourceListenerTest extends AbstractInstrumentationTest {
@@ -70,8 +71,9 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
 
         Assert.assertEquals("unexpected getSourceSection calls without source listeners", initialQueryCount, InstrumentationTestLanguage.getRootSourceSectionQueryCount());
 
-        instrument.setEnabled(true);
         TestLoadSource1 impl = instrument.lookup(TestLoadSource1.class);
+        assertTrue("Lookup of registered service enables the instrument", instrument.isEnabled());
+
         Source source2 = lines("ROOT(DEFINE(f1, STATEMENT(EXPRESSION)), DEFINE(f2, STATEMENT)," +
                         "BLOCK(CALL(f1), CALL(f2)))");
         for (int i = 0; i < runTimes; i++) {
@@ -108,7 +110,7 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         }
     }
 
-    @Registration(id = "testLoadSource1")
+    @Registration(id = "testLoadSource1", services = SourceListenerTest.TestLoadSource1.class)
     public static class TestLoadSource1 extends TruffleInstrument {
         List<Source> onlyNewEvents = new ArrayList<>();
         List<Source> allEvents = new ArrayList<>();

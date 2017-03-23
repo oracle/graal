@@ -26,6 +26,7 @@ package com.oracle.truffle.api.instrumentation.test.examples;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -50,9 +51,12 @@ public final class DebuggerExampleTest extends AbstractInstrumentationTest {
         // BEGIN: DebuggerExampleTest
         PolyglotRuntime runtime = engine.getRuntime();
         Instrument instrument = runtime.getInstruments().get(DebuggerExample.ID);
-        instrument.setEnabled(true);
+        assert !instrument.isEnabled() : "Not enabled yet";
         debugger = instrument.lookup(DebuggerController.class);
+        assert instrument.isEnabled() : "Got enabled";
+        assert debugger != null : "We can control the debugger";
         // END: DebuggerExampleTest
+        assertTrue("Enabled by requesting registered services class", instrument.isEnabled());
         assertNotNull("Debugger interface found", debugger);
         DebuggerExample itself = instrument.lookup(DebuggerExample.class);
         assertNull("Debugger instrument itself isn't found", itself);
@@ -198,4 +202,5 @@ public final class DebuggerExampleTest extends AbstractInstrumentationTest {
         run(source);
         Assert.assertTrue(allStepped.get());
     }
+
 }

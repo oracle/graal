@@ -40,6 +40,7 @@ import java.util.Set;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.vm.PolyglotEngine.Access;
+import java.util.TreeSet;
 
 //TODO (chumer): maybe this class should share some code with LanguageCache?
 final class InstrumentCache {
@@ -54,6 +55,7 @@ final class InstrumentCache {
     private final String name;
     private final String version;
     private final ClassLoader loader;
+    private final Set<String> services;
 
     static {
         List<InstrumentCache> instruments = null;
@@ -78,6 +80,16 @@ final class InstrumentCache {
             this.id = className;
         } else {
             this.id = loadedId;
+        }
+        int servicesCounter = 0;
+        this.services = new TreeSet<>();
+        for (;;) {
+            String nth = prefix + "service" + servicesCounter++;
+            String serviceName = info.getProperty(nth);
+            if (serviceName == null) {
+                break;
+            }
+            this.services.add(serviceName);
         }
     }
 
@@ -159,6 +171,14 @@ final class InstrumentCache {
             loadClass();
         }
         return instrumentClass;
+    }
+
+    boolean supportsService(Class<?> clazz) {
+        return services.contains(clazz.getName()) || services.contains(clazz.getCanonicalName());
+    }
+
+    String[] services() {
+        return services.toArray(new String[0]);
     }
 
     private void loadClass() {

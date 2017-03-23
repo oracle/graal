@@ -45,6 +45,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.Accessor.Nodes;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
@@ -164,8 +165,8 @@ final class InstrumentationHandler {
         visitRoot(root, new InsertWrappersVisitor(executionBindings));
     }
 
-    void addInstrument(Object key, Class<?> clazz) {
-        addInstrumenter(key, new InstrumentClientInstrumenter(sourceVM, clazz, out, err, in));
+    void addInstrument(Object key, Class<?> clazz, String[] expectedServices) {
+        addInstrumenter(key, new InstrumentClientInstrumenter(sourceVM, clazz, out, err, in), expectedServices);
     }
 
     void disposeInstrumenter(Object key, boolean cleanupRequired) {
@@ -415,12 +416,12 @@ final class InstrumentationHandler {
         }
     }
 
-    private void addInstrumenter(Object key, AbstractInstrumenter instrumenter) throws AssertionError {
+    private void addInstrumenter(Object key, AbstractInstrumenter instrumenter, String[] expectedServices) throws AssertionError {
         Object previousKey = instrumenterMap.putIfAbsent(key, instrumenter);
         if (previousKey != null) {
             throw new AssertionError("Instrumenter already present.");
         }
-        instrumenter.initialize();
+        instrumenter.initialize(expectedServices);
     }
 
     private static Collection<EventBinding<?>> filterBindingsForInstrumenter(Collection<EventBinding<?>> bindings, AbstractInstrumenter instrumenter) {
@@ -845,7 +846,7 @@ final class InstrumentationHandler {
         }
 
         @Override
-        void initialize() {
+        void initialize(String[] expectedServices) {
             if (TRACE) {
                 trace("Initialize instrument %s class %s %n", instrument, instrumentClass);
             }
@@ -858,6 +859,9 @@ final class InstrumentationHandler {
             }
             try {
                 services = env.onCreate(instrument);
+                if (expectedServices != null && !TruffleOptions.AOT) {
+                    checkServices(expectedServices);
+                }
             } catch (Throwable e) {
                 failInstrumentInitialization(String.format("Failed calling onCreate of instrument class %s", instrumentClass.getName()), e);
                 return;
@@ -865,6 +869,36 @@ final class InstrumentationHandler {
             if (TRACE) {
                 trace("Initialized instrument %s class %s %n", instrument, instrumentClass);
             }
+        }
+
+        private boolean checkServices(String[] expectedServices) {
+            LOOP: for (String name : expectedServices) {
+                for (Object obj : services) {
+                    if (findType(name, obj.getClass())) {
+                        continue LOOP;
+                    }
+                }
+                failInstrumentInitialization(String.format("%s declares service %s but doesn't register it", instrumentClass.getName(), name), null);
+            }
+            return true;
+        }
+
+        private boolean findType(String name, Class<?> type) {
+            if (type == null) {
+                return false;
+            }
+            if (type.getName().equals(name)) {
+                return true;
+            }
+            if (findType(name, type.getSuperclass())) {
+                return true;
+            }
+            for (Class<?> inter : type.getInterfaces()) {
+                if (findType(name, inter)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private void failInstrumentInitialization(String message, Throwable t) {
@@ -965,7 +999,7 @@ final class InstrumentationHandler {
         }
 
         @Override
-        void initialize() {
+        void initialize(String[] expectedServices) {
             // nothing to do
         }
 
@@ -987,7 +1021,7 @@ final class InstrumentationHandler {
      */
     abstract class AbstractInstrumenter extends Instrumenter {
 
-        abstract void initialize();
+        abstract void initialize(String[] expectedServices);
 
         abstract void dispose();
 
@@ -1307,8 +1341,8 @@ final class InstrumentationHandler {
             }
 
             @Override
-            public void addInstrument(Object instrumentationHandler, Object key, Class<?> instrumentClass) {
-                ((InstrumentationHandler) instrumentationHandler).addInstrument(key, instrumentClass);
+            public void addInstrument(Object instrumentationHandler, Object key, Class<?> instrumentClass, String[] expectedServices) {
+                ((InstrumentationHandler) instrumentationHandler).addInstrument(key, instrumentClass, expectedServices);
             }
 
             @Override

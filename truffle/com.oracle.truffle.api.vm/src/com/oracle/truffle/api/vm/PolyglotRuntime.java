@@ -395,6 +395,9 @@ public final class PolyglotRuntime {
          * @since 0.9
          */
         public <T> T lookup(Class<T> type) {
+            if (!isEnabled() && info.supportsService(type)) {
+                setEnabled(true);
+            }
             return PolyglotEngine.Access.INSTRUMENT.getInstrumentationHandlerService(PolyglotRuntime.this.instrumentationHandler, this, type);
         }
 
@@ -415,7 +418,7 @@ public final class PolyglotRuntime {
             synchronized (instrumentLock) {
                 if (this.enabled != enabled) {
                     if (enabled) {
-                        PolyglotEngine.Access.INSTRUMENT.addInstrument(PolyglotRuntime.this.instrumentationHandler, this, getCache().getInstrumentationClass());
+                        PolyglotEngine.Access.INSTRUMENT.addInstrument(PolyglotRuntime.this.instrumentationHandler, this, getCache().getInstrumentationClass(), info.services());
                     } else {
                         PolyglotEngine.Access.INSTRUMENT.disposeInstrument(PolyglotRuntime.this.instrumentationHandler, this, cleanup);
                     }

@@ -3,6 +3,7 @@
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
 ## Version 0.25
+
 * Added [Instrumenter.attachOutConsumer](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/Instrumenter.html#attachOutConsumer-T-) and [Instrumenter.attachErrConsumer](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/Instrumenter.html#attachErrConsumer-T-) to receive output from executions run in the associated PolyglotEngine.
 * [JavaInterop.asTruffleObject](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/interop/java/JavaInterop.html#asTruffleObject-java.lang.Object-) lists methods as keys
 * Deprecated `TypedObject` interface
@@ -21,6 +22,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Deprecated [Node.getLanguage](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/nodes/Node.html).
 * Deprecated [MessageResolution.language](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/nodes/Node.html) without replacement. (jackpot rule available)
 * Deprecated [ExecutionContext](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/ExecutionContext.html) without replacement.
+* Added [TruffleInstrument.Registration.services()](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Registration#services) to support declarative registration of services
 
 ## Version 0.24
 1-Mar-2017
