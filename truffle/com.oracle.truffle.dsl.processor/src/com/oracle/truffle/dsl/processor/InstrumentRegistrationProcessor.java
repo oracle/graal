@@ -47,7 +47,11 @@ import javax.tools.StandardLocation;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
-import javax.lang.model.type.MirroredTypesException;
+import java.util.Map;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Name;
 
 @SupportedAnnotationTypes("com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration")
 public final class InstrumentRegistrationProcessor extends AbstractProcessor {
@@ -86,16 +90,20 @@ public final class InstrumentRegistrationProcessor extends AbstractProcessor {
             p.setProperty(prefix + "className", className);
 
             int serviceCounter = 0;
-            try {
-                final Class<?>[] services = annotation.services();
-                if (services != null) {
-                    for (Class<?> service : services) {
-                        p.setProperty(prefix + "service" + serviceCounter++, service.getCanonicalName());
+            for (AnnotationMirror anno : l.getAnnotationMirrors()) {
+                final String annoName = anno.getAnnotationType().asElement().toString();
+                if (Registration.class.getCanonicalName().equals(annoName)) {
+                    for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry : anno.getElementValues().entrySet()) {
+                        final Name attrName = entry.getKey().getSimpleName();
+                        if (attrName.contentEquals("services")) {
+                            AnnotationValue attrValue = entry.getValue();
+                            List<?> classes = (List<?>) attrValue.getValue();
+                            for (Object clazz : classes) {
+                                AnnotationValue clazzValue = (AnnotationValue) clazz;
+                                p.setProperty(prefix + "service" + serviceCounter++, clazzValue.getValue().toString());
+                            }
+                        }
                     }
-                }
-            } catch (MirroredTypesException ex) {
-                for (TypeMirror service : ex.getTypeMirrors()) {
-                    p.setProperty(prefix + "service" + serviceCounter++, service.toString());
                 }
             }
         }
