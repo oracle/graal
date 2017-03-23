@@ -175,7 +175,8 @@ public class GraphDecoder {
         public final Node[] createdNodes;
         /**
          * Nodes that have been created in outer loop scopes and existed before starting to process
-         * this loop, indexed by the orderId.
+         * this loop, indexed by the orderId. Only used when {@link MethodScope#loopExplosion} is
+         * not {@link LoopExplosionKind#NONE}.
          */
         public final Node[] initialCreatedNodes;
 
@@ -190,8 +191,8 @@ public class GraphDecoder {
 
             int nodeCount = methodScope.encodedGraph.nodeStartOffsets.length;
             this.nodesToProcess = new BitSet(methodScope.maxFixedNodeOrderId);
-            this.initialCreatedNodes = new Node[nodeCount];
             this.createdNodes = new Node[nodeCount];
+            this.initialCreatedNodes = null;
         }
 
         protected LoopScope(MethodScope methodScope, LoopScope outer, int loopDepth, int loopIteration, int loopBeginOrderId, Node[] initialCreatedNodes, Node[] createdNodes,
@@ -205,7 +206,7 @@ public class GraphDecoder {
             this.loopBeginOrderId = loopBeginOrderId;
             this.nodesToProcess = new BitSet(methodScope.maxFixedNodeOrderId);
             this.initialCreatedNodes = initialCreatedNodes;
-            this.createdNodes = Arrays.copyOf(createdNodes, createdNodes.length);
+            this.createdNodes = createdNodes;
         }
 
         @Override
@@ -431,7 +432,7 @@ public class GraphDecoder {
     }
 
     private static void propagateCreatedNodes(LoopScope loopScope) {
-        if (loopScope.outer == null) {
+        if (loopScope.outer == null || loopScope.createdNodes != loopScope.outer.createdNodes) {
             return;
         }
 
@@ -483,7 +484,7 @@ public class GraphDecoder {
                 LoopScope outerScope = loopScope.outer;
                 int nextIterationNumber = outerScope.nextIterations.isEmpty() ? outerScope.loopIteration + 1 : outerScope.nextIterations.getLast().loopIteration + 1;
                 successorAddScope = new LoopScope(methodScope, outerScope.outer, outerScope.loopDepth, nextIterationNumber, outerScope.loopBeginOrderId, outerScope.initialCreatedNodes,
-                                loopScope.initialCreatedNodes, outerScope.nextIterations, outerScope.iterationStates);
+                                Arrays.copyOf(loopScope.initialCreatedNodes, loopScope.initialCreatedNodes.length), outerScope.nextIterations, outerScope.iterationStates);
                 checkLoopExplosionIteration(methodScope, successorAddScope);
 
                 /*
@@ -542,13 +543,16 @@ public class GraphDecoder {
                 if (merge instanceof LoopBeginNode) {
                     assert phiNodeScope == phiInputScope && phiNodeScope == loopScope;
                     resultScope = new LoopScope(methodScope, loopScope, loopScope.loopDepth + 1, 0, mergeOrderId,
-                                    Arrays.copyOf(loopScope.createdNodes, loopScope.createdNodes.length), loopScope.createdNodes, //
+                                    methodScope.loopExplosion != LoopExplosionKind.NONE ? Arrays.copyOf(loopScope.createdNodes, loopScope.createdNodes.length) : null,
+                                    methodScope.loopExplosion != LoopExplosionKind.NONE ? Arrays.copyOf(loopScope.createdNodes, loopScope.createdNodes.length) : loopScope.createdNodes, //
                                     methodScope.loopExplosion != LoopExplosionKind.NONE ? new ArrayDeque<>() : null, //
                                     methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE ? EconomicMap.create(Equivalence.DEFAULT) : null);
                     phiInputScope = resultScope;
                     phiNodeScope = resultScope;
 
-                    registerNode(loopScope, mergeOrderId, null, true, true);
+                    if (methodScope.loopExplosion != LoopExplosionKind.NONE) {
+                        registerNode(loopScope, mergeOrderId, null, true, true);
+                    }
                     loopScope.nodesToProcess.clear(mergeOrderId);
                     resultScope.nodesToProcess.set(mergeOrderId);
                 }
@@ -676,8 +680,13 @@ public class GraphDecoder {
                         if (loopScope.createdNodes[i] == frameStateValue) {
                             loopScope.createdNodes[i] = newFrameStateValue;
                         }
-                        if (loopScope.initialCreatedNodes[i] == frameStateValue) {
-                            loopScope.initialCreatedNodes[i] = newFrameStateValue;
+                    }
+
+                    if (loopScope.initialCreatedNodes != null) {
+                        for (int i = 0; i < loopScope.initialCreatedNodes.length; i++) {
+                            if (loopScope.initialCreatedNodes[i] == frameStateValue) {
+                                loopScope.initialCreatedNodes[i] = newFrameStateValue;
+                            }
                         }
                     }
                 }
@@ -722,7 +731,7 @@ public class GraphDecoder {
         if (methodScope.loopExplosion != LoopExplosionKind.FULL_UNROLL || loopScope.nextIterations.isEmpty()) {
             int nextIterationNumber = loopScope.nextIterations.isEmpty() ? loopScope.loopIteration + 1 : loopScope.nextIterations.getLast().loopIteration + 1;
             LoopScope nextIterationScope = new LoopScope(methodScope, loopScope.outer, loopScope.loopDepth, nextIterationNumber, loopScope.loopBeginOrderId, loopScope.initialCreatedNodes,
-                            loopScope.initialCreatedNodes, loopScope.nextIterations, loopScope.iterationStates);
+                            Arrays.copyOf(loopScope.initialCreatedNodes, loopScope.initialCreatedNodes.length), loopScope.nextIterations, loopScope.iterationStates);
             checkLoopExplosionIteration(methodScope, nextIterationScope);
             loopScope.nextIterations.addLast(nextIterationScope);
             registerNode(nextIterationScope, loopScope.loopBeginOrderId, null, true, true);
@@ -755,7 +764,9 @@ public class GraphDecoder {
              * The ProxyNode transports a value from the loop to the outer scope. We therefore
              * register it in the outer scope.
              */
-            registerNode(loopScope.outer, proxyOrderId, proxy, false, false);
+            if (loopScope.outer.createdNodes != loopScope.createdNodes) {
+                registerNode(loopScope.outer, proxyOrderId, proxy, false, false);
+            }
         }
     }
 
