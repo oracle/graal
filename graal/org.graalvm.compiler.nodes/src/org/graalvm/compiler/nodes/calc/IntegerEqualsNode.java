@@ -117,6 +117,29 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
         } else if (forX.stamp().alwaysDistinct(forY.stamp())) {
             return LogicConstantNode.contradiction();
         }
+        if (forX instanceof AddNode && forY instanceof AddNode) {
+            AddNode addX = (AddNode) forX;
+            AddNode addY = (AddNode) forY;
+            ValueNode v1 = null;
+            ValueNode v2 = null;
+            if (addX.getX() == addY.getX()) {
+                v1 = addX.getY();
+                v2 = addY.getY();
+            } else if (addX.getX() == addY.getY()) {
+                v1 = addX.getY();
+                v2 = addY.getX();
+            } else if (addX.getY() == addY.getX()) {
+                v1 = addX.getX();
+                v2 = addY.getY();
+            } else if (addX.getY() == addY.getY()) {
+                v1 = addX.getX();
+                v2 = addY.getX();
+            }
+            if (v1 != null) {
+                assert v2 != null;
+                return create(v1, v2, tool.getConstantReflection());
+            }
+        }
         return super.canonical(tool, forX, forY);
     }
 
