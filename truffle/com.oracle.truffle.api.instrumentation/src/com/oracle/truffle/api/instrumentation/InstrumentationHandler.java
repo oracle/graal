@@ -45,6 +45,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.Accessor.Nodes;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
@@ -858,15 +859,8 @@ final class InstrumentationHandler {
             }
             try {
                 services = env.onCreate(instrument);
-                if (expectedServices != null) {
-                    LOOP: for (String name : expectedServices) {
-                        for (Object obj : services) {
-                            if (findType(name, obj.getClass())) {
-                                continue LOOP;
-                            }
-                        }
-                        failInstrumentInitialization(String.format("%s declares service %s but doesn't register it", instrumentClass.getName(), name), null);
-                    }
+                if (expectedServices != null && !TruffleOptions.AOT) {
+                    checkServices(expectedServices);
                 }
             } catch (Throwable e) {
                 failInstrumentInitialization(String.format("Failed calling onCreate of instrument class %s", instrumentClass.getName()), e);
@@ -875,6 +869,18 @@ final class InstrumentationHandler {
             if (TRACE) {
                 trace("Initialized instrument %s class %s %n", instrument, instrumentClass);
             }
+        }
+
+        private boolean checkServices(String[] expectedServices) {
+            LOOP: for (String name : expectedServices) {
+                for (Object obj : services) {
+                    if (findType(name, obj.getClass())) {
+                        continue LOOP;
+                    }
+                }
+                failInstrumentInitialization(String.format("%s declares service %s but doesn't register it", instrumentClass.getName(), name), null);
+            }
+            return true;
         }
 
         private boolean findType(String name, Class<?> type) {
