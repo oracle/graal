@@ -87,8 +87,11 @@ public final class InstrumentRegistrationProcessor extends AbstractProcessor {
 
             int serviceCounter = 0;
             try {
-                for (Class<?> service : annotation.services()) {
-                    p.setProperty(prefix + "service" + serviceCounter++, service.getCanonicalName());
+                final Class<?>[] services = annotation.services();
+                if (services != null) {
+                    for (Class<?> service : services) {
+                        p.setProperty(prefix + "service" + serviceCounter++, service.getCanonicalName());
+                    }
                 }
             } catch (MirroredTypesException ex) {
                 for (TypeMirror service : ex.getTypeMirrors()) {
