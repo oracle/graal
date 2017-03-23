@@ -174,8 +174,6 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
         }
     }
 
-    static int cnt;
-
     private static void replaceWithTrappingNullCheck(AbstractDeoptimizeNode deopt, IfNode ifNode, LogicNode condition, DeoptimizationReason deoptimizationReason, long implicitNullCheckLimit) {
         counterTrappingNullCheck.increment();
         if (deopt instanceof DynamicDeoptimizeNode) {

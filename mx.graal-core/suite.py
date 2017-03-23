@@ -8,7 +8,7 @@ suite = {
         "name" : "truffle",
         # IMPORTANT: When updating the Truffle import, notify Truffle language developers
         # (by mail to graal-dev@openjdk.java.net) of the pending change.
-        "version" : "d55a08753dc7f5ccc3d54dccd386f0b48773b6fc",
+        "version" : "e4c752d5477f3177b30ba80af7cd3c3e61329d2e",
         "urls" : [
           {"url" : "https://github.com/graalvm/truffle.git", "kind" : "git"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -311,6 +311,7 @@ suite = {
         "JVMCI_HOTSPOT",
         "org.graalvm.compiler.api.runtime",
         "org.graalvm.compiler.replacements",
+        "org.graalvm.compiler.printer",
         "org.graalvm.compiler.runtime",
       ],
       "imports" : [
@@ -1072,6 +1073,7 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "org.graalvm.util",
         "mx:JUNIT",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",

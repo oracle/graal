@@ -3048,7 +3048,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
         int nextBCI = stream.nextBCI();
         int nextBC = stream.readUByte(nextBCI);
-        if (nextBC == Bytecodes.GETFIELD) {
+        if (nextBCI <= currentBlock.endBci && nextBC == Bytecodes.GETFIELD) {
             stream.next();
             genGetField(lookupField(stream.readCPI(), Bytecodes.GETFIELD), value);
         } else {
@@ -3431,7 +3431,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
         int next = getStream().nextBCI();
         int value = getStream().readUByte(next);
-        if (value == Bytecodes.IFEQ || value == Bytecodes.IFNE) {
+        if (next <= currentBlock.endBci && (value == Bytecodes.IFEQ || value == Bytecodes.IFNE)) {
             getStream().next();
             BciBlock firstSucc = currentBlock.getSuccessor(0);
             BciBlock secondSucc = currentBlock.getSuccessor(1);

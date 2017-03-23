@@ -56,14 +56,14 @@ public class LoadConstantIndirectlyFixedNode extends FixedWithNextNode implement
     protected HotSpotConstantLoadAction action;
 
     public LoadConstantIndirectlyFixedNode(ValueNode value) {
-        super(TYPE, value.stamp().unrestricted());
+        super(TYPE, value.stamp());
         this.value = value;
         this.constant = null;
         this.action = HotSpotConstantLoadAction.RESOLVE;
     }
 
     public LoadConstantIndirectlyFixedNode(ValueNode value, HotSpotConstantLoadAction action) {
-        super(TYPE, value.stamp().unrestricted());
+        super(TYPE, value.stamp());
         this.value = value;
         this.constant = null;
         this.action = action;

@@ -41,7 +41,8 @@ class JVMCIVersionCheck {
     private static final int JVMCI8_MIN_MINOR_VERSION = 24;
 
     // MAX_VALUE indicates that no current EA version is compatible with Graal.
-    private static final int JVMCI9_MIN_EA_BUILD = Integer.MAX_VALUE;
+    // Note: Keep README.md in sync with the EA version support checked here.
+    private static final int JVMCI9_MIN_EA_BUILD = 161;
 
     private static void failVersionCheck(boolean exit, String reason, Object... args) {
         Formatter errorMessage = new Formatter().format(reason, args);

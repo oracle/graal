@@ -23,6 +23,7 @@
 package org.graalvm.compiler.truffle;
 
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
+
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
@@ -45,26 +46,29 @@ public class TruffleConstantFieldProvider implements ConstantFieldProvider {
     @Override
     public <T> T readConstantField(ResolvedJavaField field, ConstantFieldTool<T> tool) {
         JavaConstant receiver = tool.getReceiver();
-        if (field.isStatic() || receiver.isNonNull()) {
+        boolean isStaticField = field.isStatic();
+        if (isStaticField || receiver.isNonNull()) {
+            CompilationFinal compilationFinal = field.getAnnotation(CompilationFinal.class);
             if (field.getType().getJavaKind() == JavaKind.Object) {
-                CompilationFinal compilationFinal = field.getAnnotation(CompilationFinal.class);
                 if (compilationFinal != null) {
                     int stableDimensions = actualStableDimensions(field, compilationFinal.dimensions());
                     return tool.foldStableArray(tool.readValue(), stableDimensions, true);
-                } else if (!field.isStatic() && field.getAnnotation(Children.class) != null) {
-                    int stableDimensions = field.getType().isArray() ? 1 : 0;
-                    return tool.foldStableArray(verifyFieldValue(field, tool.readValue()), stableDimensions, true);
-                } else if (!field.isStatic() && field.getAnnotation(Child.class) != null) {
-                    return tool.foldConstant(verifyFieldValue(field, tool.readValue()));
+                } else if (!isStaticField) {
+                    if (field.getAnnotation(Child.class) != null) {
+                        return tool.foldConstant(verifyFieldValue(field, tool.readValue()));
+                    } else if (field.getAnnotation(Children.class) != null) {
+                        int stableDimensions = field.getType().isArray() ? 1 : 0;
+                        return tool.foldStableArray(verifyFieldValue(field, tool.readValue()), stableDimensions, true);
+                    }
                 }
-            } else if (field.getAnnotation(CompilationFinal.class) != null) {
+            } else if (compilationFinal != null) {
                 return tool.foldConstant(tool.readValue());
             }
         }
 
         T ret = graalConstantFieldProvider.readConstantField(field, tool);
         if (ret == null) {
-            if (field.isFinal() && (field.isStatic() || receiver.isNonNull())) {
+            if (field.isFinal() && (isStaticField || receiver.isNonNull())) {
                 return tool.foldConstant(tool.readValue());
             }
         }

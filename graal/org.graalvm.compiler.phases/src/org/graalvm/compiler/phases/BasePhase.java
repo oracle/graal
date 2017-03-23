@@ -163,6 +163,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
                     }
                 }
             }
+
             if (dumpGraph && Debug.isDumpEnabled(Debug.BASIC_LOG_LEVEL)) {
                 Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "%s", getName());
             }
@@ -204,5 +205,4 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     public float codeSizeIncrease() {
         return 1.25f;
     }
-
 }

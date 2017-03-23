@@ -27,7 +27,6 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompila
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationRepeats;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompileOnly;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilerThreads;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleEnableInfopoints;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBoundaries;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBranches;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleProfilingEnabled;
@@ -653,8 +652,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     public abstract void reinstallStubs();
 
     public final boolean enableInfopoints() {
-        /* Currently infopoints can change code generation so don't enable them automatically */
-        return platformEnableInfopoints() && TruffleCompilerOptions.getValue(TruffleEnableInfopoints);
+        return platformEnableInfopoints();
     }
 
     protected abstract boolean platformEnableInfopoints();

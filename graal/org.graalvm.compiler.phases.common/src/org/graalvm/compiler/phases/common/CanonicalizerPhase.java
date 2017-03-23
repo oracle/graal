@@ -218,8 +218,8 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 public void usagesDroppedToZero(Node node) {
                     workList.add(node);
                 }
-
             };
+
             try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
                 for (Node n : workList) {
                     boolean changed = processNode(n);
@@ -448,7 +448,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             public void deleteBranch(Node branch) {
                 FixedNode fixedBranch = (FixedNode) branch;
                 fixedBranch.predecessor().replaceFirstSuccessor(fixedBranch, null);
-                GraphUtil.killCFG(fixedBranch, this);
+                GraphUtil.killCFG(fixedBranch);
             }
 
             @Override

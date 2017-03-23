@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,23 +20,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.graph.iterators;
+package micro.benchmarks;
 
-import java.util.function.Predicate;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.Warmup;
 
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.iterators.NodePredicates.AndPredicate;
+import org.graalvm.compiler.microbenchmarks.graal.GraalBenchmark;
 
-public interface NodePredicate extends Predicate<Node> {
+/**
+ * Benchmarks cost of hasing a character array.
+ */
+public class HashBenchmark extends GraalBenchmark {
 
-    boolean apply(Node n);
-
-    @Override
-    default boolean test(Node n) {
-        return apply(n);
+    @State(Scope.Benchmark)
+    public static class ThreadState {
+        char[] characters = ("Hello world from the HashBenchmark!").toCharArray();
     }
 
-    default NodePredicate and(NodePredicate np) {
-        return new AndPredicate(this, np);
+    @Benchmark
+    @Warmup(iterations = 20)
+    public int hash(ThreadState state) {
+        int value = 0;
+        char[] array = state.characters;
+        for (int i = 0; i < array.length; ++i) {
+            value = value * 31 + array[i];
+        }
+        return value;
     }
 }

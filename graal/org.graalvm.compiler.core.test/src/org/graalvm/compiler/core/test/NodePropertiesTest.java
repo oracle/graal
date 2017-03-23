@@ -74,7 +74,7 @@ public class NodePropertiesTest extends GraalCompilerTest {
         }
         sideEffect = null;
         // cannot shift
-        return a * x * 3;
+        return a * x * 41;
     }
 
     public static final int ITERATIONS_LOOP_1 = 128;
