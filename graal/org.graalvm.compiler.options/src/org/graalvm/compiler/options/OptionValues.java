@@ -44,12 +44,18 @@ public class OptionValues {
 
     private final EconomicMap<OptionKey<?>, Object> values = newOptionMap();
 
+    /**
+     * Sets the value for a key.
+     *
+     * NOTE: This method is not thread safe and so must only be called when it is guaranteed that no
+     * other thread will be reading or writing values.
+     */
     protected OptionValues set(OptionKey<?> key, Object value) {
         values.put(key, encodeNull(value));
         return this;
     }
 
-    boolean containsKey(OptionKey<?> key) {
+    protected boolean containsKey(OptionKey<?> key) {
         return values.containsKey(key);
     }
 
@@ -75,7 +81,8 @@ public class OptionValues {
     }
 
     /**
-     * Gets an immutable view of the key/value pairs in this object.
+     * Gets an immutable view of the key/value pairs in this object. Values read from this view
+     * should be {@linkplain #decodeNull(Object) decoded} before being used.
      */
     public UnmodifiableEconomicMap<OptionKey<?>, Object> getMap() {
         return values;
@@ -105,8 +112,12 @@ public class OptionValues {
         }
     }
 
+    protected <T> T get(OptionKey<T> key) {
+        return get(values, key);
+    }
+
     @SuppressWarnings("unchecked")
-    <T> T get(OptionKey<T> key) {
+    protected static <T> T get(UnmodifiableEconomicMap<OptionKey<?>, Object> values, OptionKey<T> key) {
         Object value = values.get(key);
         if (value == null) {
             return key.getDefaultValue();
@@ -116,16 +127,23 @@ public class OptionValues {
 
     private static final Object NULL = new Object();
 
-    private static Object encodeNull(Object value) {
+    protected static Object encodeNull(Object value) {
         return value == null ? NULL : value;
     }
 
-    private static Object decodeNull(Object value) {
+    /**
+     * Decodes a value that may be the sentinel value for {@code null} in a map.
+     */
+    public static Object decodeNull(Object value) {
         return value == NULL ? null : value;
     }
 
     @Override
     public String toString() {
+        return toString(getMap());
+    }
+
+    public static String toString(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
         Comparator<OptionKey<?>> comparator = new Comparator<OptionKey<?>>() {
             @Override
             public int compare(OptionKey<?> o1, OptionKey<?> o2) {
@@ -133,7 +151,7 @@ public class OptionValues {
             }
         };
         SortedMap<OptionKey<?>, Object> sorted = new TreeMap<>(comparator);
-        MapCursor<OptionKey<?>, Object> cursor = values.getEntries();
+        UnmodifiableMapCursor<OptionKey<?>, Object> cursor = values.getEntries();
         while (cursor.advance()) {
             sorted.put(cursor.getKey(), cursor.getValue());
         }
