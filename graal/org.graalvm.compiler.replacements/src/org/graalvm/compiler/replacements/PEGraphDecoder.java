@@ -83,6 +83,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
+import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
 import org.graalvm.compiler.nodes.spi.StampProvider;
@@ -295,7 +296,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         protected boolean invokeConsumed;
 
         public PEAppendGraphBuilderContext(PEMethodScope inlineScope, FixedWithNextNode lastInstr) {
-            super(inlineScope, inlineScope.invokeData.invoke);
+            super(inlineScope, inlineScope.invokeData != null ? inlineScope.invokeData.invoke : null);
             this.lastInstr = lastInstr;
         }
 
@@ -380,6 +381,37 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
     }
 
+    protected class OnDemandPEAppendGraphBuilderContext extends PEAppendGraphBuilderContext {
+        private final FixedNode targetNode;
+        private final FixedWithNextNode predecessor;
+
+        public OnDemandPEAppendGraphBuilderContext(PEMethodScope inlineScope, FixedNode targetNode) {
+            super(inlineScope, targetNode.predecessor() instanceof FixedWithNextNode ? (FixedWithNextNode) targetNode.predecessor() : null);
+            this.targetNode = targetNode;
+            this.predecessor = targetNode.predecessor() instanceof FixedWithNextNode ? (FixedWithNextNode) targetNode.predecessor() : null;
+        }
+
+        @Override
+        public void push(JavaKind kind, ValueNode value) {
+            if (predecessor != null) {
+                targetNode.replaceAtPredecessor(null);
+            }
+            super.push(kind, value);
+        }
+
+        public FixedNode commitPush(LoopScope loopScope, int nodeOrderId, FixedWithNextNode asFixedWithNextNode) {
+            registerNode(loopScope, nodeOrderId, pushedNode, true, false);
+            targetNode.replaceAtUsages(pushedNode);
+            if (asFixedWithNextNode != null) {
+                FixedNode successor = asFixedWithNextNode.next();
+                successor.replaceAtPredecessor(null);
+                lastInstr.setNext(successor);
+                deleteFixedNode(targetNode);
+            }
+            return lastInstr;
+        }
+    }
+
     @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static class ExceptionPlaceholderNode extends ValueNode {
         public static final NodeClass<ExceptionPlaceholderNode> TYPE = NodeClass.create(ExceptionPlaceholderNode.class);
@@ -394,16 +426,18 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     private final InvocationPlugins invocationPlugins;
     private final InlineInvokePlugin[] inlineInvokePlugins;
     private final ParameterPlugin parameterPlugin;
+    private final NodePlugin[] nodePlugins;
 
     public PEGraphDecoder(Architecture architecture, StructuredGraph graph, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
-                    StampProvider stampProvider, OptionValues options, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins,
-                    ParameterPlugin parameterPlugin) {
+                          StampProvider stampProvider, OptionValues options, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins,
+                          ParameterPlugin parameterPlugin, NodePlugin[] nodePlugins) {
         super(architecture, graph, metaAccess, constantReflection, constantFieldProvider, stampProvider, true);
         this.loopExplosionPlugin = loopExplosionPlugin;
         this.invocationPlugins = invocationPlugins;
         this.inlineInvokePlugins = inlineInvokePlugins;
         this.parameterPlugin = parameterPlugin;
         this.options = options;
+        this.nodePlugins = nodePlugins;
     }
 
     protected static LoopExplosionKind loopExplosionKind(ResolvedJavaMethod method, LoopExplosionPlugin loopExplosionPlugin) {
@@ -789,6 +823,19 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             if (foreignCall.getBci() == BytecodeFrame.UNKNOWN_BCI && methodScope.invokeData != null) {
                 foreignCall.setBci(methodScope.invokeData.invoke.bci());
             }
+        } else if (nodePlugins != null && nodePlugins.length > 0) {
+            OnDemandPEAppendGraphBuilderContext graphBuilderContext = new OnDemandPEAppendGraphBuilderContext(methodScope, node);
+            if (node instanceof LoadIndexedNode) {
+                LoadIndexedNode loadIndexedNode = (LoadIndexedNode) node;
+                ValueNode array = loadIndexedNode.array();
+                ValueNode index = loadIndexedNode.index();
+                for (NodePlugin nodePlugin : nodePlugins) {
+                    if (nodePlugin.handleLoadIndexed(graphBuilderContext, array, index, loadIndexedNode.elementKind())) {
+                        replacedNode = graphBuilderContext.commitPush(loopScope, nodeOrderId, loadIndexedNode);
+                        break;
+                    }
+                }
+            }
         }
 //        else if (nodePlugins != null && nodePlugins.length > 0) {
             // Remove the node from the graph so that the plugin can append a replacement node to
@@ -973,16 +1020,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             super.handleFixedNode(s, loopScope, nodeOrderId, replacedNode);
         }
 
-    }
-
-    private FixedNode processReplacedNode(LoopScope loopScope, int nodeOrderId, FixedNode node, PEAppendGraphBuilderContext graphBuilderContext, FixedWithNextNode fixedNode) {
-        registerNode(loopScope, nodeOrderId, graphBuilderContext.pushedNode, true, false);
-        node.replaceAtUsages(graphBuilderContext.pushedNode);
-        FixedNode successor = fixedNode.next();
-        successor.replaceAtPredecessor(null);
-        graphBuilderContext.lastInstr.setNext(successor);
-        deleteFixedNode(node);
-        return graphBuilderContext.lastInstr;
     }
 
     private static void deleteFixedNode(FixedNode node) {
