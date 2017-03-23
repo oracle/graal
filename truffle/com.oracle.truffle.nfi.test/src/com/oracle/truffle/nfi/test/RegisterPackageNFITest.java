@@ -24,6 +24,15 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.junit.Assert;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -34,14 +43,8 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.nfi.NFILanguage;
-import java.util.HashMap;
-import java.util.Map;
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.CoreMatchers.is;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class RegisterPackageNFITest extends NFITest {
 
@@ -66,11 +69,11 @@ public class RegisterPackageNFITest extends NFITest {
 
         @Override
         public ForeignAccess getForeignAccess() {
-            return FunctionRegistryMessageResolutionForeign.createAccess();
+            return FunctionRegistryMessageResolutionForeign.ACCESS;
         }
     }
 
-    @MessageResolution(language = NFILanguage.class, receiverType = FunctionRegistry.class)
+    @MessageResolution(receiverType = FunctionRegistry.class)
     static class FunctionRegistryMessageResolution {
 
         @Resolve(message = "EXECUTE")
@@ -90,7 +93,7 @@ public class RegisterPackageNFITest extends NFITest {
 
             Object access(FunctionRegistry receiver, Object[] args) {
                 register(receiver, (String) args[0], (String) args[1], (TruffleObject) args[2]);
-                return null;
+                return JavaInterop.asTruffleObject(null);
             }
         }
 

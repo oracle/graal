@@ -50,6 +50,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
@@ -125,8 +126,10 @@ public class SLNodeFactory {
 
     /* State while parsing a block. */
     private LexicalScope lexicalScope;
+    private final SLLanguage language;
 
-    public SLNodeFactory(Source source) {
+    public SLNodeFactory(SLLanguage language, Source source) {
+        this.language = language;
         this.source = source;
         this.allFunctions = new HashMap<>();
     }
@@ -172,7 +175,7 @@ public class SLNodeFactory {
 
         final SLFunctionBodyNode functionBodyNode = new SLFunctionBodyNode(methodBlock);
         functionBodyNode.setSourceSection(functionSrc);
-        final SLRootNode rootNode = new SLRootNode(frameDescriptor, functionBodyNode, functionSrc, functionName);
+        final SLRootNode rootNode = new SLRootNode(language, frameDescriptor, functionBodyNode, functionSrc, functionName);
         allFunctions.put(functionName, rootNode);
 
         functionStartPos = 0;
@@ -423,7 +426,7 @@ public class SLNodeFactory {
             result = SLReadLocalVariableNodeGen.create(frameSlot);
         } else {
             /* Read of a global name. In our language, the only global names are functions. */
-            result = new SLFunctionLiteralNode(name);
+            result = new SLFunctionLiteralNode(language, name);
         }
         result.setSourceSection(nameNode.getSourceSection());
         return result;

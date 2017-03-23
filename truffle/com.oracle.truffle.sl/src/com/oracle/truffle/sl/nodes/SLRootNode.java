@@ -66,15 +66,23 @@ public class SLRootNode extends RootNode {
 
     @CompilationFinal private boolean isCloningAllowed;
 
-    public SLRootNode(FrameDescriptor frameDescriptor, SLExpressionNode bodyNode, SourceSection sourceSection, String name) {
-        super(SLLanguage.class, sourceSection, frameDescriptor);
+    private final SourceSection sourceSection;
+
+    public SLRootNode(SLLanguage language, FrameDescriptor frameDescriptor, SLExpressionNode bodyNode, SourceSection sourceSection, String name) {
+        super(language, frameDescriptor);
         this.bodyNode = bodyNode;
         this.name = name;
+        this.sourceSection = sourceSection;
+    }
+
+    @Override
+    public SourceSection getSourceSection() {
+        return sourceSection;
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        assert SLLanguage.INSTANCE.findContext() != null;
+        assert getLanguage(SLLanguage.class).getContextReference().get() != null;
         return bodyNode.executeGeneric(frame);
     }
 

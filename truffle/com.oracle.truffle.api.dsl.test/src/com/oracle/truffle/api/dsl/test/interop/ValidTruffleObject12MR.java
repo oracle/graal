@@ -31,7 +31,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
 @SuppressWarnings("unused")
-@MessageResolution(receiverType = ValidTruffleObject12.class, language = TestTruffleLanguage.class)
+@MessageResolution(receiverType = ValidTruffleObject12.class)
 @ExpectError("Only one @LanguageCheck element allowed")
 public class ValidTruffleObject12MR {
 

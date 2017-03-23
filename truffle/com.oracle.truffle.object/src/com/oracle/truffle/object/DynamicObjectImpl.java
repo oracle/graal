@@ -49,6 +49,7 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
     }
 
     /** @since 0.17 or earlier */
+    @SuppressWarnings("deprecation")
     public Object getTypeIdentifier() {
         return getShape();
     }

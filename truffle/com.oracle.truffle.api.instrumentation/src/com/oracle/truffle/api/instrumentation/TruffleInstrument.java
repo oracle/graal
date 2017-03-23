@@ -38,6 +38,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AccessorInstrumentHandler;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -45,10 +46,17 @@ import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * <p>
- * The service provider interface (SPI) for <em>instruments</em>: clients of Truffle instrumentation
- * that may observe and inject behavior into interpreters written using the Truffle framework. A
- * registered instrument may be created and disposed multiple times; only one instance is ever
- * active per {@linkplain com.oracle.truffle.api.vm.PolyglotEngine engine}.
+ * The service provider interface (SPI) for Truffle
+ * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Instrument Instruments}: clients of Truffle
+ * instrumentation that may observe and inject behavior into interpreters written using the Truffle
+ * framework.
+ * <p>
+ * Each registered instrument can be
+ * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Instrument#setEnabled(boolean)
+ * enabled/disabled} multiple times during the lifetime of a
+ * {@link com.oracle.truffle.api.vm.PolyglotEngine PolyglotEngine}, but there is never more than one
+ * instance per engine. A new {@link TruffleInstrument} instance is created each time the instrument
+ * is enabled, and the currently enabled instance is disposed when the instrument is disabled.
  * </p>
  * <h4>Registration</h4>
  * <p>
@@ -57,17 +65,24 @@ import com.oracle.truffle.api.source.SourceSection;
  * </p>
  * <h4>Instrument Creation</h4>
  * <ul>
- * <li>A newly created instrument is notified once via {@link #onCreate(Env)}.</li>
- * <li>The {@link Instrumenter} instance available in the provided {@linkplain Env environment}
- * allows the instrument to bind listeners and node factories to guest language code locations.</li>
+ * <li>When an instrument becomes
+ * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Instrument#setEnabled(boolean) enabled}, a
+ * new instance is created and notified once via {@link #onCreate(Env)}.</li>
+ * <li>The {@link Instrumenter} available in the provided {@linkplain Env environment} allows the
+ * instrument instance to bind listeners for {@linkplain ExecutionEventListener execution} and
+ * {@linkplain LoadSourceListener source} events, as well as {@linkplain ExecutionEventNodeFactory
+ * node factories} for code injection at guest language code locations.</li>
  * </ul>
  * <h4>Instrument Disposal</h4>
  * <ul>
- * <li>An instrument that will no longer be used is notified once via {@link #onDispose(Env)}.</li>
- * <li>Any active bindings created by the disposed instrument will be disposed automatically by the
- * framework.</li>
+ * <li>When an instrument becomes
+ * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Instrument#setEnabled(boolean) disabled},
+ * the current instance is notified once via {@link #onDispose(Env)}.</li>
+ * <li>All active bindings created by a disposed instrument become disposed automatically.</li>
  * <li>The {@link Instrumenter} instance available in the provided {@linkplain Env environment} may
  * not be used after disposal.</li>
+ * <li>All enabled instruments in an engine become disabled automatically when the engine is
+ * disposed.</li>
  * </ul>
  * <h4>Example for a simple expression coverage instrument:</h4>
  * {@codesnippet com.oracle.truffle.api.instrumentation.test.examples.CoverageExample}
@@ -88,7 +103,7 @@ public abstract class TruffleInstrument {
      * <p>
      * The method may {@link Env#registerService(java.lang.Object) register} additional
      * {@link Registration#services() services} - e.g. objects to be exposed via
-     * {@link com.oracle.truffle.api.vm.PolyglotEngine.Instrument#lookup lookup query}. For example
+     * {@link com.oracle.truffle.api.vm.PolyglotRuntime.Instrument#lookup lookup query}. For example
      * to expose a debugger one could define an abstract debugger controller:
      * </p>
      *
@@ -109,10 +124,11 @@ public abstract class TruffleInstrument {
     protected abstract void onCreate(Env env);
 
     /**
-     * Invoked once on an {@linkplain TruffleInstrument instance} when it is no longer needed,
-     * possibly because the underlying {@linkplain com.oracle.truffle.api.vm.PolyglotEngine engine}
-     * has been disposed. A disposed instance is no longer usable. If the instrument is re-enabled,
-     * the engine will create a new instance.
+     * Invoked once on an {@linkplain TruffleInstrument instance} when it becomes
+     * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Instrument#setEnabled(boolean) disabled}
+     * , possibly because the underlying {@linkplain com.oracle.truffle.api.vm.PolyglotEngine
+     * engine} has been disposed. A disposed instance is no longer usable. If the instrument is
+     * re-enabled, the engine will create a new instance.
      *
      * @param env environment information for the instrument
      * @since 0.12
@@ -122,8 +138,7 @@ public abstract class TruffleInstrument {
     }
 
     /**
-     * Provides ways and means to access input, output and error streams. Also allows to parse
-     * arbitrary code from other Truffle languages.
+     * Access to instrumentation services as well as input, output, and error streams.
      *
      * @since 0.12
      */
@@ -235,9 +250,9 @@ public abstract class TruffleInstrument {
          * @throws IOException if the parsing or evaluation fails for some reason
          * @since 0.12
          */
-        @SuppressWarnings("static-method")
         public CallTarget parse(Source source, String... argumentNames) throws IOException {
-            return InstrumentationHandler.ACCESSOR.parse(null, source, null, argumentNames);
+            TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(vm, source.getMimeType());
+            return AccessorInstrumentHandler.langAccess().parse(env, source, null, argumentNames);
         }
 
         /**
@@ -267,10 +282,10 @@ public abstract class TruffleInstrument {
          * @return a human readable string representation of the value.
          * @since 0.17
          */
+        @SuppressWarnings("static-method")
         public String toString(Node node, Object value) {
             final TruffleLanguage.Env env = getLangEnv(node);
-            final TruffleLanguage<?> language = AccessorInstrumentHandler.langAccess().findLanguage(env);
-            return AccessorInstrumentHandler.langAccess().toStringIfVisible(language, env, value, null);
+            return AccessorInstrumentHandler.langAccess().toStringIfVisible(env, value, false);
         }
 
         /**
@@ -284,10 +299,10 @@ public abstract class TruffleInstrument {
          * @return the meta-object, or <code>null</code>
          * @since 0.22
          */
+        @SuppressWarnings("static-method")
         public Object findMetaObject(Node node, Object value) {
             final TruffleLanguage.Env env = getLangEnv(node);
-            final TruffleLanguage<?> language = AccessorInstrumentHandler.langAccess().findLanguage(env);
-            return AccessorInstrumentHandler.langAccess().findMetaObject(language, env, value);
+            return AccessorInstrumentHandler.langAccess().findMetaObject(env, value);
         }
 
         /**
@@ -298,25 +313,25 @@ public abstract class TruffleInstrument {
          * @return a source location of the object, or <code>null</code>
          * @since 0.22
          */
+        @SuppressWarnings("static-method")
         public SourceSection findSourceLocation(Node node, Object value) {
             final TruffleLanguage.Env env = getLangEnv(node);
-            final TruffleLanguage<?> language = AccessorInstrumentHandler.langAccess().findLanguage(env);
-            return AccessorInstrumentHandler.langAccess().findSourceLocation(language, env, value);
+            return AccessorInstrumentHandler.langAccess().findSourceLocation(env, value);
         }
 
-        @SuppressWarnings({"rawtypes"})
-        private TruffleLanguage.Env getLangEnv(Node node) {
-            RootNode rootNode = node.getRootNode();
-            Class<? extends TruffleLanguage> languageClass = AccessorInstrumentHandler.nodesAccess().findLanguage(rootNode);
-            TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().findEnv(vm, languageClass);
-            return env;
+        private static TruffleLanguage.Env getLangEnv(Node node) {
+            LanguageInfo languageInfo = node.getRootNode().getLanguageInfo();
+            if (languageInfo == null) {
+                throw new IllegalArgumentException("No language available for given node.");
+            }
+            return AccessorInstrumentHandler.engineAccess().getEnvForInstrument(languageInfo);
         }
 
     }
 
     /**
-     * Annotation to register an {@link TruffleInstrument instrument} implementations for automatic
-     * discovery.
+     * Annotation that registers an {@link TruffleInstrument instrument} implementations for
+     * automatic discovery.
      *
      * @since 0.12
      */

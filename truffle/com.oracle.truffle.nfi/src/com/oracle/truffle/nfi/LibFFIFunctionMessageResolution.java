@@ -37,7 +37,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.LibFFIFunctionMessageResolutionFactory.CachedExecuteNodeGen;
 
-@MessageResolution(language = NFILanguage.class, receiverType = LibFFIFunction.class)
+@MessageResolution(receiverType = LibFFIFunction.class)
 class LibFFIFunctionMessageResolution {
 
     abstract static class CachedExecuteNode extends Node {

@@ -52,7 +52,6 @@ public final class LanguageCheckGenerator {
     protected final String packageName;
     protected final String clazzName;
     protected final String userClassName;
-    protected final String truffleLanguageFullClazzName;
     protected final ProcessingEnvironment processingEnv;
     protected String receiverClassName;
     protected ForeignAccessFactoryGenerator containingForeignAccessFactory;
@@ -62,7 +61,6 @@ public final class LanguageCheckGenerator {
         this.element = element;
         this.packageName = ElementUtils.getPackageName(element);
         this.userClassName = ElementUtils.getQualifiedName(element);
-        this.truffleLanguageFullClazzName = Utils.getTruffleLanguageFullClassName(messageResolutionAnnotation);
         this.clazzName = ElementUtils.getSimpleName(element) + "Sub";
         this.receiverClassName = Utils.getReceiverTypeFullClassName(messageResolutionAnnotation);
         this.containingForeignAccessFactory = containingForeignAccessFactory;
@@ -178,8 +176,8 @@ public final class LanguageCheckGenerator {
 
     void appendRootNode(Writer w) throws IOException {
         w.append("    private static final class LanguageCheckRootNode extends RootNode {\n");
-        w.append("        protected LanguageCheckRootNode(Class<? extends TruffleLanguage<?>> language) {\n");
-        w.append("            super(language, null, null);\n");
+        w.append("        protected LanguageCheckRootNode() {\n");
+        w.append("            super(null);\n");
         w.append("        }\n");
         w.append("\n");
         w.append("        @Child private ").append(clazzName).append(" node = ").append(packageName).append(".").append(clazzName).append("NodeGen.create();");
@@ -198,10 +196,14 @@ public final class LanguageCheckGenerator {
     }
 
     static void appendRootNodeFactory(Writer w) throws IOException {
+        w.append("    @Deprecated\n");
+        w.append("    @SuppressWarnings(\"unused\")\n");
         w.append("    public static RootNode createRoot(Class<? extends TruffleLanguage<?>> language) {\n");
-        w.append("        return new LanguageCheckRootNode(language);\n");
+        w.append("        return createRoot();\n");
         w.append("    }\n");
-
+        w.append("    public static RootNode createRoot() {\n");
+        w.append("        return new LanguageCheckRootNode();\n");
+        w.append("    }\n");
     }
 
     protected void appendHandleUnsupportedTypeException(Writer w) throws IOException {
@@ -213,7 +215,7 @@ public final class LanguageCheckGenerator {
     }
 
     public String getRootNodeFactoryInvokation() {
-        return packageName + "." + clazzName + ".createRoot(" + truffleLanguageFullClazzName + ".class)";
+        return packageName + "." + clazzName + ".createRoot()";
     }
 
     @Override

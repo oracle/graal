@@ -1,13 +1,6 @@
 #Signature file v4.1
 #Version 
 
-CLSS public abstract com.oracle.truffle.api.vm.EventConsumer<%0 extends java.lang.Object>
- anno 0 java.lang.Deprecated()
-cons public init(java.lang.Class<{com.oracle.truffle.api.vm.EventConsumer%0}>)
-meth protected abstract void on({com.oracle.truffle.api.vm.EventConsumer%0})
-supr java.lang.Object
-hfds type
-
 CLSS public com.oracle.truffle.api.vm.IncompleteSourceException
 cons public init()
 cons public init(java.lang.Throwable)
@@ -28,8 +21,8 @@ meth public static com.oracle.truffle.api.vm.PolyglotEngine$Builder buildNew()
 meth public static com.oracle.truffle.api.vm.PolyglotEngine$Builder newBuilder()
 meth public void dispose()
 supr java.lang.Object
-hfds JDK8OrEarlier,LOG,SPI,config,context,debugger,disposed,err,executor,globals,handlers,in,initThread,instrumentationHandler,instruments,langs,out
-hcls Access,DirectValue,ExecutorValue,PolyglotEvalRootNode,PolyglotRootNode,SPIAccessor
+hfds JDK8OrEarlier,LOG,SPI,cachedTargets,config,context,debugger,disposed,err,executor,globals,handlers,in,initThread,instrumentationHandler,instruments,langs,out
+hcls Access,DirectValue,ExecutorValue,SPIAccessor
 
 CLSS public com.oracle.truffle.api.vm.PolyglotEngine$Builder
  outer com.oracle.truffle.api.vm.PolyglotEngine
@@ -37,8 +30,6 @@ meth public com.oracle.truffle.api.vm.PolyglotEngine build()
 meth public com.oracle.truffle.api.vm.PolyglotEngine$Builder config(java.lang.String,java.lang.String,java.lang.Object)
 meth public com.oracle.truffle.api.vm.PolyglotEngine$Builder executor(java.util.concurrent.Executor)
 meth public com.oracle.truffle.api.vm.PolyglotEngine$Builder globalSymbol(java.lang.String,java.lang.Object)
-meth public com.oracle.truffle.api.vm.PolyglotEngine$Builder onEvent(com.oracle.truffle.api.vm.EventConsumer<?>)
- anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.vm.PolyglotEngine$Builder setErr(java.io.OutputStream)
 meth public com.oracle.truffle.api.vm.PolyglotEngine$Builder setIn(java.io.InputStream)
 meth public com.oracle.truffle.api.vm.PolyglotEngine$Builder setOut(java.io.OutputStream)
@@ -77,7 +68,7 @@ meth public !varargs com.oracle.truffle.api.vm.PolyglotEngine$Value invoke(java.
 meth public <%0 extends java.lang.Object> {%%0} as(java.lang.Class<{%%0}>)
 meth public java.lang.Object get()
 supr java.lang.Object
-hfds language,target
+hfds asJavaObjectTarget,executeTarget,language,unwrapTarget
 
 CLSS public java.io.IOException
 cons public init()

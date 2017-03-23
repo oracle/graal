@@ -30,7 +30,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.tck.impl.TckLanguage;
 
 @SuppressWarnings("unused")
-@MessageResolution(receiverType = StructuredData.class, language = TckLanguage.class)
+@MessageResolution(receiverType = StructuredData.class)
 class StructuredDataMessageResolution {
     @Resolve(message = "GET_SIZE")
     abstract static class StructuredDataGetSizeNode extends Node {

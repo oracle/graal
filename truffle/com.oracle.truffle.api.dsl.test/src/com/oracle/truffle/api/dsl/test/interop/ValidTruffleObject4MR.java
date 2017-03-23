@@ -28,7 +28,7 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.Node;
 
 @SuppressWarnings("unused")
-@MessageResolution(receiverType = ValidTruffleObject4.class, language = TestTruffleLanguage.class)
+@MessageResolution(receiverType = ValidTruffleObject4.class)
 class ValidTruffleObject4MR {
     @Resolve(message = "EXECUTE")
     public abstract static class Execute4 extends Node {

@@ -4,6 +4,24 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 0.25
 
+* Added [Instrumenter.attachOutConsumer](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/Instrumenter.html#attachOutConsumer-T-) and [Instrumenter.attachErrConsumer](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/Instrumenter.html#attachErrConsumer-T-) to receive output from executions run in the associated PolyglotEngine.
+* [JavaInterop.asTruffleObject](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/interop/java/JavaInterop.html#asTruffleObject-java.lang.Object-) lists methods as keys
+* Deprecated `TypedObject` interface
+* Added [PolyglotRuntime](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/vm/PolyglotRuntime.html) for global configuration and to allow engines share resources. The runtime of a PolyglotEngine can be configured using [PolyglotEngine](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/vm/PolyglotEngine.html)`.newBuilder().runtime(runtime).build()`.
+* The `getInstruments()` method has been moved from the [PolyglotEngine](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/vm/PolyglotEngine.html) to [PolyglotRuntime](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/vm/PolyglotRuntime.html).
+* [TruffleLanguage](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) now requires a public default constructor instead of a singleton field named INSTANCE.
+* [TruffleLanguage](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) now requires a public no argument constructor instead of a singleton field named INSTANCE.
+* The [TruffleLanguage](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) instance can now be used to share code and assumptions between engine instances. See the TruffleLanguage javadoc for details.
+* Added a new constructor to [RootNode](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html) with a [TruffleLanguage](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) instance as argument. The current constructor was deprecated.  
+* Added [RootNode.getLanguage(Class)](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html) to access the current language implementation instance.
+* Added [RootNode.getLanguageInfo](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html) to access public information about the associated language.
+* Added [TruffleLanguage.ContextReference](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) class and [TruffleLanguage.getContextReference](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html).
+* Added [Value.getMetaObject](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/vm/TruffleLanguage.html) and [Value.getSouceLocation](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/vm/TruffleLanguage.html)
+* Deprecated [RootNode.getExecutionContext](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html)
+* Deprecated [TruffleLanguage.createFindContextNode](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) and [TruffleLanguage.findContext](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html).
+* Deprecated [Node.getLanguage](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/nodes/Node.html).
+* Deprecated [MessageResolution.language](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/nodes/Node.html) without replacement. (jackpot rule available)
+* Deprecated [ExecutionContext](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/ExecutionContext.html) without replacement.
 * Added [TruffleInstrument.Registration.services()](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Registration#services) to support declarative registration of services
 
 ## Version 0.24

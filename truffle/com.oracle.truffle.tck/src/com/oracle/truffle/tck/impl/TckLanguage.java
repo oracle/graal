@@ -39,7 +39,6 @@ import com.oracle.truffle.api.source.Source;
 
 @TruffleLanguage.Registration(mimeType = "application/x-tck", name = "TCK", version = "1.0")
 public final class TckLanguage extends TruffleLanguage<Env> {
-    public static final TckLanguage INSTANCE = new TckLanguage();
 
     @Override
     protected Env createContext(Env env) {
@@ -55,7 +54,7 @@ public final class TckLanguage extends TruffleLanguage<Env> {
             int nextColon = txt.indexOf(":", 6);
             String mimeType = txt.substring(6, nextColon);
             Source toParse = Source.newBuilder(txt.substring(nextColon + 1)).mimeType(mimeType).name("src.tck").build();
-            root = new MultiplyNode(toParse);
+            root = new MultiplyNode(this, toParse);
         } else {
             final double value = Double.parseDouble(txt);
             root = RootNode.createConstantNode(value);
@@ -81,14 +80,14 @@ public final class TckLanguage extends TruffleLanguage<Env> {
     private static final class MultiplyNode extends RootNode implements TruffleObject, ForeignAccess.Factory {
         private final Source code;
 
-        MultiplyNode(Source toParse) {
-            super(TckLanguage.class, null, null);
+        MultiplyNode(TckLanguage language, Source toParse) {
+            super(language);
             this.code = toParse;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            Env env = TckLanguage.INSTANCE.findContext(TckLanguage.INSTANCE.createFindContextNode());
+            Env env = getLanguage(TckLanguage.class).getContextReference().get();
             if (frame.getArguments().length == 0) {
                 return this;
             }

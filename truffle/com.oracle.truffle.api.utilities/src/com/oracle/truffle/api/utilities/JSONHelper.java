@@ -24,13 +24,15 @@
  */
 package com.oracle.truffle.api.utilities;
 
-import com.oracle.truffle.api.impl.Accessor;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Helper function that allows to dump the AST during creation to a JSON format.
@@ -65,8 +67,16 @@ public class JSONHelper {
     /** @since 0.8 or earlier */
     public static void dumpNewNode(Node newNode) {
         if (AstJsonDumpBuilder != null) {
+            String language = "";
+            RootNode root = newNode.getRootNode();
+            if (root != null) {
+                TruffleLanguage<?> clazz = root.getLanguage(TruffleLanguage.class);
+                if (clazz != null) {
+                    language = clazz.getClass().getName();
+                }
+            }
             AstJsonDumpBuilder.append("{ \"action\": \"createNode\", \"newId\": \"" + getID(newNode) + "\", \"type\": \"" + getType(newNode) + "\", \"description\": \"" + newNode.getDescription() +
-                            "\", \"language\": \"" + newNode.getLanguage() + "\"" + " },\n");
+                            "\", \"language\": \"" + language + "\"" + " },\n");
         }
     }
 

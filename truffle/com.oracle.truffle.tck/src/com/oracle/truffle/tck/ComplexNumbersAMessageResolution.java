@@ -35,7 +35,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.tck.impl.TckLanguage;
 
-@MessageResolution(receiverType = ComplexNumbersA.class, language = TckLanguage.class)
+@MessageResolution(receiverType = ComplexNumbersA.class)
 class ComplexNumbersAMessageResolution {
     @Resolve(message = "WRITE")
     abstract static class ComplexNumbersAWriteNode extends Node {

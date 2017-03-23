@@ -27,11 +27,14 @@ package com.oracle.truffle.api.nodes;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerOptions;
-import com.oracle.truffle.api.ExecutionContext;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
@@ -41,53 +44,172 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * A root node is a node with a method to execute it given only a frame as a parameter. Therefore, a
- * root node can be used to create a call target using
- * {@link TruffleRuntime#createCallTarget(RootNode)}.
+ * Represents the root node in a Truffle AST. The root node is a {@link Node node} that allows to be
+ * {@link #execute(VirtualFrame) executed} using a {@link VirtualFrame frame} instance created by
+ * the framework. Please note that the {@link RootNode} should not be executed directly but using
+ * {@link CallTarget#call(Object...)}. The structure of the frame is provided by the
+ * {@link FrameDescriptor frame descriptor} passed in the constructor. A root node has always a
+ * <code>null</code> {@link #getParent() parent} and cannot be {@link #replace(Node) replaced}.
+ *
+ * <h4>Construction</h4>
+ *
+ * The root node can be constructed with a {@link TruffleLanguage language implementation} if it is
+ * available. The language implementation instance is obtainable while
+ * {@link TruffleLanguage#createContext(Env)} or {@link TruffleLanguage#parse(ParsingRequest)} is
+ * executed. If no language environment is available, then <code>null</code> can be passed. Please
+ * note that root nodes with <code>null</code> language are considered not instrumentable and have
+ * no access to the {@link #getLanguage(Class) language} or its public {@link #getLanguageInfo()
+ * information}.
+ *
+ * <h4>Execution</h4>
+ *
+ * In order to execute a root node, a call target needs to be created using
+ * {@link TruffleRuntime#createCallTarget(RootNode)}. This allows the runtime system to optimize the
+ * execution of the AST. The {@link CallTarget} can either be {@link CallTarget#call(Object...)
+ * called} directly from runtime code or {@link DirectCallNode direct} and {@link IndirectCallNode
+ * indirect} call nodes can be created, inserted in a child field and
+ * {@link DirectCallNode#call(Object[]) called}. The use of direct call nodes allows the framework
+ * to automatically inline and further optimize call sites based on heuristics.
+ * <p>
+ * After several calls to a call target or call node, the root node might get compiled using partial
+ * evaluation. The details of the compilation heuristic are unspecified, therefore the Truffle
+ * runtime system might decide to not compile at all.
+ *
+ * <h4>Cardinalities</h4>
+ *
+ * <i>One</i> root node instance refers to other classes using the following cardinalities:
+ * <ul>
+ * <li><i>one</i> {@link TruffleLanguage language}
+ * <li><i>one</i> {@link CallTarget call target}
+ * <li><i>many</i> {@link TruffleLanguage#createContext(Env) created} language contexts
+ * </ul>
+ *
+ * <h4>Instrumentation</h4>
+ *
+ * A root node can be {@linkplain com.oracle.truffle.api.instrumentation instrumented} if the
+ * following conditions apply:
+ * <ul>
+ * <li>A non-null {@link TruffleLanguage language} is passed in the root node constructor.
+ * <li>{@link #isInstrumentable()} is overridden and returns <code>true</code>.
+ * <li>{@link #getSourceSection()} is overridden and returns a non-null value.
+ * <li>The AST contains at least one node that is annotated with
+ * {@link com.oracle.truffle.api.instrumentation.Instrumentable} .
+ * </ul>
+ * <p>
+ * <strong>Note:</strong> It is recommended to override {@link #getSourceSection()} and provide a
+ * source section if available. This allows for better testing/tracing/tooling. If no concrete
+ * source section is available please consider using {@link Source#createUnavailableSection()}.
  *
  * @since 0.8 or earlier
  */
 @SuppressWarnings("rawtypes")
 public abstract class RootNode extends Node {
-    final Class<? extends TruffleLanguage> language;
+
+    /*
+     * Since languages were singletons in the past, we cannot use the Env instance stored in
+     * TruffleLanguage for languages that are not yet migrated. We use this env reference instead
+     * for compatibility.
+     */
+    private final LanguageInfo languageInfo;
     private RootCallTarget callTarget;
     @CompilationFinal private FrameDescriptor frameDescriptor;
     private final SourceSection sourceSection;
-
     final ReentrantLock lock = new ReentrantLock();
 
     /**
-     * Creates new root node. Each {@link RootNode} is associated with a particular language - if
-     * the root node represents a method it is assumed the method is written in such language.
-     * <p>
-     * <strong>Note:</strong> Although the {@link SourceSection} <em>can</em> be {@code null}, this
-     * is strongly discouraged for the purposes of testing/tracing/tooling. Please use
-     * {@link Source#createUnavailableSection()} to create a descriptive instance with a
-     * language-specific <em>kind</em> such as "SL Builtin" and a <em>name</em> if possible.
-     *
-     * @param language the language of the node, <b>cannot be</b> <code>null</code>
-     * @param sourceSection a part of source associated with this node, can be <code>null</code>
-     * @param frameDescriptor descriptor of slots, can be <code>null</code>
+     * @deprecated use {@link RootNode(TruffleLanguage, FrameDescriptor)} instead. Root nodes do not
+     *             support source sections by default any longer. Please override
+     *             {@link #getSourceSection()} instead if a source section is available.
      * @since 0.8 or earlier
      */
+    @Deprecated
     protected RootNode(Class<? extends TruffleLanguage> language, SourceSection sourceSection, FrameDescriptor frameDescriptor) {
-        this(language, sourceSection, frameDescriptor, true);
-    }
-
-    private RootNode(Class<? extends TruffleLanguage> language, SourceSection sourceSection, FrameDescriptor frameDescriptor, boolean checkLanguage) {
-        super();
-        if (checkLanguage) {
-            if (!TruffleLanguage.class.isAssignableFrom(language)) {
-                throw new IllegalStateException();
-            }
+        CompilerAsserts.neverPartOfCompilation();
+        if (!TruffleLanguage.class.isAssignableFrom(language)) {
+            throw new IllegalStateException();
         }
+
+        this.languageInfo = Node.ACCESSOR.languageSupport().getLegacyLanguageInfo(language);
         this.sourceSection = sourceSection;
-        this.language = language;
         if (frameDescriptor == null) {
             this.frameDescriptor = new FrameDescriptor();
         } else {
             this.frameDescriptor = frameDescriptor;
         }
+    }
+
+    /**
+     * Creates new root node with a given language instance. The language instance is obtainable
+     * while {@link TruffleLanguage#createContext(Env)} or
+     * {@link TruffleLanguage#parse(ParsingRequest)} is executed. If no language environment is
+     * available, then <code>null</code> can be passed. Please note that root nodes with
+     * <code>null</code> language are considered not instrumentable and have no access to the
+     * {@link #getLanguage(Class) language} or its public {@link #getLanguageInfo() information}.
+     *
+     * @param language the language this root node is associated with
+     * @since 0.25
+     */
+    protected RootNode(TruffleLanguage<?> language) {
+        this(language, null);
+    }
+
+    /**
+     * Creates new root node given an language environment and frame descriptor. The language
+     * instance is obtainable while {@link TruffleLanguage#createContext(Env)} or
+     * {@link TruffleLanguage#parse(ParsingRequest)} is executed. If no language environment is
+     * available, then <code>null</code> can be passed. Please note that root nodes with
+     * <code>null</code> language are considered not instrumentable and have no access to the
+     * {@link #getLanguage(Class) language} or its public {@link #getLanguageInfo() information}.
+     *
+     * @param language the language this root node is associated with
+     * @since 0.25
+     */
+    protected RootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (language != null) {
+            this.languageInfo = Node.ACCESSOR.languageSupport().getLanguageInfo(language);
+        } else {
+            this.languageInfo = null;
+        }
+        this.frameDescriptor = frameDescriptor == null ? new FrameDescriptor() : frameDescriptor;
+        this.sourceSection = null;
+    }
+
+    /**
+     * Returns the language instance associated with this root node. The language instance is
+     * intended for internal use in languages and is only accessible if the concrete type of the
+     * language is known. Public information about the language can be accessed using
+     * {@link #getLanguageInfo()}. The language is <code>null</code> if the root node is not
+     * associated with a <code>null</code> language.
+     *
+     * @see #getLanguageInfo()
+     * @since 0.25
+     */
+    @SuppressWarnings("unchecked")
+    public final <C extends TruffleLanguage> C getLanguage(Class<C> languageClass) {
+        if (languageInfo == null) {
+            return null;
+        }
+        TruffleLanguage<?> language = languageInfo.getSpi();
+        if (language.getClass() != languageClass) {
+            if (!languageClass.isInstance(language) || languageClass == TruffleLanguage.class || !TruffleLanguage.class.isAssignableFrom(languageClass)) {
+                CompilerDirectives.transferToInterpreter();
+                throw new ClassCastException("Illegal language class specified. Expected " + language.getClass().getName() + ".");
+            }
+        }
+        return (C) language;
+
+    }
+
+    /**
+     * Returns public information about the language. The language can be assumed equal if the
+     * instances of the language info instance are the same. To access internal details of the
+     * language within the language implementation use {@link #getLanguage(Class)}.
+     *
+     * @since 0.25
+     */
+    public final LanguageInfo getLanguageInfo() {
+        return languageInfo;
     }
 
     /** @since 0.8 or earlier */
@@ -99,11 +221,9 @@ public abstract class RootNode extends Node {
     }
 
     /**
-     * Returns source section specified when
-     * {@link #RootNode(java.lang.Class, com.oracle.truffle.api.source.SourceSection, com.oracle.truffle.api.frame.FrameDescriptor)
-     * constructing the node}.
+     * Returns the source section associated with this {@link RootNode}. Returns <code>null</code>
+     * if by default.
      *
-     * @return source section passed into the constructor
      * @since 0.13
      */
     @Override
@@ -245,8 +365,12 @@ public abstract class RootNode extends Node {
      * Returns <code>null</code> by default.
      *
      * @since 0.8 or earlier
+     * @deprecated in 0.25 use {@link #getLanguage(Class) getLanguage(Language.class)}.
+     *             {@link TruffleLanguage#getCurrentContext(Class) getCurrentContext()} instead.
      */
-    public ExecutionContext getExecutionContext() {
+    @SuppressWarnings("deprecation")
+    @Deprecated
+    public com.oracle.truffle.api.ExecutionContext getExecutionContext() {
         return null;
     }
 
@@ -255,8 +379,9 @@ public abstract class RootNode extends Node {
      *
      * @since 0.8 or earlier
      */
+    @SuppressWarnings("deprecation")
     public CompilerOptions getCompilerOptions() {
-        final ExecutionContext context = getExecutionContext();
+        final com.oracle.truffle.api.ExecutionContext context = getExecutionContext();
 
         if (context == null) {
             return DefaultCompilerOptions.INSTANCE;
@@ -293,7 +418,7 @@ public abstract class RootNode extends Node {
         private final Object value;
 
         Constant(Object value) {
-            super(TruffleLanguage.class, null, null);
+            super(null);
             this.value = value;
         }
 

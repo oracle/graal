@@ -40,7 +40,9 @@
  */
 package com.oracle.truffle.sl.nodes.call;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -85,16 +87,15 @@ public abstract class SLDispatchNode extends Node {
      * instantiations.
      * </p>
      * <p>
-     * {@code guards = "function == cachedFunction"} The inline cache check. Note that
-     * cachedFunction is a final field so that the compiler can optimize the check.
+     * {@code guards = "function.getCallTarget() == cachedTarget"} The inline cache check. Note that
+     * cachedTarget is a final field so that the compiler can optimize the check.
      * </p>
      * <p>
-     * {@code assumptions = "cachedFunction.getCallTargetStable()"} Support for function
-     * redefinition: When a function is redefined, the call target maintained by the SLFunction
-     * object is change. To avoid a check for that, we use an Assumption that is invalidated by the
-     * SLFunction when the change is performed. Since checking an assumption is a no-op in compiled
-     * code, the assumption check performed by the DSL does not add any overhead during optimized
-     * execution.
+     * {@code assumptions = "callTargetStable"} Support for function redefinition: When a function
+     * is redefined, the call target maintained by the SLFunction object is changed. To avoid a
+     * check for that, we use an Assumption that is invalidated by the SLFunction when the change is
+     * performed. Since checking an assumption is a no-op in compiled code, the assumption check
+     * performed by the DSL does not add any overhead during optimized execution.
      * </p>
      *
      * @see Cached
@@ -106,11 +107,13 @@ public abstract class SLDispatchNode extends Node {
      *            cachedFunction.
      */
     @Specialization(limit = "INLINE_CACHE_SIZE", //
-                    guards = "function == cachedFunction", //
-                    assumptions = "cachedFunction.getCallTargetStable()")
+                    guards = "function.getCallTarget() == cachedTarget", //
+                    assumptions = "callTargetStable")
+    @SuppressWarnings("unused")
     protected static Object doDirect(SLFunction function, Object[] arguments,
-                    @Cached("function") SLFunction cachedFunction,
-                    @Cached("create(cachedFunction.getCallTarget())") DirectCallNode callNode) {
+                    @Cached("function.getCallTargetStable()") Assumption callTargetStable,
+                    @Cached("function.getCallTarget()") RootCallTarget cachedTarget,
+                    @Cached("create(cachedTarget)") DirectCallNode callNode) {
 
         /* Inline cache hit, we are safe to execute the cached call target. */
         return callNode.call(arguments);

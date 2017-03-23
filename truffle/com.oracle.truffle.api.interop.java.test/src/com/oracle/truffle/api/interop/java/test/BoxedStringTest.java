@@ -24,17 +24,19 @@
  */
 package com.oracle.truffle.api.interop.java.test;
 
+import static org.junit.Assert.assertEquals;
+
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.RootNode;
-
-import static org.junit.Assert.assertEquals;
-import org.junit.Before;
-import org.junit.Test;
 
 public class BoxedStringTest implements TruffleObject, ForeignAccess.Factory18 {
     public interface ExactMatchInterop {
@@ -95,12 +97,24 @@ public class BoxedStringTest implements TruffleObject, ForeignAccess.Factory18 {
 
     @Override
     public CallTarget accessUnbox() {
-        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(value));
+        return Truffle.getRuntime().createCallTarget(new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                BoxedStringTest obj = (BoxedStringTest) ForeignAccess.getReceiver(frame);
+                return obj.value;
+            }
+        });
     }
 
     @Override
     public CallTarget accessRead() {
-        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(this));
+        return Truffle.getRuntime().createCallTarget(new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                BoxedStringTest obj = (BoxedStringTest) ForeignAccess.getReceiver(frame);
+                return obj;
+            }
+        });
     }
 
     @Override

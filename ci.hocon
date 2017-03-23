@@ -1,7 +1,7 @@
 java7 : {name : oraclejdk, version : "7",    platformspecific: true}
 java8 : {name : oraclejdk, version : "8u66", platformspecific: true}
 #java9 : {name : oraclejdk, version : "9",    platformspecific: true}
-java9 : {name : labsjdk, version : "9-SNAPSHOT",    platformspecific: true}
+java9 : {name : labsjdk, version : "9-20170301-144518",    platformspecific: true}
 
 # Used in overlay
 labsjdk8 : {name : labsjdk, version : "8u121-jvmci-0.25", platformspecific: true}
@@ -62,9 +62,7 @@ maven-deploy-dry-run : ${common} ${java8Downloads} {
 }
 
 deploy-binary : ${common} ${java8Downloads} {
-  capabilities : [linux, amd64]
   targets : [post-merge]
-  name : postmerge-deploy-binary
   setup : [
      ["mx", "--strict-compliance", "build"]
   ]
@@ -101,7 +99,7 @@ gateLite : {
 }
 
 # overlay version
-overlay = 0edd74cfb471019c0f528dd8aeca68ad09d88fcc
+overlay = 262079e5d1cf9495744f4085b2a544a9a37dff34
 
 builds = [
   ${common} ${java8Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64], targets : [gate], name: "gate-truffle-8"},
@@ -114,33 +112,35 @@ builds = [
     targets : [gate],
     name: "gate-truffle-javadoc"
   },
-# ${common} ${java9Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64], targets : [gate], name: "gate-truffle-9"},
+  ${common} ${java9Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64], targets : [gate], name: "gate-truffle-9"},
   ${common} ${java8Downloads} {run : [["sh", ".travis.sigtest.sh"]], capabilities : [linux, amd64], targets : [gate], name: "gate-sigtest"},
-# ${common} ${java9Downloads} {run : [["mx", "-v", "testgraal"]], capabilities : [linux, amd64], targets : [gate], name: "gate-testgraal9"},
+  ${common} ${java9Downloads} {run : [["mx", "-v", "testgraal"]], capabilities : [linux, amd64], targets : [gate], name: "gate-testgraal9"},
   ${common} ${java8Downloads} {run : [["mx", "-v", "testgraal"]], capabilities : [linux, amd64], targets : [gate], name: "gate-testgraal8"},
   ${common} ${java8Downloads} {run : [["mx", "-v", "testdownstream", "--repo", "https://github.com/graalvm/truffleruby.git", "--mx-command", "ruby_testdownstream"]], capabilities : [linux, amd64], targets : [post-merge], name: "gate-rubytruffle"},
   ${maven-deploy-dry-run}
-  ${deploy-binary}
+  ${deploy-binary} {capabilities : [linux, amd64], name : "postmerge-deploy-binary-linux-amd64"}
+  ${deploy-binary} {capabilities : [darwin, amd64], name : "postmerge-deploy-binary-darwin-amd64"}
+  ${deploy-binary} {capabilities : [solaris, sparcv9], name : "postmerge-deploy-binary-solaris-sparcv9"}
   ${solaris} ${java8Downloads} ${gateLite} {
     capabilities : [solaris, sparcv9],
     targets : [ gate ],
     name: "gate-solaris-lite-8"
   }
-#  ${solaris} ${java9Downloads} ${gateLite} {
-#    capabilities : [solaris, sparcv9],
-#    targets : [ gate ],
-#    name: "gate-solaris-lite-9"
-#  }
+  ${solaris} ${java9Downloads} ${gateLite} {
+    capabilities : [solaris, sparcv9],
+    targets : [ gate ],
+    name: "gate-solaris-lite-9"
+  }
   ${darwin} ${java8Downloads} ${gateLite} {
     capabilities : [darwin],
     targets : [ gate ],
     name: "gate-mac-lite-8"
   }
-#  ${darwin} ${java9Downloads} ${gateLite} {
-#    capabilities : [darwin],
-#    targets : [ gate ],
-#    name: "gate-mac-lite-9"
-#  }
+  ${darwin} ${java9Downloads} ${gateLite} {
+    capabilities : [darwin],
+    targets : [ gate ],
+    name: "gate-mac-lite-9"
+  }
   ${common} ${java8Downloads} {
     run : [
         ["mx", "build"],

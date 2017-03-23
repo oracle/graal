@@ -48,7 +48,7 @@ class TestHelper {
 
     // make nodes replacable
     public static <T extends Node> T createRoot(final T node) {
-        new RootNode(TestingLanguage.class, null, null) {
+        new RootNode(null) {
             @Child T child = node;
 
             @Override

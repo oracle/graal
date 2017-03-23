@@ -24,18 +24,19 @@
  */
 package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.TruffleLanguage;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 
 /**
  * Represents a value accessed using the debugger API. Please note that values can become invalid
@@ -51,9 +52,6 @@ import java.util.Objects;
  * @since 0.17
  */
 public abstract class DebugValue {
-
-    @SuppressWarnings("rawtypes")
-    abstract Class<? extends TruffleLanguage> getLanguage();
 
     abstract Object get();
 
@@ -135,7 +133,7 @@ public abstract class DebugValue {
                 try {
                     properties = new ValuePropertiesCollection(getDebugger(), getSourceRoot(), map.entrySet());
                 } catch (Exception ex) {
-                    if (ex.getCause() instanceof InteropException) {
+                    if (isUnsupportedException(ex)) {
                         // Not supported, no properties
                     } else {
                         throw ex;
@@ -144,6 +142,10 @@ public abstract class DebugValue {
             }
         }
         return properties;
+    }
+
+    private static boolean isUnsupportedException(Throwable ex) {
+        return ex instanceof InteropException || ex.getCause() != null && isUnsupportedException(ex.getCause());
     }
 
     /*
@@ -227,6 +229,14 @@ public abstract class DebugValue {
 
     abstract RootNode getSourceRoot();
 
+    final LanguageInfo getLanguageInfo() {
+        RootNode root = getSourceRoot();
+        if (root != null) {
+            return root.getLanguageInfo();
+        }
+        return null;
+    }
+
     /**
      * Returns a string representation of the debug value.
      *
@@ -247,7 +257,6 @@ public abstract class DebugValue {
      * on FrameSlot.
      */
 
-    @SuppressWarnings("rawtypes")
     static class HeapValue extends DebugValue {
 
         // identifies the debugger and engine
@@ -260,11 +269,6 @@ public abstract class DebugValue {
             this.debugger = debugger;
             this.sourceRoot = root;
             this.value = value;
-        }
-
-        @Override
-        Class<? extends TruffleLanguage> getLanguage() {
-            return Debugger.ACCESSOR.findLanguage(sourceRoot);
         }
 
         @SuppressWarnings("unchecked")
@@ -397,12 +401,6 @@ public abstract class DebugValue {
             throw new UnsupportedOperationException();
         }
 
-        @SuppressWarnings("rawtypes")
-        @Override
-        Class<? extends TruffleLanguage> getLanguage() {
-            return origin.findCurrentLanguage();
-        }
-
         @Override
         Object get() {
             origin.verifyValidState(false);
@@ -412,8 +410,8 @@ public abstract class DebugValue {
         @Override
         public void set(DebugValue value) {
             origin.verifyValidState(false);
-            if (value.getLanguage() != getLanguage()) {
-                throw new IllegalStateException(String.format("Languages of set values do not match %s != %s.", value.getLanguage(), getLanguage()));
+            if (value.getLanguageInfo() != getLanguageInfo()) {
+                throw new IllegalStateException(String.format("Languages of set values do not match %s != %s.", value.getLanguageInfo(), getLanguageInfo()));
             }
             MaterializedFrame frame = origin.findTruffleFrame();
             frame.setObject(slot, value.get());

@@ -49,6 +49,7 @@ import java.util.Map;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.sl.SLException;
+import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
@@ -73,10 +74,10 @@ public class Parser {
     public final Scanner scanner;
     public final Errors errors;
     private final SLNodeFactory factory;
-    
-    public Parser(Source source) {
+
+    public Parser(SLLanguage language, Source source) {
         this.scanner = new Scanner(source.getInputStream());
-        this.factory = new SLNodeFactory(source);
+        this.factory = new SLNodeFactory(language, source);
         errors = new Errors();
     }
 
@@ -154,43 +155,43 @@ public class Parser {
 	void Function() {
 		Expect(4);
 		Expect(1);
-		Token identifierToken = t; 
+		Token identifierToken = t;
 		Expect(5);
-		int bodyStartPos = t.charPos; 
-		factory.startFunction(identifierToken, bodyStartPos); 
+		int bodyStartPos = t.charPos;
+		factory.startFunction(identifierToken, bodyStartPos);
 		if (la.kind == 1) {
 			Get();
-			factory.addFormalParameter(t); 
+			factory.addFormalParameter(t);
 			while (la.kind == 6) {
 				Get();
 				Expect(1);
-				factory.addFormalParameter(t); 
+				factory.addFormalParameter(t);
 			}
 		}
 		Expect(7);
 		SLStatementNode body = Block(false);
-		factory.finishFunction(body); 
+		factory.finishFunction(body);
 	}
 
 	SLStatementNode  Block(boolean inLoop) {
 		SLStatementNode  result;
 		factory.startBlock();
-		List<SLStatementNode> body = new ArrayList<>(); 
+		List<SLStatementNode> body = new ArrayList<>();
 		Expect(8);
-		int start = t.charPos; 
+		int start = t.charPos;
 		while (StartOf(1)) {
 			SLStatementNode s = Statement(inLoop);
-			body.add(s); 
+			body.add(s);
 		}
 		Expect(9);
-		int length = (t.charPos + t.val.length()) - start; 
-		result = factory.finishBlock(body, start, length); 
+		int length = (t.charPos + t.val.length()) - start;
+		result = factory.finishBlock(body, start, length);
 		return result;
 	}
 
 	SLStatementNode  Statement(boolean inLoop) {
 		SLStatementNode  result;
-		result = null; 
+		result = null;
 		switch (la.kind) {
 		case 14: {
 			result = WhileStatement();
@@ -198,13 +199,13 @@ public class Parser {
 		}
 		case 10: {
 			Get();
-			if (inLoop) { result = factory.createBreak(t); } else { SemErr("break used outside of loop"); } 
+			if (inLoop) { result = factory.createBreak(t); } else { SemErr("break used outside of loop"); }
 			Expect(11);
 			break;
 		}
 		case 12: {
 			Get();
-			if (inLoop) { result = factory.createContinue(t); } else { SemErr("continue used outside of loop"); } 
+			if (inLoop) { result = factory.createContinue(t); } else { SemErr("continue used outside of loop"); }
 			Expect(11);
 			break;
 		}
@@ -223,7 +224,7 @@ public class Parser {
 		}
 		case 13: {
 			Get();
-			result = factory.createDebugger(t); 
+			result = factory.createDebugger(t);
 			Expect(11);
 			break;
 		}
@@ -235,29 +236,29 @@ public class Parser {
 	SLStatementNode  WhileStatement() {
 		SLStatementNode  result;
 		Expect(14);
-		Token whileToken = t; 
+		Token whileToken = t;
 		Expect(5);
 		SLExpressionNode condition = Expression();
 		Expect(7);
 		SLStatementNode body = Block(true);
-		result = factory.createWhile(whileToken, condition, body); 
+		result = factory.createWhile(whileToken, condition, body);
 		return result;
 	}
 
 	SLStatementNode  IfStatement(boolean inLoop) {
 		SLStatementNode  result;
 		Expect(15);
-		Token ifToken = t; 
+		Token ifToken = t;
 		Expect(5);
 		SLExpressionNode condition = Expression();
 		Expect(7);
 		SLStatementNode thenPart = Block(inLoop);
-		SLStatementNode elsePart = null; 
+		SLStatementNode elsePart = null;
 		if (la.kind == 16) {
 			Get();
 			elsePart = Block(inLoop);
 		}
-		result = factory.createIf(ifToken, condition, thenPart, elsePart); 
+		result = factory.createIf(ifToken, condition, thenPart, elsePart);
 		return result;
 	}
 
@@ -265,11 +266,11 @@ public class Parser {
 		SLStatementNode  result;
 		Expect(17);
 		Token returnToken = t;
-		SLExpressionNode value = null; 
+		SLExpressionNode value = null;
 		if (StartOf(2)) {
 			value = Expression();
 		}
-		result = factory.createReturn(returnToken, value); 
+		result = factory.createReturn(returnToken, value);
 		Expect(11);
 		return result;
 	}
@@ -279,9 +280,9 @@ public class Parser {
 		result = LogicTerm();
 		while (la.kind == 18) {
 			Get();
-			Token op = t; 
+			Token op = t;
 			SLExpressionNode right = LogicTerm();
-			result = factory.createBinary(op, result, right); 
+			result = factory.createBinary(op, result, right);
 		}
 		return result;
 	}
@@ -291,9 +292,9 @@ public class Parser {
 		result = LogicFactor();
 		while (la.kind == 19) {
 			Get();
-			Token op = t; 
+			Token op = t;
 			SLExpressionNode right = LogicFactor();
-			result = factory.createBinary(op, result, right); 
+			result = factory.createBinary(op, result, right);
 		}
 		return result;
 	}
@@ -328,9 +329,9 @@ public class Parser {
 				break;
 			}
 			}
-			Token op = t; 
+			Token op = t;
 			SLExpressionNode right = Arithmetic();
-			result = factory.createBinary(op, result, right); 
+			result = factory.createBinary(op, result, right);
 		}
 		return result;
 	}
@@ -344,9 +345,9 @@ public class Parser {
 			} else {
 				Get();
 			}
-			Token op = t; 
+			Token op = t;
 			SLExpressionNode right = Term();
-			result = factory.createBinary(op, result, right); 
+			result = factory.createBinary(op, result, right);
 		}
 		return result;
 	}
@@ -360,38 +361,38 @@ public class Parser {
 			} else {
 				Get();
 			}
-			Token op = t; 
+			Token op = t;
 			SLExpressionNode right = Factor();
-			result = factory.createBinary(op, result, right); 
+			result = factory.createBinary(op, result, right);
 		}
 		return result;
 	}
 
 	SLExpressionNode  Factor() {
 		SLExpressionNode  result;
-		result = null; 
+		result = null;
 		if (la.kind == 1) {
 			Get();
-			SLExpressionNode assignmentName = factory.createStringLiteral(t, false); 
+			SLExpressionNode assignmentName = factory.createStringLiteral(t, false);
 			if (StartOf(4)) {
 				result = MemberExpression(null, null, assignmentName);
 			} else if (StartOf(5)) {
-				result = factory.createRead(assignmentName); 
+				result = factory.createRead(assignmentName);
 			} else SynErr(36);
 		} else if (la.kind == 2) {
 			Get();
-			result = factory.createStringLiteral(t, true); 
+			result = factory.createStringLiteral(t, true);
 		} else if (la.kind == 3) {
 			Get();
-			result = factory.createNumericLiteral(t); 
+			result = factory.createNumericLiteral(t);
 		} else if (la.kind == 5) {
 			Get();
-			int start = t.charPos; 
+			int start = t.charPos;
 			result = Expression();
-			SLExpressionNode expr = result; 
+			SLExpressionNode expr = result;
 			Expect(7);
-			int length = (t.charPos + t.val.length()) - start; 
-			result = factory.createParenExpression(expr, start, length); 
+			int length = (t.charPos + t.val.length()) - start;
+			result = factory.createParenExpression(expr, start, length);
 		} else SynErr(37);
 		return result;
 	}
@@ -400,26 +401,26 @@ public class Parser {
 		SLExpressionNode  result;
 		result = null;
 		SLExpressionNode receiver = r;
-		SLExpressionNode nestedAssignmentName = null; 
+		SLExpressionNode nestedAssignmentName = null;
 		if (la.kind == 5) {
 			Get();
 			List<SLExpressionNode> parameters = new ArrayList<>();
 			SLExpressionNode parameter;
 			if (receiver == null) {
-			   receiver = factory.createRead(assignmentName); 
-			} 
+			   receiver = factory.createRead(assignmentName);
+			}
 			if (StartOf(2)) {
 				parameter = Expression();
-				parameters.add(parameter); 
+				parameters.add(parameter);
 				while (la.kind == 6) {
 					Get();
 					parameter = Expression();
-					parameters.add(parameter); 
+					parameters.add(parameter);
 				}
 			}
 			Expect(7);
-			Token finalToken = t; 
-			result = factory.createCall(receiver, parameters, finalToken); 
+			Token finalToken = t;
+			result = factory.createCall(receiver, parameters, finalToken);
 		} else if (la.kind == 30) {
 			Get();
 			SLExpressionNode value = Expression();
@@ -429,22 +430,22 @@ public class Parser {
 			   result = factory.createAssignment(assignmentName, value);
 			} else {
 			   result = factory.createWriteProperty(assignmentReceiver, assignmentName, value);
-			} 
+			}
 		} else if (la.kind == 31) {
 			Get();
 			if (receiver == null) {
-			   receiver = factory.createRead(assignmentName); 
-			} 
+			   receiver = factory.createRead(assignmentName);
+			}
 			Expect(1);
-			nestedAssignmentName = factory.createStringLiteral(t, false); 
-			result = factory.createReadProperty(receiver, nestedAssignmentName); 
+			nestedAssignmentName = factory.createStringLiteral(t, false);
+			result = factory.createReadProperty(receiver, nestedAssignmentName);
 		} else if (la.kind == 32) {
 			Get();
 			if (receiver == null) {
-			   receiver = factory.createRead(assignmentName); 
-			} 
+			   receiver = factory.createRead(assignmentName);
+			}
 			nestedAssignmentName = Expression();
-			result = factory.createReadProperty(receiver, nestedAssignmentName); 
+			result = factory.createReadProperty(receiver, nestedAssignmentName);
 			Expect(33);
 		} else SynErr(38);
 		if (StartOf(4)) {
@@ -474,8 +475,13 @@ public class Parser {
 
     };
 
+    @Deprecated
     public static Map<String, SLRootNode> parseSL(Source source) {
-        Parser parser = new Parser(source);
+        return parseSL(null, source);
+    }
+
+    public static Map<String, SLRootNode> parseSL(SLLanguage language, Source source) {
+        Parser parser = new Parser(language, source);
         parser.Parse();
         if (parser.errors.errors.size() > 0) {
             StringBuilder msg = new StringBuilder("Error(s) parsing script:\n");

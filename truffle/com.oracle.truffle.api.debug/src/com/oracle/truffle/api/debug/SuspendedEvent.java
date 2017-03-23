@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.debug;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -32,7 +31,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.debug.DebuggerSession.SteppingLocation;
@@ -40,10 +38,8 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
-import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -121,7 +117,7 @@ public final class SuspendedEvent {
     private volatile boolean disposed;
     private volatile SteppingStrategy nextStrategy;
 
-    private Map<Breakpoint, Throwable> conditionFailures;
+    private final Map<Breakpoint, Throwable> conditionFailures;
     private DebugStackFrameIterable cachedFrames;
 
     SuspendedEvent(DebuggerSession session, Thread thread, EventContext context, MaterializedFrame frame, SteppingLocation location, Object returnValue,
@@ -200,43 +196,6 @@ public final class SuspendedEvent {
     }
 
     /**
-     * Debugger associated with the just suspended execution. This debugger remains valid after the
-     * event is processed, it is possible and suggested to keep a reference to it and use it any
-     * time later when evaluating sources in the {@link com.oracle.truffle.api.vm.PolyglotEngine}.
-     * <p>
-     * This method is thread-safe.
-     *
-     * @return instance of debugger associated with the just suspended execution and any subsequent
-     *         ones in the same {@link com.oracle.truffle.api.vm.PolyglotEngine}.
-     * @since 0.9
-     * @deprecated use {@link #getSession()}.{@link DebuggerSession#getDebugger() getDebugger()}
-     *             instead.
-     */
-    @Deprecated
-    public Debugger getDebugger() {
-        verifyValidState(true);
-        return session.getDebugger();
-    }
-
-    /**
-     * The Guest Language AST node where execution is suspended. Depending on the value of
-     * {@link #isHaltedBefore()}, the node is either:
-     * <ul>
-     * <li>{@code true}: the next (non-instrumentation) node to be executed, or</li>
-     * <li>{@code false}: the most recent (non-instrumentation) node that has been executed.</li>
-     * </ul>
-     *
-     * @see ExecutionEventListener
-     * @since 0.9
-     * @deprecated use {@link #getSourceSection()} instead. Direct access to {@link Node} is not
-     *             possible anymore.
-     */
-    @Deprecated
-    public Node getNode() {
-        return context.getInstrumentedNode();
-    }
-
-    /**
      * Returns the guest language source section of the AST node before/after the execution is
      * suspended. Returns <code>null</code> if no source section information is available.
      * <p>
@@ -281,41 +240,8 @@ public final class SuspendedEvent {
     // TODO CHumer: we also want to provide access to guest language errors. The API for that is not
     // yet ready.
 
-    /**
-     * @since 0.9
-     * @deprecated use {@link #getTopStackFrame()} to access local variables instead
-     */
-    @Deprecated
-    public MaterializedFrame getFrame() {
-        return materializedFrame;
-    }
-
     MaterializedFrame getMaterializedFrame() {
         return materializedFrame;
-    }
-
-    /*
-     * CHumer deprecation note: Its better to provide more structured information about errors if
-     * possible. I realized that the only errors that would make sense in the warnings log would be
-     * errors about breakpoint conditions. So I decided to add explicitly accessible breakpoint
-     * condition failures.
-     */
-    /**
-     * @since 0.9
-     * @deprecated use {@link #getBreakpointConditionException(Breakpoint)} to receive the last
-     *             breakpoint condition exception.
-     */
-    @Deprecated
-    public List<String> getRecentWarnings() {
-        verifyValidState(false);
-        List<String> list = new ArrayList<>();
-        for (Breakpoint breakpoint : getBreakpoints()) {
-            Throwable failure = getBreakpointConditionException(breakpoint);
-            if (failure != null) {
-                list.add(String.format("Exception in %s:  %s", breakpoint.toString(), failure.toString()));
-            }
-        }
-        return Collections.emptyList();
     }
 
     /**
@@ -351,30 +277,6 @@ public final class SuspendedEvent {
     public List<Breakpoint> getBreakpoints() {
         verifyValidState(true);
         return breakpoints;
-    }
-
-    /**
-     * @return list of stack frames
-     * @since 0.9
-     * @deprecated use {@link #getStackFrames()} instead
-     */
-    @Deprecated
-    @CompilerDirectives.TruffleBoundary
-    public List<FrameInstance> getStack() {
-        verifyValidState(false);
-        final List<FrameInstance> frameInstances = new ArrayList<>();
-        // Map the Truffle stack for this execution, ignore nested executions
-        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<FrameInstance>() {
-            @Override
-            public FrameInstance visitFrame(FrameInstance frameInstance) {
-                if (isEvalRootStackFrame(SuspendedEvent.this, frameInstance)) {
-                    return frameInstance;
-                }
-                frameInstances.add(frameInstance);
-                return null;
-            }
-        });
-        return frameInstances;
     }
 
     /**
@@ -576,53 +478,6 @@ public final class SuspendedEvent {
      */
     public void prepareKill() {
         setNextStrategy(SteppingStrategy.createKill());
-    }
-
-    /**
-     * Evaluates given code snippet in the context of currently suspended execution.
-     *
-     * @param code the snippet to evaluate
-     * @param frameInstance the frame in which to evaluate the code; {@code null} means the current
-     *            frame at the halted location.
-     * @return the computed value
-     * @throws IllegalStateException if the frame is not part of current execution stack
-     * @throws IOException in case an evaluation goes wrong
-     * @throws KillException if the evaluation is killed by the debugger
-     * @since 0.9
-     * @deprecated use {@link DebugStackFrame#eval(String)} instead
-     */
-    @Deprecated
-    public Object eval(String code, FrameInstance frameInstance) throws IOException {
-        verifyValidState(false);
-        return DebuggerSession.evalInContext(this, code, frameInstance);
-    }
-
-    /**
-     * Generates a (potentially language-specific) description of an execution value in a part of
-     * the current execution context, for example the value stored in a frame slot. The description
-     * is intended to be useful to a guest language programmer.
-     *
-     * @param value an object presumed to represent a <em>value</em> managed by the language of the
-     *            AST where execution is halted.
-     * @param frameInstance the frame in which to evaluate the code;
-     *
-     * @return a user-oriented description of a possibly language-specific value
-     * @throws IllegalArgumentException if the frame is not part of current execution stack
-     * @since 0.15
-     * @deprecated use {@link DebugValue#as(Class) DebugValue.as(String.class)} instead.
-     */
-    @Deprecated
-    public String toString(Object value, FrameInstance frameInstance) {
-        verifyValidState(false);
-        RootNode rootNode = null;
-        if (frameInstance.getCallTarget() instanceof RootCallTarget) {
-            rootNode = ((RootCallTarget) frameInstance.getCallTarget()).getRootNode();
-        }
-        if (rootNode == null) {
-            // Unknown language
-            return value.toString();
-        }
-        return session.getDebugger().getEnv().toString(rootNode, value);
     }
 
     /**

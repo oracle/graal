@@ -25,24 +25,29 @@
 package com.oracle.truffle.api.vm;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.impl.FindContextNode;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.vm.PolyglotEngine.Access;
+import com.oracle.truffle.api.vm.PolyglotRuntime.LanguageShared;
 
-final class FindContextNodeImpl<C> extends FindContextNode<C> {
-    private final TruffleLanguage<C> language;
-    private final ContextReference<C> ref;
+@SuppressWarnings("deprecation")
+final class FindContextNodeImpl<C> extends com.oracle.truffle.api.impl.FindContextNode<C> {
+    private final LanguageShared languageShared;
+    private final Env env;
 
-    FindContextNodeImpl(TruffleLanguage<C> language) {
-        this.ref = ContextReference.create(language);
-        this.language = language;
+    FindContextNodeImpl(Env env) {
+        this.env = env;
+        this.languageShared = (LanguageShared) Access.NODES.getEngineObject(Access.LANGS.getLanguageInfo(env));
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public C executeFindContext() {
-        return ref.get();
+        return (C) languageShared.getCurrentContext();
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public TruffleLanguage<C> getTruffleLanguage() {
-        return language;
+        return (TruffleLanguage<C>) Access.NODES.getLanguageSpi(Access.LANGS.getLanguageInfo(env));
     }
 }

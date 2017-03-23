@@ -28,7 +28,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.internal.SpecializedNode;
-import com.oracle.truffle.api.dsl.test.TestingLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -94,7 +93,7 @@ public abstract class ExampleNode extends Node {
         @Child ExampleNode child;
 
         ExampleRootNode(ExampleNode child) {
-            super(TestingLanguage.class, null, null);
+            super(null);
             this.child = child;
         }
 
@@ -161,7 +160,7 @@ public abstract class ExampleNode extends Node {
         private final int argumentIndex;
 
         DummyCallRootNode(int argumentIndex) {
-            super(TestingLanguage.class, null, null);
+            super(null);
             this.argumentIndex = argumentIndex;
         }
 

@@ -28,9 +28,8 @@ import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.tck.impl.TckLanguage;
 
-@MessageResolution(receiverType = ComplexNumberBEntry.class, language = TckLanguage.class)
+@MessageResolution(receiverType = ComplexNumberBEntry.class)
 class ComplexNumberBEntryMessageResolution {
 
     @Resolve(message = "READ")

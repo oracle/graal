@@ -25,6 +25,7 @@
 package com.oracle.truffle.nfi;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -33,10 +34,12 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.nfi.LibFFIClosureFactory.UnboxNullNodeGen;
+import com.oracle.truffle.nfi.LibFFIClosureFactory.UnboxStringNodeGen;
 import java.nio.ByteBuffer;
 
 final class LibFFIClosure {
@@ -60,7 +63,7 @@ final class LibFFIClosure {
         } else if (retType instanceof LibFFIType.StringType) {
             // shortcut for simple string return values
             CallTarget executeCallTarget = Truffle.getRuntime().createCallTarget(new StringRetClosureRootNode(signature, executable, message));
-            this.nativePointer = allocateClosureObjectRet(signature, executeCallTarget);
+            this.nativePointer = allocateClosureStringRet(signature, executeCallTarget);
         } else if (retType instanceof LibFFIType.VoidType) {
             // special handling for no return value
             CallTarget executeCallTarget = Truffle.getRuntime().createCallTarget(new ObjectRetClosureRootNode(signature, executable, message));
@@ -113,6 +116,7 @@ final class LibFFIClosure {
             try {
                 return ForeignAccess.send(messageNode, receiver, args);
             } catch (InteropException ex) {
+                CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(ex);
             }
         }
@@ -145,7 +149,7 @@ final class LibFFIClosure {
         @Child EncodeRetNode encodeRet;
 
         private BufferRetClosureRootNode(LibFFISignature signature, TruffleObject receiver, Message message) {
-            super(NFILanguage.class, null, null);
+            super(null);
             callClosure = new CallClosureNode(signature, receiver, message);
             encodeRet = new EncodeRetNode(signature.getRetType());
         }
@@ -163,7 +167,7 @@ final class LibFFIClosure {
         @Child CallClosureNode callClosure;
 
         private ObjectRetClosureRootNode(LibFFISignature signature, TruffleObject receiver, Message message) {
-            super(NFILanguage.class, null, null);
+            super(null);
             callClosure = new CallClosureNode(signature, receiver, message);
         }
 
@@ -173,48 +177,78 @@ final class LibFFIClosure {
         }
     }
 
-    abstract static class UnboxNullNode extends Node {
+    abstract static class UnboxStringNode extends Node {
 
         protected abstract Object execute(Object obj);
 
         @Specialization
-        protected Object unboxTruffleObject(TruffleObject obj, @Cached("createIsNull()") Node isNull) {
-            if (ForeignAccess.sendIsNull(isNull, obj)) {
-                return null;
-            } else {
-                return obj;
-            }
+        protected Object nativeString(NativeString str) {
+            return str;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "checkIsNull(isNull, str)")
+        protected Object unboxNull(TruffleObject str, @Cached("createIsNull()") Node isNull) {
+            return null;
         }
 
         @Specialization
-        protected Object unboxGeneric(Object obj) {
+        protected Object javaString(String obj) {
             return obj;
+        }
+
+        @Specialization(guards = "checkNeedUnbox(str)")
+        protected Object unboxBoxed(TruffleObject str, @Cached("createUnbox()") Node unbox, @Cached("createRecursive()") UnboxStringNode recursive) {
+            try {
+                Object unboxed = ForeignAccess.sendUnbox(unbox, str);
+                return recursive.execute(unboxed);
+            } catch (UnsupportedMessageException ex) {
+                throw UnsupportedTypeException.raise(ex, new Object[]{str});
+            }
         }
 
         protected static Node createIsNull() {
             return Message.IS_NULL.createNode();
+        }
+
+        protected static boolean checkIsNull(Node isNullNode, TruffleObject obj) {
+            return ForeignAccess.sendIsNull(isNullNode, obj);
+        }
+
+        protected static boolean checkNeedUnbox(TruffleObject obj) {
+            return !(obj instanceof NativeString);
+        }
+
+        protected static Node createUnbox() {
+            return Message.UNBOX.createNode();
+        }
+
+        protected static UnboxStringNode createRecursive() {
+            return UnboxStringNodeGen.create();
         }
     }
 
     private static final class StringRetClosureRootNode extends RootNode {
 
         @Child CallClosureNode callClosure;
-        @Child UnboxNullNode unboxNull;
+        @Child UnboxStringNode unboxString;
 
         private StringRetClosureRootNode(LibFFISignature signature, TruffleObject receiver, Message message) {
-            super(NFILanguage.class, null, null);
+            super(null);
             callClosure = new CallClosureNode(signature, receiver, message);
-            unboxNull = UnboxNullNodeGen.create();
+            unboxString = UnboxStringNodeGen.create();
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
             Object ret = callClosure.execute(frame.getArguments());
-            return unboxNull.execute(ret);
+            return unboxString.execute(ret);
         }
     }
 
     private static native ClosureNativePointer allocateClosureObjectRet(LibFFISignature signature, CallTarget callTarget);
+
+    private static native ClosureNativePointer allocateClosureStringRet(LibFFISignature signature, CallTarget callTarget);
 
     private static native ClosureNativePointer allocateClosureBufferRet(LibFFISignature signature, CallTarget callTarget);
 

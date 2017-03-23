@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.object;
 
-import com.oracle.truffle.api.TypedObject;
 import com.oracle.truffle.api.interop.TruffleObject;
 
 /**
@@ -33,7 +32,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
  * @see Shape
  * @since 0.8 or earlier
  */
-public abstract class DynamicObject implements TypedObject, TruffleObject {
+@SuppressWarnings("deprecation")
+public abstract class DynamicObject implements com.oracle.truffle.api.TypedObject, TruffleObject {
 
     /**
      * Constructor for subclasses.

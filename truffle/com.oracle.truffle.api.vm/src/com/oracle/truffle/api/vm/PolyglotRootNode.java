@@ -24,11 +24,15 @@
  */
 package com.oracle.truffle.api.vm;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -48,6 +52,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 abstract class PolyglotRootNode extends RootNode {
 
     private static final CallTarget VOID_TARGET = new CallTarget() {
+        @Override
         public Object call(Object... arguments) {
             return arguments[0];
         }
@@ -56,18 +61,17 @@ abstract class PolyglotRootNode extends RootNode {
     final PolyglotEngine engine;
 
     PolyglotRootNode(PolyglotEngine engine) {
-        super(TruffleLanguage.class, null, null);
+        super(null);
         this.engine = engine;
     }
 
     @Override
     public final Object execute(VirtualFrame frame) {
-        ContextStore prev = ExecutionImpl.executionStarted(engine.context());
-        Access.DEBUG.executionStarted(engine);
+        Object prev = engine.enter();
         try {
             return executeImpl(frame);
         } finally {
-            ExecutionImpl.executionEnded(prev);
+            engine.leave(prev);
         }
     }
 
@@ -109,8 +113,9 @@ abstract class PolyglotRootNode extends RootNode {
                 engineObject.assertEngine(engine);
                 args[i] = engineObject.getDelegate();
             }
-            // TODO use node based API to call into JavaInterop.asTruffleValue
-            args[i] = JavaInterop.asTruffleValue(args[i]);
+            if (args[i] != null && !isPrimitiveType(args[i].getClass())) {
+                args[i] = JavaInterop.asTruffleObject(args[i]);
+            }
         }
     }
 
@@ -125,11 +130,13 @@ abstract class PolyglotRootNode extends RootNode {
     private static final class ForeignSendRootNode extends PolyglotRootNode {
         @Child private ConvertNode returnConvertNode;
         @Child private Node messageNode;
+        @Child private Node toJavaNode;
 
         ForeignSendRootNode(PolyglotEngine engine, Message message) {
             super(engine);
             this.returnConvertNode = new ConvertNode();
             this.messageNode = message.createNode();
+            this.toJavaNode = Access.JAVA_INTEROP.createToJavaNode();
         }
 
         @Override
@@ -144,8 +151,7 @@ abstract class PolyglotRootNode extends RootNode {
     }
 
     private static final class AsJavaRootNode extends PolyglotRootNode {
-        @Child private ConvertNode returnConvertNode;
-        @Child private Node executeNode;
+        @Child private Node toJavaNode;
 
         private final Class<? extends TruffleObject> receiverType;
 
@@ -154,17 +160,19 @@ abstract class PolyglotRootNode extends RootNode {
         AsJavaRootNode(PolyglotEngine engine, Class<? extends TruffleObject> receiverType) {
             super(engine);
             this.receiverType = receiverType;
-            this.returnConvertNode = new ConvertNode();
+            this.toJavaNode = Access.JAVA_INTEROP.createToJavaNode();
         }
 
         @Override
         protected Object executeImpl(VirtualFrame frame) {
             Object[] args = frame.getArguments();
-            final Class<?> targetType = (Class<?>) args[0];
-            final TruffleObject value = receiverType.cast(args[1]);
-
-            // TODO use a node based API to call into JavaInteorp.
-            return JavaInterop.asJavaObject(targetType, value);
+            final Class<?> targetType = (Class<?>) args[1];
+            if (receiverType.isInstance(args[0])) {
+                final TruffleObject value = receiverType.cast(args[0]);
+                return Access.JAVA_INTEROP.toJava(toJavaNode, targetType, value);
+            } else {
+                throw new ClassCastException();
+            }
         }
 
     }
@@ -219,7 +227,6 @@ abstract class PolyglotRootNode extends RootNode {
         private static final Object[] EMPTY_ARRAY = new Object[0];
 
         @Child private DirectCallNode call;
-        private TruffleLanguage<?> fillLanguage;
         private final Language language;
         private final Source source;
 
@@ -233,12 +240,10 @@ abstract class PolyglotRootNode extends RootNode {
 
         @Override
         protected Object executeImpl(VirtualFrame frame) {
-            TruffleLanguage<?>[] fillLang = (TruffleLanguage[]) frame.getArguments()[0];
             if (call == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 initialize();
             }
-            fillLang[0] = fillLanguage;
             Object result = call.call(EMPTY_ARRAY);
 
             // TODO null is not valid value, wrap it using java interop
@@ -246,20 +251,38 @@ abstract class PolyglotRootNode extends RootNode {
             if (result == null) {
                 result = NULL_VALUE;
             }
+
+            if (source.isInteractive()) {
+                printResult(result);
+            }
+
             return result;
         }
 
+        @TruffleBoundary
+        private void printResult(Object result) {
+            String stringResult = Access.LANGS.toStringIfVisible(language.getEnv(false), result, true);
+            if (stringResult != null) {
+                try {
+                    OutputStream out = language.engine().out;
+                    out.write(stringResult.getBytes(StandardCharsets.UTF_8));
+                    out.write(System.getProperty("line.separator").getBytes(StandardCharsets.UTF_8));
+                } catch (IOException ioex) {
+                    // out stream has problems.
+                    throw new IllegalStateException(ioex);
+                }
+            }
+        }
+
         private void initialize() {
-            TruffleLanguage<?> languageImpl = language.getImpl(true);
-            CallTarget target = Access.LANGS.parse(languageImpl, source, null);
+            CallTarget target = Access.LANGS.parse(language.getEnv(true), source, null);
             if (target == null) {
                 throw new NullPointerException("Parsing has not produced a CallTarget for " + source);
             }
-            fillLanguage = languageImpl;
-            call = insert(DirectCallNode.create(target));
+            this.call = insert(DirectCallNode.create(target));
         }
 
-        Object getEngine() {
+        PolyglotEngine getEngine() {
             return engine;
         }
     }

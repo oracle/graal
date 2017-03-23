@@ -84,7 +84,7 @@ public final class REPLServer {
     @SuppressWarnings("unused")
     public REPLServer(com.oracle.truffle.tools.debug.shell.client.SimpleREPLClient client) {
         this.engine = PolyglotEngine.newBuilder().build();
-        this.engine.getInstruments().get(REPL_SERVER_INSTRUMENT).setEnabled(true);
+        this.engine.getRuntime().getInstruments().get(REPL_SERVER_INSTRUMENT).setEnabled(true);
 
         engineLanguages.addAll(engine.getLanguages().values());
 

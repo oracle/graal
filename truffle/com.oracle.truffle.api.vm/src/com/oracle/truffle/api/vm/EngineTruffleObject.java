@@ -30,7 +30,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -88,6 +87,10 @@ final class EngineTruffleObject implements TruffleObject, ForeignAccess.Factory 
         return delegate;
     }
 
+    PolyglotEngine engine() {
+        return engine;
+    }
+
     void assertEngine(PolyglotEngine other) {
         if (this.engine != other) {
             throwEngine(other);
@@ -101,7 +104,7 @@ final class EngineTruffleObject implements TruffleObject, ForeignAccess.Factory 
 
     @Override
     public boolean canHandle(TruffleObject obj) {
-        return true;
+        return obj instanceof EngineTruffleObject;
     }
 
     @Override
@@ -144,7 +147,7 @@ final class EngineTruffleObject implements TruffleObject, ForeignAccess.Factory 
         @Child private DirectCallNode messageCallNode;
 
         WrappingRoot(PolyglotEngine engine, Message foreignMessage) {
-            super(TruffleLanguage.class, null, null);
+            super(null);
             this.engine = engine;
             this.messageCallNode = DirectCallNode.create(PolyglotRootNode.createSend(engine, foreignMessage));
         }

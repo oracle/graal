@@ -155,14 +155,14 @@ public class PrimitiveTypeTest {
         assertEquals(42.0f, value, 0.1f);
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = ClassCastException.class)
     public void convertObjectToNumberDoesntWork() {
         Number value = JavaInterop.asJavaObject(Number.class, boxedObject);
         assertNotNull("Some value computed", value);
         assertEquals(42, value.intValue());
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = ClassCastException.class)
     public void convertObjectToIntegerDoesntWork() {
         Integer value = JavaInterop.asJavaObject(Integer.class, boxedObject);
         assertNotNull("Some value computed", value);

@@ -25,12 +25,12 @@
 package com.oracle.truffle.api.instrumentation.test.examples;
 
 import com.oracle.truffle.api.instrumentation.EventContext;
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.PolyglotRuntime;
 
 /**
  * Publicly exposed API of a debugger. Provides operations that its clients can use to control the
  * execution. Put this class into an API package of your instrument. The clients shall use
- * {@link PolyglotEngine.Instrument#lookup(java.lang.Class)} with
+ * {@link PolyglotRuntime.Instrument#lookup(java.lang.Class)} with
  * <code>DebuggerController.<b>class</b></code> parameter to obtain the interface.
  */
 // BEGIN: DebuggerController

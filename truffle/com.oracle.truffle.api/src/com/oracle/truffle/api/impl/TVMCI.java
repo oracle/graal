@@ -89,10 +89,12 @@ public abstract class TVMCI {
      * @param root the node
      * @return the language of the node
      * @since 0.12
+     * @deprecated no replacement
      */
     @SuppressWarnings({"rawtypes"})
+    @Deprecated
     protected Class<? extends TruffleLanguage> findLanguageClass(RootNode root) {
-        return Accessor.nodesAccess().findLanguage(root);
+        return root.getLanguage(TruffleLanguage.class).getClass();
     }
 
     /**

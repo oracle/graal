@@ -82,10 +82,18 @@ public class InitializationTest {
     private static final class MMRootNode extends RootNode {
         @Child ANode node;
 
-        MMRootNode(SourceSection ss) {
-            super(AbstractLanguage.class, ss, null);
+        private final SourceSection sourceSection;
+
+        MMRootNode(TestLanguage lang, SourceSection ss) {
+            super(lang);
             node = new ANode(42);
+            this.sourceSection = ss;
             adoptChildren();
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return sourceSection;
         }
 
         @Override
@@ -124,7 +132,6 @@ public class InitializationTest {
 
     @TruffleLanguage.Registration(mimeType = "application/x-abstrlang", name = "AbstrLang", version = "0.1")
     public static final class TestLanguage extends AbstractLanguage {
-        public static final TestLanguage INSTANCE = new TestLanguage();
 
         @Override
         protected MyEnv createContext(Env env) {
@@ -139,7 +146,7 @@ public class InitializationTest {
 
         @Override
         protected CallTarget parse(ParsingRequest env) {
-            return Truffle.getRuntime().createCallTarget(new MMRootNode(env.getSource().createSection(1)));
+            return Truffle.getRuntime().createCallTarget(new MMRootNode(this, env.getSource().createSection(1)));
         }
 
         @Override

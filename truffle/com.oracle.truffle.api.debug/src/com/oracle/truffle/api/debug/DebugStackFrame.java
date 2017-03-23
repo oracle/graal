@@ -30,7 +30,6 @@ import java.util.Iterator;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebugValue.HeapValue;
 import com.oracle.truffle.api.debug.DebugValue.StackValue;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -295,15 +294,6 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
 
     private EventContext getContext() {
         return event.getContext();
-    }
-
-    @SuppressWarnings("rawtypes")
-    Class<? extends TruffleLanguage> findCurrentLanguage() {
-        RootNode root = findCurrentRoot();
-        if (root != null) {
-            return Debugger.ACCESSOR.findLanguage(root);
-        }
-        return null;
     }
 
     RootNode findCurrentRoot() {

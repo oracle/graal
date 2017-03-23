@@ -32,7 +32,6 @@ import com.oracle.truffle.api.source.Source;
 
 @TruffleLanguage.Registration(name = "Hash", mimeType = "application/x-test-hash", version = "1.0")
 public class HashLanguage extends TruffleLanguage<Env> {
-    public static final HashLanguage INSTANCE = new HashLanguage();
 
     @Override
     protected Env createContext(Env env) {
@@ -65,7 +64,7 @@ public class HashLanguage extends TruffleLanguage<Env> {
         private final int id;
 
         HashNode(HashLanguage hash, Source code) {
-            super(hash.getClass(), null, null);
+            super(hash);
             this.code = code;
             id = ++counter;
         }
@@ -78,6 +77,5 @@ public class HashLanguage extends TruffleLanguage<Env> {
 
     @TruffleLanguage.Registration(name = "AltHash", mimeType = "application/x-test-hash-alt", version = "1.0")
     public static final class SubLang extends HashLanguage {
-        public static final SubLang INSTANCE = new SubLang();
     }
 }

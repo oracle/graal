@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.api.test.vm;
 
+import static org.junit.Assert.assertTrue;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -32,10 +34,8 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.vm.UnboxToIntObject.MyLang;
-import static org.junit.Assert.assertTrue;
 
-@MessageResolution(language = MyLang.class, receiverType = UnboxToIntObject.class)
+@MessageResolution(receiverType = UnboxToIntObject.class)
 public class UnboxToIntObject implements TruffleObject {
     private final int value;
 
@@ -78,12 +78,11 @@ public class UnboxToIntObject implements TruffleObject {
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return UnboxToIntObjectForeign.createAccess();
+        return UnboxToIntObjectForeign.ACCESS;
     }
 
     @TruffleLanguage.Registration(mimeType = "application/x-unbox", name = "Unboxing lang", version = "0.1")
     public static class MyLang extends TruffleLanguage<Object> {
-        public static final MyLang INSTANCE = new MyLang();
 
         @Override
         protected Object createContext(Env env) {
@@ -93,7 +92,7 @@ public class UnboxToIntObject implements TruffleObject {
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             int initialValue = Integer.parseInt(request.getSource().getCode());
-            return Truffle.getRuntime().createCallTarget(new RootNode(MyLang.class, null, null) {
+            return Truffle.getRuntime().createCallTarget(new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     return new UnboxToIntObject(initialValue);

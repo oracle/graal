@@ -37,7 +37,7 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 
-@MessageResolution(receiverType = JavaFunctionObject.class, language = JavaInteropLanguage.class)
+@MessageResolution(receiverType = JavaFunctionObject.class)
 class JavaFunctionMessageResolution {
 
     @Resolve(message = "EXECUTE")
@@ -56,6 +56,7 @@ class JavaFunctionMessageResolution {
         static final class DoExecuteNode extends Node {
 
             @Children private final ToJavaNode[] toJava;
+            @Child private ToPrimitiveNode primitive = ToPrimitiveNode.create();
 
             DoExecuteNode(int argsLength) {
                 this.toJava = new ToJavaNode[argsLength];
@@ -105,7 +106,7 @@ class JavaFunctionMessageResolution {
             }
 
             @TruffleBoundary
-            private static Object doInvoke(Method method, Object obj, Object[] args) {
+            private Object doInvoke(Method method, Object obj, Object[] args) {
                 try {
                     int numberOfArguments = method.getParameterTypes().length;
                     Class<?>[] argumentTypes = method.getParameterTypes();
@@ -132,10 +133,10 @@ class JavaFunctionMessageResolution {
             }
 
             @TruffleBoundary
-            private static Object reflectiveInvoke(Method method, Object obj, Object[] arguments) throws IllegalAccessException, InvocationTargetException {
+            private Object reflectiveInvoke(Method method, Object obj, Object[] arguments) throws IllegalAccessException, InvocationTargetException {
                 method.setAccessible(true);
                 Object ret = method.invoke(obj, arguments);
-                if (ToJavaNode.isPrimitive(ret)) {
+                if (primitive.isPrimitive(ret)) {
                     return ret;
                 }
                 return JavaInterop.asTruffleObject(ret);

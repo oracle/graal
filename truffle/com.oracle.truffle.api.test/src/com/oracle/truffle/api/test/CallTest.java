@@ -63,7 +63,7 @@ public class CallTest {
         private final CallTarget secondTarget;
 
         DualCallNode(CallTarget firstTarget, CallTarget secondTarget) {
-            super(TestingLanguage.class, null, null);
+            super(null);
             this.firstTarget = firstTarget;
             this.secondTarget = secondTarget;
         }
@@ -79,7 +79,7 @@ public class CallTest {
         private final int value;
 
         ConstantRootNode(int value) {
-            super(TestingLanguage.class, null, null);
+            super(null);
             this.value = value;
         }
 

@@ -43,7 +43,7 @@ import com.oracle.truffle.api.nodes.Node;
 import java.util.Map;
 import java.util.Objects;
 
-@MessageResolution(receiverType = JavaObject.class, language = JavaInteropLanguage.class)
+@MessageResolution(receiverType = JavaObject.class)
 class JavaObjectMessageResolution {
 
     /**
@@ -138,18 +138,21 @@ class JavaObjectMessageResolution {
 
     @Resolve(message = "IS_BOXED")
     abstract static class BoxedCheckNode extends Node {
+        @Child private ToPrimitiveNode primitive = ToPrimitiveNode.create();
 
         public Object access(JavaObject object) {
-            return ToJavaNode.isPrimitive(object.obj);
+            return primitive.isPrimitive(object.obj);
         }
 
     }
 
     @Resolve(message = "UNBOX")
     abstract static class UnboxNode extends Node {
+        @Child private ToPrimitiveNode primitive = ToPrimitiveNode.create();
 
         public Object access(JavaObject object) {
-            return ToJavaNode.toPrimitive(object.obj, null);
+            Object result = primitive.toPrimitive(object.obj, null);
+            return result == null ? JavaObject.NULL : result;
         }
 
     }
@@ -224,7 +227,7 @@ class JavaObjectMessageResolution {
                     fields[i++] = Objects.toString(key, null);
                 }
             } else {
-                fields = TruffleOptions.AOT ? new String[0] : JavaInteropReflect.findPublicFieldsNames(receiver.clazz, receiver.obj != null);
+                fields = TruffleOptions.AOT ? new String[0] : JavaInteropReflect.findUniquePublicMemberNames(receiver.clazz, receiver.obj != null);
             }
             return JavaInterop.asTruffleObject(fields);
         }

@@ -312,6 +312,7 @@ suite = {
         "mx:JUNIT"
       ],
       "checkstyle" : "com.oracle.truffle.api",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "1.8",
       "workingSets" : "API,Truffle",
     },
@@ -632,6 +633,7 @@ suite = {
       },
       "description" : """Native function interface for the Truffle framework.""",
       "allowsJavadocWarnings": True,
+      "maven" : False,
     },
 
     "TRUFFLE_NFI_NATIVE" : {
@@ -642,7 +644,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.nfi.native",
       ],
-      "maven" : True,
+      "maven" : False,
     },
 
     "TRUFFLE_TCK" : {

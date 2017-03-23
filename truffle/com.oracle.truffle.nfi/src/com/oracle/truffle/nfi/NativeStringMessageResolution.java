@@ -30,7 +30,7 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
-@MessageResolution(language = NFILanguage.class, receiverType = NativeString.class)
+@MessageResolution(receiverType = NativeString.class)
 class NativeStringMessageResolution {
 
     @Resolve(message = "UNBOX")

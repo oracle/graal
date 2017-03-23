@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,35 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.vm;
+package com.oracle.truffle.api.interop;
 
-/**
- * Obsoleted.
- *
- * @param <Event> type of event to observe and handle
- * @since 0.9
- * @deprecated use {@link com.oracle.truffle.api.debug.Debugger Debugger}
- *             .find(engine).startSession(new SuspendedCallback(){...}).suspendNext() instead
- */
-@Deprecated
-public abstract class EventConsumer<Event> {
-    final Class<Event> type;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.impl.Accessor;
 
-    /**
-     * Creates new handler for specified event type.
-     *
-     * @param eventType type of events to handle
-     * @since 0.9
-     */
-    public EventConsumer(Class<Event> eventType) {
-        this.type = eventType;
+class InteropAccessor extends Accessor {
+
+    @Override
+    protected InteropSupport interopSupport() {
+        return new InteropSupport() {
+            @Override
+            public boolean canHandle(Object foreignAccess, Object receiver) {
+                ForeignAccess fa = (ForeignAccess) foreignAccess;
+                TruffleObject obj = (TruffleObject) receiver;
+                return fa.canHandle(obj);
+            }
+
+            @Override
+            public CallTarget canHandleTarget(Object access) {
+                ForeignAccess fa = (ForeignAccess) access;
+                return fa.checkLanguage();
+            }
+        };
     }
 
-    /**
-     * Called by the {@link PolyglotEngine} when event of requested type appears.
-     *
-     * @param event the instance of an event of the request type
-     * @since 0.9
-     */
-    protected abstract void on(Event event);
 }

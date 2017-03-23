@@ -104,13 +104,13 @@ public class PassItselfBackViaPolyglotEngineTest {
         engine.dispose();
     }
 
-    @MessageResolution(language = MyLang.class, receiverType = MyObj.class)
+    @MessageResolution(receiverType = MyObj.class)
     static final class MyObj implements TruffleObject {
         private Object value;
 
         @Override
         public ForeignAccess getForeignAccess() {
-            return MyObjForeign.ACCESS;
+            return com.oracle.truffle.sl.test.MyObjForeign.ACCESS;
         }
 
         static boolean isInstance(TruffleObject obj) {

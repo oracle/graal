@@ -46,8 +46,10 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public final class ForeignAccess {
     private final Factory factory;
-    private final Thread initThread;
     private final RootNode languageCheck;
+
+    // still here for GraalVM intrinsics.
+    @SuppressWarnings("unused") private final Thread initThread;
 
     private ForeignAccess(Factory faf) {
         this(null, faf);
@@ -55,7 +57,7 @@ public final class ForeignAccess {
 
     private ForeignAccess(RootNode languageCheck, Factory faf) {
         this.factory = faf;
-        this.initThread = Thread.currentThread();
+        this.initThread = null;
         this.languageCheck = languageCheck;
         CompilerAsserts.neverPartOfCompilation("do not create a ForeignAccess object from compiled code");
     }
@@ -542,6 +544,8 @@ public final class ForeignAccess {
     public static boolean sendIsNull(Node isNullNode, TruffleObject receiver) {
         try {
             return (boolean) send(isNullNode, receiver);
+        } catch (UnsupportedMessageException ex) {
+            return false;
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
@@ -563,6 +567,8 @@ public final class ForeignAccess {
     public static boolean sendHasSize(Node hasSizeNode, TruffleObject receiver) {
         try {
             return (boolean) send(hasSizeNode, receiver);
+        } catch (UnsupportedMessageException ex) {
+            return false;
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
@@ -610,6 +616,8 @@ public final class ForeignAccess {
     public static boolean sendIsBoxed(Node isBoxedNode, TruffleObject receiver) {
         try {
             return (boolean) send(isBoxedNode, receiver);
+        } catch (UnsupportedMessageException ex) {
+            return false;
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
@@ -681,12 +689,7 @@ public final class ForeignAccess {
         return "ForeignAccess[" + f.getClass().getName() + "]";
     }
 
-    private void checkThread() {
-        assert initThread == Thread.currentThread();
-    }
-
     CallTarget access(Message message) {
-        checkThread();
         return factory.accessMessage(message);
     }
 
@@ -698,8 +701,12 @@ public final class ForeignAccess {
         }
     }
 
+    // currently intrinsified by Graal
+    @SuppressWarnings("unused")
+    private void checkThread() {
+    }
+
     boolean canHandle(TruffleObject receiver) {
-        checkThread();
         return factory.canHandle(receiver);
     }
 
@@ -1100,4 +1107,6 @@ public final class ForeignAccess {
             return factory.accessMessage(msg);
         }
     }
+
+    @SuppressWarnings("unused") private static final InteropAccessor ACCESSOR = new InteropAccessor();
 }

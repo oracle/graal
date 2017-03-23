@@ -87,7 +87,7 @@ public class InterfaceChildFieldTest {
         @Child private TestChildInterface child;
 
         TestRootNode(TestChildInterface child) {
-            super(TestingLanguage.class, null, null);
+            super(null);
             this.child = child;
         }
 

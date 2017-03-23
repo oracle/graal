@@ -24,8 +24,9 @@ package com.oracle.truffle.api.test.vm;
 
 import java.lang.reflect.Method;
 import java.util.Map;
-import static org.junit.Assert.assertTrue;
+import java.util.Set;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.test.ReflectionUtils;
@@ -39,7 +40,15 @@ public class LanguageCacheReflectiveReinitializationTest {
         Method initMethod = languageCacheClass.getDeclaredMethod("initializeLanguages", ClassLoader.class);
         ReflectionUtils.setAccessible(initMethod, true);
         Map<String, Object> languages = (Map<String, Object>) initMethod.invoke(null, Thread.currentThread().getContextClassLoader());
+        Method getMimeTypes = languageCacheClass.getDeclaredMethod("getMimeTypes");
+        ReflectionUtils.setAccessible(getMimeTypes, true);
+        for (Object lang : languages.values()) {
+            Set<String> mimeTypes = (Set<String>) getMimeTypes.invoke(lang);
+            if (mimeTypes.contains("application/x-test-hash")) {
+                return;
+            }
+        }
 
-        assertTrue("Re-initialized languages must contain application/x-test language after reflective initialization: " + languages, languages.containsKey("application/x-test-hash"));
+        Assert.fail("Re-initialized languages must contain application/x-test language after reflective initialization");
     }
 }

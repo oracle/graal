@@ -24,17 +24,16 @@
  */
 package com.oracle.truffle.api.vm;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
+import java.io.PrintStream;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -48,19 +47,26 @@ import java.util.logging.Logger;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.impl.FindContextNode;
+import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.ComputeInExecutor.Info;
+import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
 import com.oracle.truffle.api.vm.PolyglotRootNode.EvalRootNode;
+import com.oracle.truffle.api.vm.PolyglotRuntime.LanguageShared;
 
 /**
  * A multi-language execution environment for Truffle-implemented {@linkplain Language languages}
@@ -71,13 +77,14 @@ import com.oracle.truffle.api.vm.PolyglotRootNode.EvalRootNode;
  * for external tools.
  * <p>
  * For a simple example see {@link #eval(Source) eval(Source)}. The
- * "<a href= "{@docRoot}/com/oracle/truffle/tutorial/package-summary.html">Truffle Tutorial</a>"
- * provides much more general information about Truffle. For information specifically related to
- * Java applications, the tutorial "<a href=
- * "{@docRoot}/com/oracle/truffle/tutorial/embedding/package-summary.html">Embedding Truffle
- * Languages in Java</a>" explains, with examples, how Java code can directly access guest language
- * functions, objects, classes, and some complex data structures with Java-typed accessors. In the
- * reverse direction, guest language code can access Java objects, classes, and constructors.
+ * <em><a href="{@docRoot}/com/oracle/truffle/tutorial/package-summary.html">Truffle
+ * Tutorial</a></em> provides much more general information about Truffle. For information
+ * specifically related to Java applications, the tutorial
+ * <em><a href="{@docRoot}/com/oracle/truffle/tutorial/embedding/package-summary.html">Embedding
+ * Truffle Languages in Java</a></em> explains, with examples, how Java code can directly access
+ * guest language functions, objects, classes, and some complex data structures with Java-typed
+ * accessors. In the reverse direction, guest language code can access Java objects, classes, and
+ * constructors.
  *
  * <h4>Engine Creation</h4>
  *
@@ -161,10 +168,12 @@ import com.oracle.truffle.api.vm.PolyglotRootNode.EvalRootNode;
  *
  * <h4>Engine Isolation</h4>
  *
- * An engine runs as an isolated <a href="https://en.wikipedia.org/wiki/Multitenancy">tenant</a> on
- * a host Java Virtual Machine. Other than shared host resources such as memory, no aspects of
- * program execution, language environments, or global symbols are shared with other engine
- * instances.
+ * Engines are isolated using the {@link PolyglotRuntime runtime} they are
+ * {@link Builder#runtime(PolyglotRuntime) assocated} with. A runtime is associated with one or more
+ * polyglot engines. One runtime is a isolated
+ * <a href="https://en.wikipedia.org/wiki/Multitenancy">tenant</a> on a host Virtual Machine. Other
+ * than shared host resources such as memory, no aspects of program execution, language
+ * environments, or global symbols are shared with other runtimes.
  *
  * <h4>Threading</h4>
  *
@@ -183,25 +192,30 @@ import com.oracle.truffle.api.vm.PolyglotRootNode.EvalRootNode;
  * built-in services such as debugging and profiling as well as from external tools.
  *
  * @since 0.9
+ * @see TruffleLanguage More information for language implementors.
  */
-@SuppressWarnings({"rawtypes", "deprecation"})
+@SuppressWarnings({"rawtypes"})
 public class PolyglotEngine {
     static final Logger LOG = Logger.getLogger(PolyglotEngine.class.getName());
+    static final PolyglotEngine UNUSABLE_ENGINE = new PolyglotEngine();
     private static final SPIAccessor SPI = new SPIAccessor();
+    /**
+     * Currently we need to have one global profile to support
+     * {@link com.oracle.truffle.api.vm.PolyglotEngine.SPIAccessor.EngineImpl#getCurrentVM()}.
+     */
+    static final PolyglotEngineProfile GLOBAL_PROFILE = new PolyglotEngineProfile(null);
+    static final Object UNSET_CONTEXT = new Object();
     private final Thread initThread;
-    private final ComputeInExecutor.Info executor;
-    private final Map<String, Language> langs;
-    private final InputStream in;
-    private final OutputStream err;
-    private final OutputStream out;
-    private final EventConsumer<?>[] handlers;
-    private final Map<String, Object> globals;
-    private final Object instrumentationHandler;
-    private final Map<String, Instrument> instruments;
-    private final List<Object[]> config;
-    private final Object[] debugger = {null};
-    private final ContextStore context;
     private final PolyglotCache cachedTargets;
+    private final Map<LanguageShared, Language> sharedToLanguage;
+    private final Map<String, Language> mimeTypeToLanguage;
+    /* Used for fast context lookup */
+    @CompilationFinal(dimensions = 1) final Language[] languageArray;
+    final PolyglotRuntime runtime;
+    final InputStream in;
+    final DispatchOutputStream err;
+    final DispatchOutputStream out;
+    final ComputeInExecutor.Info executor;
 
     private volatile boolean disposed;
 
@@ -216,69 +230,79 @@ public class PolyglotEngine {
             throw new IllegalStateException(e);
         }
     }
+    private List<Object[]> config;
+    private HashMap<String, Object> globals;
 
     /**
      * Private & temporary only constructor.
      */
     PolyglotEngine() {
-        assertNoTruffle();
+        assertNoCompilation();
         this.initThread = null;
-        this.in = null;
-        this.err = null;
-        this.out = null;
-        this.langs = null;
-        this.handlers = null;
-        this.globals = null;
-        this.executor = null;
-        this.instrumentationHandler = null;
-        this.instruments = null;
-        this.config = null;
-        this.context = null;
+        this.runtime = null;
         this.cachedTargets = null;
+        this.languageArray = null;
+        this.sharedToLanguage = null;
+        this.mimeTypeToLanguage = null;
+
+        this.in = null;
+        this.out = null;
+        this.err = null;
+
+        this.executor = null;
     }
 
     /**
-     * Real constructor used from the builder.
+     * Constructor used from the builder.
      */
-    PolyglotEngine(Executor executor, Map<String, Object> globals, OutputStream out, OutputStream err, InputStream in, EventConsumer<?>[] handlers, List<Object[]> config) {
-        assertNoTruffle();
-        this.executor = ComputeInExecutor.wrap(executor);
+    PolyglotEngine(PolyglotRuntime runtime, Executor executor, InputStream in, DispatchOutputStream out, DispatchOutputStream err, Map<String, Object> globals, List<Object[]> config) {
+        assertNoCompilation();
+        this.initThread = Thread.currentThread();
+        this.runtime = runtime;
+        this.languageArray = new Language[runtime.getLanguages().size()];
+
+        this.cachedTargets = new PolyglotCache(this);
+        this.sharedToLanguage = new HashMap<>();
+        this.mimeTypeToLanguage = new HashMap<>();
+
+        this.in = in;
         this.out = out;
         this.err = err;
-        this.in = in;
-        this.handlers = handlers;
-        this.initThread = Thread.currentThread();
+
+        this.executor = ComputeInExecutor.wrap(executor);
         this.globals = new HashMap<>(globals);
         this.config = config;
-        // this.debugger = SPI.createDebugger(this, this.instrumenter);
-        // new instrumentation
-        this.instrumentationHandler = Access.INSTRUMENT.createInstrumentationHandler(this, out, err, in);
-        Map<String, Language> map = new HashMap<>();
-        /* We want to create a language instance but per LanguageCache and not per mime type. */
-        Set<LanguageCache> uniqueCaches = new HashSet<>(LanguageCache.languages().values());
-        for (LanguageCache languageCache : uniqueCaches) {
-            Language newLanguage = new Language(languageCache);
-            for (String mimeType : newLanguage.getMimeTypes()) {
-                map.put(mimeType, newLanguage);
+
+        initLanguages();
+        runtime.notifyEngineCreated();
+    }
+
+    private void initLanguages() {
+        for (LanguageShared languageShared : runtime.getLanguages()) {
+            Language newLanguage = new Language(languageShared);
+            sharedToLanguage.put(languageShared, newLanguage);
+            assert languageArray[languageShared.languageId] == null : "attempting to overwrite language";
+            languageArray[languageShared.languageId] = newLanguage;
+            for (String mimeType : languageShared.cache.getMimeTypes()) {
+                mimeTypeToLanguage.put(mimeType, newLanguage);
             }
         }
-        this.langs = map;
-        this.instruments = createAndAutostartDescriptors(InstrumentCache.load());
-        this.context = ExecutionImpl.createStore(this);
-        this.cachedTargets = new PolyglotCache(this);
+    }
+
+    PolyglotEngine enter() {
+        return runtime.engineProfile.enter(this);
+    }
+
+    void leave(Object prev) {
+        runtime.engineProfile.leave((PolyglotEngine) prev);
     }
 
     Info executor() {
         return executor;
     }
 
-    private Map<String, Instrument> createAndAutostartDescriptors(List<InstrumentCache> instrumentCaches) {
-        Map<String, Instrument> instr = new LinkedHashMap<>();
-        for (InstrumentCache cache : instrumentCaches) {
-            Instrument instrument = new Instrument(cache);
-            instr.put(cache.getId(), instrument);
-        }
-        return Collections.unmodifiableMap(instr);
+    private boolean isCurrentVM() {
+        return this == runtime.engineProfile.get();
     }
 
     /**
@@ -334,7 +358,7 @@ public class PolyglotEngine {
         private OutputStream out;
         private OutputStream err;
         private InputStream in;
-        private final List<EventConsumer<?>> handlers = new ArrayList<>();
+        private PolyglotRuntime runtime;
         private final Map<String, Object> globals = new HashMap<>();
         private Executor executor;
         private List<Object[]> arguments;
@@ -378,22 +402,6 @@ public class PolyglotEngine {
          */
         public Builder setIn(InputStream is) {
             in = is;
-            return this;
-        }
-
-        /**
-         * Registers another instance of {@link EventConsumer} into the to be created
-         * {@link PolyglotEngine}.
-         *
-         * @param handler the handler to register
-         * @return this builder
-         * @since 0.9
-         * @deprecated all event types that use this API have been deprecated.
-         */
-        @Deprecated
-        public Builder onEvent(EventConsumer<?> handler) {
-            Objects.requireNonNull(handler);
-            handlers.add(handler);
             return this;
         }
 
@@ -475,23 +483,79 @@ public class PolyglotEngine {
         }
 
         /**
+         * Associates the {@linkplain #build() to be created} {@link PolyglotEngine engine} with an
+         * {@link PolyglotRuntime execution runtime}. By default each {@link PolyglotEngine engine}
+         * gets its own private runtime. If the same {@link PolyglotRuntime runtime} is used to
+         * create multiple {@link PolyglotEngine engines} then resources and code might be cached
+         * between these engines. A private/default or disposed runtime cannot be used to construct
+         * an {@link PolyglotEngine engine}. If attempted an {@link IllegalArgumentException} is
+         * thrown.
+         *
+         * Sample usage:
+         * <p>
+         * {@codesnippet com.oracle.truffle.api.vm.PolyglotEngineSnippets#createEngines}
+         * <p>
+         *
+         * @param polyglotRuntime an instance of runtime to associate this engine with
+         * @return this builder
+         * @since 0.25
+         * @see PolyglotRuntime
+         */
+        public Builder runtime(PolyglotRuntime polyglotRuntime) {
+            checkRuntime(polyglotRuntime);
+            this.runtime = polyglotRuntime;
+            return this;
+        }
+
+        /**
          * Creates an {@link PolyglotEngine engine} configured by builder methods.
          *
          * @return a new engine with all available languages installed
          * @since 0.9
          */
         public PolyglotEngine build() {
-            assertNoTruffle();
-            if (out == null) {
-                out = System.out;
+            assertNoCompilation();
+
+            InputStream realIn;
+            DispatchOutputStream realOut;
+            DispatchOutputStream realErr;
+
+            PolyglotRuntime realRuntime = runtime;
+            if (realRuntime == null) {
+                realRuntime = PolyglotRuntime.newBuilder().setIn(in).setOut(out).setErr(err).build(true);
+
+                realIn = realRuntime.in;
+                realOut = realRuntime.out;
+                realErr = realRuntime.err;
+            } else {
+                checkRuntime(realRuntime);
+                if (out == null) {
+                    realOut = realRuntime.out;
+                } else {
+                    realOut = SPIAccessor.instrumentAccess().createDispatchOutput(out);
+                    SPIAccessor.engine().attachOutputConsumer(realOut, realRuntime.out);
+                }
+                if (err == null) {
+                    realErr = realRuntime.err;
+                } else {
+                    realErr = SPIAccessor.instrumentAccess().createDispatchOutput(err);
+                    SPIAccessor.engine().attachOutputConsumer(realErr, realRuntime.err);
+                }
+                realIn = in == null ? realRuntime.in : in;
             }
-            if (err == null) {
-                err = System.err;
+
+            return new PolyglotEngine(realRuntime, executor, realIn, realOut, realErr, globals, arguments);
+        }
+
+        private void checkRuntime(PolyglotRuntime realRuntime) {
+            if (realRuntime.disposed) {
+                throw new IllegalArgumentException("Given runtime already disposed.");
             }
-            if (in == null) {
-                in = System.in;
+            if (realRuntime.automaticDispose) {
+                throw new IllegalArgumentException(
+                                "Cannot reuse private/create runtime of another engine. " +
+                                                "Please usine an explicitely created PolyglotRuntime instead.");
             }
-            return new PolyglotEngine(executor, globals, out, err, in, handlers.toArray(new EventConsumer[0]), arguments);
         }
     }
 
@@ -499,13 +563,12 @@ public class PolyglotEngine {
      * Gets the map: MIME type --> {@linkplain Language metadata} for the matching language
      * installed in this engine, whether or not the language has been initialized.
      *
-     *
      * @return an immutable map: MIME type --> metadata for the language that supports the source
      *         type
      * @since 0.9
      */
     public Map<String, ? extends Language> getLanguages() {
-        return Collections.unmodifiableMap(langs);
+        return Collections.unmodifiableMap(mimeTypeToLanguage);
     }
 
     /**
@@ -515,9 +578,21 @@ public class PolyglotEngine {
      *
      * @return map of currently loaded instruments
      * @since 0.9
+     * @deprecated use {@link #getRuntime()}.{@link PolyglotRuntime#getInstruments()}.
      */
+    @Deprecated
     public Map<String, Instrument> getInstruments() {
-        return instruments;
+        return runtime.instruments;
+    }
+
+    /**
+     * Access to associated runtime.
+     *
+     * @return the runtime associated with this engine
+     * @since 0.25
+     */
+    public PolyglotRuntime getRuntime() {
+        return runtime;
     }
 
     /**
@@ -550,19 +625,33 @@ public class PolyglotEngine {
      * @since 0.9
      */
     public Value eval(Source source) {
+        assertNoCompilation();
         assert checkThread();
-        assertNoTruffle();
-        String mimeType = source.getMimeType();
-        Language l = langs.get(mimeType);
-        if (l == null) {
-            throw new IllegalStateException("No language for MIME type " + mimeType + " found. Supported types: " + langs.keySet());
-        }
-        return evalImpl(langs.get(source.getMimeType()), source);
+        return evalImpl(findLanguage(source.getMimeType(), true), source);
+    }
+
+    private Value evalImpl(final Language l, final Source source) {
+        assert checkThread();
+        ComputeInExecutor<Object> compute = new ComputeInExecutor<Object>(executor()) {
+            @Override
+            protected Object compute() {
+                CallTarget evalTarget = l.parserCache.get(source);
+                if (evalTarget == null) {
+                    evalTarget = PolyglotRootNode.createEval(PolyglotEngine.this, l, source);
+                    l.parserCache.put(source, evalTarget);
+                }
+                return evalTarget.call();
+            }
+        };
+        compute.perform();
+        return new ExecutorValue(l, compute);
     }
 
     /**
      * Disposes this engine instance and {@link TruffleLanguage#disposeContext(Object) releases all
-     * resources} allocated by languages active in this engine.
+     * resources} allocated by languages active in this engine. If a default/private
+     * {@link #getRuntime() runtime} is configured for this engine then it is disposed automatically
+     * with this engine.
      * <p>
      * Calling any other method on this instance after disposal throws an
      * {@link IllegalStateException}.
@@ -571,95 +660,33 @@ public class PolyglotEngine {
      */
     public void dispose() {
         assert checkThread();
-        assertNoTruffle();
+        assertNoCompilation();
         disposed = true;
-        ComputeInExecutor<Void> compute = new ComputeInExecutor<Void>(executor) {
+
+        ComputeInExecutor<Void> compute = new ComputeInExecutor<Void>(executor()) {
             @Override
             protected Void compute() {
-                for (Language language : getLanguages().values()) {
-                    TruffleLanguage<?> impl = language.getImpl(false);
-                    if (impl != null) {
-                        final Env env = language.getEnv(false, true);
-                        if (env != null) {
-                            try {
-                                Access.LANGS.dispose(impl, env);
-                            } catch (Exception | Error ex) {
-                                LOG.log(Level.SEVERE, "Error disposing " + impl, ex);
-                            }
-                        }
-                    }
-                }
-
-                for (Instrument instrument : instruments.values()) {
-                    try {
-                        /*
-                         * TODO (chumer): ideally no cleanup is required for disposing
-                         * PolyglotEngine if no ASTs are shared between instances. the anything
-                         * might be shared assumption invalidates this optimization we should have a
-                         * way to find out if a CallTarget/RootNode is shared across PolyglotEngine
-                         * instances.
-                         */
-                        instrument.setEnabledImpl(false, false);
-                    } catch (Exception | Error ex) {
-                        LOG.log(Level.SEVERE, "Error disposing " + instrument, ex);
-                    }
-                }
-
-                return null;
-            }
-        };
-        compute.perform();
-    }
-
-    private Value evalImpl(final Language l, final Source source) {
-        final TruffleLanguage[] lang = {null};
-        if (executor == null) {
-            Object value = evalImpl(lang, l, source);
-            return new DirectValue(lang, value);
-        }
-        assert checkThread();
-        ComputeInExecutor<Object> compute = new ComputeInExecutor<Object>(executor) {
-            @Override
-            protected Object compute() {
-                return evalImpl(lang, l, source);
-            }
-        };
-        compute.perform();
-        return new ExecutorValue(lang, compute);
-    }
-
-    private Object evalImpl(TruffleLanguage[] langTarget, Language l, Source source) {
-        CallTarget target = l.cache.get(source);
-        if (target == null) {
-            target = PolyglotRootNode.createEval(this, l, source);
-            l.cache.put(source, target);
-        }
-        Object value = target.call((Object) langTarget);
-        if (source.isInteractive()) {
-            String stringResult = Access.LANGS.toStringIfVisible(langTarget[0], findEnv(langTarget[0].getClass()), value, source);
-            if (stringResult != null) {
+                Object prev = enter();
                 try {
-                    PolyglotEngine.this.out.write(stringResult.getBytes(StandardCharsets.UTF_8));
-                    PolyglotEngine.this.out.write(System.getProperty("line.separator").getBytes(StandardCharsets.UTF_8));
-                } catch (IOException ioex) {
-                    // out stream has problems.
-                    throw new IllegalStateException(ioex);
+                    disposeImpl();
+                    return null;
+                } finally {
+                    leave(prev);
                 }
             }
+        };
+        compute.get();
+    }
+
+    private void disposeImpl() {
+        for (Language language : getLanguages().values()) {
+            language.disposeContext();
         }
-        return value;
+        runtime.notifyEngineDisposed();
     }
 
-    ContextStore context() {
-        return context;
-    }
-
-    Object[] debugger() {
-        return debugger;
-    }
-
-    static void assertNoTruffle() {
-        CompilerAsserts.neverPartOfCompilation("Methods of PolyglotEngine must not be compiled by Truffle. Use Truffle interoperability or a @TruffleBoundary instead.");
+    private Object[] debugger() {
+        return runtime.debugger;
     }
 
     /**
@@ -678,20 +705,12 @@ public class PolyglotEngine {
      */
     public Value findGlobalSymbol(final String globalName) {
         assert checkThread();
-        assertNoTruffle();
-        final TruffleLanguage<?>[] lang = {null};
-        ComputeInExecutor<Object> compute = new ComputeInExecutor<Object>(executor) {
-            @Override
-            protected Object compute() {
-                Iterator<?> it = importSymbol(lang, globalName).iterator();
-                return it.hasNext() ? it.next() : null;
-            }
-        };
-        compute.perform();
-        if (compute.get() == null) {
-            return null;
+        assertNoCompilation();
+
+        for (Object v : findGlobalSymbols(globalName)) {
+            return (Value) v;
         }
-        return new ExecutorValue(lang, compute);
+        return null;
     }
 
     /**
@@ -710,49 +729,53 @@ public class PolyglotEngine {
      */
     public Iterable<Value> findGlobalSymbols(String globalName) {
         assert checkThread();
-        assertNoTruffle();
-        final TruffleLanguage<?>[] lang = {null};
-        Iterable<? extends Object> it = importSymbol(lang, globalName);
-        class ValueIterator implements Iterator<Value> {
-            private final Iterator<? extends Object> delegate;
-
-            ValueIterator(Iterator<? extends Object> delegate) {
-                this.delegate = delegate;
-            }
-
-            @Override
-            public boolean hasNext() {
-                ComputeInExecutor<Boolean> compute = new ComputeInExecutor<Boolean>(executor) {
-                    @Override
-                    protected Boolean compute() {
-                        return delegate.hasNext();
-                    }
-                };
-                compute.perform();
-                return compute.get();
-            }
-
-            @Override
-            public Value next() {
-                ComputeInExecutor<Object> compute = new ComputeInExecutor<Object>(executor) {
-                    @Override
-                    protected Object compute() {
-                        return delegate.next();
-                    }
-                };
-                compute.perform();
-                return new ExecutorValue(lang, compute);
-            }
-        }
+        assertNoCompilation();
         return new Iterable<Value>() {
-            @Override
-            public ValueIterator iterator() {
-                return new ValueIterator(it.iterator());
+
+            final Iterable<? extends Object> iterable = importSymbol(null, globalName, true);
+
+            public Iterator<Value> iterator() {
+                return new Iterator<PolyglotEngine.Value>() {
+                    final Iterator<? extends Object> iterator = iterable.iterator();
+
+                    public boolean hasNext() {
+                        ComputeInExecutor<Boolean> invokeCompute = new ComputeInExecutor<Boolean>(executor()) {
+                            @SuppressWarnings("try")
+                            @Override
+                            protected Boolean compute() {
+                                Object prev = enter();
+                                try {
+                                    return iterator.hasNext();
+                                } finally {
+                                    leave(prev);
+                                }
+                            }
+                        };
+                        return invokeCompute.get().booleanValue();
+                    }
+
+                    public Value next() {
+                        ComputeInExecutor<Value> invokeCompute = new ComputeInExecutor<Value>(executor()) {
+                            @SuppressWarnings("try")
+                            @Override
+                            protected Value compute() {
+                                Object prev = enter();
+                                try {
+                                    return (Value) iterator.next();
+                                } finally {
+                                    leave(prev);
+                                }
+                            }
+                        };
+                        return invokeCompute.get();
+                    }
+
+                };
             }
         };
     }
 
-    final Iterable<? extends Object> importSymbol(TruffleLanguage<?>[] arr, String globalName) {
+    private Iterable<? extends Object> importSymbol(Language filterLanguage, String globalName, boolean needsValue) {
         class SymbolIterator implements Iterator<Object> {
             private final Collection<? extends Language> uniqueLang;
             private Object next;
@@ -761,7 +784,7 @@ public class PolyglotEngine {
 
             SymbolIterator(Collection<? extends Language> uniqueLang, Object first) {
                 this.uniqueLang = uniqueLang;
-                this.next = first;
+                this.next = (needsValue && first != null) ? new DirectValue(null, first) : first;
             }
 
             @Override
@@ -775,6 +798,7 @@ public class PolyglotEngine {
                 if (res == this) {
                     throw new NoSuchElementException();
                 }
+                assert !needsValue || res instanceof Value;
                 next = null;
                 return res;
             }
@@ -790,14 +814,12 @@ public class PolyglotEngine {
 
                 while (explicit.hasNext()) {
                     Language dl = explicit.next();
-                    TruffleLanguage<?> l = dl.getImpl(false);
                     TruffleLanguage.Env env = dl.getEnv(false);
-                    if (l != arr[0] && l != null && env != null) {
-                        Object obj = Access.LANGS.findExportedSymbol(env, globalName, true);
+                    if (dl != filterLanguage && env != null) {
+                        Object obj = findExportedSymbol(dl, env, globalName, true);
                         if (obj != null) {
                             next = obj;
                             explicit.remove();
-                            arr[0] = l;
                             return next;
                         }
                     }
@@ -809,31 +831,41 @@ public class PolyglotEngine {
 
                 while (implicit.hasNext()) {
                     Language dl = implicit.next();
-                    TruffleLanguage<?> l = dl.getImpl(false);
                     TruffleLanguage.Env env = dl.getEnv(false);
-                    if (l != arr[0] && l != null && env != null) {
-                        Object obj = Access.LANGS.findExportedSymbol(env, globalName, false);
+                    if (dl != filterLanguage && env != null) {
+                        Object obj = findExportedSymbol(dl, env, globalName, false);
                         if (obj != null) {
                             next = obj;
-                            arr[0] = l;
                             return next;
                         }
                     }
                 }
                 return next = this;
             }
+
+            private Object findExportedSymbol(Language lang, TruffleLanguage.Env env, String name, boolean onlyExplicit) {
+                Object value = Access.LANGS.findExportedSymbol(env, name, onlyExplicit);
+                if (needsValue && value != null) {
+                    value = new DirectValue(lang, value);
+                }
+                return value;
+            }
         }
-        Object g = globals.get(globalName);
+        Object globalObj = globals.get(globalName);
         final Collection<? extends Language> uniqueLang = getLanguages().values();
         return new Iterable<Object>() {
             @Override
             public Iterator<Object> iterator() {
-                return new SymbolIterator(new LinkedHashSet<>(uniqueLang), g);
+                return new SymbolIterator(new LinkedHashSet<>(uniqueLang), globalObj);
             }
         };
     }
 
-    boolean checkThread() {
+    private static void assertNoCompilation() {
+        CompilerAsserts.neverPartOfCompilation("Methods of PolyglotEngine must not be compiled by Truffle. Use Truffle interoperability or a @TruffleBoundary instead.");
+    }
+
+    private boolean checkThread() {
         if (initThread != Thread.currentThread()) {
             throw new IllegalStateException("PolyglotEngine created on " + initThread.getName() + " but used on " + Thread.currentThread().getName());
         }
@@ -843,40 +875,41 @@ public class PolyglotEngine {
         return true;
     }
 
-    @SuppressWarnings("unchecked")
-    void dispatch(Object ev, int type) {
-        if (type == Accessor.EngineSupport.EXECUTION_EVENT) {
-            dispatchExecutionEvent(ev);
+    private Language findLanguage(String mimeType, boolean failOnError) {
+        Language l = mimeTypeToLanguage.get(mimeType);
+        if (failOnError && l == null) {
+            throw new IllegalStateException("No language for MIME type " + mimeType + " found. Supported types: " + mimeTypeToLanguage.keySet());
         }
-        if (type == Accessor.EngineSupport.SUSPENDED_EVENT) {
-            dispatchSuspendedEvent(ev);
-        }
-        Class clazz = ev.getClass();
-        dispatch(clazz, ev);
+        return l;
     }
 
-    /**
-     * just to make javac happy.
-     *
-     * @param event
-     */
-    void dispatchSuspendedEvent(Object event) {
+    //
+    // Accessor helper methods
+    //
+
+    Language findLanguage(LanguageShared env) {
+        return sharedToLanguage.get(env);
     }
 
-    /**
-     * just to make javac happy.
-     *
-     * @param event
-     */
-    void dispatchExecutionEvent(Object event) {
-    }
-
-    @SuppressWarnings("unchecked")
-    <Event> void dispatch(Class<Event> type, Event event) {
-        for (EventConsumer handler : handlers) {
-            if (handler.type == type) {
-                handler.on(event);
+    Env findEnv(Class<? extends TruffleLanguage> languageClazz, boolean failIfNotFound) {
+        for (Language lang : languageArray) {
+            Env env = lang.getEnv(false);
+            if (env != null) {
+                assert lang.shared.language != null;
+                TruffleLanguage<?> spi = SPIAccessor.nodesAccess().getLanguageSpi(lang.shared.language);
+                if (languageClazz.isInstance(spi)) {
+                    return env;
+                }
             }
+        }
+        if (failIfNotFound) {
+            Set<String> languageNames = new HashSet<>();
+            for (Language lang : languageArray) {
+                languageNames.add(lang.shared.cache.getClassName());
+            }
+            throw new IllegalStateException("Cannot find language " + languageClazz + " among " + languageNames);
+        } else {
+            return null;
         }
     }
 
@@ -893,12 +926,11 @@ public class PolyglotEngine {
      * @since 0.9
      */
     public abstract class Value {
-        private final TruffleLanguage<?>[] language;
+        private final Language language;
         private CallTarget executeTarget;
-        private CallTarget unwrapTarget;
         private CallTarget asJavaObjectTarget;
 
-        Value(TruffleLanguage<?>[] language) {
+        Value(Language language) {
             this.language = language;
         }
 
@@ -908,10 +940,8 @@ public class PolyglotEngine {
 
         @SuppressWarnings("unchecked")
         private <T> T unwrapJava(Object value) {
-            if (unwrapTarget == null) {
-                unwrapTarget = cachedTargets.lookupAsJava(value.getClass());
-            }
-            return (T) unwrapTarget.call(Object.class, value);
+            CallTarget unwrapTarget = cachedTargets.lookupAsJava(value.getClass());
+            return (T) unwrapTarget.call(value, Object.class);
         }
 
         @SuppressWarnings("unchecked")
@@ -919,7 +949,7 @@ public class PolyglotEngine {
             if (asJavaObjectTarget == null) {
                 asJavaObjectTarget = cachedTargets.lookupAsJava(value == null ? void.class : value.getClass());
             }
-            return (T) asJavaObjectTarget.call(type, value);
+            return (T) asJavaObjectTarget.call(value, type);
         }
 
         @SuppressWarnings("try")
@@ -944,12 +974,12 @@ public class PolyglotEngine {
         public Object get() {
             Object result = waitForSymbol();
             if (result instanceof TruffleObject) {
-                result = unwrapJava((TruffleObject) result);
+                result = unwrapJava(ConvertedObject.value(result));
                 if (result instanceof TruffleObject) {
                     result = EngineTruffleObject.wrap(PolyglotEngine.this, result);
                 }
             }
-            return result;
+            return ConvertedObject.isNull(result) ? null : result;
         }
 
         /**
@@ -980,17 +1010,30 @@ public class PolyglotEngine {
          * @throws ClassCastException if the value cannot be converted to desired view
          * @since 0.9
          */
+        @SuppressWarnings("unchecked")
         public <T> T as(final Class<T> representation) {
             Object original = waitForSymbol();
             Object unwrapped = original;
 
             if (original instanceof TruffleObject) {
-                unwrapped = unwrapJava(original);
+                unwrapped = unwrapJava(ConvertedObject.original(original));
             }
             if (representation == String.class) {
-                final Class<? extends TruffleLanguage> clazz = language[0].getClass();
-                Object unwrappedConvered = unwrapped instanceof ConvertedObject ? ((ConvertedObject) unwrapped).getOriginal() : unwrapped;
-                return representation.cast(Access.LANGS.toStringIfVisible(language[0], findEnv(clazz), unwrappedConvered, null));
+                Object unwrappedConverted = ConvertedObject.original(unwrapped);
+                Object string;
+                if (language != null) {
+                    PolyglotEngine prev = enter();
+                    try {
+                        string = Access.LANGS.toStringIfVisible(language.getEnv(false), unwrappedConverted, false);
+                    } finally {
+                        leave(prev);
+                    }
+                } else {
+                    /* Language can be null for PolyglotEngine global config values. */
+                    string = unwrappedConverted.toString();
+                }
+                return representation.cast(string);
+
             }
             if (ConvertedObject.isInstance(representation, unwrapped)) {
                 return ConvertedObject.cast(representation, unwrapped);
@@ -999,7 +1042,12 @@ public class PolyglotEngine {
             if (original instanceof TruffleObject) {
                 original = EngineTruffleObject.wrap(PolyglotEngine.this, original);
             }
-            return representation.cast(asJavaObject(representation, original));
+            Object javaValue = asJavaObject(representation, original);
+            if (representation.isPrimitive()) {
+                return (T) javaValue;
+            } else {
+                return representation.cast(javaValue);
+            }
         }
 
         /**
@@ -1050,10 +1098,10 @@ public class PolyglotEngine {
                 Object ret = executeDirect(args);
                 return new DirectValue(language, ret);
             }
-            assertNoTruffle();
+            assertNoCompilation();
 
             get();
-            ComputeInExecutor<Object> invokeCompute = new ComputeInExecutor<Object>(executor) {
+            ComputeInExecutor<Object> invokeCompute = new ComputeInExecutor<Object>(PolyglotEngine.this.executor()) {
                 @SuppressWarnings("try")
                 @Override
                 protected Object compute() {
@@ -1065,19 +1113,75 @@ public class PolyglotEngine {
         }
 
         private Object waitForSymbol() {
-            assertNoTruffle();
-            assert checkThread();
+            assertNoCompilation();
+            assert PolyglotEngine.this.checkThread();
             Object value = value();
             assert value != null;
             assert !(value instanceof EngineTruffleObject);
             return value;
+        }
+
+        /**
+         * Get a meta-object of this value, if any. The meta-object represents a description of the
+         * value, reveals it's kind and it's features.
+         *
+         * @return a value representing the meta-object, or <code>null</code>
+         * @since 0.24
+         */
+        public Value getMetaObject() {
+            if (language == null) {
+                return null;
+            }
+            ComputeInExecutor<Object> invokeCompute = new ComputeInExecutor<Object>(executor()) {
+                @SuppressWarnings("try")
+                @Override
+                protected Object compute() {
+                    Object prev = enter();
+                    try {
+                        return Access.LANGS.findMetaObject(language.getEnv(true), ConvertedObject.original(value()));
+                    } finally {
+                        leave(prev);
+                    }
+                }
+            };
+            Object value = invokeCompute.get();
+            if (value != null) {
+                return new DirectValue(language, value);
+            } else {
+                return null;
+            }
+        }
+
+        /**
+         * Get a source location where this value is declared, if any.
+         *
+         * @return a source location of the object, or <code>null</code>
+         * @since 0.24
+         */
+        public SourceSection getSourceLocation() {
+            if (language == null) {
+                return null;
+            }
+            ComputeInExecutor<SourceSection> invokeCompute = new ComputeInExecutor<SourceSection>(executor()) {
+                @SuppressWarnings("try")
+                @Override
+                protected SourceSection compute() {
+                    Object prev = enter();
+                    try {
+                        return Access.LANGS.findSourceLocation(language.getEnv(true), ConvertedObject.original(value()));
+                    } finally {
+                        leave(prev);
+                    }
+                }
+            };
+            return invokeCompute.get();
         }
     }
 
     private class DirectValue extends Value {
         private final Object value;
 
-        DirectValue(TruffleLanguage<?>[] language, Object value) {
+        DirectValue(Language language, Object value) {
             super(language);
             this.value = value;
             assert value != null;
@@ -1102,7 +1206,7 @@ public class PolyglotEngine {
     private class ExecutorValue extends Value {
         private final ComputeInExecutor<Object> compute;
 
-        ExecutorValue(TruffleLanguage<?>[] language, ComputeInExecutor<Object> compute) {
+        ExecutorValue(Language language, ComputeInExecutor<Object> compute) {
             super(language);
             this.compute = compute;
         }
@@ -1135,123 +1239,13 @@ public class PolyglotEngine {
      * Refer to {@link TruffleInstrument} for information about implementing and installing
      * instruments.
      *
-     * @see PolyglotEngine#getInstruments()
      * @since 0.9
+     * @deprecated Use {@link PolyglotRuntime.Instrument}.
      */
-    public final class Instrument {
-
-        private final InstrumentCache info;
-        private final Object instrumentLock = new Object();
-        private volatile boolean enabled;
-
-        Instrument(InstrumentCache cache) {
-            this.info = cache;
-        }
-
-        /**
-         * Gets the id clients can use to acquire this instrument.
-         *
-         * @return this instrument's unique id
-         * @since 0.9
-         */
-        public String getId() {
-            return info.getId();
-        }
-
-        /**
-         * Gets a human readable name of this instrument.
-         *
-         * @return this instrument's user-friendly name
-         * @since 0.9
-         */
-        public String getName() {
-            return info.getName();
-        }
-
-        /**
-         * Gets the version of this instrument.
-         *
-         * @return this instrument's version
-         * @since 0.9
-         */
-        public String getVersion() {
-            return info.getVersion();
-        }
-
-        InstrumentCache getCache() {
-            return info;
-        }
-
-        /**
-         * Returns whether this instrument is currently enabled in the engine.
-         *
-         * @return this instrument's status in the engine
-         * @since 0.9
-         */
-        public boolean isEnabled() {
-            return enabled;
-        }
-
-        /**
-         * Returns an additional service provided by this instrument, specified by type.
-         * <p>
-         * Here is an example for locating a hypothetical <code>DebuggerController</code>:
-         *
-         * {@codesnippet DebuggerExampleTest}
-         *
-         * @param <T> the type of the service
-         * @param type class of the service that is being requested
-         * @return instance of requested type, <code>null</code> if no such service is available
-         * @since 0.9
-         */
-        public <T> T lookup(Class<T> type) {
-            if (!isEnabled() && info.supportsService(type)) {
-                setEnabled(true);
-            }
-            return Access.INSTRUMENT.getInstrumentationHandlerService(instrumentationHandler, this, type);
-        }
-
-        /**
-         * Enables/disables this instrument in the engine.
-         *
-         * @param enabled <code>true</code> to enable <code>false</code> to disable
-         * @since 0.9
-         */
-        public void setEnabled(final boolean enabled) {
-            if (disposed) {
-                throw new IllegalStateException("Engine has already been disposed");
-            }
-            if (executor == null) {
-                setEnabledImpl(enabled, true);
-            } else {
-                ComputeInExecutor<Void> compute = new ComputeInExecutor<Void>(executor) {
-                    @Override
-                    protected Void compute() {
-                        setEnabledImpl(enabled, true);
-                        return null;
-                    }
-                };
-                compute.perform();
-            }
-        }
-
-        void setEnabledImpl(final boolean enabled, boolean cleanup) {
-            synchronized (instrumentLock) {
-                if (this.enabled != enabled) {
-                    if (enabled) {
-                        Access.INSTRUMENT.addInstrument(instrumentationHandler, this, getCache().getInstrumentationClass());
-                    } else {
-                        Access.INSTRUMENT.disposeInstrument(instrumentationHandler, this, cleanup);
-                    }
-                    this.enabled = enabled;
-                }
-            }
-        }
-
-        /** @since 0.9 */
-        @Override
-        public String toString() {
-            return "Instrument [id=" + getId() + ", name=" + getName() + ", version=" + getVersion() + ", enabled=" + enabled + "]";
+    @Deprecated
+    public final class Instrument extends PolyglotRuntime.Instrument {
+        Instrument(PolyglotRuntime runtime, InstrumentCache cache) {
+            runtime.super(cache);
         }
     }
 
@@ -1268,14 +1262,22 @@ public class PolyglotEngine {
      * @since 0.9
      */
     public class Language {
-        private final Map<Source, CallTarget> cache;
-        private final LanguageCache info;
         private volatile TruffleLanguage.Env env;
-        private volatile TruffleLanguage<?> language;
+        final LanguageShared shared;
+        @CompilationFinal volatile Object context = UNSET_CONTEXT;
+        private final Map<Source, CallTarget> parserCache;
 
-        Language(LanguageCache info) {
-            this.cache = new WeakHashMap<>();
-            this.info = info;
+        Language(LanguageShared shared) {
+            this.shared = shared;
+            this.parserCache = new WeakHashMap<>();
+        }
+
+        PolyglotEngine engine() {
+            return PolyglotEngine.this;
+        }
+
+        Object context() {
+            return context;
         }
 
         /**
@@ -1285,7 +1287,7 @@ public class PolyglotEngine {
          * @since 0.9
          */
         public Set<String> getMimeTypes() {
-            return info.getMimeTypes();
+            return shared.cache.getMimeTypes();
         }
 
         /**
@@ -1295,7 +1297,7 @@ public class PolyglotEngine {
          * @since 0.9
          */
         public String getName() {
-            return info.getName();
+            return shared.cache.getName();
         }
 
         /**
@@ -1305,7 +1307,7 @@ public class PolyglotEngine {
          * @since 0.9
          */
         public String getVersion() {
-            return info.getVersion();
+            return shared.cache.getVersion();
         }
 
         /**
@@ -1317,7 +1319,7 @@ public class PolyglotEngine {
          * @since 0.22
          */
         public boolean isInteractive() {
-            return info.isInteractive();
+            return shared.cache.isInteractive();
         }
 
         /**
@@ -1337,8 +1339,8 @@ public class PolyglotEngine {
          * @since 0.9
          */
         public Value eval(Source source) {
-            assertNoTruffle();
-            return PolyglotEngine.this.evalImpl(this, source);
+            assertNoCompilation();
+            return evalImpl(this, source);
         }
 
         /**
@@ -1354,21 +1356,65 @@ public class PolyglotEngine {
         @SuppressWarnings("try")
         public Value getGlobalObject() {
             assert checkThread();
-            ContextStore prev = ExecutionImpl.executionStarted(context);
-            try {
-                Object res = Access.LANGS.languageGlobal(getEnv(true));
-                if (res == null) {
-                    return null;
+            ComputeInExecutor<Value> compute = new ComputeInExecutor<Value>(executor()) {
+                @Override
+                protected Value compute() {
+                    Object prev = enter();
+                    try {
+                        Object res = Access.LANGS.languageGlobal(getEnv(true));
+                        if (res == null) {
+                            return null;
+                        }
+                        return new DirectValue(Language.this, res);
+                    } finally {
+                        leave(prev);
+                    }
                 }
-                return new DirectValue(new TruffleLanguage[]{getImpl(true)}, res);
-            } finally {
-                ExecutionImpl.executionEnded(prev);
+            };
+            return compute.get();
+        }
+
+        void disposeContext() {
+            if (env != null) {
+                synchronized (this) {
+                    Env localEnv = this.env;
+                    assert localEnv != null;
+                    if (localEnv != null) {
+                        try {
+                            Access.LANGS.dispose(localEnv);
+                        } catch (Exception | Error ex) {
+                            LOG.log(Level.SEVERE, "Error disposing " + this, ex);
+                        }
+                        this.env = null;
+                        context = UNSET_CONTEXT;
+                    }
+                }
             }
         }
 
-        TruffleLanguage<?> getImpl(boolean create) {
-            getEnv(create);
-            return language;
+        TruffleLanguage.Env getEnv(boolean create) {
+            TruffleLanguage.Env localEnv = env;
+            if ((localEnv == null && create)) {
+                // getEnv is accessed from the instrumentation code so it needs to be
+                // thread-safe.
+                synchronized (this) {
+                    localEnv = env;
+                    if (localEnv == null && create) {
+                        localEnv = Access.LANGS.createEnv(this, shared.getLanguage(), engine().out, engine().err, engine().in,
+                                        getArgumentsForLanguage());
+                        context = Access.LANGS.getContext(localEnv);
+                        env = localEnv;
+                        Access.LANGS.postInitEnv(localEnv);
+                    }
+                }
+            }
+            return localEnv;
+        }
+
+        /** @since 0.9 */
+        @Override
+        public String toString() {
+            return "[" + getName() + "@ " + getVersion() + " for " + getMimeTypes() + "]";
         }
 
         private Map<String, Object> getArgumentsForLanguage() {
@@ -1378,41 +1424,11 @@ public class PolyglotEngine {
 
             Map<String, Object> forLanguage = new HashMap<>();
             for (Object[] mimeKeyValue : config) {
-                if (getMimeTypes().contains(mimeKeyValue[0])) {
+                if (shared.cache.getMimeTypes().contains(mimeKeyValue[0])) {
                     forLanguage.put((String) mimeKeyValue[1], mimeKeyValue[2]);
                 }
             }
             return Collections.unmodifiableMap(forLanguage);
-        }
-
-        TruffleLanguage.Env getEnv(boolean create) {
-            return getEnv(create, false);
-        }
-
-        TruffleLanguage.Env getEnv(boolean create, boolean clear) {
-            TruffleLanguage.Env tmp = env;
-            if ((tmp == null && create) || clear) {
-                // getEnv is accessed from the instrumentation code so it needs to be thread-safe.
-                synchronized (this) {
-                    tmp = env;
-                    if (tmp == null && create) {
-                        language = info.loadLanguage();
-                        env = tmp = Access.LANGS.attachEnv(PolyglotEngine.this, language, out, err, in, getArgumentsForLanguage());
-                        Access.LANGS.postInitEnv(env);
-                    }
-                    if (clear) {
-                        language = null;
-                        env = null;
-                    }
-                }
-            }
-            return tmp;
-        }
-
-        /** @since 0.9 */
-        @Override
-        public String toString() {
-            return "[" + getName() + "@ " + getVersion() + " for " + getMimeTypes() + "]";
         }
 
     } // end of Language
@@ -1421,57 +1437,36 @@ public class PolyglotEngine {
     // Accessor helper methods
     //
 
-    TruffleLanguage<?> findLanguage(Class<? extends TruffleLanguage> languageClazz) {
-        for (Map.Entry<String, Language> entrySet : langs.entrySet()) {
-            Language languageDescription = entrySet.getValue();
-            final TruffleLanguage<?> impl = languageDescription.getImpl(false);
-            if (languageClazz.isInstance(impl)) {
-                return impl;
-            }
-        }
-        return null;
-    }
-
-    TruffleLanguage<?> findLanguage(String mimeType) {
-        Language languageDescription = this.langs.get(mimeType);
-        if (languageDescription != null) {
-            return languageDescription.getImpl(true);
-        }
-        return null;
-    }
-
-    Env findEnv(Class<? extends TruffleLanguage> languageClazz) {
-        for (Map.Entry<String, Language> entrySet : langs.entrySet()) {
-            Language languageDescription = entrySet.getValue();
-            Env env = languageDescription.getEnv(false);
-            if (env != null && languageClazz.isInstance(languageDescription.getImpl(false))) {
-                return env;
-            }
-        }
-        throw new IllegalStateException("Cannot find language " + languageClazz + " among " + langs);
-    }
-
     static class Access {
         static final Accessor.LanguageSupport LANGS = SPIAccessor.langs();
+        static final Accessor.Nodes NODES = SPIAccessor.nodesAccess();
         static final Accessor.InstrumentSupport INSTRUMENT = SPIAccessor.instrumentAccess();
-        static final Accessor.DebugSupport DEBUG = SPIAccessor.debugAccess();
+        static final Accessor.JavaInteropSupport JAVA_INTEROP = SPIAccessor.javaInteropAccess();
 
         static Collection<ClassLoader> loaders() {
             return SPI.allLoaders();
         }
     }
 
-    private static class SPIAccessor extends Accessor {
+    static class SPIAccessor extends Accessor {
         static LanguageSupport langs() {
             return SPI.languageSupport();
+        }
+
+        static EngineSupport engine() {
+            return EngineImpl.ENGINE;
+        }
+
+        static Nodes nodesAccess() {
+            return SPI.nodes();
         }
 
         static InstrumentSupport instrumentAccess() {
             return SPI.instrumentSupport();
         }
 
-        static DebugSupport debugAccess() {
-            return SPI.debugSupport();
+        static JavaInteropSupport javaInteropAccess() {
+            return SPI.javaInteropSupport();
         }
 
         Collection<ClassLoader> allLoaders() {
@@ -1480,81 +1475,83 @@ public class PolyglotEngine {
 
         @Override
         protected EngineSupport engineSupport() {
-            return new EngineImpl();
+            return EngineImpl.ENGINE;
         }
 
         static final class EngineImpl extends EngineSupport {
+            static final EngineImpl ENGINE = new EngineImpl();
+
+            @Override
+            public boolean isDisposed(Object vmObject) {
+                return ((Language) vmObject).engine().disposed;
+            }
+
+            @Override
+            public Object contextReferenceGet(Object vmObject) {
+                return findVMObject(vmObject).getCurrentContext();
+            }
+
+            @Override
+            public Env getEnvForLanguage(Object vmObject, String mimeType) {
+                return ((Language) vmObject).engine().findLanguage(mimeType, true).getEnv(true);
+            }
+
+            @Override
+            public Env getEnvForInstrument(Object vmObject, String mimeType) {
+                Language lang = ((PolyglotRuntime) vmObject).currentVM().findLanguage(mimeType, true);
+                Env env = lang.getEnv(true);
+                assert env != null;
+                return env;
+            }
+
+            @Override
+            public Env getEnvForInstrument(LanguageInfo language) {
+                return ((LanguageShared) nodesAccess().getEngineObject(language)).currentLanguage().getEnv(true);
+            }
+
+            @Override
+            public Object getCurrentVM() {
+                return PolyglotEngine.GLOBAL_PROFILE.get();
+            }
 
             @Override
             public boolean isEvalRoot(RootNode target) {
                 if (target instanceof EvalRootNode) {
-                    if (((EvalRootNode) target).getEngine() == ExecutionImpl.findVM()) {
-                        return true;
-                    }
+                    PolyglotEngine engine = ((EvalRootNode) target).getEngine();
+                    return engine.isCurrentVM();
                 }
                 return false;
             }
 
             @Override
-            public Object findLanguage(Class<? extends TruffleLanguage> language) {
-                if (language == TruffleLanguage.class) {
-                    return null;
-                }
-                return ((PolyglotEngine) ExecutionImpl.findVM()).findLanguage(language);
+            public boolean isMimeTypeSupported(Object vmObject, String mimeType) {
+                return ((Language) vmObject).engine().findLanguage(mimeType, false) != null;
             }
 
             @Override
-            public boolean isMimeTypeSupported(Object obj, String mimeType) {
-                final PolyglotEngine vm = (PolyglotEngine) obj;
-                return vm.findLanguage(mimeType) != null;
+            public Env findEnv(Object vmObject, Class<? extends TruffleLanguage> languageClass, boolean failIfNotFound) {
+                return ((PolyglotEngine) vmObject).findEnv(languageClass, failIfNotFound);
             }
 
             @Override
-            public Env findEnv(Object obj, Class<? extends TruffleLanguage> languageClass) {
-                PolyglotEngine vm = (PolyglotEngine) obj;
-                return vm.findEnv(languageClass);
+            public Object getInstrumentationHandler(Object vmObject) {
+                return ((LanguageShared) vmObject).getRuntime().instrumentationHandler;
             }
 
             @Override
-            public void dispatchEvent(Object obj, Object event, int type) {
-                PolyglotEngine vm = (PolyglotEngine) obj;
-                vm.dispatch(event, type);
+            public Iterable<? extends Object> importSymbols(Object languageShared, Env env, String globalName) {
+                Language language = (Language) languageShared;
+                return language.engine().importSymbol(language, globalName, false);
             }
 
+            @SuppressWarnings("deprecation")
             @Override
-            public TruffleLanguage<?> findLanguageImpl(Object obj, Class<? extends TruffleLanguage> languageClazz, String mimeType) {
-                final PolyglotEngine vm = (PolyglotEngine) (obj == null ? ExecutionImpl.findVM() : obj);
+            public <C> com.oracle.truffle.api.impl.FindContextNode<C> createFindContextNode(TruffleLanguage<C> lang) {
+                Object vm = getCurrentVM();
                 if (vm == null) {
-                    throw new IllegalStateException("Accessor.findLanguageImpl access to vm");
+                    throw new IllegalStateException("Cannot access current vm.");
                 }
-                TruffleLanguage<?> language = null;
-                if (languageClazz != null) {
-                    language = vm.findLanguage(languageClazz);
-                }
-                if (language == null && mimeType != null) {
-                    language = vm.findLanguage(mimeType);
-                }
-                if (language == null) {
-                    throw new IllegalStateException("Cannot find language " + languageClazz + " with mimeType " + mimeType + " among " + vm.langs);
-                }
-                return language;
-            }
-
-            @Override
-            public Object getInstrumentationHandler(Object obj) {
-                final PolyglotEngine vm = (PolyglotEngine) (obj == null ? ExecutionImpl.findVM() : obj);
-                return vm == null ? null : vm.instrumentationHandler;
-            }
-
-            @Override
-            public Iterable<? extends Object> importSymbols(Object vmObj, TruffleLanguage<?> ownLang, String globalName) {
-                PolyglotEngine vm = (PolyglotEngine) vmObj;
-                return vm.importSymbol(new TruffleLanguage<?>[]{ownLang}, globalName);
-            }
-
-            @Override
-            public <C> FindContextNode<C> createFindContextNode(TruffleLanguage<C> lang) {
-                return new FindContextNodeImpl<>(lang);
+                return new FindContextNodeImpl<>(findEnv(vm, lang.getClass(), true));
             }
 
             @Override
@@ -1571,6 +1568,79 @@ public class PolyglotEngine {
                 }
                 return truffleObject;
             }
+
+            @Override
+            public CallTarget lookupOrRegisterComputation(Object truffleObject, RootNode computation, Object... keys) {
+                CompilerAsserts.neverPartOfCompilation();
+                assert keys.length > 0;
+                Object key;
+                if (keys.length == 1) {
+                    key = keys[0];
+                    assert TruffleOptions.AOT || assertKeyType(key);
+                } else {
+                    Pair p = null;
+                    for (Object k : keys) {
+                        assert TruffleOptions.AOT || assertKeyType(k);
+                        p = new Pair(k, p);
+                    }
+                    key = p;
+                }
+                if (truffleObject instanceof EngineTruffleObject) {
+                    PolyglotEngine engine = ((EngineTruffleObject) truffleObject).engine();
+                    return engine.cachedTargets.lookupComputation(key, computation);
+                }
+
+                if (computation == null) {
+                    return null;
+                }
+                return Truffle.getRuntime().createCallTarget(computation);
+            }
+
+            private static boolean assertKeyType(Object key) {
+                assert key instanceof Class || key instanceof Method || key instanceof Message : "Unexpected key: " + key;
+                return true;
+            }
+
+            private static LanguageShared findVMObject(Object obj) {
+                return ((LanguageShared) obj);
+            }
+        }
+
+        private static final class Pair {
+            final Object key;
+            final Pair next;
+
+            Pair(Object key, Pair next) {
+                this.key = key;
+                this.next = next;
+            }
+
+            @Override
+            public int hashCode() {
+                return this.key.hashCode() + (next == null ? 3754 : next.hashCode());
+            }
+
+            @Override
+            public boolean equals(Object obj) {
+                if (this == obj) {
+                    return true;
+                }
+                if (obj == null) {
+                    return false;
+                }
+                if (getClass() != obj.getClass()) {
+                    return false;
+                }
+                final Pair other = (Pair) obj;
+                if (!Objects.equals(this.key, other.key)) {
+                    return false;
+                }
+                if (!Objects.equals(this.next, other.next)) {
+                    return false;
+                }
+                return true;
+            }
+
         }
 
     } // end of SPIAccessor
@@ -1683,5 +1753,24 @@ class PolyglotEngineSnippets {
         return found;
     }
     // END: com.oracle.truffle.api.vm.PolyglotEngineSnippets#findAndReportMultipleExportedSymbols
+    // @formatter:on
+
+    static PrintStream out = System.out;
+    static PrintStream err = System.err;
+
+    // @formatter:off
+    @SuppressWarnings("unused")
+    static void createEngines(String mimeType) {
+    // BEGIN: com.oracle.truffle.api.vm.PolyglotEngineSnippets#createEngines
+    PolyglotRuntime runtime = PolyglotRuntime.newBuilder().
+                    setOut(out).setErr(err).build();
+
+    Builder builder = PolyglotEngine.newBuilder().
+                    runtime(runtime);
+    PolyglotEngine engine1 = builder.build();
+    PolyglotEngine engine2 = builder.build();
+    PolyglotEngine engine3 = builder.build();
+    // END: com.oracle.truffle.api.vm.PolyglotEngineSnippets#createEngines
+    }
     // @formatter:on
 }

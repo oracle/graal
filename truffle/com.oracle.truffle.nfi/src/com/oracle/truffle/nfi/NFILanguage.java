@@ -30,7 +30,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.types.NativeLibraryDescriptor;
@@ -40,8 +39,6 @@ import com.oracle.truffle.nfi.types.Parser;
 public class NFILanguage extends TruffleLanguage<Env> {
 
     public static final String MIME_TYPE = "application/x-native";
-
-    public static final NFILanguage INSTANCE = new NFILanguage();
 
     @Override
     protected Env createContext(Env env) {
@@ -56,7 +53,7 @@ public class NFILanguage extends TruffleLanguage<Env> {
         @CompilationFinal private LibFFILibrary cached;
 
         LoadLibraryNode(String name, int flags) {
-            super(NFILanguage.class, null, new FrameDescriptor());
+            super(null);
             this.name = name;
             this.flags = flags;
         }
@@ -74,7 +71,7 @@ public class NFILanguage extends TruffleLanguage<Env> {
     private static class GetDefaultLibraryNode extends RootNode {
 
         GetDefaultLibraryNode() {
-            super(NFILanguage.class, null, new FrameDescriptor());
+            super(null);
         }
 
         @Override

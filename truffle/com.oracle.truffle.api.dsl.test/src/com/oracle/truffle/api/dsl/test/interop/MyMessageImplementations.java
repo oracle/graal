@@ -24,7 +24,7 @@ package com.oracle.truffle.api.dsl.test.interop;
 
 import com.oracle.truffle.api.interop.MessageResolution;
 
-@MessageResolution(language = TestTruffleLanguage.class, receiverType = ValidTruffleObject0.class)
+@MessageResolution(receiverType = ValidTruffleObject0.class)
 public class MyMessageImplementations extends MySuperMessageImplementations {
 
 }

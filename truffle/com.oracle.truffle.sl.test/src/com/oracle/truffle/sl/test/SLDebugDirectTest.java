@@ -391,6 +391,7 @@ public class SLDebugDirectTest {
 
             Assert.assertEquals(isBefore, suspendedEvent.isHaltedBefore());
             final DebugStackFrame frame = suspendedEvent.getTopStackFrame();
+            assertEquals(name, frame.getName());
 
             for (int i = 0; i < expectedFrame.length; i = i + 2) {
                 final String expectedIdentifier = (String) expectedFrame[i];
@@ -546,7 +547,7 @@ public class SLDebugDirectTest {
         private final ExecNotifyHandler nh;
 
         ExecNotifyReadNode(ExecNotifyHandler nh) {
-            super(SLLanguage.class, null, null);
+            super(null);
             this.nh = nh;
         }
 

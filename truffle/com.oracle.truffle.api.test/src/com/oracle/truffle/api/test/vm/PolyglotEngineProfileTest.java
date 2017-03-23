@@ -26,33 +26,64 @@ import static com.oracle.truffle.api.test.ReflectionUtils.invoke;
 import static com.oracle.truffle.api.test.ReflectionUtils.loadRelative;
 import static com.oracle.truffle.api.test.ReflectionUtils.newInstance;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 
 import java.util.concurrent.Executors;
 
 import org.junit.Test;
 
-public class ContextStoreProfileTest {
+import com.oracle.truffle.api.vm.PolyglotEngine;
 
-    private static final Class<?> CONTEXT_STORE_PROFILE = loadRelative(ContextStoreProfileTest.class, "ContextStoreProfile");
-    private static final Class<?> CONTEXT_STORE = loadRelative(ContextStoreProfileTest.class, "ContextStore");
+public class PolyglotEngineProfileTest {
+
+    private static final Class<?> CONTEXT_STORE_PROFILE = loadRelative(PolyglotEngineProfileTest.class, "PolyglotEngineProfile");
 
     @Test
     public void switchFromConstantToMultipleThreads() throws Exception {
         final Object profile = newContextStoreProfile();
         Object store1 = newContextStore();
         final Object store2 = newContextStore();
-        enter(profile, store1);
-        assertEquals("Store associated", store1, get(profile));
-        final Object[] check = {null};
+
+        Object prev = enter(profile, store1);
+        assertEquals(store1, get(profile));
+        leave(profile, prev);
+
+        prev = enter(profile, store1);
+        assertEquals(store1, get(profile));
+        leave(profile, prev);
+
+        Object prevInner = enter(profile, store2);
+        assertSame(store2, get(profile));
+        leave(profile, prevInner);
+
+        leave(profile, prev);
+
+        prev = enter(profile, store1);
+        assertSame(store1, get(profile));
+
+        final Object[] check = {null, null};
         Executors.newSingleThreadExecutor().submit(new Runnable() {
             @Override
             public void run() {
-                enter(profile, store2);
+                Object prevInner2 = enter(profile, store2);
                 check[0] = get(profile);
+                leave(profile, prevInner2);
+
+                prevInner2 = enter(profile, store2);
+                check[1] = get(profile);
+                leave(profile, prevInner2);
             }
         }).get();
-        assertEquals("Store on other thread associated", store2, check[0]);
-        assertEquals("1st thread store is still there", store1, get(profile));
+        assertEquals(store2, check[0]);
+        assertEquals(store2, check[1]);
+        assertEquals(store1, get(profile));
+        leave(profile, prev);
+
+        prev = enter(profile, store1);
+        assertSame(store1, get(profile));
+        leave(profile, prev);
+        assertNull(get(profile));
     }
 
     @Test
@@ -77,16 +108,20 @@ public class ContextStoreProfileTest {
         assertEquals("1st thread store is still there", store2, get(profile));
     }
 
-    private static void enter(Object profile, Object store) {
-        invoke(profile, "enter", store);
+    private static Object enter(Object profile, Object store) {
+        return invoke(profile, "enter", store);
+    }
+
+    private static void leave(Object profile, Object prev) {
+        invoke(profile, "leave", new Class<?>[]{PolyglotEngine.class}, prev);
     }
 
     private static Object newContextStore() {
-        return newInstance(CONTEXT_STORE, new Class<?>[]{Object.class, int.class}, null, 0);
+        return PolyglotEngine.newBuilder().build();
     }
 
     private static Object newContextStoreProfile() {
-        return newInstance(CONTEXT_STORE_PROFILE, new Class<?>[]{CONTEXT_STORE}, (Object) null);
+        return newInstance(CONTEXT_STORE_PROFILE, new Class<?>[]{PolyglotEngine.class}, (Object) null);
     }
 
     private static Object get(Object profile) {

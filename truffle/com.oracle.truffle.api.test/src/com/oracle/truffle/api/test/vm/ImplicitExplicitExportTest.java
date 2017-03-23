@@ -23,6 +23,7 @@
 package com.oracle.truffle.api.test.vm;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -31,6 +32,7 @@ import java.io.Reader;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
@@ -50,13 +52,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
-import java.util.Iterator;
-
-import static org.junit.Assert.assertFalse;
 
 public class ImplicitExplicitExportTest {
     private static Thread mainThread;
@@ -251,8 +249,7 @@ public class ImplicitExplicitExportTest {
         @TruffleBoundary
         private Object importExport(Source code) {
             assertNotEquals("Should run asynchronously", Thread.currentThread(), mainThread);
-            final Node node = createFindContextNode();
-            Ctx ctx = findContext(node);
+            Ctx ctx = getContextReference().get();
             Properties p = new Properties();
             try (Reader r = code.getReader()) {
                 p.load(r);
@@ -295,7 +292,7 @@ public class ImplicitExplicitExportTest {
         private final AbstractExportImportLanguage language;
 
         private ValueRootNode(Source code, AbstractExportImportLanguage language) {
-            super(language.getClass(), null, null);
+            super(language);
             this.code = code;
             this.language = language;
         }
@@ -313,7 +310,6 @@ public class ImplicitExplicitExportTest {
 
     @TruffleLanguage.Registration(mimeType = {L1, L1_ALT}, name = "ImportExport1", version = "0")
     public static final class ExportImportLanguage1 extends AbstractExportImportLanguage {
-        public static final AbstractExportImportLanguage INSTANCE = new ExportImportLanguage1();
 
         public ExportImportLanguage1() {
         }
@@ -334,7 +330,6 @@ public class ImplicitExplicitExportTest {
 
     @TruffleLanguage.Registration(mimeType = L2, name = "ImportExport2", version = "0")
     public static final class ExportImportLanguage2 extends AbstractExportImportLanguage {
-        public static final AbstractExportImportLanguage INSTANCE = new ExportImportLanguage2();
 
         public ExportImportLanguage2() {
         }
@@ -355,9 +350,8 @@ public class ImplicitExplicitExportTest {
 
     @TruffleLanguage.Registration(mimeType = {L3, L3 + "alt"}, name = "ImportExport3", version = "0")
     public static final class ExportImportLanguage3 extends AbstractExportImportLanguage {
-        public static final AbstractExportImportLanguage INSTANCE = new ExportImportLanguage3();
 
-        private ExportImportLanguage3() {
+        public ExportImportLanguage3() {
         }
     }
 

@@ -60,11 +60,22 @@ int free_dynamic_string(char *str) {
 int string_callback(int (*str_arg)(const char *), char *(*str_ret)()) {
     int ret;
     char *str = str_ret();
-    if (strcmp(str, "Hello, Native!") == 0) {
+    if (str != NULL && strcmp(str, "Hello, Native!") == 0) {
         ret = str_arg("Hello, Truffle!");
     } else {
         ret = 0;
     }
     free(str);
     return ret;
+}
+
+const char *native_string_callback(const char *(*str_ret)()) {
+    const char *str = str_ret();
+    if (str == NULL) {
+        return "null";
+    } else if (str == string_ret_const()) {
+        return "same";
+    } else {
+        return "different";
+    }
 }

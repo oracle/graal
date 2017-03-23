@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.api.test.vm;
 
+import static org.junit.Assert.assertTrue;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -34,12 +36,10 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
-import static org.junit.Assert.assertTrue;
 
 public class AsyncExecutorTest {
 
@@ -95,7 +95,9 @@ public class AsyncExecutorTest {
 
     @TruffleLanguage.Registration(name = "Async", mimeType = "application/x-test-async", version = "1.0")
     public static class AsyncLanguage extends TruffleLanguage<AsyncContext> {
-        public static final AsyncLanguage INSTANCE = new AsyncLanguage();
+
+        public AsyncLanguage() {
+        }
 
         @Override
         protected AsyncContext createContext(Env env) {
@@ -104,13 +106,11 @@ public class AsyncExecutorTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) {
-            return Truffle.getRuntime().createCallTarget(new RootNode(AsyncLanguage.class, null, null) {
-
-                @Child Node findContext = createFindContextNode();
+            return Truffle.getRuntime().createCallTarget(new RootNode(AsyncLanguage.this) {
 
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    return findContext(findContext).operationWithSideEffects();
+                    return getContextReference().get().operationWithSideEffects();
                 }
             });
         }

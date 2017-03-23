@@ -237,6 +237,7 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_LibFFISignature_prepareSigna
     if (result == FFI_OK) {
         return (jlong) data;
     } else {
+        free(data);
         return 0;
     }
 }
@@ -252,7 +253,7 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_LibFFISignature_prepareSigna
     if (result == FFI_OK) {
         return (jlong) data;
     } else {
-        printf("[FFI-DEBUG] error in createNativeSignature\n");
+        free(data);
         return 0;
     }
 }
