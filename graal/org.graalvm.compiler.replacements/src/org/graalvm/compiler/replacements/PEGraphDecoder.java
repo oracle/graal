@@ -811,12 +811,13 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         Node node = n;
         if (node instanceof ParameterNode) {
             ParameterNode param = (ParameterNode) node;
-            if (methodScope.arguments != null) {
+            if (methodScope.isInlinedMethod()) {
                 Node result = methodScope.arguments[param.index()];
                 assert result != null;
                 return result;
 
-            } else if (!methodScope.isInlinedMethod() && parameterPlugin != null) {
+            } else if (parameterPlugin != null) {
+                assert !methodScope.isInlinedMethod();
                 GraphBuilderContext graphBuilderContext = new PENonAppendGraphBuilderContext(methodScope, null);
                 Node result = parameterPlugin.interceptParameter(graphBuilderContext, param.index(),
                                 StampPair.create(param.stamp(), param.uncheckedStamp()));
