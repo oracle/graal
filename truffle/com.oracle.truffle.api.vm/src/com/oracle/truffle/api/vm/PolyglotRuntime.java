@@ -408,9 +408,6 @@ public final class PolyglotRuntime {
          * @since 0.9
          */
         public void setEnabled(final boolean enabled) {
-            if (PolyglotRuntime.this.instanceCount.get() == 0) {
-                throw new IllegalStateException("All engines have already been disposed");
-            }
             setEnabledImpl(enabled, true);
         }
 
