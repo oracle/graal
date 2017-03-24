@@ -375,7 +375,7 @@ public class PartialEvaluator {
 
     @SuppressWarnings("unused")
     protected PEGraphDecoder createGraphDecoder(StructuredGraph graph, final HighTierContext tierContext, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins,
-                    InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin, NodePlugin[] nodePlugins) {
+                    InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin, NodePlugin[] nodePluginList) {
         final GraphBuilderConfiguration newConfig = configForParsing.copy();
         InvocationPlugins parsingInvocationPlugins = newConfig.getPlugins().getInvocationPlugins();
 
@@ -389,7 +389,7 @@ public class PartialEvaluator {
         }
 
         return new CachingPEGraphDecoder(architecture, graph, providers, newConfig, TruffleCompiler.Optimizations, AllowAssumptions.ifNonNull(graph.getAssumptions()), graph.getOptions(),
-                        loopExplosionPlugin, decodingInvocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins);
+                        loopExplosionPlugin, decodingInvocationPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList);
     }
 
     protected void doGraphPE(OptimizedCallTarget callTarget, StructuredGraph graph, HighTierContext tierContext, TruffleInlining inliningDecision) {

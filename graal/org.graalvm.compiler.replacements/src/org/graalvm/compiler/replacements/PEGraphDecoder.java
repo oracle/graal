@@ -32,7 +32,9 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
@@ -83,9 +85,15 @@ import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
+import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
+import org.graalvm.compiler.nodes.java.NewArrayNode;
+import org.graalvm.compiler.nodes.java.NewInstanceNode;
+import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
+import org.graalvm.compiler.nodes.java.StoreFieldNode;
+import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.Option;
@@ -383,7 +391,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     protected class OnDemandPEAppendGraphBuilderContext extends PEAppendGraphBuilderContext {
         private final FixedNode targetNode;
-        private final FixedWithNextNode predecessor;
+        private FixedWithNextNode predecessor;
 
         public OnDemandPEAppendGraphBuilderContext(PEMethodScope inlineScope, FixedNode targetNode) {
             super(inlineScope, targetNode.predecessor() instanceof FixedWithNextNode ? (FixedWithNextNode) targetNode.predecessor() : null);
@@ -393,17 +401,34 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         @Override
         public void push(JavaKind kind, ValueNode value) {
-            if (predecessor != null) {
-                targetNode.replaceAtPredecessor(null);
-            }
             super.push(kind, value);
         }
 
-        public FixedNode commitPush(LoopScope loopScope, int nodeOrderId, FixedWithNextNode asFixedWithNextNode) {
+        private void checkPopLastInstruction() {
+            if (predecessor != null) {
+                targetNode.replaceAtPredecessor(null);
+                lastInstr = predecessor;
+                predecessor = null;
+            }
+        }
+
+        @Override
+        public <T extends ValueNode> T append(T v) {
+            checkPopLastInstruction();
+            return super.append(v);
+        }
+
+        @Override
+        public <T extends ValueNode> T recursiveAppend(T v) {
+            checkPopLastInstruction();
+            return super.recursiveAppend(v);
+        }
+
+        public FixedNode commit(LoopScope loopScope, int nodeOrderId, FixedWithNextNode oldAsFixedWithNextNode) {
             registerNode(loopScope, nodeOrderId, pushedNode, true, false);
             targetNode.replaceAtUsages(pushedNode);
-            if (asFixedWithNextNode != null) {
-                FixedNode successor = asFixedWithNextNode.next();
+            if (oldAsFixedWithNextNode != null) {
+                FixedNode successor = oldAsFixedWithNextNode.next();
                 successor.replaceAtPredecessor(null);
                 lastInstr.setNext(successor);
                 deleteFixedNode(targetNode);
@@ -429,8 +454,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     private final NodePlugin[] nodePlugins;
 
     public PEGraphDecoder(Architecture architecture, StructuredGraph graph, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
-                          StampProvider stampProvider, OptionValues options, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins,
-                          ParameterPlugin parameterPlugin, NodePlugin[] nodePlugins) {
+                    StampProvider stampProvider, OptionValues options, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins,
+                    ParameterPlugin parameterPlugin, NodePlugin[] nodePlugins) {
         super(architecture, graph, metaAccess, constantReflection, constantFieldProvider, stampProvider, true);
         this.loopExplosionPlugin = loopExplosionPlugin;
         this.invocationPlugins = invocationPlugins;
@@ -825,187 +850,98 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             }
         } else if (nodePlugins != null && nodePlugins.length > 0) {
             OnDemandPEAppendGraphBuilderContext graphBuilderContext = new OnDemandPEAppendGraphBuilderContext(methodScope, node);
-            if (node instanceof LoadIndexedNode) {
+            if (node instanceof LoadFieldNode) {
+                LoadFieldNode loadFieldNode = (LoadFieldNode) node;
+                ResolvedJavaField field = loadFieldNode.field();
+                if (loadFieldNode.isStatic()) {
+                    for (NodePlugin nodePlugin : nodePlugins) {
+                        if (nodePlugin.handleLoadStaticField(graphBuilderContext, field)) {
+                            replacedNode = graphBuilderContext.commit(loopScope, nodeOrderId, loadFieldNode);
+                            break;
+                        }
+                    }
+                } else {
+                    ValueNode object = loadFieldNode.object();
+                    for (NodePlugin nodePlugin : nodePlugins) {
+                        if (nodePlugin.handleLoadField(graphBuilderContext, object, field)) {
+                            replacedNode = graphBuilderContext.commit(loopScope, nodeOrderId, loadFieldNode);
+                            break;
+                        }
+                    }
+                }
+            } else if (node instanceof StoreFieldNode) {
+                StoreFieldNode storeFieldNode = (StoreFieldNode) node;
+                ResolvedJavaField field = storeFieldNode.field();
+                if (storeFieldNode.isStatic()) {
+                    ValueNode value = storeFieldNode.value();
+                    for (NodePlugin nodePlugin : nodePlugins) {
+                        if (nodePlugin.handleStoreStaticField(graphBuilderContext, field, value)) {
+                            replacedNode = graphBuilderContext.commit(loopScope, nodeOrderId, storeFieldNode);
+                            break;
+                        }
+                    }
+                } else {
+                    ValueNode object = storeFieldNode.object();
+                    ValueNode value = storeFieldNode.value();
+                    for (NodePlugin nodePlugin : nodePlugins) {
+                        if (nodePlugin.handleStoreField(graphBuilderContext, object, field, value)) {
+                            replacedNode = graphBuilderContext.commit(loopScope, nodeOrderId, storeFieldNode);
+                            break;
+                        }
+                    }
+                }
+            } else if (node instanceof LoadIndexedNode) {
                 LoadIndexedNode loadIndexedNode = (LoadIndexedNode) node;
                 ValueNode array = loadIndexedNode.array();
                 ValueNode index = loadIndexedNode.index();
                 for (NodePlugin nodePlugin : nodePlugins) {
                     if (nodePlugin.handleLoadIndexed(graphBuilderContext, array, index, loadIndexedNode.elementKind())) {
-                        replacedNode = graphBuilderContext.commitPush(loopScope, nodeOrderId, loadIndexedNode);
+                        replacedNode = graphBuilderContext.commit(loopScope, nodeOrderId, loadIndexedNode);
+                        break;
+                    }
+                }
+            } else if (node instanceof StoreIndexedNode) {
+                StoreIndexedNode storeIndexedNode = (StoreIndexedNode) node;
+                ValueNode array = storeIndexedNode.array();
+                ValueNode index = storeIndexedNode.index();
+                ValueNode value = storeIndexedNode.value();
+                for (NodePlugin nodePlugin : nodePlugins) {
+                    if (nodePlugin.handleStoreIndexed(graphBuilderContext, array, index, storeIndexedNode.elementKind(), value)) {
+                        replacedNode = graphBuilderContext.commit(loopScope, nodeOrderId, storeIndexedNode);
+                        break;
+                    }
+                }
+            } else if (node instanceof NewInstanceNode) {
+                NewInstanceNode newInstanceNode = (NewInstanceNode) node;
+                ResolvedJavaType type = newInstanceNode.instanceClass();
+                for (NodePlugin nodePlugin : nodePlugins) {
+                    if (nodePlugin.handleNewInstance(graphBuilderContext, type)) {
+                        replacedNode = graphBuilderContext.commit(loopScope, nodeOrderId, newInstanceNode);
+                        break;
+                    }
+                }
+            } else if (node instanceof NewArrayNode) {
+                NewArrayNode newArrayNode = (NewArrayNode) node;
+                ResolvedJavaType elementType = newArrayNode.elementType();
+                ValueNode length = newArrayNode.length();
+                for (NodePlugin nodePlugin : nodePlugins) {
+                    if (nodePlugin.handleNewArray(graphBuilderContext, elementType, length)) {
+                        replacedNode = graphBuilderContext.commit(loopScope, nodeOrderId, newArrayNode);
+                        break;
+                    }
+                }
+            } else if (node instanceof NewMultiArrayNode) {
+                NewMultiArrayNode newArrayNode = (NewMultiArrayNode) node;
+                ResolvedJavaType elementType = newArrayNode.type();
+                ValueNode[] dimensions = newArrayNode.dimensions().toArray(new ValueNode[0]);
+                for (NodePlugin nodePlugin : nodePlugins) {
+                    if (nodePlugin.handleNewMultiArray(graphBuilderContext, elementType, dimensions)) {
+                        replacedNode = graphBuilderContext.commit(loopScope, nodeOrderId, newArrayNode);
                         break;
                     }
                 }
             }
         }
-//        else if (nodePlugins != null && nodePlugins.length > 0) {
-            // Remove the node from the graph so that the plugin can append a replacement node to
-            // the predecessor.
-//            if (predecessor != null) {
-//                node.replaceAtPredecessor(null);
-//            }
-
-//            if (node instanceof Invoke) {
-//                Invoke invokeNode = (Invoke) node;
-//                InvokeData invokeData = readInvokeData(methodScope, nodeOrderId, (Invoke) node);
-//                CallTargetNode callTargetNode = invokeNode.callTarget();
-//                ResolvedJavaMethod method = callTargetNode.targetMethod();
-//                ValueNode[] arguments = callTargetNode.arguments().toArray(new ValueNode[0]);
-//                boolean applied = false;
-//                for (NodePlugin nodePlugin : nodePlugins) {
-//                    if (nodePlugin.handleInvoke(graphBuilderContext, method, arguments)) {
-//                        registerNode(loopScope, invokeData.invokeOrderId, graphBuilderContext.pushedNode, true, false);
-//                        node.replaceAtUsages(graphBuilderContext.pushedNode);
-//                        graphBuilderContext.lastInstr.setNext(nodeAfterInvoke(methodScope, loopScope, invokeData, AbstractBeginNode.prevBegin(graphBuilderContext.lastInstr)));
-//                        deleteInvoke(invokeNode);
-//                        applied = true;
-//                        break;
-//                    }
-//                }
-//                if (!applied && predecessor != null) {
-//                    predecessor.setNext(node);
-//                }
-//            } else
-//            if (node instanceof LoadFieldNode) {
-//                LoadFieldNode loadFieldNode = (LoadFieldNode) node;
-//                if (loadFieldNode.isStatic()) {
-//                    ResolvedJavaField field = loadFieldNode.field();
-//                    boolean applied = false;
-//                    for (NodePlugin nodePlugin : nodePlugins) {
-//                        if (nodePlugin.handleLoadStaticField(graphBuilderContext, field)) {
-//                            replacedNode = processReplacedNode(loopScope, nodeOrderId, node, graphBuilderContext, loadFieldNode);
-//                            applied = true;
-//                            break;
-//                        }
-//                    }
-//                    if (!applied && predecessor != null) {
-//                        predecessor.setNext(node);
-//                    }
-//                } else {
-//                    ValueNode value = loadFieldNode.getValue();
-//                    ResolvedJavaField field = loadFieldNode.field();
-//                    boolean applied = false;
-//                    for (NodePlugin nodePlugin : nodePlugins) {
-//                        if (nodePlugin.handleLoadField(graphBuilderContext, value, field)) {
-//                            replacedNode = processReplacedNode(loopScope, nodeOrderId, node, graphBuilderContext, loadFieldNode);
-//                            applied = true;
-//                            break;
-//                        }
-//                    }
-//                    if (!applied && predecessor != null) {
-//                        predecessor.setNext(node);
-//                    }
-//                }
-//            } else if (node instanceof StoreFieldNode) {
-//                StoreFieldNode storeFieldNode = (StoreFieldNode) node;
-//                if (storeFieldNode.isStatic()) {
-//                    ResolvedJavaField field = storeFieldNode.field();
-//                    ValueNode value = storeFieldNode.value();
-//                    boolean applied = false;
-//                    for (NodePlugin nodePlugin : nodePlugins) {
-//                        if (nodePlugin.handleStoreStaticField(graphBuilderContext, field, value)) {
-//                            replacedNode = processReplacedNode(loopScope, nodeOrderId, node, graphBuilderContext, storeFieldNode);
-//                            applied = true;
-//                            break;
-//                        }
-//                    }
-//                    if (!applied && predecessor != null) {
-//                        predecessor.setNext(node);
-//                    }
-//                } else {
-//                    ResolvedJavaField field = storeFieldNode.field();
-//                    ValueNode object = storeFieldNode.object();
-//                    ValueNode value = storeFieldNode.value();
-//                    boolean applied = false;
-//                    for (NodePlugin nodePlugin : nodePlugins) {
-//                        if (nodePlugin.handleStoreField(graphBuilderContext, object, field, value)) {
-//                            replacedNode = processReplacedNode(loopScope, nodeOrderId, node, graphBuilderContext, storeFieldNode);
-//                            applied = true;
-//                            break;
-//                        }
-//                    }
-//                    if (!applied && predecessor != null) {
-//                        predecessor.setNext(node);
-//                    }
-//                }
-//            } else if (node instanceof LoadIndexedNode) {
-//                LoadIndexedNode loadIndexedNode = (LoadIndexedNode) node;
-//                ValueNode array = loadIndexedNode.array();
-//                ValueNode index = loadIndexedNode.index();
-//                boolean applied = false;
-//                for (NodePlugin nodePlugin : nodePlugins) {
-//                    if (nodePlugin.handleLoadIndexed(graphBuilderContext, array, index, loadIndexedNode.elementKind())) {
-//                        replacedNode = processReplacedNode(loopScope, nodeOrderId, node, graphBuilderContext, loadIndexedNode);
-//                        applied = true;
-//                        break;
-//                    }
-//                }
-//                if (!applied && predecessor != null) {
-//                    predecessor.setNext(node);
-//                }
-//            } else if (node instanceof StoreIndexedNode) {
-//                StoreIndexedNode storeIndexedNode = (StoreIndexedNode) node;
-//                ValueNode array = storeIndexedNode.array();
-//                ValueNode index = storeIndexedNode.index();
-//                ValueNode value = storeIndexedNode.value();
-//                boolean applied = false;
-//                for (NodePlugin nodePlugin : nodePlugins) {
-//                    if (nodePlugin.handleStoreIndexed(graphBuilderContext, array, index, storeIndexedNode.elementKind(), value)) {
-//                        replacedNode = processReplacedNode(loopScope, nodeOrderId, node, graphBuilderContext, storeIndexedNode);
-//                        applied = true;
-//                        break;
-//                    }
-//                }
-//                if (!applied && predecessor != null) {
-//                    predecessor.setNext(node);
-//                }
-//            } else if (node instanceof NewInstanceNode) {
-//                NewInstanceNode newInstanceNode = (NewInstanceNode) node;
-//                ResolvedJavaType type = newInstanceNode.instanceClass();
-//                boolean applied = false;
-//                for (NodePlugin nodePlugin : nodePlugins) {
-//                    if (nodePlugin.handleNewInstance(graphBuilderContext, type)) {
-//                        replacedNode = processReplacedNode(loopScope, nodeOrderId, node, graphBuilderContext, newInstanceNode);
-//                        applied = true;
-//                        break;
-//                    }
-//                }
-//                if (!applied && predecessor != null) {
-//                    predecessor.setNext(node);
-//                }
-//            } else if (node instanceof NewArrayNode) {
-//                NewArrayNode newArrayNode = (NewArrayNode) node;
-//                ResolvedJavaType elementType = newArrayNode.elementType();
-//                ValueNode length = newArrayNode.length();
-//                boolean applied = false;
-//                for (NodePlugin nodePlugin : nodePlugins) {
-//                    if (nodePlugin.handleNewArray(graphBuilderContext, elementType, length)) {
-//                        replacedNode = processReplacedNode(loopScope, nodeOrderId, node, graphBuilderContext, newArrayNode);
-//                        applied = true;
-//                        break;
-//                    }
-//                }
-//                if (!applied && predecessor != null) {
-//                    predecessor.setNext(node);
-//                }
-//            } else if (node instanceof NewMultiArrayNode) {
-//                NewMultiArrayNode newArrayNode = (NewMultiArrayNode) node;
-//                ResolvedJavaType elementType = newArrayNode.type();
-//                ValueNode[] dimensions = newArrayNode.dimensions().toArray(new ValueNode[0]);
-//                boolean applied = false;
-//                for (NodePlugin nodePlugin : nodePlugins) {
-//                    if (nodePlugin.handleNewMultiArray(graphBuilderContext, elementType, dimensions)) {
-//                        replacedNode = processReplacedNode(loopScope, nodeOrderId, node, graphBuilderContext, newArrayNode);
-//                        applied = true;
-//                        break;
-//                    }
-//                }
-//                if (!applied && predecessor != null) {
-//                    predecessor.setNext(node);
-//                }
-//            } else if (predecessor != null) {
-//                predecessor.setNext(node);
-//            }
-//        }
 
         NodeSourcePosition pos = replacedNode.getNodeSourcePosition();
         if (pos != null && methodScope.isInlinedMethod()) {
