@@ -152,7 +152,7 @@ public class PartialEvaluator {
 
         this.configForParsing = createGraphBuilderConfig(configForRoot, true);
         this.decodingInvocationPlugins = createDecodingInvocationPlugins(configForRoot.getPlugins());
-        this.nodePlugins = configForRoot.getPlugins().getNodePlugins();
+        this.nodePlugins = createNodePlugins(configForRoot.getPlugins());
     }
 
     public Providers getProviders() {
@@ -422,6 +422,10 @@ public class PartialEvaluator {
         registerTruffleInvocationPlugins(invocationPlugins, canDelayIntrinsification);
         boolean mustInstrumentBranches = TruffleCompilerOptions.getValue(TruffleInstrumentBranches) || TruffleCompilerOptions.getValue(TruffleInstrumentBoundaries);
         return newConfig.withNodeSourcePosition(newConfig.trackNodeSourcePosition() || mustInstrumentBranches || TruffleCompilerOptions.getValue(TraceTrufflePerformanceWarnings));
+    }
+
+    protected NodePlugin[] createNodePlugins(Plugins plugins) {
+        return plugins.getNodePlugins();
     }
 
     protected void registerTruffleInvocationPlugins(InvocationPlugins invocationPlugins, boolean canDelayIntrinsification) {
