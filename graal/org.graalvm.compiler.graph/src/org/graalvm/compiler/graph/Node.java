@@ -40,6 +40,8 @@ import java.util.Objects;
 import java.util.function.Predicate;
 
 import org.graalvm.compiler.core.common.Fields;
+import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.Fingerprint;
 import org.graalvm.compiler.graph.Graph.NodeEvent;
@@ -131,7 +133,9 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
      * Denotes an injected parameter in a {@linkplain NodeIntrinsic node intrinsic} constructor. If
      * the constructor is called as part of node intrinsification, the node intrinsifier will inject
      * an argument for the annotated parameter. Injected parameters must precede all non-injected
-     * parameters in a constructor.
+     * parameters in a constructor. If the type of the annotated parameter is {@link Stamp}, the
+     * {@linkplain Stamp#javaType type} of the injected stamp is the return type of the annotated
+     * method (which cannot be {@code void}).
      */
     @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
     @java.lang.annotation.Target(ElementType.PARAMETER)
@@ -140,40 +144,45 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
 
     /**
      * Annotates a method that can be replaced by a compiler intrinsic. A (resolved) call to the
-     * annotated method can be replaced with an instance of the node class denoted by
-     * {@link #value()}. For this reason, the signature of the annotated method must match the
-     * signature (excluding a prefix of {@linkplain InjectedNodeParameter injected} parameters) of a
-     * constructor in the node class.
+     * annotated method will be processed by a generated {@code InvocationPlugin} that calls either
+     * a factory method or a constructor corresponding with the annotated method.
      * <p>
-     * If the node class has a static method {@code intrinsify} with a matching signature plus a
-     * {@code GraphBuilderContext} as first argument, this method is called instead of creating the
-     * node.
+     * A factory method corresponding to an annotated method is a static method named
+     * {@code intrinsify} defined in the class denoted by {@link #value()}. In order, its signature
+     * is as follows:
+     * <ol>
+     * <li>A {@code GraphBuilderContext} parameter.</li>
+     * <li>A {@code ResolvedJavaMethod} parameter.</li>
+     * <li>A sequence of zero or more {@linkplain InjectedNodeParameter injected} parameters.</li>
+     * <li>Remaining parameters that match the declared parameters of the annotated method.</li>
+     * </ol>
+     * A constructor corresponding to an annotated method is defined in the class denoted by
+     * {@link #value()}. In order, its signature is as follows:
+     * <ol>
+     * <li>A sequence of zero or more {@linkplain InjectedNodeParameter injected} parameters.</li>
+     * <li>Remaining parameters that match the declared parameters of the annotated method.</li>
+     * </ol>
+     * There must be exactly one such factory method or constructor corresponding to a
+     * {@link NodeIntrinsic} annotated method.
      */
     @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
     @java.lang.annotation.Target(ElementType.METHOD)
     public static @interface NodeIntrinsic {
 
         /**
-         * Gets the {@link Node} subclass instantiated when intrinsifying a call to the annotated
-         * method. If not specified, then the class in which the annotated method is declared is
-         * used (and is assumed to be a {@link Node} subclass).
+         * The class declaring the factory method or {@link Node} subclass declaring the constructor
+         * used to intrinsify a call to the annotated method. The default value is the class in
+         * which the annotated method is declared.
          */
         Class<?> value() default NodeIntrinsic.class;
 
         /**
-         * Determines if the stamp of the instantiated intrinsic node has its stamp set from the
-         * return type of the annotated method.
-         * <p>
-         * When it is set to true, the stamp that is passed in to the constructor of ValueNode is
-         * ignored and can therefore safely be {@code null}.
+         * If {@code true}, the factory method or constructor selected by the annotation must have
+         * an {@linkplain InjectedNodeParameter injected} {@link Stamp} parameter. Calling
+         * {@link AbstractPointerStamp#nonNull()} on the injected stamp is guaranteed to return
+         * {@code true}.
          */
-        boolean setStampFromReturnType() default false;
-
-        /**
-         * Determines if the stamp of the instantiated intrinsic node is guaranteed to be non-null.
-         * Generally used in conjunction with {@link #setStampFromReturnType()}.
-         */
-        boolean returnStampIsNonNull() default false;
+        boolean injectedStampIsNonNull() default false;
     }
 
     /**
