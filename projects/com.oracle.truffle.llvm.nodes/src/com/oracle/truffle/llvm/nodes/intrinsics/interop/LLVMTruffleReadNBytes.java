@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
@@ -52,7 +53,7 @@ public abstract class LLVMTruffleReadNBytes extends LLVMIntrinsic {
             bytes[i] = LLVMMemory.getI8(adr);
             adr = adr.increment(Byte.BYTES);
         }
-        return new String(bytes);
+        return JavaInterop.asTruffleObject(bytes);
     }
 
 }
