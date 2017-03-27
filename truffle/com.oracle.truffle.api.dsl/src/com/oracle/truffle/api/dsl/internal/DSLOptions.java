@@ -32,11 +32,15 @@ import java.lang.annotation.Target;
 /**
  * Internal DSL options to tune the generated code. These are expert options and not intended to be
  * changed used for guest language implementations.
+ *
+ * @deprecated in 0.25 without replacement
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
+@Deprecated
 public @interface DSLOptions {
 
+    @Deprecated
     enum DSLGenerator {
         DEFAULT,
         FLAT
@@ -73,6 +77,7 @@ public @interface DSLOptions {
     /** Not yet implemented. */
     boolean useDisjunctiveMethodGuardOptimization() default true;
 
+    @Deprecated
     enum ImplicitCastOptimization {
 
         /** Perform no informed optimization for implicit casts. */
@@ -100,6 +105,7 @@ public @interface DSLOptions {
         }
     }
 
+    @Deprecated
     enum TypeBoxingOptimization {
         /** Perform the optimization for all types. */
         ALWAYS,
@@ -139,6 +145,7 @@ public @interface DSLOptions {
      */
     TypeBoxingOptimization voidBoxingOptimization() default TypeBoxingOptimization.PRIMITIVE;
 
+    @Deprecated
     enum FallbackOptimization {
         /** Always generate an optimized fallback specialization. */
         ALWAYS,

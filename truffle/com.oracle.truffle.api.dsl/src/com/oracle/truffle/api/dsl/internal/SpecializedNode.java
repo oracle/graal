@@ -28,10 +28,14 @@ import com.oracle.truffle.api.nodes.NodeInterface;
 
 /**
  * Implemented by DSL generated operation classes. This is internal implementation dependent API.
+ *
+ * @deprecated in 0.25 without replacement
  */
+@Deprecated
 public interface SpecializedNode extends NodeInterface {
 
     /** Returns the root {@link SpecializationNode} of the DSL operation. */
+    @SuppressWarnings("deprecation")
     SpecializationNode getSpecializationNode();
 
 }
