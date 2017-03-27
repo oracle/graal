@@ -60,9 +60,8 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
         ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp);
         if (tryConstantFold != null) {
             return tryConstantFold;
-        } else {
-            return new MulNode(x, y).maybeCommuteInputs();
         }
+        return canonical(null, op, stamp, x, y);
     }
 
     @Override
@@ -81,8 +80,12 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
             // if this fails we only swap
             return new MulNode(forY, forX);
         }
+        BinaryOp<Mul> op = getOp(forX, forY);
+        return canonical(this, op, stamp(), forX, forY);
+    }
+
+    private static ValueNode canonical(MulNode self, BinaryOp<Mul> op, Stamp stamp, ValueNode forX, ValueNode forY) {
         if (forY.isConstant()) {
-            BinaryOp<Mul> op = getOp(forX, forY);
             Constant c = forY.asConstant();
             if (op.isNeutral(c)) {
                 return forX;
@@ -114,10 +117,10 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
 
             if (op.isAssociative()) {
                 // canonicalize expressions like "(a * 1) * 2"
-                return reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
+                return reassociate(self != null ? self : (MulNode) new MulNode(forX, forY).maybeCommuteInputs(), ValueNode.isConstantPredicate(), forX, forY);
             }
         }
-        return this;
+        return self != null ? self : new MulNode(forX, forY).maybeCommuteInputs();
     }
 
     @Override
