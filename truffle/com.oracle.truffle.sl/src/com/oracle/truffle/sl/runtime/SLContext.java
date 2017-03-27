@@ -111,19 +111,6 @@ public final class SLContext {
         this.emptyShape = LAYOUT.createShape(SLObjectType.SINGLETON);
     }
 
-    private SLContext(SLContext context) {
-        this.env = context.env;
-        this.language = context.language;
-        this.input = context.input;
-        this.output = context.output;
-        this.emptyShape = context.emptyShape;
-        this.functionRegistry = context.functionRegistry.fork();
-    }
-
-    public SLContext fork() {
-        return new SLContext(this);
-    }
-
     /**
      * Returns the default input, i.e., the source for the {@link SLReadlnBuiltin}. To allow unit
      * testing, we do not use {@link System#in} directly.
