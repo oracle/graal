@@ -36,8 +36,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions.MemSetNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions.MemSetNode;
 
 @GenerateNodeFactory
 public abstract class LLVMMemSet extends LLVMExpressionNode {
@@ -48,7 +48,7 @@ public abstract class LLVMMemSet extends LLVMExpressionNode {
 
         @Child private MemSetNode memSet;
 
-        protected LLVMMemSetI64(LLVMHeapFunctions heapFunctions) {
+        protected LLVMMemSetI64(LLVMNativeFunctions heapFunctions) {
             memSet = heapFunctions.createMemSetNode();
         }
 
@@ -73,7 +73,7 @@ public abstract class LLVMMemSet extends LLVMExpressionNode {
 
         @Child private MemSetNode memSet;
 
-        protected LLVMMemSetI32(LLVMHeapFunctions heapFunctions) {
+        protected LLVMMemSetI32(LLVMNativeFunctions heapFunctions) {
             memSet = heapFunctions.createMemSetNode();
         }
 

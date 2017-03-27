@@ -37,8 +37,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions.MemCopyNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions.MemCopyNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
@@ -49,7 +49,7 @@ public abstract class LLVMX86_64BitVACopy extends LLVMExpressionNode {
 
     @Child private MemCopyNode memCopy;
 
-    protected LLVMX86_64BitVACopy(LLVMHeapFunctions heapFunctions) {
+    protected LLVMX86_64BitVACopy(LLVMNativeFunctions heapFunctions) {
         memCopy = heapFunctions.createMemCopyNode();
     }
 

@@ -37,9 +37,9 @@ import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions.MemCopyNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions.MemCopyNode;
 
 public abstract class LLVMStructWriteNode extends Node {
 
@@ -182,7 +182,7 @@ public abstract class LLVMStructWriteNode extends Node {
 
         @Child private MemCopyNode memCopy;
 
-        public LLVMCompoundStructWriteNode(LLVMHeapFunctions heapFunctions, int size) {
+        public LLVMCompoundStructWriteNode(LLVMNativeFunctions heapFunctions, int size) {
             this.size = size;
             this.memCopy = heapFunctions.createMemCopyNode();
         }

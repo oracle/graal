@@ -38,14 +38,12 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
-import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.memory.LLVMForceLLVMAddressNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions.MallocNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions.MallocNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -56,19 +54,17 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
     private static final int LONG_DOUBLE_SIZE = 16;
     private final int numberOfExplicitArguments;
     @Child private LLVMExpressionNode target;
-    @Child private LLVMForceLLVMAddressNode toLLVMAddress;
     @Child private MallocNode malloc;
     @Child private Node isBoxedNode = Message.IS_BOXED.createNode();
     @Child private Node unboxNode = Message.UNBOX.createNode();
 
-    public LLVMX86_64BitVAStart(LLVMHeapFunctions heapFunctions, int numberOfExplicitArguments, LLVMExpressionNode target) {
+    public LLVMX86_64BitVAStart(LLVMNativeFunctions heapFunctions, int numberOfExplicitArguments, LLVMExpressionNode target) {
         if (numberOfExplicitArguments < 0) {
             throw new AssertionError();
         }
         this.numberOfExplicitArguments = numberOfExplicitArguments;
         this.target = target;
         this.malloc = heapFunctions.createMallocNode();
-        this.toLLVMAddress = LLVMForceLLVMAddressNodeGen.create();
     }
 
     private enum VarArgArea {
@@ -92,7 +88,7 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
     // FIXME: specialization (pass long values in function calls like TruffleC?)
     @Override
     public Object executeGeneric(VirtualFrame frame) {
-        LLVMAddress address = toLLVMAddress.executeWithTarget(target.executeGeneric(frame));
+        LLVMAddress address = target.enforceLLVMAddress(frame);
         initOffsets(address);
         int varArgsStartIndex = numberOfExplicitArguments;
         Object[] realArguments = getRealArguments(frame);

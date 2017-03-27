@@ -34,17 +34,10 @@ import java.util.List;
 
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.VoidType;
 
-public final class UnreachableInstruction extends TerminatingInstruction {
+public final class UnreachableInstruction extends VoidInstruction implements TerminatingInstruction {
 
     private UnreachableInstruction() {
-    }
-
-    @Override
-    public Type getType() {
-        return VoidType.INSTANCE;
     }
 
     @Override
@@ -59,5 +52,10 @@ public final class UnreachableInstruction extends TerminatingInstruction {
 
     public static UnreachableInstruction generate() {
         return new UnreachableInstruction();
+    }
+
+    @Override
+    public boolean hasName() {
+        return false;
     }
 }

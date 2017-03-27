@@ -40,10 +40,9 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.MetadataConstant;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
-public final class VoidCallInstruction extends Instruction implements Call {
+public final class VoidCallInstruction extends VoidInstruction implements Call {
 
     private final Linkage linkage;
 
@@ -57,11 +56,6 @@ public final class VoidCallInstruction extends Instruction implements Call {
         arguments = new ArrayList<>();
         this.linkage = linkage;
         this.visibility = visibility;
-    }
-
-    @Override
-    public Type getType() {
-        return VoidType.INSTANCE;
     }
 
     @Override
@@ -95,11 +89,6 @@ public final class VoidCallInstruction extends Instruction implements Call {
     }
 
     @Override
-    public boolean isTerminating() {
-        return false;
-    }
-
-    @Override
     public void replace(Symbol original, Symbol replacement) {
         if (target == original) {
             target = replacement;
@@ -130,5 +119,10 @@ public final class VoidCallInstruction extends Instruction implements Call {
             }
         }
         return inst;
+    }
+
+    @Override
+    public boolean hasName() {
+        return false;
     }
 }

@@ -29,13 +29,18 @@
  */
 package com.oracle.truffle.llvm.nodes.api;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNodeFactory.LLVMForceLLVMAddressNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
@@ -176,6 +181,31 @@ public abstract class LLVMExpressionNode extends LLVMNode {
     public static boolean notLLVM(TruffleObject object) {
         return !(object instanceof LLVMFunctionDescriptor || object instanceof LLVMFunctionHandle || object instanceof LLVMTruffleNull ||
                         object instanceof LLVMTruffleAddress);
+    }
+
+    abstract static class LLVMForceLLVMAddressNode extends Node {
+
+        public abstract LLVMAddress executeWithTarget(Object object);
+
+        @Specialization
+        public LLVMAddress doAddressCase(LLVMAddress a) {
+            return a;
+        }
+
+        @Specialization
+        public LLVMAddress doAddressCase(LLVMGlobalVariableDescriptor a) {
+            return a.getNativeAddress();
+        }
+    }
+
+    @Child private LLVMForceLLVMAddressNode forceAddress;
+
+    public final LLVMAddress enforceLLVMAddress(VirtualFrame frame) {
+        if (forceAddress == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.forceAddress = LLVMForceLLVMAddressNodeGen.create();
+        }
+        return forceAddress.executeWithTarget(this.executeGeneric(frame));
     }
 
 }

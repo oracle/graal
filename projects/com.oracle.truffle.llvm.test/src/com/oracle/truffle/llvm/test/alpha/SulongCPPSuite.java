@@ -27,41 +27,52 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.memory;
+package com.oracle.truffle.llvm.test.alpha;
 
-import com.oracle.truffle.api.nodes.NodeInterface;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import java.io.File;
+import java.nio.file.Path;
+import java.util.Collection;
 
-public interface LLVMHeapFunctions {
+import org.junit.AfterClass;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
-    MemCopyNode createMemMoveNode();
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
-    MemCopyNode createMemCopyNode();
+@RunWith(Parameterized.class)
+public final class SulongCPPSuite extends BaseSuiteHarness {
 
-    MemSetNode createMemSetNode();
+    private static final Path SULONG_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../cache/tests/sulongcpp").toPath();
+    private static final Path SULONG_SOURCE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/sulongcpp").toPath();
+    private static final Path SULONG_CONFIG_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/sulongcpp/configs").toPath();
 
-    FreeNode createFreeNode();
+    @Parameter(value = 0) public Path path;
+    @Parameter(value = 1) public String testName;
 
-    MallocNode createMallocNode();
-
-    public interface MemCopyNode extends NodeInterface {
-
-        void execute(LLVMAddress target, LLVMAddress source, long length);
+    @Parameters(name = "{1}")
+    public static Collection<Object[]> data() {
+        return collectTestCases(SULONG_CONFIG_DIR, SULONG_SUITE_DIR, SULONG_SOURCE_DIR);
     }
 
-    public interface MemSetNode extends NodeInterface {
-
-        void execute(LLVMAddress target, int value, long length);
+    @Override
+    protected Path getTestDirectory() {
+        return path;
     }
 
-    public interface FreeNode extends NodeInterface {
-
-        void execute(LLVMAddress addr);
+    @Override
+    protected Path getSuiteDirectory() {
+        return SULONG_SUITE_DIR;
     }
 
-    public interface MallocNode extends NodeInterface {
-
-        LLVMAddress execute(long size);
+    @AfterClass
+    public static void printStatistics() {
+        printStatistics("SulongCPP", SULONG_SOURCE_DIR, SULONG_CONFIG_DIR, f -> true);
     }
 
+    @Override
+    protected String getTestName() {
+        return testName;
+    }
 }

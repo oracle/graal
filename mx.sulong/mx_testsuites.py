@@ -16,6 +16,7 @@ _testDir = os.path.join(_suite.dir, "tests/")
 _cacheDir = os.path.join(_suite.dir, "cache/tests")
 
 _sulongSuiteDir = os.path.join(_testDir, "sulong/")
+_sulongcppSuiteDir = os.path.join(_testDir, "sulongcpp/")
 _benchmarksgameSuiteDir = os.path.join(_testDir, "benchmarksgame/")
 _benchmarksgameSuiteDirRoot = os.path.join(_benchmarksgameSuiteDir, "benchmarksgame-2014-08-31/benchmarksgame/bench/")
 _interoptestsDir = os.path.join(_testDir, "interoptests/")
@@ -36,6 +37,13 @@ def deleteCachedTests(folderInCache):
     p = os.path.join(_cacheDir, folderInCache)
     if os.path.exists(p):
         shutil.rmtree(p)
+
+def compileV38SulongcppSuite():
+    deleteCachedTests('sulongcpp')
+    print("Compiling SulongCPP Suite reference executables ", end='')
+    mx_tools.printProgress(mx_tools.multicompileRefFolder(_sulongcppSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_CPP_V38], []))
+    print("Compiling SulongCPP Suite with clang 3.8 -O0 ", end='')
+    mx_tools.printProgress(mx_tools.multicompileFolder(_sulongcppSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_CPP_V38], [], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, optimizers=[mx_tools.Tool.BB_VECTORIZE_V38]))
 
 def compileV38SulongSuite():
     deleteCachedTests('sulong')
@@ -84,6 +92,11 @@ def runSulongSuite38(vmArgs):
     """runs the Sulong test suite"""
     compileSuite(['sulong38'])
     return run38(vmArgs, "com.oracle.truffle.llvm.test.alpha.SulongSuite")
+
+def runSulongcppSuite38(vmArgs):
+    """runs the Sulong test suite"""
+    compileSuite(['sulongcpp38'])
+    return run38(vmArgs, "com.oracle.truffle.llvm.test.alpha.SulongCPPSuite")
 
 def runShootoutSuite(vmArgs):
     """runs the Sulong test suite"""
@@ -278,6 +291,7 @@ testSuites = {
     'llvm38' : (compileV38LLVMSuite, runLLVMSuite38),
     'sulong' : (compileSulongSuite, runSulongSuite),
     'sulong38' : (compileV38SulongSuite, runSulongSuite38),
+    'sulongcpp38' : (compileV38SulongcppSuite, runSulongcppSuite38),
     'shootout' : (compileShootoutSuite, runShootoutSuite),
     'interop' : (compileInteropTests, runInteropTests),
     'tck' : (compileInteropTests, runTCKTests),

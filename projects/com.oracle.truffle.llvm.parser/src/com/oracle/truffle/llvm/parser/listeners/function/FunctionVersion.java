@@ -97,6 +97,52 @@ public final class FunctionVersion {
         }
 
         @Override
+        protected void createInvoke(long[] args) {
+            int i = 0;
+            final long linkage = args[i++];
+            final long visibility = args[i++];
+
+            final int normalSuccessorBlock = (int) (args[i++]);
+            final int unwindSuccessorBlock = (int) (args[i++]);
+            final FunctionType functionType = (FunctionType) types.get(args[i++]);
+            final int target = getIndex(args[i++]);
+            final int[] arguments = new int[args.length - i];
+            for (int j = 0; i < args.length; i++, j++) {
+                arguments[j] = getIndex(args[i]);
+            }
+            final Type returnType = functionType.getReturnType();
+            code.createInvoke(returnType, target, arguments, visibility, linkage, normalSuccessorBlock, unwindSuccessorBlock);
+            if (!(returnType instanceof VoidType)) {
+                symbols.add(returnType);
+            }
+            code = null;
+        }
+
+        @Override
+        protected void createLandingpad(long[] args) {
+            int i = 0;
+            final Type type = types.get(args[i++]);
+            final boolean isCleanup = args[i++] != 0;
+            final int numClauses = (int) args[i++];
+            long[] clauseKinds = new long[numClauses]; // catch = 0, filter = 1
+            long[] clauseTypes = new long[numClauses];
+            for (int j = 0; j < numClauses; j++) {
+                clauseKinds[j] = args[i++];
+                clauseTypes[j] = getIndex(args[i++]);
+            }
+            symbols.add(type);
+            code.createLandingpad(type, isCleanup, clauseKinds, clauseTypes);
+        }
+
+        @Override
+        protected void createResume(long[] args) {
+            int i = 0;
+            final Type type = types.get(args[i++]);
+            code.createResume(type);
+            code = null;
+        }
+
+        @Override
         protected void createLoad(long[] args) {
             int i = 0;
             int source = getIndex(args[i++]);
@@ -190,6 +236,21 @@ public final class FunctionVersion {
             if (returnType != VoidType.INSTANCE) {
                 symbols.add(returnType);
             }
+        }
+
+        @Override
+        protected void createInvoke(long[] args) {
+            throw new IllegalStateException("Sulong exception handling not supported in Sulong v3.2 mode; use Sulong mode v3.8 or higher.");
+        }
+
+        @Override
+        protected void createLandingpad(long[] args) {
+            throw new IllegalStateException("Sulong exception handling not supported in Sulong v3.2 mode; use Sulong mode v3.8 or higher.");
+        }
+
+        @Override
+        protected void createResume(long[] args) {
+            throw new IllegalStateException("Sulong exception handling not supported in Sulong v3.2 mode; use Sulong mode v3.8 or higher.");
         }
 
         @Override

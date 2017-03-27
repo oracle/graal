@@ -47,10 +47,4 @@ public abstract class Instruction implements Symbol {
 
     public abstract void accept(InstructionVisitor visitor);
 
-    @Override
-    public boolean hasName() {
-        return false;
-    }
-
-    public abstract boolean isTerminating();
 }

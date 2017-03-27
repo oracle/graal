@@ -59,11 +59,6 @@ public abstract class ValueInstruction extends Instruction implements ValueSymbo
     }
 
     @Override
-    public boolean isTerminating() {
-        return false;
-    }
-
-    @Override
     public void setName(String name) {
         this.name = LLVMIdentifier.toLocalIdentifier(name);
     }

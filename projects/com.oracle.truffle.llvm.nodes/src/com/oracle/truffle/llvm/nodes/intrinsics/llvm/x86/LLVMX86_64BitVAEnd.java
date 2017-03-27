@@ -34,16 +34,16 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions.FreeNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions.FreeNode;
 
 public class LLVMX86_64BitVAEnd extends LLVMExpressionNode {
 
     @Child private LLVMExpressionNode target;
     @Child private FreeNode free;
 
-    public LLVMX86_64BitVAEnd(LLVMHeapFunctions heapFunctions, LLVMExpressionNode target) {
+    public LLVMX86_64BitVAEnd(LLVMNativeFunctions heapFunctions, LLVMExpressionNode target) {
         this.target = target;
         this.free = heapFunctions.createFreeNode();
     }

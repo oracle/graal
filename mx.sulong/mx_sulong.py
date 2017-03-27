@@ -11,6 +11,7 @@ import argparse
 import mx_benchmark
 import mx_sulong_benchmarks
 
+from mx_unittest import add_config_participant
 from mx_gate import Task, add_gate_runner
 
 import mx_testsuites
@@ -83,6 +84,14 @@ basicLLVMDependencies = [
     'llc',
     'llvm-as'
 ]
+
+def _unittest_config_participant(config):
+    (vmArgs, mainClass, mainClassArgs) = config
+    vmArgs = getCommonUnitTestOptions() + vmArgs
+    return (vmArgs, mainClass, mainClassArgs)
+
+add_config_participant(_unittest_config_participant)
+
 
 def _graal_llvm_gate_runner(args, tasks):
     """gate function"""
@@ -406,6 +415,11 @@ def getSearchPathOption(lib_args=None):
         lib_args = ['-lgmp', '-lgfortran']
 
     lib_names = []
+    libpath = join(mx.project('com.oracle.truffle.llvm.libraries').getOutput(), 'native')
+    for path, _, files in os.walk(libpath):
+        for f in files:
+            if f.endswith('.so'):
+                lib_names.append(join(path, f))
 
     lib_aliases = {
         '-lc': ['libc.so.6', 'libc.dylib'],
@@ -419,7 +433,7 @@ def getSearchPathOption(lib_args=None):
     if index is None:
         mx.log_error("{0} not supported!".format(osStr))
 
-    for lib_arg in ['-lc', '-lstdc++'] + lib_args:
+    for lib_arg in lib_args:
         if lib_arg in lib_aliases:
             lib_arg = lib_aliases[lib_arg][index]
         else:
@@ -577,7 +591,6 @@ def exportMxClang38(ret):
     exp = findLLVMProgram('clang', ['3.8', '3.9'])
     if not exp is None:
         ret['MX_CLANG_V38'] = exp
-
     exp = findLLVMProgram('opt', ['3.8', '3.9'])
     if not exp is None:
         ret['MX_OPT_V38'] = exp

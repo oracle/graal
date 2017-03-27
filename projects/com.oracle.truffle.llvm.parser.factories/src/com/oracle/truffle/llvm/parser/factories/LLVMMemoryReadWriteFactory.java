@@ -181,7 +181,7 @@ final class LLVMMemoryReadWriteFactory {
         } else if (Type.isFunctionOrFunctionPointer(type)) {
             return LLVMFunctionStoreNodeGen.create(pointerNode, valueNode);
         } else if (type instanceof StructureType || type instanceof ArrayType) {
-            return LLVMStructStoreNodeGen.create(runtime.getHeapFunctions(), pointerNode, valueNode, size);
+            return LLVMStructStoreNodeGen.create(runtime.getNativeFunctions(), pointerNode, valueNode, size);
         } else if (type instanceof PointerType) {
             if (pointerNode instanceof LLVMAccessGlobalVariableStorageNode) {
                 return LLVMGlobalVariableStoreNodeGen.create(((LLVMAccessGlobalVariableStorageNode) pointerNode).getDescriptor(), valueNode);

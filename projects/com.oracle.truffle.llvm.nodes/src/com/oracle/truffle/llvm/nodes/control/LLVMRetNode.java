@@ -43,8 +43,8 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions.MemCopyNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions.MemCopyNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -240,7 +240,7 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
 
         public abstract int getStructSize();
 
-        protected LLVMStructRetNode(LLVMHeapFunctions heapFunctions) {
+        protected LLVMStructRetNode(LLVMNativeFunctions heapFunctions) {
             memCopy = heapFunctions.createMemCopyNode();
         }
 

@@ -33,6 +33,7 @@ import java.util.Deque;
 import java.util.List;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
@@ -40,17 +41,25 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMFrameUtil;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMAbort;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMSignal;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMContext.DestructorStackElement;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 /**
@@ -59,6 +68,7 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
  */
 public class LLVMGlobalRootNode extends RootNode {
 
+    @Child private Node executeDestructor = Message.createExecute(1).createNode();
     private final DirectCallNode main;
     @CompilationFinal(dimensions = 1) protected final Object[] arguments;
     private final LLVMContext context;
@@ -101,8 +111,21 @@ public class LLVMGlobalRootNode extends RootNode {
             assert LLVMSignal.getNumberOfRegisteredSignals() == 0;
             return e.getReturnCode();
         } finally {
+            runDestructors();
             // if not done already, we want at least call a shutdown command
             context.shutdownThreads();
+        }
+    }
+
+    @TruffleBoundary
+    private void runDestructors() {
+        for (DestructorStackElement destructorStackElement : context.getDestructorStack()) {
+            try {
+                ForeignAccess.sendExecute(executeDestructor, destructorStackElement.getDestructor(), new LLVMTruffleAddress(destructorStackElement.getThiz()));
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
         }
     }
 

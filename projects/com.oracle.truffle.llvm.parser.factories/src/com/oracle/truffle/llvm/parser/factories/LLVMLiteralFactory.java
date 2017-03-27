@@ -312,7 +312,7 @@ final class LLVMLiteralFactory {
         } else if (elementType instanceof PointerType) {
             return LLVMAddressArrayLiteralNodeGen.create(arrayValues.toArray(new LLVMExpressionNode[nrElements]), baseTypeSize, arrayAlloc);
         } else if (elementType instanceof ArrayType || elementType instanceof StructureType) {
-            return LLVMAddressArrayCopyNodeGen.create(runtime.getHeapFunctions(), arrayValues.toArray(new LLVMExpressionNode[nrElements]), baseTypeSize, arrayAlloc);
+            return LLVMAddressArrayCopyNodeGen.create(runtime.getNativeFunctions(), arrayValues.toArray(new LLVMExpressionNode[nrElements]), baseTypeSize, arrayAlloc);
         }
         throw new AssertionError(elementType);
     }

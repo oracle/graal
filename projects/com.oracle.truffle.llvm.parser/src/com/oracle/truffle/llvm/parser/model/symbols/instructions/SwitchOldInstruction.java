@@ -36,11 +36,9 @@ import java.util.List;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
-public final class SwitchOldInstruction extends TerminatingInstruction {
+public final class SwitchOldInstruction extends VoidInstruction implements TerminatingInstruction {
 
     private Symbol condition;
 
@@ -82,11 +80,6 @@ public final class SwitchOldInstruction extends TerminatingInstruction {
     }
 
     @Override
-    public Type getType() {
-        return VoidType.INSTANCE;
-    }
-
-    @Override
     public List<InstructionBlock> getSuccessors() {
         final List<InstructionBlock> successors = new ArrayList<>(blocks.length + 1);
         Collections.addAll(successors, blocks);
@@ -110,5 +103,10 @@ public final class SwitchOldInstruction extends TerminatingInstruction {
         final SwitchOldInstruction inst = new SwitchOldInstruction(function.getBlock(defaultBlock), cases, blocks);
         inst.condition = function.getSymbols().getSymbol(condition, inst);
         return inst;
+    }
+
+    @Override
+    public boolean hasName() {
+        return false;
     }
 }
