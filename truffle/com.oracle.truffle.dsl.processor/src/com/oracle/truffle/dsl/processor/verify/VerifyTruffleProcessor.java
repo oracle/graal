@@ -22,15 +22,14 @@
  */
 package com.oracle.truffle.dsl.processor.verify;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.nodes.Node.Child;
-import com.oracle.truffle.dsl.processor.ExpectError;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getElementHierarchy;
+import static java.util.Collections.reverse;
+
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import static java.util.Collections.reverse;
 import java.util.List;
 import java.util.Set;
+
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.FilerException;
 import javax.annotation.processing.RoundEnvironment;
@@ -43,6 +42,10 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.tools.Diagnostic.Kind;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node.Child;
+import com.oracle.truffle.dsl.processor.ExpectError;
 
 @SupportedAnnotationTypes({"com.oracle.truffle.api.CompilerDirectives.TruffleBoundary", "com.oracle.truffle.api.nodes.Node.Child"})
 public class VerifyTruffleProcessor extends AbstractProcessor {

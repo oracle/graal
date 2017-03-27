@@ -22,25 +22,27 @@
  */
 package com.oracle.truffle.dsl.processor.parser;
 
-import com.oracle.truffle.dsl.processor.CompileErrorException;
-import com.oracle.truffle.dsl.processor.Log;
-import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
-import com.oracle.truffle.dsl.processor.model.MessageContainer;
-import com.oracle.truffle.dsl.processor.model.NodeData;
-import com.oracle.truffle.dsl.processor.model.MessageContainer.Message;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.tools.Diagnostic.Kind;
+
+import com.oracle.truffle.dsl.processor.CompileErrorException;
+import com.oracle.truffle.dsl.processor.Log;
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.model.MessageContainer;
+import com.oracle.truffle.dsl.processor.model.MessageContainer.Message;
+import com.oracle.truffle.dsl.processor.model.NodeData;
 
 /**
  * THIS IS NOT PUBLIC API.

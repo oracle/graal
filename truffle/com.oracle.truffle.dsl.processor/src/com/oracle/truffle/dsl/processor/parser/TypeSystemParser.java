@@ -22,17 +22,6 @@
  */
 package com.oracle.truffle.dsl.processor.parser;
 
-import com.oracle.truffle.api.dsl.TypeCast;
-import com.oracle.truffle.api.dsl.TypeCheck;
-import com.oracle.truffle.api.dsl.TypeSystem;
-import com.oracle.truffle.api.dsl.internal.DSLOptions;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
-import com.oracle.truffle.dsl.processor.model.ImplicitCastData;
-import com.oracle.truffle.dsl.processor.model.Template;
-import com.oracle.truffle.dsl.processor.model.TypeCastData;
-import com.oracle.truffle.dsl.processor.model.TypeCheckData;
-import com.oracle.truffle.dsl.processor.model.TypeSystemData;
-
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -52,7 +41,18 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Types;
 
-@DSLOptions
+import com.oracle.truffle.api.dsl.TypeCast;
+import com.oracle.truffle.api.dsl.TypeCheck;
+import com.oracle.truffle.api.dsl.TypeSystem;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.model.ImplicitCastData;
+import com.oracle.truffle.dsl.processor.model.Template;
+import com.oracle.truffle.dsl.processor.model.TypeCastData;
+import com.oracle.truffle.dsl.processor.model.TypeCheckData;
+import com.oracle.truffle.dsl.processor.model.TypeSystemData;
+
+@SuppressWarnings("deprecation")
+@com.oracle.truffle.api.dsl.internal.DSLOptions
 public class TypeSystemParser extends AbstractParser<TypeSystemData> {
 
     public static final List<Class<TypeSystem>> ANNOTATIONS = Arrays.asList(TypeSystem.class);
@@ -75,9 +75,9 @@ public class TypeSystemParser extends AbstractParser<TypeSystemData> {
     protected TypeSystemData parse(Element element, AnnotationMirror mirror) {
         TypeElement templateType = (TypeElement) element;
         AnnotationMirror templateTypeAnnotation = mirror;
-        DSLOptions options = element.getAnnotation(DSLOptions.class);
+        com.oracle.truffle.api.dsl.internal.DSLOptions options = element.getAnnotation(com.oracle.truffle.api.dsl.internal.DSLOptions.class);
         if (options == null) {
-            options = TypeSystemParser.class.getAnnotation(DSLOptions.class);
+            options = TypeSystemParser.class.getAnnotation(com.oracle.truffle.api.dsl.internal.DSLOptions.class);
         }
         assert options != null;
 

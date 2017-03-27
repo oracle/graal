@@ -39,8 +39,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
-import com.oracle.truffle.api.dsl.internal.DSLOptions;
-import com.oracle.truffle.api.dsl.internal.DSLOptions.DSLGenerator;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ExecuteChildWithImplicitCast1NodeGen;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast0NodeFactory;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast1NodeFactory;
@@ -82,7 +80,6 @@ public class ImplicitCastTest {
     private static int charSequenceCast;
 
     @TypeSystem
-    @DSLOptions(defaultGenerator = DSLGenerator.FLAT)
     static class ImplicitCast1Types {
 
         @ImplicitCast
@@ -222,7 +219,6 @@ public class ImplicitCastTest {
     }
 
     @TypeSystem
-    @DSLOptions(defaultGenerator = DSLGenerator.FLAT)
     static class ImplicitCast3Types {
 
         @ImplicitCast
@@ -327,7 +323,6 @@ public class ImplicitCastTest {
     }
 
     @TypeSystem
-    @DSLOptions(defaultGenerator = DSLGenerator.FLAT)
     static class ImplicitCast2Types {
         @ImplicitCast
         static String castString(CharSequence str) {
@@ -413,7 +408,6 @@ public class ImplicitCastTest {
     }
 
     @TypeSystem
-    @DSLOptions(defaultGenerator = DSLGenerator.FLAT)
     static class ImplicitCast4Types {
         @ImplicitCast
         static long castLong(int value) {
@@ -462,7 +456,6 @@ public class ImplicitCastTest {
     }
 
     @TypeSystem
-    @DSLOptions(defaultGenerator = DSLGenerator.FLAT)
     public static class TS {
         @ImplicitCast
         public static int promoteToInt(byte value) {

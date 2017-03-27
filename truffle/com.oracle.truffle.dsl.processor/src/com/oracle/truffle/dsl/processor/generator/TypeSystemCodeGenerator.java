@@ -22,13 +22,24 @@
  */
 package com.oracle.truffle.dsl.processor.generator;
 
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.dsl.processor.ProcessorContext;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createTransferToInterpreterAndInvalidate;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.createConstantName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSimpleName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.modifiers;
+import static javax.lang.model.element.Modifier.FINAL;
+import static javax.lang.model.element.Modifier.PROTECTED;
+import static javax.lang.model.element.Modifier.PUBLIC;
+import static javax.lang.model.element.Modifier.STATIC;
+
+import java.util.List;
+
+import javax.lang.model.element.Modifier;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeMirror;
+
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
@@ -41,14 +52,6 @@ import com.oracle.truffle.dsl.processor.model.ImplicitCastData;
 import com.oracle.truffle.dsl.processor.model.TypeCastData;
 import com.oracle.truffle.dsl.processor.model.TypeCheckData;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
-import java.util.List;
-import javax.lang.model.element.Modifier;
-import static javax.lang.model.element.Modifier.FINAL;
-import static javax.lang.model.element.Modifier.PROTECTED;
-import static javax.lang.model.element.Modifier.PUBLIC;
-import static javax.lang.model.element.Modifier.STATIC;
-import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.TypeMirror;
 
 public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemData> {
 
@@ -255,6 +258,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
         return createConstantName(getSimpleName(type.getTemplateType().asType()));
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public CodeTypeElement create(ProcessorContext context, TypeSystemData typeSystem) {
         CodeTypeElement clazz = new TypeClassFactory(context, typeSystem).create();
@@ -277,6 +281,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
             this.typeSystem = typeSystem;
         }
 
+        @SuppressWarnings("deprecation")
         public CodeTypeElement create() {
             String name = typeName(typeSystem);
             CodeTypeElement clazz = GeneratorUtils.createClass(typeSystem, null, modifiers(PUBLIC, FINAL), name, typeSystem.getTemplateType().asType());

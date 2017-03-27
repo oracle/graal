@@ -24,17 +24,8 @@ package com.oracle.truffle.api.dsl.test.examples;
 
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.TypeSystem;
-import com.oracle.truffle.api.dsl.internal.DSLOptions;
-import com.oracle.truffle.api.dsl.internal.DSLOptions.DSLGenerator;
-import com.oracle.truffle.api.dsl.test.examples.FunctionCall.Function;
-import com.oracle.truffle.api.dsl.test.examples.Interop.TruffleObject;
-import com.oracle.truffle.api.dsl.test.examples.RubyCall.InternalMethod;
-import com.oracle.truffle.api.dsl.test.examples.RubyCall.RubyObject;
-import com.oracle.truffle.api.dsl.test.examples.StableDispatch.SLFunction;
 
-@TypeSystem({int.class, long.class, double.class, boolean.class, TruffleObject.class, SLFunction.class, RubyObject.class, Function.class, InternalMethod.class, int[].class, double[].class,
-                Object[].class})
-@DSLOptions(defaultGenerator = DSLGenerator.FLAT)
+@TypeSystem({int.class, long.class, double.class, boolean.class})
 public class ExampleTypes {
 
     @ImplicitCast

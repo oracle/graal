@@ -26,7 +26,6 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
-import com.oracle.truffle.api.dsl.internal.DSLOptions;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -39,7 +38,6 @@ public class ExecuteMethodTest {
                     "execute(VirtualFrame)' and must not throw any checked exceptions.";
 
     @TypeSystem({int.class})
-    @DSLOptions
     static class ExecuteMethodTypes {
     }
 

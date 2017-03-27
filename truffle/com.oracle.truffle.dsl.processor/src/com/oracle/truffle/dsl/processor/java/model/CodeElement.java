@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.dsl.processor.java.model;
 
-import com.oracle.truffle.dsl.processor.java.transform.AbstractCodeWriter;
 import java.io.CharArrayWriter;
 import java.io.IOException;
 import java.io.Writer;
@@ -34,10 +33,13 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Set;
+
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
+
+import com.oracle.truffle.dsl.processor.java.transform.AbstractCodeWriter;
 
 public abstract class CodeElement<E extends Element> implements Element, GeneratedElement {
 

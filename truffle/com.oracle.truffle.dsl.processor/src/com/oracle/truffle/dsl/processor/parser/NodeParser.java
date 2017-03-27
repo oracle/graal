@@ -58,15 +58,13 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.GeneratedBy;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.NodeFields;
-import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
-import com.oracle.truffle.api.dsl.internal.DSLOptions;
-import com.oracle.truffle.api.dsl.internal.DSLOptions.DSLGenerator;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.dsl.processor.CompileErrorException;
@@ -98,10 +96,11 @@ import com.oracle.truffle.dsl.processor.model.SpecializationThrowsData;
 import com.oracle.truffle.dsl.processor.model.TemplateMethod;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 
-@DSLOptions
+@SuppressWarnings("deprecation")
+@com.oracle.truffle.api.dsl.internal.DSLOptions
 public class NodeParser extends AbstractParser<NodeData> {
 
-    @SuppressWarnings("deprecation") public static final List<Class<? extends Annotation>> ANNOTATIONS = Arrays.asList(Fallback.class, TypeSystemReference.class,
+    public static final List<Class<? extends Annotation>> ANNOTATIONS = Arrays.asList(Fallback.class, TypeSystemReference.class,
                     com.oracle.truffle.api.dsl.ShortCircuit.class, Specialization.class,
                     NodeChild.class,
                     NodeChildren.class);
@@ -203,7 +202,7 @@ public class NodeParser extends AbstractParser<NodeData> {
         AnnotationMirror reflectable = findFirstAnnotation(lookupTypes, Introspectable.class);
         if (reflectable != null) {
             node.setReflectable(true);
-            if (node.getTypeSystem().getOptions().defaultGenerator() != DSLGenerator.FLAT) {
+            if (node.getTypeSystem().getOptions().defaultGenerator() != com.oracle.truffle.api.dsl.internal.DSLOptions.DSLGenerator.FLAT) {
                 node.addError(reflectable, null, "Reflection is not supported by the used DSL layout. Only the flat DSL layout supports reflection.");
             }
         }
@@ -436,7 +435,7 @@ public class NodeParser extends AbstractParser<NodeData> {
             }
         } else {
             // default dummy type system
-            typeSystem = new TypeSystemData(context, templateType, null, NodeParser.class.getAnnotation(DSLOptions.class), true);
+            typeSystem = new TypeSystemData(context, templateType, null, NodeParser.class.getAnnotation(com.oracle.truffle.api.dsl.internal.DSLOptions.class), true);
         }
         AnnotationMirror nodeInfoMirror = findFirstAnnotation(typeHierarchy, NodeInfo.class);
         String shortName = null;
@@ -498,7 +497,6 @@ public class NodeParser extends AbstractParser<NodeData> {
         return fields;
     }
 
-    @SuppressWarnings("deprecation")
     private List<NodeChildData> parseChildren(final List<TypeElement> typeHierarchy, List<? extends Element> elements) {
         Set<String> shortCircuits = new HashSet<>();
         for (ExecutableElement method : ElementFilter.methodsIn(elements)) {
@@ -581,7 +579,6 @@ public class NodeParser extends AbstractParser<NodeData> {
         return filteredChildren;
     }
 
-    @SuppressWarnings("deprecation")
     private List<NodeExecutionData> parseExecutions(List<NodeFieldData> fields, List<NodeChildData> children, List<? extends Element> elements) {
         // pre-parse short circuits
         Set<String> shortCircuits = new HashSet<>();
@@ -1512,7 +1509,6 @@ public class NodeParser extends AbstractParser<NodeData> {
         node.getSpecializations().add(polymorphic);
     }
 
-    @SuppressWarnings("deprecation")
     private void initializeShortCircuits(NodeData node) {
         Map<String, List<ShortCircuitData>> groupedShortCircuits = groupShortCircuits(node.getShortCircuits());
 

@@ -40,8 +40,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
-import com.oracle.truffle.api.dsl.internal.DSLOptions;
-import com.oracle.truffle.api.dsl.internal.DSLOptions.DSLGenerator;
 import com.oracle.truffle.api.dsl.test.IntrospectionTestFactory.FallbackNodeGen;
 import com.oracle.truffle.api.dsl.test.IntrospectionTestFactory.Introspection1NodeGen;
 import com.oracle.truffle.api.nodes.Node;
@@ -49,7 +47,6 @@ import com.oracle.truffle.api.nodes.Node;
 public class IntrospectionTest {
 
     @TypeSystem
-    @DSLOptions(defaultGenerator = DSLGenerator.FLAT)
     public static class IntrospectionTypeSystem {
 
     }
@@ -287,7 +284,8 @@ public class IntrospectionTest {
 
     }
 
-    @DSLOptions(defaultGenerator = DSLGenerator.DEFAULT)
+    @SuppressWarnings("deprecation")
+    @com.oracle.truffle.api.dsl.internal.DSLOptions(defaultGenerator = com.oracle.truffle.api.dsl.internal.DSLOptions.DSLGenerator.DEFAULT)
     @TypeSystem
     public static class SomeReflectionTS {
 

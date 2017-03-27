@@ -22,18 +22,20 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
-import com.oracle.truffle.api.dsl.internal.DSLOptions;
-import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+
+@SuppressWarnings("deprecation")
 public class TypeSystemData extends Template {
 
     private final List<ImplicitCastData> implicitCasts = new ArrayList<>();
@@ -44,9 +46,10 @@ public class TypeSystemData extends Template {
     private Set<String> legacyTypeIds;
 
     private final boolean isDefault;
-    private final DSLOptions options;
 
-    public TypeSystemData(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation, DSLOptions options, boolean isDefault) {
+    private final com.oracle.truffle.api.dsl.internal.DSLOptions options;
+
+    public TypeSystemData(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation, com.oracle.truffle.api.dsl.internal.DSLOptions options, boolean isDefault) {
         super(context, templateType, annotation);
         this.options = options;
         this.isDefault = isDefault;
@@ -56,7 +59,7 @@ public class TypeSystemData extends Template {
         return isDefault;
     }
 
-    public DSLOptions getOptions() {
+    public com.oracle.truffle.api.dsl.internal.DSLOptions getOptions() {
         return options;
     }
 

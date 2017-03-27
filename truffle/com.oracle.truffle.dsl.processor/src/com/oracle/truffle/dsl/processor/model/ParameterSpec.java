@@ -22,13 +22,15 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeMirror;
+
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.MethodSpec.TypeDef;
-import java.util.Arrays;
-import java.util.Collection;
-import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.TypeMirror;
 
 public class ParameterSpec {
 

@@ -27,7 +27,6 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
-import com.oracle.truffle.api.dsl.internal.SpecializedNode;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -56,15 +55,6 @@ public abstract class ExampleNode extends Node {
 
     public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
         return ExampleTypesGen.expectLong(execute(frame));
-    }
-
-    @Override
-    public String toString() {
-        if (this instanceof SpecializedNode) {
-            return ((SpecializedNode) this).getSpecializationNode().toString();
-        } else {
-            return super.toString();
-        }
     }
 
     public static CallTarget createTarget(ExampleNode node) {

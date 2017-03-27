@@ -22,15 +22,24 @@
  */
 package com.oracle.truffle.dsl.processor.generator;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.dsl.internal.DSLOptions;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.dsl.processor.ProcessorContext;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.isTypeBoxingOptimized;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getTypeId;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.modifiers;
+import static javax.lang.model.element.Modifier.FINAL;
+import static javax.lang.model.element.Modifier.PRIVATE;
+import static javax.lang.model.element.Modifier.PUBLIC;
+import static javax.lang.model.element.Modifier.STATIC;
+
+import java.util.List;
+
+import javax.lang.model.element.Element;
+import javax.lang.model.type.TypeMirror;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
@@ -40,20 +49,14 @@ import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
 import com.oracle.truffle.dsl.processor.model.ImplicitCastData;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
-import java.util.List;
-import javax.lang.model.element.Element;
-import static javax.lang.model.element.Modifier.FINAL;
-import static javax.lang.model.element.Modifier.PRIVATE;
-import static javax.lang.model.element.Modifier.PUBLIC;
-import static javax.lang.model.element.Modifier.STATIC;
-import javax.lang.model.type.TypeMirror;
 
+@SuppressWarnings("deprecation")
 public class ImplicitCastNodeFactory {
 
     private final ProcessorContext context;
     private final TypeMirror forType;
     private final TypeSystemData typeSystem;
-    private final DSLOptions options;
+    private final com.oracle.truffle.api.dsl.internal.DSLOptions options;
     private final List<TypeMirror> sourceTypes;
 
     public ImplicitCastNodeFactory(ProcessorContext context, TypeSystemData typeSystem, TypeMirror forType) {

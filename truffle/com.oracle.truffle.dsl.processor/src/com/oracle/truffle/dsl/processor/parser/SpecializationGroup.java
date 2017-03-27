@@ -22,16 +22,18 @@
  */
 package com.oracle.truffle.dsl.processor.parser;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+
+import javax.lang.model.type.TypeMirror;
+
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.GuardExpression;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.model.TemplateMethod.TypeSignature;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import javax.lang.model.type.TypeMirror;
 
 /**
  * Class creates groups of specializations to optimize the layout of generated executeAndSpecialize

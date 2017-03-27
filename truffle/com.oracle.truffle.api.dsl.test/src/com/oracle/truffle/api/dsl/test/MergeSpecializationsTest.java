@@ -38,8 +38,6 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
-import com.oracle.truffle.api.dsl.internal.SpecializationNode;
-import com.oracle.truffle.api.dsl.internal.SpecializedNode;
 import com.oracle.truffle.api.dsl.test.MergeSpecializationsTestFactory.TestCachedNodeFactory;
 import com.oracle.truffle.api.dsl.test.MergeSpecializationsTestFactory.TestNodeFactory;
 import com.oracle.truffle.api.dsl.test.TypeBoxingTest.TypeBoxingTypeSystem;
@@ -129,6 +127,7 @@ public class MergeSpecializationsTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static <T extends ValueNode> void multithreadedMerge(NodeFactory<T> factory, final Executions executions, int... order) throws Exception {
         assertEquals(3, order.length);
         final TestRootNode<T> node = createRoot(factory);
@@ -167,24 +166,24 @@ public class MergeSpecializationsTest {
         }
 
         T checkedNode = node.getNode();
-        if (node instanceof SpecializedNode) {
-            final SpecializedNode gen = (SpecializedNode) checkedNode;
+        if (node instanceof com.oracle.truffle.api.dsl.internal.SpecializedNode) {
+            final com.oracle.truffle.api.dsl.internal.SpecializedNode gen = (com.oracle.truffle.api.dsl.internal.SpecializedNode) checkedNode;
 
-            final SpecializationNode start0 = gen.getSpecializationNode();
+            final com.oracle.truffle.api.dsl.internal.SpecializationNode start0 = gen.getSpecializationNode();
             assertEquals("UninitializedNode_", start0.getClass().getSimpleName());
 
             await(threadsStarted);
             beforeFirst.countDown();
             await(executedFirst);
 
-            final SpecializationNode start1 = gen.getSpecializationNode();
+            final com.oracle.truffle.api.dsl.internal.SpecializationNode start1 = gen.getSpecializationNode();
             assertEquals("S" + order[0] + "Node_", start1.getClass().getSimpleName());
             assertEquals("UninitializedNode_", nthChild(1, start1).getClass().getSimpleName());
 
             beforeSecond.countDown();
             await(executedSecond);
 
-            final SpecializationNode start2 = gen.getSpecializationNode();
+            final com.oracle.truffle.api.dsl.internal.SpecializationNode start2 = gen.getSpecializationNode();
             Arrays.sort(order, 0, 2);
             assertEquals("PolymorphicNode_", start2.getClass().getSimpleName());
             assertEquals("S" + order[0] + "Node_", nthChild(1, start2).getClass().getSimpleName());
@@ -194,7 +193,7 @@ public class MergeSpecializationsTest {
             beforeThird.countDown();
             await(executedThird);
 
-            final SpecializationNode start3 = gen.getSpecializationNode();
+            final com.oracle.truffle.api.dsl.internal.SpecializationNode start3 = gen.getSpecializationNode();
             Arrays.sort(order);
             assertEquals("PolymorphicNode_", start3.getClass().getSimpleName());
             assertEquals("S" + order[0] + "Node_", nthChild(1, start3).getClass().getSimpleName());

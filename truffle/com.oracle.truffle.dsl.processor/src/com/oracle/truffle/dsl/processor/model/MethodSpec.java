@@ -22,11 +22,13 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+
 import javax.lang.model.type.TypeMirror;
+
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 public class MethodSpec {
 
