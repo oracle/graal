@@ -57,8 +57,54 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
         ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp);
         if (tryConstantFold != null) {
             return tryConstantFold;
+        }
+        if (x.isConstant() && !y.isConstant()) {
+            return canonical(null, op, y, x);
         } else {
-            return new AddNode(x, y).maybeCommuteInputs();
+            return canonical(null, op, x, y);
+        }
+    }
+
+    private static ValueNode canonical(AddNode self, BinaryOp<Add> op, ValueNode forX, ValueNode forY) {
+        boolean associative = op.isAssociative();
+        if (associative) {
+            if (forX instanceof SubNode) {
+                SubNode sub = (SubNode) forX;
+                if (sub.getY() == forY) {
+                    // (a - b) + b
+                    return sub.getX();
+                }
+            }
+            if (forY instanceof SubNode) {
+                SubNode sub = (SubNode) forY;
+                if (sub.getY() == forX) {
+                    // b + (a - b)
+                    return sub.getX();
+                }
+            }
+        }
+        if (self == null) {
+            return new AddNode(forX, forY).maybeCommuteInputs();
+        } else {
+            if (forY.isConstant()) {
+                Constant c = forY.asConstant();
+                if (op.isNeutral(c)) {
+                    return forX;
+                }
+                if (associative) {
+                    // canonicalize expressions like "(a + 1) + 2"
+                    ValueNode reassociated = reassociate(self, ValueNode.isConstantPredicate(), forX, forY);
+                    if (reassociated != self) {
+                        return reassociated;
+                    }
+                }
+            }
+            if (forX instanceof NegateNode) {
+                return BinaryArithmeticNode.sub(forY, ((NegateNode) forX).getValue());
+            } else if (forY instanceof NegateNode) {
+                return BinaryArithmeticNode.sub(forX, ((NegateNode) forY).getValue());
+            }
+            return self;
         }
     }
 
@@ -79,42 +125,7 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
             return new AddNode(forY, forX);
         }
         BinaryOp<Add> op = getOp(forX, forY);
-        boolean associative = op.isAssociative();
-        if (associative) {
-            if (forX instanceof SubNode) {
-                SubNode sub = (SubNode) forX;
-                if (sub.getY() == forY) {
-                    // (a - b) + b
-                    return sub.getX();
-                }
-            }
-            if (forY instanceof SubNode) {
-                SubNode sub = (SubNode) forY;
-                if (sub.getY() == forX) {
-                    // b + (a - b)
-                    return sub.getX();
-                }
-            }
-        }
-        if (forY.isConstant()) {
-            Constant c = forY.asConstant();
-            if (op.isNeutral(c)) {
-                return forX;
-            }
-            if (associative) {
-                // canonicalize expressions like "(a + 1) + 2"
-                ValueNode reassociated = reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
-                if (reassociated != this) {
-                    return reassociated;
-                }
-            }
-        }
-        if (forX instanceof NegateNode) {
-            return BinaryArithmeticNode.sub(forY, ((NegateNode) forX).getValue());
-        } else if (forY instanceof NegateNode) {
-            return BinaryArithmeticNode.sub(forX, ((NegateNode) forY).getValue());
-        }
-        return this;
+        return canonical(this, op, forX, forY);
     }
 
     @Override

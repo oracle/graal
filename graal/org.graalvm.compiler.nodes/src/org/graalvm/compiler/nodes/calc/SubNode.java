@@ -59,24 +59,15 @@ public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArit
         ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp);
         if (tryConstantFold != null) {
             return tryConstantFold;
-        } else {
-            return new SubNode(x, y);
         }
+        return canonical(null, op, stamp, x, y);
     }
 
-    @SuppressWarnings("hiding")
-    @Override
-    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        ValueNode ret = super.canonical(tool, forX, forY);
-        if (ret != this) {
-            return ret;
-        }
-
-        BinaryOp<Sub> op = getOp(forX, forY);
+    private static ValueNode canonical(SubNode self, BinaryOp<Sub> op, Stamp stamp, ValueNode forX, ValueNode forY) {
         if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
             Constant zero = op.getZero(forX.stamp());
             if (zero != null) {
-                return ConstantNode.forPrimitive(stamp(), zero);
+                return ConstantNode.forPrimitive(stamp, zero);
             }
         }
         boolean associative = op.isAssociative();
@@ -116,43 +107,58 @@ public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArit
                 }
             }
         }
-        if (forY.isConstant()) {
-            Constant c = forY.asConstant();
-            if (op.isNeutral(c)) {
-                return forX;
-            }
-            if (associative) {
-                ValueNode reassociated = reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
-                if (reassociated != this) {
-                    return reassociated;
+        if (self == null) {
+            return new SubNode(forX, forY);
+        } else {
+            if (forY.isConstant()) {
+                Constant c = forY.asConstant();
+                if (op.isNeutral(c)) {
+                    return forX;
                 }
-            }
-            if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getJavaKind().isNumericInteger()) {
-                long i = ((PrimitiveConstant) c).asLong();
-                if (i < 0 || ((IntegerStamp) StampFactory.forKind(forY.getStackKind())).contains(-i)) {
-                    // Adding a negative is more friendly to the backend since adds are
-                    // commutative, so prefer add when it fits.
-                    return BinaryArithmeticNode.add(forX, ConstantNode.forIntegerStamp(stamp(), -i));
+                if (associative) {
+                    ValueNode reassociated = reassociate(self, ValueNode.isConstantPredicate(), forX, forY);
+                    if (reassociated != self) {
+                        return reassociated;
+                    }
                 }
-            }
-        } else if (forX.isConstant()) {
-            Constant c = forX.asConstant();
-            if (ArithmeticOpTable.forStamp(stamp()).getAdd().isNeutral(c)) {
+                if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getJavaKind().isNumericInteger()) {
+                    long i = ((PrimitiveConstant) c).asLong();
+                    if (i < 0 || ((IntegerStamp) StampFactory.forKind(forY.getStackKind())).contains(-i)) {
+                        // Adding a negative is more friendly to the backend since adds are
+                        // commutative, so prefer add when it fits.
+                        return BinaryArithmeticNode.add(forX, ConstantNode.forIntegerStamp(stamp, -i));
+                    }
+                }
+            } else if (forX.isConstant()) {
+                Constant c = forX.asConstant();
+                if (ArithmeticOpTable.forStamp(stamp).getAdd().isNeutral(c)) {
                 /*
                  * Note that for floating point numbers, + and - have different neutral elements. We
                  * have to test for the neutral element of +, because we are doing this
                  * transformation: 0 - x == (-x) + 0 == -x.
                  */
-                return new NegateNode(forY);
+                    return new NegateNode(forY);
+                }
+                if (associative) {
+                    return reassociate(self, ValueNode.isConstantPredicate(), forX, forY);
+                }
             }
-            if (associative) {
-                return reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
+            if (forY instanceof NegateNode) {
+                return BinaryArithmeticNode.add(forX, ((NegateNode) forY).getValue());
             }
+            return self;
         }
-        if (forY instanceof NegateNode) {
-            return BinaryArithmeticNode.add(forX, ((NegateNode) forY).getValue());
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        ValueNode ret = super.canonical(tool, forX, forY);
+        if (ret != this) {
+            return ret;
         }
-        return this;
+
+        BinaryOp<Sub> op = getOp(forX, forY);
+        return canonical(this, op, stamp, forX, forY);
     }
 
     @Override
