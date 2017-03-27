@@ -63,7 +63,8 @@ public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArit
         return canonical(null, op, stamp, x, y);
     }
 
-    private static ValueNode canonical(SubNode self, BinaryOp<Sub> op, Stamp stamp, ValueNode forX, ValueNode forY) {
+    private static ValueNode canonical(SubNode subNode, BinaryOp<Sub> op, Stamp stamp, ValueNode forX, ValueNode forY) {
+        SubNode self = subNode;
         if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
             Constant zero = op.getZero(forX.stamp());
             if (zero != null) {
@@ -107,47 +108,52 @@ public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArit
                 }
             }
         }
-        if (self == null) {
-            return new SubNode(forX, forY);
-        } else {
-            if (forY.isConstant()) {
-                Constant c = forY.asConstant();
-                if (op.isNeutral(c)) {
-                    return forX;
+        if (forY.isConstant()) {
+            Constant c = forY.asConstant();
+            if (op.isNeutral(c)) {
+                return forX;
+            }
+            if (associative) {
+                if (self == null) {
+                    self = new SubNode(forX, forY);
                 }
-                if (associative) {
-                    ValueNode reassociated = reassociate(self, ValueNode.isConstantPredicate(), forX, forY);
-                    if (reassociated != self) {
-                        return reassociated;
-                    }
+                ValueNode reassociated = reassociate(self, ValueNode.isConstantPredicate(), forX, forY);
+                if (reassociated != self) {
+                    return reassociated;
                 }
-                if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getJavaKind().isNumericInteger()) {
-                    long i = ((PrimitiveConstant) c).asLong();
-                    if (i < 0 || ((IntegerStamp) StampFactory.forKind(forY.getStackKind())).contains(-i)) {
-                        // Adding a negative is more friendly to the backend since adds are
-                        // commutative, so prefer add when it fits.
-                        return BinaryArithmeticNode.add(forX, ConstantNode.forIntegerStamp(stamp, -i));
-                    }
+            }
+            if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getJavaKind().isNumericInteger()) {
+                long i = ((PrimitiveConstant) c).asLong();
+                if (i < 0 || ((IntegerStamp) StampFactory.forKind(forY.getStackKind())).contains(-i)) {
+                    // Adding a negative is more friendly to the backend since adds are
+                    // commutative, so prefer add when it fits.
+                    return BinaryArithmeticNode.add(forX, ConstantNode.forIntegerStamp(stamp, -i));
                 }
-            } else if (forX.isConstant()) {
-                Constant c = forX.asConstant();
-                if (ArithmeticOpTable.forStamp(stamp).getAdd().isNeutral(c)) {
+            }
+        } else if (forX.isConstant()) {
+            Constant c = forX.asConstant();
+            if (ArithmeticOpTable.forStamp(stamp).getAdd().isNeutral(c)) {
                 /*
                  * Note that for floating point numbers, + and - have different neutral elements. We
                  * have to test for the neutral element of +, because we are doing this
                  * transformation: 0 - x == (-x) + 0 == -x.
                  */
-                    return new NegateNode(forY);
-                }
-                if (associative) {
-                    return reassociate(self, ValueNode.isConstantPredicate(), forX, forY);
-                }
+                return new NegateNode(forY);
             }
-            if (forY instanceof NegateNode) {
-                return BinaryArithmeticNode.add(forX, ((NegateNode) forY).getValue());
+            if (associative) {
+                if (self == null) {
+                    self = new SubNode(forX, forY);
+                }
+                return reassociate(self, ValueNode.isConstantPredicate(), forX, forY);
             }
-            return self;
         }
+        if (forY instanceof NegateNode) {
+            return BinaryArithmeticNode.add(forX, ((NegateNode) forY).getValue());
+        }
+        if (self == null) {
+            self = new SubNode(forX, forY);
+        }
+        return self;
     }
 
     @Override

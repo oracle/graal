@@ -3257,7 +3257,7 @@ public class BytecodeParser implements GraphBuilderContext {
         int delta = getStream().readIncrement();
         ValueNode x = frameState.loadLocal(index, JavaKind.Int);
         ValueNode y = appendConstant(JavaConstant.forInt(delta));
-        frameState.storeLocal(index, JavaKind.Int, append(genIntegerAdd(x, y)));
+        frameState.storeLocal(index, JavaKind.Int, recursiveAppend(genIntegerAdd(x, y)));
     }
 
     private void genIfZero(Condition cond) {

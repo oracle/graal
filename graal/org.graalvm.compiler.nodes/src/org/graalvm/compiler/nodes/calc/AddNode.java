@@ -65,7 +65,8 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
         }
     }
 
-    private static ValueNode canonical(AddNode self, BinaryOp<Add> op, ValueNode forX, ValueNode forY) {
+    private static ValueNode canonical(AddNode addNode, BinaryOp<Add> op, ValueNode forX, ValueNode forY) {
+        AddNode self = addNode;
         boolean associative = op.isAssociative();
         if (associative) {
             if (forX instanceof SubNode) {
@@ -83,29 +84,31 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
                 }
             }
         }
-        if (self == null) {
-            return new AddNode(forX, forY).maybeCommuteInputs();
-        } else {
-            if (forY.isConstant()) {
-                Constant c = forY.asConstant();
-                if (op.isNeutral(c)) {
-                    return forX;
+        if (forY.isConstant()) {
+            Constant c = forY.asConstant();
+            if (op.isNeutral(c)) {
+                return forX;
+            }
+            if (associative) {
+                // canonicalize expressions like "(a + 1) + 2"
+                if (self == null) {
+                    self = (AddNode) new AddNode(forX, forY).maybeCommuteInputs();
                 }
-                if (associative) {
-                    // canonicalize expressions like "(a + 1) + 2"
-                    ValueNode reassociated = reassociate(self, ValueNode.isConstantPredicate(), forX, forY);
-                    if (reassociated != self) {
-                        return reassociated;
-                    }
+                ValueNode reassociated = reassociate(self, ValueNode.isConstantPredicate(), forX, forY);
+                if (reassociated != self) {
+                    return reassociated;
                 }
             }
-            if (forX instanceof NegateNode) {
-                return BinaryArithmeticNode.sub(forY, ((NegateNode) forX).getValue());
-            } else if (forY instanceof NegateNode) {
-                return BinaryArithmeticNode.sub(forX, ((NegateNode) forY).getValue());
-            }
-            return self;
         }
+        if (forX instanceof NegateNode) {
+            return BinaryArithmeticNode.sub(forY, ((NegateNode) forX).getValue());
+        } else if (forY instanceof NegateNode) {
+            return BinaryArithmeticNode.sub(forX, ((NegateNode) forY).getValue());
+        }
+        if (self == null) {
+            self = (AddNode) new AddNode(forX, forY).maybeCommuteInputs();
+        }
+        return self;
     }
 
     @Override
