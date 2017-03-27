@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,26 +27,40 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.generators;
+package com.oracle.truffle.llvm.parser.model.attributes;
 
-import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
-import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
-import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 
-public interface ModuleGenerator extends SymbolGenerator {
+public class AttributesCodeEntry {
 
-    void createAlias(Type type, int aliasedValue, long linkage, long visibility);
+    public static final AttributesCodeEntry EMPTY = new AttributesCodeEntry(Collections.<AttributesGroup> emptyList());
 
-    void createFunction(FunctionType type, boolean isPrototype, AttributesCodeEntry paramattr);
+    private final List<AttributesGroup> codeEntry;
 
-    void createTargetDataLayout(TargetDataLayout layout);
+    public AttributesCodeEntry(List<AttributesGroup> codeEntry) {
+        this.codeEntry = codeEntry;
+    }
 
-    void createType(Type type);
+    public Optional<AttributesGroup> getFunctionAttributesGroup() {
+        return codeEntry.stream().filter(a -> a.isFunctionAttribute()).findAny();
+    }
 
-    void createGlobal(Type type, boolean isConstant, int initialiser, int align, long linkage, long visibility);
+    public Optional<AttributesGroup> getReturnAttributesGroup() {
+        return codeEntry.stream().filter(a -> a.isReturnValueAttribute()).findAny();
+    }
 
-    void exitModule();
+    public Optional<AttributesGroup> getParameterAttributesGroup(int idx) {
+        /*
+         * parameter index enumeration is starting with 1 in the code entry, which means we need to
+         * increment index by one to find the correct attribution.
+         */
+        return codeEntry.stream().filter(a -> a.isParameterAttribute() && a.getParamIdx() == idx + 1).findAny();
+    }
 
-    FunctionGenerator generateFunction();
+    @Override
+    public String toString() {
+        return "AttributesCodeEntry [codeEntry=" + codeEntry + "]";
+    }
 }

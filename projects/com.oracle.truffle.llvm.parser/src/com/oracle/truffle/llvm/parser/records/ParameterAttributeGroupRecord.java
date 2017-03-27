@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,26 +27,70 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.generators;
+package com.oracle.truffle.llvm.parser.records;
 
-import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
-import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
-import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.Type;
+public enum ParameterAttributeGroupRecord {
 
-public interface ModuleGenerator extends SymbolGenerator {
+    UNUSED_0,
 
-    void createAlias(Type type, int aliasedValue, long linkage, long visibility);
+    ALIGN, // code 1
+    ALWAYSINLINE,
+    BYVAL,
+    INLINEHINT,
+    INREG,
+    MINSIZE,
+    NAKED,
+    NEST,
+    NOALIAS,
+    NOBUILTIN,
+    NOCAPTURE,
+    NODUPLICATES,
+    NOIMPLICITFLOAT,
+    NOINLINE,
+    NONLAZYBIND,
+    NOREDZONE,
+    NORETURN,
+    NOUNWIND,
+    OPTSIZE,
+    READNONE,
+    READONLY,
+    RETURNED,
+    RETURNS_TWICE,
+    SIGNEXT,
+    ALIGNSTACK,
+    SSP,
+    SSPREQ,
+    SSPSTRONG,
+    SRET,
+    SANITIZE_ADDRESS,
+    SANITIZE_THREAD,
+    SANITIZE_MEMORY,
+    UWTABLE,
+    ZEROEXT,
+    BUILTIN,
+    COLD,
+    OPTNONE,
+    INALLOCA,
+    NONNULL,
+    JUMPTABLE,
+    DEREFERENCEABLE,
+    DEREFERENCEABLE_OR_NULL,
+    CONVERGENT,
+    SAFESTACK,
+    ARGMEMONLY,
+    SWIFTSELF,
+    SWIFTERROR,
+    NORECURSE,
+    INACCESSIBLEMEMONLY,
+    INACCESSIBLEMEMONLY_OR_ARGMEMONLY,
+    ALLOCSIZE,
+    WRITEONLY;
 
-    void createFunction(FunctionType type, boolean isPrototype, AttributesCodeEntry paramattr);
+    public static ParameterAttributeGroupRecord decode(long id) {
+        return values()[(int) id];
+    }
 
-    void createTargetDataLayout(TargetDataLayout layout);
-
-    void createType(Type type);
-
-    void createGlobal(Type type, boolean isConstant, int initialiser, int align, long linkage, long visibility);
-
-    void exitModule();
-
-    FunctionGenerator generateFunction();
+    public String getIrString() {
+        return name().toLowerCase();
+    }
 }

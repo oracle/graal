@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,26 +27,58 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.generators;
+package com.oracle.truffle.llvm.parser.model.attributes;
 
-import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
-import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
-import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 
-public interface ModuleGenerator extends SymbolGenerator {
+public final class AttributesGroup {
 
-    void createAlias(Type type, int aliasedValue, long linkage, long visibility);
+    private final long groupId;
+    private final long paramIdx;
 
-    void createFunction(FunctionType type, boolean isPrototype, AttributesCodeEntry paramattr);
+    private final List<Attribute> attributes = new LinkedList<>();
 
-    void createTargetDataLayout(TargetDataLayout layout);
+    public static final int RETURN_VALUE_IDX = 0;
+    public static final int FUNCTION_ATTRIBUTE_IDX = 0xFFFFFFFF;
 
-    void createType(Type type);
+    public AttributesGroup(long groupId, long paramIdx) {
+        this.groupId = groupId;
+        this.paramIdx = paramIdx;
+    }
 
-    void createGlobal(Type type, boolean isConstant, int initialiser, int align, long linkage, long visibility);
+    public List<Attribute> getAttributes() {
+        return Collections.unmodifiableList(attributes);
+    }
 
-    void exitModule();
+    public void addAttibute(Attribute attr) {
+        attributes.add(attr);
+    }
 
-    FunctionGenerator generateFunction();
+    public long getGroupId() {
+        return groupId;
+    }
+
+    public long getParamIdx() {
+        return paramIdx;
+    }
+
+    public boolean isReturnValueAttribute() {
+        return paramIdx == RETURN_VALUE_IDX;
+    }
+
+    public boolean isFunctionAttribute() {
+        return paramIdx == FUNCTION_ATTRIBUTE_IDX;
+    }
+
+    public boolean isParameterAttribute() {
+        return !isReturnValueAttribute() && !isFunctionAttribute();
+    }
+
+    @Override
+    public String toString() {
+        return "AttributesGroup [groupId=" + groupId + ", paramIdx=" + paramIdx + ", attributes=" + attributes + "]";
+    }
+
 }

@@ -33,6 +33,7 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.generators.FunctionGenerator;
@@ -178,13 +179,13 @@ public final class ModelModule implements ModuleGenerator {
     }
 
     @Override
-    public void createFunction(FunctionType type, boolean isPrototype) {
+    public void createFunction(FunctionType type, boolean isPrototype, AttributesCodeEntry paramAttr) {
         if (isPrototype) {
-            final FunctionDeclaration function = new FunctionDeclaration(type);
+            final FunctionDeclaration function = new FunctionDeclaration(type, paramAttr);
             symbols.addSymbol(function);
             declares.add(function);
         } else {
-            final FunctionDefinition method = new FunctionDefinition(type, metadata.instantiate());
+            final FunctionDefinition method = new FunctionDefinition(type, metadata.instantiate(), paramAttr);
             symbols.addSymbol(method);
             defines.add(method);
         }
