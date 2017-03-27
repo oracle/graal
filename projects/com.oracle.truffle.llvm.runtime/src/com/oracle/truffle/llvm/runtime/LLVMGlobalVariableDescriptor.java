@@ -42,23 +42,26 @@ public final class LLVMGlobalVariableDescriptor {
         UNKNOWN,
         EXTERNAL_NATIVE,
         SULONG_NATIVE,
-        MANAGED
+        MANAGED_UNINIT,
+        MANAGED_CACHED,
+        MANAGED_GENERIC
     }
 
     private final String name;
     private final NativeResolver resolver;
 
     @CompilationFinal private MemoryState memoryState;
-    @CompilationFinal private Assumption stateAssmuption;
+    @CompilationFinal private Assumption stateAssumption;
     @CompilationFinal private LLVMAddress globalVariabelAddress;
 
+    @CompilationFinal private Object cachedManagedValue;
     private Object managedValue;
 
     private LLVMGlobalVariableDescriptor(String name, NativeResolver resolver) {
         this.name = name;
         this.memoryState = MemoryState.UNKNOWN;
         this.resolver = resolver;
-        stateAssmuption = Truffle.getRuntime().createAssumption();
+        stateAssumption = Truffle.getRuntime().createAssumption();
     }
 
     public static LLVMGlobalVariableDescriptor create(String name, NativeResolver resolver) {
@@ -68,17 +71,17 @@ public final class LLVMGlobalVariableDescriptor {
     public void declareInSulong(LLVMAddress address) {
         assert memoryState == MemoryState.UNKNOWN;
 
-        stateAssmuption.invalidate();
+        stateAssumption.invalidate();
         CompilerDirectives.transferToInterpreterAndInvalidate();
 
         this.globalVariabelAddress = address;
-        this.memoryState = MemoryState.MANAGED;
+        this.memoryState = MemoryState.MANAGED_UNINIT;
 
-        stateAssmuption = Truffle.getRuntime().createAssumption();
+        stateAssumption = Truffle.getRuntime().createAssumption();
     }
 
     public MemoryState getState() {
-        if (!stateAssmuption.isValid()) {
+        if (!stateAssumption.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
         }
         return memoryState;
@@ -99,37 +102,34 @@ public final class LLVMGlobalVariableDescriptor {
         switch (getState()) {
             case EXTERNAL_NATIVE:
                 return globalVariabelAddress;
-            case MANAGED:
-                stateAssmuption.invalidate();
+            case MANAGED_UNINIT:
+                stateAssumption.invalidate();
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 memoryState = MemoryState.SULONG_NATIVE;
-                stateAssmuption = Truffle.getRuntime().createAssumption();
+                stateAssumption = Truffle.getRuntime().createAssumption();
 
-                if (managedValue instanceof LLVMFunction) {
-                    storeFunction((LLVMFunction) managedValue);
-                    return globalVariabelAddress;
-                } else if (managedValue instanceof LLVMTruffleNull) {
-                    storeNull((LLVMTruffleNull) managedValue);
-                    return globalVariabelAddress;
-                } else if (managedValue instanceof LLVMAddress) {
-                    storeLLVMAddress((LLVMAddress) managedValue);
-                    return globalVariabelAddress;
-                } else if (managedValue instanceof LLVMGlobalVariableDescriptor) {
-                    storeGlobalVariableDescriptor((LLVMGlobalVariableDescriptor) managedValue);
-                    return globalVariabelAddress;
-                } else if (managedValue instanceof TruffleObject || managedValue instanceof LLVMTruffleObject) {
-                    throw new IllegalStateException("Cannot resolve address of a foreign TruffleObject!");
-                } else if (managedValue == null) {
-                    return globalVariabelAddress;
-                }
-                throw new AssertionError("Unknown type: " + managedValue.getClass());
+                return globalVariabelAddress;
+            case MANAGED_CACHED:
+                stateAssumption.invalidate();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                memoryState = MemoryState.SULONG_NATIVE;
+                stateAssumption = Truffle.getRuntime().createAssumption();
+
+                return convertToNative(cachedManagedValue);
+            case MANAGED_GENERIC:
+                stateAssumption.invalidate();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                memoryState = MemoryState.SULONG_NATIVE;
+                stateAssumption = Truffle.getRuntime().createAssumption();
+
+                return convertToNative(managedValue);
             case SULONG_NATIVE:
                 return globalVariabelAddress;
             case UNKNOWN:
-                stateAssmuption.invalidate();
+                stateAssumption.invalidate();
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 resolveExternal();
-                stateAssmuption = Truffle.getRuntime().createAssumption();
+                stateAssumption = Truffle.getRuntime().createAssumption();
                 return globalVariabelAddress;
             default:
                 CompilerDirectives.transferToInterpreter();
@@ -137,20 +137,55 @@ public final class LLVMGlobalVariableDescriptor {
         }
     }
 
+    private LLVMAddress convertToNative(Object value) throws AssertionError {
+        if (value instanceof LLVMFunction) {
+            storeFunction((LLVMFunction) value);
+            return globalVariabelAddress;
+        } else if (value instanceof LLVMTruffleNull) {
+            storeNull((LLVMTruffleNull) value);
+            return globalVariabelAddress;
+        } else if (value instanceof LLVMAddress) {
+            storeLLVMAddress((LLVMAddress) value);
+            return globalVariabelAddress;
+        } else if (value instanceof LLVMGlobalVariableDescriptor) {
+            storeGlobalVariableDescriptor((LLVMGlobalVariableDescriptor) value);
+            return globalVariabelAddress;
+        } else if (value instanceof TruffleObject || value instanceof LLVMTruffleObject) {
+            throw new IllegalStateException("Cannot resolve address of a foreign TruffleObject!");
+        } else if (value == null) {
+            return globalVariabelAddress;
+        }
+        throw new AssertionError("Unknown type: " + value.getClass());
+    }
+
     public void storeFunction(LLVMFunction function) {
         switch (getState()) {
             case UNKNOWN:
-                stateAssmuption.invalidate();
+                stateAssumption.invalidate();
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 resolveExternal();
-                stateAssmuption = Truffle.getRuntime().createAssumption();
+                stateAssumption = Truffle.getRuntime().createAssumption();
                 LLVMMemory.putAddress(globalVariabelAddress, LLVMAddress.fromLong(function.getFunctionIndex()));
                 break;
             case EXTERNAL_NATIVE:
             case SULONG_NATIVE:
                 LLVMMemory.putAddress(globalVariabelAddress, LLVMAddress.fromLong(function.getFunctionIndex()));
                 break;
-            case MANAGED:
+            case MANAGED_UNINIT:
+                stateAssumption.invalidate();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                memoryState = MemoryState.MANAGED_CACHED;
+                stateAssumption = Truffle.getRuntime().createAssumption();
+                cachedManagedValue = function;
+                break;
+            case MANAGED_CACHED:
+                stateAssumption.invalidate();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                memoryState = MemoryState.MANAGED_GENERIC;
+                stateAssumption = Truffle.getRuntime().createAssumption();
+                managedValue = function;
+                break;
+            case MANAGED_GENERIC:
                 managedValue = function;
                 break;
             default:
@@ -163,17 +198,31 @@ public final class LLVMGlobalVariableDescriptor {
     public void storeNull(LLVMTruffleNull n) {
         switch (getState()) {
             case UNKNOWN:
-                stateAssmuption.invalidate();
+                stateAssumption.invalidate();
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 resolveExternal();
-                stateAssmuption = Truffle.getRuntime().createAssumption();
+                stateAssumption = Truffle.getRuntime().createAssumption();
                 LLVMMemory.putAddress(globalVariabelAddress, LLVMAddress.fromLong(0));
                 break;
             case EXTERNAL_NATIVE:
             case SULONG_NATIVE:
                 LLVMMemory.putAddress(globalVariabelAddress, LLVMAddress.fromLong(0));
                 break;
-            case MANAGED:
+            case MANAGED_UNINIT:
+                stateAssumption.invalidate();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                memoryState = MemoryState.MANAGED_CACHED;
+                stateAssumption = Truffle.getRuntime().createAssumption();
+                cachedManagedValue = n;
+                break;
+            case MANAGED_CACHED:
+                stateAssumption.invalidate();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                memoryState = MemoryState.MANAGED_GENERIC;
+                stateAssumption = Truffle.getRuntime().createAssumption();
+                managedValue = n;
+                break;
+            case MANAGED_GENERIC:
                 managedValue = n;
                 break;
             default:
@@ -185,17 +234,31 @@ public final class LLVMGlobalVariableDescriptor {
     public void storeLLVMAddress(LLVMAddress a) {
         switch (getState()) {
             case UNKNOWN:
-                stateAssmuption.invalidate();
+                stateAssumption.invalidate();
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 resolveExternal();
-                stateAssmuption = Truffle.getRuntime().createAssumption();
+                stateAssumption = Truffle.getRuntime().createAssumption();
                 LLVMMemory.putAddress(globalVariabelAddress, a);
                 break;
             case EXTERNAL_NATIVE:
             case SULONG_NATIVE:
                 LLVMMemory.putAddress(globalVariabelAddress, a);
                 break;
-            case MANAGED:
+            case MANAGED_UNINIT:
+                stateAssumption.invalidate();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                memoryState = MemoryState.MANAGED_CACHED;
+                stateAssumption = Truffle.getRuntime().createAssumption();
+                cachedManagedValue = a;
+                break;
+            case MANAGED_CACHED:
+                stateAssumption.invalidate();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                memoryState = MemoryState.MANAGED_GENERIC;
+                stateAssumption = Truffle.getRuntime().createAssumption();
+                managedValue = a;
+                break;
+            case MANAGED_GENERIC:
                 managedValue = a;
                 break;
             default:
@@ -207,17 +270,31 @@ public final class LLVMGlobalVariableDescriptor {
     public void storeGlobalVariableDescriptor(LLVMGlobalVariableDescriptor d) {
         switch (getState()) {
             case UNKNOWN:
-                stateAssmuption.invalidate();
+                stateAssumption.invalidate();
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 resolveExternal();
-                stateAssmuption = Truffle.getRuntime().createAssumption();
+                stateAssumption = Truffle.getRuntime().createAssumption();
                 LLVMMemory.putAddress(globalVariabelAddress, d.getNativeAddress());
                 break;
             case EXTERNAL_NATIVE:
             case SULONG_NATIVE:
                 LLVMMemory.putAddress(globalVariabelAddress, d.getNativeAddress());
                 break;
-            case MANAGED:
+            case MANAGED_UNINIT:
+                stateAssumption.invalidate();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                memoryState = MemoryState.MANAGED_CACHED;
+                stateAssumption = Truffle.getRuntime().createAssumption();
+                cachedManagedValue = d;
+                break;
+            case MANAGED_CACHED:
+                stateAssumption.invalidate();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                memoryState = MemoryState.MANAGED_GENERIC;
+                stateAssumption = Truffle.getRuntime().createAssumption();
+                managedValue = d;
+                break;
+            case MANAGED_GENERIC:
                 managedValue = d;
                 break;
             default:
@@ -234,7 +311,21 @@ public final class LLVMGlobalVariableDescriptor {
             case SULONG_NATIVE:
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("Cannot store foreign value into global variable " + name + " - already transitioned to NATIVE");
-            case MANAGED:
+            case MANAGED_UNINIT:
+                stateAssumption.invalidate();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                memoryState = MemoryState.MANAGED_CACHED;
+                stateAssumption = Truffle.getRuntime().createAssumption();
+                cachedManagedValue = foreign;
+                break;
+            case MANAGED_CACHED:
+                stateAssumption.invalidate();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                memoryState = MemoryState.MANAGED_GENERIC;
+                stateAssumption = Truffle.getRuntime().createAssumption();
+                managedValue = foreign;
+                break;
+            case MANAGED_GENERIC:
                 managedValue = foreign;
                 break;
             default:
@@ -250,7 +341,21 @@ public final class LLVMGlobalVariableDescriptor {
             case SULONG_NATIVE:
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("Cannot store foreign value into global variable " + name + " - already transitioned to NATIVE");
-            case MANAGED:
+            case MANAGED_UNINIT:
+                stateAssumption.invalidate();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                memoryState = MemoryState.MANAGED_CACHED;
+                stateAssumption = Truffle.getRuntime().createAssumption();
+                cachedManagedValue = value;
+                break;
+            case MANAGED_CACHED:
+                stateAssumption.invalidate();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                memoryState = MemoryState.MANAGED_GENERIC;
+                stateAssumption = Truffle.getRuntime().createAssumption();
+                managedValue = value;
+                break;
+            case MANAGED_GENERIC:
                 managedValue = value;
                 break;
             default:
@@ -262,15 +367,19 @@ public final class LLVMGlobalVariableDescriptor {
     public Object load() {
         switch (getState()) {
             case UNKNOWN:
-                stateAssmuption.invalidate();
+                stateAssumption.invalidate();
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 resolveExternal();
-                stateAssmuption = Truffle.getRuntime().createAssumption();
+                stateAssumption = Truffle.getRuntime().createAssumption();
                 return LLVMMemory.getAddress(globalVariabelAddress);
             case EXTERNAL_NATIVE:
             case SULONG_NATIVE:
                 return LLVMMemory.getAddress(globalVariabelAddress);
-            case MANAGED:
+            case MANAGED_UNINIT:
+                return managedValue;
+            case MANAGED_CACHED:
+                return cachedManagedValue;
+            case MANAGED_GENERIC:
                 return managedValue;
             default:
                 CompilerDirectives.transferToInterpreter();
