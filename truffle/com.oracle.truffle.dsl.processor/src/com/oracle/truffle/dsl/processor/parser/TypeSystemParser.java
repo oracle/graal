@@ -24,7 +24,6 @@ package com.oracle.truffle.dsl.processor.parser;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -54,8 +53,6 @@ import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 @SuppressWarnings("deprecation")
 @com.oracle.truffle.api.dsl.internal.DSLOptions
 public class TypeSystemParser extends AbstractParser<TypeSystemData> {
-
-    public static final List<Class<TypeSystem>> ANNOTATIONS = Arrays.asList(TypeSystem.class);
 
     @Override
     public Class<? extends Annotation> getAnnotationType() {
