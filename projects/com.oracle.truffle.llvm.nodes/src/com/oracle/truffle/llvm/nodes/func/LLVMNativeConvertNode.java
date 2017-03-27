@@ -48,6 +48,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -86,6 +87,11 @@ abstract class LLVMNativeConvertNode extends Node {
         @Specialization
         long addressToNative(LLVMGlobalVariableDescriptor address) {
             return address.getNativeAddress().getVal();
+        }
+
+        @Specialization
+        long llvmTruffleObjectToNative(LLVMTruffleObject truffleObject) {
+            return truffleObject.getOffset() + addressToNative(truffleObject.getObject());
         }
 
         @Child private Node unbox = Message.UNBOX.createNode();
