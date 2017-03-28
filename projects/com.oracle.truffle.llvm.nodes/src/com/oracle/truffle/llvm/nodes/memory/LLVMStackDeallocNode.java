@@ -37,13 +37,10 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 
 @NodeChild(type = LLVMExpressionNode.class)
-@NodeFields({@NodeField(type = LLVMContext.class, name = "context"), @NodeField(type = FrameSlot.class, name = "stackPointerSlot")})
+@NodeFields({@NodeField(type = FrameSlot.class, name = "stackPointerSlot")})
 public abstract class LLVMStackDeallocNode extends LLVMExpressionNode {
-
-    abstract LLVMContext getContext();
 
     abstract FrameSlot getStackPointerSlot();
 

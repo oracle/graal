@@ -35,13 +35,12 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleImportCached extends LLVMIntrinsic {
 
-    protected static Object resolve(String name) {
-        return LLVMLanguage.INSTANCE.getEnvironment().importSymbol(name);
+    protected Object resolve(String name) {
+        return getLLVMLanguage().getEnvironment().importSymbol(name);
     }
 
     protected static boolean stringEquals(String s1, String s2) {

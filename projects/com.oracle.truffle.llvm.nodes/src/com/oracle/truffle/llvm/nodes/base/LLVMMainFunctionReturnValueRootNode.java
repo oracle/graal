@@ -40,15 +40,15 @@ public abstract class LLVMMainFunctionReturnValueRootNode extends RootNode {
 
     final RootCallTarget rootCallTarget;
 
-    protected LLVMMainFunctionReturnValueRootNode(RootCallTarget rootCallTarget) {
-        super(LLVMLanguage.class, null, new FrameDescriptor());
+    protected LLVMMainFunctionReturnValueRootNode(LLVMLanguage language, RootCallTarget rootCallTarget) {
+        super(language, new FrameDescriptor());
         this.rootCallTarget = rootCallTarget;
     }
 
     public static class LLVMMainFunctionReturnI1RootNode extends LLVMMainFunctionReturnValueRootNode {
 
-        public LLVMMainFunctionReturnI1RootNode(RootCallTarget rootCallTarget) {
-            super(rootCallTarget);
+        public LLVMMainFunctionReturnI1RootNode(LLVMLanguage language, RootCallTarget rootCallTarget) {
+            super(language, rootCallTarget);
         }
 
         @Override
@@ -60,8 +60,8 @@ public abstract class LLVMMainFunctionReturnValueRootNode extends RootNode {
 
     public static class LLVMMainFunctionReturnIVarBitRootNode extends LLVMMainFunctionReturnValueRootNode {
 
-        public LLVMMainFunctionReturnIVarBitRootNode(RootCallTarget rootCallTarget) {
-            super(rootCallTarget);
+        public LLVMMainFunctionReturnIVarBitRootNode(LLVMLanguage language, RootCallTarget rootCallTarget) {
+            super(language, rootCallTarget);
         }
 
         @Override
@@ -73,8 +73,8 @@ public abstract class LLVMMainFunctionReturnValueRootNode extends RootNode {
 
     public static class LLVMMainFunctionReturnNumberRootNode extends LLVMMainFunctionReturnValueRootNode {
 
-        public LLVMMainFunctionReturnNumberRootNode(RootCallTarget rootCallTarget) {
-            super(rootCallTarget);
+        public LLVMMainFunctionReturnNumberRootNode(LLVMLanguage language, RootCallTarget rootCallTarget) {
+            super(language, rootCallTarget);
         }
 
         @Override
@@ -88,8 +88,8 @@ public abstract class LLVMMainFunctionReturnValueRootNode extends RootNode {
 
         private static final int VOID_RET_VALUE = 0;
 
-        public LLVMMainFunctionReturnVoidRootNode(RootCallTarget rootCallTarget) {
-            super(rootCallTarget);
+        public LLVMMainFunctionReturnVoidRootNode(LLVMLanguage language, RootCallTarget rootCallTarget) {
+            super(language, rootCallTarget);
         }
 
         @Override

@@ -31,14 +31,13 @@ package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 
-final class LLVMNativeFunctionsImpl implements LLVMNativeFunctions {
+final class LLVMNativeFunctionsImpl extends LLVMNativeFunctions {
 
     private final TruffleObject memmove;
     private final TruffleObject memcpy;
@@ -170,26 +169,7 @@ final class LLVMNativeFunctionsImpl implements LLVMNativeFunctions {
         return new SulongSetHandlerCountNodeImpl(setHandlerCount);
     }
 
-    private static class HeapFunctionNode extends Node {
-
-        private final TruffleObject function;
-        @Child private Node nativeExecute;
-
-        HeapFunctionNode(TruffleObject function, int argCount) {
-            this.function = function;
-            this.nativeExecute = Message.createExecute(argCount).createNode();
-        }
-
-        Object execute(Object... args) {
-            try {
-                return ForeignAccess.sendExecute(nativeExecute, function, args);
-            } catch (InteropException e) {
-                throw new AssertionError(e);
-            }
-        }
-    }
-
-    private static class SulongGetThrownObjectNodeImpl extends HeapFunctionNode implements SulongGetThrownObjectNode {
+    private static class SulongGetThrownObjectNodeImpl extends SulongGetThrownObjectNode {
 
         @Child private Node unbox = Message.UNBOX.createNode();
 
@@ -208,7 +188,7 @@ final class LLVMNativeFunctionsImpl implements LLVMNativeFunctions {
         }
     }
 
-    private static class SulongGetExceptionPointerNodeImpl extends HeapFunctionNode implements SulongGetExceptionPointerNode {
+    private static class SulongGetExceptionPointerNodeImpl extends SulongGetExceptionPointerNode {
 
         @Child private Node unbox = Message.UNBOX.createNode();
 
@@ -227,7 +207,7 @@ final class LLVMNativeFunctionsImpl implements LLVMNativeFunctions {
         }
     }
 
-    private static class SulongGetDestructorNodeImpl extends HeapFunctionNode implements SulongGetDestructorNode {
+    private static class SulongGetDestructorNodeImpl extends SulongGetDestructorNode {
 
         @Child private Node unbox = Message.UNBOX.createNode();
 
@@ -246,7 +226,7 @@ final class LLVMNativeFunctionsImpl implements LLVMNativeFunctions {
         }
     }
 
-    private static class SulongGetExceptionTypeNodeImpl extends HeapFunctionNode implements SulongGetExceptionTypeNode {
+    private static class SulongGetExceptionTypeNodeImpl extends SulongGetExceptionTypeNode {
 
         @Child private Node unbox = Message.UNBOX.createNode();
 
@@ -265,7 +245,7 @@ final class LLVMNativeFunctionsImpl implements LLVMNativeFunctions {
         }
     }
 
-    private static class SulongGetUnwindHeaderNodeImpl extends HeapFunctionNode implements SulongGetUnwindHeaderNode {
+    private static class SulongGetUnwindHeaderNodeImpl extends SulongGetUnwindHeaderNode {
 
         @Child private Node unbox = Message.UNBOX.createNode();
 
@@ -284,7 +264,7 @@ final class LLVMNativeFunctionsImpl implements LLVMNativeFunctions {
         }
     }
 
-    private static class DynamicCastNodeImpl extends HeapFunctionNode implements DynamicCastNode {
+    private static class DynamicCastNodeImpl extends DynamicCastNode {
 
         @Child private Node unbox = Message.UNBOX.createNode();
 
@@ -303,7 +283,7 @@ final class LLVMNativeFunctionsImpl implements LLVMNativeFunctions {
         }
     }
 
-    private static class SulongCanCatchNodeImpl extends HeapFunctionNode implements SulongCanCatchNode {
+    private static class SulongCanCatchNodeImpl extends SulongCanCatchNode {
 
         SulongCanCatchNodeImpl(TruffleObject function) {
             super(function, 3);
@@ -315,7 +295,7 @@ final class LLVMNativeFunctionsImpl implements LLVMNativeFunctions {
         }
     }
 
-    private static class SulongThrowNodeImpl extends HeapFunctionNode implements SulongThrowNode {
+    private static class SulongThrowNodeImpl extends SulongThrowNode {
 
         SulongThrowNodeImpl(TruffleObject function) {
             super(function, 5);
@@ -328,7 +308,7 @@ final class LLVMNativeFunctionsImpl implements LLVMNativeFunctions {
         }
     }
 
-    private static class SulongIncrementHandlerCountNodeImpl extends HeapFunctionNode implements SulongIncrementHandlerCountNode {
+    private static class SulongIncrementHandlerCountNodeImpl extends SulongIncrementHandlerCountNode {
 
         SulongIncrementHandlerCountNodeImpl(TruffleObject function) {
             super(function, 1);
@@ -340,7 +320,7 @@ final class LLVMNativeFunctionsImpl implements LLVMNativeFunctions {
         }
     }
 
-    private static class SulongDecrementHandlerCountNodeImpl extends HeapFunctionNode implements SulongDecrementHandlerCountNode {
+    private static class SulongDecrementHandlerCountNodeImpl extends SulongDecrementHandlerCountNode {
 
         SulongDecrementHandlerCountNodeImpl(TruffleObject function) {
             super(function, 1);
@@ -352,7 +332,7 @@ final class LLVMNativeFunctionsImpl implements LLVMNativeFunctions {
         }
     }
 
-    private static class SulongGetHandlerCountNodeImpl extends HeapFunctionNode implements SulongGetHandlerCountNode {
+    private static class SulongGetHandlerCountNodeImpl extends SulongGetHandlerCountNode {
 
         SulongGetHandlerCountNodeImpl(TruffleObject function) {
             super(function, 1);
@@ -364,7 +344,7 @@ final class LLVMNativeFunctionsImpl implements LLVMNativeFunctions {
         }
     }
 
-    private static class SulongSetHandlerCountNodeImpl extends HeapFunctionNode implements SulongSetHandlerCountNode {
+    private static class SulongSetHandlerCountNodeImpl extends SulongSetHandlerCountNode {
 
         SulongSetHandlerCountNodeImpl(TruffleObject function) {
             super(function, 2);
@@ -376,7 +356,7 @@ final class LLVMNativeFunctionsImpl implements LLVMNativeFunctions {
         }
     }
 
-    private static class SulongFreeExceptionNodeImpl extends HeapFunctionNode implements SulongFreeExceptionNode {
+    private static class SulongFreeExceptionNodeImpl extends SulongFreeExceptionNode {
 
         SulongFreeExceptionNodeImpl(TruffleObject function) {
             super(function, 1);
@@ -388,7 +368,7 @@ final class LLVMNativeFunctionsImpl implements LLVMNativeFunctions {
         }
     }
 
-    private static class MemCopyNodeImpl extends HeapFunctionNode implements MemCopyNode {
+    private static class MemCopyNodeImpl extends MemCopyNode {
 
         MemCopyNodeImpl(TruffleObject function) {
             super(function, 3);
@@ -400,7 +380,7 @@ final class LLVMNativeFunctionsImpl implements LLVMNativeFunctions {
         }
     }
 
-    private static class MemSetNodeImpl extends HeapFunctionNode implements MemSetNode {
+    private static class MemSetNodeImpl extends MemSetNode {
 
         MemSetNodeImpl(TruffleObject function) {
             super(function, 2);
@@ -412,7 +392,7 @@ final class LLVMNativeFunctionsImpl implements LLVMNativeFunctions {
         }
     }
 
-    private static class FreeNodeImpl extends HeapFunctionNode implements FreeNode {
+    private static class FreeNodeImpl extends FreeNode {
 
         FreeNodeImpl(TruffleObject function) {
             super(function, 1);
@@ -424,7 +404,7 @@ final class LLVMNativeFunctionsImpl implements LLVMNativeFunctions {
         }
     }
 
-    private static class MallocNodeImpl extends HeapFunctionNode implements MallocNode {
+    private static class MallocNodeImpl extends MallocNode {
 
         MallocNodeImpl(TruffleObject function) {
             super(function, 1);

@@ -68,7 +68,6 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -83,10 +82,9 @@ final class LLVMLiteralFactory {
     private LLVMLiteralFactory() {
     }
 
-    static LLVMExpressionNode createSimpleConstantNoArray(Object constant, Type type) {
+    static LLVMExpressionNode createSimpleConstantNoArray(LLVMContext context, Object constant, Type type) {
         if (Type.isFunctionOrFunctionPointer(type)) {
             if (constant == null) {
-                LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
                 LLVMFunctionDescriptor functionDescriptor = context.getZeroFunctionDescriptor();
                 return LLVMFunctionLiteralNodeGen.create(functionDescriptor);
             } else {

@@ -32,12 +32,12 @@ package com.oracle.truffle.llvm.nodes.func;
 import java.util.LinkedList;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 
 public final class LLVMBeginCatchNode extends LLVMExpressionNode {
@@ -45,21 +45,42 @@ public final class LLVMBeginCatchNode extends LLVMExpressionNode {
     @Child private LLVMExpressionNode exceptionPointer;
     @Child private LLVMNativeFunctions.SulongGetThrownObjectNode getThrownObject;
     @Child private LLVMNativeFunctions.SulongIncrementHandlerCountNode handlerCount;
-    private final LinkedList<LLVMAddress> caughtExceptionStack;
+    @CompilationFinal private LinkedList<LLVMAddress> caughtExceptionStack;
 
-    public LLVMBeginCatchNode(LLVMContext context, LLVMExpressionNode exceptionPointer) {
+    public LLVMBeginCatchNode(LLVMExpressionNode exceptionPointer) {
         this.exceptionPointer = exceptionPointer;
-        this.getThrownObject = context.getNativeFunctions().createGetThrownObject();
-        this.handlerCount = context.getNativeFunctions().createIncrementHandlerCount();
-        this.caughtExceptionStack = context.getCaughtExceptionStack();
+    }
+
+    public LLVMNativeFunctions.SulongGetThrownObjectNode getGetThrownObject() {
+        if (getThrownObject == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.getThrownObject = insert(getContext().getNativeFunctions().createGetThrownObject());
+        }
+        return getThrownObject;
+    }
+
+    public LLVMNativeFunctions.SulongIncrementHandlerCountNode getHandlerCount() {
+        if (handlerCount == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.handlerCount = insert(getContext().getNativeFunctions().createIncrementHandlerCount());
+        }
+        return handlerCount;
+    }
+
+    public LinkedList<LLVMAddress> getCaughtExceptionStack() {
+        if (caughtExceptionStack == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.caughtExceptionStack = getContext().getCaughtExceptionStack();
+        }
+        return caughtExceptionStack;
     }
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
         try {
             LLVMAddress ptr = exceptionPointer.executeLLVMAddress(frame);
-            LLVMAddress thrownObj = getThrownObject.getThrownObject(ptr);
-            handlerCount.inc(ptr);
+            LLVMAddress thrownObj = getGetThrownObject().getThrownObject(ptr);
+            getHandlerCount().inc(ptr);
             pushExceptionToStack(ptr);
             return thrownObj;
         } catch (UnexpectedResultException e) {
@@ -70,11 +91,11 @@ public final class LLVMBeginCatchNode extends LLVMExpressionNode {
 
     @TruffleBoundary
     private void pushExceptionToStack(LLVMAddress exc) {
-        if (caughtExceptionStack.size() > 0 && caughtExceptionStack.peek().getVal() == exc.getVal()) {
+        if (getCaughtExceptionStack().size() > 0 && getCaughtExceptionStack().peek().getVal() == exc.getVal()) {
             // exception already on stack
             return;
         }
-        caughtExceptionStack.push(exc);
+        getCaughtExceptionStack().push(exc);
     }
 
 }

@@ -45,8 +45,8 @@ public class LLVMStaticInitsBlockNode extends RootNode {
     private final FrameSlot stackSlot;
     private final LLVMStack stack;
 
-    public LLVMStaticInitsBlockNode(LLVMExpressionNode[] nodes, FrameDescriptor descriptor, LLVMContext llvmContext, FrameSlot stackSlot) {
-        super(LLVMLanguage.class, null, descriptor);
+    public LLVMStaticInitsBlockNode(LLVMLanguage language, LLVMExpressionNode[] nodes, FrameDescriptor descriptor, LLVMContext llvmContext, FrameSlot stackSlot) {
+        super(language, descriptor);
         this.nodes = nodes;
         this.stackSlot = stackSlot;
         stack = llvmContext.getStack();

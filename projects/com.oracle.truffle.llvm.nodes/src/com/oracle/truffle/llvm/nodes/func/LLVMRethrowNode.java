@@ -31,11 +31,12 @@ package com.oracle.truffle.llvm.nodes.func;
 
 import java.util.LinkedList;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 
@@ -43,29 +44,47 @@ public final class LLVMRethrowNode extends LLVMExpressionNode {
 
     public static final int RETHROWN_MARKER = Integer.MAX_VALUE;
 
-    private final LinkedList<LLVMAddress> caughtExceptionStack;
+    @CompilationFinal private LinkedList<LLVMAddress> caughtExceptionStack;
     @Child private LLVMNativeFunctions.SulongSetHandlerCountNode setHandlerCount;
     @Child private LLVMNativeFunctions.SulongGetExceptionPointerNode getExceptionPointer;
 
-    public LLVMRethrowNode(LLVMContext context) {
-        this.caughtExceptionStack = context.getCaughtExceptionStack();
-        this.setHandlerCount = context.getNativeFunctions().createSetHandlerCount();
-        this.getExceptionPointer = context.getNativeFunctions().createGetExceptionPointer();
+    public LinkedList<LLVMAddress> getCaughtExceptionStack() {
+        if (caughtExceptionStack == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            caughtExceptionStack = getContext().getCaughtExceptionStack();
+        }
+        return caughtExceptionStack;
+    }
+
+    public LLVMNativeFunctions.SulongSetHandlerCountNode getSetHandlerCount() {
+        if (setHandlerCount == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            setHandlerCount = insert(getContext().getNativeFunctions().createSetHandlerCount());
+        }
+        return setHandlerCount;
+    }
+
+    public LLVMNativeFunctions.SulongGetExceptionPointerNode getGetExceptionPointer() {
+        if (getExceptionPointer == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            getExceptionPointer = insert(getContext().getNativeFunctions().createGetExceptionPointer());
+        }
+        return getExceptionPointer;
     }
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
         LLVMAddress ptr = peekExceptionToStack();
-        LLVMAddress exceptionPointer = getExceptionPointer.getExceptionPointer(ptr);
+        LLVMAddress exceptionPointer = getGetExceptionPointer().getExceptionPointer(ptr);
         /*
          * this is not a hack, this is as suggested in the documentation
          */
-        setHandlerCount.set(ptr, RETHROWN_MARKER);
+        getSetHandlerCount().set(ptr, RETHROWN_MARKER);
         throw new LLVMException(exceptionPointer);
     }
 
     @TruffleBoundary
     private LLVMAddress peekExceptionToStack() {
-        return caughtExceptionStack.peek();
+        return getCaughtExceptionStack().peek();
     }
 }

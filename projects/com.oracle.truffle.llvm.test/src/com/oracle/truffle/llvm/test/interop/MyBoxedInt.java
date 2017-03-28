@@ -33,10 +33,9 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public final class MyBoxedInt implements TruffleObject {
     public int value = 42;
@@ -52,7 +51,7 @@ public final class MyBoxedInt implements TruffleObject {
 
             @Override
             public CallTarget accessUnbox() {
-                return Truffle.getRuntime().createCallTarget(new RootNode(LLVMLanguage.class, null, null) {
+                return Truffle.getRuntime().createCallTarget(new RootNode(null) {
 
                     @Override
                     public Object execute(VirtualFrame frame) {
@@ -93,7 +92,7 @@ public final class MyBoxedInt implements TruffleObject {
 
             @Override
             public CallTarget accessIsBoxed() {
-                return Truffle.getRuntime().createCallTarget(new RootNode(LLVMLanguage.class, null, null) {
+                return Truffle.getRuntime().createCallTarget(new RootNode(null) {
 
                     @Override
                     public Object execute(VirtualFrame frame) {

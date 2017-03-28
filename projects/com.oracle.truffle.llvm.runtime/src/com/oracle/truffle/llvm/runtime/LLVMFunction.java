@@ -35,6 +35,16 @@ import com.oracle.truffle.api.interop.TruffleObject;
 
 public abstract class LLVMFunction implements TruffleObject {
 
+    private final LLVMContext context;
+
+    public LLVMFunction(LLVMContext context) {
+        this.context = context;
+    }
+
+    public LLVMContext getContext() {
+        return context;
+    }
+
     public abstract int getFunctionIndex();
 
     public static boolean isInstance(TruffleObject object) {

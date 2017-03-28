@@ -35,7 +35,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 public final class LLVMCallNode extends LLVMExpressionNode {
@@ -46,10 +45,10 @@ public final class LLVMCallNode extends LLVMExpressionNode {
     @Children private final LLVMExpressionNode[] argumentNodes;
     @Child private LLVMLookupDispatchNode dispatchNode;
 
-    public LLVMCallNode(LLVMContext context, FunctionType functionType, LLVMExpressionNode functionNode, LLVMExpressionNode[] argumentNodes) {
+    public LLVMCallNode(FunctionType functionType, LLVMExpressionNode functionNode, LLVMExpressionNode[] argumentNodes) {
         this.functionNode = functionNode;
         this.argumentNodes = argumentNodes;
-        this.dispatchNode = LLVMLookupDispatchNodeGen.create(context, functionType);
+        this.dispatchNode = LLVMLookupDispatchNodeGen.create(functionType);
     }
 
     @ExplodeLoop

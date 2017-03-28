@@ -41,7 +41,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
@@ -87,20 +86,18 @@ public class LLVM {
         return new LLVMLanguage.LLVMLanguageProvider() {
 
             @Override
-            public CallTarget parse(Source code, Node contextNode, String... argumentNames) throws IOException {
+            public CallTarget parse(LLVMLanguage language, LLVMContext context, Source code, String... argumentNames) throws IOException {
                 try {
-                    return parse(code);
+                    return parse(language, context, code);
                 } catch (Throwable t) {
                     throw new IOException("Error while trying to parse " + code.getPath(), t);
                 }
             }
 
-            private CallTarget parse(Source code) throws IOException {
-                Node findContext = LLVMLanguage.INSTANCE.createFindContextNode0();
-                LLVMContext context = LLVMLanguage.INSTANCE.findContext0(findContext);
+            private CallTarget parse(LLVMLanguage language, LLVMContext context, Source code) throws IOException {
                 CallTarget mainFunction = null;
                 if (code.getMimeType().equals(LLVMLanguage.LLVM_BITCODE_MIME_TYPE) || code.getMimeType().equals(LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE)) {
-                    LLVMParserResult parserResult = parseBitcodeFile(code, context);
+                    LLVMParserResult parserResult = parseBitcodeFile(code, language, context);
                     mainFunction = parserResult.getMainFunction();
                     handleParserResult(context, parserResult);
                 } else if (code.getMimeType().equals(LLVMLanguage.SULONG_LIBRARY_MIME_TYPE)) {
@@ -116,7 +113,7 @@ public class LLVM {
                         try {
                             LLVMParserResult parserResult;
                             if (mimeType.equals(LLVMLanguage.LLVM_BITCODE_MIME_TYPE) || mimeType.equals(LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE)) {
-                                parserResult = parseBitcodeFile(source, context);
+                                parserResult = parseBitcodeFile(source, language, context);
                             } else {
                                 throw new UnsupportedOperationException(mimeType);
                             }
@@ -134,7 +131,7 @@ public class LLVM {
                 } else {
                     throw new IllegalArgumentException("undeclared mime type");
                 }
-                parseDynamicBitcodeLibraries(context);
+                parseDynamicBitcodeLibraries(language, context);
                 if (context.isParseOnly()) {
                     return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(mainFunction));
                 } else {
@@ -157,12 +154,12 @@ public class LLVM {
                 sharedLibraryConsumer.accept(source);
             }
 
-            private void parseDynamicBitcodeLibraries(LLVMContext context) throws IOException {
+            private void parseDynamicBitcodeLibraries(LLVMLanguage language, LLVMContext context) throws IOException {
                 if (!context.haveLoadedDynamicBitcodeLibraries()) {
                     context.setHaveLoadedDynamicBitcodeLibraries();
                     visitBitcodeLibraries(source -> {
                         try {
-                            getProvider().parse(source, null);
+                            getProvider().parse(language, context, source);
                         } catch (Throwable t) {
                             throw new RuntimeException("Error while trying to parse dynamic library " + source.getName(), t);
                         }
@@ -236,8 +233,8 @@ public class LLVM {
         System.exit(status);
     }
 
-    private static LLVMParserResult parseBitcodeFile(Source source, LLVMContext context) {
-        return LLVMParserRuntime.parse(source, context, getNodeFactoryFacade());
+    private static LLVMParserResult parseBitcodeFile(Source source, LLVMLanguage language, LLVMContext context) {
+        return LLVMParserRuntime.parse(source, language, context, getNodeFactoryFacade());
     }
 
     public static int executeMain(File file, Object... args) {

@@ -52,7 +52,9 @@ import com.oracle.truffle.llvm.parser.model.enums.CompareOperator;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalVariable;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -282,7 +284,7 @@ public interface NodeFactoryFacade {
      * @param intrinsicNode the existing function substitution node
      * @return the root node for the intrinsic
      */
-    RootNode createFunctionSubstitutionRootNode(LLVMExpressionNode intrinsicNode);
+    RootNode createFunctionSubstitutionRootNode(LLVMLanguage language, LLVMExpressionNode intrinsicNode);
 
     Object allocateGlobalVariable(LLVMParserRuntime runtime, GlobalVariable globalVariable);
 
@@ -299,7 +301,7 @@ public interface NodeFactoryFacade {
 
     LLVMStackFrameNuller createFrameNuller(LLVMParserRuntime runtime, String identifier, Type type, FrameSlot slot);
 
-    LLVMFunctionDescriptor createFunctionDescriptor(String name, FunctionType type, int functionIndex);
+    LLVMFunctionDescriptor createFunctionDescriptor(LLVMContext context, String name, FunctionType type, int functionIndex);
 
     LLVMFunctionDescriptor createAndRegisterFunctionDescriptor(LLVMParserRuntime runtime, String name, FunctionType functionType);
 

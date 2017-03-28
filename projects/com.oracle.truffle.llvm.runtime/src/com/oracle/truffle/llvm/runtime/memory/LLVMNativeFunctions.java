@@ -29,122 +29,213 @@
  */
 package com.oracle.truffle.llvm.runtime.memory;
 
-import com.oracle.truffle.api.nodes.NodeInterface;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 
-public interface LLVMNativeFunctions {
+public abstract class LLVMNativeFunctions {
 
-    MemCopyNode createMemMoveNode();
+    public abstract MemCopyNode createMemMoveNode();
 
-    MemCopyNode createMemCopyNode();
+    public abstract MemCopyNode createMemCopyNode();
 
-    MemSetNode createMemSetNode();
+    public abstract MemSetNode createMemSetNode();
 
-    FreeNode createFreeNode();
+    public abstract FreeNode createFreeNode();
 
-    MallocNode createMallocNode();
+    public abstract MallocNode createMallocNode();
 
-    DynamicCastNode createDynamicCast();
+    public abstract DynamicCastNode createDynamicCast();
 
-    SulongCanCatchNode createSulongCanCatch();
+    public abstract SulongCanCatchNode createSulongCanCatch();
 
-    SulongThrowNode createSulongThrow();
+    public abstract SulongThrowNode createSulongThrow();
 
-    SulongGetUnwindHeaderNode createGetUnwindHeader();
+    public abstract SulongGetUnwindHeaderNode createGetUnwindHeader();
 
-    SulongGetThrownObjectNode createGetThrownObject();
+    public abstract SulongGetThrownObjectNode createGetThrownObject();
 
-    SulongGetExceptionPointerNode createGetExceptionPointer();
+    public abstract SulongGetExceptionPointerNode createGetExceptionPointer();
 
-    SulongFreeExceptionNode createFreeException();
+    public abstract SulongFreeExceptionNode createFreeException();
 
-    SulongGetDestructorNode createGetDestructor();
+    public abstract SulongGetDestructorNode createGetDestructor();
 
-    SulongIncrementHandlerCountNode createIncrementHandlerCount();
+    public abstract SulongIncrementHandlerCountNode createIncrementHandlerCount();
 
-    SulongDecrementHandlerCountNode createDecrementHandlerCount();
+    public abstract SulongDecrementHandlerCountNode createDecrementHandlerCount();
 
-    SulongGetHandlerCountNode createGetHandlerCount();
+    public abstract SulongGetHandlerCountNode createGetHandlerCount();
 
-    SulongSetHandlerCountNode createSetHandlerCount();
+    public abstract SulongSetHandlerCountNode createSetHandlerCount();
 
-    SulongGetExceptionTypeNode createGetExceptionType();
+    public abstract SulongGetExceptionTypeNode createGetExceptionType();
 
-    public interface SulongIncrementHandlerCountNode extends NodeInterface {
-        void inc(LLVMAddress ptr);
+    protected static class HeapFunctionNode extends Node {
+
+        private final TruffleObject function;
+        @Child private Node nativeExecute;
+
+        protected HeapFunctionNode(TruffleObject function, int argCount) {
+            this.function = function;
+            this.nativeExecute = Message.createExecute(argCount).createNode();
+        }
+
+        protected Object execute(Object... args) {
+            try {
+                return ForeignAccess.sendExecute(nativeExecute, function, args);
+            } catch (InteropException e) {
+                throw new AssertionError(e);
+            }
+        }
     }
 
-    public interface SulongDecrementHandlerCountNode extends NodeInterface {
-        void dec(LLVMAddress ptr);
+    public abstract static class SulongIncrementHandlerCountNode extends HeapFunctionNode {
+        protected SulongIncrementHandlerCountNode(TruffleObject function, int argCount) {
+            super(function, argCount);
+        }
+
+        public abstract void inc(LLVMAddress ptr);
     }
 
-    public interface SulongGetHandlerCountNode extends NodeInterface {
-        int get(LLVMAddress ptr);
+    public abstract static class SulongDecrementHandlerCountNode extends HeapFunctionNode {
+        protected SulongDecrementHandlerCountNode(TruffleObject function, int argCount) {
+            super(function, argCount);
+        }
+
+        public abstract void dec(LLVMAddress ptr);
     }
 
-    public interface SulongSetHandlerCountNode extends NodeInterface {
-        void set(LLVMAddress ptr, int value);
+    public abstract static class SulongGetHandlerCountNode extends HeapFunctionNode {
+        protected SulongGetHandlerCountNode(TruffleObject function, int argCount) {
+            super(function, argCount);
+        }
+
+        public abstract int get(LLVMAddress ptr);
     }
 
-    public interface SulongFreeExceptionNode extends NodeInterface {
-        void free(LLVMAddress ptr);
+    public abstract static class SulongSetHandlerCountNode extends HeapFunctionNode {
+        protected SulongSetHandlerCountNode(TruffleObject function, int argCount) {
+            super(function, argCount);
+        }
+
+        public abstract void set(LLVMAddress ptr, int value);
     }
 
-    public interface SulongGetDestructorNode extends NodeInterface {
-        LLVMAddress get(LLVMAddress ptr);
+    public abstract static class SulongFreeExceptionNode extends HeapFunctionNode {
+        protected SulongFreeExceptionNode(TruffleObject function, int argCount) {
+            super(function, argCount);
+        }
+
+        public abstract void free(LLVMAddress ptr);
     }
 
-    public interface SulongGetExceptionTypeNode extends NodeInterface {
-        LLVMAddress get(LLVMAddress ptr);
+    public abstract static class SulongGetDestructorNode extends HeapFunctionNode {
+        protected SulongGetDestructorNode(TruffleObject function, int argCount) {
+            super(function, argCount);
+        }
+
+        public abstract LLVMAddress get(LLVMAddress ptr);
     }
 
-    public interface SulongGetUnwindHeaderNode extends NodeInterface {
-        LLVMAddress getUnwind(LLVMAddress ptr);
+    public abstract static class SulongGetExceptionTypeNode extends HeapFunctionNode {
+        protected SulongGetExceptionTypeNode(TruffleObject function, int argCount) {
+            super(function, argCount);
+        }
+
+        public abstract LLVMAddress get(LLVMAddress ptr);
     }
 
-    public interface SulongGetThrownObjectNode extends NodeInterface {
-        LLVMAddress getThrownObject(LLVMAddress ptr);
+    public abstract static class SulongGetUnwindHeaderNode extends HeapFunctionNode {
+        protected SulongGetUnwindHeaderNode(TruffleObject function, int argCount) {
+            super(function, argCount);
+        }
+
+        public abstract LLVMAddress getUnwind(LLVMAddress ptr);
     }
 
-    public interface SulongGetExceptionPointerNode extends NodeInterface {
-        LLVMAddress getExceptionPointer(LLVMAddress ptr);
+    public abstract static class SulongGetThrownObjectNode extends HeapFunctionNode {
+        protected SulongGetThrownObjectNode(TruffleObject function, int argCount) {
+            super(function, argCount);
+        }
+
+        public abstract LLVMAddress getThrownObject(LLVMAddress ptr);
     }
 
-    public interface SulongCanCatchNode extends NodeInterface {
+    public abstract static class SulongGetExceptionPointerNode extends HeapFunctionNode {
+        protected SulongGetExceptionPointerNode(TruffleObject function, int argCount) {
+            super(function, argCount);
+        }
+
+        public abstract LLVMAddress getExceptionPointer(LLVMAddress ptr);
+    }
+
+    public abstract static class SulongCanCatchNode extends HeapFunctionNode {
+        protected SulongCanCatchNode(TruffleObject function, int argCount) {
+            super(function, argCount);
+        }
+
         // bool sulong_eh_canCatch(void *adjustedPtr, __shim_type_info *excpType, __shim_type_info
         // *catchType)
-        int canCatch(LLVMAddress adjustedPtr, LLVMAddress excpType, LLVMAddress catchType);
+        public abstract int canCatch(LLVMAddress adjustedPtr, LLVMAddress excpType, LLVMAddress catchType);
     }
 
-    public interface SulongThrowNode extends NodeInterface {
+    public abstract static class SulongThrowNode extends HeapFunctionNode {
+        protected SulongThrowNode(TruffleObject function, int argCount) {
+            super(function, argCount);
+        }
+
         // void sulong_eh_throw(void *ptr, std::type_info *type, void (*destructor)(void *), void
         // (*unexpectedHandler)(void *), void (*terminateHandler)(void *))
-        void throvv(LLVMAddress ptr, LLVMAddress type, LLVMAddress destructor, LLVMAddress unexpectedHandler, LLVMAddress terminateHandler);
+        public abstract void throvv(LLVMAddress ptr, LLVMAddress type, LLVMAddress destructor, LLVMAddress unexpectedHandler, LLVMAddress terminateHandler);
     }
 
-    public interface DynamicCastNode extends NodeInterface {
+    public abstract static class DynamicCastNode extends HeapFunctionNode {
 
-        LLVMAddress execute(LLVMAddress object, LLVMAddress type1, LLVMAddress type2, long value);
+        protected DynamicCastNode(TruffleObject function, int argCount) {
+            super(function, argCount);
+        }
+
+        public abstract LLVMAddress execute(LLVMAddress object, LLVMAddress type1, LLVMAddress type2, long value);
     }
 
-    public interface MemCopyNode extends NodeInterface {
+    public abstract static class MemCopyNode extends HeapFunctionNode {
 
-        void execute(LLVMAddress target, LLVMAddress source, long length);
+        protected MemCopyNode(TruffleObject function, int argCount) {
+            super(function, argCount);
+        }
+
+        public abstract void execute(LLVMAddress target, LLVMAddress source, long length);
     }
 
-    public interface MemSetNode extends NodeInterface {
+    public abstract static class MemSetNode extends HeapFunctionNode {
 
-        void execute(LLVMAddress target, int value, long length);
+        protected MemSetNode(TruffleObject function, int argCount) {
+            super(function, argCount);
+        }
+
+        public abstract void execute(LLVMAddress target, int value, long length);
     }
 
-    public interface FreeNode extends NodeInterface {
+    public abstract static class FreeNode extends HeapFunctionNode {
 
-        void execute(LLVMAddress addr);
+        protected FreeNode(TruffleObject function, int argCount) {
+            super(function, argCount);
+        }
+
+        public abstract void execute(LLVMAddress addr);
     }
 
-    public interface MallocNode extends NodeInterface {
+    public abstract static class MallocNode extends HeapFunctionNode {
 
-        LLVMAddress execute(long size);
+        protected MallocNode(TruffleObject function, int argCount) {
+            super(function, argCount);
+        }
+
+        public abstract LLVMAddress execute(long size);
     }
 
 }

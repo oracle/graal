@@ -71,6 +71,7 @@ import com.oracle.truffle.llvm.parser.util.LLVMParserAsserts;
 import com.oracle.truffle.llvm.parser.util.Pair;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
@@ -84,7 +85,7 @@ import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 public final class LLVMParserRuntime {
 
-    public static LLVMParserResult parse(Source source, LLVMContext context, NodeFactoryFacade factoryFacade) {
+    public static LLVMParserResult parse(Source source, LLVMLanguage language, LLVMContext context, NodeFactoryFacade factoryFacade) {
         final BitcodeParserResult parserResult = BitcodeParserResult.getFromSource(source);
         final ModelModule model = parserResult.getModel();
         final StackAllocation stackAllocation = parserResult.getStackAllocation();
@@ -92,9 +93,9 @@ public final class LLVMParserRuntime {
         assert layout != null;
         final DataLayoutConverter.DataSpecConverterImpl targetDataLayout = DataLayoutConverter.getConverter(layout.getDataLayout());
 
-        final LLVMFunctionRegistry functionRegistry = new LLVMFunctionRegistry(context, factoryFacade);
+        final LLVMFunctionRegistry functionRegistry = new LLVMFunctionRegistry(language, context, factoryFacade);
 
-        final LLVMParserRuntime visitor = new LLVMParserRuntime(source, context, stackAllocation, parserResult.getLabels(), parserResult.getPhis(), targetDataLayout, factoryFacade,
+        final LLVMParserRuntime visitor = new LLVMParserRuntime(source, language, context, stackAllocation, parserResult.getLabels(), parserResult.getPhis(), targetDataLayout, factoryFacade,
                         functionRegistry);
         final LLVMModelVisitor module = new LLVMModelVisitor(visitor, functionRegistry);
         model.accept(module);
@@ -126,6 +127,8 @@ public final class LLVMParserRuntime {
 
     private final LLVMContext context;
 
+    private final LLVMLanguage language;
+
     private final LLVMLabelList labels;
 
     private final LLVMPhiManager phis;
@@ -150,7 +153,7 @@ public final class LLVMParserRuntime {
 
     private final LLVMFunctionRegistry functionRegistry;
 
-    private LLVMParserRuntime(Source source, LLVMContext context, StackAllocation stack, LLVMLabelList labels, LLVMPhiManager phis,
+    private LLVMParserRuntime(Source source, LLVMLanguage language, LLVMContext context, StackAllocation stack, LLVMLabelList labels, LLVMPhiManager phis,
                     DataLayoutConverter.DataSpecConverterImpl layout, NodeFactoryFacade factoryFacade, LLVMFunctionRegistry functionRegistry) {
         this.source = source;
         this.context = context;
@@ -160,6 +163,7 @@ public final class LLVMParserRuntime {
         this.targetDataLayout = layout;
         this.factoryFacade = factoryFacade;
         this.functionRegistry = functionRegistry;
+        this.language = language;
         this.symbolResolver = new LLVMSymbolResolver(labels, this);
     }
 
@@ -531,5 +535,9 @@ public final class LLVMParserRuntime {
 
     public LLVMFunctionRegistry getLLVMFunctionRegistry() {
         return functionRegistry;
+    }
+
+    public LLVMLanguage getLanguage() {
+        return language;
     }
 }

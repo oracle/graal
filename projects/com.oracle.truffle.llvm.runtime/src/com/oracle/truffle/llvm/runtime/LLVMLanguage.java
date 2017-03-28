@@ -33,7 +33,6 @@ import java.io.IOException;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 
 @TruffleLanguage.Registration(name = "Sulong", version = "0.01", mimeType = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE,
@@ -66,12 +65,14 @@ public final class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     public static final String SULONG_LIBRARY_MIME_TYPE = "application/x-sulong-library";
     public static final String SULONG_LIBRARY_EXTENSION = "su";
 
-    public static final LLVMLanguage INSTANCE = new LLVMLanguage();
+    public LLVMLanguage() {
+
+    }
 
     public interface LLVMLanguageProvider {
         LLVMContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env);
 
-        CallTarget parse(Source code, Node context, String... argumentNames) throws IOException;
+        CallTarget parse(LLVMLanguage language, LLVMContext context, Source code, String... argumentNames) throws IOException;
 
         void disposeContext(LLVMContext context);
     }
@@ -96,13 +97,14 @@ public final class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected void disposeContext(LLVMContext context) {
+        context.printNativeCallStatistic();
         provider.disposeContext(context);
     }
 
     @Override
     protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
         Source source = request.getSource();
-        return provider.parse(source, request.getLocation(), request.getArgumentNames().toArray(new String[request.getArgumentNames().size()]));
+        return provider.parse(this, findLLVMContext(), source, request.getArgumentNames().toArray(new String[request.getArgumentNames().size()]));
     }
 
     @Override
@@ -128,12 +130,8 @@ public final class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         throw new AssertionError();
     }
 
-    public LLVMContext findContext0(Node node) {
-        return findContext(node);
-    }
-
-    public Node createFindContextNode0() {
-        return createFindContextNode();
+    public LLVMContext findLLVMContext() {
+        return getContextReference().get();
     }
 
 }

@@ -38,7 +38,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMException;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -103,14 +102,14 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
         @Children private final LLVMExpressionNode[] argumentNodes;
         @Child private LLVMLookupDispatchNode dispatchNode;
 
-        public LLVMFunctionInvokeNode(LLVMContext context, FunctionType type, LLVMExpressionNode functionNode, LLVMExpressionNode[] argumentNodes, FrameSlot returnValueSlot,
+        public LLVMFunctionInvokeNode(FunctionType type, LLVMExpressionNode functionNode, LLVMExpressionNode[] argumentNodes, FrameSlot returnValueSlot,
                         FrameSlot exceptionValueSlot,
                         int normalSuccessor, int unwindSuccessor,
                         LLVMExpressionNode[] normalPhiWriteNodes, LLVMExpressionNode[] unwindPhiWriteNodes) {
             super(type, returnValueSlot, exceptionValueSlot, normalSuccessor, unwindSuccessor, normalPhiWriteNodes, unwindPhiWriteNodes);
             this.functionNode = functionNode;
             this.argumentNodes = argumentNodes;
-            this.dispatchNode = LLVMLookupDispatchNodeGen.create(context, type);
+            this.dispatchNode = LLVMLookupDispatchNodeGen.create(type);
         }
 
         @Override

@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.c;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -57,7 +58,8 @@ public abstract class LLVMAtExit extends LLVMIntrinsic {
     @Specialization
     @TruffleBoundary
     public int doInt(LLVMFunction func) {
-        LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
+        CompilerDirectives.transferToInterpreter();
+        LLVMContext context = getContext();
 
         LLVMExpressionNode[] args = {new LLVMAddressLiteralNode(context.getStack().getUpperBounds())};
         Type[] argsTypes = {new PointerType(null)};
@@ -65,13 +67,12 @@ public abstract class LLVMAtExit extends LLVMIntrinsic {
         LLVMFunctionDescriptor desc = context.lookup(func);
         LLVMExpressionNode functionNode = LLVMFunctionLiteralNodeGen.create(desc);
 
-        LLVMCallNode callNode = new LLVMCallNode(context, new FunctionType(VoidType.INSTANCE, argsTypes, false), functionNode, args);
+        LLVMCallNode callNode = new LLVMCallNode(new FunctionType(VoidType.INSTANCE, argsTypes, false), functionNode, args);
 
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(
-                        new LLVMFunctionStartNode(callNode,
+                        new LLVMFunctionStartNode(getRootNode().getLanguage(LLVMLanguage.class), callNode,
                                         new LLVMExpressionNode[]{},
                                         new LLVMExpressionNode[]{},
-                                        null,
                                         new FrameDescriptor(),
                                         null,
                                         new LLVMStackFrameNuller[0], 1));

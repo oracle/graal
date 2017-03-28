@@ -32,26 +32,33 @@ package com.oracle.truffle.llvm.nodes.func;
 import java.util.LinkedList;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.DestructorStackElement;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 
 public final class LLVMAtExitNode extends LLVMExpressionNode {
 
-    private final LinkedList<DestructorStackElement> destructorStack;
+    @CompilationFinal private LinkedList<DestructorStackElement> destructorStack;
     @Child private LLVMExpressionNode destructor;
     @Child private LLVMExpressionNode thiz;
     @Child private LLVMExpressionNode dsoHandle;
 
-    public LLVMAtExitNode(LLVMContext context, LLVMExpressionNode destructor, LLVMExpressionNode thiz, LLVMExpressionNode dsoHandle) {
+    public LLVMAtExitNode(LLVMExpressionNode destructor, LLVMExpressionNode thiz, LLVMExpressionNode dsoHandle) {
         this.destructor = destructor;
         this.thiz = thiz;
         this.dsoHandle = dsoHandle;
-        this.destructorStack = context.getDestructorStack();
+    }
+
+    public LinkedList<DestructorStackElement> getDestructorStack() {
+        if (destructorStack == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.destructorStack = getContext().getDestructorStack();
+        }
+        return destructorStack;
     }
 
     @Override
@@ -70,7 +77,7 @@ public final class LLVMAtExitNode extends LLVMExpressionNode {
 
     @TruffleBoundary
     private void addDestructorStackElement(LLVMFunctionDescriptor d, LLVMAddress t, @SuppressWarnings("unused") LLVMAddress h) {
-        destructorStack.push(new DestructorStackElement(d, t));
+        getDestructorStack().push(new DestructorStackElement(d, t));
     }
 
 }

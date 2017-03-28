@@ -39,18 +39,15 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMFrameUtil;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-@NodeFields({@NodeField(type = int.class, name = "size"), @NodeField(type = int.class, name = "alignment"), @NodeField(type = LLVMContext.class, name = "context"),
+@NodeFields({@NodeField(type = int.class, name = "size"), @NodeField(type = int.class, name = "alignment"),
                 @NodeField(type = FrameSlot.class, name = "stackPointerSlot"), @NodeField(type = Type.class, name = "symbolType")})
 public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
 
     abstract int getSize();
 
     abstract int getAlignment();
-
-    abstract LLVMContext getContext();
 
     abstract FrameSlot getStackPointerSlot();
 

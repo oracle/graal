@@ -33,6 +33,8 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.Message;
@@ -41,21 +43,21 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 @SuppressWarnings("unused")
-public abstract class LLVMDispatchNode extends Node {
+public abstract class LLVMDispatchNode extends LLVMNode {
 
     protected static final int INLINE_CACHE_SIZE = 5;
 
-    private final LLVMContext context;
     private final FunctionType type;
     @CompilationFinal private String signature;
 
-    protected LLVMDispatchNode(LLVMContext context, FunctionType type) {
-        this.context = context;
+    protected LLVMDispatchNode(FunctionType type) {
         this.type = type;
     }
 
@@ -91,13 +93,13 @@ public abstract class LLVMDispatchNode extends Node {
                     @Cached("bindSymbol(frame, cachedDescriptor)") TruffleObject cachedBoundFunction) {
 
         Object[] nativeArgs = prepareNativeArguments(frame, arguments, toNative);
-        Object returnValue = LLVMNativeCallUtils.callNativeFunction(nativeCall, cachedBoundFunction, nativeArgs);
+        Object returnValue = LLVMNativeCallUtils.callNativeFunction(getContext(), nativeCall, cachedBoundFunction, nativeArgs, cachedDescriptor);
         return fromNative.executeConvert(frame, returnValue);
     }
 
     protected TruffleObject bindSymbol(VirtualFrame frame, LLVMFunctionDescriptor descriptor) {
         CompilerAsserts.neverPartOfCompilation();
-        return LLVMNativeCallUtils.bindNativeSymbol(LLVMNativeCallUtils.getBindNode(), context.resolveAsNativeFunction(descriptor), getSignature());
+        return LLVMNativeCallUtils.bindNativeSymbol(LLVMNativeCallUtils.getBindNode(), getContext().resolveAsNativeFunction(descriptor), getSignature());
     }
 
     @Specialization(replaces = "doCachedNative", guards = "descriptor.getCallTarget() == null")
@@ -108,8 +110,8 @@ public abstract class LLVMDispatchNode extends Node {
                     @Cached("getBindNode()") Node bindNode) {
 
         Object[] nativeArgs = prepareNativeArguments(frame, arguments, toNative);
-        TruffleObject boundSymbol = LLVMNativeCallUtils.bindNativeSymbol(bindNode, context.resolveAsNativeFunction(descriptor), getSignature());
-        Object returnValue = LLVMNativeCallUtils.callNativeFunction(nativeCall, boundSymbol, nativeArgs);
+        TruffleObject boundSymbol = LLVMNativeCallUtils.bindNativeSymbol(bindNode, getContext().resolveAsNativeFunction(descriptor), getSignature());
+        Object returnValue = LLVMNativeCallUtils.callNativeFunction(getContext(), nativeCall, boundSymbol, nativeArgs, descriptor);
         return fromNative.executeConvert(frame, returnValue);
     }
 
@@ -137,7 +139,7 @@ public abstract class LLVMDispatchNode extends Node {
     protected LLVMNativeConvertNode[] createToNativeNodes() {
         LLVMNativeConvertNode[] ret = new LLVMNativeConvertNode[type.getArgumentTypes().length - 1];
         for (int i = 1; i < type.getArgumentTypes().length; i++) {
-            ret[i - 1] = LLVMNativeConvertNode.createToNative(context, type.getArgumentTypes()[i]);
+            ret[i - 1] = LLVMNativeConvertNode.createToNative(type.getArgumentTypes()[i]);
         }
         return ret;
     }

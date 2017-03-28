@@ -36,7 +36,8 @@ public final class LLVMFunctionHandle extends LLVMFunction {
 
     private final int functionIndex;
 
-    public LLVMFunctionHandle(int functionIndex) {
+    public LLVMFunctionHandle(LLVMContext context, int functionIndex) {
+        super(context);
         this.functionIndex = functionIndex;
     }
 
