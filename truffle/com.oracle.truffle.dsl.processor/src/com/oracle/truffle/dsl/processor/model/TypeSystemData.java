@@ -35,7 +35,6 @@ import javax.lang.model.type.TypeMirror;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
-@SuppressWarnings("deprecation")
 public class TypeSystemData extends Template {
 
     private final List<ImplicitCastData> implicitCasts = new ArrayList<>();
@@ -47,8 +46,9 @@ public class TypeSystemData extends Template {
 
     private final boolean isDefault;
 
-    private final com.oracle.truffle.api.dsl.internal.DSLOptions options;
+    @SuppressWarnings("deprecation") private final com.oracle.truffle.api.dsl.internal.DSLOptions options;
 
+    @SuppressWarnings("deprecation")
     public TypeSystemData(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation, com.oracle.truffle.api.dsl.internal.DSLOptions options, boolean isDefault) {
         super(context, templateType, annotation);
         this.options = options;
@@ -59,6 +59,7 @@ public class TypeSystemData extends Template {
         return isDefault;
     }
 
+    @SuppressWarnings("deprecation")
     public com.oracle.truffle.api.dsl.internal.DSLOptions getOptions() {
         return options;
     }

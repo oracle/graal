@@ -170,8 +170,7 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
             return Arrays.asList(type);
         }
 
-        com.oracle.truffle.api.dsl.internal.DSLOptions.DSLGenerator generator = node.getTypeSystem().getOptions().defaultGenerator();
-        switch (generator) {
+        switch (node.getTypeSystem().getOptions().defaultGenerator()) {
             case FLAT:
                 type = new FlatNodeGenFactory(context, node).create(type);
                 break;
