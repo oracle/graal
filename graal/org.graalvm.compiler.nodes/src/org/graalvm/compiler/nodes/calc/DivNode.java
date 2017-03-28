@@ -58,9 +58,8 @@ public class DivNode extends BinaryArithmeticNode<Div> {
         ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp);
         if (tryConstantFold != null) {
             return tryConstantFold;
-        } else {
-            return new DivNode(x, y);
         }
+        return canonical(null, op, x, y);
     }
 
     @Override
@@ -70,9 +69,13 @@ public class DivNode extends BinaryArithmeticNode<Div> {
             return ret;
         }
 
+        return canonical(this, getOp(forX, forY), forX, forY);
+    }
+
+    private static ValueNode canonical(DivNode self, BinaryOp<Div> op, ValueNode forX, ValueNode forY) {
         if (forY.isConstant()) {
             Constant c = forY.asConstant();
-            if (getOp(forX, forY).isNeutral(c)) {
+            if (op.isNeutral(c)) {
                 return forX;
             }
             if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getJavaKind().isNumericInteger()) {
@@ -95,7 +98,7 @@ public class DivNode extends BinaryArithmeticNode<Div> {
                 }
             }
         }
-        return this;
+        return self != null ? self : new DivNode(forX, forY);
     }
 
     @Override
