@@ -49,6 +49,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -99,6 +100,11 @@ public class SLParseInContextTest {
             return Truffle.getRuntime().createCallTarget(new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
+                    return parseAndEval();
+                }
+
+                @TruffleBoundary
+                private Object parseAndEval() {
                     Source aPlusB = Source.newBuilder("a + b").mimeType("application/x-sl").name("plus.sl").build();
                     return getContextReference().get().parse(aPlusB, "a", "b").call(30, 12);
                 }

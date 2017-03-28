@@ -240,7 +240,7 @@ public final class SLContext {
         return ((Number) a).longValue();
     }
 
-    public CallTarget parse(Source source) throws Exception {
+    public CallTarget parse(Source source) {
         return env.parse(source);
     }
 

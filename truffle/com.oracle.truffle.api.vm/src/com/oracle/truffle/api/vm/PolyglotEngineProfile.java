@@ -83,7 +83,7 @@ final class PolyglotEngineProfile {
         } else {
             ThreadLocal<PolyglotEngine> tlstore = threadStore;
             assert tlstore != null;
-            tlstore.set(prev);
+            setThreadLocalStore(tlstore, prev);
         }
     }
 
