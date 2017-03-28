@@ -1283,6 +1283,15 @@ public class NodeParser extends AbstractParser<NodeData> {
                     cacheExpression = new CacheExpression(parameter, annotationMirror, null);
                     cacheExpression.addError("Error parsing expression '%s': %s", initializer, e.getMessage());
                 }
+
+                if (!cacheExpression.hasErrors()) {
+                    if (parameterType.getKind() == TypeKind.ARRAY) {
+                        Cached cached = cacheExpression.getParameter().getVariableElement().getAnnotation(Cached.class);
+                        if (cached.dimensions() == -1) {
+                            cacheExpression.addWarning("The cached dimensions attribute must be specified for array types.");
+                        }
+                    }
+                }
                 expressions.add(cacheExpression);
             }
         }

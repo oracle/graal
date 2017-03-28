@@ -15,6 +15,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added [Scope](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/metadata/Scope.html) for instruments to get a list of scopes enclosing the given node. The scopes contain variables valid at the provided node.
 * Added [DebugScope](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/debug/DebugScope.html), [DebugStackFrame.getScope](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/debug/DebugStackFrame.html#getScope--) and [DebugValue.getScope](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/debug/DebugValue.html#getScope--) to allow debuggers to retrieve the scope information and associated variables.
 * Deprecated [DebugStackFrame.iterator](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/debug/DebugStackFrame.html) and [DebugStackFrame.getValue](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/debug/DebugStackFrame.html), [DebugStackFrame.getScope](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/debug/DebugStackFrame.html#getScope--) is to be used instead.
+* Added [Cached.dimensions()](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/dsl/Cached.html) to specify compilation finalness of cached arrays.
 
 ## Version 0.25
 3-Apr-2017

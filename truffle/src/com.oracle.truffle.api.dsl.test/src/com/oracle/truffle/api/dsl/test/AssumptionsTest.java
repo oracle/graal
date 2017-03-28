@@ -28,6 +28,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.fail;
 
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -35,6 +36,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -43,6 +45,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionArrayTestFactory;
+import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionArraysAreCompilationFinalFactory.AssumptionArraysAreCompilationFinalNodeGen;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionInvalidateTest1NodeGen;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionInvalidateTest2NodeGen;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionInvalidateTest3NodeGen;
@@ -477,6 +480,28 @@ public class AssumptionsTest {
             Assumption a = Truffle.getRuntime().createAssumption();
             assumptions = a;
             return a;
+        }
+    }
+
+    @Test
+    public void testAssumptionArraysAreCompilationFinal() throws NoSuchFieldException, SecurityException {
+        Field field = AssumptionArraysAreCompilationFinalNodeGen.class.getDeclaredField("do1_assumption0_");
+        field.setAccessible(true);
+        assertEquals(Assumption[].class, field.getType());
+        CompilationFinal compilationFinal = field.getAnnotation(CompilationFinal.class);
+        assertEquals(1, compilationFinal.dimensions());
+    }
+
+    @NodeChild
+    static class AssumptionArraysAreCompilationFinal extends ValueNode {
+
+        @Specialization(assumptions = "createAssumptions()")
+        static int do1(int value) {
+            return value;
+        }
+
+        Assumption[] createAssumptions() {
+            return new Assumption[]{Truffle.getRuntime().createAssumption()};
         }
     }
 

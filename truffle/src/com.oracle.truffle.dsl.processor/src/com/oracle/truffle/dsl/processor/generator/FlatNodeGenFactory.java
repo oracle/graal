@@ -62,6 +62,7 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -481,38 +482,45 @@ public class FlatNodeGenFactory {
             for (CacheExpression cache : specialization.getCaches()) {
                 Parameter parameter = cache.getParameter();
                 String fieldName = createFieldName(specialization, parameter);
-                Class<?> anotationType = null;
                 TypeMirror type = parameter.getType();
-                Modifier[] modifiers = new Modifier[0];
                 Modifier visibility = useSpecializationClass ? null : Modifier.PRIVATE;
+                CodeVariableElement cachedField;
                 if (ElementUtils.isAssignable(type, context.getType(Node.class))) {
-                    anotationType = Child.class;
+                    cachedField = createNodeField(visibility, type, fieldName, Child.class);
                 } else if (ElementUtils.isAssignable(type, context.getType(Node[].class))) {
-                    anotationType = Children.class;
-                    modifiers = new Modifier[]{Modifier.FINAL};
+                    cachedField = createNodeField(visibility, type, fieldName, Children.class, Modifier.FINAL);
                 } else {
                     if (useSpecializationClass) {
-                        modifiers = new Modifier[]{Modifier.FINAL};
+                        cachedField = createNodeField(visibility, type, fieldName, null, Modifier.FINAL);
                     } else {
-                        anotationType = CompilationFinal.class;
+                        cachedField = createNodeField(visibility, type, fieldName, null);
                     }
+                    setFieldCompilationFinal(cachedField, parameter.getVariableElement().getAnnotation(Cached.class).dimensions());
                 }
-                fields.add(createNodeField(visibility, type, fieldName, anotationType, modifiers));
+                fields.add(cachedField);
             }
 
             for (AssumptionExpression assumption : specialization.getAssumptionExpressions()) {
                 String fieldName = createAssumptionFieldName(specialization, assumption);
                 TypeMirror type;
+                int compilationFinalDimensions;
                 if (assumption.getExpression().getResolvedType().getKind() == TypeKind.ARRAY) {
                     type = context.getType(Assumption[].class);
+                    compilationFinalDimensions = 1;
                 } else {
                     type = context.getType(Assumption.class);
+                    compilationFinalDimensions = -1;
                 }
+                CodeVariableElement assumptionField;
                 if (useSpecializationClass) {
-                    fields.add(createNodeField(null, type, fieldName, null, Modifier.FINAL));
+                    assumptionField = createNodeField(null, type, fieldName, null, Modifier.FINAL);
                 } else {
-                    fields.add(createNodeField(PRIVATE, type, fieldName, CompilationFinal.class));
+                    assumptionField = createNodeField(PRIVATE, type, fieldName, null);
                 }
+
+                setFieldCompilationFinal(assumptionField, compilationFinalDimensions);
+
+                fields.add(assumptionField);
             }
 
             if (useSpecializationClass) {
@@ -558,6 +566,18 @@ public class FlatNodeGenFactory {
             }
 
         }
+    }
+
+    private static void setFieldCompilationFinal(CodeVariableElement field, int compilationFinalDimensions) {
+        if (field.getModifiers().contains(Modifier.FINAL) && compilationFinalDimensions <= 0) {
+            // no need for the compilation final annotation.
+            return;
+        }
+        CodeAnnotationMirror annotation = new CodeAnnotationMirror(ProcessorContext.getInstance().getDeclaredType(CompilationFinal.class));
+        if (compilationFinalDimensions > 0) {
+            annotation.setElementValue(annotation.findExecutableElement("dimensions"), new CodeAnnotationValue(compilationFinalDimensions));
+        }
+        field.getAnnotationMirrors().add(annotation);
     }
 
     /* Specialization class needs to be a Node in such a case. */

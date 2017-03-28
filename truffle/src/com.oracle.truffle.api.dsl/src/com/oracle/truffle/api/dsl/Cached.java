@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.dsl;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node;
 
 import java.lang.annotation.ElementType;
@@ -233,5 +234,23 @@ public @interface Cached {
      * @see Cached
      */
     String value();
+
+    /**
+     * Specifies the number of array dimensions to be marked as {@link CompilationFinal compilation
+     * final}. This value must be for all array-typed cached values and should be left unspecified
+     * for other field types for which it has no meaning.
+     *
+     * The allowed range is from 0 to the number of declared array dimensions (inclusive).
+     * Specifically, a {@code dimensions} value of 0 marks only the reference to the (outermost)
+     * array as final but not its elements, a value of 1 marks the outermost array and all its
+     * elements as final but not the elements of any nested arrays.
+     *
+     * If not specified and the cached value type is an array type then this will cause a warning
+     * and in later releases and error.
+     *
+     * @since 0.25
+     * @see CompilationFinal#dimensions()
+     */
+    int dimensions() default -1;
 
 }
