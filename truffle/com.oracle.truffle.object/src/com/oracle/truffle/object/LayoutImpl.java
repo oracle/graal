@@ -101,7 +101,9 @@ public abstract class LayoutImpl extends Layout {
     protected abstract Location getPrimitiveArrayLocation();
 
     /** @since 0.17 or earlier */
-    protected abstract int objectFieldIndex(Location location);
+    protected int objectFieldIndex(@SuppressWarnings("unused") Location location) {
+        throw new UnsupportedOperationException();
+    }
 
     /** @since 0.17 or earlier */
     @Override
