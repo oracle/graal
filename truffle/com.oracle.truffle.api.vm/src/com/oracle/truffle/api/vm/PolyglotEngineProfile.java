@@ -60,7 +60,10 @@ final class PolyglotEngineProfile {
         if (constantStoreAssumption.isValid()) {
             // we can skip the constantEntered check in compiled code, because we are assume we are
             // always entered in such cases.
-            store = (CompilerDirectives.inCompiledCode() || constantEntered) ? constantStore.get() : null;
+            // TODO logic is temporarily disabled due to behavior that depends on it
+            // store = (CompilerDirectives.inCompiledCode() || constantEntered) ?
+            // constantStore.get() : null;
+            store = constantStore.get();
         } else if (dynamicStoreAssumption.isValid()) {
             // multiple context single thread
             store = dynamicStore;
