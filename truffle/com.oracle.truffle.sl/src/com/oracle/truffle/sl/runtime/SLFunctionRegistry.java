@@ -114,11 +114,4 @@ public final class SLFunctionRegistry {
         return result;
     }
 
-    public SLFunctionRegistry fork() {
-        SLFunctionRegistry registry = new SLFunctionRegistry(language);
-        for (SLFunction f : functions.values()) {
-            registry.functions.put(f.getName(), f.fork());
-        }
-        return registry;
-    }
 }

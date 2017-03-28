@@ -168,6 +168,9 @@ public abstract class RootNode extends Node {
         CompilerAsserts.neverPartOfCompilation();
         if (language != null) {
             this.languageInfo = Node.ACCESSOR.languageSupport().getLanguageInfo(language);
+            if (languageInfo == null) {
+                throw new IllegalArgumentException("Truffle language instance is not initialized.");
+            }
         } else {
             this.languageInfo = null;
         }

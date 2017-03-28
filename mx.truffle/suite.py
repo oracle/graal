@@ -33,9 +33,9 @@ suite = {
       "sourceUrls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jline-2.11-sources.jar"],
       "sourceSha1" : "ef2539b992e5605be966b6db7cfc83930f0da39b",
       "maven" : {
-      	"groupId" : "jline",
-    	"artifactId" : "jline",
-    	"version" : "2.11",
+        "groupId" : "jline",
+        "artifactId" : "jline",
+        "version" : "2.11",
       }
     },
 
