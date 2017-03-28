@@ -27,6 +27,8 @@ import java.util.Collections;
 import java.util.Map;
 
 /** @since 0.17 or earlier */
+@SuppressWarnings("all")
+@Deprecated
 public abstract class DebugShapeVisitor<R> implements ShapeVisitor<R> {
     /**
      * @since 0.17 or earlier

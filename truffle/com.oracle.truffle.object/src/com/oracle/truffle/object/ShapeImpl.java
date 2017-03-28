@@ -937,6 +937,7 @@ public abstract class ShapeImpl extends Shape {
     }
 
     /** @since 0.17 or earlier */
+    @SuppressWarnings("deprecation")
     public <R> R accept(ShapeVisitor<R> visitor) {
         return visitor.visitShape(this);
     }

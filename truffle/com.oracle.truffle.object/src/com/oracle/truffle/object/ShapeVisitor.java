@@ -25,6 +25,7 @@ package com.oracle.truffle.object;
 import com.oracle.truffle.api.object.Shape;
 
 /** @since 0.17 or earlier */
+@Deprecated
 public interface ShapeVisitor<R> {
     /** @since 0.17 or earlier */
     R visitShape(Shape shape);
