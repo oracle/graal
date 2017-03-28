@@ -22,8 +22,11 @@
  */
 package org.graalvm.compiler.nodes.calc;
 
+import jdk.vm.ci.meta.JavaConstant;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.ShiftOp.Shl;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
@@ -43,6 +46,18 @@ public final class LeftShiftNode extends ShiftNode<Shl> {
         super(TYPE, ArithmeticOpTable::getShl, x, y);
     }
 
+    public static ValueNode create(ValueNode x, ValueNode y) {
+        ArithmeticOpTable.ShiftOp<Shl> op = ArithmeticOpTable.forStamp(x.stamp()).getShl();
+        Stamp stamp = op.foldStamp(x.stamp(), (IntegerStamp) y.stamp());
+        if (x.isConstant() && y.isConstant()) {
+            JavaConstant amount = y.asJavaConstant();
+            assert amount.getJavaKind() == JavaKind.Int;
+            return ConstantNode.forPrimitive(stamp, op.foldConstant(x.asConstant(), amount.asInt()));
+        }
+
+        return canonical(null, op, stamp, x, y);
+    }
+
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         ValueNode ret = super.canonical(tool, forX, forY);
@@ -50,10 +65,15 @@ public final class LeftShiftNode extends ShiftNode<Shl> {
             return ret;
         }
 
+        return canonical(this, getArithmeticOp(), stamp(), forX, forY);
+    }
+
+    private static ValueNode canonical(LeftShiftNode leftShiftNode, ArithmeticOpTable.ShiftOp<Shl> op, Stamp stamp, ValueNode forX, ValueNode forY) {
+        LeftShiftNode self = leftShiftNode;
         if (forY.isConstant()) {
             int amount = forY.asJavaConstant().asInt();
             int originalAmout = amount;
-            int mask = getShiftAmountMask();
+            int mask = op.getShiftAmountMask(stamp);
             amount &= mask;
             if (amount == 0) {
                 return forX;
@@ -65,14 +85,14 @@ public final class LeftShiftNode extends ShiftNode<Shl> {
                     if (other instanceof LeftShiftNode) {
                         int total = amount + otherAmount;
                         if (total != (total & mask)) {
-                            return ConstantNode.forIntegerKind(getStackKind(), 0);
+                            return ConstantNode.forIntegerKind(stamp.getStackKind(), 0);
                         }
                         return new LeftShiftNode(other.getX(), ConstantNode.forInt(total));
                     } else if ((other instanceof RightShiftNode || other instanceof UnsignedRightShiftNode) && otherAmount == amount) {
-                        if (getStackKind() == JavaKind.Long) {
+                        if (stamp.getStackKind() == JavaKind.Long) {
                             return new AndNode(other.getX(), ConstantNode.forLong(-1L << amount));
                         } else {
-                            assert getStackKind() == JavaKind.Int;
+                            assert stamp.getStackKind() == JavaKind.Int;
                             return new AndNode(other.getX(), ConstantNode.forInt(-1 << amount));
                         }
                     }
@@ -82,7 +102,10 @@ public final class LeftShiftNode extends ShiftNode<Shl> {
                 return new LeftShiftNode(forX, ConstantNode.forInt(amount));
             }
         }
-        return this;
+        if (self == null) {
+            self = new LeftShiftNode(forX, forY);
+        }
+        return self;
     }
 
     @Override
