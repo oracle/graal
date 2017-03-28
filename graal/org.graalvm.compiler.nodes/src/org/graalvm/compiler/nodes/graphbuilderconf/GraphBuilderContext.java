@@ -70,8 +70,9 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     void push(JavaKind kind, ValueNode value);
 
     /**
-     * Adds a node to the graph. If the returned node is a {@link StateSplit} with a null
-     * {@linkplain StateSplit#stateAfter() frame state}, the frame state is initialized.
+     * Adds a node to the graph. If the node is in the graph, returns immediately. If the node is a
+     * {@link StateSplit} with a null {@linkplain StateSplit#stateAfter() frame state}, the frame
+     * state is initialized.
      *
      * @param value the value to add to the graph and push to the stack. The
      *            {@code value.getJavaKind()} kind is used when type checking this operation.
@@ -83,6 +84,30 @@ public interface GraphBuilderContext extends GraphBuilderTool {
             return value;
         }
         T equivalentValue = append(value);
+        if (equivalentValue instanceof StateSplit) {
+            StateSplit stateSplit = (StateSplit) equivalentValue;
+            if (stateSplit.stateAfter() == null && stateSplit.hasSideEffect()) {
+                setStateAfter(stateSplit);
+            }
+        }
+        return equivalentValue;
+    }
+
+    /**
+     * Adds a node and its inputs to the graph. If the node is in the graph, returns immediately. If
+     * the node is a {@link StateSplit} with a null {@linkplain StateSplit#stateAfter() frame state}
+     * , the frame state is initialized.
+     *
+     * @param value the value to add to the graph and push to the stack. The
+     *            {@code value.getJavaKind()} kind is used when type checking this operation.
+     * @return a node equivalent to {@code value} in the graph
+     */
+    default <T extends ValueNode> T addWithInputs(T value) {
+        if (value.graph() != null) {
+            assert !(value instanceof StateSplit) || ((StateSplit) value).stateAfter() != null;
+            return value;
+        }
+        T equivalentValue = recursiveAppend(value);
         if (equivalentValue instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) equivalentValue;
             if (stateSplit.stateAfter() == null && stateSplit.hasSideEffect()) {

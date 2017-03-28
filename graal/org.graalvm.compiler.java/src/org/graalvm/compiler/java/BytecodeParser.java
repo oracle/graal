@@ -3236,7 +3236,7 @@ public class BytecodeParser implements GraphBuilderContext {
         if (from != from.getStackKind()) {
             input = append(genNarrow(input, from.getBitCount()));
         }
-        frameState.push(to, append(genSignExtend(input, to.getBitCount())));
+        frameState.push(to, recursiveAppend(genSignExtend(input, to.getBitCount())));
     }
 
     private void genZeroExtend(JavaKind from, JavaKind to) {
