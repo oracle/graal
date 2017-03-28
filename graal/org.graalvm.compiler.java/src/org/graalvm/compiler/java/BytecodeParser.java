@@ -890,7 +890,7 @@ public class BytecodeParser implements GraphBuilderContext {
      */
     protected void handleUnresolvedCheckCast(JavaType type, ValueNode object) {
         assert !graphBuilderConfig.eagerResolving();
-        append(new FixedGuardNode(graph.unique(IsNullNode.create(object)), Unresolved, InvalidateRecompile));
+        append(new FixedGuardNode(graph.addOrUniqueWithInputs(IsNullNode.create(object)), Unresolved, InvalidateRecompile));
         frameState.push(JavaKind.Object, appendConstant(JavaConstant.NULL_POINTER));
     }
 
@@ -902,7 +902,7 @@ public class BytecodeParser implements GraphBuilderContext {
         assert !graphBuilderConfig.eagerResolving();
         AbstractBeginNode successor = graph.add(new BeginNode());
         DeoptimizeNode deopt = graph.add(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-        append(new IfNode(graph.unique(IsNullNode.create(object)), successor, deopt, 1));
+        append(new IfNode(graph.addOrUniqueWithInputs(IsNullNode.create(object)), successor, deopt, 1));
         lastInstr = successor;
         frameState.push(JavaKind.Int, appendConstant(JavaConstant.INT_0));
     }
@@ -1146,7 +1146,7 @@ public class BytecodeParser implements GraphBuilderContext {
         genInfoPointNode(InfopointReason.BYTECODE_POSITION, null);
 
         ValueNode exception = frameState.pop(JavaKind.Object);
-        FixedGuardNode nullCheck = append(new FixedGuardNode(graph.unique(IsNullNode.create(exception)), NullCheckException, InvalidateReprofile, true));
+        FixedGuardNode nullCheck = append(new FixedGuardNode(graph.addOrUniqueWithInputs(IsNullNode.create(exception)), NullCheckException, InvalidateReprofile, true));
         PiNode nonNullException = graph.unique(new PiNode(exception, exception.stamp().join(objectNonNull()), nullCheck));
         lastInstr.setNext(handleException(nonNullException, bci()));
     }
@@ -1203,7 +1203,7 @@ public class BytecodeParser implements GraphBuilderContext {
         BytecodeExceptionNode exception = graph.add(new BytecodeExceptionNode(metaAccess, NullPointerException.class));
         AbstractBeginNode falseSucc = graph.add(new BeginNode());
         PiNode nonNullReceiver = graph.unique(new PiNode(receiver, objectNonNull(), falseSucc));
-        append(new IfNode(graph.unique(IsNullNode.create(receiver)), exception, falseSucc, 0.01));
+        append(new IfNode(graph.addOrUniqueWithInputs(IsNullNode.create(receiver)), exception, falseSucc, 0.01));
         lastInstr = falseSucc;
 
         exception.setStateAfter(createFrameState(bci(), exception));
