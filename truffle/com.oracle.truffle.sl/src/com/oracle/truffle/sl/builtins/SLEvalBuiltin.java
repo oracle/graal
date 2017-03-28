@@ -75,12 +75,7 @@ public abstract class SLEvalBuiltin extends SLBuiltinNode {
 
     protected CallTarget parse(String mimeType, String code) {
         final Source source = Source.newBuilder(code).name("(eval)").mimeType(mimeType).build();
-
-        try {
-            return getContext().parse(source);
-        } catch (Exception ex) {
-            throw new IllegalArgumentException(ex);
-        }
+        return getContext().parse(source);
     }
 
     /* Work around findbugs warning in generate code. */

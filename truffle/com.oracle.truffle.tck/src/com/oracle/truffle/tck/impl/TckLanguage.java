@@ -28,6 +28,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -88,15 +89,22 @@ public final class TckLanguage extends TruffleLanguage<Env> {
         @Override
         public Object execute(VirtualFrame frame) {
             Env env = getLanguage(TckLanguage.class).getContextReference().get();
-            if (frame.getArguments().length == 0) {
+            Object[] arguments = frame.getArguments();
+            return parseAndEval(env, arguments);
+        }
+
+        @TruffleBoundary
+        private Object parseAndEval(Env env, Object[] arguments) {
+            if (arguments.length == 0) {
                 return this;
             }
+            CallTarget call;
             try {
-                CallTarget call = env.parse(code, (String) frame.getArguments()[1], (String) frame.getArguments()[2]);
-                return call.call(6, 7);
+                call = env.parse(code, (String) arguments[1], (String) arguments[2]);
             } catch (Exception ex) {
                 throw new AssertionError("Cannot parse " + code, ex);
             }
+            return call.call(6, 7);
         }
 
         @Override
