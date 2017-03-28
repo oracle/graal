@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.c;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -146,6 +147,17 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         public long executeIntrinsic(long value) {
             return Math.abs(value);
+        }
+
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMToUpper extends LLVMIntrinsic {
+
+        @Specialization
+        @TruffleBoundary
+        public int executeIntrinsic(int value) {
+            return Character.toUpperCase(value);
         }
 
     }
