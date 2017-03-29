@@ -78,7 +78,9 @@ public class ObjectType {
      *
      * @param shape the shape for which to create the data object
      * @since 0.8 or earlier
+     * @deprecated without replacement
      */
+    @Deprecated
     public Object createShapeData(Shape shape) {
         return null;
     }

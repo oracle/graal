@@ -75,6 +75,7 @@ import com.oracle.truffle.object.Transition.ShareShapeTransition;
  * @see Locations
  * @since 0.17 or earlier
  */
+@SuppressWarnings("deprecation")
 public abstract class ShapeImpl extends Shape {
     private final int id;
 
@@ -823,6 +824,7 @@ public abstract class ShapeImpl extends Shape {
     }
 
     /** @since 0.17 or earlier */
+    @Deprecated
     @Override
     public final Object getData() {
         return extraData;

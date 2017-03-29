@@ -24,6 +24,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Deprecated [ExecutionContext](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/ExecutionContext.html) without replacement.
 * Added [TruffleInstrument.Registration.services()](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Registration#services) to support declarative registration of services
 * Deprecated internal class DSLOptions. Will be removed in the next release.
+* Deprecated [Shape.getData()](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/object/Shape.html) and [ObjectType.createShapeData(Shape)](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/object/ObjectType.html) without replacement.
 
 ## Version 0.24
 1-Mar-2017

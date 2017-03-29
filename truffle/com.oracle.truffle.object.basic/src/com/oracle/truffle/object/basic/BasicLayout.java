@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.object.basic;
 
+import java.util.EnumSet;
+
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Location;
@@ -32,10 +34,6 @@ import com.oracle.truffle.api.object.Shape.Allocator;
 import com.oracle.truffle.object.LayoutImpl;
 import com.oracle.truffle.object.LayoutStrategy;
 import com.oracle.truffle.object.LocationImpl.InternalLongLocation;
-import com.oracle.truffle.object.basic.BasicLocations.ObjectFieldLocation;
-import com.oracle.truffle.object.basic.BasicLocations.SimpleObjectFieldLocation;
-
-import java.util.EnumSet;
 
 public class BasicLayout extends LayoutImpl {
     private final ObjectLocation[] objectFields;
@@ -108,16 +106,5 @@ public class BasicLayout extends LayoutImpl {
         LayoutImpl layout = this;
         Allocator allocator = getStrategy().createAllocator(layout);
         return allocator;
-    }
-
-    @Override
-    protected int objectFieldIndex(Location location) {
-        if (location instanceof ObjectFieldLocation) {
-            return ((ObjectFieldLocation) location).getIndex();
-        } else if (location instanceof SimpleObjectFieldLocation) {
-            return ((SimpleObjectFieldLocation) location).getIndex();
-        } else {
-            return 0;
-        }
     }
 }
