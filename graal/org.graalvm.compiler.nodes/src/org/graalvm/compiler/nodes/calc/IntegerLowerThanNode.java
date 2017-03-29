@@ -72,9 +72,10 @@ public abstract class IntegerLowerThanNode extends CompareNode {
             if (forX.isJavaConstant() && !forY.isConstant()) {
                 // bring the constant on the right
                 long xValue = forX.asJavaConstant().asLong();
-                assert xValue != getOp().maxValue(bits) : "MAX < y should be handled by findSynonym";
-                // c < x <=> !(c >= x) <=> !(x <= c) <=> !(x < c + 1)
-                return LogicNegationNode.create(getOp().create(forY, ConstantNode.forIntegerStamp(yStamp, xValue + 1), tool.getConstantReflection()));
+                if (xValue != getOp().maxValue(bits)) {
+                    // c < x <=> !(c >= x) <=> !(x <= c) <=> !(x < c + 1)
+                    return LogicNegationNode.create(getOp().create(forY, ConstantNode.forIntegerStamp(yStamp, xValue + 1), tool.getConstantReflection()));
+                }
             }
             if (forY.isJavaConstant()) {
                 long yValue = forY.asJavaConstant().asLong();
@@ -86,7 +87,6 @@ public abstract class IntegerLowerThanNode extends CompareNode {
                     // x < MIN + 1 <=> x <= MIN <=> x == MIN
                     return CompareNode.createCompareNode(Condition.EQ, forX, ConstantNode.forIntegerStamp(yStamp, getOp().minValue(bits)), tool.getConstantReflection());
                 }
-                assert yValue != getOp().minValue(bits) : "x < MIN should be handled by findSynonym";
             } else if (forY instanceof AddNode) {
                 AddNode addNode = (AddNode) forY;
                 ValueNode canonical = canonicalizeXLowerXPlusA(forX, addNode, false, true);
