@@ -39,7 +39,6 @@ import com.oracle.truffle.llvm.nodes.func.LLVMFreeExceptionNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMRethrowNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMThrowExceptionNode;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 
 final class LLVMExceptionIntrinsicFactory {
@@ -47,25 +46,25 @@ final class LLVMExceptionIntrinsicFactory {
     private LLVMExceptionIntrinsicFactory() {
     }
 
-    static LLVMExpressionNode create(LLVMContext context, String name, LLVMExpressionNode[] argNodes, int numberOfExplicitArguments, LLVMParserRuntime runtime,
+    static LLVMExpressionNode create(String name, LLVMExpressionNode[] argNodes, int numberOfExplicitArguments, LLVMParserRuntime runtime,
                     FrameSlot exceptionValueSlot) {
-        return create(context, name, argNodes, numberOfExplicitArguments, runtime.getStackPointerSlot(), exceptionValueSlot);
+        return create(name, argNodes, numberOfExplicitArguments, runtime.getStackPointerSlot(), exceptionValueSlot);
     }
 
     @SuppressWarnings("unused")
-    private static LLVMExpressionNode create(LLVMContext context, String functionName, LLVMExpressionNode[] argNodes, int numberOfExplicitArguments, FrameSlot stack, FrameSlot exceptionValueSlot) {
+    private static LLVMExpressionNode create(String functionName, LLVMExpressionNode[] argNodes, int numberOfExplicitArguments, FrameSlot stack, FrameSlot exceptionValueSlot) {
         if (functionName.equals("@__cxa_throw")) {
-            return new LLVMThrowExceptionNode(context, argNodes[1], argNodes[2], argNodes[3]);
+            return new LLVMThrowExceptionNode(argNodes[1], argNodes[2], argNodes[3]);
         } else if (functionName.equals("@__cxa_rethrow")) {
-            return new LLVMRethrowNode(context);
+            return new LLVMRethrowNode();
         } else if (functionName.equals("@__cxa_begin_catch")) {
-            return new LLVMBeginCatchNode(context, argNodes[1]);
+            return new LLVMBeginCatchNode(argNodes[1]);
         } else if (functionName.equals("@__cxa_end_catch")) {
-            return new LLVMEndCatchNode(context, argNodes[0]);
+            return new LLVMEndCatchNode(argNodes[0]);
         } else if (functionName.equals("@__cxa_free_exception")) {
-            return new LLVMFreeExceptionNode(context, argNodes[1]);
+            return new LLVMFreeExceptionNode(argNodes[1]);
         } else if (functionName.equals("@__cxa_atexit")) {
-            return new LLVMAtExitNode(context, argNodes[1], argNodes[2], argNodes[3]);
+            return new LLVMAtExitNode(argNodes[1], argNodes[2], argNodes[3]);
         } else if (functionName.equals("@__cxa_call_unexpected")) {
             return new LLVMExpressionNode() {
                 @Override

@@ -34,7 +34,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -44,21 +43,26 @@ public final class LLVMFreeExceptionNode extends LLVMExpressionNode {
 
     @Child private LLVMExpressionNode exceptionPointer;
     @Child private LLVMNativeFunctions.SulongFreeExceptionNode freeException;
-    @Child private LLVMNativeFunctions.SulongGetDestructorNode getDestructor;
     @Child private LLVMLookupDispatchNode destructorDispatch;
 
-    public LLVMFreeExceptionNode(LLVMContext context, LLVMExpressionNode exceptionPointer) {
+    public LLVMFreeExceptionNode(LLVMExpressionNode exceptionPointer) {
         this.exceptionPointer = exceptionPointer;
-        this.freeException = context.getNativeFunctions().createFreeException();
-        this.getDestructor = context.getNativeFunctions().createGetDestructor();
-        this.destructorDispatch = LLVMLookupDispatchNodeGen.create(context, new FunctionType(VoidType.INSTANCE, new Type[]{}, false));
+        this.destructorDispatch = LLVMLookupDispatchNodeGen.create(new FunctionType(VoidType.INSTANCE, new Type[]{}, false));
+    }
+
+    public LLVMNativeFunctions.SulongFreeExceptionNode getFreeException() {
+        if (freeException == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.freeException = insert(getContext().getNativeFunctions().createFreeException());
+        }
+        return freeException;
     }
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
         try {
             LLVMAddress ptr = exceptionPointer.executeLLVMAddress(frame);
-            freeException.free(ptr);
+            getFreeException().free(ptr);
             return null;
         } catch (UnexpectedResultException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();

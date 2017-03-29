@@ -41,8 +41,8 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
  */
 public abstract class LLVMIntrinsicRootNode extends RootNode {
 
-    LLVMIntrinsicRootNode() {
-        super(LLVMLanguage.class, null, new FrameDescriptor());
+    LLVMIntrinsicRootNode(LLVMLanguage language) {
+        super(language, new FrameDescriptor());
     }
 
     public abstract LLVMExpressionNode getNode();
@@ -54,6 +54,10 @@ public abstract class LLVMIntrinsicRootNode extends RootNode {
 
     @NodeChild(type = LLVMExpressionNode.class, value = "node")
     public abstract static class LLVMIntrinsicExpressionNode extends LLVMIntrinsicRootNode {
+
+        public LLVMIntrinsicExpressionNode(LLVMLanguage language) {
+            super(language);
+        }
 
         @Specialization
         public Object execute(Object val) {

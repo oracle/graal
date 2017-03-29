@@ -35,7 +35,6 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions.FreeNode;
 
 public class LLVMX86_64BitVAEnd extends LLVMExpressionNode {
@@ -43,9 +42,16 @@ public class LLVMX86_64BitVAEnd extends LLVMExpressionNode {
     @Child private LLVMExpressionNode target;
     @Child private FreeNode free;
 
-    public LLVMX86_64BitVAEnd(LLVMNativeFunctions heapFunctions, LLVMExpressionNode target) {
+    public LLVMX86_64BitVAEnd(LLVMExpressionNode target) {
         this.target = target;
-        this.free = heapFunctions.createFreeNode();
+    }
+
+    public FreeNode getFree() {
+        if (free == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.free = insert(getContext().getNativeFunctions().createFreeNode());
+        }
+        return free;
     }
 
     @Override
@@ -53,7 +59,7 @@ public class LLVMX86_64BitVAEnd extends LLVMExpressionNode {
         try {
             LLVMAddress address = target.executeLLVMAddress(frame);
             LLVMAddress regSaveArea = LLVMMemory.getAddress(address.increment(X86_64BitVarArgs.REG_SAVE_AREA));
-            free.execute(regSaveArea);
+            getFree().execute(regSaveArea);
         } catch (UnexpectedResultException e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);

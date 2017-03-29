@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -42,7 +43,6 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions.MallocNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -58,13 +58,20 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
     @Child private Node isBoxedNode = Message.IS_BOXED.createNode();
     @Child private Node unboxNode = Message.UNBOX.createNode();
 
-    public LLVMX86_64BitVAStart(LLVMNativeFunctions heapFunctions, int numberOfExplicitArguments, LLVMExpressionNode target) {
+    public LLVMX86_64BitVAStart(int numberOfExplicitArguments, LLVMExpressionNode target) {
         if (numberOfExplicitArguments < 0) {
             throw new AssertionError();
         }
         this.numberOfExplicitArguments = numberOfExplicitArguments;
         this.target = target;
-        this.malloc = heapFunctions.createMallocNode();
+    }
+
+    public MallocNode getMalloc() {
+        if (malloc == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.malloc = insert(getContext().getNativeFunctions().createMallocNode());
+        }
+        return malloc;
     }
 
     private enum VarArgArea {
@@ -101,7 +108,7 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
             int fpOffset = X86_64BitVarArgs.MAX_GP_OFFSET;
             int overFlowOffset = 0;
             int size = getSize(types);
-            LLVMAddress savedRegs = malloc.execute(size);
+            LLVMAddress savedRegs = getMalloc().execute(size);
             LLVMMemory.putAddress(address.increment(X86_64BitVarArgs.REG_SAVE_AREA), savedRegs);
             LLVMAddress overflowArea = savedRegs.increment(X86_64BitVarArgs.MAX_FP_OFFSET);
             LLVMMemory.putAddress(address.increment(X86_64BitVarArgs.OVERFLOW_ARG_AREA), overflowArea);
@@ -241,7 +248,7 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
     void allocateOverflowArgArea(Type type, VirtualFrame frame, LLVMAddress address, int varArgsStartIndex, int nrVarArgs, int typeLength, final int nrVarArgsInRegisterArea) {
         if (nrVarArgsInRegisterArea != nrVarArgs) {
             final int remainingVarArgs = nrVarArgs - nrVarArgsInRegisterArea;
-            LLVMAddress stackArea = malloc.execute(typeLength * remainingVarArgs);
+            LLVMAddress stackArea = getMalloc().execute(typeLength * remainingVarArgs);
             LLVMMemory.putAddress(address.increment(X86_64BitVarArgs.OVERFLOW_ARG_AREA), stackArea);
             LLVMAddress currentAddress = stackArea;
             for (int i = nrVarArgsInRegisterArea; i < nrVarArgs; i++) {

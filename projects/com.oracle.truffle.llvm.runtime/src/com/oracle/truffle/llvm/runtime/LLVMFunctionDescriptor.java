@@ -43,7 +43,8 @@ public final class LLVMFunctionDescriptor extends LLVMFunction implements Compar
     private TruffleObject nativeSymbol;
     private RootCallTarget intrinsic;
 
-    private LLVMFunctionDescriptor(String name, FunctionType type, int functionId) {
+    private LLVMFunctionDescriptor(LLVMContext context, String name, FunctionType type, int functionId) {
+        super(context);
         this.functionName = name;
         this.type = type;
         this.functionId = functionId;
@@ -51,8 +52,8 @@ public final class LLVMFunctionDescriptor extends LLVMFunction implements Compar
         this.nativeSymbol = null;
     }
 
-    public static LLVMFunctionDescriptor create(String name, FunctionType type, int functionId) {
-        LLVMFunctionDescriptor func = new LLVMFunctionDescriptor(name, type, functionId);
+    public static LLVMFunctionDescriptor create(LLVMContext context, String name, FunctionType type, int functionId) {
+        LLVMFunctionDescriptor func = new LLVMFunctionDescriptor(context, name, type, functionId);
         return func;
     }
 

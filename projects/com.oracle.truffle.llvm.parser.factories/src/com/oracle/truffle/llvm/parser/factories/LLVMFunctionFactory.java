@@ -143,16 +143,15 @@ final class LLVMFunctionFactory {
     }
 
     static LLVMExpressionNode createFunctionCall(LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType functionType) {
-        LLVMCallNode unresolvedCallNode = new LLVMCallNode(LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()),
-                        functionType, functionNode, argNodes);
+        LLVMCallNode unresolvedCallNode = new LLVMCallNode(functionType, functionNode, argNodes);
         return createUnresolvedNodeWrapping(functionType.getReturnType(), unresolvedCallNode);
     }
 
     static LLVMControlFlowNode createFunctionInvoke(LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type, FrameSlot returnvalueSlot,
                     FrameSlot exceptionValueSlot,
                     int normalIndex, int unwindIndex, LLVMExpressionNode[] normalPhiWriteNodes, LLVMExpressionNode[] unwindPhiWriteNodes) {
-        LLVMInvokeNode unresolvedInvokeNode = new LLVMInvokeNode.LLVMFunctionInvokeNode(LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()),
-                        type, functionNode, argNodes, returnvalueSlot, exceptionValueSlot, normalIndex, unwindIndex, normalPhiWriteNodes,
+        LLVMInvokeNode unresolvedInvokeNode = new LLVMInvokeNode.LLVMFunctionInvokeNode(type, functionNode, argNodes, returnvalueSlot, exceptionValueSlot, normalIndex, unwindIndex,
+                        normalPhiWriteNodes,
                         unwindPhiWriteNodes);
         return unresolvedInvokeNode;
     }
@@ -201,22 +200,22 @@ final class LLVMFunctionFactory {
                         normalPhiWriteNodes, unwindPhiWriteNodes);
     }
 
-    static RootNode createGlobalRootNodeWrapping(RootCallTarget mainCallTarget, Type returnType) {
+    static RootNode createGlobalRootNodeWrapping(LLVMLanguage language, RootCallTarget mainCallTarget, Type returnType) {
         if (returnType instanceof VoidType) {
-            return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnVoidRootNode(mainCallTarget);
+            return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnVoidRootNode(language, mainCallTarget);
         } else if (returnType instanceof VariableBitWidthType) {
-            return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnIVarBitRootNode(mainCallTarget);
+            return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnIVarBitRootNode(language, mainCallTarget);
         } else if (returnType instanceof PrimitiveType) {
             switch (((PrimitiveType) returnType).getPrimitiveKind()) {
                 case I1:
-                    return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnI1RootNode(mainCallTarget);
+                    return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnI1RootNode(language, mainCallTarget);
                 case I8:
                 case I16:
                 case I32:
                 case I64:
                 case FLOAT:
                 case DOUBLE:
-                    return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnNumberRootNode(mainCallTarget);
+                    return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnNumberRootNode(language, mainCallTarget);
                 default:
                     throw new AssertionError(returnType);
             }
@@ -229,13 +228,13 @@ final class LLVMFunctionFactory {
         return LLVMArgNodeGen.create(realIndex);
     }
 
-    static RootNode createFunctionSubstitutionRootNode(LLVMExpressionNode intrinsicNode) {
-        return LLVMIntrinsicExpressionNodeGen.create(intrinsicNode);
+    static RootNode createFunctionSubstitutionRootNode(LLVMLanguage language, LLVMExpressionNode intrinsicNode) {
+        return LLVMIntrinsicExpressionNodeGen.create(language, intrinsicNode);
     }
 
-    public static LLVMExpressionNode createLandingpad(LLVMParserRuntime runtime, LLVMExpressionNode allocateLandingPadValue, FrameSlot exceptionSlot,
+    public static LLVMExpressionNode createLandingpad(LLVMExpressionNode allocateLandingPadValue, FrameSlot exceptionSlot,
                     boolean cleanup, LLVMLandingpadNode.LandingpadEntryNode[] entires) {
-        return new LLVMLandingpadNode(runtime.getContext(), allocateLandingPadValue, exceptionSlot, cleanup, entires);
+        return new LLVMLandingpadNode(allocateLandingPadValue, exceptionSlot, cleanup, entires);
 
     }
 

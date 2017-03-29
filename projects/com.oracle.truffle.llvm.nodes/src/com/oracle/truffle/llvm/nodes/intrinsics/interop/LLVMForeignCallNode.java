@@ -41,7 +41,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
@@ -54,13 +53,11 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 abstract class LLVMForeignCallNode extends LLVMExpressionNode {
 
     private final LLVMStack stack;
-    private final LLVMContext context;
     @Child private ToLLVMNode slowConvertNode;
     @Child protected LLVMDataEscapeNode prepareValueForEscape = LLVMDataEscapeNodeGen.create();
 
-    protected LLVMForeignCallNode(LLVMContext context) {
-        this.stack = context.getStack();
-        this.context = context;
+    protected LLVMForeignCallNode(LLVMStack stack) {
+        this.stack = stack;
         this.slowConvertNode = ToLLVMNode.createNode(null);
     }
 
@@ -109,7 +106,7 @@ abstract class LLVMForeignCallNode extends LLVMExpressionNode {
     }
 
     protected LLVMFunctionDescriptor lookupFunction(LLVMFunctionHandle function) {
-        return context.lookup(function);
+        return getContext().lookup(function);
     }
 
     // no explodeLoop - length not constant

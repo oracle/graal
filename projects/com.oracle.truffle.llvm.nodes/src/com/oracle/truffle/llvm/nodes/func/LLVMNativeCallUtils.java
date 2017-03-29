@@ -33,10 +33,14 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 public final class LLVMNativeCallUtils {
 
@@ -54,13 +58,21 @@ public final class LLVMNativeCallUtils {
         }
     }
 
-    static Object callNativeFunction(Node nativeCall, TruffleObject function, Object[] nativeArgs) {
+    static Object callNativeFunction(LLVMContext context, Node nativeCall, TruffleObject function, Object[] nativeArgs, LLVMFunctionDescriptor descriptor) {
+        if (LLVMOptions.ENGINE.traceNativeCalls()) {
+            traceNativeCall(context, descriptor);
+        }
         try {
             return ForeignAccess.sendExecute(nativeCall, function, nativeArgs);
         } catch (Throwable e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(function + Arrays.toString(nativeArgs), e);
         }
+    }
+
+    @TruffleBoundary
+    private static void traceNativeCall(LLVMContext context, LLVMFunctionDescriptor descriptor) {
+        context.registerNativeCall(descriptor);
     }
 
     public static TruffleObject bindNativeSymbol(TruffleObject symbol, String signature) {

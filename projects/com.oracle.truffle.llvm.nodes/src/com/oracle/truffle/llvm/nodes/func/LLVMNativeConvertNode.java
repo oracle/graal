@@ -39,11 +39,12 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMNativeConvertNodeFactory.AddressToNativeNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMNativeConvertNodeFactory.FunctionToNativeNodeGen;
+import com.oracle.truffle.llvm.nodes.func.LLVMNativeConvertNodeFactory.IdNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMNativeConvertNodeFactory.NativeToAddressNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
@@ -52,24 +53,24 @@ import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-abstract class LLVMNativeConvertNode extends Node {
+abstract class LLVMNativeConvertNode extends LLVMNode {
 
     public abstract Object executeConvert(VirtualFrame frame, Object arg);
 
-    static LLVMNativeConvertNode createToNative(LLVMContext context, Type argType) {
+    static LLVMNativeConvertNode createToNative(Type argType) {
         if (Type.isFunctionOrFunctionPointer(argType)) {
-            return FunctionToNativeNodeGen.create(context);
+            return FunctionToNativeNodeGen.create();
         } else if (argType instanceof PointerType) {
             return AddressToNativeNodeGen.create();
         }
-        return new Id();
+        return IdNodeGen.create();
     }
 
     static LLVMNativeConvertNode createFromNative(Type retType) {
         if (retType instanceof PointerType) {
             return NativeToAddressNodeGen.create();
         }
-        return new Id();
+        return IdNodeGen.create();
     }
 
     protected abstract static class AddressToNative extends LLVMNativeConvertNode {
@@ -131,12 +132,6 @@ abstract class LLVMNativeConvertNode extends Node {
     @SuppressWarnings("unused")
     protected abstract static class FunctionToNative extends LLVMNativeConvertNode {
 
-        private final LLVMContext context;
-
-        protected FunctionToNative(LLVMContext context) {
-            this.context = context;
-        }
-
         @Specialization(limit = "10", guards = {"function.getFunctionIndex() == cachedFunction.getFunctionIndex()", "cachedFunction.getCallTarget() == null"})
         protected static TruffleObject doDirect(LLVMFunctionDescriptor function,
                         @Cached("function") LLVMFunctionDescriptor cachedFunction,
@@ -174,19 +169,20 @@ abstract class LLVMNativeConvertNode extends Node {
         }
 
         protected TruffleObject resolveAsNative(LLVMFunctionDescriptor descriptor) {
-            return context.resolveAsNativeFunction(descriptor);
+            return getContext().resolveAsNativeFunction(descriptor);
         }
 
         protected LLVMFunctionDescriptor doLookup(LLVMFunctionHandle handle) {
-            return context.lookup(handle);
+            return getContext().lookup(handle);
         }
     }
 
-    private static final class Id extends LLVMNativeConvertNode {
+    protected abstract static class Id extends LLVMNativeConvertNode {
 
-        @Override
-        public Object executeConvert(VirtualFrame frame, Object arg) {
+        @Specialization
+        public Object executeConvert(Object arg) {
             return arg;
         }
+
     }
 }

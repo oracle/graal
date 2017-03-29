@@ -42,6 +42,7 @@ import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.parser.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NativeLookup;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
@@ -59,15 +60,15 @@ public final class LLVMFunctionRegistry {
 
     private final LLVMContext context;
 
-    LLVMFunctionRegistry(LLVMContext context, NodeFactoryFacade facade) {
+    LLVMFunctionRegistry(LLVMLanguage language, LLVMContext context, NodeFactoryFacade facade) {
         this.facade = facade;
         this.context = context;
         this.intrinsics = facade.getFunctionSubstitutionFactories();
         lookupFunctionDescriptor(ZERO_FUNCTION, new FunctionType(MetaType.UNKNOWN, new Type[0], false));
-        registerIntrinsics(context.getNativeLookup());
+        registerIntrinsics(language, context.getNativeLookup());
     }
 
-    private void registerIntrinsics(NativeLookup nativeLookup) {
+    private void registerIntrinsics(LLVMLanguage language, NativeLookup nativeLookup) {
         for (Map.Entry<String, NodeFactory<? extends LLVMExpressionNode>> entry : intrinsics.entrySet()) {
             String intrinsicFunction = entry.getKey();
             NodeFactory<? extends LLVMExpressionNode> nodeFactory = entry.getValue();
@@ -93,14 +94,14 @@ public final class LLVMFunctionRegistry {
             } else {
                 intrinsicNode = nodeFactory.createNode(args);
             }
-            functionRoot = facade.createFunctionSubstitutionRootNode(intrinsicNode);
+            functionRoot = facade.createFunctionSubstitutionRootNode(language, intrinsicNode);
             RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(functionRoot);
             function.setIntrinsicCallTarget(callTarget);
         }
     }
 
     public LLVMFunctionDescriptor lookupFunctionDescriptor(String name, FunctionType type) {
-        return context.addFunction(name, i -> facade.createFunctionDescriptor(name, type, i));
+        return context.addFunction(name, i -> facade.createFunctionDescriptor(context, name, type, i));
     }
 
 }

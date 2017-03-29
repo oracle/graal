@@ -30,7 +30,15 @@
 package com.oracle.truffle.llvm.nodes.api;
 
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 
 public abstract class LLVMNode extends Node {
-    // empty
+    public final LLVMContext getContext() {
+        return getRootNode().getLanguage(LLVMLanguage.class).getContextReference().get();
+    }
+
+    public final LLVMLanguage getLLVMLanguage() {
+        return getRootNode().getLanguage(LLVMLanguage.class);
+    }
 }

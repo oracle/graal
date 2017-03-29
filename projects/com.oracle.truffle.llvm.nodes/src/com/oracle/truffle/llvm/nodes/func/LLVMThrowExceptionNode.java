@@ -29,10 +29,10 @@
  */
 package com.oracle.truffle.llvm.nodes.func;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 
@@ -43,11 +43,18 @@ public final class LLVMThrowExceptionNode extends LLVMExpressionNode {
     @Child private LLVMExpressionNode destructor;
     @Child private LLVMNativeFunctions.SulongThrowNode exceptionInitializaton;
 
-    public LLVMThrowExceptionNode(LLVMContext context, LLVMExpressionNode arg1, LLVMExpressionNode arg2, LLVMExpressionNode arg3) {
+    public LLVMThrowExceptionNode(LLVMExpressionNode arg1, LLVMExpressionNode arg2, LLVMExpressionNode arg3) {
         this.exceptionInfo = arg1;
         this.thrownTypeID = arg2;
         this.destructor = arg3;
-        this.exceptionInitializaton = context.getNativeFunctions().createSulongThrow();
+    }
+
+    public LLVMNativeFunctions.SulongThrowNode getExceptionInitializaton() {
+        if (exceptionInitializaton == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.exceptionInitializaton = insert(getContext().getNativeFunctions().createSulongThrow());
+        }
+        return exceptionInitializaton;
     }
 
     @Override
@@ -55,7 +62,7 @@ public final class LLVMThrowExceptionNode extends LLVMExpressionNode {
         LLVMAddress thrownObject = exceptionInfo.enforceLLVMAddress(frame);
         LLVMAddress thrownType = thrownTypeID.enforceLLVMAddress(frame);
         LLVMAddress dest = destructor.enforceLLVMAddress(frame);
-        exceptionInitializaton.throvv(thrownObject, thrownType, dest, LLVMAddress.NULL_POINTER, LLVMAddress.NULL_POINTER);
+        getExceptionInitializaton().throvv(thrownObject, thrownType, dest, LLVMAddress.NULL_POINTER, LLVMAddress.NULL_POINTER);
         throw new LLVMException(thrownObject);
     }
 

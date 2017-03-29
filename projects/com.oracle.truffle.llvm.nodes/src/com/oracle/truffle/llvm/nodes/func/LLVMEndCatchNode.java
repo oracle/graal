@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.nodes.func;
 import java.util.LinkedList;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
@@ -53,34 +54,85 @@ public final class LLVMEndCatchNode extends LLVMExpressionNode {
     @Child private LLVMNativeFunctions.SulongGetThrownObjectNode getThrownObject;
     @Child private LLVMNativeFunctions.SulongGetDestructorNode getDestructor;
     @Child private LLVMNativeFunctions.SulongSetHandlerCountNode setHandlerCount;
-    private final LinkedList<LLVMAddress> caughtExceptionStack;
+    @CompilationFinal private LinkedList<LLVMAddress> caughtExceptionStack;
+    @CompilationFinal private LLVMContext cachedContext;
 
-    public LLVMEndCatchNode(LLVMContext context, LLVMExpressionNode stackPointer) {
+    public LLVMContext getCachedContext() {
+        if (cachedContext == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.cachedContext = getContext();
+        }
+        return cachedContext;
+    }
+
+    public LLVMEndCatchNode(LLVMExpressionNode stackPointer) {
         this.stackPointer = stackPointer;
-        this.caughtExceptionStack = context.getCaughtExceptionStack();
-        this.dispatch = LLVMLookupDispatchNodeGen.create(context, new FunctionType(VoidType.INSTANCE, new Type[]{new PointerType(null)}, false));
-        this.decHandlerCount = context.getNativeFunctions().createDecrementHandlerCount();
-        this.getHandlerCount = context.getNativeFunctions().createGetHandlerCount();
-        this.getDestructor = context.getNativeFunctions().createGetDestructor();
-        this.getThrownObject = context.getNativeFunctions().createGetThrownObject();
-        this.setHandlerCount = context.getNativeFunctions().createSetHandlerCount();
+        this.dispatch = LLVMLookupDispatchNodeGen.create(new FunctionType(VoidType.INSTANCE, new Type[]{new PointerType(null)}, false));
+    }
+
+    public LinkedList<LLVMAddress> getCaughtExceptionStack() {
+        if (caughtExceptionStack == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.caughtExceptionStack = getContext().getCaughtExceptionStack();
+        }
+        return caughtExceptionStack;
+    }
+
+    public LLVMNativeFunctions.SulongDecrementHandlerCountNode getDecHandlerCount() {
+        if (decHandlerCount == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.decHandlerCount = insert(getContext().getNativeFunctions().createDecrementHandlerCount());
+        }
+        return decHandlerCount;
+    }
+
+    public LLVMNativeFunctions.SulongGetHandlerCountNode getGetHandlerCount() {
+        if (getHandlerCount == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.getHandlerCount = insert(getContext().getNativeFunctions().createGetHandlerCount());
+        }
+        return getHandlerCount;
+    }
+
+    public LLVMNativeFunctions.SulongGetDestructorNode getGetDestructor() {
+        if (getDestructor == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.getDestructor = insert(getContext().getNativeFunctions().createGetDestructor());
+        }
+        return getDestructor;
+    }
+
+    public LLVMNativeFunctions.SulongGetThrownObjectNode getGetThrownObject() {
+        if (getThrownObject == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.getThrownObject = insert(getContext().getNativeFunctions().createGetThrownObject());
+        }
+        return getThrownObject;
+    }
+
+    public LLVMNativeFunctions.SulongSetHandlerCountNode getSetHandlerCount() {
+        if (setHandlerCount == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.setHandlerCount = insert(getContext().getNativeFunctions().createSetHandlerCount());
+        }
+        return setHandlerCount;
     }
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
         try {
             LLVMAddress ptr = popExceptionToStack();
-            int handlerCount = getHandlerCount.get(ptr);
+            int handlerCount = getGetHandlerCount().get(ptr);
             if (handlerCount == LLVMRethrowNode.RETHROWN_MARKER) {
                 // exception was re-thrown, do nothing but reset marker
-                setHandlerCount.set(ptr, 0);
+                getSetHandlerCount().set(ptr, 0);
                 return 0;
             }
-            decHandlerCount.dec(ptr);
-            LLVMAddress destructorAddress = getDestructor.get(ptr);
-            if (getHandlerCount.get(ptr) <= 0 && destructorAddress.getVal() != 0) {
-                LLVMFunctionHandle destructor = new LLVMFunctionHandle((int) destructorAddress.getVal());
-                dispatch.executeDispatch(frame, destructor, new Object[]{stackPointer.executeLLVMAddress(frame), getThrownObject.getThrownObject(ptr)});
+            getDecHandlerCount().dec(ptr);
+            LLVMAddress destructorAddress = getGetDestructor().get(ptr);
+            if (getGetHandlerCount().get(ptr) <= 0 && destructorAddress.getVal() != 0) {
+                LLVMFunctionHandle destructor = new LLVMFunctionHandle(getCachedContext(), (int) destructorAddress.getVal());
+                dispatch.executeDispatch(frame, destructor, new Object[]{stackPointer.executeLLVMAddress(frame), getGetThrownObject().getThrownObject(ptr)});
             }
             return null;
         } catch (Throwable e) {
@@ -91,7 +143,7 @@ public final class LLVMEndCatchNode extends LLVMExpressionNode {
 
     @TruffleBoundary
     private LLVMAddress popExceptionToStack() {
-        return caughtExceptionStack.pop();
+        return getCaughtExceptionStack().pop();
     }
 
 }

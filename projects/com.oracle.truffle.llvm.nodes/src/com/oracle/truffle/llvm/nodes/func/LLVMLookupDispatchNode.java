@@ -30,6 +30,8 @@
 package com.oracle.truffle.llvm.nodes.func;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -38,25 +40,24 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMDataEscapeNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 @SuppressWarnings("unused")
-public abstract class LLVMLookupDispatchNode extends Node {
+public abstract class LLVMLookupDispatchNode extends LLVMNode {
 
     protected static final int INLINE_CACHE_SIZE = 5;
 
-    private final LLVMContext context;
     private final FunctionType type;
 
-    protected LLVMLookupDispatchNode(LLVMContext context, FunctionType type) {
-        this.context = context;
+    protected LLVMLookupDispatchNode(FunctionType type) {
         this.type = type;
     }
 
@@ -85,12 +86,12 @@ public abstract class LLVMLookupDispatchNode extends Node {
         if (function instanceof LLVMFunctionDescriptor) {
             return (LLVMFunctionDescriptor) function;
         } else {
-            return context.lookup(function);
+            return getContext().lookup(function);
         }
     }
 
     protected LLVMDispatchNode createCachedDispatch() {
-        return LLVMDispatchNodeGen.create(context, type);
+        return LLVMDispatchNodeGen.create(type);
     }
 
     @Specialization(guards = "isForeignFunction(function)")

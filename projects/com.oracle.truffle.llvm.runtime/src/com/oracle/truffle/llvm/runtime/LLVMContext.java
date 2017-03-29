@@ -34,12 +34,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.ExecutionContext;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -49,7 +51,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
-public class LLVMContext extends ExecutionContext {
+public class LLVMContext {
 
     private final List<RootCallTarget> globalVarInits = new ArrayList<>();
     private final List<RootCallTarget> globalVarDeallocs = new ArrayList<>();
@@ -79,6 +81,16 @@ public class LLVMContext extends ExecutionContext {
 
     private final LinkedList<LLVMAddress> caughtExceptionStack = new LinkedList<>();
     private final LinkedList<DestructorStackElement> destructorStack = new LinkedList<>();
+    private final HashMap<String, Integer> nativeCallStatistics;
+
+    // #define SIG_DFL ((__sighandler_t) 0) /* Default action. */
+    private final LLVMFunction sigDfl;
+
+    // # define SIG_IGN ((__sighandler_t) 1) /* Ignore signal. */
+    private final LLVMFunction sigIgn;
+
+    // #define SIG_ERR ((__sighandler_t) -1) /* Error return. */
+    private final LLVMFunction sigErr;
 
     public static final class DestructorStackElement {
         private final LLVMFunctionDescriptor destructor;
@@ -100,8 +112,50 @@ public class LLVMContext extends ExecutionContext {
 
     public LLVMContext(Env env) {
         this.nativeLookup = LLVMOptions.ENGINE.disableNativeInterface() ? null : new NativeLookup(env);
+        this.nativeCallStatistics = LLVMOptions.ENGINE.traceNativeCalls() ? new HashMap<>() : null;
         this.functionIndex = new HashMap<>();
         this.nativeFunctions = new LLVMNativeFunctionsImpl(nativeLookup);
+        this.sigDfl = new LLVMFunctionHandle(this, 0);
+        this.sigIgn = new LLVMFunctionHandle(this, 1);
+        this.sigErr = new LLVMFunctionHandle(this, -1);
+    }
+
+    public LLVMFunction getSigDfl() {
+        return sigDfl;
+    }
+
+    public LLVMFunction getSigIgn() {
+        return sigIgn;
+    }
+
+    public LLVMFunction getSigErr() {
+        return sigErr;
+    }
+
+    @TruffleBoundary
+    public void registerNativeCall(LLVMFunctionDescriptor descriptor) {
+        if (LLVMOptions.ENGINE.traceNativeCalls()) {
+            String name = descriptor.getName() + " " + descriptor.getType();
+            if (nativeCallStatistics.containsKey(name)) {
+                int count = nativeCallStatistics.get(name) + 1;
+                nativeCallStatistics.put(name, count);
+            } else {
+                nativeCallStatistics.put(name, 1);
+            }
+        }
+    }
+
+    public void printNativeCallStatistic() {
+        if (LLVMOptions.ENGINE.traceNativeCalls()) {
+            LinkedHashMap<String, Integer> sorted = nativeCallStatistics.entrySet().stream().sorted(Map.Entry.comparingByValue()).collect(Collectors.toMap(
+                            Map.Entry::getKey,
+                            Map.Entry::getValue,
+                            (e1, e2) -> e1,
+                            LinkedHashMap::new));
+            for (String s : sorted.keySet()) {
+                System.err.println(String.format("Function %s \t count: %d", s, sorted.get(s)));
+            }
+        }
     }
 
     public LLVMNativeFunctions getNativeFunctions() {

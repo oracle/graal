@@ -34,7 +34,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMPerformance;
 
 @NodeChild(type = LLVMExpressionNode.class)
@@ -44,7 +43,7 @@ public abstract class LLVMTruffleImport extends LLVMIntrinsic {
     public Object executeIntrinsic(LLVMAddress value) {
         LLVMPerformance.warn(this);
         String id = LLVMTruffleIntrinsicUtil.readString(value);
-        return LLVMLanguage.INSTANCE.getEnvironment().importSymbol(id);
+        return getLLVMLanguage().getEnvironment().importSymbol(id);
     }
 
 }

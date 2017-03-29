@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.parser.factories;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.dsl.NodeFactory;
@@ -76,11 +75,8 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64BitVACopyNode
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64BitVAEnd;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64BitVAStart;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 
 final class LLVMIntrinsicFactory {
 
@@ -139,22 +135,21 @@ final class LLVMIntrinsicFactory {
     private static LLVMExpressionNode create(String functionName, LLVMExpressionNode[] argNodes, int numberOfExplicitArguments, FrameSlot stack) {
         NodeFactory<? extends LLVMExpressionNode> factory = factories.get(functionName);
         if (factory == null) {
-            LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
             LLVMExpressionNode readStackPointerNode = argNodes[0];
             if (functionName.equals("@llvm.uadd.with.overflow.i32")) {
                 return LLVMUAddWithOverflowI32NodeGen.create(argNodes[2], argNodes[3], argNodes[1]);
             } else if (functionName.equals("@llvm.stacksave")) {
                 return LLVMStackSaveNodeGen.create(readStackPointerNode);
             } else if (functionName.equals("@llvm.stackrestore")) {
-                return LLVMStackRestoreNodeGen.create(argNodes[1], context, stack);
+                return LLVMStackRestoreNodeGen.create(argNodes[1], stack);
             } else if (functionName.equals("@llvm.frameaddress")) {
                 return LLVMFrameAddressNodeGen.create(argNodes[1], stack);
             } else if (functionName.startsWith("@llvm.va_start")) {
-                return new LLVMX86_64BitVAStart(context.getNativeFunctions(), numberOfExplicitArguments, argNodes[1]);
+                return new LLVMX86_64BitVAStart(numberOfExplicitArguments, argNodes[1]);
             } else if (functionName.startsWith("@llvm.va_end")) {
-                return new LLVMX86_64BitVAEnd(context.getNativeFunctions(), argNodes[1]);
+                return new LLVMX86_64BitVAEnd(argNodes[1]);
             } else if (functionName.startsWith("@llvm.va_copy")) {
-                return LLVMX86_64BitVACopyNodeGen.create(context.getNativeFunctions(), argNodes[1], argNodes[2], numberOfExplicitArguments);
+                return LLVMX86_64BitVACopyNodeGen.create(argNodes[1], argNodes[2], numberOfExplicitArguments);
             } else if (functionName.equals("@llvm.eh.sjlj.longjmp") || functionName.equals("@llvm.eh.sjlj.setjmp")) {
                 throw new LLVMUnsupportedException(UnsupportedReason.SET_JMP_LONG_JMP);
             } else if (functionName.startsWith("@llvm.objectsize.i64")) {
@@ -194,17 +189,8 @@ final class LLVMIntrinsicFactory {
                 throw new IllegalStateException("llvm intrinsic " + functionName + " not yet supported!");
             }
         } else {
-            Object[] realArgs;
-            List<Class<?>> firstNodeFactory = factory.getNodeSignatures().get(0);
-            if (firstNodeFactory.size() > 0 && firstNodeFactory.get(0) == LLVMNativeFunctions.class) {
-                LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
-                realArgs = new Object[argNodes.length - LLVMCallNode.ARG_START_INDEX + 1];
-                realArgs[0] = context.getNativeFunctions();
-                System.arraycopy(argNodes, LLVMCallNode.ARG_START_INDEX, realArgs, 1, realArgs.length - 1);
-            } else {
-                realArgs = new Object[argNodes.length - LLVMCallNode.ARG_START_INDEX];
-                System.arraycopy(argNodes, LLVMCallNode.ARG_START_INDEX, realArgs, 0, realArgs.length);
-            }
+            Object[] realArgs = new Object[argNodes.length - LLVMCallNode.ARG_START_INDEX];
+            System.arraycopy(argNodes, LLVMCallNode.ARG_START_INDEX, realArgs, 0, realArgs.length);
             return factory.createNode(realArgs);
         }
 
