@@ -60,8 +60,10 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotRuntime;
 import java.util.Map;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class InstrumentationTest extends AbstractInstrumentationTest {
@@ -103,6 +105,54 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         if (!err.toString().contains("declares service java.lang.Runnable but doesn't register it")) {
             fail(err.toString());
         }
+    }
+
+    @Registration(name = "name", version = "version", id = "beforeUse", services = Runnable.class)
+    public static class BeforeUseInstrument extends TruffleInstrument implements Runnable {
+        @Override
+        protected void onCreate(Env env) {
+            env.registerService(this);
+        }
+
+        @Override
+        public void run() {
+        }
+    }
+
+    @Test
+    public void queryInstrumentsBeforeUse() throws Exception {
+        final PolyglotRuntime runtime = PolyglotRuntime.newBuilder().setErr(err).build();
+        Runnable start = null;
+        for (PolyglotRuntime.Instrument instr : runtime.getInstruments().values()) {
+            Runnable r = instr.lookup(Runnable.class);
+            if (r != null) {
+                start = r;
+                start.run();
+                assertTrue("Now enabled: " + instr, instr.isEnabled());
+            }
+        }
+        assertNotNull("At least one Runnable found", start);
+    }
+
+    @Test
+    public void queryInstrumentsAfterDisposeDoesnotEnable() throws Exception {
+        final PolyglotRuntime runtime = PolyglotRuntime.newBuilder().build();
+        runtime.dispose();
+        Runnable start = null;
+        for (PolyglotRuntime.Instrument instr : runtime.getInstruments().values()) {
+            assertFalse("Instrument is disabled", instr.isEnabled());
+            instr.setEnabled(true);
+            assertFalse("Instrument cannot be enabled", instr.isEnabled());
+
+            Runnable r = instr.lookup(Runnable.class);
+            if (r != null) {
+                start = r;
+                start.run();
+                assertTrue("Now enabled: " + instr, instr.isEnabled());
+            }
+            assertFalse("Instrument left disabled", instr.isEnabled());
+        }
+        assertNull("No Runnable found", start);
     }
 
     /*
