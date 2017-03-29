@@ -25,6 +25,8 @@ package org.graalvm.compiler.hotspot.replacements;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_4;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import com.sun.xml.internal.bind.v2.schemagen.episode.Klass;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.calc.Condition;
@@ -73,12 +75,12 @@ public final class ClassGetHubNode extends FloatingNode implements Lowerable, Ca
     }
 
     public static ValueNode create(ValueNode clazz, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean allUsagesAvailable) {
-        Stamp stamp = null;
-        return canonical(null, metaAccess, constantReflection, allUsagesAvailable, stamp, clazz);
+        return canonical(null, metaAccess, constantReflection, allUsagesAvailable, KlassPointerStamp.klass(), clazz);
     }
 
     public static boolean intrinsify(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode clazz) {
-        b.addPush(method.getSignature().getReturnKind(), create(clazz, b.getMetaAccess(), b.getConstantReflection(), false));
+        ValueNode clazzValue = create(clazz, b.getMetaAccess(), b.getConstantReflection(), false);
+        b.push(JavaKind.Object, b.recursiveAppend(clazzValue));
         return true;
     }
 

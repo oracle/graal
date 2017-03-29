@@ -36,6 +36,7 @@ import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.PiNode;
@@ -270,7 +271,7 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      * non-null} stamp.
      */
     default ValueNode nullCheckedValue(ValueNode value, DeoptimizationAction action) {
-        if (!StampTool.isPointerNonNull(value.stamp())) {
+        if (!StampTool.isPointerNonNull(value)) {
             LogicNode condition = getGraph().unique(IsNullNode.create(value));
             ObjectStamp receiverStamp = (ObjectStamp) value.stamp();
             Stamp stamp = receiverStamp.join(objectNonNull());
