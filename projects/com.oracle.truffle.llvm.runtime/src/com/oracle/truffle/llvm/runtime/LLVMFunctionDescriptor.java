@@ -29,8 +29,11 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.utilities.CyclicAssumption;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 public final class LLVMFunctionDescriptor extends LLVMFunction implements Comparable<LLVMFunctionDescriptor> {
@@ -39,9 +42,11 @@ public final class LLVMFunctionDescriptor extends LLVMFunction implements Compar
     private final FunctionType type;
     private final int functionId;
 
-    private RootCallTarget callTarget;
-    private TruffleObject nativeSymbol;
-    private RootCallTarget intrinsic;
+    @CompilationFinal private RootCallTarget callTarget;
+    @CompilationFinal private TruffleObject nativeSymbol;
+    @CompilationFinal private RootCallTarget intrinsic;
+    @CompilationFinal private LazyToTruffleConverter lazyConverter;
+    @CompilationFinal private CyclicAssumption functionDescriptorState;
 
     private LLVMFunctionDescriptor(LLVMContext context, String name, FunctionType type, int functionId) {
         super(context);
@@ -50,6 +55,7 @@ public final class LLVMFunctionDescriptor extends LLVMFunction implements Compar
         this.functionId = functionId;
         this.callTarget = null;
         this.nativeSymbol = null;
+        this.functionDescriptorState = new CyclicAssumption(name);
     }
 
     public static LLVMFunctionDescriptor create(LLVMContext context, String name, FunctionType type, int functionId) {
@@ -57,7 +63,27 @@ public final class LLVMFunctionDescriptor extends LLVMFunction implements Compar
         return func;
     }
 
+    public interface LazyToTruffleConverter {
+        void convert();
+    }
+
+    public void setLazyToTruffleConverter(LazyToTruffleConverter lazyToTruffleConverterImpl) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        this.lazyConverter = lazyToTruffleConverterImpl;
+        functionDescriptorState.invalidate();
+    }
+
     public RootCallTarget getCallTarget() {
+        if (lazyConverter != null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            // lazy conversion
+            lazyConverter.convert();
+            lazyConverter = null;
+            functionDescriptorState.invalidate();
+        }
+        if (!functionDescriptorState.getAssumption().isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+        }
         if (callTarget == null && intrinsic != null) {
             return intrinsic;
         }
@@ -65,21 +91,30 @@ public final class LLVMFunctionDescriptor extends LLVMFunction implements Compar
     }
 
     public void setCallTarget(RootCallTarget callTarget) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         assert this.nativeSymbol == null;
         this.callTarget = callTarget;
+        functionDescriptorState.invalidate();
     }
 
     public void setIntrinsicCallTarget(RootCallTarget callTarget) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         this.intrinsic = callTarget;
+        functionDescriptorState.invalidate();
     }
 
     public TruffleObject getNativeSymbol() {
+        if (!functionDescriptorState.getAssumption().isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+        }
         return nativeSymbol;
     }
 
     public void setNativeSymbol(TruffleObject nativeSymbol) {
-        assert this.callTarget == null && this.nativeSymbol == null;
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        assert this.callTarget == null && this.nativeSymbol == null && this.lazyConverter == null;
         this.nativeSymbol = nativeSymbol;
+        functionDescriptorState.invalidate();
     }
 
     public String getName() {
@@ -132,4 +167,5 @@ public final class LLVMFunctionDescriptor extends LLVMFunction implements Compar
             return getFunctionIndex() == other.getFunctionIndex();
         }
     }
+
 }
