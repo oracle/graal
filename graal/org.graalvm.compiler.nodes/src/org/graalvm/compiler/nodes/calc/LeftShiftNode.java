@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.nodes.calc;
 
-import jdk.vm.ci.meta.JavaConstant;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.ShiftOp.Shl;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
@@ -49,10 +48,9 @@ public final class LeftShiftNode extends ShiftNode<Shl> {
     public static ValueNode create(ValueNode x, ValueNode y) {
         ArithmeticOpTable.ShiftOp<Shl> op = ArithmeticOpTable.forStamp(x.stamp()).getShl();
         Stamp stamp = op.foldStamp(x.stamp(), (IntegerStamp) y.stamp());
-        if (x.isConstant() && y.isConstant()) {
-            JavaConstant amount = y.asJavaConstant();
-            assert amount.getJavaKind() == JavaKind.Int;
-            return ConstantNode.forPrimitive(stamp, op.foldConstant(x.asConstant(), amount.asInt()));
+        ValueNode value = ShiftNode.canonical(op, stamp, x, y);
+        if (value != null) {
+            return value;
         }
 
         return canonical(null, op, stamp, x, y);

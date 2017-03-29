@@ -50,10 +50,9 @@ public final class RightShiftNode extends ShiftNode<Shr> {
     public static ValueNode create(ValueNode x, ValueNode y) {
         ArithmeticOpTable.ShiftOp<Shr> op = ArithmeticOpTable.forStamp(x.stamp()).getShr();
         Stamp stamp = op.foldStamp(x.stamp(), (IntegerStamp) y.stamp());
-        if (x.isConstant() && y.isConstant()) {
-            JavaConstant amount = y.asJavaConstant();
-            assert amount.getJavaKind() == JavaKind.Int;
-            return ConstantNode.forPrimitive(stamp, op.foldConstant(x.asConstant(), amount.asInt()));
+        ValueNode value = ShiftNode.canonical(op, stamp, x, y);
+        if (value != null) {
+            return value;
         }
 
         return canonical(null, op, stamp, x, y);
