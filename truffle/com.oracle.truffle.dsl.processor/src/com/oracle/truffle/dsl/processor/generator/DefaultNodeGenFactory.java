@@ -71,11 +71,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
-import com.oracle.truffle.api.dsl.internal.DSLOptions;
-import com.oracle.truffle.api.dsl.internal.DSLOptions.ImplicitCastOptimization;
-import com.oracle.truffle.api.dsl.internal.DSLOptions.TypeBoxingOptimization;
-import com.oracle.truffle.api.dsl.internal.SpecializationNode;
-import com.oracle.truffle.api.dsl.internal.SpecializedNode;
 import com.oracle.truffle.api.dsl.internal.SuppressFBWarnings;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
@@ -116,6 +111,7 @@ import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import com.oracle.truffle.dsl.processor.parser.SpecializationGroup;
 import com.oracle.truffle.dsl.processor.parser.SpecializationGroup.TypeGuard;
 
+@SuppressWarnings("deprecation")
 public class DefaultNodeGenFactory {
 
     private static final String FRAME_VALUE = TemplateMethod.FRAME_NAME;
@@ -126,7 +122,7 @@ public class DefaultNodeGenFactory {
     private final NodeData node;
     private final TypeSystemData typeSystem;
     private final TypeMirror genericType;
-    private final DSLOptions options;
+    private final com.oracle.truffle.api.dsl.internal.DSLOptions options;
     private final boolean singleSpecializable;
     private final int varArgsThreshold;
     private final Set<TypeMirror> expectedTypes = new HashSet<>();
@@ -150,7 +146,7 @@ public class DefaultNodeGenFactory {
     }
 
     private int calculateVarArgsThreshold() {
-        TypeMirror specialization = context.getType(SpecializationNode.class);
+        TypeMirror specialization = context.getType(com.oracle.truffle.api.dsl.internal.SpecializationNode.class);
         TypeElement specializationType = fromTypeMirror(specialization);
 
         int maxParameters = 0;
@@ -313,7 +309,7 @@ public class DefaultNodeGenFactory {
                 clazz.add(createExecutableTypeOverride(usedTypes, execType));
             }
 
-            clazz.getImplements().add(getType(SpecializedNode.class));
+            clazz.getImplements().add(getType(com.oracle.truffle.api.dsl.internal.SpecializedNode.class));
             clazz.add(createMethodGetSpecializationNode());
             clazz.add(createDeepCopyMethod());
             SpecializationData specializationStart = createSpecializations(clazz);
@@ -518,7 +514,8 @@ public class DefaultNodeGenFactory {
     // create specialization
 
     private CodeTypeElement createBaseSpecialization() {
-        CodeTypeElement clazz = createClass(node, null, modifiers(PRIVATE, ABSTRACT, STATIC), specializationTypeName(null), typeSystem.getContext().getType(SpecializationNode.class));
+        CodeTypeElement clazz = createClass(node, null, modifiers(PRIVATE, ABSTRACT, STATIC), specializationTypeName(null),
+                        typeSystem.getContext().getType(com.oracle.truffle.api.dsl.internal.SpecializationNode.class));
 
         clazz.addOptional(createSpecializationConstructor(clazz, null, null));
         CodeVariableElement rootField = new CodeVariableElement(modifiers(PROTECTED), nodeType(node), "root");
@@ -758,7 +755,7 @@ public class DefaultNodeGenFactory {
         CodeExecutableElement executable = new CodeExecutableElement(modifiers(PUBLIC), getType(Node.class), "deepCopy");
         executable.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(Override.class)));
         CodeTreeBuilder builder = executable.createBuilder();
-        builder.startReturn().startStaticCall(getType(SpecializationNode.class), "updateRoot").string("super.deepCopy()").end().end();
+        builder.startReturn().startStaticCall(getType(com.oracle.truffle.api.dsl.internal.SpecializationNode.class), "updateRoot").string("super.deepCopy()").end().end();
         return executable;
     }
 
@@ -786,7 +783,7 @@ public class DefaultNodeGenFactory {
         currentLocals.loadFastPathState(specialization);
 
         CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), getType(boolean.class), "isIdentical");
-        method.addParameter(new CodeVariableElement(getType(SpecializationNode.class), "other"));
+        method.addParameter(new CodeVariableElement(getType(com.oracle.truffle.api.dsl.internal.SpecializationNode.class), "other"));
         currentLocals.addParametersTo(method, varArgsThreshold, FRAME_VALUE);
         method.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(Override.class)));
         final CodeTreeBuilder builder = method.createBuilder();
@@ -826,7 +823,7 @@ public class DefaultNodeGenFactory {
         }
 
         CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), getType(boolean.class), "isSame");
-        method.addParameter(new CodeVariableElement(getType(SpecializationNode.class), "other"));
+        method.addParameter(new CodeVariableElement(getType(com.oracle.truffle.api.dsl.internal.SpecializationNode.class), "other"));
         method.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(Override.class)));
         CodeTreeBuilder builder = method.createBuilder();
 
@@ -846,7 +843,7 @@ public class DefaultNodeGenFactory {
         if (specialization.getExcludedBy().isEmpty() && !specialization.isPolymorphic()) {
             return null;
         }
-        TypeMirror specializationNodeType = getType(SpecializationNode.class);
+        TypeMirror specializationNodeType = getType(com.oracle.truffle.api.dsl.internal.SpecializationNode.class);
         LocalContext currentLocals = LocalContext.load(this, createSpecializationNodeSignature(node.getSignatureSize()), varArgsThreshold);
 
         CodeExecutableElement executable = new CodeExecutableElement(modifiers(PUBLIC), specializationNodeType, "merge");
@@ -897,7 +894,7 @@ public class DefaultNodeGenFactory {
             return null;
         }
 
-        TypeMirror returnType = getType(SpecializationNode.class);
+        TypeMirror returnType = getType(com.oracle.truffle.api.dsl.internal.SpecializationNode.class);
         CodeExecutableElement method = new CodeExecutableElement(modifiers(PROTECTED, FINAL), returnType, "createFallback");
         method.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(Override.class)));
         method.createBuilder().startReturn().tree(createCallCreateMethod(fallback, null, null)).end();
@@ -910,7 +907,7 @@ public class DefaultNodeGenFactory {
         if (generatedPolymorphic == null) {
             return null;
         }
-        TypeMirror returnType = getType(SpecializationNode.class);
+        TypeMirror returnType = getType(com.oracle.truffle.api.dsl.internal.SpecializationNode.class);
         CodeExecutableElement method = new CodeExecutableElement(modifiers(PROTECTED, FINAL), returnType, "createPolymorphic");
         method.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(Override.class)));
         method.createBuilder().startReturn().tree(createCallCreateMethod(polymorphic, null, null)).end();
@@ -920,7 +917,8 @@ public class DefaultNodeGenFactory {
     private CodeExecutableElement createCreateNext(final Map<SpecializationData, CodeTypeElement> specializationClasses) {
         final LocalContext locals = LocalContext.load(this);
 
-        CodeExecutableElement method = locals.createMethod(modifiers(PROTECTED, FINAL), getType(SpecializationNode.class), "createNext", varArgsThreshold, FRAME_VALUE);
+        CodeExecutableElement method = locals.createMethod(modifiers(PROTECTED, FINAL), getType(com.oracle.truffle.api.dsl.internal.SpecializationNode.class), "createNext", varArgsThreshold,
+                        FRAME_VALUE);
         method.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(Override.class)));
 
         CodeTreeBuilder builder = method.createBuilder();
@@ -1085,7 +1083,7 @@ public class DefaultNodeGenFactory {
     }
 
     private Element createMethodGetSpecializationNode() {
-        TypeMirror returntype = getType(SpecializationNode.class);
+        TypeMirror returntype = getType(com.oracle.truffle.api.dsl.internal.SpecializationNode.class);
         CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), returntype, "getSpecializationNode");
         method.createBuilder().startReturn().string(specializationStartFieldName()).end();
         return method;
@@ -1102,8 +1100,9 @@ public class DefaultNodeGenFactory {
         return childField;
     }
 
-    private static List<ExecutableTypeData> resolveSpecializedExecutables(NodeExecutionData execution, Collection<TypeMirror> types, TypeBoxingOptimization optimization) {
-        if (optimization == TypeBoxingOptimization.NONE) {
+    private static List<ExecutableTypeData> resolveSpecializedExecutables(NodeExecutionData execution, Collection<TypeMirror> types,
+                    com.oracle.truffle.api.dsl.internal.DSLOptions.TypeBoxingOptimization optimization) {
+        if (optimization == com.oracle.truffle.api.dsl.internal.DSLOptions.TypeBoxingOptimization.NONE) {
             return Collections.emptyList();
         } else if (types.isEmpty()) {
             return Collections.emptyList();
@@ -1300,7 +1299,7 @@ public class DefaultNodeGenFactory {
         CodeTree create = createCallCreateMethod(specialization, null, currentValues);
 
         if (specialization.hasMultipleInstances()) {
-            builder.declaration(getType(SpecializationNode.class), "s", create);
+            builder.declaration(getType(com.oracle.truffle.api.dsl.internal.SpecializationNode.class), "s", create);
             DSLExpression limitExpression = specialization.getLimitExpression();
             CodeTree limitExpressionTree;
             if (limitExpression == null) {
@@ -2707,7 +2706,7 @@ public class DefaultNodeGenFactory {
                 checkBuilder.tree(TypeSystemCodeGenerator.check(typeSystem, targetType, value.createReference()));
                 castBuilder.tree(TypeSystemCodeGenerator.cast(typeSystem, targetType, valueReference));
             } else {
-                ImplicitCastOptimization opt = options.implicitCastOptimization();
+                com.oracle.truffle.api.dsl.internal.DSLOptions.ImplicitCastOptimization opt = options.implicitCastOptimization();
                 if (specializationExecution.isFastPath() && !opt.isNone()) {
                     if (opt.isDuplicateTail()) {
                         String typeHintField = implicitClassFieldName(execution);

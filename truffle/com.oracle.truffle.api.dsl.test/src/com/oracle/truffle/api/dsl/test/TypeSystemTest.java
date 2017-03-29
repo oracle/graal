@@ -32,7 +32,6 @@ import com.oracle.truffle.api.dsl.TypeCast;
 import com.oracle.truffle.api.dsl.TypeCheck;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
-import com.oracle.truffle.api.dsl.internal.DSLOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -42,7 +41,6 @@ public class TypeSystemTest {
 
     @TypeSystem({byte.class, short.class, int.class, long.class, double.class, boolean.class, BigInteger.class, String.class, CallTarget.class, BExtendsAbstract.class, CExtendsAbstract.class,
                     Abstract.class, Interface.class, Object[].class})
-    @DSLOptions
     static class SimpleTypes {
 
         static int intCheck;

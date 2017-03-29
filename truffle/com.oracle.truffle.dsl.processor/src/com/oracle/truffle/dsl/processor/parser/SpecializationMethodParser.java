@@ -22,6 +22,18 @@
  */
 package com.oracle.truffle.dsl.processor.parser;
 
+import java.lang.annotation.Annotation;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Set;
+
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.type.TypeMirror;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
@@ -33,16 +45,6 @@ import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData.SpecializationKind;
 import com.oracle.truffle.dsl.processor.model.SpecializationThrowsData;
 import com.oracle.truffle.dsl.processor.model.TemplateMethod;
-import java.lang.annotation.Annotation;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Set;
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.AnnotationValue;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.type.TypeMirror;
 
 public class SpecializationMethodParser extends NodeMethodParser<SpecializationData> {
 

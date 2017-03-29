@@ -31,6 +31,7 @@ import com.oracle.truffle.api.nodes.Node;
  * Lazy rewrite event that implements {@link CharSequence} to be provided as message in
  * {@link Node#replace(Node, CharSequence)}.
  */
+@SuppressWarnings("deprecation")
 abstract class SlowPathEvent implements CharSequence {
 
     protected final SpecializationNode source;

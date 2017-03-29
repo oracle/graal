@@ -64,7 +64,6 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
-import com.oracle.truffle.api.dsl.internal.DSLOptions;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
@@ -109,6 +108,7 @@ import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import com.oracle.truffle.dsl.processor.parser.SpecializationGroup;
 import com.oracle.truffle.dsl.processor.parser.SpecializationGroup.TypeGuard;
 
+@SuppressWarnings("deprecation")
 public class FlatNodeGenFactory {
 
     private static final String METHOD_FALLBACK_GUARD = "fallbackGuard_";
@@ -123,7 +123,7 @@ public class FlatNodeGenFactory {
     private final NodeData node;
     private final TypeSystemData typeSystem;
     private final TypeMirror genericType;
-    private final DSLOptions options;
+    private final com.oracle.truffle.api.dsl.internal.DSLOptions options;
     private final Set<TypeMirror> expectedTypes = new HashSet<>();
     private List<SpecializationData> reachableSpecializations;
 

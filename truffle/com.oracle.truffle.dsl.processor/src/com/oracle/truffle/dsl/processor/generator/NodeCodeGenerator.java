@@ -40,7 +40,6 @@ import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Types;
 
 import com.oracle.truffle.api.dsl.NodeFactory;
-import com.oracle.truffle.api.dsl.internal.DSLOptions.DSLGenerator;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -158,6 +157,7 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
         return resolveNodeId(node) + NODE_SUFFIX;
     }
 
+    @SuppressWarnings("deprecation")
     private static List<CodeTypeElement> generateNodes(ProcessorContext context, NodeData node) {
         if (!node.needsFactory()) {
             return Collections.emptyList();
@@ -170,8 +170,7 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
             return Arrays.asList(type);
         }
 
-        DSLGenerator generator = node.getTypeSystem().getOptions().defaultGenerator();
-        switch (generator) {
+        switch (node.getTypeSystem().getOptions().defaultGenerator()) {
             case FLAT:
                 type = new FlatNodeGenFactory(context, node).create(type);
                 break;

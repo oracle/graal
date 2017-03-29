@@ -38,7 +38,6 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
-import com.oracle.truffle.api.dsl.internal.SpecializedNode;
 import com.oracle.truffle.api.dsl.test.ReplacesTestFactory.ContainsTestNodeGen;
 import com.oracle.truffle.api.dsl.test.ReplacesTestFactory.PolymorphicToMonomorphic0Factory;
 import com.oracle.truffle.api.dsl.test.ReplacesTestFactory.Replaces1Factory;
@@ -64,10 +63,11 @@ public class ReplacesTest {
                         array(1, "a", 2, "b"), //
                         array(2, "aa", 3, "ba"), //
                         new ExecutionListener() {
+                            @SuppressWarnings("deprecation")
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 if (value instanceof String) {
-                                    if (node.getNode() instanceof SpecializedNode) {
-                                        Assert.assertTrue(((SpecializedNode) node.getNode()).getSpecializationNode().toString().startsWith("F2Node_"));
+                                    if (node.getNode() instanceof com.oracle.truffle.api.dsl.internal.SpecializedNode) {
+                                        Assert.assertTrue(((com.oracle.truffle.api.dsl.internal.SpecializedNode) node.getNode()).getSpecializationNode().toString().startsWith("F2Node_"));
                                     }
                                 }
                             }

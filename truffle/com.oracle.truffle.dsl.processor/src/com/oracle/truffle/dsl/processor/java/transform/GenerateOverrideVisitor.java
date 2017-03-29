@@ -22,15 +22,17 @@
  */
 package com.oracle.truffle.dsl.processor.java.transform;
 
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.isDeclaredMethodInSuperType;
-import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
-import com.oracle.truffle.dsl.processor.java.model.CodeElementScanner;
-import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
+
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
+
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeElementScanner;
+import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 
 public class GenerateOverrideVisitor extends CodeElementScanner<Void, Void> {
 

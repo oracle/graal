@@ -31,8 +31,6 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
-import com.oracle.truffle.api.dsl.internal.DSLOptions;
-import com.oracle.truffle.api.dsl.internal.DSLOptions.DSLGenerator;
 import com.oracle.truffle.api.dsl.test.TypeBoxingTestFactory.TypeBoxingTest1NodeGen;
 import com.oracle.truffle.api.dsl.test.TypeBoxingTestFactory.TypeBoxingTest2NodeGen;
 import com.oracle.truffle.api.dsl.test.TypeBoxingTestFactory.TypeBoxingTest3NodeGen;
@@ -252,7 +250,6 @@ public class TypeBoxingTest {
     }
 
     @TypeSystem
-    @DSLOptions(defaultGenerator = DSLGenerator.FLAT)
     static class TypeBoxingTypeSystem {
 
     }

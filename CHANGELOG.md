@@ -23,6 +23,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Deprecated [MessageResolution.language](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/nodes/Node.html) without replacement. (jackpot rule available)
 * Deprecated [ExecutionContext](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/ExecutionContext.html) without replacement.
 * Added [TruffleInstrument.Registration.services()](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Registration#services) to support declarative registration of services
+* Deprecated internal class DSLOptions. Will be removed in the next release.
 
 ## Version 0.24
 1-Mar-2017

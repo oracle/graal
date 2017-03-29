@@ -37,7 +37,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.dsl.internal.SpecializedNode;
 import com.oracle.truffle.api.dsl.test.examples.RubyCallFactory.RubyDispatchNodeGen;
 import com.oracle.truffle.api.dsl.test.examples.RubyCallFactory.RubyHeadNodeGen;
 import com.oracle.truffle.api.dsl.test.examples.RubyCallFactory.RubyLookupNodeGen;
@@ -170,10 +169,6 @@ public class RubyCall {
             return callNode.call(method.getTarget(), arguments);
         }
 
-        @Override
-        public String toString() {
-            return ((SpecializedNode) this).getSpecializationNode().toString();
-        }
     }
 
     public static final class RubyObject {

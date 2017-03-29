@@ -22,16 +22,11 @@
  */
 package com.oracle.truffle.dsl.processor.parser;
 
-import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
-import com.oracle.truffle.dsl.processor.model.MethodSpec;
-import com.oracle.truffle.dsl.processor.model.Template;
-import com.oracle.truffle.dsl.processor.model.TemplateMethod;
-import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
@@ -39,6 +34,13 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
+
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.model.MethodSpec;
+import com.oracle.truffle.dsl.processor.model.Template;
+import com.oracle.truffle.dsl.processor.model.TemplateMethod;
+import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 
 public abstract class TemplateMethodParser<T extends Template, E extends TemplateMethod> {
 

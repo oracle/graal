@@ -22,12 +22,28 @@
  */
 package com.oracle.truffle.dsl.processor.generator;
 
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.fromTypeMirror;
+import static javax.lang.model.element.Modifier.PRIVATE;
+import static javax.lang.model.element.Modifier.STATIC;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.PackageElement;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.ElementFilter;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GeneratedBy;
-import com.oracle.truffle.api.dsl.internal.DSLOptions.TypeBoxingOptimization;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
-import static com.oracle.truffle.dsl.processor.java.ElementUtils.fromTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -38,20 +54,6 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.model.Template;
 import com.oracle.truffle.dsl.processor.model.TemplateMethod;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Modifier;
-import static javax.lang.model.element.Modifier.PRIVATE;
-import static javax.lang.model.element.Modifier.STATIC;
-import javax.lang.model.element.PackageElement;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.ElementFilter;
 
 public class GeneratorUtils {
 
@@ -99,7 +101,8 @@ public class GeneratorUtils {
         return method;
     }
 
-    public static boolean isTypeBoxingOptimized(TypeBoxingOptimization boxing, TypeMirror type) {
+    @SuppressWarnings("deprecation")
+    public static boolean isTypeBoxingOptimized(com.oracle.truffle.api.dsl.internal.DSLOptions.TypeBoxingOptimization boxing, TypeMirror type) {
         switch (boxing) {
             case NONE:
                 return false;

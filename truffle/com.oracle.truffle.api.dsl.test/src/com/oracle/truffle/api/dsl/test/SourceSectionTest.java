@@ -40,7 +40,6 @@ import com.oracle.truffle.api.dsl.CreateCast;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.dsl.internal.SpecializationNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ArgumentNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
@@ -67,10 +66,11 @@ public class SourceSectionTest {
         expectSourceSection(root.getNode(), section);
     }
 
+    @SuppressWarnings("deprecation")
     private static void expectSourceSection(Node root, SourceSection section) {
         assertThat(root.getSourceSection(), is(sameInstance(section)));
         for (Node child : root.getChildren()) {
-            if (child instanceof ArgumentNode || child instanceof SpecializationNode) {
+            if (child instanceof ArgumentNode || child instanceof com.oracle.truffle.api.dsl.internal.SpecializationNode) {
                 continue;
             }
             if (child != null) {

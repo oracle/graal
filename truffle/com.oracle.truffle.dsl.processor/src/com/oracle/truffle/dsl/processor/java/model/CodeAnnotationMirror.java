@@ -22,13 +22,15 @@
  */
 package com.oracle.truffle.dsl.processor.java.model;
 
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import java.util.LinkedHashMap;
 import java.util.Map;
+
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.DeclaredType;
+
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 public class CodeAnnotationMirror implements AnnotationMirror {
 

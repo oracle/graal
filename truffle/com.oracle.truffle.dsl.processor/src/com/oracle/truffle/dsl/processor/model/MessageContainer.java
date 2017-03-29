@@ -22,20 +22,22 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
-import com.oracle.truffle.dsl.processor.Log;
-import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic.Kind;
+
+import com.oracle.truffle.dsl.processor.Log;
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 public abstract class MessageContainer implements Iterable<MessageContainer> {
 

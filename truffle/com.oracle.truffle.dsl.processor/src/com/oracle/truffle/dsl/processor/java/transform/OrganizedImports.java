@@ -22,18 +22,12 @@
  */
 package com.oracle.truffle.dsl.processor.java.transform;
 
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.findNearestEnclosingType;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getDeclaredTypes;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getPackageName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getQualifiedName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSuperTypes;
-import com.oracle.truffle.dsl.processor.java.model.CodeElementScanner;
-import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
-import com.oracle.truffle.dsl.processor.java.model.CodeImport;
-import com.oracle.truffle.dsl.processor.java.model.CodeTree;
-import com.oracle.truffle.dsl.processor.java.model.CodeTreeKind;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -41,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
@@ -53,6 +48,14 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.WildcardType;
 import javax.lang.model.util.AbstractAnnotationValueVisitor7;
 import javax.lang.model.util.ElementFilter;
+
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeElementScanner;
+import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeImport;
+import com.oracle.truffle.dsl.processor.java.model.CodeTree;
+import com.oracle.truffle.dsl.processor.java.model.CodeTreeKind;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 
 public final class OrganizedImports {
 

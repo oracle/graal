@@ -24,6 +24,7 @@ package com.oracle.truffle.dsl.processor.java.model;
 
 import java.util.ArrayList;
 import java.util.List;
+
 import javax.lang.model.type.TypeMirror;
 
 public class CodeTree {

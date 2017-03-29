@@ -22,15 +22,8 @@
  */
 package com.oracle.truffle.dsl.processor.java.transform;
 
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getQualifiedName;
-import com.oracle.truffle.dsl.processor.java.model.CodeElementScanner;
-import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
-import com.oracle.truffle.dsl.processor.java.model.CodeImport;
-import com.oracle.truffle.dsl.processor.java.model.CodeTree;
-import com.oracle.truffle.dsl.processor.java.model.CodeTreeKind;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
-import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+
 import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
@@ -40,6 +33,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
@@ -55,6 +49,15 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.AbstractAnnotationValueVisitor7;
 import javax.lang.model.util.ElementFilter;
+
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeElementScanner;
+import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeImport;
+import com.oracle.truffle.dsl.processor.java.model.CodeTree;
+import com.oracle.truffle.dsl.processor.java.model.CodeTreeKind;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 
 public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> {
 

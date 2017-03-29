@@ -22,11 +22,12 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
-import com.oracle.truffle.dsl.processor.expression.DSLExpression;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
+
+import com.oracle.truffle.dsl.processor.expression.DSLExpression;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 public final class CacheExpression extends MessageContainer {
 

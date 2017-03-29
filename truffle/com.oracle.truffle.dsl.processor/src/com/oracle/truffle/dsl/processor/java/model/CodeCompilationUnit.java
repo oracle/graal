@@ -23,6 +23,7 @@
 package com.oracle.truffle.dsl.processor.java.model;
 
 import java.util.Collections;
+
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ElementVisitor;

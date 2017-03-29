@@ -22,11 +22,13 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import java.util.Collections;
+
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
+
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 public final class CachedParameterSpec extends ParameterSpec {
 

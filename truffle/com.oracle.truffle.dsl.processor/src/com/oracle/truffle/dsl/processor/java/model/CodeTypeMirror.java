@@ -25,6 +25,7 @@ package com.oracle.truffle.dsl.processor.java.model;
 import java.lang.annotation.Annotation;
 import java.util.Collections;
 import java.util.List;
+
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;

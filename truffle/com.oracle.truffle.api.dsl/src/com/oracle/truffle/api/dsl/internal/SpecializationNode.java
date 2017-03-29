@@ -50,8 +50,12 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 
 /**
  * Internal implementation dependent base class for generated specialized nodes.
+ *
+ * @deprecated in 0.25 without replacement
  */
 @NodeInfo(cost = NodeCost.NONE)
+@Deprecated
+@SuppressWarnings("deprecation")
 public abstract class SpecializationNode extends Node {
 
     @Child protected SpecializationNode next;

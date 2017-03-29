@@ -22,18 +22,13 @@
  */
 package com.oracle.truffle.dsl.processor;
 
-import com.oracle.truffle.dsl.processor.ProcessorContext.ProcessCallback;
-import com.oracle.truffle.dsl.processor.generator.NodeCodeGenerator;
-import com.oracle.truffle.dsl.processor.generator.TypeSystemCodeGenerator;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
-import com.oracle.truffle.dsl.processor.parser.AbstractParser;
-import com.oracle.truffle.dsl.processor.parser.NodeParser;
-import com.oracle.truffle.dsl.processor.parser.TypeSystemParser;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
@@ -41,6 +36,20 @@ import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic.Kind;
+
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.TypeSystem;
+import com.oracle.truffle.api.dsl.TypeSystemReference;
+import com.oracle.truffle.dsl.processor.ProcessorContext.ProcessCallback;
+import com.oracle.truffle.dsl.processor.generator.NodeCodeGenerator;
+import com.oracle.truffle.dsl.processor.generator.TypeSystemCodeGenerator;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.parser.AbstractParser;
+import com.oracle.truffle.dsl.processor.parser.NodeParser;
+import com.oracle.truffle.dsl.processor.parser.TypeSystemParser;
 
 /**
  * THIS IS NOT PUBLIC API.
@@ -119,16 +128,24 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public Set<String> getSupportedAnnotationTypes() {
         Set<String> annotations = new HashSet<>();
-        List<Class<? extends Annotation>> annotationsTypes = new ArrayList<>();
-        annotationsTypes.addAll(NodeParser.ANNOTATIONS);
-        annotationsTypes.addAll(TypeSystemParser.ANNOTATIONS);
-        for (Class<? extends Annotation> type : annotationsTypes) {
-            annotations.add(type.getCanonicalName());
-        }
+        addAnnotations(annotations, Arrays.asList(Fallback.class, TypeSystemReference.class,
+                        com.oracle.truffle.api.dsl.ShortCircuit.class, Specialization.class,
+                        NodeChild.class,
+                        NodeChildren.class));
+        addAnnotations(annotations, Arrays.asList(TypeSystem.class));
         return annotations;
+    }
+
+    private static void addAnnotations(Set<String> annotations, List<? extends Class<? extends Annotation>> annotationClasses) {
+        if (annotationClasses != null) {
+            for (Class<? extends Annotation> type : annotationClasses) {
+                annotations.add(type.getCanonicalName());
+            }
+        }
     }
 
     private List<AnnotationProcessor<?>> getGenerators() {

@@ -22,8 +22,8 @@
  */
 package com.oracle.truffle.dsl.processor.java.model;
 
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import java.util.Set;
+
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -34,6 +34,8 @@ import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
+
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 public final class CodeVariableElement extends CodeElement<Element> implements VariableElement {
 
