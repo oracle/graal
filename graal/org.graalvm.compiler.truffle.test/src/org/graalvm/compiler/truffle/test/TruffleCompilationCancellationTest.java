@@ -52,7 +52,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -97,7 +96,7 @@ public class TruffleCompilationCancellationTest {
         }
     }
 
-    private static final OptimizedCallTarget EMPTY_CALLEE = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(TruffleLanguage.class, null, null) {
+    private static final OptimizedCallTarget EMPTY_CALLEE = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
         @Override
         public Object execute(VirtualFrame frame) {
             return null;

@@ -28,7 +28,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -61,7 +60,7 @@ public class ExplodeLoopBlockDuplicationTest extends TestWithSynchronousCompilin
     final class ObjectCacheTestRootNode extends RootNode {
 
         protected ObjectCacheTestRootNode() {
-            super(TruffleLanguage.class, null, null);
+            super(null);
         }
 
         @Child ObjectCacheTestNodeGen test = new ObjectCacheTestNodeGen();

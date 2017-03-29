@@ -24,12 +24,12 @@ package org.graalvm.compiler.truffle.test;
 
 import java.util.concurrent.CountDownLatch;
 
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
-import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -44,7 +44,7 @@ public class SafepointRethrowDeoptPETest extends PartialEvaluationTest {
 
     public static class Test0RootNode extends RootNode {
         public Test0RootNode() {
-            super(MockLanguage.class, null, null);
+            super(null);
         }
 
         @Override
@@ -92,7 +92,7 @@ public class SafepointRethrowDeoptPETest extends PartialEvaluationTest {
         @Child private ThrowNode throwContinue = new ThrowNode(CONTINUE_EX);
 
         public Test1RootNode() {
-            super(MockLanguage.class, null, null);
+            super(null);
         }
 
         @Override
@@ -172,7 +172,7 @@ public class SafepointRethrowDeoptPETest extends PartialEvaluationTest {
         @Child private TestNode body;
 
         public Test2RootNode() {
-            super(MockLanguage.class, null, null);
+            super(null);
             this.body = new ExceptionTargetNode(BREAK_EX, new LoopNode(new ExceptionTargetNode(CONTINUE_EX, new BreakOrContinueNode())));
         }
 

@@ -35,7 +35,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -116,7 +115,7 @@ public class PerformanceWarningTest {
     private abstract class TestRootNode extends RootNode {
 
         private TestRootNode() {
-            super(TruffleLanguage.class, null, null);
+            super(null);
         }
     }
 

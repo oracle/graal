@@ -55,7 +55,6 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -111,7 +110,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         testInvalidationCounterCompiled = 0;
         testInvalidationCounterInterpreted = 0;
         doInvalidate = false;
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(TruffleLanguage.class, null, null) {
+        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 if (CompilerDirectives.inInterpreter()) {
@@ -251,7 +250,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         private String name;
 
         NamedRootNode(String name) {
-            super(TruffleLanguage.class, null, null);
+            super(null);
             this.name = name;
         }
 
