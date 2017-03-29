@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -49,6 +50,7 @@ import com.oracle.truffle.llvm.parser.model.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LazyToTruffleConverter;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -84,50 +86,75 @@ final class LLVMModelVisitor implements ModelVisitor {
 
     @Override
     public void visit(FunctionDefinition method) {
-        FrameDescriptor frame = visitor.getStack().getFrame(method.getName());
-
-        List<LLVMExpressionNode> parameters = visitor.createParameters(frame, method);
-
-        final LLVMLifetimeAnalysis lifetimes = LLVMLifetimeAnalysis.getResult(method, frame, visitor.getPhis().getPhiMap(method.getName()));
-
-        LLVMExpressionNode body = visitor.createFunction(method, lifetimes);
-
-        LLVMExpressionNode[] beforeFunction = parameters.toArray(new LLVMExpressionNode[parameters.size()]);
-        LLVMExpressionNode[] afterFunction = new LLVMExpressionNode[0];
-
-        final String sourceText = String.format("%s:%s", visitor.getSource().getName(), method.getName());
-        final Source irSource = Source.newBuilder(sourceText).mimeType("text/plain").name(sourceText).build();
-        final SourceSection sourceSection = irSource.createSection(1);
-        RootNode rootNode = visitor.getNodeFactoryFacade().createFunctionStartNode(visitor, body, beforeFunction, afterFunction, sourceSection, frame, method);
-
-        final String astPrintTarget = LLVMOptions.DEBUG.printFunctionASTs();
-        if (LLVMLogger.TARGET_STDOUT.equals(astPrintTarget) || LLVMLogger.TARGET_ANY.equals(astPrintTarget)) {
-            // Checkstyle: stop
-            NodeUtil.printTree(System.out, rootNode);
-            System.out.flush();
-            // Checkstyle: resume
-
-        } else if (LLVMLogger.TARGET_STDERR.equals(astPrintTarget)) {
-            // Checkstyle: stop
-            NodeUtil.printTree(System.err, rootNode);
-            System.err.flush();
-            // Checkstyle: resume
-
-        } else if (!LLVMLogger.TARGET_NONE.equals(astPrintTarget)) {
-            try (PrintStream out = new PrintStream(new FileOutputStream(astPrintTarget, true))) {
-                NodeUtil.printTree(out, rootNode);
-                out.flush();
-            } catch (IOException e) {
-                throw new IllegalStateException("Cannot write to file: " + astPrintTarget);
-            }
+        LLVMFunctionDescriptor function = registry.lookupFunctionDescriptor(method.getName(), method.getType());
+        if (LLVMOptions.ENGINE.lazyParsing()) {
+            function.setLazyToTruffleConverter(new LazyToTruffleConverterImpl(method, function, visitor));
+        } else {
+            (new LazyToTruffleConverterImpl(method, function, visitor)).convert();
         }
 
-        LLVMFunctionDescriptor function = registry.lookupFunctionDescriptor(method.getName(), method.getType());
-        RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        function.setCallTarget(callTarget);
         visitor.addFunction(function);
 
-        visitor.exitFunction();
+    }
+
+    private static class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
+        private final FunctionDefinition method;
+        private final LLVMFunctionDescriptor function;
+        private final LLVMParserRuntime visitor;
+
+        LazyToTruffleConverterImpl(FunctionDefinition method, LLVMFunctionDescriptor function, LLVMParserRuntime visitor) {
+            this.method = method;
+            this.function = function;
+            this.visitor = visitor;
+        }
+
+        @Override
+        public void convert() {
+            CompilerAsserts.neverPartOfCompilation();
+
+            FrameDescriptor frame = visitor.getStack().getFrame(method.getName());
+
+            List<LLVMExpressionNode> parameters = visitor.createParameters(frame, method);
+
+            final LLVMLifetimeAnalysis lifetimes = LLVMLifetimeAnalysis.getResult(method, frame, visitor.getPhis().getPhiMap(method.getName()));
+
+            LLVMExpressionNode body = visitor.createFunction(method, lifetimes);
+
+            LLVMExpressionNode[] beforeFunction = parameters.toArray(new LLVMExpressionNode[parameters.size()]);
+            LLVMExpressionNode[] afterFunction = new LLVMExpressionNode[0];
+
+            final String sourceText = String.format("%s:%s", visitor.getSource().getName(), method.getName());
+            final Source irSource = Source.newBuilder(sourceText).mimeType("text/plain").name(sourceText).build();
+            final SourceSection sourceSection = irSource.createSection(1);
+            RootNode rootNode = visitor.getNodeFactoryFacade().createFunctionStartNode(visitor, body, beforeFunction, afterFunction, sourceSection, frame, method);
+
+            final String astPrintTarget = LLVMOptions.DEBUG.printFunctionASTs();
+            if (LLVMLogger.TARGET_STDOUT.equals(astPrintTarget) || LLVMLogger.TARGET_ANY.equals(astPrintTarget)) {
+                // Checkstyle: stop
+                NodeUtil.printTree(System.out, rootNode);
+                System.out.flush();
+                // Checkstyle: resume
+
+            } else if (LLVMLogger.TARGET_STDERR.equals(astPrintTarget)) {
+                // Checkstyle: stop
+                NodeUtil.printTree(System.err, rootNode);
+                System.err.flush();
+                // Checkstyle: resume
+
+            } else if (!LLVMLogger.TARGET_NONE.equals(astPrintTarget)) {
+                try (PrintStream out = new PrintStream(new FileOutputStream(astPrintTarget, true))) {
+                    NodeUtil.printTree(out, rootNode);
+                    out.flush();
+                } catch (IOException e) {
+                    throw new IllegalStateException("Cannot write to file: " + astPrintTarget);
+                }
+            }
+
+            RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+            function.setCallTarget(callTarget);
+            visitor.exitFunction();
+        }
+
     }
 
     @Override
