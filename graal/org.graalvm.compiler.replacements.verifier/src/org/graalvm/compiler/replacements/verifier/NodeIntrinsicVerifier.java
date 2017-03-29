@@ -52,7 +52,6 @@ import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.StructuralInput.MarkerType;
-import org.graalvm.util.CollectionsUtil;
 
 public final class NodeIntrinsicVerifier extends AbstractVerifier {
 

@@ -25,7 +25,6 @@ package org.graalvm.compiler.hotspot.replacements;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_4;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
-import com.sun.xml.internal.bind.v2.schemagen.episode.Klass;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.core.common.LocationIdentity;
