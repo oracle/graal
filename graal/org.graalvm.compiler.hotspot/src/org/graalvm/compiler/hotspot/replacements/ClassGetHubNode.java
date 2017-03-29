@@ -83,7 +83,8 @@ public final class ClassGetHubNode extends FloatingNode implements Lowerable, Ca
         return true;
     }
 
-    public static ValueNode canonical(ClassGetHubNode classGetHubNode, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean allUsagesAvailable, Stamp stamp, ValueNode clazz) {
+    public static ValueNode canonical(ClassGetHubNode classGetHubNode, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean allUsagesAvailable, Stamp stamp,
+                    ValueNode clazz) {
         ClassGetHubNode self = classGetHubNode;
         if (allUsagesAvailable && self != null && self.hasNoUsages()) {
             return null;

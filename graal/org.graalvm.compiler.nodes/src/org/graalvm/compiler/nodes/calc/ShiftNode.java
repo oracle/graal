@@ -86,7 +86,8 @@ public abstract class ShiftNode<OP> extends BinaryNode implements ArithmeticOper
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         ValueNode valueNode = canonical(getOp(forX), stamp(), forX, forY);
-        if (valueNode != null) return valueNode;
+        if (valueNode != null)
+            return valueNode;
         return this;
     }
 

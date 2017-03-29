@@ -1190,7 +1190,8 @@ public class BytecodeParser implements GraphBuilderContext {
     protected ValueNode genLoadField(ValueNode receiver, ResolvedJavaField field) {
         StampPair stamp = graphBuilderConfig.getPlugins().getOverridingStamp(this, field.getType(), false);
         if (stamp == null) {
-            return LoadFieldNode.create(this.graph.getAssumptions(), receiver, field);
+            return LoadFieldNode.create(getConstantFieldProvider(), getConstantReflection(), getMetaAccess(), getOptions(),
+                            getAssumptions(), receiver, field, false, false);
         } else {
             return LoadFieldNode.createOverrideStamp(stamp, receiver, field);
         }
