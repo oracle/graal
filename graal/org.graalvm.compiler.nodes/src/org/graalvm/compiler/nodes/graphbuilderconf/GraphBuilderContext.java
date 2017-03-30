@@ -270,7 +270,7 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      * non-null} stamp.
      */
     default ValueNode nullCheckedValue(ValueNode value, DeoptimizationAction action) {
-        if (!StampTool.isPointerNonNull(value.stamp())) {
+        if (!StampTool.isPointerNonNull(value)) {
             LogicNode condition = getGraph().unique(IsNullNode.create(value));
             ObjectStamp receiverStamp = (ObjectStamp) value.stamp();
             Stamp stamp = receiverStamp.join(objectNonNull());
