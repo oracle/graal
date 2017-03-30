@@ -30,40 +30,48 @@
 package com.oracle.truffle.llvm.nodes.asm;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI32RegisterNode;
 
-public abstract class LLVMAMD64ShrNode extends LLVMExpressionNode {
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64ShrbNode extends LLVMExpressionNode {
-        @Specialization
-        protected byte executeI16(byte left, byte right) {
-            return (byte) (left >>> right);
-        }
+@NodeChild("level")
+public abstract class LLVMAMD64CpuidNode extends LLVMExpressionNode {
+    private final LLVMAMD64WriteI32RegisterNode eax;
+    private final LLVMAMD64WriteI32RegisterNode ebx;
+    private final LLVMAMD64WriteI32RegisterNode ecx;
+    private final LLVMAMD64WriteI32RegisterNode edx;
+
+    public LLVMAMD64CpuidNode(LLVMAMD64WriteI32RegisterNode eax, LLVMAMD64WriteI32RegisterNode ebx, LLVMAMD64WriteI32RegisterNode ecx, LLVMAMD64WriteI32RegisterNode edx) {
+        this.eax = eax;
+        this.ebx = ebx;
+        this.ecx = ecx;
+        this.edx = edx;
     }
 
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64ShrwNode extends LLVMExpressionNode {
-        @Specialization
-        protected short executeI16(short left, byte right) {
-            return (short) (left >>> right);
+    @Specialization
+    public Object execute(VirtualFrame frame, int level) {
+        int a, b, c, d;
+        switch (level) {
+            case 0:
+                a = 0;
+                b = 0x6f6c7553;
+                c = 0x34364d56;
+                d = 0x4c4c676e;
+                // b = 0x756e6547;
+                // c = 0x6c65746e;
+                // d = 0x49656e69;
+                break;
+            default:
+                a = 0;
+                b = 0;
+                c = 0;
+                d = 0;
         }
-    }
-
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64ShrlNode extends LLVMExpressionNode {
-        @Specialization
-        protected int executeI32(int left, byte right) {
-            return left >>> right;
-        }
-    }
-
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64ShrqNode extends LLVMExpressionNode {
-        @Specialization
-        protected long executeI64(long left, byte right) {
-            return left >>> right;
-        }
+        eax.execute(frame, a);
+        ebx.execute(frame, b);
+        ecx.execute(frame, c);
+        edx.execute(frame, d);
+        return null;
     }
 }

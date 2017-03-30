@@ -57,13 +57,17 @@ hexNumber = "0x" hexDigit { hexDigit }.
 number = ["-"] digit { digit }.
 
 PRAGMAS
-IGNORE "\n\t\r"
+IGNORE "\t\r"
 
 PRODUCTIONS
 
 InlineAssembly<> =
   "\""
-  { AssemblyInstruction }
+  [ AssemblyInstruction
+    { ( ";" | "\n" )
+      [ AssemblyInstruction ]
+    }
+  ]
   "\""
   							(. root = factory.finishInline(); .)
   .
@@ -83,9 +87,7 @@ AssemblyInstruction<> =
   | BinOp<>
   | IMulDiv<>
   | Jump<>
-  |
   )
-  ";"
   .
 
 Jump<> =						(. @SuppressWarnings("unused") String op; @SuppressWarnings("unused") AsmOperand bta; .)
@@ -146,6 +148,7 @@ ZeroOp<> =						(. String op; .)
   | "sti"
   | "nop"
   | "rdtsc"
+  | "cpuid"
   )							(. op = t.val; .)
   							(. factory.createOperation(op); .)
   .
@@ -373,7 +376,11 @@ BinOp16<> =						(. String op; AsmOperand a, b; .)
   | "andw"
   | "orw"
   | "xorw"
-  | "rclw"
+  | "testw"
+  )							(. op = t.val; .)
+  Operand16<out a> "," Operand16<out b>			(. factory.createBinaryOperation(op, a, b); .)
+  |							(. String op; AsmOperand a, b; .)
+  ( "rclw"
   | "rcrw"
   | "rolw"
   | "rorw"
@@ -381,10 +388,8 @@ BinOp16<> =						(. String op; AsmOperand a, b; .)
   | "sarw"
   | "shlw"
   | "shrw"
-  | "testw"
   )							(. op = t.val; .)
-  Operand16<out a> "," Operand16<out b>
-  							(. factory.createBinaryOperation(op, a, b); .)
+  Operand8<out a> "," Operand16<out b>			(. factory.createBinaryOperation(op, a, b); .)
   .
 
 BinOp32<> =						(. String op; AsmOperand a, b; .)
@@ -434,7 +439,12 @@ BinOp32<> =						(. String op; AsmOperand a, b; .)
   | "andl"
   | "orl"
   | "xorl"
-  | "rcll"
+  | "testl"
+  )							(. op = t.val; .)
+  Operand32<out a> "," Operand32<out b>			(. factory.createBinaryOperation(op, a, b); .)
+  |							(. String op; AsmOperand a, b; .)
+
+  ( "rcll"
   | "rcrl"
   | "roll"
   | "rorl"
@@ -442,10 +452,8 @@ BinOp32<> =						(. String op; AsmOperand a, b; .)
   | "sarl"
   | "shll"
   | "shrl"
-  | "testl"
   )							(. op = t.val; .)
-  Operand32<out a> "," Operand32<out b>
-  							(. factory.createBinaryOperation(op, a, b); .)
+  Operand8<out a> "," Operand32<out b>			(. factory.createBinaryOperation(op, a, b); .)
   .
 
 BinOp64<> =						(. String op; AsmOperand a, b; .)
@@ -495,7 +503,11 @@ BinOp64<> =						(. String op; AsmOperand a, b; .)
   | "andq"
   | "orq"
   | "xorq"
-  | "rclq"
+  | "testq"
+  )							(. op = t.val; .)
+  Operand64<out a> "," Operand64<out b>			(. factory.createBinaryOperation(op, a, b); .)
+  |							(. String op; AsmOperand a, b; .)
+  ( "rclq"
   | "rcrq"
   | "rolq"
   | "rorq"
@@ -503,10 +515,8 @@ BinOp64<> =						(. String op; AsmOperand a, b; .)
   | "sarq"
   | "shlq"
   | "shrq"
-  | "testq"
   )							(. op = t.val; .)
-  Operand64<out a> "," Operand64<out b>
-  							(. factory.createBinaryOperation(op, a, b); .)
+  Operand8<out a> "," Operand64<out b>			(. factory.createBinaryOperation(op, a, b); .)
   .
 
 BinOp<> =						(. String op; AsmOperand a, b; .)
