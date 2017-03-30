@@ -364,8 +364,6 @@ BinOp16<> =						(. String op; AsmOperand a, b; .)
   | "cmovzw"
   | "cmpxchgw"
   | "movw"
-  | "movsbw"
-  | "movzbw"
   | "xaddw"
   | "xchgw"
   | "adcw"
@@ -388,6 +386,11 @@ BinOp16<> =						(. String op; AsmOperand a, b; .)
   | "sarw"
   | "shlw"
   | "shrw"
+  )							(. op = t.val; .)
+  Operand8<out a> "," Operand16<out b>			(. factory.createBinaryOperation(op, a, b); .)
+  |							(. String op; AsmOperand a, b; .)
+  ( "movsbw"
+  | "movzbw"
   )							(. op = t.val; .)
   Operand8<out a> "," Operand16<out b>			(. factory.createBinaryOperation(op, a, b); .)
   .
@@ -425,10 +428,6 @@ BinOp32<> =						(. String op; AsmOperand a, b; .)
   | "cmovzl"
   | "cmpxchgl"
   | "movl"
-  | "movsbl"
-  | "movswl"
-  | "movzbl"
-  | "movzwl"
   | "xaddl"
   | "xchgl"
   | "adcl"
@@ -454,6 +453,16 @@ BinOp32<> =						(. String op; AsmOperand a, b; .)
   | "shrl"
   )							(. op = t.val; .)
   Operand8<out a> "," Operand32<out b>			(. factory.createBinaryOperation(op, a, b); .)
+  |							(. String op; AsmOperand a, b; .)
+  ( "movsbl"
+  | "movswl"
+  )							(. op = t.val; .)
+  Operand8<out a> "," Operand32<out b>			(. factory.createBinaryOperation(op, a, b); .)
+  |							(. String op; AsmOperand a, b; .)
+  ( "movzbl"
+  | "movzwl"
+  )							(. op = t.val; .)
+  Operand16<out a> "," Operand32<out b>			(. factory.createBinaryOperation(op, a, b); .)
   .
 
 BinOp64<> =						(. String op; AsmOperand a, b; .)
@@ -489,10 +498,6 @@ BinOp64<> =						(. String op; AsmOperand a, b; .)
   | "cmovzq"
   | "cmpxchgq"
   | "movq"
-  | "movsbq"
-  | "movswq"
-  | "movzbq"
-  | "movzwq"
   | "xaddq"
   | "xchgq"
   | "adcq"
@@ -517,6 +522,16 @@ BinOp64<> =						(. String op; AsmOperand a, b; .)
   | "shrq"
   )							(. op = t.val; .)
   Operand8<out a> "," Operand64<out b>			(. factory.createBinaryOperation(op, a, b); .)
+  |							(. String op; AsmOperand a, b; .)
+  ( "movsbq"
+  | "movzbq"
+  )							(. op = t.val; .)
+  Operand8<out a> "," Operand64<out b>			(. factory.createBinaryOperation(op, a, b); .)
+  |							(. String op; AsmOperand a, b; .)
+  ( "movswq"
+  | "movzwq"
+  )							(. op = t.val; .)
+  Operand16<out a> "," Operand64<out b>			(. factory.createBinaryOperation(op, a, b); .)
   .
 
 BinOp<> =						(. String op; AsmOperand a, b; .)
