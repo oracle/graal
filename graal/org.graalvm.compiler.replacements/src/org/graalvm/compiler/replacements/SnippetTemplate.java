@@ -82,8 +82,8 @@ import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.PhiNode;
-import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.PiNode.Placeholder;
+import org.graalvm.compiler.nodes.PiNode.PlaceholderStamp;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
@@ -813,11 +813,15 @@ public class SnippetTemplate {
 
             ArrayList<StateSplit> curSideEffectNodes = new ArrayList<>();
             ArrayList<DeoptimizingNode> curDeoptNodes = new ArrayList<>();
-            ArrayList<ValueNode> curStampNodes = new ArrayList<>();
+            ArrayList<ValueNode> curPlaceholderStampedNodes = new ArrayList<>();
             for (Node node : snippetCopy.getNodes()) {
-                if (node instanceof ValueNode && ((ValueNode) node).stamp() == StampFactory.forNodeIntrinsic()) {
-                    curStampNodes.add((ValueNode) node);
+                if (node instanceof ValueNode) {
+                    ValueNode valueNode = (ValueNode) node;
+                    if (valueNode.stamp() == PlaceholderStamp.singleton()) {
+                        curPlaceholderStampedNodes.add(valueNode);
+                    }
                 }
+
                 if (node instanceof StateSplit) {
                     StateSplit stateSplit = (StateSplit) node;
                     FrameState frameState = stateSplit.stateAfter();
@@ -924,7 +928,7 @@ public class SnippetTemplate {
 
             this.sideEffectNodes = curSideEffectNodes;
             this.deoptNodes = curDeoptNodes;
-            this.stampNodes = curStampNodes;
+            this.placeholderStampedNodes = curPlaceholderStampedNodes;
 
             nodes = new ArrayList<>(snippet.getNodeCount());
             for (Node node : snippet.getNodes()) {
@@ -1043,9 +1047,9 @@ public class SnippetTemplate {
     private final ArrayList<DeoptimizingNode> deoptNodes;
 
     /**
-     * The nodes that inherit the {@link ValueNode#stamp()} from the replacee during instantiation.
+     * Nodes that have a stamp originating from a {@link Placeholder}.
      */
-    private final ArrayList<ValueNode> stampNodes;
+    private final ArrayList<ValueNode> placeholderStampedNodes;
 
     /**
      * The nodes to be inlined when this specialization is instantiated.
@@ -1495,14 +1499,14 @@ public class SnippetTemplate {
     }
 
     private void updateStamps(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates) {
-        for (ValueNode stampNode : stampNodes) {
-            Node stampDup = duplicates.get(stampNode);
-            if (stampDup instanceof PiNode.Placeholder) {
-                PiNode.Placeholder placeholder = (Placeholder) stampDup;
-                PiNode pi = placeholder.getReplacement(replacee.stamp());
-                placeholder.replaceAndDelete(pi);
+        for (ValueNode node : placeholderStampedNodes) {
+            ValueNode dup = (ValueNode) duplicates.get(node);
+            Stamp replaceeStamp = replacee.stamp();
+            if (node instanceof Placeholder) {
+                Placeholder placeholderDup = (Placeholder) dup;
+                placeholderDup.makeReplacement(replaceeStamp);
             } else {
-                ((ValueNode) stampDup).setStamp(replacee.stamp());
+                dup.setStamp(replaceeStamp);
             }
         }
         for (ParameterNode paramNode : snippet.getNodes(ParameterNode.TYPE)) {

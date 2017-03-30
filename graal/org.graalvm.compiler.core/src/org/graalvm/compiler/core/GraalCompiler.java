@@ -176,12 +176,20 @@ public class GraalCompiler {
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }
-            maybeCrash(r.graph);
+            checkForRequestedCrash(r.graph);
             return r.compilationResult;
         }
     }
 
-    private static void maybeCrash(StructuredGraph graph) {
+    /**
+     * Checks whether the {@link GraalCompilerOptions#CrashAt} option indicates that the compilation
+     * of {@code graph} should result in an exception.
+     *
+     * @param graph a graph currently being compiled
+     * @throws RuntimeException if the value of {@link GraalCompilerOptions#CrashAt} matches
+     *             {@code graph.method()} or {@code graph.name}
+     */
+    private static void checkForRequestedCrash(StructuredGraph graph) {
         String methodPattern = GraalCompilerOptions.CrashAt.getValue(graph.getOptions());
         if (methodPattern != null) {
             String crashLabel = null;

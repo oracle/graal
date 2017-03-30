@@ -26,6 +26,7 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
+import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
@@ -70,7 +71,6 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
 
     protected PiNode(NodeClass<? extends PiNode> c, ValueNode object, Stamp stamp, GuardingNode guard) {
         super(c, stamp, guard);
-        assert stamp != StampFactory.forNodeIntrinsic();
         this.object = object;
         this.piStamp = stamp;
         assert piStamp.isCompatible(object.stamp()) : "Object stamp not compatible to piStamp";
@@ -226,9 +226,8 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     public static native Object piCast(Object object, @ConstantNodeParameter Class<?> toType, @ConstantNodeParameter boolean exactType, @ConstantNodeParameter boolean nonNull);
 
     /**
-     * A placeholder node in a snippet that will be replaced with an appropriate {@link PiNode} when
-     * the snippet is instantiated. Using a placeholder means that {@link PiNode} never needs to
-     * deal with {@link StampFactory#forNodeIntrinsic()} stamps.
+     * A placeholder node in a snippet that will be replaced with a {@link PiNode} when the snippet
+     * is instantiated.
      */
     @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
     public static class Placeholder extends FloatingGuardedNode {
@@ -241,7 +240,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         }
 
         protected Placeholder(NodeClass<? extends Placeholder> c, ValueNode object) {
-            super(c, StampFactory.forNodeIntrinsic(), null);
+            super(c, PlaceholderStamp.SINGLETON, null);
             this.object = object;
         }
 
@@ -250,12 +249,44 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         }
 
         /**
-         * Gets a new {@link PiNode} that replaces this placeholder during snippet instantiation.
+         * Replaces this node with a {@link PiNode} during snippet instantiation.
          *
          * @param snippetReplaceeStamp the stamp of the node being replace by the snippet
          */
-        public PiNode getReplacement(Stamp snippetReplaceeStamp) {
-            return graph().addOrUnique(new PiNode(object(), snippetReplaceeStamp, null));
+        public void makeReplacement(Stamp snippetReplaceeStamp) {
+            PiNode pi = graph().addOrUnique(new PiNode(object(), snippetReplaceeStamp, null));
+            replaceAndDelete(pi);
+        }
+    }
+
+    /**
+     * A stamp for {@link Placeholder} nodes which are only used in snippets. It is replaced by an
+     * actual stamp when the snippet is instantiated.
+     */
+    public static final class PlaceholderStamp extends ObjectStamp {
+        private static final PlaceholderStamp SINGLETON = new PlaceholderStamp();
+
+        public static PlaceholderStamp singleton() {
+            return SINGLETON;
+        }
+
+        private PlaceholderStamp() {
+            super(null, false, false, false);
+        }
+
+        @Override
+        public int hashCode() {
+            return System.identityHashCode(this);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj;
+        }
+
+        @Override
+        public String toString() {
+            return "PlaceholderStamp";
         }
     }
 }

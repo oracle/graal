@@ -173,6 +173,9 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                 Map<Object, Object> properties = new HashMap<>();
                 properties.put("graph", graph.toString());
                 properties.put("scope", Debug.currentScope());
+                if (graph instanceof StructuredGraph) {
+                    properties.put("compilationIdentifier", ((StructuredGraph) graph).compilationId());
+                }
                 addCFGFileName(properties);
                 printer.print(graph, nextDumpId() + ":" + message, properties);
             } catch (IOException e) {
