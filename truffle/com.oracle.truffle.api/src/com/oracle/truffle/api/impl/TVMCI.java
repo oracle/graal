@@ -44,7 +44,7 @@ public abstract class TVMCI {
      *
      * @param <T> the {@link CallTarget} subclass of the hosting virtual machine
      *
-     * @since 0.26
+     * @since 0.25
      */
     public abstract static class Test<T extends CallTarget> {
 
@@ -55,7 +55,7 @@ public abstract class TVMCI {
          * @param testNode the root node containing the test code
          * @return a call target
          *
-         * @since 0.26
+         * @since 0.25
          */
         protected abstract T createTestCallTarget(String testName, RootNode testNode);
 
@@ -64,7 +64,7 @@ public abstract class TVMCI {
          *
          * @param callTarget a call target that was created with {@link #createTestCallTarget}
          *
-         * @since 0.26
+         * @since 0.25
          */
         protected abstract void finishWarmup(T callTarget);
     }
@@ -170,7 +170,7 @@ public abstract class TVMCI {
      *
      * @param <T>
      *
-     * @since 0.26
+     * @since 0.25
      */
     public static class TestAccessor<T extends CallTarget> {
 

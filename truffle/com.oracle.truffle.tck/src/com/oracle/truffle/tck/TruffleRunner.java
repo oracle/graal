@@ -24,14 +24,33 @@
  */
 package com.oracle.truffle.tck;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.tck.TruffleRunner.Inject;
+import com.oracle.truffle.tck.TruffleRunner.Warmup;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.junit.runner.Runner;
 import org.junit.runners.BlockJUnit4ClassRunner;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
+import org.junit.runners.Parameterized.UseParametersRunnerFactory;
 import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.Statement;
@@ -39,26 +58,117 @@ import org.junit.runners.parameterized.BlockJUnit4ClassRunnerWithParameters;
 import org.junit.runners.parameterized.ParametersRunnerFactory;
 import org.junit.runners.parameterized.TestWithParameters;
 
+/**
+ * JUnit test runner for unit testing Truffle AST interpreters.
+ * <p>
+ * A test using {@link TruffleRunner} consists of 2 parts, a Truffle AST to be tested, and a test
+ * method that drives the test, provides input argument values and validates the result.
+ *
+ * <h4>Writing a test AST</h4>
+ *
+ * The Truffle AST to be tested is written as a {@link RootNode} subclass, for example:
+ * <p>
+ * {@codesnippet TruffleRunnerSnippets#TestExecuteNode}
+ *
+ * <h4>Writing a test method</h4>
+ *
+ * The test method is a normal method annotated with {@link Test}. It may have one or more arguments
+ * of type {@link CallTarget} that are annotated with {@link Inject}. The {@link Inject} annotation
+ * specifies a {@link RootNode} subclass that is the root of a test AST, and the
+ * {@link TruffleRunner} will create one {@link CallTarget} for each of these test ASTs. The test
+ * method can then execute the AST by calling the {@link CallTarget#call} method.
+ * <p>
+ * Typically a test method will prepare some arguments, and then do a single call to
+ * {@link CallTarget#call}. Then it should verify the result by inspecting the return value and
+ * checking the expected side effects of the test code.
+ * <p>
+ * {@codesnippet TruffleRunnerSnippets#ExampleTest}
+ *
+ * @see Warmup warmup iterations and compilation
+ * @see ParametersFactory parameterized Truffle AST tests
+ *
+ * @since 0.25
+ */
 public final class TruffleRunner extends BlockJUnit4ClassRunner {
 
     private static final TruffleTestInvoker<?> truffleTestInvoker = TruffleTestInvoker.create();
 
+    /**
+     * A parameter annotated with {@link Inject} specifies the {@link RootNode} of the test AST.
+     *
+     * @see TruffleRunner
+     *
+     * @since 0.25
+     */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.PARAMETER)
     public @interface Inject {
 
+        /**
+         * Defines the {@link RootNode root node} of the Truffle tree that should be tested.
+         */
         Class<? extends RootNode> value();
     }
 
+    /**
+     * A test method can be annotated with {@link Warmup} to specify how many warmup iterations of a
+     * test should be done before the Truffle tree is compiled. If this annotation is missing, the
+     * default value of 3 is used.
+     * <p>
+     * {@codesnippet TruffleRunnerSnippets#warmupTest}
+     * <p>
+     * In this example, the test code will in total be run 6 times. The first 5 iterations are
+     * warmup. The {@link CallTarget#call} invocation will run in the interpreter, simply calling
+     * the {@link RootNode#execute} method. This allows the AST to specialize itself before it is
+     * compiled.
+     * <p>
+     * After warmup, the resulting specialized AST is compiled, and in the final iteration the
+     * {@link CallTarget} represents the resulting compiled code.
+     *
+     * @see TruffleRunner
+     *
+     * @since 0.25
+     */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.METHOD)
     public @interface Warmup {
 
+        /**
+         * The number of warmup iterations to run before a test is compiled.
+         */
         int value();
     }
 
+    /**
+     * {@link ParametersRunnerFactory} for testing Truffle AST interpreters using
+     * {@link Parameterized} unit tests. To use the parameters for constructing the test AST, the
+     * test {@link RootNode} constructor may take the test class as single argument, or
+     * alternatively the test {@link RootNode} can be a non-static inner class of the test class.
+     * <p>
+     * {@codesnippet TruffleRunnerSnippets#ParameterizedTest}
+     *
+     * @see TruffleRunner
+     *
+     * @since 0.25
+     */
     public static final class ParametersFactory implements ParametersRunnerFactory {
 
+        /**
+         * Should not be called directly. To use this class, annotate your test class with
+         * {@code @Parameterized.UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)}.
+         *
+         * @see TruffleRunner
+         *
+         * @since 0.25
+         */
+        public ParametersFactory() {
+        }
+
+        /**
+         * Internal method used by the JUnit framework. Do not call directly.
+         *
+         * @since 0.25
+         */
         @Override
         public Runner createRunnerForTestWithParameters(TestWithParameters test) throws InitializationError {
             return new ParameterizedRunner(test);
@@ -86,10 +196,23 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
         }
     }
 
+    /**
+     * Should not be called directly. To use this class, annotate your test class with
+     * {@code @RunWith(TruffleRunner.class)}.
+     *
+     * @see TruffleRunner
+     *
+     * @since 0.25
+     */
     public TruffleRunner(Class<?> klass) throws InitializationError {
         super(klass);
     }
 
+    /**
+     * Internal method used by the JUnit framework. Do not call directly.
+     *
+     * @since 0.25
+     */
     @Override
     protected Statement methodInvoker(FrameworkMethod method, Object test) {
         Statement ret = truffleTestInvoker.createStatement(testName(method), getTestClass(), method, test);
@@ -99,8 +222,126 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
         return ret;
     }
 
+    /**
+     * Internal method used by the JUnit framework. Do not call directly.
+     *
+     * @since 0.25
+     */
     @Override
     protected void validateTestMethods(List<Throwable> errors) {
         TruffleTestInvoker.validateTestMethods(getTestClass(), errors);
     }
+}
+
+class TruffleRunnerSnippets {
+
+    // Checkstyle: stop
+    // BEGIN: TruffleRunnerSnippets#TestExecuteNode
+    public class TestExecuteNode extends RootNode {
+
+        @Child Node executeNode;
+
+        public TestExecuteNode() {
+            super(null);
+            executeNode = Message.createExecute(1).createNode();
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            TruffleObject obj = (TruffleObject) frame.getArguments()[0];
+            try {
+                return ForeignAccess.sendExecute(executeNode, obj);
+            } catch (InteropException ex) {
+                CompilerDirectives.transferToInterpreter();
+                Assert.fail(ex.getMessage());
+                return null;
+            }
+        }
+    }
+    // END: TruffleRunnerSnippets#TestExecuteNode
+    // Checkstyle: resume
+
+    private static TruffleObject prepareArgumentValue() {
+        return null;
+    }
+
+    private static Object expectedRetValue() {
+        return null;
+    }
+
+    // BEGIN: TruffleRunnerSnippets#ExampleTest
+    @RunWith(TruffleRunner.class)
+    public class ExampleTest {
+
+        @Test
+        public void executeTest(@Inject(TestExecuteNode.class) CallTarget target) {
+            TruffleObject receiver = prepareArgumentValue();
+            Object ret = target.call(receiver);
+            Assert.assertEquals(expectedRetValue(), ret);
+        }
+    }
+    // END: TruffleRunnerSnippets#ExampleTest
+
+    // BEGIN: TruffleRunnerSnippets#warmupTest
+    @Test
+    @Warmup(5)
+    public void warmupTest(@Inject(TestExecuteNode.class) CallTarget target) {
+        TruffleObject receiver = prepareArgumentValue();
+        Object ret = target.call(receiver);
+        Assert.assertEquals(expectedRetValue(), ret);
+    }
+    // END: TruffleRunnerSnippets#warmupTest
+
+    // Checkstyle: stop
+    // BEGIN: TruffleRunnerSnippets#ParameterizedTest
+    @RunWith(Parameterized.class)
+    @UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
+    public static class ParameterizedTest {
+
+        @Parameters(name = "{0}, {1}")
+        public static Collection<Object[]> data() {
+            ArrayList<Object[]> ret = new ArrayList<>();
+            ret.add(new Object[]{5, "test"});
+            ret.add(new Object[]{-3, "asdf"});
+            return ret;
+        }
+
+        @Parameter(0) int intParam;
+        @Parameter(1) String stringParam;
+
+        public class TestConstArgNode extends RootNode {
+
+            private final int iArg;
+            private final String sArg;
+
+            @Child Node executeNode;
+
+            public TestConstArgNode() {
+                super(null);
+                this.iArg = intParam;
+                this.sArg = stringParam;
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                TruffleObject obj = (TruffleObject) frame.getArguments()[0];
+                try {
+                    return ForeignAccess.sendExecute(executeNode, obj, iArg, sArg);
+                } catch (InteropException ex) {
+                    CompilerDirectives.transferToInterpreter();
+                    Assert.fail(ex.getMessage());
+                    return null;
+                }
+            }
+        }
+
+        @Test
+        public void constArg(@Inject(TestConstArgNode.class) CallTarget target) {
+            TruffleObject arg = prepareArgumentValue();
+            Object ret = target.call(arg);
+            Assert.assertEquals(expectedRetValue(), ret);
+        }
+    }
+    // END: TruffleRunnerSnippets#ParameterizedTest
+    // Checkstyle: resume
 }
