@@ -34,13 +34,6 @@ import org.junit.Test;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class ConditionalEliminationTest13 extends ConditionalEliminationTestBase {
-    public ConditionalEliminationTest13() {
-        super(false);
-    }
-
-    private static int sink0;
-    private static int sink1;
-    private static int sink2;
 
     @Override
     protected InlineInvokePlugin.InlineInfo bytecodeParserShouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {

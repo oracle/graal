@@ -411,7 +411,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                                 allow = true;
                             } else if (integerStamp.asConstant() != null) {
                                 allow = true;
-                            } else if (oldStamp.unrestricted().equals(oldStamp)) {
+                            } else if (oldStamp.isUnrestricted()) {
                                 allow = true;
                             }
                         } else {

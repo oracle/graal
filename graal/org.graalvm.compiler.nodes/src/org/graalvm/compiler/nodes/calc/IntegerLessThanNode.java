@@ -34,6 +34,7 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.LogicNegationNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
 
@@ -101,16 +102,35 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
                 return new IntegerBelowNode(forX, forY);
             }
         }
-        if (forY.isConstant() && forY.asConstant().isDefaultForKind() && forX instanceof SubNode) {
-            // (x - y) < 0 when x - y is known not to underflow <=> x < y
+        if (forY.isConstant() && forX instanceof SubNode) {
             SubNode sub = (SubNode) forX;
-            IntegerStamp xStamp = (IntegerStamp) sub.getX().stamp();
-            IntegerStamp yStamp = (IntegerStamp) sub.getY().stamp();
-            long minValue = CodeUtil.minValue(xStamp.getBits());
-            long maxValue = CodeUtil.maxValue(xStamp.getBits());
+            ValueNode xx = null;
+            ValueNode yy = null;
+            boolean negate = false;
+            if (forY.asConstant().isDefaultForKind()) {
+                // (x - y) < 0 when x - y is known not to underflow <=> x < y
+                xx = sub.getX();
+                yy = sub.getY();
+            } else if (forY.isJavaConstant() && forY.asJavaConstant().asLong() == 1) {
+                // (x - y) < 1 when x - y is known not to underflow <=> !(y < x)
+                xx = sub.getY();
+                yy = sub.getX();
+                negate = true;
+            }
+            if (xx != null) {
+                assert yy != null;
+                IntegerStamp xStamp = (IntegerStamp) sub.getX().stamp();
+                IntegerStamp yStamp = (IntegerStamp) sub.getY().stamp();
+                long minValue = CodeUtil.minValue(xStamp.getBits());
+                long maxValue = CodeUtil.maxValue(xStamp.getBits());
 
-            if (!subtractMayUnderflow(xStamp.lowerBound(), yStamp.upperBound(), minValue) && !subtractMayOverflow(xStamp.upperBound(), yStamp.lowerBound(), maxValue)) {
-                return new IntegerLessThanNode(sub.getX(), sub.getY());
+                if (!subtractMayUnderflow(xStamp.lowerBound(), yStamp.upperBound(), minValue) && !subtractMayOverflow(xStamp.upperBound(), yStamp.lowerBound(), maxValue)) {
+                    LogicNode logic = new IntegerLessThanNode(xx, yy);
+                    if (negate) {
+                        logic = LogicNegationNode.create(logic);
+                    }
+                    return logic;
+                }
             }
         }
 
