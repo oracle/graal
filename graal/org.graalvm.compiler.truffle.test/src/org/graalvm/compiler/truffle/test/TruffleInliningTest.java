@@ -59,7 +59,7 @@ public abstract class TruffleInliningTest {
         }
 
         InlineTestRootNode(int size, String name) {
-            super(MockLanguage.class, null, null);
+            super(null);
 
             children = new Node[size];
             for (int i = 0; i < children.length; i++) {

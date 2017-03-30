@@ -24,14 +24,13 @@ package org.graalvm.compiler.truffle.test;
 
 import static com.oracle.truffle.api.CompilerAsserts.partialEvaluationConstant;
 
-import org.junit.Test;
-
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -171,7 +170,7 @@ public class CompilationFinalPartialEvaluationTest extends PartialEvaluationTest
 
     @Test
     public void compilationFinalTest2() {
-        assertPartialEvalEquals("constant42", new RootNode(TruffleLanguage.class, null, null) {
+        assertPartialEvalEquals("constant42", new RootNode(null) {
 
             @CompilationFinal private int i = 3;
 

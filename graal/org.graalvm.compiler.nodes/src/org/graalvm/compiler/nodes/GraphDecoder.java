@@ -99,13 +99,9 @@ public class GraphDecoder {
         public final TypeReader reader;
         /** The kind of loop explosion to be performed during decoding. */
         public final LoopExplosionKind loopExplosion;
-        /** A list of tasks to run before the method scope is closed. */
-        public final List<Runnable> cleanupTasks;
 
         /** All return nodes encountered during decoding. */
-        public final List<ReturnNode> returnNodes;
-        /** The exception unwind node encountered during decoding, or null. */
-        public final List<UnwindNode> unwindNodes;
+        public final List<ControlSinkNode> returnAndUnwindNodes;
 
         /** All merges created during loop explosion. */
         public final EconomicSet<Node> loopExplosionMerges;
@@ -121,9 +117,7 @@ public class GraphDecoder {
             this.methodStartMark = graph.getMark();
             this.encodedGraph = encodedGraph;
             this.loopExplosion = loopExplosion;
-            this.cleanupTasks = new ArrayList<>(2);
-            this.returnNodes = new ArrayList<>(1);
-            this.unwindNodes = new ArrayList<>(0);
+            this.returnAndUnwindNodes = new ArrayList<>(2);
 
             if (encodedGraph != null) {
                 reader = UnsafeArrayTypeReader.create(encodedGraph.getEncoding(), encodedGraph.getStartOffset(), architecture.supportsUnalignedMemoryAccess());
@@ -146,6 +140,10 @@ public class GraphDecoder {
             } else {
                 loopExplosionMerges = null;
             }
+        }
+
+        public boolean isInlinedMethod() {
+            return false;
         }
     }
 
@@ -177,14 +175,15 @@ public class GraphDecoder {
         public final Node[] createdNodes;
         /**
          * Nodes that have been created in outer loop scopes and existed before starting to process
-         * this loop, indexed by the orderId.
+         * this loop, indexed by the orderId. Only used when {@link MethodScope#loopExplosion} is
+         * not {@link LoopExplosionKind#NONE}.
          */
         public final Node[] initialCreatedNodes;
 
         protected LoopScope(MethodScope methodScope) {
             this.methodScope = methodScope;
             this.outer = null;
-            this.nextIterations = methodScope.loopExplosion == LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN ? new ArrayDeque<>() : null;
+            this.nextIterations = methodScope.loopExplosion == LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN ? new ArrayDeque<>(2) : null;
             this.loopDepth = 0;
             this.loopIteration = 0;
             this.iterationStates = null;
@@ -192,8 +191,8 @@ public class GraphDecoder {
 
             int nodeCount = methodScope.encodedGraph.nodeStartOffsets.length;
             this.nodesToProcess = new BitSet(methodScope.maxFixedNodeOrderId);
-            this.initialCreatedNodes = new Node[nodeCount];
             this.createdNodes = new Node[nodeCount];
+            this.initialCreatedNodes = null;
         }
 
         protected LoopScope(MethodScope methodScope, LoopScope outer, int loopDepth, int loopIteration, int loopBeginOrderId, Node[] initialCreatedNodes, Node[] createdNodes,
@@ -207,7 +206,7 @@ public class GraphDecoder {
             this.loopBeginOrderId = loopBeginOrderId;
             this.nodesToProcess = new BitSet(methodScope.maxFixedNodeOrderId);
             this.initialCreatedNodes = initialCreatedNodes;
-            this.createdNodes = Arrays.copyOf(createdNodes, createdNodes.length);
+            this.createdNodes = createdNodes;
         }
 
         @Override
@@ -381,10 +380,6 @@ public class GraphDecoder {
             registerNode(loopScope, GraphEncoder.START_NODE_ORDER_ID, firstNode, false, false);
             loopScope.nodesToProcess.set(GraphEncoder.START_NODE_ORDER_ID);
         }
-
-        if (methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE) {
-            methodScope.cleanupTasks.add(new LoopDetector(graph, methodScope, startNode));
-        }
         return loopScope;
     }
 
@@ -418,18 +413,26 @@ public class GraphDecoder {
             }
 
             /*
-             * Finished with an inlined method. Perform all registered end-of-method cleanup tasks
-             * and continue with loop that contained the call.
+             * Finished with an inlined method. Perform end-of-method cleanup tasks.
              */
-            for (Runnable task : methodScope.cleanupTasks) {
-                task.run();
+            if (methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE) {
+                LoopDetector loopDetector = new LoopDetector(graph, methodScope);
+                loopDetector.run();
             }
+            if (methodScope.isInlinedMethod()) {
+                finishInlining(methodScope);
+            }
+
+            /* continue with the caller */
             loopScope = methodScope.callerLoopScope;
         }
     }
 
+    protected void finishInlining(@SuppressWarnings("unused") MethodScope inlineScope) {
+    }
+
     private static void propagateCreatedNodes(LoopScope loopScope) {
-        if (loopScope.outer == null) {
+        if (loopScope.outer == null || loopScope.createdNodes != loopScope.outer.createdNodes) {
             return;
         }
 
@@ -481,7 +484,7 @@ public class GraphDecoder {
                 LoopScope outerScope = loopScope.outer;
                 int nextIterationNumber = outerScope.nextIterations.isEmpty() ? outerScope.loopIteration + 1 : outerScope.nextIterations.getLast().loopIteration + 1;
                 successorAddScope = new LoopScope(methodScope, outerScope.outer, outerScope.loopDepth, nextIterationNumber, outerScope.loopBeginOrderId, outerScope.initialCreatedNodes,
-                                loopScope.initialCreatedNodes, outerScope.nextIterations, outerScope.iterationStates);
+                                Arrays.copyOf(loopScope.initialCreatedNodes, loopScope.initialCreatedNodes.length), outerScope.nextIterations, outerScope.iterationStates);
                 checkLoopExplosionIteration(methodScope, successorAddScope);
 
                 /*
@@ -540,13 +543,16 @@ public class GraphDecoder {
                 if (merge instanceof LoopBeginNode) {
                     assert phiNodeScope == phiInputScope && phiNodeScope == loopScope;
                     resultScope = new LoopScope(methodScope, loopScope, loopScope.loopDepth + 1, 0, mergeOrderId,
-                                    Arrays.copyOf(loopScope.createdNodes, loopScope.createdNodes.length), loopScope.createdNodes, //
-                                    methodScope.loopExplosion != LoopExplosionKind.NONE ? new ArrayDeque<>() : null, //
+                                    methodScope.loopExplosion != LoopExplosionKind.NONE ? Arrays.copyOf(loopScope.createdNodes, loopScope.createdNodes.length) : null,
+                                    methodScope.loopExplosion != LoopExplosionKind.NONE ? Arrays.copyOf(loopScope.createdNodes, loopScope.createdNodes.length) : loopScope.createdNodes, //
+                                    methodScope.loopExplosion != LoopExplosionKind.NONE ? new ArrayDeque<>(2) : null, //
                                     methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE ? EconomicMap.create(Equivalence.DEFAULT) : null);
                     phiInputScope = resultScope;
                     phiNodeScope = resultScope;
 
-                    registerNode(loopScope, mergeOrderId, null, true, true);
+                    if (methodScope.loopExplosion != LoopExplosionKind.NONE) {
+                        registerNode(loopScope, mergeOrderId, null, true, true);
+                    }
                     loopScope.nodesToProcess.clear(mergeOrderId);
                     resultScope.nodesToProcess.set(mergeOrderId);
                 }
@@ -558,11 +564,8 @@ public class GraphDecoder {
             InvokeData invokeData = readInvokeData(methodScope, nodeOrderId, (Invoke) node);
             resultScope = handleInvoke(methodScope, loopScope, invokeData);
 
-        } else if (node instanceof ReturnNode) {
-            methodScope.returnNodes.add((ReturnNode) node);
-        } else if (node instanceof UnwindNode) {
-            methodScope.unwindNodes.add((UnwindNode) node);
-
+        } else if (node instanceof ReturnNode || node instanceof UnwindNode) {
+            methodScope.returnAndUnwindNodes.add((ControlSinkNode) node);
         } else {
             handleFixedNode(methodScope, loopScope, nodeOrderId, node);
         }
@@ -677,8 +680,13 @@ public class GraphDecoder {
                         if (loopScope.createdNodes[i] == frameStateValue) {
                             loopScope.createdNodes[i] = newFrameStateValue;
                         }
-                        if (loopScope.initialCreatedNodes[i] == frameStateValue) {
-                            loopScope.initialCreatedNodes[i] = newFrameStateValue;
+                    }
+
+                    if (loopScope.initialCreatedNodes != null) {
+                        for (int i = 0; i < loopScope.initialCreatedNodes.length; i++) {
+                            if (loopScope.initialCreatedNodes[i] == frameStateValue) {
+                                loopScope.initialCreatedNodes[i] = newFrameStateValue;
+                            }
                         }
                     }
                 }
@@ -723,7 +731,7 @@ public class GraphDecoder {
         if (methodScope.loopExplosion != LoopExplosionKind.FULL_UNROLL || loopScope.nextIterations.isEmpty()) {
             int nextIterationNumber = loopScope.nextIterations.isEmpty() ? loopScope.loopIteration + 1 : loopScope.nextIterations.getLast().loopIteration + 1;
             LoopScope nextIterationScope = new LoopScope(methodScope, loopScope.outer, loopScope.loopDepth, nextIterationNumber, loopScope.loopBeginOrderId, loopScope.initialCreatedNodes,
-                            loopScope.initialCreatedNodes, loopScope.nextIterations, loopScope.iterationStates);
+                            Arrays.copyOf(loopScope.initialCreatedNodes, loopScope.initialCreatedNodes.length), loopScope.nextIterations, loopScope.iterationStates);
             checkLoopExplosionIteration(methodScope, nextIterationScope);
             loopScope.nextIterations.addLast(nextIterationScope);
             registerNode(nextIterationScope, loopScope.loopBeginOrderId, null, true, true);
@@ -756,7 +764,9 @@ public class GraphDecoder {
              * The ProxyNode transports a value from the loop to the outer scope. We therefore
              * register it in the outer scope.
              */
-            registerNode(loopScope.outer, proxyOrderId, proxy, false, false);
+            if (loopScope.outer.createdNodes != loopScope.createdNodes) {
+                registerNode(loopScope.outer, proxyOrderId, proxy, false, false);
+            }
         }
     }
 
@@ -1133,7 +1143,7 @@ public class GraphDecoder {
     private void releaseFloatingNode(Node node) {
         ArrayDeque<Node> cachedNodes = reusableFloatingNodes.get(node.getNodeClass());
         if (cachedNodes == null) {
-            cachedNodes = new ArrayDeque<>();
+            cachedNodes = new ArrayDeque<>(2);
             reusableFloatingNodes.put(node.getNodeClass(), cachedNodes);
         }
         cachedNodes.push(node);
@@ -1312,7 +1322,7 @@ class LoopDetector implements Runnable {
          * The ends, i.e., the source of backward branches. The {@link EndNode#successors successor}
          * is the {@link #header loop header}.
          */
-        List<EndNode> ends = new ArrayList<>();
+        List<EndNode> ends = new ArrayList<>(2);
         /**
          * Exits of the loop. The successor is a {@link MergeNode} marked in
          * {@link MethodScope#loopExplosionMerges}.
@@ -1327,15 +1337,13 @@ class LoopDetector implements Runnable {
 
     private final StructuredGraph graph;
     private final MethodScope methodScope;
-    private final FixedNode startInstruction;
 
     private Loop irreducibleLoopHandler;
     private IntegerSwitchNode irreducibleLoopSwitch;
 
-    protected LoopDetector(StructuredGraph graph, MethodScope methodScope, FixedNode startInstruction) {
+    protected LoopDetector(StructuredGraph graph, MethodScope methodScope) {
         this.graph = graph;
         this.methodScope = methodScope;
-        this.startInstruction = startInstruction;
     }
 
     @Override
@@ -1385,8 +1393,8 @@ class LoopDetector implements Runnable {
         NodeBitMap visited = graph.createNodeBitMap();
         NodeBitMap active = graph.createNodeBitMap();
         Deque<Node> stack = new ArrayDeque<>();
-        visited.mark(startInstruction);
-        stack.push(startInstruction);
+        visited.mark(methodScope.loopExplosionHead);
+        stack.push(methodScope.loopExplosionHead);
 
         while (!stack.isEmpty()) {
             Node current = stack.peek();
@@ -1534,7 +1542,6 @@ class LoopDetector implements Runnable {
          * necessary into a loop because it computes loop information based on bytecodes, before the
          * actual parsing.
          */
-
         for (Node succ : possibleExits) {
             if (!visited.contains(succ)) {
                 stack.push(succ);
@@ -1768,7 +1775,7 @@ class LoopDetector implements Runnable {
              * to the old FrameState: the loop variable is replaced with the phi function.
              */
             FrameState oldFrameState = explosionHeadState;
-            List<ValueNode> newFrameStateValues = new ArrayList<>();
+            List<ValueNode> newFrameStateValues = new ArrayList<>(explosionHeadValues.size());
             for (int i = 0; i < explosionHeadValues.size(); i++) {
                 if (i == loopVariableIndex) {
                     newFrameStateValues.add(loopVariablePhi);
@@ -1776,6 +1783,7 @@ class LoopDetector implements Runnable {
                     newFrameStateValues.add(explosionHeadValues.get(i));
                 }
             }
+
             FrameState newFrameState = graph.add(
                             new FrameState(oldFrameState.outerFrameState(), oldFrameState.getCode(), oldFrameState.bci, newFrameStateValues, oldFrameState.localsSize(),
                                             oldFrameState.stackSize(), oldFrameState.rethrowException(), oldFrameState.duringCall(), oldFrameState.monitorIds(),

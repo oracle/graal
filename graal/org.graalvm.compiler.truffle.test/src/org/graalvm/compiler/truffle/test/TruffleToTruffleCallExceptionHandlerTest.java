@@ -42,7 +42,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -56,7 +55,7 @@ public class TruffleToTruffleCallExceptionHandlerTest {
     private static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
     private static final TruffleCompiler truffleCompiler = DefaultTruffleCompiler.create(runtime);
 
-    private final OptimizedCallTarget calleeNoException = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(TruffleLanguage.class, null, null) {
+    private final OptimizedCallTarget calleeNoException = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
         @Override
         public Object execute(VirtualFrame frame) {
             return null;
@@ -68,7 +67,7 @@ public class TruffleToTruffleCallExceptionHandlerTest {
         }
     });
 
-    private final OptimizedCallTarget callerNoException = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(TruffleLanguage.class, null, null) {
+    private final OptimizedCallTarget callerNoException = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
 
         @Child protected DirectCallNode callNode = runtime.createDirectCallNode(calleeNoException);
 
@@ -84,7 +83,7 @@ public class TruffleToTruffleCallExceptionHandlerTest {
         }
     });
 
-    private final OptimizedCallTarget calleeWithException = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(TruffleLanguage.class, null, null) {
+    private final OptimizedCallTarget calleeWithException = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
         private boolean called;
 
         @Override
@@ -102,7 +101,7 @@ public class TruffleToTruffleCallExceptionHandlerTest {
         }
     });
 
-    private final OptimizedCallTarget callerWithException = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(TruffleLanguage.class, null, null) {
+    private final OptimizedCallTarget callerWithException = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
 
         @Child protected DirectCallNode callNode = runtime.createDirectCallNode(calleeWithException);
 

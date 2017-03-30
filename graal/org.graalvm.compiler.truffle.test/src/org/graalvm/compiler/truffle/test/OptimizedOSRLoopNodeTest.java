@@ -603,7 +603,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
         final FrameSlot param2;
 
         protected TestRootNode(OSRLoopFactory factory, TestRepeatingNode repeating) {
-            super(MockLanguage.class, null, new FrameDescriptor());
+            super(null, new FrameDescriptor());
             param1 = getFrameDescriptor().addFrameSlot("param1", FrameSlotKind.Int);
             param2 = getFrameDescriptor().addFrameSlot("param2", FrameSlotKind.Int);
             loopNode = factory.createOSRLoop(repeating, new FrameSlot[]{param1, param2}, new FrameSlot[]{param1, param2});
