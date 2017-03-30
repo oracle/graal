@@ -38,6 +38,7 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -199,7 +200,11 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
                 } else if (msg == Message.GET_SIZE) {
                     ret = ForeignAccess.sendGetSize(node, receiver);
                 } else if (msg == Message.READ) {
-                    ret = ForeignAccess.sendRead(node, receiver, args[2]);
+                    try {
+                        ret = ForeignAccess.sendRead(node, receiver, args[2]);
+                    } catch (UnknownIdentifierException uiex) {
+                        return null; // key not present in the map
+                    }
                 } else if (msg == Message.WRITE) {
                     ret = ForeignAccess.sendWrite(node, receiver, args[2], JavaInterop.asTruffleValue(args[3]));
                 } else if (msg == Message.KEYS) {
