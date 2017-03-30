@@ -25,6 +25,8 @@ package org.graalvm.compiler.nodes;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -37,6 +39,7 @@ import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -93,6 +96,28 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         this(object, StampFactory.object(exactType ? TypeReference.createExactTrusted(toType) : TypeReference.createWithoutAssumptions(toType), nonNull || StampTool.isPointerNonNull(object.stamp())));
     }
 
+    @SuppressWarnings("unused")
+    public static boolean intrinsify(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode object, ValueNode anchor) {
+        Stamp stamp = AbstractPointerStamp.pointerNonNull(object.stamp());
+        ValueNode value = canonical(object, stamp, (GuardingNode) anchor);
+        if (value == null) {
+            value = new PiNode(object, stamp, anchor);
+        }
+        b.push(JavaKind.Object, b.recursiveAppend(value));
+        return true;
+    }
+
+    @SuppressWarnings("unused")
+    public static boolean intrinsify(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {
+        Stamp stamp = StampFactory.object(exactType ? TypeReference.createExactTrusted(toType) : TypeReference.createWithoutAssumptions(toType), nonNull || StampTool.isPointerNonNull(object.stamp()));
+        ValueNode value = canonical(object, stamp, null);
+        if (value == null) {
+            value = new PiNode(object, stamp);
+        }
+        b.push(JavaKind.Object, b.recursiveAppend(value));
+        return true;
+    }
+
     public final Stamp piStamp() {
         return piStamp;
     }
@@ -124,43 +149,47 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         }
     }
 
-    @Override
-    public Node canonical(CanonicalizerTool tool) {
-        // Use most up to date stamp.
-        Stamp computedStamp = computeStamp();
-
-        ValueNode o = object();
+    public static ValueNode canonical(ValueNode object, Stamp stamp, GuardingNode guard) {
+         // Use most up to date stamp.
+        Stamp computedStamp = stamp.improveWith(object.stamp());
 
         // The pi node does not give any additional information => skip it.
-        if (computedStamp.equals(o.stamp())) {
-            return o;
+        if (computedStamp.equals(object.stamp())) {
+            return object;
         }
 
-        GuardingNode g = getGuard();
-        if (g == null) {
-
+        if (guard == null) {
             // Try to merge the pi node with a load node.
-            if (o instanceof ReadNode) {
-                ReadNode readNode = (ReadNode) o;
-                readNode.setStamp(readNode.stamp().improveWith(this.piStamp));
+            if (object instanceof ReadNode) {
+                ReadNode readNode = (ReadNode) object;
+                readNode.setStamp(readNode.stamp().improveWith(stamp));
                 return readNode;
             }
         } else {
-            for (Node n : g.asNode().usages()) {
+            for (Node n : guard.asNode().usages()) {
                 if (n instanceof PiNode) {
                     PiNode otherPi = (PiNode) n;
-                    if (o == otherPi.object() && computedStamp.equals(otherPi.stamp())) {
+                    if (object == otherPi.object() && computedStamp.equals(otherPi.stamp())) {
                         /*
                          * Two PiNodes with the same guard and same result, so return the one with
                          * the more precise piStamp.
                          */
-                        Stamp newStamp = piStamp.join(otherPi.piStamp);
+                        Stamp newStamp = stamp.join(otherPi.piStamp);
                         if (newStamp.equals(otherPi.piStamp)) {
                             return otherPi;
                         }
                     }
                 }
             }
+        }
+        return null;
+    }
+
+    @Override
+    public Node canonical(CanonicalizerTool tool) {
+        Node value = canonical(object(), stamp(), getGuard());
+        if (value != null) {
+            return value;
         }
         return this;
     }
