@@ -172,9 +172,14 @@ public class PartialEvaluator {
         return new ResolvedJavaMethod[]{callSiteProxyMethod, callDirectMethod};
     }
 
-    @SuppressWarnings("try")
     public StructuredGraph createGraph(final OptimizedCallTarget callTarget, TruffleInlining inliningDecision, AllowAssumptions allowAssumptions, CompilationIdentifier compilationId,
                     CancellableCompileTask task) {
+        return createGraph(callTarget, inliningDecision, rootForCallTarget(callTarget), allowAssumptions, compilationId, task);
+    }
+
+    @SuppressWarnings("try")
+    public StructuredGraph createGraph(final OptimizedCallTarget callTarget, TruffleInlining inliningDecision, ResolvedJavaMethod rootMethod, AllowAssumptions allowAssumptions,
+                    CompilationIdentifier compilationId, CancellableCompileTask task) {
         try (Scope c = Debug.scope("TruffleTree")) {
             Debug.dump(Debug.BASIC_LOG_LEVEL, new TruffleTreeDumpHandler.TruffleTreeDump(callTarget), "%s", callTarget);
         } catch (Throwable e) {
@@ -183,7 +188,7 @@ public class PartialEvaluator {
 
         String name = callTarget.toString();
         OptionValues options = TruffleCompilerOptions.getOptions();
-        final StructuredGraph graph = new StructuredGraph.Builder(options, allowAssumptions).name(name).method(callRootMethod).speculationLog(callTarget.getSpeculationLog()).compilationId(
+        final StructuredGraph graph = new StructuredGraph.Builder(options, allowAssumptions).name(name).method(rootMethod).speculationLog(callTarget.getSpeculationLog()).compilationId(
                         compilationId).cancellable(task).build();
         assert graph != null : "no graph for root method";
 
@@ -206,6 +211,15 @@ public class PartialEvaluator {
         }
 
         return graph;
+    }
+
+    /**
+     * Hook for subclasses: return a customized compilation root for a specific call target.
+     *
+     * @param callTarget The call target that is being compiled.
+     */
+    public ResolvedJavaMethod rootForCallTarget(OptimizedCallTarget callTarget) {
+        return callRootMethod;
     }
 
     private class InterceptReceiverPlugin implements ParameterPlugin {

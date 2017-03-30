@@ -66,6 +66,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 
@@ -159,11 +160,12 @@ public abstract class TruffleCompiler {
         compilationNotify.notifyCompilationStarted(compilable, compilationMap);
 
         try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(TruffleCompilerOptions.getOptions())) {
+            ResolvedJavaMethod rootMethod = partialEvaluator.rootForCallTarget(compilable);
             TruffleInlining inliningDecision = new TruffleInlining(compilable, new DefaultInliningPolicy());
-            CompilationIdentifier compilationId = runtime.getCompilationIdentifier(compilable, partialEvaluator.getCompilationRootMethods()[0], backend);
+            CompilationIdentifier compilationId = runtime.getCompilationIdentifier(compilable, rootMethod, backend);
             PhaseSuite<HighTierContext> graphBuilderSuite = createGraphBuilderSuite();
             try (DebugCloseable a = PartialEvaluationTime.start(); DebugCloseable c = PartialEvaluationMemUse.start()) {
-                graph = partialEvaluator.createGraph(compilable, inliningDecision, AllowAssumptions.YES, compilationId, task);
+                graph = partialEvaluator.createGraph(compilable, inliningDecision, rootMethod, AllowAssumptions.YES, compilationId, task);
             }
 
             // check if the task was cancelled in the time frame between [after PE: before

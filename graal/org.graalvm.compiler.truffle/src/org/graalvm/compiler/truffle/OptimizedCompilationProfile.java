@@ -76,6 +76,44 @@ public class OptimizedCompilationProfile {
                         compilationCallAndLoopThreshold);
     }
 
+    Class<?>[] getProfiledArgumentTypes() {
+        if (profiledArgumentTypesAssumption == null) {
+            /*
+             * We always need an assumption. If this method is called before the profile was
+             * initialized, we have to be conservative and disable profiling, which is done by
+             * creating an invalid assumption but leaving the type field null.
+             */
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            profiledArgumentTypesAssumption = createAssumption("Profiled Argument Types");
+            profiledArgumentTypesAssumption.invalidate();
+        }
+
+        if (profiledArgumentTypesAssumption.isValid()) {
+            return profiledArgumentTypes;
+        } else {
+            return null;
+        }
+    }
+
+    Class<?> getProfiledReturnType() {
+        if (profiledReturnTypeAssumption == null) {
+            /*
+             * We always need an assumption. If this method is called before the profile was
+             * initialized, we have to be conservative and disable profiling, which is done by
+             * creating an invalid assumption but leaving the type field null.
+             */
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            profiledReturnTypeAssumption = createAssumption("Profiled Return Type");
+            profiledReturnTypeAssumption.invalidate();
+        }
+
+        if (profiledReturnTypeAssumption.isValid()) {
+            return profiledReturnType;
+        } else {
+            return null;
+        }
+    }
+
     @ExplodeLoop
     void profileDirectCall(Object[] args) {
         Assumption typesAssumption = profiledArgumentTypesAssumption;
