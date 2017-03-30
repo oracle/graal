@@ -45,32 +45,53 @@ public class TruffleConstantFieldProvider implements ConstantFieldProvider {
 
     @Override
     public <T> T readConstantField(ResolvedJavaField field, ConstantFieldTool<T> tool) {
-        JavaConstant receiver = tool.getReceiver();
         boolean isStaticField = field.isStatic();
-        if (isStaticField || receiver.isNonNull()) {
-            CompilationFinal compilationFinal = field.getAnnotation(CompilationFinal.class);
-            if (field.getType().getJavaKind() == JavaKind.Object) {
-                if (compilationFinal != null) {
-                    int stableDimensions = actualStableDimensions(field, compilationFinal.dimensions());
-                    return tool.foldStableArray(tool.readValue(), stableDimensions, true);
-                } else if (!isStaticField) {
-                    if (field.getAnnotation(Child.class) != null) {
-                        return tool.foldConstant(verifyFieldValue(field, tool.readValue()));
-                    } else if (field.getAnnotation(Children.class) != null) {
-                        int stableDimensions = field.getType().isArray() ? 1 : 0;
-                        return tool.foldStableArray(verifyFieldValue(field, tool.readValue()), stableDimensions, true);
-                    }
-                }
-            } else if (compilationFinal != null) {
+        if (!isStaticField && tool.getReceiver().isNull()) {
+            // can't be optimized
+            return null;
+        }
+
+        boolean isArrayField = field.getType().isArray();
+        if (!isArrayField) {
+            // The fast way does not require any annotation processing but only covers the most
+            // frequent cases. It must not be used for array fields as it might return an incorrect
+            // value for the number of stable dimensions.
+            T ret = readConstantFieldFast(field, tool);
+            if (ret != null) {
+                return ret;
+            }
+        }
+
+        boolean hasObjectKind = field.getType().getJavaKind() == JavaKind.Object;
+        if (!isStaticField && hasObjectKind && field.getAnnotation(Child.class) != null) {
+            return tool.foldConstant(verifyFieldValue(field, tool.readValue()));
+        }
+
+        CompilationFinal compilationFinal = field.getAnnotation(CompilationFinal.class);
+        if (compilationFinal != null) {
+            if (isArrayField) {
+                int stableDimensions = actualStableDimensions(field, compilationFinal.dimensions());
+                return tool.foldStableArray(tool.readValue(), stableDimensions, true);
+            } else {
                 return tool.foldConstant(tool.readValue());
             }
         }
 
+        if (!isStaticField && hasObjectKind && field.getAnnotation(Children.class) != null) {
+            int stableDimensions = isArrayField ? 1 : 0;
+            return tool.foldStableArray(verifyFieldValue(field, tool.readValue()), stableDimensions, true);
+        }
+
+        if (isArrayField) {
+            return readConstantFieldFast(field, tool);
+        }
+        return null;
+    }
+
+    private <T> T readConstantFieldFast(ResolvedJavaField field, ConstantFieldTool<T> tool) {
         T ret = graalConstantFieldProvider.readConstantField(field, tool);
-        if (ret == null) {
-            if (field.isFinal() && (isStaticField || receiver.isNonNull())) {
-                return tool.foldConstant(tool.readValue());
-            }
+        if (ret == null && field.isFinal()) {
+            ret = tool.foldConstant(tool.readValue());
         }
         return ret;
     }

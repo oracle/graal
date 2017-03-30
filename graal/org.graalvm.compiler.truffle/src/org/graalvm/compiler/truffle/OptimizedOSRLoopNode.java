@@ -32,7 +32,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -42,6 +41,7 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 
 import jdk.vm.ci.meta.SpeculationLog;
 
@@ -82,12 +82,12 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
     /**
      * @param rootFrameDescriptor may be {@code null}.
      */
-    protected OSRRootNode createRootNode(@SuppressWarnings("rawtypes") Class<? extends TruffleLanguage> truffleLanguage, FrameDescriptor rootFrameDescriptor, Class<? extends VirtualFrame> clazz) {
+    protected OSRRootNode createRootNode(FrameDescriptor rootFrameDescriptor, Class<? extends VirtualFrame> clazz) {
         /*
          * Use a new frame descriptor, because the frame that this new root node creates is not
          * used.
          */
-        return new OSRRootNode(this, truffleLanguage, new FrameDescriptor(), clazz);
+        return new OSRRootNode(this, new FrameDescriptor(), clazz);
     }
 
     protected abstract int getThreshold();
@@ -226,10 +226,8 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         });
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
     private OSRRootNode createRootNodeImpl(RootNode root, Class<? extends VirtualFrame> frameClass) {
-        Class truffleLanguage = TruffleLanguage.class;
-        return createRootNode(truffleLanguage, root == null ? null : root.getFrameDescriptor(), frameClass);
+        return createRootNode(root == null ? null : root.getFrameDescriptor(), frameClass);
     }
 
     private OptimizedCallTarget compileImpl(VirtualFrame frame) {
@@ -379,17 +377,17 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         }
 
         @Override
-        protected OSRRootNode createRootNode(@SuppressWarnings("rawtypes") Class<? extends TruffleLanguage> truffleLanguage, FrameDescriptor rootFrameDescriptor, Class<? extends VirtualFrame> clazz) {
+        protected OSRRootNode createRootNode(FrameDescriptor rootFrameDescriptor, Class<? extends VirtualFrame> clazz) {
             if (readFrameSlots == null || writtenFrameSlots == null) {
-                return super.createRootNode(truffleLanguage, rootFrameDescriptor, clazz);
+                return super.createRootNode(rootFrameDescriptor, clazz);
             } else {
                 FrameDescriptor frameDescriptor = rootFrameDescriptor == null ? new FrameDescriptor() : rootFrameDescriptor;
                 if (previousRoot == null) {
-                    previousRoot = new VirtualizingOSRRootNode(this, truffleLanguage, frameDescriptor, clazz, readFrameSlots, writtenFrameSlots);
+                    previousRoot = new VirtualizingOSRRootNode(this, frameDescriptor, clazz, readFrameSlots, writtenFrameSlots);
                 } else {
                     // we want to reuse speculations from a previous compilation so no rewrite loops
                     // occur.
-                    previousRoot = new VirtualizingOSRRootNode(previousRoot, this, truffleLanguage, frameDescriptor, clazz);
+                    previousRoot = new VirtualizingOSRRootNode(previousRoot, this, frameDescriptor, clazz);
                 }
                 return previousRoot;
             }
@@ -403,10 +401,18 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
         @Child protected OptimizedOSRLoopNode loopNode;
 
-        OSRRootNode(OptimizedOSRLoopNode loop, @SuppressWarnings("rawtypes") Class<? extends TruffleLanguage> truffleLanguage, FrameDescriptor frameDescriptor, Class<? extends VirtualFrame> clazz) {
-            super(truffleLanguage, loop.getSourceSection(), frameDescriptor);
+        private final SourceSection sourceSection;
+
+        OSRRootNode(OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor, Class<? extends VirtualFrame> clazz) {
+            super(null, frameDescriptor);
             this.loopNode = loop;
             this.clazz = clazz;
+            this.sourceSection = loop.getSourceSection();
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return sourceSection;
         }
 
         public static Object callProxy(OSRRootNode target, VirtualFrame frame) {
@@ -448,10 +454,9 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         @CompilationFinal(dimensions = 1) private final byte[] writtenFrameSlotsTags;
         private final int maxTagsLength;
 
-        VirtualizingOSRRootNode(VirtualizingOSRRootNode previousRoot, OptimizedOSRLoopNode loop, @SuppressWarnings("rawtypes") Class<? extends TruffleLanguage> truffleLanguage,
-                        FrameDescriptor frameDescriptor,
+        VirtualizingOSRRootNode(VirtualizingOSRRootNode previousRoot, OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor,
                         Class<? extends VirtualFrame> clazz) {
-            super(loop, truffleLanguage, frameDescriptor, clazz);
+            super(loop, frameDescriptor, clazz);
             this.readFrameSlots = previousRoot.readFrameSlots;
             this.writtenFrameSlots = previousRoot.writtenFrameSlots;
             this.readFrameSlotsTags = previousRoot.readFrameSlotsTags;
@@ -459,10 +464,10 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
             this.maxTagsLength = previousRoot.maxTagsLength;
         }
 
-        VirtualizingOSRRootNode(OptimizedOSRLoopNode loop, @SuppressWarnings("rawtypes") Class<? extends TruffleLanguage> truffleLanguage, FrameDescriptor frameDescriptor,
+        VirtualizingOSRRootNode(OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor,
                         Class<? extends VirtualFrame> clazz,
                         FrameSlot[] readFrameSlots, FrameSlot[] writtenFrameSlots) {
-            super(loop, truffleLanguage, frameDescriptor, clazz);
+            super(loop, frameDescriptor, clazz);
             this.readFrameSlots = readFrameSlots;
             this.writtenFrameSlots = writtenFrameSlots;
             this.readFrameSlotsTags = new byte[readFrameSlots.length];

@@ -106,7 +106,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         @CompilationFinal(dimensions = 1) private final FrameSlot[] stack;
 
         public Program(String name, byte[] bytecodes, int maxLocals, int maxStack) {
-            super(MockLanguage.class, null, null);
+            super(null);
             this.name = name;
             this.bytecodes = bytecodes;
             locals = new FrameSlot[maxLocals];
@@ -711,7 +711,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         protected final FrameSlot returnSlot;
 
         public InstArrayProgram(String name, Inst[] inst, FrameSlot returnSlot, FrameDescriptor fd) {
-            super(MockLanguage.class, null, fd);
+            super(null, fd);
             this.name = name;
             this.inst = inst;
             this.returnSlot = returnSlot;
