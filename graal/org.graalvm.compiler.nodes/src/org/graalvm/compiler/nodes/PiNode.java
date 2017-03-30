@@ -150,7 +150,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     }
 
     public static ValueNode canonical(ValueNode object, Stamp stamp, GuardingNode guard) {
-         // Use most up to date stamp.
+        // Use most up to date stamp.
         Stamp computedStamp = stamp.improveWith(object.stamp());
 
         // The pi node does not give any additional information => skip it.

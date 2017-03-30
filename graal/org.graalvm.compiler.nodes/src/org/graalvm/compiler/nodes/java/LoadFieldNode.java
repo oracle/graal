@@ -85,7 +85,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     }
 
     public static ValueNode createOverrideStamp(ConstantFieldProvider constantFields, ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess,
-                                                OptionValues options, StampPair stamp, ValueNode object, ResolvedJavaField field, boolean canonicalizeReads, boolean allUsagesAvailable) {
+                    OptionValues options, StampPair stamp, ValueNode object, ResolvedJavaField field, boolean canonicalizeReads, boolean allUsagesAvailable) {
         return canonical(null, stamp, object, field, constantFields, constantReflection, options, metaAccess, canonicalizeReads, allUsagesAvailable);
     }
 

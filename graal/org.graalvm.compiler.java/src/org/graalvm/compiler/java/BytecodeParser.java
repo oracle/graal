@@ -1194,7 +1194,7 @@ public class BytecodeParser implements GraphBuilderContext {
                             getAssumptions(), receiver, field, false, false);
         } else {
             return LoadFieldNode.createOverrideStamp(getConstantFieldProvider(), getConstantReflection(), getMetaAccess(), getOptions(),
-                    stamp, receiver, field, false, false);
+                            stamp, receiver, field, false, false);
         }
     }
 
