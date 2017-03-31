@@ -3680,11 +3680,10 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private void genGetStatic(JavaField field) {
-        if (!(field instanceof ResolvedJavaField) || !((ResolvedJavaType) field.getDeclaringClass()).isInitialized()) {
-            handleUnresolvedLoadField(field, null);
+        ResolvedJavaField resolvedField = resolveStaticFieldAccess(field, null);
+        if (resolvedField == null) {
             return;
         }
-        ResolvedJavaField resolvedField = (ResolvedJavaField) field;
 
         if (!parsingIntrinsic() && GeneratePIC.getValue(getOptions())) {
             graph.recordField(resolvedField);
@@ -3714,13 +3713,39 @@ public class BytecodeParser implements GraphBuilderContext {
         frameState.push(field.getJavaKind(), append(genLoadField(null, resolvedField)));
     }
 
+    private ResolvedJavaField resolveStaticFieldAccess(JavaField field, ValueNode value) {
+        if (field instanceof ResolvedJavaField) {
+            ResolvedJavaField resolvedField = (ResolvedJavaField) field;
+            if (resolvedField.getDeclaringClass().isInitialized()) {
+                return resolvedField;
+            }
+            /*
+             * Static fields have initialization semantics but may be safely accessed under certain
+             * conditions while the class is being initialized. Executing in the clinit or init of
+             * classes which are subtypes of the field holder are sure to be running in a context
+             * where the access is safe.
+             */
+            if (resolvedField.getDeclaringClass().isAssignableFrom(method.getDeclaringClass())) {
+                if (method.isClassInitializer() || method.isConstructor()) {
+                    return resolvedField;
+                }
+            }
+        }
+        if (value == null) {
+            handleUnresolvedLoadField(field, null);
+        } else {
+            handleUnresolvedStoreField(field, value, null);
+
+        }
+        return null;
+    }
+
     private void genPutStatic(JavaField field) {
         ValueNode value = frameState.pop(field.getJavaKind());
-        if (!(field instanceof ResolvedJavaField) || !((ResolvedJavaType) field.getDeclaringClass()).isInitialized()) {
-            handleUnresolvedStoreField(field, value, null);
+        ResolvedJavaField resolvedField = resolveStaticFieldAccess(field, value);
+        if (resolvedField == null) {
             return;
         }
-        ResolvedJavaField resolvedField = (ResolvedJavaField) field;
 
         if (!parsingIntrinsic() && GeneratePIC.getValue(getOptions())) {
             graph.recordField(resolvedField);
