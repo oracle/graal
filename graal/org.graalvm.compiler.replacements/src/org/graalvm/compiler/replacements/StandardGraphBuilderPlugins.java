@@ -174,7 +174,8 @@ public class StandardGraphBuilderPlugins {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                     ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);
-                    b.addPush(JavaKind.Object, LoadFieldNode.create(b.getAssumptions(), value, field));
+                    b.addPush(JavaKind.Object, LoadFieldNode.create(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(),
+                                    b.getOptions(), b.getAssumptions(), value, field, false, false));
                     return true;
                 }
             });

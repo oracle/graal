@@ -399,7 +399,7 @@ public class TruffleGraphBuilderPlugins {
                 }
                 FrameDescriptor constantDescriptor = snippetReflection.asObject(FrameDescriptor.class, descriptor.asJavaConstant());
 
-                ValueNode nonNullArguments = b.add(new PiNode(args, StampFactory.objectNonNull(StampTool.typeReferenceOrNull(args))));
+                ValueNode nonNullArguments = b.add(PiNode.create(args, StampFactory.objectNonNull(StampTool.typeReferenceOrNull(args))));
                 Class<?> frameClass = TruffleCompilerOptions.getValue(TruffleUseFrameWithoutBoxing) ? FrameWithoutBoxing.class : FrameWithBoxing.class;
                 NewFrameNode newFrame = new NewFrameNode(b.getMetaAccess(), snippetReflection, b.getGraph(), b.getMetaAccess().lookupJavaType(frameClass), constantDescriptor, descriptor,
                                 nonNullArguments);
@@ -608,7 +608,7 @@ public class TruffleGraphBuilderPlugins {
                                 valueAnchorNode = b.add(new ConditionAnchorNode(compareNode));
                             }
                         }
-                        b.addPush(JavaKind.Object, new PiNode(object, piStamp, valueAnchorNode));
+                        b.addPush(JavaKind.Object, PiNode.create(object, piStamp, valueAnchorNode));
                     }
                     return true;
                 } else if (canDelayIntrinsification) {
