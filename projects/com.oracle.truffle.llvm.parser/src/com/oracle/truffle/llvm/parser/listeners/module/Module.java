@@ -74,12 +74,52 @@ public final class Module implements ParserListener {
 
     private void createFunction(long[] args) {
         // this allows us to switch module version at runtime
-        version.createModuleVersionHelper().createFunction(this, args);
+        FunctionType type = version.createModuleVersionHelper().getFunctionType(this, args[0]);
+        boolean isPrototype = args[2] != 0;
+
+        generator.createFunction(type, isPrototype);
+        symbols.add(type);
+        if (!isPrototype) {
+            functions.add(type);
+        }
     }
 
     private void createGlobalVariable(long[] args) {
         // this allows us to switch module version at runtime
-        version.createModuleVersionHelper().createGlobalVariable(this, args);
+        Type type = version.createModuleVersionHelper().getGlobalType(this, args[0]);
+        boolean isConstant = (args[1] & 1) == 1;
+        int initialiser = (int) args[2];
+        long linkage = args[3];
+        int align = (int) args[4];
+
+        long visibility = Visibility.DEFAULT.getEncodedValue();
+        if (args.length >= 7) {
+            visibility = args[6];
+        }
+
+        generator.createGlobal(type, isConstant, initialiser, align, linkage, visibility);
+        symbols.add(type);
+    }
+
+    private void createGlobalAliasNew(long[] args) {
+        // this allows us to switch module version at runtime
+        Type type = version.createModuleVersionHelper().getGlobalType(this, args[0]);
+        // idx = 1 is address space information
+        int value = (int) args[2];
+        long linkage = args[3];
+
+        generator.createAlias(type, value, linkage, Visibility.DEFAULT.ordinal());
+        symbols.add(type);
+    }
+
+    private void createGlobalAliasOld(long[] args) {
+        // this allows us to switch module version at runtime
+        Type type = version.createModuleVersionHelper().getGlobalType(this, args[0]);
+        int value = (int) args[1];
+        long linkage = args[2];
+
+        generator.createAlias(type, value, linkage, Visibility.DEFAULT.ordinal());
+        symbols.add(type);
     }
 
     @Override
@@ -155,10 +195,10 @@ public final class Module implements ParserListener {
                 break;
 
             case ALIAS:
-                createAliasNew(args);
+                createGlobalAliasNew(args);
                 break;
             case ALIAS_OLD:
-                createAliasOld(args);
+                createGlobalAliasOld(args);
                 break;
 
             default:
@@ -166,24 +206,4 @@ public final class Module implements ParserListener {
                 break;
         }
     }
-
-    private void createAliasNew(long[] args) {
-        Type type = types.get(args[0]);
-        // idx = 1 is address space information
-        int value = (int) args[2];
-        long linkage = args[3];
-
-        generator.createAlias(type, value, linkage, Visibility.DEFAULT.ordinal());
-        symbols.add(type);
-    }
-
-    private void createAliasOld(long[] args) {
-        Type type = types.get(args[0]);
-        int value = (int) args[1];
-        long linkage = args[2];
-
-        generator.createAlias(type, value, linkage, Visibility.DEFAULT.ordinal());
-        symbols.add(type);
-    }
-
 }
