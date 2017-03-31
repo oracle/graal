@@ -106,7 +106,7 @@ abstract class LLVMForeignCallNode extends LLVMExpressionNode {
     }
 
     protected LLVMFunctionDescriptor lookupFunction(LLVMFunctionHandle function) {
-        return getContext().lookup(function);
+        return function.getContext().lookup(function);
     }
 
     // no explodeLoop - length not constant

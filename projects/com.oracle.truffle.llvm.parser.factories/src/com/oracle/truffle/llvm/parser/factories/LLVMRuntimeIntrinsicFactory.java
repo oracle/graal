@@ -70,17 +70,28 @@ public class LLVMRuntimeIntrinsicFactory {
     }
 
     protected Map<String, NodeFactory<? extends LLVMExpressionNode>> getFactories() {
+        intrinsifyAbortIntrinsics();
+        intrinsifyMathFunctions();
+        intrinsifyTruffleOnlyIntrinsics();
+        return intrinsics;
+    }
 
+    protected void intrinsifyAbortIntrinsics() {
+        // Fortran
         intrinsics.put("@_gfortran_abort", LLVMAbortFactory.getInstance());
-
+        // C
         intrinsics.put("@abort", LLVMAbortFactory.getInstance());
         intrinsics.put("@exit", LLVMExitFactory.getInstance());
         intrinsics.put("@atexit", LLVMAtExitFactory.getInstance());
         intrinsics.put("@signal", LLVMSignalFactory.getInstance());
+    }
 
+    protected void intrinsifyTruffleOnlyIntrinsics() {
         intrinsics.put("@strlen", LLVMStrlenFactory.getInstance());
         intrinsics.put("@strcmp", LLVMStrCmpFactory.getInstance());
+    }
 
+    protected void intrinsifyMathFunctions() {
         intrinsics.put("@sqrt", LLVMSqrtFactory.getInstance());
         intrinsics.put("@log", LLVMLogFactory.getInstance());
         intrinsics.put("@log10", LLVMLog10Factory.getInstance());
@@ -94,8 +105,6 @@ public class LLVMRuntimeIntrinsicFactory {
         intrinsics.put("@exp", LLVMExpFactory.getInstance());
 
         intrinsics.put("@toupper", LLVMToUpperFactory.getInstance());
-
-        return intrinsics;
     }
 
 }

@@ -34,6 +34,7 @@ import java.util.List;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.asm.base.LLVMInlineAssemblyBlockNode;
 import com.oracle.truffle.llvm.nodes.asm.base.LLVMInlineAssemblyPrologueNode;
@@ -43,15 +44,22 @@ public class LLVMInlineAssemblyRootNode extends RootNode {
 
     @Child private LLVMInlineAssemblyPrologueNode prologue;
     @Child private LLVMInlineAssemblyBlockNode block;
+    private final SourceSection sourceSection;
 
     private final LLVMExpressionNode result;
 
-    public LLVMInlineAssemblyRootNode(LLVMLanguage language, FrameDescriptor frameDescriptor,
+    public LLVMInlineAssemblyRootNode(SourceSection sourceSection, LLVMLanguage language, FrameDescriptor frameDescriptor,
                     LLVMExpressionNode[] statements, List<LLVMExpressionNode> writeNodes, LLVMExpressionNode result) {
         super(language, frameDescriptor);
+        this.sourceSection = sourceSection;
         this.prologue = new LLVMInlineAssemblyPrologueNode(writeNodes);
         this.block = new LLVMInlineAssemblyBlockNode(statements);
         this.result = result;
+    }
+
+    @Override
+    public SourceSection getSourceSection() {
+        return sourceSection;
     }
 
     @Override
