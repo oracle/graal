@@ -33,6 +33,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -45,16 +46,24 @@ public class LLVMFunctionStartNode extends RootNode {
     @Children private final LLVMStackFrameNuller[] nullers;
     private final String name;
     private final int explicitArgumentsCount;
+    private final SourceSection sourceSection;
 
-    public LLVMFunctionStartNode(LLVMLanguage language, LLVMExpressionNode node, LLVMExpressionNode[] beforeFunction, LLVMExpressionNode[] afterFunction, FrameDescriptor frameDescriptor,
+    public LLVMFunctionStartNode(SourceSection sourceSection, LLVMLanguage language, LLVMExpressionNode node, LLVMExpressionNode[] beforeFunction, LLVMExpressionNode[] afterFunction,
+                    FrameDescriptor frameDescriptor,
                     String name, LLVMStackFrameNuller[] initNullers, int explicitArgumentsCount) {
         super(language, frameDescriptor);
+        this.sourceSection = sourceSection;
         this.node = node;
         this.beforeFunction = beforeFunction;
         this.afterFunction = afterFunction;
         this.nullers = initNullers;
         this.name = name;
         this.explicitArgumentsCount = explicitArgumentsCount;
+    }
+
+    @Override
+    public SourceSection getSourceSection() {
+        return sourceSection;
     }
 
     @Override

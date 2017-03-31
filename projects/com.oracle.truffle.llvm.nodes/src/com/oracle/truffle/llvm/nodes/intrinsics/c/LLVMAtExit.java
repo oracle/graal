@@ -70,7 +70,7 @@ public abstract class LLVMAtExit extends LLVMIntrinsic {
         LLVMCallNode callNode = new LLVMCallNode(new FunctionType(VoidType.INSTANCE, argsTypes, false), functionNode, args);
 
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(
-                        new LLVMFunctionStartNode(getRootNode().getLanguage(LLVMLanguage.class), callNode,
+                        new LLVMFunctionStartNode(null, getRootNode().getLanguage(LLVMLanguage.class), callNode,
                                         new LLVMExpressionNode[]{},
                                         new LLVMExpressionNode[]{},
                                         new FrameDescriptor(),
