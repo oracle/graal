@@ -14,6 +14,9 @@ chdirToSuite : ["cd", ${suite-root}]
 common : ${mx} {
   setup : [${chdirToSuite}]
   timelimit : "30:00"
+  catch_files : [
+    "Graal diagnostic output saved in (?P<filename>.+\.zip)"
+  ]
 }
 
 commonLinux : ${common} {
