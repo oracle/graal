@@ -1,5 +1,6 @@
 .PHONY: default
 
+UNAME := $(shell uname)
 
 ifdef MX_OPT_V32
 
@@ -25,12 +26,21 @@ ifndef MX_OPT_V38
 SOURCE_FILES=$(wildcard ${VPATH}/lib/sulongehNotAvailable.cpp)
 SOURCES=${SOURCE_FILES:${VPATH}/%=%}
 
+ifeq ($(UNAME), Darwin)
+TARGETS=${SOURCES:lib/sulongehNotAvailable.cpp=native/libsulongeh.dylib}
+default: ${TARGETS}
+
+native/libsulongeh.dylib: lib/sulongehNotAvailable.cpp
+	@mkdir -p native
+	clang++ -dynamiclib -O0 -o $@ $+
+else
 TARGETS=${SOURCES:lib/sulongehNotAvailable.cpp=native/libsulongeh.so}
 default: ${TARGETS}
 
 native/libsulongeh.so: lib/sulongehNotAvailable.cpp
 	@mkdir -p native
 	clang++ -shared -g -O0 -o $@ -fPIC $+
+endif
 
 endif
 endif
@@ -58,11 +68,21 @@ bin/v38/%.noopt.bc: src/%.c
 SOURCE_FILES=$(wildcard ${VPATH}/lib/sulongeh.cpp)
 SOURCES=${SOURCE_FILES:${VPATH}/%=%}
 
+ifeq ($(UNAME), Darwin)
+TARGETS=${SOURCES:lib/sulongeh.cpp=native/libsulongeh.dylib}
+default: ${TARGETS}
+
+native/libsulongeh.dylib: lib/sulongeh.cpp
+	@mkdir -p native
+	clang++ -dynamiclib -O0 -stdlib=libc++ -std=c++11 -lc++abi -I/usr/include/libcxxabi -o $@ $+
+else
 TARGETS=${SOURCES:lib/sulongeh.cpp=native/libsulongeh.so}
 default: ${TARGETS}
 
 native/libsulongeh.so: lib/sulongeh.cpp
 	@mkdir -p native
 	clang++ -shared -g -O0 -stdlib=libc++ -std=c++11 -lc++abi -I/usr/include/libcxxabi -o $@ -fPIC $+
+endif
+
 
 endif

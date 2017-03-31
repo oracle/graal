@@ -411,6 +411,11 @@ def getCommonOptions(lib_args=None, versionFolder=None):
     ] + getBitcodeLibrariesOption(versionFolder)
 
 def getSearchPathOption(lib_args=None):
+    osStr = mx.get_os()
+    index = {'linux': 0, 'darwin': 1}[mx.get_os()]
+    if index is None:
+        mx.log_error("{0} not supported!".format(osStr))
+
     if lib_args is None:
         lib_args = ['-lgmp', '-lgfortran']
 
@@ -418,7 +423,9 @@ def getSearchPathOption(lib_args=None):
     libpath = join(mx.project('com.oracle.truffle.llvm.libraries').getOutput(), 'native')
     for path, _, files in os.walk(libpath):
         for f in files:
-            if f.endswith('.so'):
+            if f.endswith('.so') and osStr == 'linux':
+                lib_names.append(join(path, f))
+            if f.endswith('.dylib') and osStr == 'darwin':
                 lib_names.append(join(path, f))
 
     lib_aliases = {
@@ -428,10 +435,6 @@ def getSearchPathOption(lib_args=None):
         '-lgfortran': ['libgfortran.so.3', 'libgfortran.3.dylib'],
         '-lpcre': ['libpcre.so.3', 'libpcre.dylib']
     }
-    osStr = mx.get_os()
-    index = {'linux': 0, 'darwin': 1}[mx.get_os()]
-    if index is None:
-        mx.log_error("{0} not supported!".format(osStr))
 
     for lib_arg in lib_args:
         if lib_arg in lib_aliases:
