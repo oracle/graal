@@ -33,7 +33,6 @@ import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class MetaType extends Type {
     public static MetaType UNKNOWN = new MetaType();
-    public static MetaType OPAQUE = new MetaType();
     public static MetaType LABEL = new MetaType();
     public static MetaType TOKEN = new MetaType();
     public static MetaType METADATA = new MetaType();
