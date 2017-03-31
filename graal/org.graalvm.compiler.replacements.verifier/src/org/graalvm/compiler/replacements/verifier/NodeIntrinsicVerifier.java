@@ -52,7 +52,6 @@ import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.StructuralInput.MarkerType;
-import org.graalvm.util.CollectionsUtil;
 
 public final class NodeIntrinsicVerifier extends AbstractVerifier {
 
@@ -163,29 +162,32 @@ public final class NodeIntrinsicVerifier extends AbstractVerifier {
 
             constructors = findConstructors(nodeClass, constructorSignature, nonMatches, injectedStampIsNonNull);
         }
-        int candidates = factories.size() + constructors.size();
-        if (candidates != 1) {
-            Formatter msg = new Formatter();
-            if (candidates == 0) {
-                msg.format("Could not find any factories or constructors in %s matching node intrinsic", nodeClass);
-            } else {
-                msg.format("Found more than one factory or constructor in %s matching node intrinsic:", nodeClass);
-                for (ExecutableElement candidate : CollectionsUtil.concat(factories, constructors)) {
-                    msg.format("%n  %s", candidate);
-                }
+        Formatter msg = new Formatter();
+        if (factories.size() > 1) {
+            msg.format("Found more than one factory in %s matching node intrinsic:", nodeClass);
+            for (ExecutableElement candidate : factories) {
+                msg.format("%n  %s", candidate);
             }
+            env.getMessager().printMessage(Kind.ERROR, msg.toString(), intrinsicMethod, annotation);
+        } else if (constructors.size() > 1) {
+            msg.format("Found more than one constructor in %s matching node intrinsic:", nodeClass);
+            for (ExecutableElement candidate : constructors) {
+                msg.format("%n  %s", candidate);
+            }
+            env.getMessager().printMessage(Kind.ERROR, msg.toString(), intrinsicMethod, annotation);
+        } else if (factories.size() == 1) {
+            generator.addPlugin(new GeneratedNodeIntrinsicPlugin.CustomFactoryPlugin(intrinsicMethod, factories.get(0), constructorSignature));
+        } else if (constructors.size() == 1) {
+            generator.addPlugin(new GeneratedNodeIntrinsicPlugin.ConstructorPlugin(intrinsicMethod, constructors.get(0), constructorSignature));
+        } else {
+            msg.format("Could not find any factories or constructors in %s matching node intrinsic", nodeClass);
             if (!nonMatches.isEmpty()) {
                 msg.format("%nFactories and constructors that failed to match:");
                 for (Map.Entry<ExecutableElement, String> e : nonMatches.entrySet()) {
                     msg.format("%n  %s: %s", e.getKey(), e.getValue());
                 }
             }
-
             env.getMessager().printMessage(Kind.ERROR, msg.toString(), intrinsicMethod, annotation);
-        } else if (factories.size() == 1) {
-            generator.addPlugin(new GeneratedNodeIntrinsicPlugin.CustomFactoryPlugin(intrinsicMethod, factories.get(0), constructorSignature));
-        } else {
-            generator.addPlugin(new GeneratedNodeIntrinsicPlugin.ConstructorPlugin(intrinsicMethod, constructors.get(0), constructorSignature));
         }
     }
 
@@ -273,6 +275,10 @@ public final class NodeIntrinsicVerifier extends AbstractVerifier {
 
             VariableElement secondArg = method.getParameters().get(1);
             if (!isTypeCompatible(secondArg.asType(), resolvedJavaMethodType())) {
+                continue;
+            }
+
+            if (method.getReturnType().getKind() != TypeKind.BOOLEAN) {
                 continue;
             }
 

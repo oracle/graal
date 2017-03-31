@@ -1064,11 +1064,11 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected ValueNode genLeftShift(ValueNode x, ValueNode y) {
-        return new LeftShiftNode(x, y);
+        return LeftShiftNode.create(x, y);
     }
 
     protected ValueNode genRightShift(ValueNode x, ValueNode y) {
-        return new RightShiftNode(x, y);
+        return RightShiftNode.create(x, y);
     }
 
     protected ValueNode genUnsignedRightShift(ValueNode x, ValueNode y) {
@@ -1190,9 +1190,11 @@ public class BytecodeParser implements GraphBuilderContext {
     protected ValueNode genLoadField(ValueNode receiver, ResolvedJavaField field) {
         StampPair stamp = graphBuilderConfig.getPlugins().getOverridingStamp(this, field.getType(), false);
         if (stamp == null) {
-            return LoadFieldNode.create(this.graph.getAssumptions(), receiver, field);
+            return LoadFieldNode.create(getConstantFieldProvider(), getConstantReflection(), getMetaAccess(), getOptions(),
+                            getAssumptions(), receiver, field, false, false);
         } else {
-            return LoadFieldNode.createOverrideStamp(stamp, receiver, field);
+            return LoadFieldNode.createOverrideStamp(getConstantFieldProvider(), getConstantReflection(), getMetaAccess(), getOptions(),
+                            stamp, receiver, field, false, false);
         }
     }
 
@@ -1401,11 +1403,6 @@ public class BytecodeParser implements GraphBuilderContext {
         }
         if (invokeKind.hasReceiver()) {
             args[0] = emitExplicitExceptions(args[0]);
-
-            if (args[0].isNullConstant()) {
-                append(new DeoptimizeNode(InvalidateRecompile, NullCheckException));
-                return null;
-            }
         }
 
         InlineInfo inlineInfo = null;
@@ -1416,6 +1413,11 @@ public class BytecodeParser implements GraphBuilderContext {
                 if (TraceParserPlugins.getValue(options)) {
                     traceWithContext("used node plugin for %s", targetMethod.format("%h.%n(%p)"));
                 }
+                return null;
+            }
+
+            if (invokeKind.hasReceiver() && args[0].isNullConstant()) {
+                append(new DeoptimizeNode(InvalidateRecompile, NullCheckException));
                 return null;
             }
 
@@ -3194,7 +3196,7 @@ public class BytecodeParser implements GraphBuilderContext {
             default:
                 throw shouldNotReachHere();
         }
-        frameState.push(kind, append(v));
+        frameState.push(kind, recursiveAppend(v));
     }
 
     private void genLogicOp(JavaKind kind, int opcode) {
@@ -3678,11 +3680,10 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private void genGetStatic(JavaField field) {
-        if (!(field instanceof ResolvedJavaField) || !((ResolvedJavaType) field.getDeclaringClass()).isInitialized()) {
-            handleUnresolvedLoadField(field, null);
+        ResolvedJavaField resolvedField = resolveStaticFieldAccess(field, null);
+        if (resolvedField == null) {
             return;
         }
-        ResolvedJavaField resolvedField = (ResolvedJavaField) field;
 
         if (!parsingIntrinsic() && GeneratePIC.getValue(getOptions())) {
             graph.recordField(resolvedField);
@@ -3712,13 +3713,39 @@ public class BytecodeParser implements GraphBuilderContext {
         frameState.push(field.getJavaKind(), append(genLoadField(null, resolvedField)));
     }
 
+    private ResolvedJavaField resolveStaticFieldAccess(JavaField field, ValueNode value) {
+        if (field instanceof ResolvedJavaField) {
+            ResolvedJavaField resolvedField = (ResolvedJavaField) field;
+            if (resolvedField.getDeclaringClass().isInitialized()) {
+                return resolvedField;
+            }
+            /*
+             * Static fields have initialization semantics but may be safely accessed under certain
+             * conditions while the class is being initialized. Executing in the clinit or init of
+             * classes which are subtypes of the field holder are sure to be running in a context
+             * where the access is safe.
+             */
+            if (resolvedField.getDeclaringClass().isAssignableFrom(method.getDeclaringClass())) {
+                if (method.isClassInitializer() || method.isConstructor()) {
+                    return resolvedField;
+                }
+            }
+        }
+        if (value == null) {
+            handleUnresolvedLoadField(field, null);
+        } else {
+            handleUnresolvedStoreField(field, value, null);
+
+        }
+        return null;
+    }
+
     private void genPutStatic(JavaField field) {
         ValueNode value = frameState.pop(field.getJavaKind());
-        if (!(field instanceof ResolvedJavaField) || !((ResolvedJavaType) field.getDeclaringClass()).isInitialized()) {
-            handleUnresolvedStoreField(field, value, null);
+        ResolvedJavaField resolvedField = resolveStaticFieldAccess(field, value);
+        if (resolvedField == null) {
             return;
         }
-        ResolvedJavaField resolvedField = (ResolvedJavaField) field;
 
         if (!parsingIntrinsic() && GeneratePIC.getValue(getOptions())) {
             graph.recordField(resolvedField);
