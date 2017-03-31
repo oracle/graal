@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -147,6 +147,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     private final Supplier<GraalRuntime> graalRuntime;
     private final GraalTVMCI tvmci = new GraalTVMCI();
 
+    private volatile GraalTestTVMCI testTvmci;
+
     /**
      * The instrumentation object is used by the Truffle instrumentation to count executions. The
      * value is lazily initialized the first time it is requested because it depends on the Truffle
@@ -174,6 +176,17 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     protected GraalTVMCI getTvmci() {
         return tvmci;
+    }
+
+    protected TVMCI.Test<?> getTestTvmci() {
+        if (testTvmci == null) {
+            synchronized (this) {
+                if (testTvmci == null) {
+                    testTvmci = new GraalTestTVMCI(this, getTruffleCompiler());
+                }
+            }
+        }
+        return testTvmci;
     }
 
     public abstract TruffleCompiler getTruffleCompiler();
@@ -389,6 +402,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
             return capability.cast(tvmci);
         } else if (capability == LayoutFactory.class) {
             return capability.cast(loadObjectLayoutFactory());
+        } else if (capability == TVMCI.Test.class) {
+            return capability.cast(getTestTvmci());
         }
         try {
             Iterator<T> services = GraalServices.load(capability).iterator();
