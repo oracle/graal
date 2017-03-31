@@ -125,7 +125,7 @@ public interface GraphBuilderContext extends GraphBuilderTool {
             LogicNode isNull = add(IsNullNode.create(value));
             FixedGuardNode fixedGuard = add(new FixedGuardNode(isNull, DeoptimizationReason.NullCheckException, DeoptimizationAction.None, true));
             Stamp newStamp = valueStamp.improveWith(StampFactory.objectNonNull());
-            return add(new PiNode(value, newStamp, fixedGuard));
+            return add(PiNode.create(value, newStamp, fixedGuard));
         }
     }
 
@@ -275,7 +275,7 @@ public interface GraphBuilderContext extends GraphBuilderTool {
             ObjectStamp receiverStamp = (ObjectStamp) value.stamp();
             Stamp stamp = receiverStamp.join(objectNonNull());
             FixedGuardNode fixedGuard = append(new FixedGuardNode(condition, NullCheckException, action, true));
-            PiNode nonNullReceiver = getGraph().unique(new PiNode(value, stamp, fixedGuard));
+            ValueNode nonNullReceiver = getGraph().addOrUnique(PiNode.create(value, stamp, fixedGuard));
             // TODO: Propogating the non-null into the frame state would
             // remove subsequent null-checks on the same value. However,
             // it currently causes an assertion failure when merging states.
