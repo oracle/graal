@@ -24,10 +24,13 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.nfi.test.interop.NullObject;
 import com.oracle.truffle.nfi.test.interop.TestCallback;
+import com.oracle.truffle.tck.TruffleRunner;
+import com.oracle.truffle.tck.TruffleRunner.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.Assert;
@@ -38,6 +41,7 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
+@Parameterized.UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
 public class WrappedPrimitiveNFITest extends NFITest {
 
     private static class TestObject implements TruffleObject {
@@ -65,10 +69,15 @@ public class WrappedPrimitiveNFITest extends NFITest {
     @Parameter(0) public Object argument;
     @Parameter(1) public String argumentType;
 
-    @Test
-    public void passObjectTest() {
-        TruffleObject passObject = lookupAndBind("pass_object", "(object, ():object, (object, object):object) : object");
+    public static class PassObjectNode extends SendExecuteNode {
 
+        public PassObjectNode() {
+            super("pass_object", "(object, ():object, (object, object):object) : object", 3);
+        }
+    }
+
+    @Test
+    public void passObjectTest(@Inject(PassObjectNode.class) CallTarget target) {
         TestCallback getObject = new TestCallback(0, (args) -> {
             return argument;
         });
@@ -79,7 +88,7 @@ public class WrappedPrimitiveNFITest extends NFITest {
             return argument;
         });
 
-        Object ret = sendExecute(passObject, argument, getObject, verifyObject);
+        Object ret = target.call(argument, getObject, verifyObject);
         Assert.assertSame("return value", argument, ret);
     }
 }

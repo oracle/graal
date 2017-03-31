@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -35,9 +36,10 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.test.interop.BoxedPrimitive;
 import com.oracle.truffle.nfi.test.interop.TestCallback;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
+import com.oracle.truffle.tck.TruffleRunner;
+import com.oracle.truffle.tck.TruffleRunner.Inject;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.function.LongFunction;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.core.Is.is;
 import org.junit.Assert;
@@ -48,6 +50,7 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
+@Parameterized.UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
 public class NumericNFITest extends NFITest {
 
     public static final NativeSimpleType[] NUMERIC_TYPES = {
@@ -130,20 +133,27 @@ public class NumericNFITest extends NFITest {
     /**
      * Test all primitive types as argument and return type of native functions.
      */
+    public class TestIncrementNode extends SendExecuteNode {
+
+        public TestIncrementNode() {
+            super("increment_" + type, String.format("(%s):%s", type, type), 1);
+        }
+    }
+
     @Test
-    public void testIncrement() {
-        TruffleObject increment = lookupAndBind("increment_" + type, String.format("(%s):%s", type, type));
-        Object ret = sendExecute(increment, 42);
+    public void testIncrement(@Inject(TestIncrementNode.class) CallTarget callTarget) {
+        Object ret = callTarget.call(42);
         checkExpectedRet(43, ret);
     }
 
     /**
      * Test boxed primitive types as argument to native functions.
+     *
+     * @param callTarget
      */
     @Test
-    public void testBoxed() {
-        TruffleObject increment = lookupAndBind("increment_" + type, String.format("(%s):%s", type, type));
-        Object ret = sendExecute(increment, new BoxedPrimitive(42));
+    public void testBoxed(@Inject(TestIncrementNode.class) CallTarget callTarget) {
+        Object ret = callTarget.call(new BoxedPrimitive(42));
         checkExpectedRet(43, ret);
     }
 
@@ -151,65 +161,86 @@ public class NumericNFITest extends NFITest {
      * Test callback function as argument to native functions, and all primitive types as argument
      * and return type of callback functions.
      */
+    public class TestCallbackNode extends SendExecuteNode {
+
+        public TestCallbackNode() {
+            super("callback_" + type, String.format("((%s):%s, %s) : %s", type, type, type, type), 2);
+        }
+    }
+
     @Test
-    public void testCallback() {
+    public void testCallback(@Inject(TestCallbackNode.class) CallTarget callTarget) {
         TruffleObject callback = new TestCallback(1, (args) -> {
             checkExpectedArg(42 + 1, args[0]);
             return unboxNumber(args[0]) + 5;
         });
-        TruffleObject function = lookupAndBind("callback_" + type, String.format("((%s):%s, %s) : %s", type, type, type, type));
-        Object ret = sendExecute(function, callback, 42);
+        Object ret = callTarget.call(callback, 42);
         checkExpectedRet((42 + 6) * 2, ret);
     }
 
     /**
      * Test callback function as return type of native function.
      */
+    public class TestCallbackRetNode extends NFITestRootNode {
+
+        final TruffleObject getIncrement = lookupAndBind("callback_ret_" + type, String.format("() : (%s):%s", type, type));
+
+        @Child Node executeGetIncrement = Message.createExecute(0).createNode();
+        @Child Node executeClosure = Message.createExecute(1).createNode();
+
+        @Override
+        public Object executeTest(VirtualFrame frame) throws InteropException {
+            Object functionPtr = ForeignAccess.sendExecute(executeGetIncrement, getIncrement);
+            checkIsClosure(functionPtr);
+            return ForeignAccess.sendExecute(executeClosure, (TruffleObject) functionPtr, 42);
+        }
+
+        @TruffleBoundary
+        private void checkIsClosure(Object value) {
+            Assert.assertThat("closure", value, is(instanceOf(TruffleObject.class)));
+        }
+    }
+
     @Test
-    public void testCallbackRet() {
-        Object ret = run(new TestRootNode() {
-
-            final TruffleObject getIncrement = lookupAndBind("callback_ret_" + type, String.format("() : (%s):%s", type, type));
-
-            @Child Node executeGetIncrement = Message.createExecute(0).createNode();
-            @Child Node executeClosure = Message.createExecute(1).createNode();
-
-            @Override
-            public Object executeTest(VirtualFrame frame) throws InteropException {
-                Object functionPtr = ForeignAccess.sendExecute(executeGetIncrement, getIncrement);
-                checkIsClosure(functionPtr);
-                return ForeignAccess.sendExecute(executeClosure, (TruffleObject) functionPtr, 42);
-            }
-
-            @TruffleBoundary
-            private void checkIsClosure(Object value) {
-                Assert.assertThat("closure", value, is(instanceOf(TruffleObject.class)));
-            }
-        });
-
+    public void testCallbackRet(@Inject(TestCallbackRetNode.class) CallTarget callTarget) {
+        Object ret = callTarget.call();
         checkExpectedRet(43, ret);
+    }
+
+    private String getPingPongSignature() {
+        String fnPointer = String.format("(%s):%s", type, type);
+        String wrapPointer = String.format("(%s):%s", fnPointer, fnPointer);
+        return String.format("(%s, %s) : %s", wrapPointer, type, type);
     }
 
     /**
      * Test callback functions as argument and return type of other callback functions.
      */
+    public class TestPingPongNode extends SendExecuteNode {
+
+        public TestPingPongNode() {
+            super("pingpong_" + type, getPingPongSignature(), 2);
+        }
+    }
+
     @Test
-    public void testPingPong() {
-        String fnPointer = String.format("(%s):%s", type, type);
-        String wrapPointer = String.format("(%s):%s", fnPointer, fnPointer);
-        TruffleObject pingPong = lookupAndBind("pingpong_" + type, String.format("(%s, %s) : %s", wrapPointer, type, type));
+    public void testPingPong(@Inject(TestPingPongNode.class) CallTarget callTarget) {
 
         TruffleObject wrap = new TestCallback(1, (args) -> {
             Assert.assertThat("argument", args[0], is(instanceOf(TruffleObject.class)));
-            LongFunction<?> fn = JavaInterop.asJavaFunction(LongFunction.class, (TruffleObject) args[0]);
+            TruffleObject fn = (TruffleObject) args[0];
             TruffleObject wrapped = new TestCallback(1, (innerArgs) -> {
                 checkExpectedArg(6, innerArgs[0]);
-                return fn.apply(unboxNumber(innerArgs[0]) * 3);
+                try {
+                    return ForeignAccess.sendExecute(Message.createExecute(1).createNode(), fn, unboxNumber(innerArgs[0]) * 3);
+                } catch (InteropException ex) {
+                    throw new AssertionError(ex);
+                }
             });
             return wrapped;
         });
 
-        Object ret = sendExecute(pingPong, wrap, 5);
+        Object ret = callTarget.call(wrap, 5);
         checkExpectedRet(38, ret);
     }
 }
