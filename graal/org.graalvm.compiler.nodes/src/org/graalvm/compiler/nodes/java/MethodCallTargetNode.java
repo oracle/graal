@@ -239,7 +239,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                 LogicNode condition = graph().addOrUniqueWithInputs(InstanceOfNode.create(speculatedType, receiver, getProfile(), anchor));
                 FixedGuardNode guard = graph().add(new FixedGuardNode(condition, DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile, false));
                 graph().addBeforeFixed(invoke().asNode(), guard);
-                ValueNode valueNode = graph().addOrUnique(PiNode.create(receiver, StampFactory.objectNonNull(speculatedType), guard));
+                ValueNode valueNode = graph().addOrUnique(new PiNode(receiver, StampFactory.objectNonNull(speculatedType), guard));
                 arguments().set(0, valueNode);
                 if (speculatedType.isExact()) {
                     setInvokeKind(InvokeKind.Special);
