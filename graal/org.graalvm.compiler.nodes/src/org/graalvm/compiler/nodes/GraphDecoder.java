@@ -860,7 +860,14 @@ public class GraphDecoder {
 
             } else if (!merge.isPhiAtMerge(existing)) {
                 /* Now we have two different values, so we need to create a phi node. */
-                PhiNode phi = graph.addWithoutUnique(new ValuePhiNode(proxy.stamp(), merge));
+                PhiNode phi;
+                if (proxy instanceof ValueProxyNode) {
+                    phi = graph.addWithoutUnique(new ValuePhiNode(proxy.stamp(), merge));
+                } else if (proxy instanceof GuardProxyNode) {
+                    phi = graph.addWithoutUnique(new GuardPhiNode(merge));
+                } else {
+                    throw GraalError.shouldNotReachHere();
+                }
                 /* Add the inputs from all previous exits. */
                 for (int j = 0; j < merge.phiPredecessorCount() - 1; j++) {
                     phi.addInput(existing);
