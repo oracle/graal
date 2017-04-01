@@ -38,6 +38,8 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 
 public abstract class LLVMNativeFunctions {
 
+    public abstract NullPointerNode createNullPointerNode();
+
     public abstract MemCopyNode createMemMoveNode();
 
     public abstract MemCopyNode createMemCopyNode();
@@ -236,6 +238,15 @@ public abstract class LLVMNativeFunctions {
         }
 
         public abstract LLVMAddress execute(long size);
+    }
+
+    public abstract static class NullPointerNode extends HeapFunctionNode {
+
+        protected NullPointerNode(TruffleObject function, int argCount) {
+            super(function, argCount);
+        }
+
+        public abstract TruffleObject getNullPointer();
     }
 
 }

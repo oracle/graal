@@ -45,3 +45,12 @@ int call_callback(void *container, int p2) {
   struct container *c = (struct container *) container;
   return c->callback(c->p1, p2);
 }
+
+
+int nullPointerFunctionTest(void (*foo)()) {
+	if (foo == 0) {
+		return 42;
+	} else {
+		return 84;
+	}
+}

@@ -90,3 +90,8 @@ extern "C"
 void sulong_eh_setHandlerCount(void *ptr, int value) {
     fprintf(stderr, "Sulong exception handling not supported in Sulong v3.2 mode; use Sulong mode v3.8 or higher.\n");
 }
+
+extern "C"
+void *getNullPointer() {
+    return (void*) 0;
+}

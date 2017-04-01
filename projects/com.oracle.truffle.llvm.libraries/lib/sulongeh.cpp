@@ -195,3 +195,8 @@ void sulong_eh_setHandlerCount(void *ptr, int value) {
     __cxa_exception* eh = getCXAException(ptr);
     eh->handlerCount = value;
 }
+
+extern "C"
+void *getNullPointer() {
+    return (void*) 0;
+}

@@ -60,6 +60,8 @@ public final class CallbackTest extends BaseSulongOnlyHarness {
         runs.put(new File(OTHER_DIR + "/callbackTest001/callbackTest001" + testSuffix).toPath(), new RunConfiguration(16, null));
         runs.put(new File(OTHER_DIR + "/callbackTest002/callbackTest002" + testSuffix).toPath(),
                         new RunConfiguration(14, null));
+        runs.put(new File(OTHER_DIR + "/callbackTest003/callbackTest003" + testSuffix).toPath(),
+                        new RunConfiguration(42, null));
 
         return runs.keySet().stream().map(k -> new Object[]{k, runs.get(k), k.getFileName().toString()}).collect(Collectors.toList());
     }

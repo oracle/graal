@@ -58,6 +58,8 @@ final class LLVMNativeFunctionsImpl extends LLVMNativeFunctions {
     private final TruffleObject setHandlerCount;
     private final TruffleObject getExceptionType;
 
+    private final TruffleObject nullPointer;
+
     LLVMNativeFunctionsImpl(NativeLookup nativeLookup) {
         memmove = nativeLookup == null ? null : nativeLookup.getNativeFunction("@memmove", "(POINTER,POINTER,UINT64):POINTER");
         memcpy = nativeLookup == null ? null : nativeLookup.getNativeFunction("@memcpy", "(POINTER,POINTER,UINT64):POINTER");
@@ -77,6 +79,13 @@ final class LLVMNativeFunctionsImpl extends LLVMNativeFunctions {
         getHandlerCount = nativeLookup == null ? null : nativeLookup.getNativeFunction("@sulong_eh_getHandlerCount", "(POINTER):SINT32");
         setHandlerCount = nativeLookup == null ? null : nativeLookup.getNativeFunction("@sulong_eh_setHandlerCount", "(POINTER,SINT32):VOID");
         getExceptionType = nativeLookup == null ? null : nativeLookup.getNativeFunction("@sulong_eh_getType", "(POINTER):POINTER");
+
+        nullPointer = nativeLookup == null ? null : nativeLookup.getNativeFunction("@getNullPointer", "():POINTER");
+    }
+
+    @Override
+    public NullPointerNode createNullPointerNode() {
+        return new NullPointerImpl(nullPointer);
     }
 
     @Override
@@ -420,6 +429,20 @@ final class LLVMNativeFunctionsImpl extends LLVMNativeFunctions {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(e);
             }
+        }
+    }
+
+    private static class NullPointerImpl extends NullPointerNode {
+
+        NullPointerImpl(TruffleObject function) {
+            super(function, 0);
+        }
+
+        @Child private Node unbox = Message.UNBOX.createNode();
+
+        @Override
+        public TruffleObject getNullPointer() {
+            return (TruffleObject) execute();
         }
     }
 }
