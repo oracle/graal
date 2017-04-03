@@ -271,8 +271,8 @@ import org.graalvm.compiler.bytecode.Bytecodes;
 import org.graalvm.compiler.bytecode.Bytes;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
-import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
@@ -1055,7 +1055,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected ValueNode genNegateOp(ValueNode x) {
-        return (new NegateNode(x));
+        return NegateNode.create(x);
     }
 
     protected ValueNode genLeftShift(ValueNode x, ValueNode y) {
