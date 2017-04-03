@@ -1147,7 +1147,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
         ValueNode exception = frameState.pop(JavaKind.Object);
         FixedGuardNode nullCheck = append(new FixedGuardNode(graph.addOrUniqueWithInputs(IsNullNode.create(exception)), NullCheckException, InvalidateReprofile, true));
-        PiNode nonNullException = graph.unique(new PiNode(exception, exception.stamp().join(objectNonNull()), nullCheck));
+        ValueNode nonNullException = graph.maybeAddOrUnique(PiNode.create(exception, exception.stamp().join(objectNonNull()), nullCheck));
         lastInstr.setNext(handleException(nonNullException, bci()));
     }
 
