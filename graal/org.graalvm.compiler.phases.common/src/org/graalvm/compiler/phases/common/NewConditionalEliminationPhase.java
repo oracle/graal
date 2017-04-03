@@ -135,8 +135,8 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
             }
 
             AbstractBeginNode beginNode = b.getBeginNode();
-            if (beginNode instanceof MergeNode && anchorBlock != b) {
-                MergeNode mergeNode = (MergeNode) beginNode;
+            if (beginNode instanceof AbstractMergeNode && anchorBlock != b) {
+                AbstractMergeNode mergeNode = (AbstractMergeNode) beginNode;
                 for (GuardNode guard : mergeNode.guards().snapshot()) {
                     try (DebugCloseable closeable = guard.withNodeSourcePosition()) {
                         GuardNode newlyCreatedGuard = new GuardNode(guard.getCondition(), anchorBlock.getBeginNode(), guard.getReason(), guard.getAction(), guard.isNegated(), guard.getSpeculation());
