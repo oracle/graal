@@ -154,9 +154,9 @@ public abstract class IntegerLowerThanNode extends CompareNode {
 
         protected abstract Condition getCondition();
 
-        protected abstract IntegerLowerThanNode create(ValueNode x, ValueNode y);
+        protected abstract IntegerLowerThanNode createNode(ValueNode x, ValueNode y);
 
-        public LogicNode createCanonical(ValueNode x, ValueNode y) {
+        public LogicNode create(ValueNode x, ValueNode y) {
             LogicNode result = CompareNode.tryConstantFoldPrimitive(getCondition(), x, y, false);
             if (result != null) {
                 return result;
@@ -165,7 +165,7 @@ public abstract class IntegerLowerThanNode extends CompareNode {
                 if (result != null) {
                     return result;
                 }
-                return create(x, y);
+                return createNode(x, y);
             }
         }
 
@@ -187,7 +187,7 @@ public abstract class IntegerLowerThanNode extends CompareNode {
                     long xValue = forX.asJavaConstant().asLong();
                     if (xValue != maxValue(bits)) {
                         // c < x <=> !(c >= x) <=> !(x <= c) <=> !(x < c + 1)
-                        return LogicNegationNode.create(createCanonical(forY, ConstantNode.forIntegerStamp(yStamp, xValue + 1)));
+                        return LogicNegationNode.create(create(forY, ConstantNode.forIntegerStamp(yStamp, xValue + 1)));
                     }
                 }
                 if (forY.isJavaConstant()) {
