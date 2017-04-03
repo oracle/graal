@@ -136,6 +136,11 @@ void *truffle_read_n_bytes(const char *bytes, int n);
 void *truffle_managed_malloc(long size);
 void *truffle_managed_memcpy(void *destination, const void *source, size_t count);
 
+// Managed objects <===> native handles
+void *truffle_handle_for_managed(void *managedObject);
+void *truffle_release_handle(void *nativeHandle);
+void *truffle_managed_from_handle(void *nativeHandle);
+
 #if defined(__cplusplus)
 }
 #endif

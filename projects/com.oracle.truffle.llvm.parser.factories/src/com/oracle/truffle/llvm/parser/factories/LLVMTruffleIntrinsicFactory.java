@@ -41,16 +41,19 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleBinaryFactory
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleExecuteFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleGetArgFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleGetSizeFactory;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleHandleToManagedFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleImportCachedFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleImportFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleInvokeFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleIsTruffleObjectFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleManagedMallocFactory;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleManagedToHandleFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleReadFactory.LLVMTruffleReadFromIndexFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleReadFactory.LLVMTruffleReadFromNameFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleReadNBytesFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleReadNStringFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleReadStringFactory;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleReleaseHandleFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleUnboxFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleWriteFactory.LLVMTruffleWriteToIndexFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleWriteFactory.LLVMTruffleWriteToNameFactory;
@@ -187,6 +190,12 @@ final class LLVMTruffleIntrinsicFactory {
                 return LLVMTruffleIsTruffleObjectFactory.getInstance().createNode(realArgNodes);
             case "@truffle_managed_malloc":
                 return LLVMTruffleManagedMallocFactory.getInstance().createNode(realArgNodes);
+            case "@truffle_handle_for_managed":
+                return LLVMTruffleManagedToHandleFactory.getInstance().createNode(realArgNodes);
+            case "@truffle_release_handle":
+                return LLVMTruffleReleaseHandleFactory.getInstance().createNode(realArgNodes);
+            case "@truffle_managed_from_handle":
+                return LLVMTruffleHandleToManagedFactory.getInstance().createNode(realArgNodes);
             default:
                 return null;
 

@@ -751,6 +751,60 @@ public final class LLVMInteropTest {
     }
 
     @Test
+    public void test062() {
+        Runner runner = new Runner("interop062");
+        Object a = new Object();
+        TruffleObject to = JavaInterop.asTruffleObject(a);
+        runner.export(to, "object");
+        Assert.assertEquals(0, runner.run());
+    }
+
+    @Test
+    public void test063() {
+        Runner runner = new Runner("interop063");
+        Object a = new Object();
+        TruffleObject to = JavaInterop.asTruffleObject(a);
+        runner.export(to, "object");
+        Assert.assertEquals(0, runner.run());
+    }
+
+    @Test
+    public void test064() {
+        Runner runner = new Runner("interop064");
+        Object a = new Object();
+        TruffleObject to = JavaInterop.asTruffleObject(a);
+        runner.export(to, "object");
+        Assert.assertEquals(0, runner.run());
+    }
+
+    @Test(expected = UnsupportedOperationException.class)
+    public void test065() {
+        Runner runner = new Runner("interop065");
+        Object a = new Object();
+        TruffleObject to = JavaInterop.asTruffleObject(a);
+        runner.export(to, "object");
+        Assert.assertEquals(0, runner.run());
+    }
+
+    @Test(expected = UnsupportedOperationException.class)
+    public void test066() {
+        Runner runner = new Runner("interop066");
+        Object a = new Object();
+        TruffleObject to = JavaInterop.asTruffleObject(a);
+        runner.export(to, "object");
+        Assert.assertEquals(0, runner.run());
+    }
+
+    @Test
+    public void test067() {
+        Runner runner = new Runner("interop067");
+        Object a = new Object();
+        TruffleObject to = JavaInterop.asTruffleObject(a);
+        runner.export(to, "object");
+        Assert.assertEquals(0, runner.run());
+    }
+
+    @Test
     public void testStrlen() throws Exception {
         Runner runner = new Runner("strlen");
         try {
