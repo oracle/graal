@@ -105,6 +105,9 @@ public final class AndNode extends BinaryArithmeticNode<And> implements Narrowab
 
             return reassociate(self != null ? self : (AndNode) new AndNode(forX, forY).maybeCommuteInputs(), ValueNode.isConstantPredicate(), forX, forY);
         }
+        if (forX instanceof NotNode && forY instanceof NotNode) {
+            return new NotNode(OrNode.create(((NotNode) forX).getValue(), ((NotNode) forY).getValue()));
+        }
         return self != null ? self : new AndNode(forX, forY).maybeCommuteInputs();
     }
 

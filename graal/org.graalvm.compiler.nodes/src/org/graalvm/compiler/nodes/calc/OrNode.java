@@ -92,6 +92,9 @@ public final class OrNode extends BinaryArithmeticNode<Or> implements BinaryComm
             }
             return reassociate(self != null ? self : (OrNode) new OrNode(forX, forY).maybeCommuteInputs(), ValueNode.isConstantPredicate(), forX, forY);
         }
+        if (forX instanceof NotNode && forY instanceof NotNode) {
+            return new NotNode(AndNode.create(((NotNode) forX).getValue(), ((NotNode) forY).getValue()));
+        }
         return self != null ? self : new OrNode(forX, forY).maybeCommuteInputs();
     }
 
