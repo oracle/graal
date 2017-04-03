@@ -65,14 +65,11 @@ import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
-import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
-import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.virtual.nodes.VirtualObjectState;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
 import org.graalvm.util.Equivalence;
-import org.graalvm.util.MapCursor;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -435,15 +432,16 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
             counter.increment();
             VirtualObjectNode virtual = virtualObjects.get(object);
             state.materializeBefore(materializeBefore, virtual, effects);
-            updateStatesForMaterialized(state, virtual, state.getObjectState(object).getMaterializedValue());
+            assert !updateStatesForMaterialized(state, virtual, state.getObjectState(object).getMaterializedValue()) : "method must already have been called before";
             return true;
         } else {
             return false;
         }
     }
 
-    public static void updateStatesForMaterialized(PartialEscapeBlockState<?> state, VirtualObjectNode virtual, ValueNode materializedValue) {
+    public static boolean updateStatesForMaterialized(PartialEscapeBlockState<?> state, VirtualObjectNode virtual, ValueNode materializedValue) {
         // update all existing states with the newly materialized object
+        boolean change = false;
         for (int i = 0; i < state.getStateCount(); i++) {
             ObjectState objState = state.getObjectStateOptional(i);
             if (objState != null && objState.isVirtual()) {
@@ -451,10 +449,12 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 for (int i2 = 0; i2 < entries.length; i2++) {
                     if (entries[i2] == virtual) {
                         state.setEntry(i, i2, materializedValue);
+                        change = true;
                     }
                 }
             }
         }
+        return change;
     }
 
     @Override
