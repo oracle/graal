@@ -848,6 +848,7 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["mx:JMH_1_18"],
+      "findbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Bench",
     },
 
@@ -864,6 +865,7 @@ suite = {
       "javaCompliance" : "1.8",
       "checkPackagePrefix" : "false",
       "annotationProcessors" : ["mx:JMH_1_18"],
+      "findbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Bench",
     },
 
@@ -1157,6 +1159,7 @@ suite = {
       "annotationProcessors" : [
         "mx:JMH_1_18",
       ],
+      "findbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Truffle,Bench",
     },
 
