@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
@@ -45,6 +46,33 @@ public class LLVMNullMessageResolution {
         @SuppressWarnings("unused")
         protected boolean access(VirtualFrame frame, LLVMTruffleNull receiver) {
             return true;
+        }
+    }
+
+    @Resolve(message = "READ")
+    public abstract static class ForeignNullRead extends Node {
+        @SuppressWarnings("unused")
+        protected Object access(VirtualFrame frame, LLVMTruffleNull receiver, Object id) {
+            CompilerDirectives.transferToInterpreter();
+            throw new UnsupportedOperationException(String.format("Cannot read (identifier = %s) from null (0x0) pointer.", String.valueOf(id)));
+        }
+    }
+
+    @Resolve(message = "WRITE")
+    public abstract static class ForeignNullWrite extends Node {
+        @SuppressWarnings("unused")
+        protected Object access(VirtualFrame frame, LLVMTruffleNull receiver, Object id, Object value) {
+            CompilerDirectives.transferToInterpreter();
+            throw new UnsupportedOperationException(String.format("Cannot write (identifier = %s, value = %s) to null (0x0) pointer.", String.valueOf(id), String.valueOf(value)));
+        }
+    }
+
+    @Resolve(message = "EXECUTE")
+    public abstract static class ForeignNullExecute extends Node {
+        @SuppressWarnings("unused")
+        protected Object access(VirtualFrame frame, LLVMTruffleNull receiver, Object[] arguments) {
+            CompilerDirectives.transferToInterpreter();
+            throw new UnsupportedOperationException(String.format("Cannot execute to null (0x0) pointer."));
         }
     }
 }
