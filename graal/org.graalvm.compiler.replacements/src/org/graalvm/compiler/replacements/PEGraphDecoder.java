@@ -390,11 +390,19 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
     }
 
-    protected class OnDemandPEAppendGraphBuilderContext extends PEAppendGraphBuilderContext {
+    /**
+     * A graph builder context that allows appending one node to the graph. If a node is appended,
+     * the target fixed node is replaced with the new node, and clients must afterwards call commit
+     * to complete the replacement.
+     *
+     * This graph builder context is intended to be used with the {@link NodePlugin} objects passed
+     * to the graph decoder.
+     */
+    protected class PEOnDemandAppendGraphBuilderContext extends PEAppendGraphBuilderContext {
         private final FixedNode targetNode;
         private FixedWithNextNode predecessor;
 
-        public OnDemandPEAppendGraphBuilderContext(PEMethodScope inlineScope, FixedNode targetNode) {
+        public PEOnDemandAppendGraphBuilderContext(PEMethodScope inlineScope, FixedNode targetNode) {
             super(inlineScope, targetNode.predecessor() instanceof FixedWithNextNode ? (FixedWithNextNode) targetNode.predecessor() : null);
             this.targetNode = targetNode;
             this.predecessor = targetNode.predecessor() instanceof FixedWithNextNode ? (FixedWithNextNode) targetNode.predecessor() : null;
@@ -884,8 +892,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 foreignCall.setBci(methodScope.invokeData.invoke.bci());
             }
         } else if (nodePlugins != null && nodePlugins.length > 0) {
-            OnDemandPEAppendGraphBuilderContext graphBuilderContext = new OnDemandPEAppendGraphBuilderContext(methodScope, node);
             if (node instanceof LoadFieldNode) {
+                PEOnDemandAppendGraphBuilderContext graphBuilderContext = new PEOnDemandAppendGraphBuilderContext(methodScope, node);
                 LoadFieldNode loadFieldNode = (LoadFieldNode) node;
                 ResolvedJavaField field = loadFieldNode.field();
                 if (loadFieldNode.isStatic()) {
@@ -905,6 +913,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                     }
                 }
             } else if (node instanceof StoreFieldNode) {
+                PEOnDemandAppendGraphBuilderContext graphBuilderContext = new PEOnDemandAppendGraphBuilderContext(methodScope, node);
                 StoreFieldNode storeFieldNode = (StoreFieldNode) node;
                 ResolvedJavaField field = storeFieldNode.field();
                 if (storeFieldNode.isStatic()) {
@@ -926,6 +935,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                     }
                 }
             } else if (node instanceof LoadIndexedNode) {
+                PEOnDemandAppendGraphBuilderContext graphBuilderContext = new PEOnDemandAppendGraphBuilderContext(methodScope, node);
                 LoadIndexedNode loadIndexedNode = (LoadIndexedNode) node;
                 ValueNode array = loadIndexedNode.array();
                 ValueNode index = loadIndexedNode.index();
@@ -936,6 +946,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                     }
                 }
             } else if (node instanceof StoreIndexedNode) {
+                PEOnDemandAppendGraphBuilderContext graphBuilderContext = new PEOnDemandAppendGraphBuilderContext(methodScope, node);
                 StoreIndexedNode storeIndexedNode = (StoreIndexedNode) node;
                 ValueNode array = storeIndexedNode.array();
                 ValueNode index = storeIndexedNode.index();
@@ -947,6 +958,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                     }
                 }
             } else if (node instanceof NewInstanceNode) {
+                PEOnDemandAppendGraphBuilderContext graphBuilderContext = new PEOnDemandAppendGraphBuilderContext(methodScope, node);
                 NewInstanceNode newInstanceNode = (NewInstanceNode) node;
                 ResolvedJavaType type = newInstanceNode.instanceClass();
                 for (NodePlugin nodePlugin : nodePlugins) {
@@ -956,6 +968,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                     }
                 }
             } else if (node instanceof NewArrayNode) {
+                PEOnDemandAppendGraphBuilderContext graphBuilderContext = new PEOnDemandAppendGraphBuilderContext(methodScope, node);
                 NewArrayNode newArrayNode = (NewArrayNode) node;
                 ResolvedJavaType elementType = newArrayNode.elementType();
                 ValueNode length = newArrayNode.length();
@@ -966,6 +979,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                     }
                 }
             } else if (node instanceof NewMultiArrayNode) {
+                PEOnDemandAppendGraphBuilderContext graphBuilderContext = new PEOnDemandAppendGraphBuilderContext(methodScope, node);
                 NewMultiArrayNode newArrayNode = (NewMultiArrayNode) node;
                 ResolvedJavaType elementType = newArrayNode.type();
                 ValueNode[] dimensions = newArrayNode.dimensions().toArray(new ValueNode[0]);
