@@ -150,12 +150,12 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         BasePhase<?> enclosingPhase = getEnclosingPhase();
         boolean isTopLevel = enclosingPhase == null;
         if (isTopLevel) {
-            if (Debug.isDumpEnabled(Debug.VERBOSE_LOG_LEVEL)) {
-                Debug.dump(Debug.VERBOSE_LOG_LEVEL, graph, "Before phase %s", getName());
+            if (Debug.isDumpEnabled(Debug.VERBOSE_LEVEL)) {
+                Debug.dump(Debug.VERBOSE_LEVEL, graph, "Before phase %s", getName());
             }
         } else {
-            if (Debug.isDumpEnabled(Debug.VERBOSE_LOG_LEVEL + 1)) {
-                Debug.dump(Debug.VERBOSE_LOG_LEVEL + 1, graph, "Before phase %s", getName());
+            if (Debug.isDumpEnabled(Debug.VERBOSE_LEVEL + 1)) {
+                Debug.dump(Debug.VERBOSE_LEVEL + 1, graph, "Before phase %s", getName());
             }
         }
         return enclosingPhase;
@@ -169,17 +169,17 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         boolean isTopLevel = enclosingPhase == null;
         if (isTopLevel) {
             if (isInliningPhase()) {
-                if (Debug.isDumpEnabled(Debug.BASIC_LOG_LEVEL)) {
-                    Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "After phase %s", getName());
+                if (Debug.isDumpEnabled(Debug.BASIC_LEVEL)) {
+                    Debug.dump(Debug.BASIC_LEVEL, graph, "After phase %s", getName());
                 }
             } else {
-                if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL)) {
-                    Debug.dump(Debug.INFO_LOG_LEVEL, graph, "After phase %s", getName());
+                if (Debug.isDumpEnabled(Debug.INFO_LEVEL)) {
+                    Debug.dump(Debug.INFO_LEVEL, graph, "After phase %s", getName());
                 }
             }
         } else {
-            if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL + 1)) {
-                Debug.dump(Debug.INFO_LOG_LEVEL + 1, graph, "After phase %s", getName());
+            if (Debug.isDumpEnabled(Debug.INFO_LEVEL + 1)) {
+                Debug.dump(Debug.INFO_LEVEL + 1, graph, "After phase %s", getName());
             }
         }
     }

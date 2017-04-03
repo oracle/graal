@@ -83,7 +83,7 @@ public class VerifyDebugUsageTest {
 
         @Override
         protected void run(StructuredGraph graph) {
-            Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "%s", graph.toString());
+            Debug.dump(Debug.BASIC_LEVEL, graph, "%s", graph.toString());
         }
     }
 
@@ -91,7 +91,7 @@ public class VerifyDebugUsageTest {
 
         @Override
         protected void run(StructuredGraph graph) {
-            Debug.dump(Debug.VERY_DETAILED_LOG_LEVEL + 1, graph, "%s", graph);
+            Debug.dump(Debug.VERY_DETAILED_LEVEL + 1, graph, "%s", graph);
         }
     }
 
@@ -145,7 +145,7 @@ public class VerifyDebugUsageTest {
 
         @Override
         protected void run(StructuredGraph graph) {
-            Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "error " + graph);
+            Debug.dump(Debug.BASIC_LEVEL, graph, "error " + graph);
         }
 
     }
@@ -188,7 +188,7 @@ public class VerifyDebugUsageTest {
 
         @Override
         protected void run(StructuredGraph graph) {
-            Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "%s", graph);
+            Debug.dump(Debug.BASIC_LEVEL, graph, "%s", graph);
         }
 
     }

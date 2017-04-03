@@ -30,7 +30,7 @@ import static org.graalvm.compiler.core.GraalCompilerOptions.PrintCompilation;
 import static org.graalvm.compiler.core.GraalCompilerOptions.PrintFilter;
 import static org.graalvm.compiler.core.GraalCompilerOptions.PrintStackTraceOnException;
 import static org.graalvm.compiler.core.phases.HighTier.Options.Inline;
-import static org.graalvm.compiler.debug.Debug.INFO_LOG_LEVEL;
+import static org.graalvm.compiler.debug.Debug.INFO_LEVEL;
 import static org.graalvm.compiler.debug.DelegatingDebugConfig.Feature.DUMP_METHOD;
 import static org.graalvm.compiler.debug.DelegatingDebugConfig.Level.DUMP;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Dump;
@@ -223,7 +223,7 @@ public class CompilationTask {
                             PrintCFGFileName, methodFQN,
                             PrintGraphFileName, methodFQN,
                             DumpPath, dumpPath.getPath());
-            override(DUMP, INFO_LOG_LEVEL).enable(DUMP_METHOD);
+            override(DUMP, INFO_LEVEL).enable(DUMP_METHOD);
             new GraalDebugConfigCustomizer().customize(this);
             return true;
         }

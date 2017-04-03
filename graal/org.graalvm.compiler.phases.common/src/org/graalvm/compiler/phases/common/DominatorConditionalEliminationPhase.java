@@ -990,7 +990,7 @@ public class DominatorConditionalEliminationPhase extends BasePhase<PhaseContext
         }
 
         public void pushElement(InfoElement element) {
-            Debug.log(Debug.VERBOSE_LOG_LEVEL, "Pushing an info element:%s", element);
+            Debug.log(Debug.VERBOSE_LEVEL, "Pushing an info element:%s", element);
             infos.add(element);
         }
 

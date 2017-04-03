@@ -243,13 +243,13 @@ public class ForeignCallStub extends Stub {
         }
         kit.append(new ReturnNode(linkage.getDescriptor().getResultType() == void.class ? null : result));
 
-        Debug.dump(Debug.VERBOSE_LOG_LEVEL, graph, "Initial stub graph");
+        Debug.dump(Debug.VERBOSE_LEVEL, graph, "Initial stub graph");
 
         kit.inlineInvokes();
 
         new RemoveValueProxyPhase().apply(graph);
 
-        Debug.dump(Debug.VERBOSE_LOG_LEVEL, graph, "Stub graph before compilation");
+        Debug.dump(Debug.VERBOSE_LEVEL, graph, "Stub graph before compilation");
 
         return graph;
     }

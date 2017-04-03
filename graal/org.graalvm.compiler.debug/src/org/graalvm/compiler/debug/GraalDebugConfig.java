@@ -408,7 +408,7 @@ public class GraalDebugConfig implements DebugConfig {
         if (e instanceof BailoutException && !Options.InterceptBailout.getValue(options)) {
             return null;
         }
-        Debug.setConfig(Debug.fixedConfig(options, Debug.BASIC_LOG_LEVEL, Debug.BASIC_LOG_LEVEL, false, false, false, false, false, dumpHandlers, verifyHandlers, output));
+        Debug.setConfig(Debug.fixedConfig(options, Debug.BASIC_LEVEL, Debug.BASIC_LEVEL, false, false, false, false, false, dumpHandlers, verifyHandlers, output));
         Debug.log("Exception occurred in scope: %s", Debug.currentScope());
         Map<Object, Object> firstSeen = new IdentityHashMap<>();
         for (Object o : Debug.context()) {
@@ -416,7 +416,7 @@ public class GraalDebugConfig implements DebugConfig {
             if (!firstSeen.containsKey(o)) {
                 firstSeen.put(o, o);
                 if (Options.DumpOnError.getValue(options) || Options.Dump.getValue(options) != null) {
-                    Debug.dump(Debug.BASIC_LOG_LEVEL, o, "Exception: %s", e);
+                    Debug.dump(Debug.BASIC_LEVEL, o, "Exception: %s", e);
                 } else {
                     Debug.log("Context obj %s", o);
                 }

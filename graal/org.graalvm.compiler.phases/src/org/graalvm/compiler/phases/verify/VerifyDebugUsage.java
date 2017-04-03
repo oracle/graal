@@ -22,11 +22,11 @@
  */
 package org.graalvm.compiler.phases.verify;
 
-import static org.graalvm.compiler.debug.Debug.BASIC_LOG_LEVEL;
-import static org.graalvm.compiler.debug.Debug.DETAILED_LOG_LEVEL;
-import static org.graalvm.compiler.debug.Debug.INFO_LOG_LEVEL;
-import static org.graalvm.compiler.debug.Debug.VERBOSE_LOG_LEVEL;
-import static org.graalvm.compiler.debug.Debug.VERY_DETAILED_LOG_LEVEL;
+import static org.graalvm.compiler.debug.Debug.BASIC_LEVEL;
+import static org.graalvm.compiler.debug.Debug.DETAILED_LEVEL;
+import static org.graalvm.compiler.debug.Debug.INFO_LEVEL;
+import static org.graalvm.compiler.debug.Debug.VERBOSE_LEVEL;
+import static org.graalvm.compiler.debug.Debug.VERY_DETAILED_LEVEL;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -135,15 +135,15 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
         }
     }
 
-    private static final Set<Integer> DebugLevels = new HashSet<>(Arrays.asList(BASIC_LOG_LEVEL, INFO_LOG_LEVEL, VERBOSE_LOG_LEVEL, DETAILED_LOG_LEVEL, VERY_DETAILED_LOG_LEVEL));
+    private static final Set<Integer> DebugLevels = new HashSet<>(Arrays.asList(BASIC_LEVEL, INFO_LEVEL, VERBOSE_LEVEL, DETAILED_LEVEL, VERY_DETAILED_LEVEL));
 
     /**
      * The set of methods allowed to call a {@code Debug.dump(...)} method with the {@code level}
-     * parameter bound to {@link Debug#BASIC_LOG_LEVEL} and the {@code object} parameter bound to a
+     * parameter bound to {@link Debug#BASIC_LEVEL} and the {@code object} parameter bound to a
      * {@link StructuredGraph} value.
      *
      * This whitelist exists to ensure any increase in graph dumps is in line with the policy
-     * outlined by {@link Debug#BASIC_LOG_LEVEL}. If you add a *justified* graph dump at this level,
+     * outlined by {@link Debug#BASIC_LEVEL}. If you add a *justified* graph dump at this level,
      * then update the whitelist.
      */
     private static final Set<String> BasicLevelStructuredGraphDumpWhitelist = new HashSet<>(Arrays.asList(
@@ -158,11 +158,11 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
 
     /**
      * The set of methods allowed to call a {@code Debug.dump(...)} method with the {@code level}
-     * parameter bound to {@link Debug#INFO_LOG_LEVEL} and the {@code object} parameter bound to a
+     * parameter bound to {@link Debug#INFO_LEVEL} and the {@code object} parameter bound to a
      * {@link StructuredGraph} value.
      *
      * This whitelist exists to ensure any increase in graph dumps is in line with the policy
-     * outlined by {@link Debug#INFO_LOG_LEVEL}. If you add a *justified* graph dump at this level, then
+     * outlined by {@link Debug#INFO_LEVEL}. If you add a *justified* graph dump at this level, then
      * update the whitelist.
      */
     private static final Set<String> InfoLevelStructuredGraphDumpWhitelist = new HashSet<>(Arrays.asList(
@@ -248,12 +248,12 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
     }
 
     /**
-     * Verifies that dumping a {@link StructuredGraph} at level {@link Debug#BASIC_LOG_LEVEL} or
-     * {@link Debug#INFO_LOG_LEVEL} only occurs in white-listed methods.
+     * Verifies that dumping a {@link StructuredGraph} at level {@link Debug#BASIC_LEVEL} or
+     * {@link Debug#INFO_LEVEL} only occurs in white-listed methods.
      */
     protected void verifyStructuredGraphDumping(StructuredGraph callerGraph, MethodCallTargetNode debugCallTarget, ResolvedJavaMethod verifiedCallee, Integer dumpLevel)
                     throws org.graalvm.compiler.phases.VerifyPhase.VerificationError {
-        if (dumpLevel == Debug.BASIC_LOG_LEVEL) {
+        if (dumpLevel == Debug.BASIC_LEVEL) {
             StackTraceElement e = callerGraph.method().asStackTraceElement(debugCallTarget.invoke().bci());
             String qualifiedMethod = e.getClassName() + "." + e.getMethodName();
             if (!BasicLevelStructuredGraphDumpWhitelist.contains(qualifiedMethod)) {
@@ -261,7 +261,7 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
                                 "In %s: call to %s with level == Debug.BASIC_LEVEL not in %s.BasicLevelDumpWhitelist.%n", e, verifiedCallee.format("%H.%n(%p)"),
                                 getClass().getName());
             }
-        } else if (dumpLevel == Debug.INFO_LOG_LEVEL) {
+        } else if (dumpLevel == Debug.INFO_LEVEL) {
             StackTraceElement e = callerGraph.method().asStackTraceElement(debugCallTarget.invoke().bci());
             String qualifiedMethod = e.getClassName() + "." + e.getMethodName();
             if (!InfoLevelStructuredGraphDumpWhitelist.contains(qualifiedMethod)) {
