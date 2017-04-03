@@ -402,7 +402,7 @@ public class InliningData {
                 EconomicSet<Node> parameterUsages = calleeInfo.inline(new Providers(context));
                 canonicalizedNodes.addAll(parameterUsages);
                 counterInliningRuns.increment();
-                Debug.dump(Debug.INFO_LOG_LEVEL, callerGraph, "after %s", calleeInfo);
+                Debug.dump(Debug.DETAILED_LOG_LEVEL, callerGraph, "after %s", calleeInfo);
 
                 Graph.Mark markBeforeCanonicalization = callerGraph.getMark();
 

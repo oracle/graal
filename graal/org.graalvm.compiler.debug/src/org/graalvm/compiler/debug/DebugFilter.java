@@ -41,8 +41,8 @@ import org.graalvm.compiler.debug.internal.DebugScope;
  * A filter is a list of comma-separated terms of the form {@code <pattern>[:<level>]}. {@code
  * <pattern>} is interpreted as a glob pattern if it contains a "*" or "?" character. Otherwise, it
  * is interpreted as a substring. If {@code <pattern>} is empty, it matches every scope. If {@code :
- * <level>} is omitted, it defaults to {@link Debug#BASIC_LOG_LEVEL}. The term {@code ~<pattern>} is
- * a shorthand for {@code <pattern>:0} to disable a debug facility for a pattern.
+ * <level>} is omitted, it defaults to {@link Debug#BASIC_LOG_LEVEL}. The term {@code ~<pattern>} is a
+ * shorthand for {@code <pattern>:0} to disable a debug facility for a pattern.
  * <p>
  * The resulting log level of a scope is determined by the <em>last</em> matching term. If no term
  * matches, the log level is 0 (disabled). A filter with no terms matches every scope with a log

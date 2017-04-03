@@ -223,19 +223,23 @@ public class GraalCompiler {
             if (graph.start().next() == null) {
                 graphBuilderSuite.apply(graph, highTierContext);
                 new DeadCodeEliminationPhase(DeadCodeEliminationPhase.Optionality.Optional).apply(graph);
+                Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "After parsing");
             } else {
                 Debug.dump(Debug.INFO_LOG_LEVEL, graph, "initial state");
             }
 
             suites.getHighTier().apply(graph, highTierContext);
             graph.maybeCompress();
+            Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "After high tier");
 
             MidTierContext midTierContext = new MidTierContext(providers, target, optimisticOpts, profilingInfo);
             suites.getMidTier().apply(graph, midTierContext);
             graph.maybeCompress();
+            Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "After mid tier");
 
             LowTierContext lowTierContext = new LowTierContext(providers, target);
             suites.getLowTier().apply(graph, lowTierContext);
+            Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "After low tier");
 
             Debug.dump(Debug.BASIC_LOG_LEVEL, graph.getLastSchedule(), "Final HIR schedule");
         } catch (Throwable e) {

@@ -291,7 +291,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
                 // no better solution found
                 materializeAtDefinitionSkipped.increment();
             }
-            Debug.dump(Debug.INFO_LOG_LEVEL, constTree, "ConstantTree for %s", tree.getVariable());
+            Debug.dump(Debug.DETAILED_LOG_LEVEL, constTree, "ConstantTree for %s", tree.getVariable());
         }
 
         private void createLoads(DefUseTree tree, ConstantTree constTree, AbstractBlockBase<?> startBlock) {

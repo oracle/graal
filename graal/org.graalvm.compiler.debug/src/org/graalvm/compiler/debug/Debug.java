@@ -122,10 +122,40 @@ public class Debug {
         return config.isDumpEnabledForMethod();
     }
 
+    /**
+     * Basic debug level.
+     *
+     * For HIR dumping, only ~5 graphs per method: after parsing, after inlining, after high tier,
+     * after mid tier, after low tier.
+     */
     public static final int BASIC_LOG_LEVEL = 1;
+
+    /**
+     * Informational debug level.
+     *
+     * HIR dumping: One graph after each applied top-level phase.
+     */
     public static final int INFO_LOG_LEVEL = 2;
+
+    /**
+     * Verbose debug level.
+     *
+     * HIR dumping: One graph after each phase (including sub phases).
+     */
     public static final int VERBOSE_LOG_LEVEL = 3;
+
+    /**
+     * Detailed debug level.
+     *
+     * HIR dumping: Graphs within phases where interesting for a phase, max ~5 per phase.
+     */
     public static final int DETAILED_LOG_LEVEL = 4;
+
+    /**
+     * Very detailed debug level.
+     *
+     * HIR dumping: Graphs per node granularity graph change (before/after change).
+     */
     public static final int VERY_DETAILED_LOG_LEVEL = 5;
 
     public static boolean isDumpEnabled(int dumpLevel) {
@@ -668,6 +698,14 @@ public class Debug {
     public static void log(int logLevel, String format, Object[] args) {
         assert false : "shouldn't use this";
         logv(logLevel, format, args);
+    }
+
+    /**
+     * Forces an unconditional dump. This method exists mainly for debugging. It can also be used to
+     * force a graph dump from IDEs that support invoking a Java method while at a breakpoint.
+     */
+    public static void forceDump(Object object, String format, Object... args) {
+        DebugScope.forceDump(object, format, args);
     }
 
     public static void dump(int dumpLevel, Object object, String msg) {

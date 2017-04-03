@@ -25,6 +25,7 @@ package org.graalvm.compiler.replacements;
 import static java.util.FormattableFlags.ALTERNATE;
 import static org.graalvm.compiler.core.common.LocationIdentity.any;
 import static org.graalvm.compiler.debug.Debug.applyFormattingFlagsAndWidth;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.DebugStubsAndSnippets;
 import static org.graalvm.compiler.graph.iterators.NodePredicates.isNotA;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
@@ -57,7 +58,9 @@ import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.debug.internal.DebugScope;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugConfig;
 import org.graalvm.compiler.debug.DebugCounter;
 import org.graalvm.compiler.debug.DebugTimer;
 import org.graalvm.compiler.debug.GraalError;
@@ -632,7 +635,8 @@ public class SnippetTemplate {
             SnippetTemplate template = Options.UseSnippetTemplateCache.getValue(options) && args.cacheable ? templates.get(args.cacheKey) : null;
             if (template == null) {
                 SnippetTemplates.increment();
-                try (DebugCloseable a = SnippetTemplateCreationTime.start(); Scope s = Debug.scope("SnippetSpecialization", args.info.method)) {
+                DebugConfig config = DebugStubsAndSnippets.getValue(options) ? DebugScope.getConfig() : Debug.silentConfig();
+                try (DebugCloseable a = SnippetTemplateCreationTime.start(); Scope s = Debug.sandbox("SnippetSpecialization", config, args.info.method)) {
                     template = new SnippetTemplate(options, providers, snippetReflection, args);
                     if (Options.UseSnippetTemplateCache.getValue(options) && args.cacheable) {
                         templates.put(args.cacheKey, template);

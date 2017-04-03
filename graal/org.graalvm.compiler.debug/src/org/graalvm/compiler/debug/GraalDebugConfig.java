@@ -79,7 +79,9 @@ public class GraalDebugConfig implements DebugConfig {
         @Option(help = "Write debug values into a file instead of the terminal. " +
                        "If DebugValueSummary is Thread, the thread name will be prepended.", type = OptionType.Debug)
         public static final OptionKey<String> DebugValueFile = new OptionKey<>(null);
-        @Option(help = "Send Graal compiler IR to dump handlers on error", type = OptionType.Debug)
+        @Option(help = "Enable debug output for stub code generation and snippet preparation.", type = OptionType.Debug)
+        public static final OptionKey<Boolean> DebugStubsAndSnippets = new OptionKey<>(false);
+        @Option(help = "Send Graal compiler IR to dump handlers on error.", type = OptionType.Debug)
         public static final OptionKey<Boolean> DumpOnError = new OptionKey<>(false);
         @Option(help = "Intercept also bailout exceptions", type = OptionType.Debug)
         public static final OptionKey<Boolean> InterceptBailout = new OptionKey<>(false);

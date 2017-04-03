@@ -247,7 +247,6 @@ import static org.graalvm.compiler.core.common.GraalOptions.StressInvokeWithExce
 import static org.graalvm.compiler.core.common.type.StampFactory.objectNonNull;
 import static org.graalvm.compiler.debug.GraalError.guarantee;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
-import static org.graalvm.compiler.java.BytecodeParserOptions.DumpDuringGraphBuilding;
 import static org.graalvm.compiler.java.BytecodeParserOptions.TraceBytecodeParserLevel;
 import static org.graalvm.compiler.java.BytecodeParserOptions.TraceInlineDuringParsing;
 import static org.graalvm.compiler.java.BytecodeParserOptions.TraceParserPlugins;
@@ -769,10 +768,6 @@ public class BytecodeParser implements GraphBuilderContext {
             BciBlock[] blocks = blockMap.getBlocks();
             for (BciBlock block : blocks) {
                 processBlock(block);
-            }
-
-            if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL) && DumpDuringGraphBuilding.getValue(options) && this.beforeReturnNode != startInstruction) {
-                Debug.dump(Debug.INFO_LOG_LEVEL, graph, "Bytecodes parsed: %s.%s", method.getDeclaringClass().getUnqualifiedName(), method.getName());
             }
         }
     }

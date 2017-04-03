@@ -101,7 +101,7 @@ public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends B
                         }
 
                         if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL)) {
-                            Debug.dump(Debug.INFO_LOG_LEVEL, graph, "%s iteration", getName());
+                            Debug.dump(Debug.DETAILED_LOG_LEVEL, graph, "%s iteration", getName());
                         }
 
                         new DeadCodeEliminationPhase(Required).apply(graph);

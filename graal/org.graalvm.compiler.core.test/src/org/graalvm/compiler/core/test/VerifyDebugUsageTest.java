@@ -85,7 +85,26 @@ public class VerifyDebugUsageTest {
         protected void run(StructuredGraph graph) {
             Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "%s", graph.toString());
         }
+    }
 
+    private static class InvalidDumpLevelPhase extends Phase {
+
+        @Override
+        protected void run(StructuredGraph graph) {
+            Debug.dump(Debug.VERY_DETAILED_LOG_LEVEL + 1, graph, "%s", graph);
+        }
+    }
+
+    private static class NonConstantDumpLevelPhase extends Phase {
+
+        @Override
+        protected void run(StructuredGraph graph) {
+            Debug.dump(getLevel(), graph, "%s", graph);
+        }
+
+        int getLevel() {
+            return 10;
+        }
     }
 
     private static class InvalidVerifyUsagePhase extends Phase {
@@ -231,6 +250,16 @@ public class VerifyDebugUsageTest {
     @Test(expected = VerificationError.class)
     public void testDumpInvalid() {
         testDebugUsageClass(InvalidDumpUsagePhase.class);
+    }
+
+    @Test(expected = VerificationError.class)
+    public void testDumpLevelInvalid() {
+        testDebugUsageClass(InvalidDumpLevelPhase.class);
+    }
+
+    @Test(expected = VerificationError.class)
+    public void testDumpNonConstantLevelInvalid() {
+        testDebugUsageClass(NonConstantDumpLevelPhase.class);
     }
 
     @Test(expected = VerificationError.class)

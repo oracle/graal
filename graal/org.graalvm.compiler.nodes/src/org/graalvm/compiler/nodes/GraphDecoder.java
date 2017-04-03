@@ -1355,7 +1355,7 @@ class LoopDetector implements Runnable {
 
     @Override
     public void run() {
-        Debug.dump(Debug.VERBOSE_LOG_LEVEL, graph, "Before loop detection");
+        Debug.dump(Debug.DETAILED_LOG_LEVEL, graph, "Before loop detection");
 
         List<Loop> orderedLoops = findLoops();
         assert orderedLoops.get(orderedLoops.size() - 1) == irreducibleLoopHandler : "outermost loop must be the last element in the list";
@@ -1378,11 +1378,11 @@ class LoopDetector implements Runnable {
             } else {
                 insertLoopNodes(loop);
             }
-            Debug.dump(Debug.VERBOSE_LOG_LEVEL, graph, "After handling of loop %s", loop.header);
+            Debug.dump(Debug.DETAILED_LOG_LEVEL, graph, "After handling of loop %s", loop.header);
         }
 
         logIrreducibleLoops();
-        Debug.dump(Debug.VERBOSE_LOG_LEVEL, graph, "After loop detection");
+        Debug.dump(Debug.DETAILED_LOG_LEVEL, graph, "After loop detection");
     }
 
     private List<Loop> findLoops() {
