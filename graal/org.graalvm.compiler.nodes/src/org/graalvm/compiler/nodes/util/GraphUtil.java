@@ -98,7 +98,7 @@ public class GraphUtil {
 
         fixSurvivingAffectedMerges(markedNodes, unmarkedMerges);
 
-        Debug.dump(Debug.DETAILED_LOG_LEVEL, node.graph(), "After fixing merges (killCFG %s)", node);
+        Debug.dump(Debug.DETAILED_LEVEL, node.graph(), "After fixing merges (killCFG %s)", node);
 
         // Mark non-fixed nodes
         markUsages(markedNodes);
@@ -112,7 +112,7 @@ public class GraphUtil {
                 }
             }
         }
-        Debug.dump(Debug.VERY_DETAILED_LOG_LEVEL, node.graph(), "After disconnecting non-marked inputs (killCFG %s)", node);
+        Debug.dump(Debug.VERY_DETAILED_LEVEL, node.graph(), "After disconnecting non-marked inputs (killCFG %s)", node);
         // Kill marked nodes
         for (Node marked : markedNodes) {
             if (marked.isAlive()) {
@@ -237,9 +237,9 @@ public class GraphUtil {
                     }
                 });
             }
-            Debug.dump(Debug.VERY_DETAILED_LOG_LEVEL, node.graph(), "Before killCFG %s", node);
+            Debug.dump(Debug.VERY_DETAILED_LEVEL, node.graph(), "Before killCFG %s", node);
             killCFGInner(node);
-            Debug.dump(Debug.VERY_DETAILED_LOG_LEVEL, node.graph(), "After killCFG %s", node);
+            Debug.dump(Debug.VERY_DETAILED_LEVEL, node.graph(), "After killCFG %s", node);
             if (Graph.Options.VerifyGraalGraphEdges.getValue(options)) {
                 EconomicSet<Node> newUnsafeNodes = collectUnsafeNodes(node.graph());
                 newUnsafeNodes.removeAll(unsafeNodes);

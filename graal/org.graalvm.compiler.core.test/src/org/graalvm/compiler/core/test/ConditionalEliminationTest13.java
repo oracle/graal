@@ -310,7 +310,7 @@ public class ConditionalEliminationTest13 extends ConditionalEliminationTestBase
         super.prepareGraph(graph, canonicalizer, context, applyLowering);
         graph.clearAllStateAfter();
         graph.setGuardsStage(StructuredGraph.GuardsStage.AFTER_FSA);
-        Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "After preparation");
+        Debug.dump(Debug.BASIC_LEVEL, graph, "After preparation");
         canonicalizer.apply(graph, context);
     }
 }

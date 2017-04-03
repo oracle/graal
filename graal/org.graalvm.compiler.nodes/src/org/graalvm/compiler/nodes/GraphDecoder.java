@@ -1355,7 +1355,7 @@ class LoopDetector implements Runnable {
 
     @Override
     public void run() {
-        Debug.dump(Debug.VERBOSE_LOG_LEVEL, graph, "Before loop detection");
+        Debug.dump(Debug.DETAILED_LEVEL, graph, "Before loop detection");
 
         List<Loop> orderedLoops = findLoops();
         assert orderedLoops.get(orderedLoops.size() - 1) == irreducibleLoopHandler : "outermost loop must be the last element in the list";
@@ -1378,11 +1378,11 @@ class LoopDetector implements Runnable {
             } else {
                 insertLoopNodes(loop);
             }
-            Debug.dump(Debug.VERBOSE_LOG_LEVEL, graph, "After handling of loop %s", loop.header);
+            Debug.dump(Debug.DETAILED_LEVEL, graph, "After handling of loop %s", loop.header);
         }
 
         logIrreducibleLoops();
-        Debug.dump(Debug.VERBOSE_LOG_LEVEL, graph, "After loop detection");
+        Debug.dump(Debug.DETAILED_LEVEL, graph, "After loop detection");
     }
 
     private List<Loop> findLoops() {
@@ -1910,14 +1910,14 @@ class LoopDetector implements Runnable {
     @SuppressWarnings("try")
     private void logIrreducibleLoops() {
         try (Debug.Scope s = Debug.scope("IrreducibleLoops")) {
-            if (Debug.isLogEnabled(Debug.BASIC_LOG_LEVEL) && irreducibleLoopSwitch != null) {
+            if (Debug.isLogEnabled(Debug.BASIC_LEVEL) && irreducibleLoopSwitch != null) {
                 StringBuilder msg = new StringBuilder("Inserted state machine to remove irreducible loops. Dispatching to the following states: ");
                 String sep = "";
                 for (int i = 0; i < irreducibleLoopSwitch.keyCount(); i++) {
                     msg.append(sep).append(irreducibleLoopSwitch.keyAt(i).asInt());
                     sep = ", ";
                 }
-                Debug.log(Debug.BASIC_LOG_LEVEL, "%s", msg);
+                Debug.log(Debug.BASIC_LEVEL, "%s", msg);
             }
         }
     }
