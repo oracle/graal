@@ -35,7 +35,6 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.TriState;
 
 /**
@@ -66,75 +65,7 @@ public abstract class IntegerLowerThanNode extends CompareNode {
         if (synonym != null) {
             return synonym;
         }
-        if (forY.stamp() instanceof IntegerStamp) {
-            IntegerStamp yStamp = (IntegerStamp) forY.stamp();
-            int bits = yStamp.getBits();
-            if (forX.isJavaConstant() && !forY.isConstant()) {
-                // bring the constant on the right
-                long xValue = forX.asJavaConstant().asLong();
-                if (xValue != getOp().maxValue(bits)) {
-                    // c < x <=> !(c >= x) <=> !(x <= c) <=> !(x < c + 1)
-                    return LogicNegationNode.create(getOp().create(forY, ConstantNode.forIntegerStamp(yStamp, xValue + 1), tool.getConstantReflection()));
-                }
-            }
-            if (forY.isJavaConstant()) {
-                long yValue = forY.asJavaConstant().asLong();
-                if (yValue == getOp().maxValue(bits)) {
-                    // x < MAX <=> x != MAX
-                    return LogicNegationNode.create(CompareNode.createCompareNode(Condition.EQ, forX, forY, tool.getConstantReflection()));
-                }
-                if (yValue == getOp().minValue(bits) + 1) {
-                    // x < MIN + 1 <=> x <= MIN <=> x == MIN
-                    return CompareNode.createCompareNode(Condition.EQ, forX, ConstantNode.forIntegerStamp(yStamp, getOp().minValue(bits)), tool.getConstantReflection());
-                }
-            } else if (forY instanceof AddNode) {
-                AddNode addNode = (AddNode) forY;
-                ValueNode canonical = canonicalizeXLowerXPlusA(forX, addNode, false, true);
-                if (canonical != null) {
-                    return canonical;
-                }
-            }
-            if (forX instanceof AddNode) {
-                AddNode addNode = (AddNode) forX;
-                ValueNode canonical = canonicalizeXLowerXPlusA(forY, addNode, true, false);
-                if (canonical != null) {
-                    return canonical;
-                }
-            }
-        }
         return this;
-    }
-
-    private ValueNode canonicalizeXLowerXPlusA(ValueNode forX, AddNode addNode, boolean mirrored, boolean strict) {
-        // x < x + a
-        IntegerStamp succeedingXStamp;
-        boolean exact;
-        if (addNode.getX() == forX && addNode.getY().stamp() instanceof IntegerStamp) {
-            IntegerStamp aStamp = (IntegerStamp) addNode.getY().stamp();
-            succeedingXStamp = getOp().getSucceedingStampForXLowerXPlusA(mirrored, strict, aStamp);
-            exact = aStamp.lowerBound() == aStamp.upperBound();
-        } else if (addNode.getY() == forX && addNode.getX().stamp() instanceof IntegerStamp) {
-            IntegerStamp aStamp = (IntegerStamp) addNode.getX().stamp();
-            succeedingXStamp = getOp().getSucceedingStampForXLowerXPlusA(mirrored, strict, aStamp);
-            exact = aStamp.lowerBound() == aStamp.upperBound();
-        } else {
-            return null;
-        }
-        if (succeedingXStamp.join(forX.stamp()).isEmpty()) {
-            return LogicConstantNode.contradiction();
-        } else if (exact && !succeedingXStamp.isEmpty()) {
-            LowerOp lowerOp = getOp();
-            int bits = succeedingXStamp.getBits();
-            if (lowerOp.compare(lowerOp.lowerBound(succeedingXStamp), lowerOp.minValue(bits)) > 0) {
-                assert lowerOp.upperBound(succeedingXStamp) == lowerOp.maxValue(bits);
-                // x must be in [L..MAX] <=> x >= L <=> !(x < L)
-                return LogicNegationNode.create(lowerOp.create(forX, ConstantNode.forIntegerStamp(succeedingXStamp, lowerOp.lowerBound(succeedingXStamp))));
-            } else if (lowerOp.compare(lowerOp.upperBound(succeedingXStamp), lowerOp.maxValue(bits)) < 0) {
-                // x must be in [MIN..H] <=> x <= H <=> !(H < x)
-                return LogicNegationNode.create(lowerOp.create(ConstantNode.forIntegerStamp(succeedingXStamp, lowerOp.upperBound(succeedingXStamp)), forX));
-            }
-        }
-        return null;
     }
 
     @Override
@@ -225,8 +156,8 @@ public abstract class IntegerLowerThanNode extends CompareNode {
 
         protected abstract IntegerLowerThanNode create(ValueNode x, ValueNode y);
 
-        public LogicNode create(ValueNode x, ValueNode y, ConstantReflectionProvider constantReflection) {
-            LogicNode result = CompareNode.tryConstantFold(getCondition(), x, y, constantReflection, false);
+        public LogicNode createCanonical(ValueNode x, ValueNode y) {
+            LogicNode result = CompareNode.tryConstantFoldPrimitive(getCondition(), x, y, false);
             if (result != null) {
                 return result;
             } else {
@@ -247,6 +178,73 @@ public abstract class IntegerLowerThanNode extends CompareNode {
                 return LogicConstantNode.tautology();
             } else if (fold.isFalse()) {
                 return LogicConstantNode.contradiction();
+            }
+            if (forY.stamp() instanceof IntegerStamp) {
+                IntegerStamp yStamp = (IntegerStamp) forY.stamp();
+                int bits = yStamp.getBits();
+                if (forX.isJavaConstant() && !forY.isConstant()) {
+                    // bring the constant on the right
+                    long xValue = forX.asJavaConstant().asLong();
+                    if (xValue != maxValue(bits)) {
+                        // c < x <=> !(c >= x) <=> !(x <= c) <=> !(x < c + 1)
+                        return LogicNegationNode.create(createCanonical(forY, ConstantNode.forIntegerStamp(yStamp, xValue + 1)));
+                    }
+                }
+                if (forY.isJavaConstant()) {
+                    long yValue = forY.asJavaConstant().asLong();
+                    if (yValue == maxValue(bits)) {
+                        // x < MAX <=> x != MAX
+                        return LogicNegationNode.create(IntegerEqualsNode.create(forX, forY));
+                    }
+                    if (yValue == minValue(bits) + 1) {
+                        // x < MIN + 1 <=> x <= MIN <=> x == MIN
+                        return IntegerEqualsNode.create(forX, ConstantNode.forIntegerStamp(yStamp, minValue(bits)));
+                    }
+                } else if (forY instanceof AddNode) {
+                    AddNode addNode = (AddNode) forY;
+                    LogicNode canonical = canonicalizeXLowerXPlusA(forX, addNode, false, true);
+                    if (canonical != null) {
+                        return canonical;
+                    }
+                }
+                if (forX instanceof AddNode) {
+                    AddNode addNode = (AddNode) forX;
+                    LogicNode canonical = canonicalizeXLowerXPlusA(forY, addNode, true, false);
+                    if (canonical != null) {
+                        return canonical;
+                    }
+                }
+            }
+            return null;
+        }
+
+        private LogicNode canonicalizeXLowerXPlusA(ValueNode forX, AddNode addNode, boolean mirrored, boolean strict) {
+            // x < x + a
+            IntegerStamp succeedingXStamp;
+            boolean exact;
+            if (addNode.getX() == forX && addNode.getY().stamp() instanceof IntegerStamp) {
+                IntegerStamp aStamp = (IntegerStamp) addNode.getY().stamp();
+                succeedingXStamp = getSucceedingStampForXLowerXPlusA(mirrored, strict, aStamp);
+                exact = aStamp.lowerBound() == aStamp.upperBound();
+            } else if (addNode.getY() == forX && addNode.getX().stamp() instanceof IntegerStamp) {
+                IntegerStamp aStamp = (IntegerStamp) addNode.getX().stamp();
+                succeedingXStamp = getSucceedingStampForXLowerXPlusA(mirrored, strict, aStamp);
+                exact = aStamp.lowerBound() == aStamp.upperBound();
+            } else {
+                return null;
+            }
+            if (succeedingXStamp.join(forX.stamp()).isEmpty()) {
+                return LogicConstantNode.contradiction();
+            } else if (exact && !succeedingXStamp.isEmpty()) {
+                int bits = succeedingXStamp.getBits();
+                if (compare(lowerBound(succeedingXStamp), minValue(bits)) > 0) {
+                    assert upperBound(succeedingXStamp) == maxValue(bits);
+                    // x must be in [L..MAX] <=> x >= L <=> !(x < L)
+                    return LogicNegationNode.create(create(forX, ConstantNode.forIntegerStamp(succeedingXStamp, lowerBound(succeedingXStamp))));
+                } else if (compare(upperBound(succeedingXStamp), maxValue(bits)) < 0) {
+                    // x must be in [MIN..H] <=> x <= H <=> !(H < x)
+                    return LogicNegationNode.create(create(ConstantNode.forIntegerStamp(succeedingXStamp, upperBound(succeedingXStamp)), forX));
+                }
             }
             return null;
         }

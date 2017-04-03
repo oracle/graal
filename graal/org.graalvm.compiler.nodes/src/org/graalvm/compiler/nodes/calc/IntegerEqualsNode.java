@@ -40,7 +40,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.TriState;
@@ -55,8 +54,8 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
         assert !y.getStackKind().isNumericFloat() && y.getStackKind() != JavaKind.Object;
     }
 
-    public static LogicNode create(ValueNode x, ValueNode y, ConstantReflectionProvider constantReflection) {
-        LogicNode result = CompareNode.tryConstantFold(Condition.EQ, x, y, constantReflection, false);
+    public static LogicNode create(ValueNode x, ValueNode y) {
+        LogicNode result = CompareNode.tryConstantFoldPrimitive(Condition.EQ, x, y, false);
         if (result != null) {
             return result;
         } else {
@@ -137,7 +136,7 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
             }
             if (v1 != null) {
                 assert v2 != null;
-                return create(v1, v2, tool.getConstantReflection());
+                return create(v1, v2);
             }
         }
         return super.canonical(tool, forX, forY);
@@ -153,14 +152,14 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
                 // nonConstant can only be 0 or 1 (respective -1), test against 0 instead of 1
                 // (respective -1) for a more canonical graph and also to allow for faster execution
                 // on specific platforms.
-                return LogicNegationNode.create(IntegerEqualsNode.create(nonConstant, ConstantNode.forIntegerKind(nonConstant.getStackKind(), 0), null));
+                return LogicNegationNode.create(IntegerEqualsNode.create(nonConstant, ConstantNode.forIntegerKind(nonConstant.getStackKind(), 0)));
             } else if (primitiveConstant.asLong() == 0) {
                 if (nonConstant instanceof AndNode) {
                     AndNode andNode = (AndNode) nonConstant;
                     return new IntegerTestNode(andNode.getX(), andNode.getY());
                 } else if (nonConstant instanceof SubNode) {
                     SubNode subNode = (SubNode) nonConstant;
-                    return IntegerEqualsNode.create(subNode.getX(), subNode.getY(), tool.getConstantReflection());
+                    return IntegerEqualsNode.create(subNode.getX(), subNode.getY());
                 } else if (nonConstant instanceof ShiftNode && nonConstant.stamp() instanceof IntegerStamp) {
                     if (nonConstant instanceof LeftShiftNode) {
                         LeftShiftNode shift = (LeftShiftNode) nonConstant;

@@ -343,7 +343,7 @@ public enum Condition {
         if (lt instanceof PrimitiveConstant) {
             PrimitiveConstant lp = (PrimitiveConstant) lt;
             PrimitiveConstant rp = (PrimitiveConstant) rt;
-            return foldPrimitiveCondition(lp, rp, unorderedIsTrue);
+            return foldCondition(lp, rp, unorderedIsTrue);
         } else {
             Boolean equal = constantReflection.constantEquals(lt, rt);
             if (equal == null) {
@@ -369,7 +369,7 @@ public enum Condition {
      * @return true if the comparison is known to be true, false if the comparison is known to be
      *         false
      */
-    public boolean foldPrimitiveCondition(PrimitiveConstant lp, PrimitiveConstant rp, boolean unorderedIsTrue) {
+    public boolean foldCondition(PrimitiveConstant lp, PrimitiveConstant rp, boolean unorderedIsTrue) {
         switch (lp.getJavaKind()) {
             case Boolean:
             case Byte:
