@@ -948,6 +948,10 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
 
         @Override
         public Node apply(Node node, Node curNode) {
+            if (!ok) {
+                // Abort the recursion
+                return curNode;
+            }
             if (!(curNode instanceof ValueNode)) {
                 ok = false;
                 return curNode;
