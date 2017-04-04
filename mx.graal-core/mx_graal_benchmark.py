@@ -149,10 +149,15 @@ mx_benchmark.add_java_vm(JvmciJdkVm('client', 'hosted', ['-server', '-XX:+Enable
 
 class TimingBenchmarkMixin(object):
     debug_values_file = 'debug-values.csv'
-    name_re = re.compile(r"(?P<name>GraalCompiler|BackEnd|FrontEnd|LIRPhaseTime_\w+)_Accm")
+    timer = ["GraalCompiler", "BackEnd", "FrontEnd", r"LIRPhaseTime_\w+"]
+    name_re = re.compile(r"(?P<name>{0})_Accm".format(r"|".join(timer)))
+
+    @staticmethod
+    def timerArgs():
+        return ['-Dgraal.Time=']
 
     def vmArgs(self, bmSuiteArgs):
-        vmArgs = ['-Dgraal.Time=', '-Dgraal.DebugValueHumanReadable=false', '-Dgraal.DebugValueSummary=Name',
+        vmArgs = TimingBenchmarkMixin.timerArgs() + ['-Dgraal.DebugValueHumanReadable=false', '-Dgraal.DebugValueSummary=Name',
                   '-Dgraal.DebugValueFile=' + TimingBenchmarkMixin.debug_values_file] + super(TimingBenchmarkMixin, self).vmArgs(bmSuiteArgs)
         return vmArgs
 
