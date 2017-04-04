@@ -149,12 +149,38 @@ mx_benchmark.add_java_vm(JvmciJdkVm('client', 'hosted', ['-server', '-XX:+Enable
 
 class TimingBenchmarkMixin(object):
     debug_values_file = 'debug-values.csv'
-    timer = ["GraalCompiler", "BackEnd", "FrontEnd", r"LIRPhaseTime_\w+"]
-    name_re = re.compile(r"(?P<name>{0})_Accm".format(r"|".join(timer)))
+    timers = [
+        "BackEnd",
+        "FrontEnd",
+        "GraalCompiler",
+        "LIRPhaseTime_AllocationStage",
+        "LIRPhaseTime_BottomUpAllocator",
+        "LIRPhaseTime_ConstantLoadOptimization",
+        "LIRPhaseTime_ControlFlowOptimizer",
+        "LIRPhaseTime_EdgeMoveOptimizer",
+        "LIRPhaseTime_GlobalLivenessAnalysisPhase",
+        "LIRPhaseTime_LIRGenerationPhase",
+        "LIRPhaseTime_LIRPhaseSuite",
+        "LIRPhaseTime_LSStackSlotAllocator",
+        "LIRPhaseTime_LocationMarkerPhase",
+        "LIRPhaseTime_MarkBasePointersPhase",
+        "LIRPhaseTime_NullCheckOptimizer",
+        "LIRPhaseTime_PostAllocationOptimizationStage",
+        "LIRPhaseTime_PreAllocationOptimizationStage",
+        "LIRPhaseTime_RedundantMoveElimination",
+        "LIRPhaseTime_SaveCalleeSaveRegisters",
+        "LIRPhaseTime_StackMoveOptimizationPhase",
+        "LIRPhaseTime_TraceBuilderPhase",
+        "LIRPhaseTime_TraceGlobalMoveResolutionPhase",
+        "LIRPhaseTime_TraceLinearScanPhase",
+        "LIRPhaseTime_TraceRegisterAllocationPhase",
+        "LIRPhaseTime_TrivialTraceAllocator"
+    ]
+    name_re = re.compile(r"(?P<name>\w+)_Accm")
 
     @staticmethod
     def timerArgs():
-        return ['-Dgraal.Time=']
+        return ["-Dgraaldebug.timer.{0}=true".format(timer) for timer in TimingBenchmarkMixin.timers]
 
     def vmArgs(self, bmSuiteArgs):
         vmArgs = TimingBenchmarkMixin.timerArgs() + ['-Dgraal.DebugValueHumanReadable=false', '-Dgraal.DebugValueSummary=Name',
@@ -180,6 +206,12 @@ class TimingBenchmarkMixin(object):
     def get_csv_filename(self, benchmarks, bmSuiteArgs):
         return TimingBenchmarkMixin.debug_values_file
 
+    @staticmethod
+    def shorten_vm_flags(args):
+        # not need fo timer names
+        filtered_args = [x for x in args if not x.startswith("-Dgraaldebug.timer")]
+        return mx_benchmark.Rule.crop_back("...")(' '.join(filtered_args))
+
     def rules(self, out, benchmarks, bmSuiteArgs):
         return [
           mx_benchmark.CSVFixedFileRule(
@@ -190,6 +222,7 @@ class TimingBenchmarkMixin(object):
               "bench-suite": self.benchSuiteName(),
               "vm": "jvmci",
               "config.name": "default",
+              "config.vm-flags": TimingBenchmarkMixin.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
               "metric.object": ("<name>", str),
               "metric.name": ("compile-time", str),
               "metric.value": ("<value>", int),
