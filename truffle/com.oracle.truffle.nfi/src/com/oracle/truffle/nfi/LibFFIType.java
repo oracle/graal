@@ -438,16 +438,17 @@ abstract class LibFFIType {
 
     abstract static class BasePointerType extends LibFFIType {
 
-        private static final LibFFIType POINTER;
-
         static {
             // make sure simpleTypeMap is initialized
             NativeAccess.ensureInitialized();
-            POINTER = simpleTypeMap[NativeSimpleType.POINTER.ordinal()];
+        }
+
+        private static LibFFIType getPointerType() {
+            return simpleTypeMap[NativeSimpleType.POINTER.ordinal()];
         }
 
         protected BasePointerType(Direction direction) {
-            super(POINTER.size, POINTER.alignment, 1, POINTER.type, direction);
+            super(getPointerType().size, getPointerType().alignment, 1, getPointerType().type, direction);
         }
     }
 
