@@ -117,9 +117,9 @@ import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVM
 import com.oracle.truffle.llvm.nodes.base.LLVMStructWriteNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStructWriteNodeFactory.LLVMPrimitiveStructWriteNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI16NodeFactory.LLVMToI16NoZeroExtNodeGen;
-import com.oracle.truffle.llvm.nodes.cast.LLVMToI32NodeFactory.LLVMToI32NoZeroExtNodeGen;
-import com.oracle.truffle.llvm.nodes.cast.LLVMToI64NodeFactory.LLVMToI64NoZeroExtNodeGen;
-import com.oracle.truffle.llvm.nodes.cast.LLVMToI8NodeFactory.LLVMToI8NoZeroExtNodeGen;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToI32NodeGen.LLVMToI32NoZeroExtNodeGen;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToI64NodeGen.LLVMToI64NoZeroExtNodeGen;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToI8NodeGen.LLVMToI8NoZeroExtNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMInlineAssemblyRootNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstruction.LLVMAllocaInstruction;

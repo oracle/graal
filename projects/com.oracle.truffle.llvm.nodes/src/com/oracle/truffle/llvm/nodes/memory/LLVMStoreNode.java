@@ -47,7 +47,9 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMDataEscapeNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
@@ -107,6 +109,17 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
             return null;
         }
 
+        @Specialization
+        public Object execute(LLVMBoxedPrimitive address, boolean value) {
+            if (address.getValue() instanceof Long) {
+                LLVMMemory.putI1(LLVMAddress.fromLong((long) address.getValue()), value);
+                return null;
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalAccessError("Cannot access address: " + address.getValue());
+            }
+        }
+
         @Specialization(guards = "notLLVM(address)")
         public Object execute(TruffleObject address, boolean value) {
             execute(new LLVMTruffleObject(address, PrimitiveType.I1), value);
@@ -136,6 +149,17 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
             return null;
         }
 
+        @Specialization
+        public Object execute(LLVMBoxedPrimitive address, byte value) {
+            if (address.getValue() instanceof Long) {
+                LLVMMemory.putI8(LLVMAddress.fromLong((long) address.getValue()), value);
+                return null;
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalAccessError("Cannot access address: " + address.getValue());
+            }
+        }
+
         @Specialization(guards = "notLLVM(address)")
         public Object execute(TruffleObject address, byte value) {
             execute(new LLVMTruffleObject(address, PrimitiveType.I8), value);
@@ -161,6 +185,17 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         public Object execute(LLVMTruffleObject address, short value) {
             doForeignAccess(address, LLVMExpressionNode.I16_SIZE_IN_BYTES, value);
             return null;
+        }
+
+        @Specialization
+        public Object execute(LLVMBoxedPrimitive address, short value) {
+            if (address.getValue() instanceof Long) {
+                LLVMMemory.putI16(LLVMAddress.fromLong((long) address.getValue()), value);
+                return null;
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalAccessError("Cannot access address: " + address.getValue());
+            }
         }
 
         @Specialization(guards = "notLLVM(address)")
@@ -192,6 +227,17 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
             return null;
         }
 
+        @Specialization
+        public Object execute(LLVMBoxedPrimitive address, int value) {
+            if (address.getValue() instanceof Long) {
+                LLVMMemory.putI32(LLVMAddress.fromLong((long) address.getValue()), value);
+                return null;
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalAccessError("Cannot access address: " + address.getValue());
+            }
+        }
+
         @Specialization(guards = "notLLVM(address)")
         public Object execute(TruffleObject address, int value) {
             execute(new LLVMTruffleObject(address, PrimitiveType.I32), value);
@@ -218,6 +264,17 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         public Object execute(LLVMTruffleObject address, long value) {
             doForeignAccess(address, LLVMExpressionNode.I64_SIZE_IN_BYTES, value);
             return null;
+        }
+
+        @Specialization
+        public Object execute(LLVMBoxedPrimitive address, long value) {
+            if (address.getValue() instanceof Long) {
+                LLVMMemory.putI64(LLVMAddress.fromLong((long) address.getValue()), value);
+                return null;
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalAccessError("Cannot access address: " + address.getValue());
+            }
         }
 
         @Specialization(guards = "notLLVM(address)")
@@ -266,6 +323,17 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
             return null;
         }
 
+        @Specialization
+        public Object execute(LLVMBoxedPrimitive address, float value) {
+            if (address.getValue() instanceof Long) {
+                LLVMMemory.putFloat(LLVMAddress.fromLong((long) address.getValue()), value);
+                return null;
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalAccessError("Cannot access address: " + address.getValue());
+            }
+        }
+
         @Specialization(guards = "notLLVM(address)")
         public Object execute(TruffleObject address, float value) {
             execute(new LLVMTruffleObject(address, PrimitiveType.FLOAT), value);
@@ -293,6 +361,17 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         public Object execute(LLVMTruffleObject address, double value) {
             doForeignAccess(address, LLVMExpressionNode.DOUBLE_SIZE_IN_BYTES, value);
             return null;
+        }
+
+        @Specialization
+        public Object execute(LLVMBoxedPrimitive address, double value) {
+            if (address.getValue() instanceof Long) {
+                LLVMMemory.putDouble(LLVMAddress.fromLong((long) address.getValue()), value);
+                return null;
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalAccessError("Cannot access address: " + address.getValue());
+            }
         }
 
         @Specialization(guards = "notLLVM(address)")
@@ -330,6 +409,28 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
+        public Object execute(LLVMBoxedPrimitive address, LLVMAddress value) {
+            if (address.getValue() instanceof Long) {
+                LLVMMemory.putAddress(LLVMAddress.fromLong((long) address.getValue()), value);
+                return null;
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalAccessError("Cannot access address: " + address.getValue());
+            }
+        }
+
+        @Specialization
+        public Object execute(LLVMBoxedPrimitive address, LLVMGlobalVariableDescriptor value) {
+            if (address.getValue() instanceof Long) {
+                LLVMMemory.putAddress(LLVMAddress.fromLong((long) address.getValue()), value.getNativeAddress());
+                return null;
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalAccessError("Cannot access address: " + address.getValue());
+            }
+        }
+
+        @Specialization
         public Object doAddress(LLVMGlobalVariableDescriptor address, LLVMAddress value) {
             LLVMMemory.putAddress(address.getNativeAddress(), value);
             return null;
@@ -361,6 +462,12 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
         @Specialization(guards = "notLLVM(value)")
         public void execute(LLVMAddress address, TruffleObject value) {
+            CompilerDirectives.bailout("unsupported operation");
+            throw new UnsupportedOperationException("Sulong can't store a Truffle object in a native memory address " + address + " value: " + value);
+        }
+
+        @Specialization(guards = "notLLVM(value)")
+        public Object execute(LLVMBoxedPrimitive address, TruffleObject value) {
             CompilerDirectives.bailout("unsupported operation");
             throw new UnsupportedOperationException("Sulong can't store a Truffle object in a native memory address " + address + " value: " + value);
         }
@@ -445,6 +552,14 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         public Object executeNative(LLVMTruffleObject value) {
             descriptor.storeLLVMTruffleObject(value);
+            return null;
+        }
+
+        @Child private ToLLVMNode toLLVM = ToLLVMNode.createNode(long.class);
+
+        @Specialization
+        public Object executeLLVMBoxedPrimitive(LLVMBoxedPrimitive value) {
+            descriptor.storeLLVMAddress(LLVMAddress.fromLong((long) toLLVM.executeWithTarget(value.getValue())));
             return null;
         }
 

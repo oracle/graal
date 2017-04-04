@@ -29,29 +29,10 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.ForeignBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.api.interop.ForeignAccess;
 
-@MessageResolution(receiverType = ForeignBoxedPrimitive.class, language = LLVMLanguage.class)
-public class ForeignBoxedPrimitiveMessageResolution {
+public class LLVMBoxedPrimitiveMessageResolutionAccessor {
 
-    @Resolve(message = "IS_BOXED")
-    public abstract static class ForeignBoxedPrimitiveIsBoxed extends Node {
-        @SuppressWarnings("unused")
-        protected boolean access(VirtualFrame frame, ForeignBoxedPrimitive receiver) {
-            return true;
-        }
-    }
+    public static final ForeignAccess ACCESS = LLVMBoxedPrimitiveMessageResolutionForeign.ACCESS;
 
-    @Resolve(message = "UNBOX")
-    public abstract static class ForeignBoxedPrimitiveUnbox extends Node {
-        @SuppressWarnings("unused")
-        protected Object access(VirtualFrame frame, ForeignBoxedPrimitive receiver) {
-            return receiver.getValue();
-        }
-    }
 }

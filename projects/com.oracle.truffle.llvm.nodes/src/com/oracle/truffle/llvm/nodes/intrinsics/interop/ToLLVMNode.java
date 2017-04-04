@@ -50,8 +50,8 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToIntN
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToLongNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToShortNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToTruffleObjectNodeGen;
-import com.oracle.truffle.llvm.runtime.ForeignBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
@@ -139,7 +139,7 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
-        public int fromForeignPrimitive(ForeignBoxedPrimitive boxed) {
+        public int fromForeignPrimitive(LLVMBoxedPrimitive boxed) {
             if (toInt == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toInt = ToIntNodeGen.create();
@@ -203,7 +203,7 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
-        public long fromForeignPrimitive(ForeignBoxedPrimitive boxed) {
+        public long fromForeignPrimitive(LLVMBoxedPrimitive boxed) {
             if (toLong == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toLong = ToLongNodeGen.create();
@@ -268,7 +268,7 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
-        public short fromForeignPrimitive(ForeignBoxedPrimitive boxed) {
+        public short fromForeignPrimitive(LLVMBoxedPrimitive boxed) {
             if (toShort == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toShort = ToShortNodeGen.create();
@@ -333,7 +333,7 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
-        public byte fromForeignPrimitive(ForeignBoxedPrimitive boxed) {
+        public byte fromForeignPrimitive(LLVMBoxedPrimitive boxed) {
             if (toByte == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toByte = ToByteNodeGen.create();
@@ -398,7 +398,7 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
-        public char fromForeignPrimitive(ForeignBoxedPrimitive boxed) {
+        public char fromForeignPrimitive(LLVMBoxedPrimitive boxed) {
             if (toChar == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toChar = ToCharNodeGen.create();
@@ -462,7 +462,7 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
-        public float fromForeignPrimitive(ForeignBoxedPrimitive boxed) {
+        public float fromForeignPrimitive(LLVMBoxedPrimitive boxed) {
             if (toFloat == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toFloat = ToFloatNodeGen.create();
@@ -526,7 +526,7 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
-        public double fromForeignPrimitive(ForeignBoxedPrimitive boxed) {
+        public double fromForeignPrimitive(LLVMBoxedPrimitive boxed) {
             if (toDouble == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toDouble = ToDoubleNodeGen.create();
@@ -591,7 +591,7 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
-        public boolean fromForeignPrimitive(ForeignBoxedPrimitive boxed) {
+        public boolean fromForeignPrimitive(LLVMBoxedPrimitive boxed) {
             if (toBoolean == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toBoolean = ToBooleanNodeGen.create();
@@ -612,44 +612,45 @@ public abstract class ToLLVMNode extends Node {
     }
 
     abstract static class ToTruffleObject extends ToLLVMNode {
+
         @Specialization
         public TruffleObject fromInt(int value) {
-            return new ForeignBoxedPrimitive(value);
+            return new LLVMBoxedPrimitive(value);
         }
 
         @Specialization
         public TruffleObject fromChar(char value) {
-            return new ForeignBoxedPrimitive(value);
+            return new LLVMBoxedPrimitive(value);
         }
 
         @Specialization
         public TruffleObject fromLong(long value) {
-            return new ForeignBoxedPrimitive(value);
+            return new LLVMBoxedPrimitive(value);
         }
 
         @Specialization
         public TruffleObject fromByte(byte value) {
-            return new ForeignBoxedPrimitive(value);
+            return new LLVMBoxedPrimitive(value);
         }
 
         @Specialization
         public TruffleObject fromShort(short value) {
-            return new ForeignBoxedPrimitive(value);
+            return new LLVMBoxedPrimitive(value);
         }
 
         @Specialization
         public TruffleObject fromFloat(float value) {
-            return new ForeignBoxedPrimitive(value);
+            return new LLVMBoxedPrimitive(value);
         }
 
         @Specialization
         public TruffleObject fromDouble(double value) {
-            return new ForeignBoxedPrimitive(value);
+            return new LLVMBoxedPrimitive(value);
         }
 
         @Specialization
         public TruffleObject fromBoolean(boolean value) {
-            return new ForeignBoxedPrimitive(value);
+            return new LLVMBoxedPrimitive(value);
         }
 
         @Specialization
@@ -755,7 +756,7 @@ public abstract class ToLLVMNode extends Node {
             if (value instanceof LLVMTruffleAddress) {
                 return ((LLVMTruffleAddress) value).getAddress();
             } else if (isPrimitiveType(value.getClass())) {
-                return new ForeignBoxedPrimitive(value);
+                return new LLVMBoxedPrimitive(value);
             } else {
                 return value;
             }

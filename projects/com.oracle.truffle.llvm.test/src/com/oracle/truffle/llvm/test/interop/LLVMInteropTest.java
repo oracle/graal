@@ -805,6 +805,14 @@ public final class LLVMInteropTest {
     }
 
     @Test
+    public void test068() {
+        Runner runner = new Runner("interop068");
+        runner.export(true, "boxed_true");
+        runner.export(false, "boxed_false");
+        Assert.assertEquals(0, runner.run());
+    }
+
+    @Test
     public void testStrlen() throws Exception {
         Runner runner = new Runner("strlen");
         try {
@@ -975,7 +983,7 @@ public final class LLVMInteropTest {
             this.fileName = fileName;
         }
 
-        void export(TruffleObject foreignObject, String name) {
+        void export(Object foreignObject, String name) {
             builder.globalSymbol(name, foreignObject);
         }
 

@@ -29,9 +29,17 @@
  */
 package com.oracle.truffle.llvm.nodes.cast;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
+import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 
 @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
 public abstract class LLVMToI1Node extends LLVMExpressionNode {
@@ -69,6 +77,32 @@ public abstract class LLVMToI1Node extends LLVMExpressionNode {
     @Specialization
     public boolean executeLLVMFunction(boolean from) {
         return from;
+    }
+
+    @Child private Node isNull = Message.IS_NULL.createNode();
+    @Child private Node isBoxed = Message.IS_BOXED.createNode();
+    @Child private Node unbox = Message.UNBOX.createNode();
+    @Child private ToLLVMNode toBool = ToLLVMNode.createNode(boolean.class);
+
+    @Specialization(guards = "notLLVM(from)")
+    public boolean executeTruffleObject(TruffleObject from) {
+        if (ForeignAccess.sendIsNull(isNull, from)) {
+            return false;
+        } else if (ForeignAccess.sendIsBoxed(isBoxed, from)) {
+            try {
+                return (boolean) toBool.executeWithTarget(ForeignAccess.sendUnbox(unbox, from));
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
+        }
+        CompilerDirectives.transferToInterpreter();
+        throw new IllegalStateException("Not convertable");
+    }
+
+    @Specialization
+    public boolean executeLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
+        return (boolean) toBool.executeWithTarget(from.getValue());
     }
 
 }

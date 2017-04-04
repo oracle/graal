@@ -29,14 +29,49 @@
  */
 package com.oracle.truffle.llvm.nodes.cast;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
+import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 
+@NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
 public abstract class LLVMToFloatNode extends LLVMExpressionNode {
 
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
+    @Child private ToLLVMNode toFloat = ToLLVMNode.createNode(float.class);
+
+    @Specialization
+    public float executeLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
+        return (float) toFloat.executeWithTarget(from.getValue());
+    }
+
+    @Child private Node isNull = Message.IS_NULL.createNode();
+    @Child private Node isBoxed = Message.IS_BOXED.createNode();
+    @Child private Node unbox = Message.UNBOX.createNode();
+
+    @Specialization(guards = "notLLVM(from)")
+    public float executeTruffleObject(TruffleObject from) {
+        if (ForeignAccess.sendIsNull(isNull, from)) {
+            return 0;
+        } else if (ForeignAccess.sendIsBoxed(isBoxed, from)) {
+            try {
+                return (float) toFloat.executeWithTarget(ForeignAccess.sendUnbox(unbox, from));
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
+        }
+        CompilerDirectives.transferToInterpreter();
+        throw new IllegalStateException("Not convertable");
+    }
+
     public abstract static class LLVMToFloatNoZeroExtNode extends LLVMToFloatNode {
 
         @Specialization
@@ -75,7 +110,6 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMToFloatZeroExtNode extends LLVMToFloatNode {
 
         @Specialization
@@ -100,7 +134,6 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
 
     }
 
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMToFloatBitNode extends LLVMToFloatNode {
 
         @Specialization
@@ -114,7 +147,6 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMToFloatUnsignedNode extends LLVMToFloatNode {
 
         private static final float LEADING_BIT = 0x1.0p63f;

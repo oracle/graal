@@ -40,6 +40,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
@@ -129,6 +130,11 @@ public abstract class LLVMToI16Node extends LLVMExpressionNode {
             }
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Not convertable");
+        }
+
+        @Specialization
+        public short executeLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
+            return (short) toShort.executeWithTarget(from.getValue());
         }
     }
 

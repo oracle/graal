@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.load;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -44,6 +45,7 @@ import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleManagedMalloc.ManagedMallocObject;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
@@ -118,6 +120,16 @@ public abstract class LLVMDirectLoadNode {
         @Specialization
         public Object executeManagedMalloc(ManagedMallocObject addr) {
             return addr.get(0);
+        }
+
+        @Specialization
+        public Object executeLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
+            if (addr.getValue() instanceof Long) {
+                return LLVMMemory.getAddress(LLVMAddress.fromLong((long) addr.getValue()));
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalAccessError("Cannot access memory with address: " + addr.getValue());
+            }
         }
 
         @Specialization(guards = "objectIsManagedMalloc(addr)")

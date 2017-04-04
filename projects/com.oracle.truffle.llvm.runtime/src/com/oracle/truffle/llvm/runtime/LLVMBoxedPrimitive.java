@@ -30,15 +30,27 @@
 package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
-public final class ForeignBoxedPrimitive implements TruffleObject {
+public final class LLVMBoxedPrimitive implements TruffleObject {
 
     private final Object value;
+    private static final boolean TRACE = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.traceExecution());
 
-    public ForeignBoxedPrimitive(Object value) {
+    public LLVMBoxedPrimitive(Object value) {
+        if (TRACE) {
+            trace(value);
+        }
         this.value = value;
+    }
+
+    @TruffleBoundary
+    private static void trace(Object value) {
+        LLVMLogger.print(LLVMOptions.DEBUG.traceExecution()).accept(
+                        String.format("[sulong] Convert a foreign primitive (%s) into an address value", String.valueOf(value)));
     }
 
     public Object getValue() {
@@ -46,7 +58,7 @@ public final class ForeignBoxedPrimitive implements TruffleObject {
     }
 
     public static boolean isInstance(TruffleObject object) {
-        return object instanceof ForeignBoxedPrimitive;
+        return object instanceof LLVMBoxedPrimitive;
     }
 
     @CompilationFinal private static ForeignAccess ACCESS;
@@ -66,6 +78,6 @@ public final class ForeignBoxedPrimitive implements TruffleObject {
 
     // needed by SVM
     private static Class<?> getLLVMAddressMessageResolutionAccessorClass() throws ClassNotFoundException {
-        return Class.forName("com.oracle.truffle.llvm.nodes.intrinsics.interop.ForeignBoxedPrimitiveMessageResolutionAccessor");
+        return Class.forName("com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMBoxedPrimitiveMessageResolutionAccessor");
     }
 }

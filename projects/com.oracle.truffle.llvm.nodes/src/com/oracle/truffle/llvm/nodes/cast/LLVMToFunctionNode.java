@@ -38,7 +38,9 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
@@ -46,6 +48,13 @@ import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
 
 @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
 public abstract class LLVMToFunctionNode extends LLVMExpressionNode {
+
+    @Child private ToLLVMNode toInt = ToLLVMNode.createNode(int.class);
+
+    @Specialization
+    public LLVMFunction executeLLVMBoxedPrimitive(LLVMBoxedPrimitive from, @Cached("getContext()") LLVMContext cachedContext) {
+        return new LLVMFunctionHandle(cachedContext, (int) toInt.executeWithTarget(from.getValue()));
+    }
 
     @Specialization
     public LLVMFunction executeI64(long from, @Cached("getContext()") LLVMContext cachedContext) {

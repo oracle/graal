@@ -34,8 +34,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.ForeignBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
@@ -107,7 +107,7 @@ public abstract class LLVMDataEscapeNode extends Node {
     }
 
     @Specialization
-    public Object escapingString(ForeignBoxedPrimitive escapingValue) {
+    public Object escapingString(LLVMBoxedPrimitive escapingValue) {
         return escapingValue.getValue();
     }
 
@@ -196,11 +196,7 @@ public abstract class LLVMDataEscapeNode extends Node {
         return LLVMExpressionNode.notLLVM(v);
     }
 
-    public boolean notBoxedPrimitive(TruffleObject v) {
-        return !(v instanceof ForeignBoxedPrimitive);
-    }
-
-    @Specialization(guards = {"notLLVM(escapingValue)", "notBoxedPrimitive(escapingValue)"})
+    @Specialization(guards = {"notLLVM(escapingValue)"})
     public Object escapingTruffleObject(TruffleObject escapingValue) {
         return escapingValue;
     }
