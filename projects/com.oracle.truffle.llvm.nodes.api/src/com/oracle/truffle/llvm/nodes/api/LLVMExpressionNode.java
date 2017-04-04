@@ -38,6 +38,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNodeFactory.LLVMForceLLVMAddressNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
@@ -180,7 +181,7 @@ public abstract class LLVMExpressionNode extends LLVMNode {
 
     public static boolean notLLVM(TruffleObject object) {
         return !(object instanceof LLVMFunctionDescriptor || object instanceof LLVMFunctionHandle || object instanceof LLVMTruffleNull ||
-                        object instanceof LLVMTruffleAddress);
+                        object instanceof LLVMTruffleAddress || object instanceof LLVMBoxedPrimitive);
     }
 
     abstract static class LLVMForceLLVMAddressNode extends Node {

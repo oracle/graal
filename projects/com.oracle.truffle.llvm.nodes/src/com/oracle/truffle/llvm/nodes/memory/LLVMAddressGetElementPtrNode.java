@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.memory;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -37,6 +38,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -68,6 +70,17 @@ public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
         return new LLVMTruffleObject(addr.getObject(), addr.getOffset() + incr, new PointerType(getTargetType()));
     }
 
+    @Specialization
+    public LLVMAddress executeLLVMBoxedPrimitive(LLVMBoxedPrimitive addr, int val) {
+        if (addr.getValue() instanceof Long) {
+            int incr = getTypeWidth() * val;
+            return LLVMAddress.fromLong(new PointerType(getTargetType()), (long) addr.getValue() + incr);
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalAccessError("Cannot do pointer arithmetic with address: " + addr.getValue());
+        }
+    }
+
     @Specialization(guards = "notLLVM(addr)")
     public LLVMTruffleObject executeTruffleObject(TruffleObject addr, int val) {
         int incr = getTypeWidth() * val;
@@ -84,6 +97,17 @@ public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
     public LLVMTruffleObject executeTruffleObject(LLVMTruffleObject addr, long val) {
         long incr = getTypeWidth() * val;
         return new LLVMTruffleObject(addr.getObject(), addr.getOffset() + incr, new PointerType(getTargetType()));
+    }
+
+    @Specialization
+    public LLVMAddress executeLLVMBoxedPrimitive(LLVMBoxedPrimitive addr, long val) {
+        if (addr.getValue() instanceof Long) {
+            long incr = getTypeWidth() * val;
+            return LLVMAddress.fromLong(new PointerType(getTargetType()), (long) addr.getValue() + incr);
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalAccessError("Cannot do pointer arithmetic with address: " + addr.getValue());
+        }
     }
 
     @Specialization(guards = "notLLVM(addr)")

@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.load;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -41,6 +42,7 @@ import com.oracle.truffle.api.profiles.LongValueProfile;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -82,6 +84,16 @@ public abstract class LLVMI64LoadNode extends LLVMExpressionNode {
     }
 
     @Specialization
+    public long executeLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
+        if (addr.getValue() instanceof Long) {
+            return LLVMMemory.getI64(LLVMAddress.fromLong((long) addr.getValue()));
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalAccessError("Cannot access address: " + addr.getValue());
+        }
+    }
+
+    @Specialization(guards = "notLLVM(addr)")
     public long executeI64(TruffleObject addr) {
         return executeI64(new LLVMTruffleObject(addr, PrimitiveType.I64));
     }
