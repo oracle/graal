@@ -54,12 +54,12 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotRuntime;
-import java.util.Iterator;
 import java.util.Map;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -112,13 +112,10 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     public static class BeforeUseInstrument extends TruffleInstrument implements Runnable {
         @Override
         protected void onCreate(Env env) {
-            Iterator<SpecialService> it = env.lookup(SpecialService.class).iterator();
-            assertNotNull(it);
-            assertTrue("Has one", it.hasNext());
-            SpecialService ss = it.next();
+            LanguageInfo info = null; // obtain somehow from an env...
+            SpecialService ss = env.lookup(info, SpecialService.class);
             assertNotNull("Service found", ss);
             assertEquals("The right extension", ss.fileExtension(), InstrumentationTestLanguage.FILENAME_EXTENSION);
-            assertFalse("Just one", it.hasNext());
             env.registerService(this);
         }
 
