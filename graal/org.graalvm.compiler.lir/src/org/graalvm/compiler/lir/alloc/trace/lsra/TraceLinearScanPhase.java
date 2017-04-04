@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,7 +60,6 @@ import org.graalvm.compiler.lir.alloc.trace.TraceBuilderPhase;
 import org.graalvm.compiler.lir.alloc.trace.TraceRegisterAllocationPhase;
 import org.graalvm.compiler.lir.alloc.trace.TraceUtil;
 import org.graalvm.compiler.lir.alloc.trace.lsra.TraceInterval.RegisterPriority;
-import org.graalvm.compiler.lir.alloc.trace.lsra.TraceLinearScanAllocationPhase.TraceLinearScanAllocationContext;
 import org.graalvm.compiler.lir.debug.IntervalDumper;
 import org.graalvm.compiler.lir.debug.IntervalDumper.IntervalVisitor;
 import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
@@ -588,13 +587,13 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
 
         @SuppressWarnings("try")
         protected void allocate(TargetDescription target, LIRGenerationResult lirGenRes, TraceAllocationContext traceContext) {
+            MoveFactory spillMoveFactory = traceContext.spillMoveFactory;
+            RegisterAllocationConfig registerAllocationConfig = traceContext.registerAllocationConfig;
             /*
              * This is the point to enable debug logging for the whole register allocation.
              */
             try (Indent indent = Debug.logAndIndent("LinearScan allocate")) {
-                TraceLinearScanAllocationContext context = new TraceLinearScanAllocationContext(traceContext.spillMoveFactory, traceContext.registerAllocationConfig, traceBuilderResult, this);
-
-                TRACE_LINEAR_SCAN_LIFETIME_ANALYSIS_PHASE.apply(target, lirGenRes, trace, context, false);
+                TRACE_LINEAR_SCAN_LIFETIME_ANALYSIS_PHASE.apply(target, lirGenRes, trace, spillMoveFactory, registerAllocationConfig, traceBuilderResult, this, false);
 
                 try (Scope s = Debug.scope("AfterLifetimeAnalysis", this)) {
 
@@ -604,21 +603,19 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
                     sortIntervalsBeforeAllocation();
                     sortFixedIntervalsBeforeAllocation();
 
-                    TRACE_LINEAR_SCAN_REGISTER_ALLOCATION_PHASE.apply(target, lirGenRes, trace, context, false);
+                    TRACE_LINEAR_SCAN_REGISTER_ALLOCATION_PHASE.apply(target, lirGenRes, trace, spillMoveFactory, registerAllocationConfig, traceBuilderResult, this, false);
                     printIntervals("After register allocation");
 
                     // resolve intra-trace data-flow
-                    TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE.apply(target, lirGenRes, trace, context, false);
-                    Debug.dump(TraceBuilderPhase.TRACE_DUMP_LEVEL, sortedBlocks(), "%s", TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE.getName());
+                    TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE.apply(target, lirGenRes, trace, spillMoveFactory, registerAllocationConfig, traceBuilderResult, this);
 
                     // eliminate spill moves
                     OptionValues options = getOptions();
                     if (Options.LIROptTraceRAEliminateSpillMoves.getValue(options)) {
-                        TRACE_LINEAR_SCAN_ELIMINATE_SPILL_MOVE_PHASE.apply(target, lirGenRes, trace, context, false);
-                        Debug.dump(TraceBuilderPhase.TRACE_DUMP_LEVEL, sortedBlocks(), "%s", TRACE_LINEAR_SCAN_ELIMINATE_SPILL_MOVE_PHASE.getName());
+                        TRACE_LINEAR_SCAN_ELIMINATE_SPILL_MOVE_PHASE.apply(target, lirGenRes, trace, spillMoveFactory, registerAllocationConfig, traceBuilderResult, this);
                     }
 
-                    TRACE_LINEAR_SCAN_ASSIGN_LOCATIONS_PHASE.apply(target, lirGenRes, trace, context, false);
+                    TRACE_LINEAR_SCAN_ASSIGN_LOCATIONS_PHASE.apply(target, lirGenRes, trace, spillMoveFactory, registerAllocationConfig, traceBuilderResult, this, false);
 
                     if (DetailedAsserts.getValue(options)) {
                         verifyIntervals();
