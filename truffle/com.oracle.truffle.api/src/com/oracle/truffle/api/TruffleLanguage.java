@@ -172,6 +172,20 @@ public abstract class TruffleLanguage<C> {
      * @since 0.8 or earlier
      */
     protected TruffleLanguage() {
+        this(new Object[0]);
+    }
+
+    /**
+     * Constructor to be called by subclasses and to register additional services. The services are
+     * then available to {@link com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#lookup
+     * instruments}. The services must be previously declared during the language
+     * {@link Registration#services() registration}.
+     *
+     * @param services additional language services
+     * @since 0.26
+     */
+    protected TruffleLanguage(Object... services) {
+
     }
 
     /**
@@ -225,6 +239,25 @@ public abstract class TruffleLanguage<C> {
          * @since 0.22
          */
         boolean interactive() default true;
+
+        /**
+         * Declarative list of classes this language is known to provide. The instrument is supposed
+         * to override its
+         * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument#onCreate(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env)
+         * onCreate} method and instantiate and
+         * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#registerService(java.lang.Object)
+         * register} all here in defined services.
+         * <p>
+         * Instruments
+         * {@link com.oracle.truffle.api.vm.PolyglotRuntime.Instrument#setEnabled(boolean) get
+         * automatically enabled} when their registered
+         * {@link com.oracle.truffle.api.vm.PolyglotRuntime.Instrument#lookup(java.lang.Class)
+         * service is requested}.
+         *
+         * @since 0.26
+         * @return list of service types that this instrument can provide
+         */
+        Class<?>[] services() default {};
     }
 
     /**
