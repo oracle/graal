@@ -271,8 +271,8 @@ import org.graalvm.compiler.bytecode.Bytecodes;
 import org.graalvm.compiler.bytecode.Bytes;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
-import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
@@ -1055,7 +1055,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected ValueNode genNegateOp(ValueNode x) {
-        return (new NegateNode(x));
+        return NegateNode.create(x);
     }
 
     protected ValueNode genLeftShift(ValueNode x, ValueNode y) {
@@ -1118,11 +1118,11 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected LogicNode genIntegerEquals(ValueNode x, ValueNode y) {
-        return IntegerEqualsNode.create(x, y, constantReflection);
+        return IntegerEqualsNode.create(x, y);
     }
 
     protected LogicNode genIntegerLessThan(ValueNode x, ValueNode y) {
-        return IntegerLessThanNode.create(x, y, constantReflection);
+        return IntegerLessThanNode.create(x, y);
     }
 
     protected ValueNode genUnique(ValueNode x) {
@@ -1212,7 +1212,7 @@ public class BytecodeParser implements GraphBuilderContext {
     protected void emitExplicitBoundsCheck(ValueNode index, ValueNode length) {
         AbstractBeginNode trueSucc = graph.add(new BeginNode());
         BytecodeExceptionNode exception = graph.add(new BytecodeExceptionNode(metaAccess, ArrayIndexOutOfBoundsException.class, index));
-        append(new IfNode(graph.unique(IntegerBelowNode.create(index, length, constantReflection)), trueSucc, exception, 0.99));
+        append(new IfNode(genUnique(IntegerBelowNode.create(index, length)), trueSucc, exception, 0.99));
         lastInstr = trueSucc;
 
         exception.setStateAfter(createFrameState(bci(), exception));
@@ -1608,7 +1608,7 @@ public class BytecodeParser implements GraphBuilderContext {
             LoadHubNode hub = graph.unique(new LoadHubNode(stampProvider, nonNullReceiver));
             LoadMethodNode actual = append(new LoadMethodNode(methodStamp, targetMethod, receiverType, method.getDeclaringClass(), hub));
             ConstantNode expected = graph.unique(ConstantNode.forConstant(methodStamp, targetMethod.getEncoding(), getMetaAccess()));
-            LogicNode compare = graph.unique(CompareNode.createCompareNode(Condition.EQ, actual, expected, constantReflection));
+            LogicNode compare = graph.addOrUniqueWithInputs(CompareNode.createCompareNode(Condition.EQ, actual, expected, constantReflection));
 
             JavaTypeProfile profile = null;
             if (profilingInfo != null && this.optimisticOpts.useTypeCheckHints(getOptions())) {
@@ -2122,8 +2122,8 @@ public class BytecodeParser implements GraphBuilderContext {
         JsrScope scope = currentBlock.getJsrScope();
         int retAddress = scope.nextReturnAddress();
         ConstantNode returnBciNode = getJsrConstant(retAddress);
-        LogicNode guard = IntegerEqualsNode.create(local, returnBciNode, constantReflection);
-        guard = graph.unique(guard);
+        LogicNode guard = IntegerEqualsNode.create(local, returnBciNode);
+        guard = graph.addOrUniqueWithInputs(guard);
         append(new FixedGuardNode(guard, JavaSubroutineMismatch, InvalidateReprofile));
         if (!successor.getJsrScope().equals(scope.pop())) {
             throw new JsrNotSupportedBailout("unstructured control flow (ret leaves more than one scope)");
@@ -2773,7 +2773,7 @@ public class BytecodeParser implements GraphBuilderContext {
             genConstantTargetIf(trueBlock, falseBlock, negate, condition);
         } else {
             if (condition.graph() == null) {
-                condition = graph.unique(condition);
+                condition = genUnique(condition);
             }
 
             // Need to get probability based on current bci.

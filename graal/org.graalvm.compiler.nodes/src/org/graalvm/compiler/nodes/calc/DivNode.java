@@ -91,7 +91,7 @@ public class DivNode extends BinaryArithmeticNode<Div> {
                 }
                 if (divResult != null) {
                     if (signFlip) {
-                        return new NegateNode(divResult);
+                        return NegateNode.create(divResult);
                     } else {
                         return divResult;
                     }
