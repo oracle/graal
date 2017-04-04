@@ -46,6 +46,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
@@ -83,6 +84,10 @@ public class LLVMContext {
     private final LinkedList<DestructorStackElement> destructorStack = new LinkedList<>();
     private final HashMap<String, Integer> nativeCallStatistics;
 
+    private final Object handlesLock;
+    private final Map<TruffleObject, LLVMAddress> toNative;
+    private final Map<LLVMAddress, TruffleObject> toManaged;
+
     // #define SIG_DFL ((__sighandler_t) 0) /* Default action. */
     private final LLVMFunction sigDfl;
 
@@ -118,6 +123,9 @@ public class LLVMContext {
         this.sigDfl = new LLVMFunctionHandle(this, 0);
         this.sigIgn = new LLVMFunctionHandle(this, 1);
         this.sigErr = new LLVMFunctionHandle(this, -1);
+        this.toNative = new HashMap<>();
+        this.toManaged = new HashMap<>();
+        this.handlesLock = new Object();
     }
 
     public LLVMFunction getSigDfl() {
@@ -130,6 +138,45 @@ public class LLVMContext {
 
     public LLVMFunction getSigErr() {
         return sigErr;
+    }
+
+    @TruffleBoundary
+    public TruffleObject getManagedObjectForHandle(LLVMAddress address) {
+        synchronized (handlesLock) {
+            final TruffleObject object = toManaged.get(address);
+
+            if (object == null) {
+                throw new UnsupportedOperationException("Cannot resolve native handle: " + address);
+            }
+
+            return object;
+        }
+    }
+
+    @TruffleBoundary
+    public void releaseHandle(LLVMAddress address) {
+        synchronized (handlesLock) {
+            final TruffleObject object = toManaged.get(address);
+
+            if (object == null) {
+                throw new UnsupportedOperationException("Cannot resolve native handle: " + address);
+            }
+
+            toManaged.remove(address);
+            toNative.remove(object);
+        }
+    }
+
+    @TruffleBoundary
+    public LLVMAddress getHandleForManagedObject(TruffleObject object) {
+        synchronized (handlesLock) {
+            return toNative.computeIfAbsent(object, (k) -> {
+                LLVMAddress allocatedMemory = LLVMMemory.allocateMemory(Long.BYTES);
+                LLVMMemory.putI64(allocatedMemory, 0xdeadbeef);
+                toManaged.put(allocatedMemory, object);
+                return allocatedMemory;
+            });
+        }
     }
 
     @TruffleBoundary
