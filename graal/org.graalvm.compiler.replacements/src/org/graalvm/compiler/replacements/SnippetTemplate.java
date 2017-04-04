@@ -1398,7 +1398,7 @@ public class SnippetTemplate {
             EconomicMap<Node, Node> replacements = bind(replaceeGraph, metaAccess, args);
             replacements.put(entryPointNode, AbstractBeginNode.prevBegin(replacee));
             UnmodifiableEconomicMap<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
-            Debug.dump(Debug.INFO_LEVEL, replaceeGraph, "After inlining snippet %s", snippet.method());
+            Debug.dump(Debug.DETAILED_LEVEL, replaceeGraph, "After inlining snippet %s", snippet.method());
 
             // Re-wire the control flow graph around the replacee
             FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
@@ -1486,7 +1486,7 @@ public class SnippetTemplate {
                 GraphUtil.killCFG(replacee);
             }
 
-            Debug.dump(Debug.INFO_LEVEL, replaceeGraph, "After lowering %s with %s", replacee, this);
+            Debug.dump(Debug.DETAILED_LEVEL, replaceeGraph, "After lowering %s with %s", replacee, this);
             return duplicates;
         }
     }
@@ -1551,7 +1551,7 @@ public class SnippetTemplate {
             EconomicMap<Node, Node> replacements = bind(replaceeGraph, metaAccess, args);
             replacements.put(entryPointNode, tool.getCurrentGuardAnchor().asNode());
             UnmodifiableEconomicMap<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
-            Debug.dump(Debug.INFO_LEVEL, replaceeGraph, "After inlining snippet %s", snippet.method());
+            Debug.dump(Debug.DETAILED_LEVEL, replaceeGraph, "After inlining snippet %s", snippet.method());
 
             FixedWithNextNode lastFixedNode = tool.lastFixedNode();
             assert lastFixedNode != null && lastFixedNode.isAlive() : replaceeGraph + " lastFixed=" + lastFixedNode;
@@ -1575,7 +1575,7 @@ public class SnippetTemplate {
                 returnDuplicate.replaceAndDelete(next);
             }
 
-            Debug.dump(Debug.INFO_LEVEL, replaceeGraph, "After lowering %s with %s", replacee, this);
+            Debug.dump(Debug.DETAILED_LEVEL, replaceeGraph, "After lowering %s with %s", replacee, this);
         }
     }
 
@@ -1613,7 +1613,7 @@ public class SnippetTemplate {
                 }
             }
             UnmodifiableEconomicMap<Node, Node> duplicates = replaceeGraph.addDuplicates(floatingNodes, snippet, floatingNodes.size(), replacements);
-            Debug.dump(Debug.INFO_LEVEL, replaceeGraph, "After inlining snippet %s", snippet.method());
+            Debug.dump(Debug.DETAILED_LEVEL, replaceeGraph, "After inlining snippet %s", snippet.method());
 
             rewireFrameStates(replacee, duplicates);
             updateStamps(replacee, duplicates);
@@ -1625,7 +1625,7 @@ public class SnippetTemplate {
             ValueNode returnValue = (ValueNode) duplicates.get(returnNode.result());
             replacer.replace(replacee, returnValue);
 
-            Debug.dump(Debug.INFO_LEVEL, replaceeGraph, "After lowering %s with %s", replacee, this);
+            Debug.dump(Debug.DETAILED_LEVEL, replaceeGraph, "After lowering %s with %s", replacee, this);
         }
     }
 
