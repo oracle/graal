@@ -612,7 +612,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         if (other == this) {
             fail("cannot replace a node with itself");
         }
-        if (!isDeleted()) {
+        if (isDeleted()) {
             fail("cannot replace deleted node");
         }
         if (other != null && other.isDeleted()) {
