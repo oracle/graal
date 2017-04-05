@@ -145,7 +145,7 @@ final class LLVMIntrinsicFactory {
             } else if (functionName.equals("@llvm.frameaddress")) {
                 return LLVMFrameAddressNodeGen.create(argNodes[1], stack);
             } else if (functionName.startsWith("@llvm.va_start")) {
-                return new LLVMX86_64BitVAStart(numberOfExplicitArguments, argNodes[1]);
+                return new LLVMX86_64BitVAStart(numberOfExplicitArguments, argNodes[1], stack);
             } else if (functionName.startsWith("@llvm.va_end")) {
                 return new LLVMX86_64BitVAEnd(argNodes[1]);
             } else if (functionName.startsWith("@llvm.va_copy")) {
