@@ -29,6 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.lang.reflect.Field;
+
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -37,7 +40,23 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 
+import sun.misc.Unsafe;
+
 final class LLVMNativeFunctionsImpl extends LLVMNativeFunctions {
+
+    static final Unsafe UNSAFE = getUnsafe();
+
+    @SuppressWarnings("restriction")
+    private static Unsafe getUnsafe() {
+        CompilerAsserts.neverPartOfCompilation();
+        try {
+            Field singleoneInstanceField = Unsafe.class.getDeclaredField("theUnsafe");
+            singleoneInstanceField.setAccessible(true);
+            return (Unsafe) singleoneInstanceField.get(null);
+        } catch (Exception e) {
+            throw new AssertionError();
+        }
+    }
 
     private final TruffleObject memmove;
     private final TruffleObject memcpy;
@@ -385,7 +404,7 @@ final class LLVMNativeFunctionsImpl extends LLVMNativeFunctions {
 
         @Override
         public void execute(LLVMAddress target, LLVMAddress source, long length) {
-            execute(target.getVal(), source.getVal(), length);
+            UNSAFE.copyMemory(source.getVal(), target.getVal(), length);
         }
     }
 
@@ -397,7 +416,7 @@ final class LLVMNativeFunctionsImpl extends LLVMNativeFunctions {
 
         @Override
         public void execute(LLVMAddress target, int value, long length) {
-            execute(target.getVal(), value, length);
+            UNSAFE.setMemory(target.getVal(), length, (byte) value);
         }
     }
 
@@ -409,7 +428,7 @@ final class LLVMNativeFunctionsImpl extends LLVMNativeFunctions {
 
         @Override
         public void execute(LLVMAddress addr) {
-            execute(addr.getVal());
+            UNSAFE.freeMemory(addr.getVal());
         }
     }
 
@@ -423,12 +442,7 @@ final class LLVMNativeFunctionsImpl extends LLVMNativeFunctions {
 
         @Override
         public LLVMAddress execute(long size) {
-            try {
-                return LLVMAddress.fromLong((long) ForeignAccess.sendUnbox(unbox, (TruffleObject) execute((Object) size)));
-            } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
-            }
+            return LLVMAddress.fromLong(UNSAFE.allocateMemory(size));
         }
     }
 
