@@ -80,7 +80,7 @@ public final class ClassGetHubNode extends FloatingNode implements Lowerable, Ca
     @SuppressWarnings("unused")
     public static boolean intrinsify(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode clazz) {
         ValueNode clazzValue = create(clazz, b.getMetaAccess(), b.getConstantReflection(), false);
-        b.push(JavaKind.Object, b.recursiveAppend(clazzValue));
+        b.push(JavaKind.Object, b.append(clazzValue));
         return true;
     }
 

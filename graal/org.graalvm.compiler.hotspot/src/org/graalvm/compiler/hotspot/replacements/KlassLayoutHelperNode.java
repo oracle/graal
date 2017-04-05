@@ -75,7 +75,7 @@ public final class KlassLayoutHelperNode extends FloatingNode implements Canonic
     @SuppressWarnings("unused")
     public static boolean intrinsify(GraphBuilderContext b, ResolvedJavaMethod method, @InjectedNodeParameter GraalHotSpotVMConfig config, ValueNode klass) {
         ValueNode valueNode = create(config, klass, b.getConstantReflection(), b.getMetaAccess());
-        b.push(JavaKind.Int, b.recursiveAppend(valueNode));
+        b.push(JavaKind.Int, b.append(valueNode));
         return true;
     }
 
