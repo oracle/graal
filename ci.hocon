@@ -108,7 +108,7 @@ gateLite : {
 }
 
 # overlay version
-overlay = 61f21656d17064f843709411f648163609bcd734
+overlay = 6f81c5bbf74d901d5d58287e6de2fef068333702
 
 builds = [
   ${common} ${java8Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64], targets : [gate], name: "gate-truffle-8"},
