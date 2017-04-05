@@ -26,7 +26,9 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -49,12 +51,20 @@ public final class IntegerBelowNode extends IntegerLowerThanNode {
     }
 
     @Override
-    protected CompareNode duplicateModified(ValueNode newX, ValueNode newY) {
-        assert newX.stamp() instanceof IntegerStamp && newY.stamp() instanceof IntegerStamp;
-        return new IntegerBelowNode(newX, newY);
+    public Node canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        ValueNode value = OP.canonical(tool.getConstantReflection(), tool.getMetaAccess(), tool.getOptions(), tool.smallestCompareWidth(), OP.getCondition(), false, forX, forY);
+        if (value != null) {
+            return value;
+        }
+        return this;
     }
 
     public static class BelowOp extends LowerOp {
+        @Override
+        protected CompareNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue) {
+            assert newX.stamp() instanceof IntegerStamp && newY.stamp() instanceof IntegerStamp;
+            return new IntegerBelowNode(newX, newY);
+        }
 
         @Override
         protected long upperBound(IntegerStamp stamp) {

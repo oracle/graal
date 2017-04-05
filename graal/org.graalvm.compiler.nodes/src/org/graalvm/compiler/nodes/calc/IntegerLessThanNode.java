@@ -30,7 +30,9 @@ import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.LogicNegationNode;
@@ -59,18 +61,10 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
     }
 
     @Override
-    protected ValueNode optimizeNormalizeCmp(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
-        PrimitiveConstant primitive = (PrimitiveConstant) constant;
-        assert condition() == LT;
-        if (primitive.getJavaKind() == JavaKind.Int && primitive.asInt() == 0) {
-            ValueNode a = mirrored ? normalizeNode.getY() : normalizeNode.getX();
-            ValueNode b = mirrored ? normalizeNode.getX() : normalizeNode.getY();
-
-            if (normalizeNode.getX().getStackKind() == JavaKind.Double || normalizeNode.getX().getStackKind() == JavaKind.Float) {
-                return new FloatLessThanNode(a, b, mirrored ^ normalizeNode.isUnorderedLess);
-            } else {
-                return new IntegerLessThanNode(a, b);
-            }
+    public Node canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        ValueNode value = OP.canonical(tool.getConstantReflection(), tool.getMetaAccess(), tool.getOptions(), tool.smallestCompareWidth(), OP.getCondition(), false, forX, forY);
+        if (value != null) {
+            return value;
         }
         return this;
     }
@@ -89,17 +83,33 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
         return (((x ^ y) & (x ^ r)) < 0) || r > maxValue;
     }
 
-    @Override
-    protected CompareNode duplicateModified(ValueNode newX, ValueNode newY) {
-        if (newX.stamp() instanceof FloatStamp && newY.stamp() instanceof FloatStamp) {
-            return new FloatLessThanNode(newX, newY, true);
-        } else if (newX.stamp() instanceof IntegerStamp && newY.stamp() instanceof IntegerStamp) {
-            return new IntegerLessThanNode(newX, newY);
-        }
-        throw GraalError.shouldNotReachHere();
-    }
-
     public static class LessThanOp extends LowerOp {
+        @Override
+        protected CompareNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue) {
+            if (newX.stamp() instanceof FloatStamp && newY.stamp() instanceof FloatStamp) {
+                return new FloatLessThanNode(newX, newY, unorderedIsTrue); // TODO: Is the last arg supposed to be true?
+            } else if (newX.stamp() instanceof IntegerStamp && newY.stamp() instanceof IntegerStamp) {
+                return new IntegerLessThanNode(newX, newY);
+            }
+            throw GraalError.shouldNotReachHere();
+        }
+
+        @Override
+        protected ValueNode optimizeNormalizeCompare(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
+            PrimitiveConstant primitive = (PrimitiveConstant) constant;
+            // TODO: assert condition() == LT;
+            if (primitive.getJavaKind() == JavaKind.Int && primitive.asInt() == 0) {
+                ValueNode a = mirrored ? normalizeNode.getY() : normalizeNode.getX();
+                ValueNode b = mirrored ? normalizeNode.getX() : normalizeNode.getY();
+
+                if (normalizeNode.getX().getStackKind() == JavaKind.Double || normalizeNode.getX().getStackKind() == JavaKind.Float) {
+                    return new FloatLessThanNode(a, b, mirrored ^ normalizeNode.isUnorderedLess);
+                } else {
+                    return new IntegerLessThanNode(a, b);
+                }
+            }
+            return null;
+        }
 
         @Override
         protected LogicNode findSynonym(ValueNode forX, ValueNode forY) {

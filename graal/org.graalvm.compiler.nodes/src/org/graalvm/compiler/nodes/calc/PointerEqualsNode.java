@@ -122,7 +122,7 @@ public class PointerEqualsNode extends CompareNode implements BinaryCommutative<
         }
 
         @Override
-        protected CompareNode duplicateModified(ValueNode newX, ValueNode newY) {
+        protected CompareNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue) {
             return new PointerEqualsNode(newX, newY);
         }
     }

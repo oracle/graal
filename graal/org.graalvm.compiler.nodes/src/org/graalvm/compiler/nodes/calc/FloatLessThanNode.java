@@ -22,11 +22,14 @@
  */
 package org.graalvm.compiler.nodes.calc;
 
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
@@ -37,10 +40,12 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
 import jdk.vm.ci.meta.TriState;
+import org.graalvm.compiler.options.OptionValues;
 
 @NodeInfo(shortName = "<", cycles = NodeCycles.CYCLES_3)
 public final class FloatLessThanNode extends CompareNode {
     public static final NodeClass<FloatLessThanNode> TYPE = NodeClass.create(FloatLessThanNode.class);
+    private static final FloatLessThanOp OP = new FloatLessThanOp();
 
     public FloatLessThanNode(ValueNode x, ValueNode y, boolean unorderedIsTrue) {
         super(TYPE, Condition.LT, unorderedIsTrue, x, y);
@@ -58,25 +63,37 @@ public final class FloatLessThanNode extends CompareNode {
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        ValueNode result = super.canonical(tool, forX, forY);
-        if (result != this) {
-            return result;
-        }
-        if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY) && !unorderedIsTrue()) {
-            return LogicConstantNode.contradiction();
+    public Node canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        ValueNode value = OP.canonical(tool.getConstantReflection(), tool.getMetaAccess(), tool.getOptions(), tool.smallestCompareWidth(), Condition.LT, unorderedIsTrue, forX, forY);
+        if (value != null) {
+            return value;
         }
         return this;
     }
 
-    @Override
-    protected CompareNode duplicateModified(ValueNode newX, ValueNode newY) {
-        if (newX.stamp() instanceof FloatStamp && newY.stamp() instanceof FloatStamp) {
-            return new FloatLessThanNode(newX, newY, unorderedIsTrue);
-        } else if (newX.stamp() instanceof IntegerStamp && newY.stamp() instanceof IntegerStamp) {
-            return new IntegerLessThanNode(newX, newY);
+    public static class FloatLessThanOp extends CompareOp {
+
+        @Override
+        public ValueNode canonical(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth, Condition condition, boolean unorderedIsTrue, ValueNode forX, ValueNode forY) {
+            ValueNode result = super.canonical(constantReflection, metaAccess, options, smallestCompareWidth, condition, unorderedIsTrue, forX, forY);
+            if (result != null) {
+                return result;
+            }
+            if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY) && !unorderedIsTrue) {
+                return LogicConstantNode.contradiction();
+            }
+            return null;
         }
-        throw GraalError.shouldNotReachHere();
+
+        @Override
+        protected CompareNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue) {
+            if (newX.stamp() instanceof FloatStamp && newY.stamp() instanceof FloatStamp) {
+                return new FloatLessThanNode(newX, newY, unorderedIsTrue);
+            } else if (newX.stamp() instanceof IntegerStamp && newY.stamp() instanceof IntegerStamp) {
+                return new IntegerLessThanNode(newX, newY);
+            }
+            throw GraalError.shouldNotReachHere();
+        }
     }
 
     @Override

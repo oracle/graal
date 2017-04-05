@@ -31,10 +31,8 @@ import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.BinaryOpLogicNode;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -142,7 +140,7 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
                             // the value.
                             return null;
                         }
-                        return duplicateModified(convertX.getValue(), convertY.getValue());
+                        return duplicateModified(convertX.getValue(), convertY.getValue(), unorderedIsTrue);
                     }
                 }
             }
@@ -174,9 +172,9 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
                     ConstantNode newConstant = canonicalConvertConstant(constantReflection, metaAccess, options, condition, convert, constant);
                     if (newConstant != null) {
                         if (mirrored) {
-                            return duplicateModified(newConstant, convert.getValue());
+                            return duplicateModified(newConstant, convert.getValue(), unorderedIsTrue);
                         } else {
-                            return duplicateModified(convert.getValue(), newConstant);
+                            return duplicateModified(convert.getValue(), newConstant, unorderedIsTrue);
                         }
                     }
                 }
@@ -228,7 +226,7 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
             return null;
         }
 
-        protected abstract LogicNode duplicateModified(ValueNode newW, ValueNode newY);
+        protected abstract LogicNode duplicateModified(ValueNode newW, ValueNode newY, boolean unorderedIsTrue);
     }
 
     public static LogicNode createCompareNode(StructuredGraph graph, Condition condition, ValueNode x, ValueNode y, ConstantReflectionProvider constantReflection) {

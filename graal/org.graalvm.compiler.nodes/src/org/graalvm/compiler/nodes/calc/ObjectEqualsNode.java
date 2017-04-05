@@ -103,7 +103,7 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
         }
 
        @Override
-        protected CompareNode duplicateModified(ValueNode newX, ValueNode newY) {
+        protected CompareNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue) {
             if (newX.stamp() instanceof ObjectStamp && newY.stamp() instanceof ObjectStamp) {
                 return new ObjectEqualsNode(newX, newY);
             } else if (newX.stamp() instanceof AbstractPointerStamp && newY.stamp() instanceof AbstractPointerStamp) {
