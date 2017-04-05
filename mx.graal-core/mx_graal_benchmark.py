@@ -153,28 +153,15 @@ class TimingBenchmarkMixin(object):
         "BackEnd",
         "FrontEnd",
         "GraalCompiler",
+        # LIR stages
         "LIRPhaseTime_AllocationStage",
-        "LIRPhaseTime_BottomUpAllocator",
-        "LIRPhaseTime_ConstantLoadOptimization",
-        "LIRPhaseTime_ControlFlowOptimizer",
-        "LIRPhaseTime_EdgeMoveOptimizer",
-        "LIRPhaseTime_GlobalLivenessAnalysisPhase",
-        "LIRPhaseTime_LIRGenerationPhase",
-        "LIRPhaseTime_LIRPhaseSuite",
-        "LIRPhaseTime_LSStackSlotAllocator",
-        "LIRPhaseTime_LocationMarkerPhase",
-        "LIRPhaseTime_MarkBasePointersPhase",
-        "LIRPhaseTime_NullCheckOptimizer",
         "LIRPhaseTime_PostAllocationOptimizationStage",
         "LIRPhaseTime_PreAllocationOptimizationStage",
-        "LIRPhaseTime_RedundantMoveElimination",
-        "LIRPhaseTime_SaveCalleeSaveRegisters",
-        "LIRPhaseTime_StackMoveOptimizationPhase",
+        # RA phases
+        "LIRPhaseTime_LinearScanPhase",
+        "LIRPhaseTime_GlobalLivenessAnalysisPhase",
         "LIRPhaseTime_TraceBuilderPhase",
-        "LIRPhaseTime_TraceGlobalMoveResolutionPhase",
-        "LIRPhaseTime_TraceLinearScanPhase",
         "LIRPhaseTime_TraceRegisterAllocationPhase",
-        "LIRPhaseTime_TrivialTraceAllocator"
     ]
     name_re = re.compile(r"(?P<name>\w+)_Accm")
 
