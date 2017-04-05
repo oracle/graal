@@ -301,7 +301,6 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     }
 
     private void openScope(String name, int inlineDepth, Map<Object, Object> properties) {
-        String prefix = inlineDepth == 0 ? Thread.currentThread().getName() + ":" : "";
         try {
             Map<Object, Object> props = properties;
             if (inlineDepth == 0) {
@@ -315,7 +314,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                 }
                 props.put("date", new Date().toString());
             }
-            printer.beginGroup(prefix + name, name, Debug.contextLookup(ResolvedJavaMethod.class), -1, props);
+            printer.beginGroup(name, name, Debug.contextLookup(ResolvedJavaMethod.class), -1, props);
         } catch (IOException e) {
             handleException(e);
         }

@@ -96,6 +96,31 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         this(object, StampFactory.object(exactType ? TypeReference.createExactTrusted(toType) : TypeReference.createWithoutAssumptions(toType), nonNull || StampTool.isPointerNonNull(object.stamp())));
     }
 
+    public static ValueNode create(ValueNode object, Stamp stamp) {
+        ValueNode value = canonical(object, stamp, null);
+        if (value != null) {
+            return value;
+        }
+        return new PiNode(object, stamp);
+    }
+
+    public static ValueNode create(ValueNode object, Stamp stamp, ValueNode anchor) {
+        ValueNode value = canonical(object, stamp, (GuardingNode) anchor);
+        if (value != null) {
+            return value;
+        }
+        return new PiNode(object, stamp, anchor);
+    }
+
+    public static ValueNode create(ValueNode object, ValueNode anchor) {
+        Stamp stamp = AbstractPointerStamp.pointerNonNull(object.stamp());
+        ValueNode value = canonical(object, stamp, (GuardingNode) anchor);
+        if (value != null) {
+            return value;
+        }
+        return new PiNode(object, stamp, anchor);
+    }
+
     @SuppressWarnings("unused")
     public static boolean intrinsify(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode object, ValueNode anchor) {
         Stamp stamp = AbstractPointerStamp.pointerNonNull(object.stamp());
@@ -283,8 +308,8 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
          * @param snippetReplaceeStamp the stamp of the node being replace by the snippet
          */
         public void makeReplacement(Stamp snippetReplaceeStamp) {
-            PiNode pi = graph().addOrUnique(new PiNode(object(), snippetReplaceeStamp, null));
-            replaceAndDelete(pi);
+            ValueNode value = graph().maybeAddOrUnique(PiNode.create(object(), snippetReplaceeStamp, null));
+            replaceAndDelete(value);
         }
     }
 

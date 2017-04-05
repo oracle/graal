@@ -206,7 +206,7 @@ public abstract class TruffleCompiler {
     public CompilationResult compileMethodHelper(StructuredGraph graph, String name, PhaseSuite<HighTierContext> graphBuilderSuite, InstalledCode predefinedInstalledCode,
                     CompilationRequest compilationRequest, Map<OptimizedCallTarget, Object> compilationMap) {
         try (Scope s = Debug.scope("TruffleFinal")) {
-            Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "After TruffleTier");
+            Debug.dump(Debug.BASIC_LEVEL, graph, "After TruffleTier");
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

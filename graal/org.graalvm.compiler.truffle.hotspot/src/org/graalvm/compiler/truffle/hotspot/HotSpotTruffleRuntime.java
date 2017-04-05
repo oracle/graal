@@ -23,6 +23,7 @@
 package org.graalvm.compiler.truffle.hotspot;
 
 import static org.graalvm.compiler.core.GraalCompiler.compileGraph;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.DebugStubsAndSnippets;
 import static org.graalvm.compiler.hotspot.meta.HotSpotSuitesProvider.withNodeSourcePosition;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleStackTraceLimit;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleTransferToInterpreter;
@@ -43,7 +44,9 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompilationRequestIdentifier;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugConfig;
 import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.debug.internal.DebugScope;
 import org.graalvm.compiler.debug.DebugEnvironment;
 import org.graalvm.compiler.debug.GraalDebugConfig;
 import org.graalvm.compiler.debug.GraalError;
@@ -218,7 +221,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
                 CompilationResult compResult = compileMethod(method, compilationId);
                 CodeCacheProvider codeCache = providers.getCodeCache();
                 try (Scope s = Debug.scope("CodeInstall", codeCache, method, compResult)) {
-                    CompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(method, compilationId.getRequest(), compResult);
+                    CompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(codeCache, method, compilationId.getRequest(), compResult);
                     codeCache.setDefaultCode(method, compiledCode);
                 } catch (Throwable e) {
                     throw Debug.handle(e);
@@ -321,9 +324,16 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         getCompilationNotify().notifyCompilationInvalidated(optimizedCallTarget, source, reason);
     }
 
+    @SuppressWarnings("try")
     @Override
     public void reinstallStubs() {
-        installOptimizedCallTargetCallMethod();
+        OptionValues options = TruffleCompilerOptions.getOptions();
+        DebugConfig config = DebugStubsAndSnippets.getValue(options) ? DebugScope.getConfig() : Debug.silentConfig();
+        try (Scope d = Debug.sandbox("InstallingTruffleStub", config)) {
+            installOptimizedCallTargetCallMethod();
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
     }
 
     @Override

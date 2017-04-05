@@ -395,10 +395,6 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     for r in unit_test_runs:
         r.run(suites, tasks, ['-XX:-UseJVMCICompiler'] + _remove_empty_entries(extraVMarguments))
 
-    # Run microbench in hosted mode (only for testing the JMH setup)
-    for r in [MicrobenchRun('Microbench', ['TestJMH'], tags=GraalTags.benchmarktest)]:
-        r.run(tasks, ['-XX:-UseJVMCICompiler'] + _remove_empty_entries(extraVMarguments))
-
     # Run ctw against rt.jar on hosted
     with Task('CTW:hosted', tasks, tags=GraalTags.ctw) as t:
         if t:

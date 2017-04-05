@@ -316,7 +316,10 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 FixedWithNextNode falseNext = (FixedWithNextNode) falseSucc.next();
                 NodeClass<?> nodeClass = trueNext.getNodeClass();
                 if (trueNext.getClass() == falseNext.getClass()) {
-                    if (nodeClass.equalInputs(trueNext, falseNext) && trueNext.valueEquals(falseNext)) {
+                    if (trueNext instanceof AbstractBeginNode) {
+                        // Cannot do this optimization for begin nodes, because it could
+                        // move guards above the if that need to stay below a branch.
+                    } else if (nodeClass.equalInputs(trueNext, falseNext) && trueNext.valueEquals(falseNext)) {
                         falseNext.replaceAtUsages(trueNext);
                         graph().removeFixed(falseNext);
                         GraphUtil.unlinkFixedNode(trueNext);

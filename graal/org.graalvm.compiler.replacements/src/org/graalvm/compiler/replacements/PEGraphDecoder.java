@@ -110,7 +110,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.graalvm.compiler.debug.GraalError.unimplemented;
-import static org.graalvm.compiler.java.BytecodeParserOptions.DumpDuringGraphBuilding;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
@@ -487,7 +486,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         decode(createInitialLoopScope(methodScope, null));
         cleanupGraph(methodScope);
 
-        Debug.dump(Debug.VERBOSE_LOG_LEVEL, graph, "After graph cleanup");
+        Debug.dump(Debug.VERBOSE_LEVEL, graph, "After graph cleanup");
         assert graph.verify();
 
         try {
@@ -785,10 +784,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         for (InlineInvokePlugin plugin : inlineInvokePlugins) {
             plugin.notifyAfterInline(inlineMethod);
-        }
-
-        if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL) && DumpDuringGraphBuilding.getValue(options)) {
-            Debug.dump(Debug.INFO_LOG_LEVEL, graph, "Inline finished: %s.%s", inlineMethod.getDeclaringClass().getUnqualifiedName(), inlineMethod.getName());
         }
     }
 

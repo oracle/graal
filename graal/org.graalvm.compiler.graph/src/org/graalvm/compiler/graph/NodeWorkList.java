@@ -94,7 +94,7 @@ public abstract class NodeWorkList implements Iterable<Node> {
                 public boolean hasNext() {
                     dropDeleted();
                     if (iterationLimit <= 0) {
-                        Debug.log(Debug.INFO_LOG_LEVEL, "Exceeded iteration limit in IterativeNodeWorkList");
+                        Debug.log(Debug.INFO_LEVEL, "Exceeded iteration limit in IterativeNodeWorkList");
                         return false;
                     }
                     return !worklist.isEmpty();
