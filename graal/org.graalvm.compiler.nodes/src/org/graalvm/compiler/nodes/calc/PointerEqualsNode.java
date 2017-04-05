@@ -82,11 +82,11 @@ public class PointerEqualsNode extends CompareNode implements BinaryCommutative<
     public static class PointerEqualsOp extends CompareOp {
 
         /**
-         * Determines if this is a comparison used to determine whether dispatching on a receiver could
-         * select a certain method and if so, returns {@code true} if the answer is guaranteed to be
-         * false. Otherwise, returns {@code false}.
+         * Determines if this is a comparison used to determine whether dispatching on a receiver
+         * could select a certain method and if so, returns {@code true} if the answer is guaranteed
+         * to be false. Otherwise, returns {@code false}.
          */
-        private boolean isAlwaysFailingVirtualDispatchTest(Condition condition, ValueNode forX, ValueNode forY) {
+        private static boolean isAlwaysFailingVirtualDispatchTest(Condition condition, ValueNode forX, ValueNode forY) {
             if (forY.isConstant()) {
                 if (forX instanceof LoadMethodNode && condition == Condition.EQ) {
                     LoadMethodNode lm = ((LoadMethodNode) forX);
@@ -110,7 +110,8 @@ public class PointerEqualsNode extends CompareNode implements BinaryCommutative<
         }
 
         @Override
-        public ValueNode canonical(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth, Condition condition, boolean unorderedIsTrue, ValueNode forX, ValueNode forY) {
+        public ValueNode canonical(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth, Condition condition,
+                        boolean unorderedIsTrue, ValueNode forX, ValueNode forY) {
             LogicNode result = findSynonym(forX, forY);
             if (result != null) {
                 return result;

@@ -238,11 +238,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
-        public <T extends ValueNode> T recursiveAppend(T value) {
-            throw unimplemented();
-        }
-
-        @Override
         public void push(JavaKind kind, ValueNode value) {
             throw unimplemented();
         }
@@ -331,7 +326,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 return v;
             }
             try (DebugCloseable position = withNodeSoucePosition()) {
-                T added = getGraph().addOrUnique(v);
+                T added = getGraph().addOrUniqueWithInputs(v);
                 if (added == v) {
                     updateLastInstruction(v);
                 }
@@ -344,21 +339,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 return getGraph().withNodeSourcePosition(methodScope.getCallerBytecodePosition());
             }
             return null;
-        }
-
-        @SuppressWarnings("try")
-        @Override
-        public <T extends ValueNode> T recursiveAppend(T v) {
-            if (v.graph() != null) {
-                return v;
-            }
-            try (DebugCloseable position = withNodeSoucePosition()) {
-                T added = getGraph().addOrUniqueWithInputs(v);
-                if (added == v) {
-                    updateLastInstruction(v);
-                }
-                return added;
-            }
         }
 
         private <T extends ValueNode> void updateLastInstruction(T v) {
@@ -424,12 +404,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         public <T extends ValueNode> T append(T v) {
             checkPopLastInstruction();
             return super.append(v);
-        }
-
-        @Override
-        public <T extends ValueNode> T recursiveAppend(T v) {
-            checkPopLastInstruction();
-            return super.recursiveAppend(v);
         }
 
         public FixedNode commit(LoopScope loopScope, int nodeOrderId, FixedWithNextNode oldAsFixedWithNextNode) {

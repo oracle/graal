@@ -88,7 +88,8 @@ public final class FloatEqualsNode extends CompareNode implements BinaryCommutat
     public static class FloatEqualsOp extends CompareOp {
 
         @Override
-        public ValueNode canonical(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth, Condition condition, boolean unorderedIsTrue, ValueNode forX, ValueNode forY) {
+        public ValueNode canonical(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth, Condition condition,
+                        boolean unorderedIsTrue, ValueNode forX, ValueNode forY) {
             ValueNode result = super.canonical(constantReflection, metaAccess, options, smallestCompareWidth, condition, unorderedIsTrue, forX, forY);
             if (result != null) {
                 return result;

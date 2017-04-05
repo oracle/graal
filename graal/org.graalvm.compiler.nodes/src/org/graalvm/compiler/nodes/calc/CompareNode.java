@@ -84,7 +84,7 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
         return this.unorderedIsTrue;
     }
 
-   public static LogicNode tryConstantFold(Condition condition, ValueNode forX, ValueNode forY, ConstantReflectionProvider constantReflection, boolean unorderedIsTrue) {
+    public static LogicNode tryConstantFold(Condition condition, ValueNode forX, ValueNode forY, ConstantReflectionProvider constantReflection, boolean unorderedIsTrue) {
         if (forX.isConstant() && forY.isConstant() && (constantReflection != null || forX.asConstant() instanceof PrimitiveConstant)) {
             return LogicConstantNode.forBoolean(condition.foldCondition(forX.asConstant(), forY.asConstant(), constantReflection, unorderedIsTrue));
         }
@@ -109,7 +109,8 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
     }
 
     public abstract static class CompareOp {
-        public ValueNode canonical(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth, Condition condition, boolean unorderedIsTrue, ValueNode forX, ValueNode forY) {
+        public ValueNode canonical(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth, Condition condition,
+                        boolean unorderedIsTrue, ValueNode forX, ValueNode forY) {
             LogicNode constantCondition = tryConstantFold(condition, forX, forY, constantReflection, unorderedIsTrue);
             if (constantCondition != null) {
                 return constantCondition;
@@ -136,7 +137,8 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
                     if (supported) {
                         boolean multiUsage = (convertX.asNode().hasMoreThanOneUsage() || convertY.asNode().hasMoreThanOneUsage());
                         if ((forX instanceof ZeroExtendNode || forX instanceof SignExtendNode) && multiUsage) {
-                            // Do not perform for zero or sign extend if there are multiple usages of
+                            // Do not perform for zero or sign extend if there are multiple usages
+                            // of
                             // the value.
                             return null;
                         }
@@ -183,7 +185,8 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
             return null;
         }
 
-        private ConstantNode canonicalConvertConstant(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Condition condition, ConvertNode convert, Constant constant) {
+        private static ConstantNode canonicalConvertConstant(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Condition condition,
+                        ConvertNode convert, Constant constant) {
             if (convert.preservesOrder(condition, constant, constantReflection)) {
                 Constant reverseConverted = convert.reverse(constant, constantReflection);
                 if (reverseConverted != null && convert.convert(reverseConverted, constantReflection).equals(constant)) {
@@ -201,7 +204,7 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
             throw new GraalError("NormalizeCompareNode connected to %s (%s %s %s)", this, constant, normalizeNode, mirrored);
         }
 
-        private ValueNode optimizeConditional(Constant constant, ConditionalNode conditionalNode, ConstantReflectionProvider constantReflection, Condition cond, boolean unorderedIsTrue) {
+        private static ValueNode optimizeConditional(Constant constant, ConditionalNode conditionalNode, ConstantReflectionProvider constantReflection, Condition cond, boolean unorderedIsTrue) {
             Constant trueConstant = conditionalNode.trueValue().asConstant();
             Constant falseConstant = conditionalNode.falseValue().asConstant();
 

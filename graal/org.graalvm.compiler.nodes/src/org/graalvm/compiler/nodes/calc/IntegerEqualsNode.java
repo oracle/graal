@@ -125,7 +125,8 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
         }
 
         @Override
-        public ValueNode canonical(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth, Condition condition, boolean unorderedIsTrue, ValueNode forX, ValueNode forY) {
+        public ValueNode canonical(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth, Condition condition,
+                        boolean unorderedIsTrue, ValueNode forX, ValueNode forY) {
             if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
                 return LogicConstantNode.tautology();
             } else if (forX.stamp().alwaysDistinct(forY.stamp())) {
@@ -164,9 +165,10 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
                 PrimitiveConstant primitiveConstant = (PrimitiveConstant) constant;
                 IntegerStamp nonConstantStamp = ((IntegerStamp) nonConstant.stamp());
                 if ((primitiveConstant.asLong() == 1 && nonConstantStamp.upperBound() == 1 && nonConstantStamp.lowerBound() == 0) ||
-                        (primitiveConstant.asLong() == -1 && nonConstantStamp.upperBound() == 0 && nonConstantStamp.lowerBound() == -1)) {
+                                (primitiveConstant.asLong() == -1 && nonConstantStamp.upperBound() == 0 && nonConstantStamp.lowerBound() == -1)) {
                     // nonConstant can only be 0 or 1 (respective -1), test against 0 instead of 1
-                    // (respective -1) for a more canonical graph and also to allow for faster execution
+                    // (respective -1) for a more canonical graph and also to allow for faster
+                    // execution
                     // on specific platforms.
                     return LogicNegationNode.create(IntegerEqualsNode.create(nonConstant, ConstantNode.forIntegerKind(nonConstant.getStackKind(), 0)));
                 } else if (primitiveConstant.asLong() == 0) {
@@ -223,9 +225,9 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
                     }
                 }
                 if (nonConstant instanceof AndNode) {
-                /*
-                 * a & c == c is the same as a & c != 0, if c is a single bit.
-                 */
+                    /*
+                     * a & c == c is the same as a & c != 0, if c is a single bit.
+                     */
                     AndNode andNode = (AndNode) nonConstant;
                     if (Long.bitCount(((PrimitiveConstant) constant).asLong()) == 1 && andNode.getY().isConstant() && andNode.getY().asJavaConstant().equals(constant)) {
                         return new LogicNegationNode(new IntegerTestNode(andNode.getX(), andNode.getY()));

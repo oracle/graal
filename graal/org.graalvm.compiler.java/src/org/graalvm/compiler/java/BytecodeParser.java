@@ -2182,18 +2182,6 @@ public class BytecodeParser implements GraphBuilderContext {
         if (v.graph() != null) {
             return v;
         }
-        T added = graph.addOrUnique(v);
-        if (added == v) {
-            updateLastInstruction(v);
-        }
-        return added;
-    }
-
-    @Override
-    public <T extends ValueNode> T recursiveAppend(T v) {
-        if (v.graph() != null) {
-            return v;
-        }
         T added = graph.addOrUniqueWithInputs(v);
         if (added == v) {
             updateLastInstruction(v);
@@ -3144,7 +3132,7 @@ public class BytecodeParser implements GraphBuilderContext {
             default:
                 throw shouldNotReachHere();
         }
-        frameState.push(kind, recursiveAppend(v));
+        frameState.push(kind, append(v));
     }
 
     private void genIntegerDivOp(JavaKind kind, int opcode) {
@@ -3191,7 +3179,7 @@ public class BytecodeParser implements GraphBuilderContext {
             default:
                 throw shouldNotReachHere();
         }
-        frameState.push(kind, recursiveAppend(v));
+        frameState.push(kind, append(v));
     }
 
     private void genLogicOp(JavaKind kind, int opcode) {
@@ -3214,7 +3202,7 @@ public class BytecodeParser implements GraphBuilderContext {
             default:
                 throw shouldNotReachHere();
         }
-        frameState.push(kind, recursiveAppend(v));
+        frameState.push(kind, append(v));
     }
 
     private void genCompareOp(JavaKind kind, boolean isUnorderedLess) {
@@ -3233,7 +3221,7 @@ public class BytecodeParser implements GraphBuilderContext {
         if (from != from.getStackKind()) {
             input = append(genNarrow(input, from.getBitCount()));
         }
-        frameState.push(to, recursiveAppend(genSignExtend(input, to.getBitCount())));
+        frameState.push(to, append(genSignExtend(input, to.getBitCount())));
     }
 
     private void genZeroExtend(JavaKind from, JavaKind to) {
@@ -3254,7 +3242,7 @@ public class BytecodeParser implements GraphBuilderContext {
         int delta = getStream().readIncrement();
         ValueNode x = frameState.loadLocal(index, JavaKind.Int);
         ValueNode y = appendConstant(JavaConstant.forInt(delta));
-        frameState.storeLocal(index, JavaKind.Int, recursiveAppend(genIntegerAdd(x, y)));
+        frameState.storeLocal(index, JavaKind.Int, append(genIntegerAdd(x, y)));
     }
 
     private void genIfZero(Condition cond) {

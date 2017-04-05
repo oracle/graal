@@ -50,8 +50,8 @@ public interface CanonicalizerTool {
     boolean allUsagesAvailable();
 
     /**
-     * Indicates the smallest width for comparing an integer value on the target platform.
-     * If this method returns null, then there is no known smallest compare width.
+     * Indicates the smallest width for comparing an integer value on the target platform. If this
+     * method returns null, then there is no known smallest compare width.
      */
     Integer smallestCompareWidth();
 

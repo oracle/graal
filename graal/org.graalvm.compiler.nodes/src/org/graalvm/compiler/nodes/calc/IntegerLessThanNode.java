@@ -87,7 +87,8 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
         @Override
         protected CompareNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue) {
             if (newX.stamp() instanceof FloatStamp && newY.stamp() instanceof FloatStamp) {
-                return new FloatLessThanNode(newX, newY, unorderedIsTrue); // TODO: Is the last arg supposed to be true?
+                return new FloatLessThanNode(newX, newY, unorderedIsTrue); // TODO: Is the last arg
+                                                                           // supposed to be true?
             } else if (newX.stamp() instanceof IntegerStamp && newY.stamp() instanceof IntegerStamp) {
                 return new IntegerLessThanNode(newX, newY);
             }

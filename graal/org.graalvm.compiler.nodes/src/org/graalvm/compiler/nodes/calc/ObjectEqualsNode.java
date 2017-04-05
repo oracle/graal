@@ -102,7 +102,7 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
             return super.canonicalizeSymmetricConstant(constantReflection, metaAccess, options, smallestCompareWidth, condition, constant, nonConstant, mirrored, unorderedIsTrue);
         }
 
-       @Override
+        @Override
         protected CompareNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue) {
             if (newX.stamp() instanceof ObjectStamp && newY.stamp() instanceof ObjectStamp) {
                 return new ObjectEqualsNode(newX, newY);
@@ -164,7 +164,7 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
                         // both are virtual without identity: check contents
                         assert xVirtual.entryCount() == 1 && yVirtual.entryCount() == 1;
                         assert xVirtual.entryKind(0).getStackKind() == JavaKind.Int || xVirtual.entryKind(0) == JavaKind.Long;
-                            IntegerEqualsNode equals = new IntegerEqualsNode(tool.getEntry(xVirtual, 0), tool.getEntry(yVirtual, 0));
+                        IntegerEqualsNode equals = new IntegerEqualsNode(tool.getEntry(xVirtual, 0), tool.getEntry(yVirtual, 0));
                         tool.addNode(equals);
                         tool.replaceWithValue(equals);
                     }
