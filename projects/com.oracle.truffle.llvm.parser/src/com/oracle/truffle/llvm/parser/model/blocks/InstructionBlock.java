@@ -39,6 +39,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.BinaryOperation
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.BranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CastInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareExchangeInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ConditionalBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractElementInstruction;
@@ -126,6 +127,14 @@ public final class InstructionBlock implements ValueSymbol {
             addInstruction(VoidCallInstruction.fromSymbols(function.getSymbols(), target, arguments, visibility, linkage));
         } else {
             addInstruction(CallInstruction.fromSymbols(function.getSymbols(), type, target, arguments, visibility, linkage));
+        }
+    }
+
+    public void createCompareExchange(Type type, int ptr, int cmp, int replace, boolean isVolatile, long successOrdering, long synchronizationScope, long failureOrdering, boolean addExtractValue,
+                    boolean isWeak) {
+        addInstruction(CompareExchangeInstruction.fromSymbols(function.getSymbols(), type, ptr, cmp, replace, isVolatile, successOrdering, synchronizationScope, failureOrdering, isWeak));
+        if (addExtractValue) {
+            throw new UnsupportedOperationException("CMPXCHG must return a struct! The old behaviour of returning the value is not supported!");
         }
     }
 

@@ -42,35 +42,9 @@ import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalVariable;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.AllocateInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.BinaryOperationInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.BranchInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.CallInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.CastInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.ConditionalBranchInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractElementInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractValueInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.GetElementPointerInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.IndirectBranchInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.InsertElementInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.InsertValueInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.InvokeInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.LandingpadInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.LoadInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.PhiInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.ResumeInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.ReturnInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.SelectInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.ShuffleVectorInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.StoreInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchOldInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
@@ -129,7 +103,7 @@ public final class LLVMPhiManager implements ModelVisitor {
     public void visit(Type type) {
     }
 
-    private static class LLVMPhiManagerFunctionVisitor implements FunctionVisitor, InstructionVisitor {
+    private static class LLVMPhiManagerFunctionVisitor implements FunctionVisitor, InstructionVisitorAdapter {
 
         private final Map<InstructionBlock, List<Phi>> edges = new HashMap<>();
 
@@ -149,120 +123,12 @@ public final class LLVMPhiManager implements ModelVisitor {
         }
 
         @Override
-        public void visit(AllocateInstruction ai) {
-        }
-
-        @Override
-        public void visit(BinaryOperationInstruction boi) {
-        }
-
-        @Override
-        public void visit(BranchInstruction bi) {
-        }
-
-        @Override
-        public void visit(CallInstruction ci) {
-        }
-
-        @Override
-        public void visit(InvokeInstruction ci) {
-        }
-
-        @Override
-        public void visit(CastInstruction ci) {
-        }
-
-        @Override
-        public void visit(CompareInstruction ci) {
-        }
-
-        @Override
-        public void visit(ConditionalBranchInstruction cbi) {
-        }
-
-        @Override
-        public void visit(ExtractElementInstruction eei) {
-        }
-
-        @Override
-        public void visit(ExtractValueInstruction evi) {
-        }
-
-        @Override
-        public void visit(GetElementPointerInstruction gepi) {
-        }
-
-        @Override
-        public void visit(IndirectBranchInstruction ibi) {
-        }
-
-        @Override
-        public void visit(InsertElementInstruction iei) {
-        }
-
-        @Override
-        public void visit(InsertValueInstruction ivi) {
-        }
-
-        @Override
-        public void visit(LoadInstruction li) {
-        }
-
-        @Override
         public void visit(PhiInstruction phi) {
             for (int i = 0; i < phi.getSize(); i++) {
                 InstructionBlock blk = phi.getBlock(i);
-                List<Phi> references = edges.get(blk);
-                if (references == null) {
-                    references = new ArrayList<>();
-                    edges.put(blk, references);
-                }
+                List<Phi> references = edges.computeIfAbsent(blk, k -> new ArrayList<>());
                 references.add(new Phi(currentBlock, phi, phi.getValue(i)));
             }
-        }
-
-        @Override
-        public void visit(ReturnInstruction ri) {
-        }
-
-        @Override
-        public void visit(ResumeInstruction resume) {
-        }
-
-        @Override
-        public void visit(SelectInstruction si) {
-        }
-
-        @Override
-        public void visit(ShuffleVectorInstruction svi) {
-        }
-
-        @Override
-        public void visit(StoreInstruction si) {
-        }
-
-        @Override
-        public void visit(SwitchInstruction si) {
-        }
-
-        @Override
-        public void visit(SwitchOldInstruction si) {
-        }
-
-        @Override
-        public void visit(UnreachableInstruction ui) {
-        }
-
-        @Override
-        public void visit(VoidCallInstruction vci) {
-        }
-
-        @Override
-        public void visit(VoidInvokeInstruction vci) {
-        }
-
-        @Override
-        public void visit(LandingpadInstruction landingpadInstruction) {
         }
     }
 

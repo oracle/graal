@@ -38,6 +38,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.MetadataConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.AllocateInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CastInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareExchangeInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.GetElementPointerInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
@@ -143,6 +144,10 @@ final class LLVMMetadata implements ModelVisitor {
                     }
                 }
             }
+        }
+
+        @Override
+        public void visit(CompareExchangeInstruction cmpxchg) {
         }
 
         private void linkTypeToMetadataInformations(Type target, MetadataReference sourceReference) {

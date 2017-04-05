@@ -310,4 +310,7 @@ public interface NodeFactoryFacade {
 
     LLVMControlFlowNode createResumeInstruction(LLVMParserRuntime runtime, FrameSlot exceptionSlot);
 
+    LLVMExpressionNode createCompareExchangeInstruction(LLVMParserRuntime runtime, Type returnType, Type elementType, LLVMExpressionNode ptrNode, LLVMExpressionNode cmpNode,
+                    LLVMExpressionNode newNode);
+
 }
