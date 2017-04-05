@@ -260,7 +260,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
     @Override
     public boolean supportSubwordCompare(int bits) {
         if (loweringProvider != null) {
-            return loweringProvider.supportSubwordCompare(bits);
+            return loweringProvider.smallestCompareWidth(bits);
         } else {
             return false;
         }
