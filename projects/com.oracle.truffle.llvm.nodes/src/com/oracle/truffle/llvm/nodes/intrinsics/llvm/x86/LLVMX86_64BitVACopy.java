@@ -34,12 +34,11 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions.MemCopyNode;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 @NodeField(type = int.class, name = "numberExplicitArguments")
@@ -58,19 +57,21 @@ public abstract class LLVMX86_64BitVACopy extends LLVMExpressionNode {
     }
 
     @Specialization
-    public Object executeVoid(VirtualFrame frame, LLVMGlobalVariableDescriptor dest, LLVMGlobalVariableDescriptor source) {
-        return executeVoid(frame, dest.getNativeAddress(), source.getNativeAddress());
+    public Object executeVoid(LLVMGlobalVariableDescriptor dest, LLVMGlobalVariableDescriptor source) {
+        return executeVoid(dest.getNativeAddress(), source.getNativeAddress());
     }
 
     @Specialization
-    public Object executeVoid(VirtualFrame frame, LLVMAddress dest, LLVMAddress source) {
-        int varArgsStartIndex = 1 + getNumberExplicitArguments();
-        int argumentsLength = frame.getArguments().length;
-        if (varArgsStartIndex != argumentsLength) {
-            Type[] types = LLVMX86_64BitVAStart.getTypes(frame.getArguments(), varArgsStartIndex);
-            int size = LLVMX86_64BitVAStart.getSize(types);
-            getMemCopy().execute(dest, source, size);
-        }
+    public Object executeVoid(LLVMAddress dest, LLVMAddress source) {
+
+        /*
+         * COPY THIS: typedef struct { unsigned int gp_offset; unsigned int fp_offset; void
+         * *overflow_arg_area; void *reg_save_area; } va_list[1];
+         */
+        LLVMMemory.putI32(dest, LLVMMemory.getI32(source));
+        LLVMMemory.putI32(dest.increment(X86_64BitVarArgs.FP_OFFSET), LLVMMemory.getI32(source.increment(X86_64BitVarArgs.FP_OFFSET)));
+        LLVMMemory.putI64(dest.increment(X86_64BitVarArgs.OVERFLOW_ARG_AREA), LLVMMemory.getI64(source.increment(X86_64BitVarArgs.OVERFLOW_ARG_AREA)));
+        LLVMMemory.putI64(dest.increment(X86_64BitVarArgs.REG_SAVE_AREA), LLVMMemory.getI64(source.increment(X86_64BitVarArgs.REG_SAVE_AREA)));
         return null;
     }
 

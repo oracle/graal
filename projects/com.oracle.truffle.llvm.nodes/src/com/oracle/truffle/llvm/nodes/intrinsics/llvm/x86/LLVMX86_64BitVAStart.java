@@ -30,20 +30,24 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMFrameUtil;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions.MallocNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -53,25 +57,28 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
 
     private static final int LONG_DOUBLE_SIZE = 16;
     private final int numberOfExplicitArguments;
+    private final FrameSlot stackpointer;
     @Child private LLVMExpressionNode target;
-    @Child private MallocNode malloc;
     @Child private Node isBoxedNode = Message.IS_BOXED.createNode();
     @Child private Node unboxNode = Message.UNBOX.createNode();
 
-    public LLVMX86_64BitVAStart(int numberOfExplicitArguments, LLVMExpressionNode target) {
+    @CompilationFinal private LLVMStack stack;
+
+    public LLVMStack getStack() {
+        if (stack == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            stack = getContext().getStack();
+        }
+        return stack;
+    }
+
+    public LLVMX86_64BitVAStart(int numberOfExplicitArguments, LLVMExpressionNode target, FrameSlot stackpointer) {
         if (numberOfExplicitArguments < 0) {
             throw new AssertionError();
         }
         this.numberOfExplicitArguments = numberOfExplicitArguments;
         this.target = target;
-    }
-
-    public MallocNode getMalloc() {
-        if (malloc == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.malloc = insert(getContext().getNativeFunctions().createMallocNode());
-        }
-        return malloc;
+        this.stackpointer = stackpointer;
     }
 
     private enum VarArgArea {
@@ -92,61 +99,66 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
         }
     }
 
-    // FIXME: specialization (pass long values in function calls like TruffleC?)
     @Override
     public Object executeGeneric(VirtualFrame frame) {
-        LLVMAddress address = target.enforceLLVMAddress(frame);
-        initOffsets(address);
+
+        // Init reg_save_area:
+        // #############################
+        // Allocate worst amount of memory - saves a few ifs
+        LLVMAddress structAddress = target.enforceLLVMAddress(frame);
+        LLVMAddress regSaveArea = LLVMFrameUtil.allocateMemory(getStack(), frame, stackpointer, X86_64BitVarArgs.GP_LIMIT + X86_64BitVarArgs.FP_LIMIT, 8, new PointerType(null));
+        LLVMMemory.putAddress(structAddress.increment(X86_64BitVarArgs.REG_SAVE_AREA), regSaveArea);
+
         int varArgsStartIndex = numberOfExplicitArguments;
         Object[] realArguments = getRealArguments(frame);
         unboxArguments(realArguments);
         int argumentsLength = realArguments.length;
-        if (varArgsStartIndex != argumentsLength) {
-            int nrVarArgs = argumentsLength - varArgsStartIndex;
-            Type[] types = getTypes(realArguments, varArgsStartIndex);
-            int gpOffset = 0;
-            int fpOffset = X86_64BitVarArgs.MAX_GP_OFFSET;
-            int overFlowOffset = 0;
-            int size = getSize(types);
-            LLVMAddress savedRegs = getMalloc().execute(size);
-            LLVMMemory.putAddress(address.increment(X86_64BitVarArgs.REG_SAVE_AREA), savedRegs);
-            LLVMAddress overflowArea = savedRegs.increment(X86_64BitVarArgs.MAX_FP_OFFSET);
-            LLVMMemory.putAddress(address.increment(X86_64BitVarArgs.OVERFLOW_ARG_AREA), overflowArea);
-            for (int i = 0; i < nrVarArgs; i++) {
-                Object object = realArguments[varArgsStartIndex + i];
-                LLVMAddress currentAddress;
-                switch (getVarArgArea(types[i])) {
-                    case GP_AREA:
-                        if (gpOffset >= X86_64BitVarArgs.MAX_GP_OFFSET) {
-                            currentAddress = overflowArea.increment(overFlowOffset);
-                            overFlowOffset += X86_64BitVarArgs.TYPE_LENGTH;
-                        } else {
-                            currentAddress = savedRegs.increment(gpOffset);
-                            gpOffset += X86_64BitVarArgs.TYPE_LENGTH;
-                        }
-                        break;
-                    case FP_AREA:
-                        if (fpOffset >= X86_64BitVarArgs.MAX_FP_OFFSET) {
-                            currentAddress = overflowArea.increment(overFlowOffset);
-                            overFlowOffset += X86_64BitVarArgs.TYPE_LENGTH;
-                        } else {
-                            currentAddress = savedRegs.increment(fpOffset);
-                            fpOffset += X86_64BitVarArgs.TYPE_LENGTH;
-                        }
-                        break;
-                    case OVERFLOW_AREA:
-                        currentAddress = overflowArea.increment(overFlowOffset);
-                        if (types[i] != PrimitiveType.X86_FP80) {
-                            throw new AssertionError();
-                        }
-                        overFlowOffset += LONG_DOUBLE_SIZE;
-                        break;
-                    default:
-                        throw new AssertionError(types[i]);
+        int nrVarArgs = argumentsLength - varArgsStartIndex;
+        int numberOfVarArgs = argumentsLength - varArgsStartIndex;
+
+        // Allocate worst amount of memory - saves a few ifs
+        LLVMAddress overflowArgArea = LLVMFrameUtil.allocateMemory(getStack(), frame, stackpointer, numberOfVarArgs * 16, 8, new PointerType(null));
+        LLVMMemory.putAddress(structAddress.increment(X86_64BitVarArgs.OVERFLOW_ARG_AREA), overflowArgArea);
+
+        LLVMMemory.putI32(structAddress.increment(X86_64BitVarArgs.GP_OFFSET), 0);
+        LLVMMemory.putI32(structAddress.increment(X86_64BitVarArgs.FP_OFFSET), X86_64BitVarArgs.GP_LIMIT);
+
+        int gpOffset = 0;
+        int fpOffset = X86_64BitVarArgs.GP_LIMIT;
+        int overflowOffset = 0;
+        Type[] types = getTypes(realArguments, varArgsStartIndex);
+
+        for (int i = 0; i < nrVarArgs; i++) {
+            Object object = realArguments[varArgsStartIndex + i];
+            VarArgArea area = getVarArgArea(types[i]);
+            if (area == VarArgArea.GP_AREA) {
+                if (gpOffset < X86_64BitVarArgs.GP_LIMIT) {
+                    storeArgument(types[i], regSaveArea.increment(gpOffset), object);
+                    gpOffset += X86_64BitVarArgs.GP_STEP;
+                } else {
+                    storeArgument(types[i], overflowArgArea.increment(overflowOffset), object);
+                    overflowOffset += X86_64BitVarArgs.STACK_STEP;
                 }
-                storeArgument(types[i], currentAddress, object);
+            } else if (area == VarArgArea.FP_AREA) {
+                if (fpOffset < X86_64BitVarArgs.FP_LIMIT) {
+                    storeArgument(types[i], regSaveArea.increment(fpOffset), object);
+                    fpOffset += X86_64BitVarArgs.FP_STEP;
+                } else {
+                    storeArgument(types[i], overflowArgArea.increment(overflowOffset), object);
+                    overflowOffset += X86_64BitVarArgs.STACK_STEP;
+                }
+            } else if (area == VarArgArea.OVERFLOW_AREA) {
+                if (types[i] != PrimitiveType.X86_FP80) {
+                    throw new AssertionError();
+                }
+                storeArgument(types[i], overflowArgArea.increment(overflowOffset), object);
+                overflowOffset += LONG_DOUBLE_SIZE;
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("TODO");
             }
         }
+
         return null;
     }
 
@@ -160,7 +172,12 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
     private void unboxArguments(Object[] arguments) {
         for (int n = 0; n < arguments.length; n++) {
             Object argument = arguments[n];
-            if (argument instanceof TruffleObject && ForeignAccess.sendIsBoxed(isBoxedNode, (TruffleObject) argument)) {
+
+            if (argument instanceof LLVMBoxedPrimitive) {
+                arguments[n] = ((LLVMBoxedPrimitive) argument).getValue();
+            } else if (argument instanceof LLVMTruffleNull) {
+                arguments[n] = 0;
+            } else if (argument instanceof TruffleObject && notLLVM((TruffleObject) argument) && ForeignAccess.sendIsBoxed(isBoxedNode, (TruffleObject) argument)) {
                 try {
                     arguments[n] = ForeignAccess.sendUnbox(unboxNode, (TruffleObject) argument);
                 } catch (UnsupportedMessageException e) {
@@ -171,29 +188,31 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
     }
 
     static int getSize(Type[] types) {
-        return X86_64BitVarArgs.MAX_FP_OFFSET + getOverFlowSize(types);
+        return X86_64BitVarArgs.FP_LIMIT + getOverFlowSize(types);
     }
 
     private static int getOverFlowSize(Type[] types) {
         int overFlowSize = 0;
-        int remainingFpArea = X86_64BitVarArgs.MAX_FP_OFFSET - X86_64BitVarArgs.MAX_GP_OFFSET;
-        int remainingGpArea = X86_64BitVarArgs.MAX_GP_OFFSET;
+        int remainingFpArea = X86_64BitVarArgs.FP_LIMIT - X86_64BitVarArgs.GP_LIMIT;
+        int remainingGpArea = X86_64BitVarArgs.GP_LIMIT;
         for (Type type : types) {
             VarArgArea area = getVarArgArea(type);
             switch (area) {
                 case FP_AREA:
                     if (remainingFpArea == 0) {
-                        overFlowSize += X86_64BitVarArgs.TYPE_LENGTH;
+                        overFlowSize += X86_64BitVarArgs.STACK_STEP;
                     } else {
-                        remainingFpArea -= X86_64BitVarArgs.TYPE_LENGTH;
+                        remainingFpArea -= X86_64BitVarArgs.FP_STEP;
                     }
+                    assert remainingFpArea >= 0;
                     break;
                 case GP_AREA:
                     if (remainingGpArea == 0) {
-                        overFlowSize += X86_64BitVarArgs.TYPE_LENGTH;
+                        overFlowSize += X86_64BitVarArgs.STACK_STEP;
                     } else {
-                        remainingGpArea -= X86_64BitVarArgs.TYPE_LENGTH;
+                        remainingGpArea -= X86_64BitVarArgs.GP_STEP;
                     }
+                    assert remainingGpArea >= 0;
                     break;
                 case OVERFLOW_AREA:
                     if (type != PrimitiveType.X86_FP80) {
@@ -244,20 +263,6 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
         return type;
     }
 
-    @ExplodeLoop
-    void allocateOverflowArgArea(Type type, VirtualFrame frame, LLVMAddress address, int varArgsStartIndex, int nrVarArgs, int typeLength, final int nrVarArgsInRegisterArea) {
-        if (nrVarArgsInRegisterArea != nrVarArgs) {
-            final int remainingVarArgs = nrVarArgs - nrVarArgsInRegisterArea;
-            LLVMAddress stackArea = getMalloc().execute(typeLength * remainingVarArgs);
-            LLVMMemory.putAddress(address.increment(X86_64BitVarArgs.OVERFLOW_ARG_AREA), stackArea);
-            LLVMAddress currentAddress = stackArea;
-            for (int i = nrVarArgsInRegisterArea; i < nrVarArgs; i++) {
-                storeArgument(type, currentAddress, getRealArguments(frame)[i + varArgsStartIndex]);
-                currentAddress = currentAddress.increment(typeLength);
-            }
-        }
-    }
-
     private static void storeArgument(Type type, LLVMAddress currentAddress, Object object) {
         if (type instanceof PrimitiveType) {
             doPrimitiveWrite(type, currentAddress, object);
@@ -299,11 +304,6 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
             default:
                 throw new AssertionError(type);
         }
-    }
-
-    private static void initOffsets(LLVMAddress address) {
-        LLVMMemory.putI32(address.increment(X86_64BitVarArgs.GP_OFFSET), 0);
-        LLVMMemory.putI32(address.increment(X86_64BitVarArgs.FP_OFFSET), X86_64BitVarArgs.MAX_GP_OFFSET);
     }
 
 }

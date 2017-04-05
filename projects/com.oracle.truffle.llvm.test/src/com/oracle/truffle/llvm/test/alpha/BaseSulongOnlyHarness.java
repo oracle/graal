@@ -50,7 +50,7 @@ public abstract class BaseSulongOnlyHarness {
         }
 
         if (sulongResult != (sulongResult & 0xFF)) {
-            Assert.fail("Broken unittest " + getPath() + ". Test exits with invalid value.");
+            Assert.fail("Broken unittest " + getPath() + ". Test exits with invalid value (" + sulongResult + ").");
         }
         String testName = getPath().getFileName().toString();
         Assert.assertEquals(testName + " failed. Posix return value missmatch.", getConfiguration().expectedPosixReturn,

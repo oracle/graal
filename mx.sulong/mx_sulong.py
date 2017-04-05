@@ -127,6 +127,8 @@ def travis1(args=None):
         if t: mx_testsuites.runSuite(['args'])
     with Task('TestCallback', tasks) as t:
         if t: mx_testsuites.runSuite(['callback'])
+    with Task('TestVAArgs', tasks) as t:
+        if t: mx_testsuites.runSuite(['vaargs'])
     with Task('TestPipe', tasks) as t:
         if t: mx_testsuites.runSuite(['pipe'])
     with Task('TestLLVM', tasks) as t:
