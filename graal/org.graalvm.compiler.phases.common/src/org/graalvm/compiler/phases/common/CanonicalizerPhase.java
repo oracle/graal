@@ -180,6 +180,11 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         }
 
         @Override
+        public boolean checkContract() {
+            return false;
+        }
+
+        @Override
         protected void run(StructuredGraph graph) {
             boolean wholeGraph = newNodesMark == null || newNodesMark.isStart();
             if (initWorkingSet == null) {

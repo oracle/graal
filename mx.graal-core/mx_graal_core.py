@@ -184,6 +184,48 @@ def _is_jvmci_enabled(vmargs):
     """
     return _get_XX_option_value(vmargs, 'EnableJVMCI', isJDK8)
 
+def _nodeCostDump(args, extraVMarguments=None):
+    """list the costs associated with each Node type"""
+    import csv, StringIO
+    parser = ArgumentParser(prog='mx nodecostdump')
+    parser.add_argument('--regex', action='store', help="Node Name Regex", default=False, metavar='<regex>')
+    parser.add_argument('--markdown', action='store_const', const=True, help="Format to Markdown table", default=False)
+    args, vmargs = parser.parse_known_args(args)
+    additionalPrimarySuiteClassPath = '-Dprimary.suite.cp=' + mx.primary_suite().dir
+    vmargs.extend([additionalPrimarySuiteClassPath, '-XX:-UseJVMCIClassLoader', 'org.graalvm.compiler.hotspot.NodeCostDumpUtil'])
+    out = mx.OutputCapture()
+    regex = ""
+    if args.regex:
+        regex = args.regex
+    run_vm(vmargs + _remove_empty_entries(extraVMarguments) + [regex], out=out)
+    if args.markdown:
+        stringIO = StringIO.StringIO(out.data)
+        reader = csv.reader(stringIO, delimiter=';', lineterminator="\n")
+        firstRow = True
+        maxLen = 0
+        for row in reader:
+            for col in row:
+                maxLen = max(maxLen, len(col))
+        stringIO.seek(0)
+        for row in reader:
+            s = '|'
+            if firstRow:
+                firstRow = False
+                nrOfCols = len(row)
+                for col in row:
+                    s = s + col + "|"
+                print s
+                s = '|'
+                for _ in range(nrOfCols):
+                    s = s + ('-' * maxLen) + '|'
+            else:
+                for col in row:
+                    s = s + col + "|"
+            print s
+    else:
+        print out.data
+
+
 def ctw(args, extraVMarguments=None):
     """run CompileTheWorld"""
 
@@ -758,6 +800,7 @@ mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
     'vm': [run_vm, '[-options] class [args...]'],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
+    'nodecostdump' : [_nodeCostDump, ''],
     'verify_jvmci_ci_versions': [verify_jvmci_ci_versions, ''],
 })
 

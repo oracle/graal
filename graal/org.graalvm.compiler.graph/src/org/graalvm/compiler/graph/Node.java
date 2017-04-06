@@ -52,7 +52,9 @@ import org.graalvm.compiler.graph.iterators.NodePredicate;
 import org.graalvm.compiler.graph.spi.Simplifiable;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -1186,4 +1188,13 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     public final void pushInputs(NodeStack stack) {
         getNodeClass().pushInputs(this, stack);
     }
+
+    public NodeSize estimatedNodeSize() {
+        return nodeClass.size();
+    }
+
+    public NodeCycles estimatedNodeCycles() {
+        return nodeClass.cycles();
+    }
+
 }
