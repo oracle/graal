@@ -121,6 +121,67 @@ public class EscapeAnalysisTest extends EATestBase {
         }
     }
 
+    @SuppressWarnings("serial")
+    static class NoStackTrace extends RuntimeException {
+        @Override
+        public synchronized Throwable fillInStackTrace() {
+            return this;
+        }
+    }
+
+    @Test
+    public void testUnwindMerge() {
+        test("testUnwindMergeSnippet", 0);
+    }
+
+    public static Object testUnwindMergeSnippet(int value) {
+        NoStackTrace t = new NoStackTrace();
+        if (value == 0) {
+            throw t;
+        }
+        if (value == 1) {
+            throw t;
+        }
+        return null;
+    }
+
+    @Test
+    public void testSynchronizedUnwindMerge() {
+        test("testSynchronizedUnwindMergeSnippet", 0);
+    }
+
+    public static synchronized Object testSynchronizedUnwindMergeSnippet(int value) {
+        NoStackTrace t = new NoStackTrace();
+        if (value == 0) {
+            throw t;
+        }
+        if (value == 1) {
+            throw t;
+        }
+        return null;
+    }
+
+    @Test
+    public void testInlinedUnwindMerge() {
+        test("testInlinedUnwindMergeSnippet", 0);
+    }
+
+    public static Object testInlinedUnwindMergeSnippet(int value) {
+        if (value < 3) {
+            return testUnwindMergeSnippet(value);
+        }
+        return null;
+    }
+
+    @Test
+    public void testEscapedReturnValue() {
+        test("testEscapedReturnValueSnippet");
+    }
+
+    public static synchronized Object testEscapedReturnValueSnippet() {
+        return new String("");
+    }
+
     @Test
     public void testMerge() {
         testEscapeAnalysis("testMerge1Snippet", JavaConstant.forInt(0), true);

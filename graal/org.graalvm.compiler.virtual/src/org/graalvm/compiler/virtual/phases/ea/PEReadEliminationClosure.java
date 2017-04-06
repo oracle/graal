@@ -37,6 +37,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
@@ -336,8 +337,8 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
         }
 
         @Override
-        protected void merge(List<PEReadEliminationBlockState> states) {
-            super.merge(states);
+        protected void merge(List<PEReadEliminationBlockState> states, FrameState frameState) {
+            super.merge(states, frameState);
 
             mergeReadCache(states);
         }

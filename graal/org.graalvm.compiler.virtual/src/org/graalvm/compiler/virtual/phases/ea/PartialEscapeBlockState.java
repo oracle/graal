@@ -62,7 +62,17 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
      */
     private RefCount arrayRefCount;
 
+    private boolean sawPlaceholder;
+
     private final OptionValues options;
+
+    public boolean sawPlaceholder() {
+        return sawPlaceholder;
+    }
+
+    public void setSawPlaceholder() {
+        sawPlaceholder = true;
+    }
 
     /**
      * Final subclass of PartialEscapeBlockState, for performance and to make everything behave
@@ -89,6 +99,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
         super(other);
         adoptAddObjectStates(other);
         options = other.options;
+        sawPlaceholder = other.sawPlaceholder;
     }
 
     public ObjectState getObjectState(int object) {

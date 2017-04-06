@@ -71,6 +71,7 @@ import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
 import org.graalvm.util.Equivalence;
 
+import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -674,7 +675,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
          * @param statesList the predecessor block states of the merge
          */
         @Override
-        protected void merge(List<BlockT> statesList) {
+        protected void merge(List<BlockT> statesList, FrameState frameState) {
 
             PartialEscapeBlockState<?>[] states = new PartialEscapeBlockState<?>[statesList.size()];
             for (int i = 0; i < statesList.size(); i++) {
@@ -684,63 +685,77 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
             // calculate the set of virtual objects that exist in all predecessors
             int[] virtualObjTemp = intersectVirtualObjects(states);
 
+            boolean forceMaterialize = false;
+            if (frameState != null && BytecodeFrame.isPlaceholderBci(frameState.bci)) {
+                forceMaterialize = true;
+                newState.setSawPlaceholder();
+            } else {
+                assert !newState.sawPlaceholder();
+            }
+
             boolean materialized;
             do {
                 materialized = false;
 
-                if (PartialEscapeBlockState.identicalObjectStates(states)) {
+                if (PartialEscapeBlockState.identicalObjectStates(states) && !forceMaterialize) {
                     newState.adoptAddObjectStates(states[0]);
                 } else {
 
                     for (int object : virtualObjTemp) {
-                        if (PartialEscapeBlockState.identicalObjectStates(states, object)) {
-                            newState.addObject(object, states[0].getObjectState(object).share());
-                            continue;
-                        }
-
-                        // determine if all inputs are virtual or the same materialized value
-                        int virtualCount = 0;
-                        ObjectState startObj = states[0].getObjectState(object);
-                        boolean locksMatch = true;
                         boolean ensureVirtual = true;
-                        ValueNode uniqueMaterializedValue = startObj.isVirtual() ? null : startObj.getMaterializedValue();
+                        if (!forceMaterialize) {
+                            if (PartialEscapeBlockState.identicalObjectStates(states, object)) {
+                                newState.addObject(object, states[0].getObjectState(object).share());
+                                continue;
+                            }
+
+                            // determine if all inputs are virtual or the same materialized value
+                            int virtualCount = 0;
+                            ObjectState startObj = states[0].getObjectState(object);
+                            boolean locksMatch = true;
+                            ValueNode uniqueMaterializedValue = startObj.isVirtual() ? null : startObj.getMaterializedValue();
+                            for (int i = 0; i < states.length; i++) {
+                                ObjectState obj = states[i].getObjectState(object);
+                                ensureVirtual &= obj.getEnsureVirtualized();
+                                if (obj.isVirtual()) {
+                                    virtualCount++;
+                                    uniqueMaterializedValue = null;
+                                    locksMatch &= obj.locksEqual(startObj);
+                                } else if (obj.getMaterializedValue() != uniqueMaterializedValue) {
+                                    uniqueMaterializedValue = null;
+                                }
+                            }
+
+                            if (virtualCount == states.length && locksMatch) {
+                                materialized |= mergeObjectStates(object, null, states);
+                                continue;
+                            } else if (uniqueMaterializedValue != null) {
+                                newState.addObject(object, new ObjectState(uniqueMaterializedValue, null, ensureVirtual));
+                                continue;
+                            }
+                        } else {
+                            for (int i = 0; i < states.length; i++) {
+                                ObjectState obj = states[i].getObjectState(object);
+                                assert !obj.getEnsureVirtualized();
+                            }
+                        }
+                        PhiNode materializedValuePhi = getPhi(object, StampFactory.forKind(JavaKind.Object));
+                        mergeEffects.addFloatingNode(materializedValuePhi, "materializedPhi");
                         for (int i = 0; i < states.length; i++) {
                             ObjectState obj = states[i].getObjectState(object);
-                            ensureVirtual &= obj.getEnsureVirtualized();
                             if (obj.isVirtual()) {
-                                virtualCount++;
-                                uniqueMaterializedValue = null;
-                                locksMatch &= obj.locksEqual(startObj);
-                            } else if (obj.getMaterializedValue() != uniqueMaterializedValue) {
-                                uniqueMaterializedValue = null;
-                            }
-                        }
-
-                        if (virtualCount == states.length && locksMatch) {
-                            materialized |= mergeObjectStates(object, null, states);
-                        } else {
-                            if (uniqueMaterializedValue != null) {
-                                newState.addObject(object, new ObjectState(uniqueMaterializedValue, null, ensureVirtual));
-                            } else {
-                                PhiNode materializedValuePhi = getPhi(object, StampFactory.forKind(JavaKind.Object));
-                                mergeEffects.addFloatingNode(materializedValuePhi, "materializedPhi");
-                                for (int i = 0; i < states.length; i++) {
-                                    ObjectState obj = states[i].getObjectState(object);
-                                    if (obj.isVirtual()) {
-                                        Block predecessor = getPredecessor(i);
-                                        if (!ensureVirtual && obj.isVirtual()) {
-                                            // we can materialize if not all inputs are
-                                            // "ensureVirtualized"
-                                            obj.setEnsureVirtualized(false);
-                                        }
-                                        materialized |= ensureMaterialized(states[i], object, predecessor.getEndNode(), blockEffects.get(predecessor), COUNTER_MATERIALIZATIONS_MERGE);
-                                        obj = states[i].getObjectState(object);
-                                    }
-                                    setPhiInput(materializedValuePhi, i, obj.getMaterializedValue());
+                                Block predecessor = getPredecessor(i);
+                                if (!ensureVirtual && obj.isVirtual()) {
+                                    // we can materialize if not all inputs are
+                                    // "ensureVirtualized"
+                                    obj.setEnsureVirtualized(false);
                                 }
-                                newState.addObject(object, new ObjectState(materializedValuePhi, null, false));
+                                materialized |= ensureMaterialized(states[i], object, predecessor.getEndNode(), blockEffects.get(predecessor), COUNTER_MATERIALIZATIONS_MERGE);
+                                obj = states[i].getObjectState(object);
                             }
+                            setPhiInput(materializedValuePhi, i, obj.getMaterializedValue());
                         }
+                        newState.addObject(object, new ObjectState(materializedValuePhi, null, false));
                     }
                 }
 
