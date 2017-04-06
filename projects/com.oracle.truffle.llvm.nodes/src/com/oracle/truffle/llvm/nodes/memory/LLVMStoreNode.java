@@ -455,6 +455,12 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
+        public Object doAddress(LLVMGlobalVariableDescriptor address, LLVMBoxedPrimitive value) {
+            address.storeTruffleObject(value);
+            return null;
+        }
+
+        @Specialization
         public Object doAddress(LLVMGlobalVariableDescriptor address, LLVMTruffleObject value) {
             address.storeLLVMTruffleObject(value);
             return null;
