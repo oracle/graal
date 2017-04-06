@@ -33,6 +33,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNegationNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -62,17 +63,54 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
     protected ValueNode optimizeNormalizeCmp(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
         PrimitiveConstant primitive = (PrimitiveConstant) constant;
         assert condition() == LT;
-        if (primitive.getJavaKind() == JavaKind.Int && primitive.asInt() == 0) {
-            ValueNode a = mirrored ? normalizeNode.getY() : normalizeNode.getX();
-            ValueNode b = mirrored ? normalizeNode.getX() : normalizeNode.getY();
 
+        /* @formatter:off
+         * a NC b < c  (not mirrored)
+         * cases for c:
+         *  0         -> a < b
+         *  [MIN, -1] -> false
+         *  1         -> a <= b
+         *  [2, MAX]  -> true
+         * unordered-is-less means unordered-is-true.
+         *
+         * c < a NC b  (mirrored)
+         * cases for c:
+         *  0         -> a > b
+         *  [1, MAX]  -> false
+         *  -1        -> a >= b
+         *  [MIN, -2] -> true
+         * unordered-is-less means unordered-is-false.
+         *
+         *  We can handle mirroring by swapping a & b and negating the constant.
+         *  @formatter:on
+         */
+
+        ValueNode a = mirrored ? normalizeNode.getY() : normalizeNode.getX();
+        ValueNode b = mirrored ? normalizeNode.getX() : normalizeNode.getY();
+        long cst = mirrored ? -primitive.asLong() : primitive.asLong();
+
+        if (cst == 0) {
             if (normalizeNode.getX().getStackKind() == JavaKind.Double || normalizeNode.getX().getStackKind() == JavaKind.Float) {
-                return new FloatLessThanNode(a, b, mirrored ^ normalizeNode.isUnorderedLess);
+                return FloatLessThanNode.create(a, b, mirrored ^ normalizeNode.isUnorderedLess);
             } else {
-                return new IntegerLessThanNode(a, b);
+                return IntegerLessThanNode.create(a, b);
             }
+        } else if (cst == 1) {
+            // a <= b <=> !(a > b)
+            LogicNode compare;
+            if (normalizeNode.getX().getStackKind() == JavaKind.Double || normalizeNode.getX().getStackKind() == JavaKind.Float) {
+                // since we negate, we have to reverse the unordered result
+                compare = FloatLessThanNode.create(b, a, mirrored == normalizeNode.isUnorderedLess);
+            } else {
+                compare = IntegerLessThanNode.create(b, a);
+            }
+            return LogicNegationNode.create(compare);
+        } else if (cst <= -1) {
+            return LogicConstantNode.contradiction();
+        } else {
+            assert cst >= 2;
+            return LogicConstantNode.tautology();
         }
-        return this;
     }
 
     public static boolean subtractMayUnderflow(long x, long y, long minValue) {
