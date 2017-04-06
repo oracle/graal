@@ -135,7 +135,13 @@ public class NodeCostDumpUtil {
         });
         CSVUtil.Escape.println(System.out, FMT, "NodeName", "Size", "Overrides Size Method", "Cycles", "Overrides Cycles Method", "Canonicalizable", "MemoryCheckPoint", "Virtualizable");
         for (NodeClass<?> nodeclass : nc) {
-            String packageStrippedName = nodeclass.getJavaClass().getCanonicalName().replace(prefix1, "").replace(prefix2, "");
+            String packageStrippedName = null;
+            try {
+                packageStrippedName = nodeclass.getJavaClass().getCanonicalName().replace(prefix1, "").replace(prefix2, "");
+            } catch (Throwable t) {
+                // do nothing
+                continue;
+            }
             if (pattern != null && !packageStrippedName.matches(pattern)) {
                 continue;
             }
@@ -190,6 +196,13 @@ public class NodeCostDumpUtil {
                         }
                         try {
                             Class<?> systemClass = Class.forName(className, false, c);
+                            if (systemClass.getEnclosingClass() != null) {
+                                try {
+                                    classes.add(systemClass.getEnclosingClass());
+                                } catch (Throwable t) {
+                                    // do nothing
+                                }
+                            }
                             classes.add(systemClass);
                         } catch (Throwable ignored) {
                         }
