@@ -65,6 +65,27 @@ public class ContextLookupTest {
         vm.dispose();
     }
 
+    @Test
+    public void twoContextsLookup() throws Exception {
+        LanguageLookupContext context = new LanguageLookupContext(null);
+        PolyglotEngine vm = createBuilder().config(LanguageLookup.MIME_TYPE, "channel", context).build();
+        Source s1 = Source.newBuilder("").name("").mimeType("").build();
+        Value result = vm.getLanguages().get(LanguageLookup.MIME_TYPE).eval(s1);
+        LanguageLookup language = context.language;
+
+        Runnable run = result.as(Runnable.class);
+
+        language.expectedContext = context;
+        run.run();
+
+        LanguageLookupContext context2 = new LanguageLookupContext(null);
+        PolyglotEngine otherVM = createBuilder().config(LanguageLookup.MIME_TYPE, "channel", context2).build();
+        otherVM.getLanguages().get(LanguageLookup.MIME_TYPE).eval(s1);
+
+        language.expectedContext = context;
+        run.run();
+    }
+
     private static void assertExpectedContext(PolyglotEngine vm, LanguageLookup language, LanguageLookupContext expectedContext) {
         Source s1 = Source.newBuilder("assertContext").name("").mimeType(LanguageLookup.MIME_TYPE).build();
         Value result = vm.getLanguages().get(LanguageLookup.MIME_TYPE).eval(s1);
