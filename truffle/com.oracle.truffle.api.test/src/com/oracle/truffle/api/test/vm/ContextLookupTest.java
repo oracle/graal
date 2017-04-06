@@ -71,6 +71,7 @@ public class ContextLookupTest {
         PolyglotEngine vm = createBuilder().config(LanguageLookup.MIME_TYPE, "channel", context).build();
         Source s1 = Source.newBuilder("").name("").mimeType("").build();
         Value result = vm.getLanguages().get(LanguageLookup.MIME_TYPE).eval(s1);
+        result.get();
         LanguageLookup language = context.language;
 
         Runnable run = result.as(Runnable.class);
