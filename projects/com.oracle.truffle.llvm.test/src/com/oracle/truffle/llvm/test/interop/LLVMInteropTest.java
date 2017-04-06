@@ -560,50 +560,48 @@ public final class LLVMInteropTest {
     @Test
     public void test045a() {
         Runner runner = new Runner("interop045");
-        runner.export(JavaInterop.asTruffleObject(14), "a");
-        runner.export(JavaInterop.asTruffleObject(15), "b");
+        runner.export(14, "a");
+        runner.export(15, "b");
         Assert.assertEquals(1, runner.run());
     }
 
     @Test
     public void test046a() {
         Runner runner = new Runner("interop046");
-        runner.export(JavaInterop.asTruffleObject(14), "a");
-        runner.export(JavaInterop.asTruffleObject(14), "b");
+        runner.export(14, "a");
+        runner.export(14, "b");
         Assert.assertEquals(1, runner.run());
     }
 
     @Test
     public void test046b() {
         Runner runner = new Runner("interop046");
-        TruffleObject object = JavaInterop.asTruffleObject(new Object());
-        runner.export(object, "a");
-        runner.export(object, "b");
+        runner.export(14, "a");
+        runner.export(15, "b");
         Assert.assertEquals(1, runner.run());
     }
 
     @Test
     public void test047a() {
         Runner runner = new Runner("interop047");
-        runner.export(JavaInterop.asTruffleObject(14), "a");
-        runner.export(JavaInterop.asTruffleObject(15), "b");
+        runner.export(14, "a");
+        runner.export(15, "b");
         Assert.assertEquals(0, runner.run());
     }
 
     @Test
     public void test048a() {
         Runner runner = new Runner("interop048");
-        runner.export(JavaInterop.asTruffleObject(14), "a");
-        runner.export(JavaInterop.asTruffleObject(15), "b");
+        runner.export(14, "a");
+        runner.export(15, "b");
         Assert.assertEquals(0, runner.run());
     }
 
     @Test
     public void test048b() {
         Runner runner = new Runner("interop048");
-        TruffleObject object = JavaInterop.asTruffleObject(new Object());
-        runner.export(object, "a");
-        runner.export(object, "b");
+        runner.export(14, "a");
+        runner.export(14, "b");
         Assert.assertEquals(1, runner.run());
     }
 
