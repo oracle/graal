@@ -37,6 +37,9 @@ abstract class TestOptions {
     @Option(commandLineName = "LifetimeTestsGenerateReferenceOutput", help = "Generate the reference output file for the lifetime test cases based on the current version of the lifetime analysis.", name = "generateLifetimeReferenceOutput") //
     protected static final Boolean LIFETIME_TEST_GENERATE_REFERENCE_OUTPUT = false;
 
+    @Option(commandLineName = "IgnoreFortran", help = "Ignores all Fortran tests.", name = "ignoreFortran") //
+    protected static final Boolean IGNORE_FORTRAN = false;
+
     @Option(commandLineName = "TestDiscoveryPath", help = "Looks for newly supported test cases in the specified path. E.g., when executing the GCC test cases you can use /gcc.c-torture/execute to discover newly working torture test cases.", //
                     name = "testDiscoveryPath") //
     protected static final String TEST_DISCOVERY_PATH = null;
