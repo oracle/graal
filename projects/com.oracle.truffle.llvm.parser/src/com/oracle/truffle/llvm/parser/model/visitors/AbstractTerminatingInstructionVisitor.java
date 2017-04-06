@@ -29,54 +29,25 @@
  */
 package com.oracle.truffle.llvm.parser.model.visitors;
 
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.AllocateInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.BinaryOperationInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.BranchInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.CallInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.CastInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ConditionalBranchInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractElementInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractValueInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.GetElementPointerInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.IndirectBranchInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.InsertElementInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.InsertValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.InvokeInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.LandingpadInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.LoadInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.PhiInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ResumeInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ReturnInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.SelectInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.ShuffleVectorInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.StoreInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchOldInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.TerminatingInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
 
-public abstract class AbstractTerminatingInstructionVisitor implements InstructionVisitor {
+public abstract class AbstractTerminatingInstructionVisitor implements InstructionVisitorAdapter {
 
     public abstract void visitTerminatingInstruction(TerminatingInstruction instruction);
 
     @Override
-    public void visit(AllocateInstruction allocate) {
-    }
-
-    @Override
-    public void visit(BinaryOperationInstruction operation) {
-    }
-
-    @Override
     public void visit(BranchInstruction branch) {
         visitTerminatingInstruction(branch);
-    }
-
-    @Override
-    public void visit(CallInstruction call) {
     }
 
     @Override
@@ -85,49 +56,13 @@ public abstract class AbstractTerminatingInstructionVisitor implements Instructi
     }
 
     @Override
-    public void visit(CastInstruction cast) {
-    }
-
-    @Override
-    public void visit(CompareInstruction operation) {
-    }
-
-    @Override
     public void visit(ConditionalBranchInstruction branch) {
         visitTerminatingInstruction(branch);
     }
 
     @Override
-    public void visit(ExtractElementInstruction extract) {
-    }
-
-    @Override
-    public void visit(ExtractValueInstruction extract) {
-    }
-
-    @Override
-    public void visit(GetElementPointerInstruction gep) {
-    }
-
-    @Override
     public void visit(IndirectBranchInstruction branch) {
         visitTerminatingInstruction(branch);
-    }
-
-    @Override
-    public void visit(InsertElementInstruction insert) {
-    }
-
-    @Override
-    public void visit(InsertValueInstruction insert) {
-    }
-
-    @Override
-    public void visit(LoadInstruction load) {
-    }
-
-    @Override
-    public void visit(PhiInstruction phi) {
     }
 
     @Override
@@ -138,18 +73,6 @@ public abstract class AbstractTerminatingInstructionVisitor implements Instructi
     @Override
     public void visit(ResumeInstruction ret) {
         visitTerminatingInstruction(ret);
-    }
-
-    @Override
-    public void visit(SelectInstruction select) {
-    }
-
-    @Override
-    public void visit(ShuffleVectorInstruction shuffle) {
-    }
-
-    @Override
-    public void visit(StoreInstruction store) {
     }
 
     @Override
@@ -168,15 +91,7 @@ public abstract class AbstractTerminatingInstructionVisitor implements Instructi
     }
 
     @Override
-    public void visit(VoidCallInstruction call) {
-    }
-
-    @Override
     public void visit(VoidInvokeInstruction call) {
         visitTerminatingInstruction(call);
-    }
-
-    @Override
-    public void visit(LandingpadInstruction landingpadInstruction) {
     }
 }

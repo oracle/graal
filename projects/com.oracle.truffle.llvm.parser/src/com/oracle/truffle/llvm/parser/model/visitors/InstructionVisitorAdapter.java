@@ -34,6 +34,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.BinaryOperation
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.BranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CastInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareExchangeInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ConditionalBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractElementInstruction;
@@ -165,5 +166,9 @@ public interface InstructionVisitorAdapter extends InstructionVisitor {
 
     @Override
     default void visit(ResumeInstruction resume) {
+    }
+
+    @Override
+    default void visit(CompareExchangeInstruction cmpxchg) {
     }
 }
