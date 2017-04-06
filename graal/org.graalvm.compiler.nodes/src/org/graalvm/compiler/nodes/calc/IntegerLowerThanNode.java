@@ -116,9 +116,9 @@ public abstract class IntegerLowerThanNode extends CompareNode {
 
     public abstract static class LowerOp extends CompareOp {
         @Override
-        public ValueNode canonical(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth, Condition condition,
+        public LogicNode canonical(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth, Condition condition,
                         boolean unorderedIsTrue, ValueNode forX, ValueNode forY) {
-            ValueNode result = super.canonical(constantReflection, metaAccess, options, smallestCompareWidth, condition, unorderedIsTrue, forX, forY);
+            LogicNode result = super.canonical(constantReflection, metaAccess, options, smallestCompareWidth, condition, unorderedIsTrue, forX, forY);
             if (result != null) {
                 return result;
             }

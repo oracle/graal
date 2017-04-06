@@ -24,6 +24,8 @@ package org.graalvm.compiler.nodes.calc;
 
 import static org.graalvm.compiler.core.common.calc.Condition.LT;
 
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.type.FloatStamp;
@@ -44,6 +46,7 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
+import org.graalvm.compiler.options.OptionValues;
 
 @NodeInfo(shortName = "<")
 public final class IntegerLessThanNode extends IntegerLowerThanNode {
@@ -58,6 +61,15 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
 
     public static LogicNode create(ValueNode x, ValueNode y) {
         return OP.create(x, y);
+    }
+
+    public static LogicNode create(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth,
+                    ValueNode x, ValueNode y) {
+        LogicNode value = OP.canonical(constantReflection, metaAccess, options, smallestCompareWidth, OP.getCondition(), false, x, y);
+        if (value != null) {
+            return value;
+        }
+        return create(x, y);
     }
 
     @Override
@@ -96,9 +108,8 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
         }
 
         @Override
-        protected ValueNode optimizeNormalizeCompare(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
+        protected LogicNode optimizeNormalizeCompare(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
             PrimitiveConstant primitive = (PrimitiveConstant) constant;
-            // TODO: assert condition() == LT;
             if (primitive.getJavaKind() == JavaKind.Int && primitive.asInt() == 0) {
                 ValueNode a = mirrored ? normalizeNode.getY() : normalizeNode.getX();
                 ValueNode b = mirrored ? normalizeNode.getX() : normalizeNode.getY();

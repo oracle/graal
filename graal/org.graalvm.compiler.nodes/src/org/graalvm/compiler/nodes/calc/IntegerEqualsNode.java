@@ -63,27 +63,37 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
         LogicNode result = CompareNode.tryConstantFoldPrimitive(Condition.EQ, x, y, false);
         if (result != null) {
             return result;
-        } else {
-            if (x instanceof ConditionalNode) {
-                ConditionalNode conditionalNode = (ConditionalNode) x;
-                if (conditionalNode.trueValue() == y) {
-                    return conditionalNode.condition();
-                }
-                if (conditionalNode.falseValue() == y) {
-                    return LogicNegationNode.create(conditionalNode.condition());
-                }
-            } else if (y instanceof ConditionalNode) {
-                ConditionalNode conditionalNode = (ConditionalNode) y;
-                if (conditionalNode.trueValue() == x) {
-                    return conditionalNode.condition();
-                }
-                if (conditionalNode.falseValue() == x) {
-                    return LogicNegationNode.create(conditionalNode.condition());
-                }
-            }
-
-            return new IntegerEqualsNode(x, y).maybeCommuteInputs();
         }
+        if (x instanceof ConditionalNode) {
+            ConditionalNode conditionalNode = (ConditionalNode) x;
+            if (conditionalNode.trueValue() == y) {
+                return conditionalNode.condition();
+            }
+            if (conditionalNode.falseValue() == y) {
+                return LogicNegationNode.create(conditionalNode.condition());
+            }
+        } else if (y instanceof ConditionalNode) {
+            ConditionalNode conditionalNode = (ConditionalNode) y;
+            if (conditionalNode.trueValue() == x) {
+                return conditionalNode.condition();
+            }
+            if (conditionalNode.falseValue() == x) {
+                return LogicNegationNode.create(conditionalNode.condition());
+            }
+        }
+        return new IntegerEqualsNode(x, y).maybeCommuteInputs();
+    }
+
+    public static LogicNode create(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth, ValueNode x, ValueNode y) {
+        LogicNode value = OP.canonical(constantReflection, metaAccess, options, smallestCompareWidth, Condition.EQ, false, x, y);
+        if (value != null) {
+            return value;
+        }
+        value = create(x, y);
+        if (value != null) {
+            return value;
+        }
+        return new IntegerEqualsNode(x, y).maybeCommuteInputs();
     }
 
     @Override
@@ -97,7 +107,7 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
 
     public static class IntegerEqualsOp extends CompareOp {
         @Override
-        protected ValueNode optimizeNormalizeCompare(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
+        protected LogicNode optimizeNormalizeCompare(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
             PrimitiveConstant primitive = (PrimitiveConstant) constant;
             if (primitive.getJavaKind() == JavaKind.Int && primitive.asInt() == 0) {
                 ValueNode a = mirrored ? normalizeNode.getY() : normalizeNode.getX();
@@ -125,7 +135,7 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
         }
 
         @Override
-        public ValueNode canonical(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth, Condition condition,
+        public LogicNode canonical(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth, Condition condition,
                         boolean unorderedIsTrue, ValueNode forX, ValueNode forY) {
             if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
                 return LogicConstantNode.tautology();
@@ -159,7 +169,7 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
         }
 
         @Override
-        protected ValueNode canonicalizeSymmetricConstant(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth,
+        protected LogicNode canonicalizeSymmetricConstant(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth,
                         Condition condition, Constant constant, ValueNode nonConstant, boolean mirrored, boolean unorderedIsTrue) {
             if (constant instanceof PrimitiveConstant) {
                 PrimitiveConstant primitiveConstant = (PrimitiveConstant) constant;

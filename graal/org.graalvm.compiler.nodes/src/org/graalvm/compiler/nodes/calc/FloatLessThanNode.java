@@ -57,9 +57,17 @@ public final class FloatLessThanNode extends CompareNode {
         LogicNode result = CompareNode.tryConstantFoldPrimitive(Condition.LT, x, y, unorderedIsTrue);
         if (result != null) {
             return result;
-        } else {
-            return new FloatLessThanNode(x, y, unorderedIsTrue);
         }
+        return new FloatLessThanNode(x, y, unorderedIsTrue);
+    }
+
+    public static LogicNode create(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth,
+                    ValueNode x, ValueNode y, boolean unorderedIsTrue) {
+        LogicNode result = OP.canonical(constantReflection, metaAccess, options, smallestCompareWidth, Condition.LT, unorderedIsTrue, x, y);
+        if (result != null) {
+            return result;
+        }
+        return create(x, y, unorderedIsTrue);
     }
 
     @Override
@@ -74,9 +82,9 @@ public final class FloatLessThanNode extends CompareNode {
     public static class FloatLessThanOp extends CompareOp {
 
         @Override
-        public ValueNode canonical(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth, Condition condition,
+        public LogicNode canonical(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth, Condition condition,
                         boolean unorderedIsTrue, ValueNode forX, ValueNode forY) {
-            ValueNode result = super.canonical(constantReflection, metaAccess, options, smallestCompareWidth, condition, unorderedIsTrue, forX, forY);
+            LogicNode result = super.canonical(constantReflection, metaAccess, options, smallestCompareWidth, condition, unorderedIsTrue, forX, forY);
             if (result != null) {
                 return result;
             }
