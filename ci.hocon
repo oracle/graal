@@ -125,7 +125,6 @@ builds = [
   ${common} ${java8Downloads} {run : [["sh", ".travis.sigtest.sh"]], capabilities : [linux, amd64], targets : [gate], name: "gate-sigtest"},
   ${common} ${java9Downloads} {run : [["mx", "-v", "testgraal"]], capabilities : [linux, amd64], targets : [gate], name: "gate-testgraal9"},
   ${common} ${java8Downloads} {run : [["mx", "-v", "testgraal"]], capabilities : [linux, amd64], targets : [gate], name: "gate-testgraal8"},
-  ${common} ${java8Downloads} {run : [["mx", "-v", "testdownstream", "--repo", "https://github.com/graalvm/truffleruby.git", "--mx-command", "ruby_testdownstream"]], capabilities : [linux, amd64], targets : [post-merge], name: "gate-rubytruffle"},
   ${maven-deploy-dry-run}
   ${common} ${deploy-binary} {capabilities : [linux, amd64], name : "postmerge-deploy-binary-linux-amd64"}
   ${darwin} ${deploy-binary} {capabilities : [darwin, amd64], name : "postmerge-deploy-binary-darwin-amd64"}
