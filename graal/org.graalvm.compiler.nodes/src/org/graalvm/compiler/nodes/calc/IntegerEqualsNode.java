@@ -109,17 +109,31 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
         @Override
         protected LogicNode optimizeNormalizeCompare(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
             PrimitiveConstant primitive = (PrimitiveConstant) constant;
-            if (primitive.getJavaKind() == JavaKind.Int && primitive.asInt() == 0) {
-                ValueNode a = mirrored ? normalizeNode.getY() : normalizeNode.getX();
-                ValueNode b = mirrored ? normalizeNode.getX() : normalizeNode.getY();
+            ValueNode a = normalizeNode.getX();
+            ValueNode b = normalizeNode.getY();
+            long cst = primitive.asLong();
 
+            if (cst == 0) {
                 if (normalizeNode.getX().getStackKind() == JavaKind.Double || normalizeNode.getX().getStackKind() == JavaKind.Float) {
-                    return new FloatEqualsNode(a, b);
+                    return FloatEqualsNode.create(a, b);
                 } else {
-                    return new IntegerEqualsNode(a, b);
+                    return IntegerEqualsNode.create(a, b);
                 }
+            } else if (cst == 1) {
+                if (normalizeNode.getX().getStackKind() == JavaKind.Double || normalizeNode.getX().getStackKind() == JavaKind.Float) {
+                    return FloatLessThanNode.create(b, a, !normalizeNode.isUnorderedLess);
+                } else {
+                    return IntegerLessThanNode.create(b, a);
+                }
+            } else if (cst == -1) {
+                if (normalizeNode.getX().getStackKind() == JavaKind.Double || normalizeNode.getX().getStackKind() == JavaKind.Float) {
+                    return FloatLessThanNode.create(a, b, normalizeNode.isUnorderedLess);
+                } else {
+                    return IntegerLessThanNode.create(a, b);
+                }
+            } else {
+                return LogicConstantNode.contradiction();
             }
-            return null;
         }
 
         @Override
