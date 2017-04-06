@@ -141,12 +141,12 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api",
-        "mx:JMH",
+        "mx:JMH_1_18",
       ],
       "imports" : ["jdk.internal.loader"],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "1.8",
-      "annotationProcessors" : ["mx:JMH"],
+      "annotationProcessors" : ["mx:JMH_1_18"],
       "workingSets" : "API,Truffle,Test",
       "jacoco" : "exclude",
     },
@@ -562,12 +562,12 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.tck",
         "com.oracle.truffle.sl",
-        "mx:JMH",
+        "mx:JMH_1_18",
       ],
       "checkstyle" : "com.oracle.truffle.sl",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,SimpleLanguage,Test",
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR", "mx:JMH"],
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR", "mx:JMH_1_18"],
       "license" : "UPL",
     },
 
@@ -714,7 +714,7 @@ suite = {
       ],
       "exclude" : [
         "mx:JUNIT",
-        "mx:JMH"
+        "mx:JMH_1_18"
       ],
       "distDependencies" : [
           "TRUFFLE_API",
@@ -756,7 +756,7 @@ suite = {
          "com.oracle.truffle.tools.test",
          "com.oracle.truffle.nfi.test",
        ],
-       "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH"],
+       "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_18"],
        "distDependencies" : [
          "TRUFFLE_API",
          "TRUFFLE_NFI",
