@@ -22,7 +22,7 @@
  */
 package org.graalvm.compiler.hotspot.replacements;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_4;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -54,7 +54,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Read {@code Klass::_layout_helper} and incorporate any useful stamp information based on any type
  * information in {@code klass}.
  */
-@NodeInfo(cycles = CYCLES_4, size = SIZE_1)
+@NodeInfo(cycles = CYCLES_1, size = SIZE_1)
 public final class KlassLayoutHelperNode extends FloatingNode implements Canonicalizable, Lowerable {
 
     public static final NodeClass<KlassLayoutHelperNode> TYPE = NodeClass.create(KlassLayoutHelperNode.class);

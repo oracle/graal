@@ -138,8 +138,7 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
                         boolean multiUsage = (convertX.asNode().hasMoreThanOneUsage() || convertY.asNode().hasMoreThanOneUsage());
                         if ((forX instanceof ZeroExtendNode || forX instanceof SignExtendNode) && multiUsage) {
                             // Do not perform for zero or sign extend if there are multiple usages
-                            // of
-                            // the value.
+                            // of the value.
                             return null;
                         }
                         return duplicateModified(convertX.getValue(), convertY.getValue(), unorderedIsTrue);
