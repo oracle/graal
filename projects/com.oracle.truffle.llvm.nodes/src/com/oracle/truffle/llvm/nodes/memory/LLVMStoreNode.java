@@ -565,7 +565,7 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
         @Specialization
         public Object executeLLVMBoxedPrimitive(LLVMBoxedPrimitive value) {
-            descriptor.storeLLVMAddress(LLVMAddress.fromLong((long) toLLVM.executeWithTarget(value.getValue())));
+            descriptor.storeTruffleObject(value);
             return null;
         }
 

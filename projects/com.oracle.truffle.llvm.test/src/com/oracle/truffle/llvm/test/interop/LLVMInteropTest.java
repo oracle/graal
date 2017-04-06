@@ -811,6 +811,20 @@ public final class LLVMInteropTest {
     }
 
     @Test
+    public void test069() {
+        Runner runner = new Runner("interop069");
+        runner.export(42, "a");
+        runner.run();
+        try {
+            Value globalSymbol = runner.findGlobalSymbol("registered_tagged_address");
+            Object result = globalSymbol.execute().get();
+            Assert.assertTrue(result instanceof Integer && (int) result == 42);
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    @Test
     public void testStrlen() throws Exception {
         Runner runner = new Runner("strlen");
         try {
