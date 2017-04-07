@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.listeners.function;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.llvm.parser.listeners.IRVersionController;
@@ -66,6 +67,8 @@ public abstract class Function implements ParserListener {
     private final int mode;
 
     protected InstructionBlock code;
+
+    private final List<Integer> implicitIndices = new ArrayList<>();
 
     Function(IRVersionController version, Types types, List<Type> symbols, FunctionGenerator generator, int mode) {
         this.version = version;
@@ -309,8 +312,16 @@ public abstract class Function implements ParserListener {
 
         final Type type = findCmpxchgResultType(((PointerType) ptrType).getPointeeType());
 
-        code.createCompareExchange(type, ptr, cmp, replace, isVolatile, successOrdering, synchronizationScope, failureOrdering, addExtractValue, isWeak);
+        code.createCompareExchange(type, ptr, cmp, replace, isVolatile, successOrdering, synchronizationScope, failureOrdering, isWeak);
         symbols.add(type);
+
+        if (addExtractValue) {
+            // in older llvm versions cmpxchg just returned the new value at the pointer, to emulate
+            // this we have to add an extractelvalue instruction. llvm does the same thing
+            createExtractValue(new long[]{1, 0});
+            implicitIndices.add(symbols.size() - 1); // register the implicit index
+            LLVMLogger.info("cmpxchg implicitly inserted an extractelement instruction.");
+        }
     }
 
     private static final int CMPXCHG_TYPE_LENGTH = 2;
@@ -654,9 +665,9 @@ public abstract class Function implements ParserListener {
 
     protected int getIndex(long index) {
         if (mode == 0) {
-            return getIndexV0(index);
+            return getIndexAbsolute(index);
         } else {
-            return getIndexV1(index);
+            return getIndexRelative(index);
         }
     }
 
@@ -672,11 +683,19 @@ public abstract class Function implements ParserListener {
         return indices;
     }
 
-    protected int getIndexV0(long index) {
-        return (int) index;
+    protected int getIndexAbsolute(long index) {
+        long actualIndex = index;
+        for (int i = 0; i < implicitIndices.size() && implicitIndices.get(i) <= actualIndex; i++) {
+            actualIndex++;
+        }
+        return (int) actualIndex;
     }
 
-    protected int getIndexV1(long index) {
-        return symbols.size() - (int) index;
+    protected int getIndexRelative(long index) {
+        long actualIndex = symbols.size() - index;
+        for (int i = implicitIndices.size() - 1; i >= 0 && implicitIndices.get(i) > actualIndex; i--) {
+            actualIndex--;
+        }
+        return (int) actualIndex;
     }
 }

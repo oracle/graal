@@ -130,12 +130,8 @@ public final class InstructionBlock implements ValueSymbol {
         }
     }
 
-    public void createCompareExchange(Type type, int ptr, int cmp, int replace, boolean isVolatile, long successOrdering, long synchronizationScope, long failureOrdering, boolean addExtractValue,
-                    boolean isWeak) {
+    public void createCompareExchange(Type type, int ptr, int cmp, int replace, boolean isVolatile, long successOrdering, long synchronizationScope, long failureOrdering, boolean isWeak) {
         addInstruction(CompareExchangeInstruction.fromSymbols(function.getSymbols(), type, ptr, cmp, replace, isVolatile, successOrdering, synchronizationScope, failureOrdering, isWeak));
-        if (addExtractValue) {
-            throw new UnsupportedOperationException("CMPXCHG must return a struct! The old behaviour of returning the value is not supported!");
-        }
     }
 
     public void createInvoke(Type type, int target, int[] arguments, long visibility, long linkage, int regularSuccessorBlock, int unwindSuccessorBlock) {
