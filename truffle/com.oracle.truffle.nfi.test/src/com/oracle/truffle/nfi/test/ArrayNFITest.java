@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -33,6 +34,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
+import com.oracle.truffle.tck.TruffleRunner;
+import com.oracle.truffle.tck.TruffleRunner.Inject;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -42,9 +45,11 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
+@Parameterized.UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
 public class ArrayNFITest extends NFITest {
 
     @Parameters(name = "{0}, {1}")
@@ -67,9 +72,12 @@ public class ArrayNFITest extends NFITest {
         return ret;
     }
 
-    private static class CreateAndSumArray extends TestRootNode {
+    @Parameter(0) public NativeSimpleType nativeType;
+    @Parameter(1) public Class<?> javaType;
 
-        private final Class<?> javaType;
+    public class CreateAndSumArray extends NFITestRootNode {
+
+        private final Class<?> finalJavaType;
 
         private final TruffleObject store;
         private final TruffleObject sum;
@@ -77,8 +85,8 @@ public class ArrayNFITest extends NFITest {
         @Child Node executeStore = Message.createExecute(3).createNode();
         @Child Node executeSum = Message.createExecute(2).createNode();
 
-        CreateAndSumArray(NativeSimpleType nativeType, Class<?> javaType) {
-            this.javaType = javaType;
+        public CreateAndSumArray() {
+            this.finalJavaType = javaType;
             this.store = lookupAndBind("store_" + nativeType, String.format("([%s], uint32, %s) : void", nativeType, nativeType));
             this.sum = lookupAndBind("sum_" + nativeType, String.format("([%s], uint32) : %s", nativeType, nativeType));
         }
@@ -88,7 +96,7 @@ public class ArrayNFITest extends NFITest {
             int length = Array.getLength(array);
             for (int i = 0; i < length; i++) {
                 Object elem = Array.get(array, i);
-                Assert.assertThat("array element", elem, is(instanceOf(javaType)));
+                Assert.assertThat("array element", elem, is(instanceOf(finalJavaType)));
                 long actual = 0;
                 long expected = i + 1;
                 if (elem instanceof Number) {
@@ -110,7 +118,7 @@ public class ArrayNFITest extends NFITest {
         public Object executeTest(VirtualFrame frame) {
             int arrayLength = (Integer) frame.getArguments()[0];
 
-            Object array = Array.newInstance(javaType, arrayLength);
+            Object array = Array.newInstance(finalJavaType, arrayLength);
             TruffleObject wrappedArray = JavaInterop.asTruffleObject(array);
 
             try {
@@ -125,16 +133,10 @@ public class ArrayNFITest extends NFITest {
         }
     }
 
-    private final CreateAndSumArray createAndSum;
-
-    public ArrayNFITest(NativeSimpleType nativeType, Class<?> javaType) {
-        createAndSum = new CreateAndSumArray(nativeType, javaType);
-    }
-
     @Test
-    public void testSumArray() {
+    public void testSumArray(@Inject(CreateAndSumArray.class) CallTarget callTarget) {
         int arrayLength = 5;
-        Object ret = run(createAndSum, arrayLength);
+        Object ret = callTarget.call(arrayLength);
         Assert.assertThat("return value", ret, is(instanceOf(Number.class)));
         Assert.assertEquals("return value", arrayLength * (arrayLength + 1) / 2, ((Number) ret).intValue());
     }

@@ -80,9 +80,9 @@ public class NFITest {
         }
     }
 
-    protected abstract static class TestRootNode extends RootNode {
+    protected abstract static class NFITestRootNode extends RootNode {
 
-        protected TestRootNode() {
+        protected NFITestRootNode() {
             super(null);
         }
 
@@ -104,13 +104,17 @@ public class NFITest {
         public abstract Object executeTest(VirtualFrame frame) throws InteropException;
     }
 
-    private static final class SendExecuteNode extends TestRootNode {
+    protected static class SendExecuteNode extends NFITestRootNode {
 
         private final TruffleObject receiver;
 
         @Child Node execute;
 
-        private SendExecuteNode(TruffleObject receiver, int argCount) {
+        protected SendExecuteNode(String symbol, String signature, int argCount) {
+            this(lookupAndBind(symbol, signature), argCount);
+        }
+
+        protected SendExecuteNode(TruffleObject receiver, int argCount) {
             this.receiver = receiver;
             execute = Message.createExecute(argCount).createNode();
         }
@@ -127,15 +131,5 @@ public class NFITest {
 
     protected static TruffleObject lookupAndBind(TruffleObject library, String name, String signature) {
         return (TruffleObject) lookupAndBind.call(library, name, signature);
-    }
-
-    protected Object run(RootNode node, Object... arguments) {
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(node);
-        return callTarget.call(arguments);
-    }
-
-    protected Object sendExecute(TruffleObject receiver, Object... arguments) {
-        SendExecuteNode sendExecute = new SendExecuteNode(receiver, arguments.length);
-        return run(sendExecute, arguments);
     }
 }

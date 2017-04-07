@@ -517,6 +517,7 @@ suite = {
       "dependencies" : [
         "mx:JUNIT",
         "TRUFFLE_NFI",
+        "TRUFFLE_TCK",
       ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.8",
