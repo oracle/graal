@@ -65,4 +65,24 @@ public enum AtomicOrdering {
         }
         return SEQUENTIALLY_CONSISTENT;
     }
+
+    public static AtomicOrdering getOrStrongestFailureOrdering(long id, AtomicOrdering successOrdering) {
+        for (AtomicOrdering atomicOrdering : values()) {
+            if (atomicOrdering.getEncodedValue() == id) {
+                return atomicOrdering;
+            }
+        }
+        switch (successOrdering) {
+            case RELEASE:
+            case MONOTONIC:
+                return MONOTONIC;
+            case ACQUIRE_RELEASE:
+            case ACQUIRE:
+                return ACQUIRE;
+            case SEQUENTIALLY_CONSISTENT:
+                return SEQUENTIALLY_CONSISTENT;
+            default:
+                throw new AssertionError("Invalid SuccessOrdering: " + successOrdering);
+        }
+    }
 }

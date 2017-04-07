@@ -1128,7 +1128,6 @@ gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/920908-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/pr30185.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/zerolen-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/20051113-1.c
-gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/991014-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/strct-varg-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/931004-14.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/931004-6.c

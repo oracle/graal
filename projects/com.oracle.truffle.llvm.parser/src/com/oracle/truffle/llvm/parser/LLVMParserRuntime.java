@@ -62,7 +62,6 @@ import com.oracle.truffle.llvm.parser.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.ArrayConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.StructureConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolResolver;
@@ -421,10 +420,6 @@ public final class LLVMParserRuntime {
         @Override
         public void visitValueInstruction(ValueInstruction valueInstruction) {
             nameToTypeMapping.put(valueInstruction.getName(), valueInstruction.getType());
-        }
-
-        @Override
-        public void visit(VoidInvokeInstruction call) {
         }
     };
 

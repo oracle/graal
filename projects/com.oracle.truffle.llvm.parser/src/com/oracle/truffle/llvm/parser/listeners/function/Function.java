@@ -37,6 +37,7 @@ import com.oracle.truffle.llvm.parser.listeners.Types;
 import com.oracle.truffle.llvm.parser.listeners.ValueSymbolTable;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.generators.FunctionGenerator;
+import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
 import com.oracle.truffle.llvm.parser.records.FunctionRecord;
 import com.oracle.truffle.llvm.parser.records.Records;
 import com.oracle.truffle.llvm.parser.scanner.Block;
@@ -273,9 +274,62 @@ public abstract class Function implements ParserListener {
                 createAtomicStore(args);
                 break;
 
+            case CMPXCHG_OLD:
+            case CMPXCHG:
+                createCompareExchange(args, record);
+                break;
+
             default:
                 throw new UnsupportedOperationException("Unsupported Record: " + record);
         }
+    }
+
+    private void createCompareExchange(long[] args, FunctionRecord record) {
+        final Symbols functionSymbols = code.getFunctionSymbols();
+        int i = 0;
+
+        final Type ptrType;
+        final int ptr = getIndex(args[i]);
+        if (ptr >= functionSymbols.getSize()) {
+            ptrType = types.get(args[++i]);
+        } else {
+            ptrType = symbols.get(ptr);
+        }
+        final int cmp = getIndex(args[++i]);
+        if (record == FunctionRecord.CMPXCHG && cmp >= functionSymbols.getSize()) {
+            ++i; // type of cmp
+        }
+        final int replace = getIndex(args[++i]);
+        final boolean isVolatile = args[i] != 0; // no incrementing i here, this is what llvm does,
+                                                 // but why?
+        final long successOrdering = args[++i];
+        final long synchronizationScope = args[++i];
+        final long failureOrdering = i < args.length ? args[++i] : -1L;
+        final boolean addExtractValue = i >= args.length;
+        final boolean isWeak = addExtractValue || (args[++i] != 0);
+
+        final Type type = findCmpxchgResultType(((PointerType) ptrType).getPointeeType());
+
+        code.createCompareExchange(type, ptr, cmp, replace, isVolatile, successOrdering, synchronizationScope, failureOrdering, addExtractValue, isWeak);
+    }
+
+    private static final int CMPXCHG_TYPE_LENGTH = 2;
+    private static final int CMPXCHG_TYPE_ELEMENTTYPE = 0;
+    private static final int CMPXCHG_TYPE_BOOLTYPE = 1;
+
+    private Type findCmpxchgResultType(Type elementType) {
+        // cmpxchg is the only instruction that does not directly reference its return type in the
+        // type table
+        for (Type t : types) {
+            if (t != null && t instanceof StructureType) {
+                final Type[] elts = ((StructureType) t).getElementTypes();
+                if (elts.length == CMPXCHG_TYPE_LENGTH && elementType == elts[CMPXCHG_TYPE_ELEMENTTYPE] && PrimitiveType.I1 == elts[CMPXCHG_TYPE_BOOLTYPE]) {
+                    return t;
+                }
+            }
+        }
+        // the type may not exist if the value is not being used
+        return new StructureType(true, new Type[]{elementType, PrimitiveType.I1});
     }
 
     private void createAtomicStore(long[] args) {
@@ -392,11 +446,16 @@ public abstract class Function implements ParserListener {
     private void createGetElementPointer(long[] args) {
         int i = 0;
         boolean isInbounds = args[i++] != 0;
-        i++; // Unused parameter
+        i++; // we do not use this parameter
         int pointer = getIndex(args[i++]);
+        Type base;
+        if (pointer < symbols.size()) {
+            base = symbols.get(pointer);
+        } else {
+            base = types.get(args[i++]);
+        }
         int[] indices = getIndices(args, i);
-
-        Type type = new PointerType(getElementPointerType(symbols.get(pointer), indices));
+        Type type = new PointerType(getElementPointerType(base, indices));
 
         code.createGetElementPointer(
                         type,

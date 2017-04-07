@@ -307,16 +307,22 @@ public final class LLVMIVarBit {
     }
 
     private static LLVMIVarBit asIVar(int bitSize, BigInteger result) {
-        int i = Math.max(Byte.BYTES, bitSize / Byte.SIZE);
-        byte[] newArr = new byte[i];
+        int destSize = Math.max(Byte.BYTES, bitSize / Byte.SIZE);
+        byte[] newArr = new byte[destSize];
         byte[] bigIntArr = result.toByteArray();
-        if (bigIntArr.length == newArr.length + 1) {
-            System.arraycopy(bigIntArr, 1, newArr, 0, newArr.length);
+
+        if (newArr.length > bigIntArr.length) {
+            int diff = newArr.length - bigIntArr.length;
+            for (int j = diff; j < newArr.length; j++) {
+                newArr[j] = bigIntArr[j - diff];
+            }
+            for (int j = 0; j < diff; j++) {
+                newArr[j] = bigIntArr[0] < 0 ? (byte) -1 : 0;
+            }
         } else {
-            int destPos = newArr.length - bigIntArr.length;
-            System.arraycopy(bigIntArr, 0, newArr, destPos, bigIntArr.length);
-            if (bigIntArr[0] < 0) {
-                Arrays.fill(newArr, 0, destPos, (byte) -1);
+            int diff = bigIntArr.length - newArr.length;
+            for (int j = 0; j < newArr.length; j++) {
+                newArr[j] = bigIntArr[j + diff];
             }
         }
         return new LLVMIVarBit(bitSize, newArr);
@@ -334,6 +340,11 @@ public final class LLVMIVarBit {
     public LLVMIVarBit arithmeticRightShift(LLVMIVarBit right) {
         BigInteger result = bigInt().shiftRight(right.getIntValue());
         return asIVar(result);
+    }
+
+    @TruffleBoundary
+    public int signedCompare(LLVMIVarBit other) {
+        return bigInt().compareTo(other.bigInt());
     }
 
 }

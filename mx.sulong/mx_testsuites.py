@@ -132,9 +132,8 @@ def runGCCSuite(vmArgs):
 
 def runGCCSuite38(vmArgs):
     """runs the LLVM test suite"""
-    mx_sulong.ensureDragonEggExists()
     compileSuite(['gcc38'])
-    return run38(vmArgs, "com.oracle.truffle.llvm.test.alpha.GCCSuite")
+    return run38(vmArgs + ['-Dsulong.IgnoreFortran=true'], "com.oracle.truffle.llvm.test.alpha.GCCSuite")
 
 def compileInteropTests():
     print("Compiling Interop with clang -O0 and mem2reg", end='')
@@ -242,9 +241,7 @@ def compileV38GCCSuite():
     ensureGCCSuiteExists()
     excludes = mx_tools.collectExcludePattern(os.path.join(_gccSuiteDir, "configs/"))
     print("Compiling GCC Suite reference executables ", end='')
-    mx_tools.printProgress(mx_tools.multicompileRefFolder(_gccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_CPP_V38, mx_tools.Tool.CLANG_C_V38, mx_tools.Tool.GFORTRAN], ['-Iinclude'], excludes=excludes))
-    print("Compiling GCC files with GFORTRAN ", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_gccSuiteDir, _cacheDir, [mx_tools.Tool.GFORTRAN], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
+    mx_tools.printProgress(mx_tools.multicompileRefFolder(_gccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_CPP_V38, mx_tools.Tool.CLANG_C_V38], ['-Iinclude'], excludes=excludes))
     print("Compiling GCC files with CPP ", end='')
     mx_tools.printProgress(mx_tools.multicompileFolder(_gccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_CPP_V38], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, optimizers=[mx_tools.Tool.CPP_OPT_V38], excludes=excludes))
     print("Compiling GCC files with C ", end='')

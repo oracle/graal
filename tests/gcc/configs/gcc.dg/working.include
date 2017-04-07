@@ -125,7 +125,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/pr55236.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr55023.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr64309.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/strlenopt-12.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/dll-8.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/Wdeclaration-after-statement-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pragma-darwin.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/fshort-wchar.c
@@ -187,7 +186,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/pr32912-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/20020607-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/20030414-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/20040331-1.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/vla-15.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/c99-init-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr61220.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr58981.c
@@ -196,7 +194,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/packed-array.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pack-test-4.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pubtypes-4.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/c90-scope-1.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/pr60797.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/typename-vla-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr56997-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pragma-init-fini.c

@@ -61,6 +61,7 @@ import com.oracle.truffle.llvm.nodes.cast.LLVMVectorToVectorNodeFactory.LLVMAnyV
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
@@ -110,6 +111,8 @@ final class LLVMCastsFactory {
             return factory.castFromFunctionPointer(fromNode);
         } else if (fromType instanceof PointerType) {
             return factory.castFromPointer(fromNode);
+        } else if (fromType instanceof StructureType) {
+            return factory.castFromPointer(fromNode);
         } else {
             throw new AssertionError(fromType + " ==> " + factory.targetType);
         }
@@ -152,6 +155,8 @@ final class LLVMCastsFactory {
         if (hasJavaCastSemantics()) {
             if (targetType == PrimitiveType.I8) {
                 return LLVMToI8NoZeroExtNodeGen.create(fromNode);
+            } else if (targetType == PrimitiveType.I16) {
+                return LLVMToI16NoZeroExtNodeGen.create(fromNode);
             } else if (targetType == PrimitiveType.I32) {
                 return LLVMToI32NoZeroExtNodeGen.create(fromNode);
             } else if (targetType == PrimitiveType.I64) {
@@ -176,19 +181,25 @@ final class LLVMCastsFactory {
         if (targetType == PrimitiveType.X86_FP80) {
             return fromNode;
         }
-        switch (((PrimitiveType) targetType).getPrimitiveKind()) {
-            case I8:
-                return LLVMToI8NoZeroExtNodeGen.create(fromNode);
-            case I32:
-                return LLVMToI32NoZeroExtNodeGen.create(fromNode);
-            case I64:
-                return LLVMToI64NoZeroExtNodeGen.create(fromNode);
-            case DOUBLE:
-                return LLVMToDoubleNoZeroExtNodeGen.create(fromNode);
-            case FLOAT:
-                return LLVMToFloatNoZeroExtNodeGen.create(fromNode);
-            default:
-                throw new AssertionError(targetType);
+        if (targetType instanceof VariableBitWidthType) {
+            return LLVMToIVarNoZeroExtNodeGen.create(fromNode, targetType.getBitSize());
+        } else if (targetType instanceof PrimitiveType) {
+            switch (((PrimitiveType) targetType).getPrimitiveKind()) {
+                case I8:
+                    return LLVMToI8NoZeroExtNodeGen.create(fromNode);
+                case I32:
+                    return LLVMToI32NoZeroExtNodeGen.create(fromNode);
+                case I64:
+                    return LLVMToI64NoZeroExtNodeGen.create(fromNode);
+                case DOUBLE:
+                    return LLVMToDoubleNoZeroExtNodeGen.create(fromNode);
+                case FLOAT:
+                    return LLVMToFloatNoZeroExtNodeGen.create(fromNode);
+                default:
+                    throw new AssertionError(targetType);
+            }
+        } else {
+            throw new AssertionError(targetType);
         }
     }
 

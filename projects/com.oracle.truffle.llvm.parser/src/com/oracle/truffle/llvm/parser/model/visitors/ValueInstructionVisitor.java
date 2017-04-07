@@ -31,34 +31,24 @@ package com.oracle.truffle.llvm.parser.model.visitors;
 
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.AllocateInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.BinaryOperationInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.BranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CastInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareExchangeInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.ConditionalBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractElementInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.GetElementPointerInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.IndirectBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.InsertElementInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.InsertValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.InvokeInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.LandingpadInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.LoadInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.PhiInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.ResumeInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.ReturnInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SelectInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ShuffleVectorInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.StoreInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchOldInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
 
-public abstract class ValueInstructionVisitor implements InstructionVisitor {
+public abstract class ValueInstructionVisitor implements InstructionVisitorAdapter {
 
     public abstract void visitValueInstruction(ValueInstruction valueInstruction);
 
@@ -70,10 +60,6 @@ public abstract class ValueInstructionVisitor implements InstructionVisitor {
     @Override
     public void visit(BinaryOperationInstruction operation) {
         visitValueInstruction(operation);
-    }
-
-    @Override
-    public void visit(BranchInstruction branch) {
     }
 
     @Override
@@ -102,10 +88,6 @@ public abstract class ValueInstructionVisitor implements InstructionVisitor {
     }
 
     @Override
-    public void visit(ConditionalBranchInstruction branch) {
-    }
-
-    @Override
     public void visit(ExtractElementInstruction extract) {
         visitValueInstruction(extract);
     }
@@ -118,10 +100,6 @@ public abstract class ValueInstructionVisitor implements InstructionVisitor {
     @Override
     public void visit(GetElementPointerInstruction gep) {
         visitValueInstruction(gep);
-    }
-
-    @Override
-    public void visit(IndirectBranchInstruction branch) {
     }
 
     @Override
@@ -145,14 +123,6 @@ public abstract class ValueInstructionVisitor implements InstructionVisitor {
     }
 
     @Override
-    public void visit(ReturnInstruction ret) {
-    }
-
-    @Override
-    public void visit(ResumeInstruction resume) {
-    }
-
-    @Override
     public void visit(SelectInstruction select) {
         visitValueInstruction(select);
     }
@@ -163,27 +133,7 @@ public abstract class ValueInstructionVisitor implements InstructionVisitor {
     }
 
     @Override
-    public void visit(StoreInstruction store) {
+    public void visit(CompareExchangeInstruction cmpxchg) {
+        visitValueInstruction(cmpxchg);
     }
-
-    @Override
-    public void visit(SwitchInstruction select) {
-    }
-
-    @Override
-    public void visit(SwitchOldInstruction select) {
-    }
-
-    @Override
-    public void visit(UnreachableInstruction unreachable) {
-    }
-
-    @Override
-    public void visit(VoidCallInstruction call) {
-    }
-
-    @Override
-    public void visit(VoidInvokeInstruction call) {
-    }
-
 }

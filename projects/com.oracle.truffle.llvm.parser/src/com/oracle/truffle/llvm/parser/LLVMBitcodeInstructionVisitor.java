@@ -51,6 +51,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.BinaryOperation
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.BranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CastInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareExchangeInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ConditionalBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractElementInstruction;
@@ -87,6 +88,7 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
@@ -143,7 +145,11 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         if (count instanceof NullConstant) {
             result = factoryFacade.createAlloc(runtime, type, size, alignment, null, null);
         } else if (count instanceof IntegerConstant) {
-            result = factoryFacade.createAlloc(runtime, type, size * (int) ((IntegerConstant) count).getValue(), alignment, null, null);
+            if (type instanceof VariableBitWidthType) {
+                result = factoryFacade.createAlloc(runtime, type, size * (int) ((IntegerConstant) count).getValue(), alignment, null, null);
+            } else {
+                result = factoryFacade.createAlloc(runtime, type, size * (int) ((IntegerConstant) count).getValue(), alignment, null, null);
+            }
         } else {
             LLVMExpressionNode num = symbols.resolve(count);
             result = factoryFacade.createAlloc(runtime, type, size, alignment, count.getType(), num);
@@ -244,6 +250,16 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     public void visit(ResumeInstruction resumeInstruction) {
         LLVMControlFlowNode resume = factoryFacade.createResumeInstruction(runtime, method.getExceptionSlot());
         method.addTerminatingInstruction(resume, block.getBlockIndex(), block.getName());
+    }
+
+    @Override
+    public void visit(CompareExchangeInstruction cmpxchg) {
+        final LLVMExpressionNode ptrNode = symbols.resolve(cmpxchg.getPtr());
+        final LLVMExpressionNode cmpNode = symbols.resolve(cmpxchg.getCmp());
+        final LLVMExpressionNode newNode = symbols.resolve(cmpxchg.getReplace());
+        final Type elementType = cmpxchg.getCmp().getType();
+
+        createFrameWrite(factoryFacade.createCompareExchangeInstruction(runtime, cmpxchg.getType(), elementType, ptrNode, cmpNode, newNode), cmpxchg);
     }
 
     @Override
@@ -510,7 +526,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(ExtractValueInstruction extract) {
-        if (!(extract.getAggregate().getType() instanceof ArrayType || extract.getAggregate().getType() instanceof StructureType)) {
+        if (!(extract.getAggregate().getType() instanceof ArrayType || extract.getAggregate().getType() instanceof StructureType || extract.getAggregate().getType() instanceof PointerType)) {
             throw new IllegalStateException("\'extractvalue\' can only extract elements of arrays and structs!");
         }
         final LLVMExpressionNode baseAddress = symbols.resolve(extract.getAggregate());

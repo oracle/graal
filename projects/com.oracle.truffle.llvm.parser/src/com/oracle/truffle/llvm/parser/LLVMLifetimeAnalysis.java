@@ -48,6 +48,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.BinaryOperation
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.BranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CastInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareExchangeInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ConditionalBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractElementInstruction;
@@ -272,6 +273,13 @@ public final class LLVMLifetimeAnalysis {
                     if (resume.getValue() != null) {
                         resolve(resume.getValue());
                     }
+                }
+
+                @Override
+                public void visit(CompareExchangeInstruction cmpxchg) {
+                    resolve(cmpxchg.getPtr());
+                    resolve(cmpxchg.getCmp());
+                    resolve(cmpxchg.getReplace());
                 }
 
                 @Override

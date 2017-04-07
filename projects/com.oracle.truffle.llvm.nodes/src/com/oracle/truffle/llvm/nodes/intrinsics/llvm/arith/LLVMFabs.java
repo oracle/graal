@@ -27,21 +27,20 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.test.options;
+package com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith;
 
-import com.oracle.truffle.llvm.option.Option;
-import com.oracle.truffle.llvm.option.OptionCategory;
+import com.oracle.truffle.api.dsl.GenerateNodeFactory;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 
-@OptionCategory(name = "Test Options")
-abstract class TestOptions {
-    @Option(commandLineName = "LifetimeTestsGenerateReferenceOutput", help = "Generate the reference output file for the lifetime test cases based on the current version of the lifetime analysis.", name = "generateLifetimeReferenceOutput") //
-    protected static final Boolean LIFETIME_TEST_GENERATE_REFERENCE_OUTPUT = false;
+@GenerateNodeFactory
+@NodeChildren({@NodeChild(value = "val")})
+public abstract class LLVMFabs extends LLVMExpressionNode {
 
-    @Option(commandLineName = "IgnoreFortran", help = "Ignores all Fortran tests.", name = "ignoreFortran") //
-    protected static final Boolean IGNORE_FORTRAN = false;
-
-    @Option(commandLineName = "TestDiscoveryPath", help = "Looks for newly supported test cases in the specified path. E.g., when executing the GCC test cases you can use /gcc.c-torture/execute to discover newly working torture test cases.", //
-                    name = "testDiscoveryPath") //
-    protected static final String TEST_DISCOVERY_PATH = null;
-
+    @Specialization
+    public double doDouble(double val) {
+        return Math.abs(val);
+    }
 }

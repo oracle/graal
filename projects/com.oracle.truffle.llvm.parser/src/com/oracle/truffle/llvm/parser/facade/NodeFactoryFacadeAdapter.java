@@ -350,4 +350,10 @@ public class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
                     FrameSlot exceptionValueSlot, int normalIndex, int unwindIndex, LLVMExpressionNode[] normalPhiWriteNodes, LLVMExpressionNode[] unwindPhiWriteNodes) {
         return null;
     }
+
+    @Override
+    public LLVMExpressionNode createCompareExchangeInstruction(LLVMParserRuntime runtime, Type returnType, Type elementType, LLVMExpressionNode ptrNode, LLVMExpressionNode cmpNode,
+                    LLVMExpressionNode newNode) {
+        return null;
+    }
 }

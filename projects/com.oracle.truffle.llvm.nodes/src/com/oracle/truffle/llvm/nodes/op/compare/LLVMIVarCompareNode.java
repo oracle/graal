@@ -27,21 +27,43 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.test.options;
+package com.oracle.truffle.llvm.nodes.op.compare;
 
-import com.oracle.truffle.llvm.option.Option;
-import com.oracle.truffle.llvm.option.OptionCategory;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 
-@OptionCategory(name = "Test Options")
-abstract class TestOptions {
-    @Option(commandLineName = "LifetimeTestsGenerateReferenceOutput", help = "Generate the reference output file for the lifetime test cases based on the current version of the lifetime analysis.", name = "generateLifetimeReferenceOutput") //
-    protected static final Boolean LIFETIME_TEST_GENERATE_REFERENCE_OUTPUT = false;
+@NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+public abstract class LLVMIVarCompareNode extends LLVMExpressionNode {
 
-    @Option(commandLineName = "IgnoreFortran", help = "Ignores all Fortran tests.", name = "ignoreFortran") //
-    protected static final Boolean IGNORE_FORTRAN = false;
+    public abstract static class LLVMIVarSignedLessThanNode extends LLVMIVarCompareNode {
+        @Specialization
+        public boolean executeI1(LLVMIVarBit val1, LLVMIVarBit val2) {
+            return val1.signedCompare(val2) < 0;
+        }
+    }
 
-    @Option(commandLineName = "TestDiscoveryPath", help = "Looks for newly supported test cases in the specified path. E.g., when executing the GCC test cases you can use /gcc.c-torture/execute to discover newly working torture test cases.", //
-                    name = "testDiscoveryPath") //
-    protected static final String TEST_DISCOVERY_PATH = null;
+    public abstract static class LLVMIVarSignedLessOrEqualNode extends LLVMIVarCompareNode {
+        @Specialization
+        public boolean executeI1(LLVMIVarBit val1, LLVMIVarBit val2) {
+            return val1.signedCompare(val2) <= 0;
+        }
+    }
+
+    public abstract static class LLVMIVarSignedGreaterThanNode extends LLVMIVarCompareNode {
+        @Specialization
+        public boolean executeI1(LLVMIVarBit val1, LLVMIVarBit val2) {
+            return val1.signedCompare(val2) > 0;
+        }
+    }
+
+    public abstract static class LLVMIVarSignedGreaterOrEqualNode extends LLVMIVarCompareNode {
+        @Specialization
+        public boolean executeI1(LLVMIVarBit val1, LLVMIVarBit val2) {
+            return val1.signedCompare(val2) >= 0;
+        }
+    }
 
 }

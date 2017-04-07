@@ -66,10 +66,14 @@ import com.oracle.truffle.llvm.nodes.func.LLVMInlineAssemblyRootNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMLandingpadNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMResumeNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMFreeFactory;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexDiv;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexDivSC;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexMul;
 import com.oracle.truffle.llvm.nodes.literals.LLVMFunctionLiteralNode;
 import com.oracle.truffle.llvm.nodes.literals.LLVMFunctionLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAddressZeroNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstruction.LLVMAllocaInstruction;
+import com.oracle.truffle.llvm.nodes.memory.LLVMCompareExchangeNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNode.LLVMAddressArrayLiteralNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMStaticInitsBlockNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnreachableNode;
@@ -531,6 +535,18 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
             return LLVMExceptionIntrinsicFactory.create(name, argNodes, numberOfExplicitArguments, runtime, exceptionValueSlot);
         } else if (name.startsWith("@truffle")) {
             return LLVMTruffleIntrinsicFactory.create(name, argNodes);
+        } else if (name.startsWith("@__divdc3")) {
+            // TODO: __divdc3 returns a struct by value, which TNI does not yet support - we
+            // substitute for now
+            return new LLVMComplexDiv(argNodes[1], argNodes[2], argNodes[3], argNodes[4], argNodes[5]);
+        } else if (name.startsWith("@__muldc3")) {
+            // TODO: __muldc3 returns a struct by value, which TNI does not yet support - we
+            // substitute for now
+            return new LLVMComplexMul(argNodes[1], argNodes[2], argNodes[3], argNodes[4], argNodes[5]);
+        } else if (name.startsWith("@__divsc3")) {
+            // TODO: __divsc3 returns a struct by value, which TNI does not yet support - we
+            // substitute for now
+            return new LLVMComplexDivSC(argNodes[0], argNodes[1], argNodes[2], argNodes[3], argNodes[4]);
         } else {
             return null;
         }
@@ -578,4 +594,9 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
         return new LLVMResumeNode(exceptionSlot);
     }
 
+    @Override
+    public LLVMExpressionNode createCompareExchangeInstruction(LLVMParserRuntime runtime, Type returnType, Type elementType, LLVMExpressionNode ptrNode, LLVMExpressionNode cmpNode,
+                    LLVMExpressionNode newNode) {
+        return LLVMCompareExchangeNodeGen.create(ptrNode, cmpNode, newNode);
+    }
 }

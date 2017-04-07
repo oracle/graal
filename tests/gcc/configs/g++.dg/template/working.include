@@ -61,7 +61,6 @@ gcc-5.2.0/gcc/testsuite/g++.dg/template/partial1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/conv2.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/typedef34.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/qualttp13.C
-gcc-5.2.0/gcc/testsuite/g++.dg/template/spec26.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/ttp2.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/template-id-1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/partial10.C
@@ -92,7 +91,6 @@ gcc-5.2.0/gcc/testsuite/g++.dg/template/pretty1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/memfriend5.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/sfinae25.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/inherit.C
-gcc-5.2.0/gcc/testsuite/g++.dg/template/partial7.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/qualttp14.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/qualttp17.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/call1.C
@@ -130,5 +128,4 @@ gcc-5.2.0/gcc/testsuite/g++.dg/template/non-dependent1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/crash85.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/explicit-args4.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/friend53.C
-gcc-5.2.0/gcc/testsuite/g++.dg/template/bitfield2.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/pr23510.C

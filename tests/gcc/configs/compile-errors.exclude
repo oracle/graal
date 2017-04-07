@@ -16359,6 +16359,7 @@ gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/module_init_1.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/pr32140.f90
 gcc-5.2.0/gcc/testsuite/gfortran.dg/dummy_procedure_3.f90
 gcc-5.2.0/gcc/testsuite/g++.dg/other/pr55650.C
+gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/variadic103.C
 gcc-5.2.0/gcc/testsuite/gfortran.dg/optional_absent_2.f90
 gcc-5.2.0/gcc/testsuite/gfortran.dg/use_25.f90
 gcc-5.2.0/gcc/testsuite/gfortran.dg/matmul_9.f90
@@ -16373,4 +16374,13 @@ gcc-5.2.0/gcc/testsuite/gfortran.dg/intrinsic_size_3.f90
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile/limits-externdecl.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile/20001226-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile/limits-fndefn.c
-
+gcc-5.2.0/gcc/testsuite/g++.old-deja/g++.mike/p7180.C
+gcc-5.2.0/gcc/testsuite/g++.old-deja/g++.brendan/sizeof1.C
+gcc-5.2.0/gcc/testsuite/g++.old-deja/g++.brendan/sizeof4.C
+gcc-5.2.0/gcc/testsuite/g++.old-deja/g++.other/lookup4.C
+gcc-5.2.0/gcc/testsuite/g++.old-deja/g++.other/linkage7.C
+gcc-5.2.0/gcc/testsuite/gcc.dg/pr60797.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/dll-8.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/weak/weak-14.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/strify2.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/trad/pr65238-3.c
