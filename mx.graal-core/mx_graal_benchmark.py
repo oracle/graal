@@ -149,10 +149,28 @@ mx_benchmark.add_java_vm(JvmciJdkVm('client', 'hosted', ['-server', '-XX:+Enable
 
 class TimingBenchmarkMixin(object):
     debug_values_file = 'debug-values.csv'
-    name_re = re.compile(r"(?P<name>GraalCompiler|BackEnd|FrontEnd|LIRPhaseTime_\w+)_Accm")
+    timers = [
+        "BackEnd",
+        "FrontEnd",
+        "GraalCompiler",
+        # LIR stages
+        "LIRPhaseTime_AllocationStage",
+        "LIRPhaseTime_PostAllocationOptimizationStage",
+        "LIRPhaseTime_PreAllocationOptimizationStage",
+        # RA phases
+        "LIRPhaseTime_LinearScanPhase",
+        "LIRPhaseTime_GlobalLivenessAnalysisPhase",
+        "LIRPhaseTime_TraceBuilderPhase",
+        "LIRPhaseTime_TraceRegisterAllocationPhase",
+    ]
+    name_re = re.compile(r"(?P<name>\w+)_Accm")
+
+    @staticmethod
+    def timerArgs():
+        return ["-Dgraaldebug.timer.{0}=true".format(timer) for timer in TimingBenchmarkMixin.timers]
 
     def vmArgs(self, bmSuiteArgs):
-        vmArgs = ['-Dgraal.Time=', '-Dgraal.DebugValueHumanReadable=false', '-Dgraal.DebugValueSummary=Name',
+        vmArgs = TimingBenchmarkMixin.timerArgs() + ['-Dgraal.DebugValueHumanReadable=false', '-Dgraal.DebugValueSummary=Name',
                   '-Dgraal.DebugValueFile=' + TimingBenchmarkMixin.debug_values_file] + super(TimingBenchmarkMixin, self).vmArgs(bmSuiteArgs)
         return vmArgs
 
@@ -175,6 +193,12 @@ class TimingBenchmarkMixin(object):
     def get_csv_filename(self, benchmarks, bmSuiteArgs):
         return TimingBenchmarkMixin.debug_values_file
 
+    @staticmethod
+    def shorten_vm_flags(args):
+        # not need fo timer names
+        filtered_args = [x for x in args if not x.startswith("-Dgraaldebug.timer")]
+        return mx_benchmark.Rule.crop_back("...")(' '.join(filtered_args))
+
     def rules(self, out, benchmarks, bmSuiteArgs):
         return [
           mx_benchmark.CSVFixedFileRule(
@@ -185,6 +209,7 @@ class TimingBenchmarkMixin(object):
               "bench-suite": self.benchSuiteName(),
               "vm": "jvmci",
               "config.name": "default",
+              "config.vm-flags": TimingBenchmarkMixin.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
               "metric.object": ("<name>", str),
               "metric.name": ("compile-time", str),
               "metric.value": ("<value>", int),
