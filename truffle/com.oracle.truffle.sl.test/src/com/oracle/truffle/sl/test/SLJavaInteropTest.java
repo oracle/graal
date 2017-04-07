@@ -218,6 +218,29 @@ public class SLJavaInteropTest {
     }
 
     @Test
+    public void sumPairsFunctionalRawInterface() {
+        String scriptText = "function values(sum, k, v) {\n" + //
+                        "  obj = new();\n" + //
+                        "  obj.key = k;\n" + //
+                        "  obj.value = v;\n" + //
+                        "  return sum.sum(obj);\n" + //
+                        "}\n"; //
+        Source script = Source.newBuilder(scriptText).name("Test").mimeType("application/x-sl").build();
+        engine.eval(script);
+        ValuesRaw fn = engine.findGlobalSymbol("values").as(ValuesRaw.class);
+
+        Sum sum = new Sum();
+        Object ret1 = fn.values(sum, "one", 1);
+        Object ret2 = fn.values(sum, "two", 2);
+        Object ret3 = fn.values(sum, "three", 3);
+
+        assertEquals(6, sum.sum);
+        assertSame(ret1, ret2);
+        assertSame(ret3, ret2);
+        assertSame(sum, ret2);
+    }
+
+    @Test
     public void sumPairsIndirect() {
         String scriptText = "function values(sum, k, v) {\n" + //
                         "  obj = new();\n" + //
@@ -364,7 +387,12 @@ public class SLJavaInteropTest {
 
     @FunctionalInterface
     interface Values {
-        Object values(Sum sum, String key, int value);
+        Sum values(Sum sum, String key, int value);
+    }
+
+    @FunctionalInterface
+    interface ValuesRaw {
+        Object values(Object sum, String key, int value);
     }
 
     interface DoSums {

@@ -297,6 +297,9 @@ final class JavaInteropReflect {
                 TruffleObject receiver = (TruffleObject) frame.getArguments()[0];
                 Object[] params = (Object[]) frame.getArguments()[1];
                 Object res = executeImpl(receiver, params);
+                if (!returnType.clazz.isInterface()) {
+                    res = JavaInterop.ACCESSOR.engine().findOriginalObject(res);
+                }
                 return toJavaNode.execute(res, returnType);
             } catch (InteropException ex) {
                 throw reraise(ex);
