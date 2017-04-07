@@ -1016,7 +1016,8 @@ public class PolyglotEngine {
             Object unwrapped = original;
 
             if (original instanceof TruffleObject) {
-                unwrapped = unwrapJava(ConvertedObject.original(original));
+                Object realOrig = ConvertedObject.original(original);
+                unwrapped = new ConvertedObject((TruffleObject) realOrig, unwrapJava(realOrig));
             }
             if (representation == String.class) {
                 Object unwrappedConverted = ConvertedObject.original(unwrapped);

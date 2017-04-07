@@ -72,6 +72,7 @@ import com.oracle.truffle.tck.impl.LongBinaryOperation;
 import com.oracle.truffle.tck.impl.ObjectBinaryOperation;
 import com.oracle.truffle.tck.impl.TckInstrument;
 import com.oracle.truffle.tck.impl.TestObject;
+import java.lang.reflect.Field;
 
 /**
  * Test compatibility kit (the <em>TCK</em>) is a collection of tests to certify your
@@ -2203,7 +2204,19 @@ public abstract class TruffleTCK {
     }
 
     private static Object unwrapTruffleObject(Object obj) {
-        return obj;
+        try {
+            if (obj instanceof TruffleObject) {
+                Class<?> eto = Class.forName("com.oracle.truffle.api.vm.EngineTruffleObject");
+                if (eto.isInstance(obj)) {
+                    final Field field = eto.getDeclaredField("delegate");
+                    field.setAccessible(true);
+                    return field.get(obj);
+                }
+            }
+            return obj;
+        } catch (Exception ex) {
+            throw new IllegalStateException(ex);
+        }
     }
 
     interface CompoundObject {

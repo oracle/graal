@@ -39,6 +39,7 @@ import org.junit.runner.RunWith;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
+import com.oracle.truffle.tck.impl.TruffleLanguageRunner.JavaScriptRunner;
 
 /**
  * Tests with code snippets referencing JavaScript. They are used from {@link PolyglotEngine} & co.

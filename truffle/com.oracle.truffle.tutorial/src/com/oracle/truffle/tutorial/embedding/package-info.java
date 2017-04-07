@@ -174,7 +174,10 @@
  * (TBD)
  *
  * <h3>Define and call an R function</h3>
- * (TBD)
+ *
+ * In this sample we use a reference to existing R function {@code qbinom} from the built-in <em>stats</em> package.
+ *
+ * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithFastR#callRFunctionFromJava}
  *
  * <h2>Call multiple guest language functions with shared state from Java</h2>
  *
