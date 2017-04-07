@@ -349,12 +349,15 @@ public class GraalCompiler {
                     RegisterAllocationConfig registerAllocationConfig) {
         PreAllocationOptimizationContext preAllocOptContext = new PreAllocationOptimizationContext(lirGen);
         lirSuites.getPreAllocationOptimizationStage().apply(target, lirGenRes, preAllocOptContext);
+        Debug.dump(Debug.BASIC_LEVEL, lirGenRes.getLIR(), "After PreAllocationOptimizationStage");
 
         AllocationContext allocContext = new AllocationContext(lirGen.getSpillMoveFactory(), registerAllocationConfig);
         lirSuites.getAllocationStage().apply(target, lirGenRes, allocContext);
+        Debug.dump(Debug.BASIC_LEVEL, lirGenRes.getLIR(), "After AllocationStage");
 
         PostAllocationOptimizationContext postAllocOptContext = new PostAllocationOptimizationContext(lirGen);
         lirSuites.getPostAllocationOptimizationStage().apply(target, lirGenRes, postAllocOptContext);
+        Debug.dump(Debug.BASIC_LEVEL, lirGenRes.getLIR(), "After PostAllocationOptimizationStage");
 
         return lirGenRes;
     }
