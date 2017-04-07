@@ -502,8 +502,8 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             }
 
             @Override
-            public boolean supportSubwordCompare(int bits) {
-                return context.getLowerer().supportSubwordCompare(bits);
+            public Integer smallestCompareWidth() {
+                return context.getLowerer().smallestCompareWidth();
             }
 
             @Override

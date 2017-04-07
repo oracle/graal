@@ -1114,15 +1114,15 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected LogicNode genObjectEquals(ValueNode x, ValueNode y) {
-        return ObjectEqualsNode.create(x, y, constantReflection);
+        return ObjectEqualsNode.create(constantReflection, metaAccess, options, x, y);
     }
 
     protected LogicNode genIntegerEquals(ValueNode x, ValueNode y) {
-        return IntegerEqualsNode.create(x, y);
+        return IntegerEqualsNode.create(constantReflection, metaAccess, options, null, x, y);
     }
 
     protected LogicNode genIntegerLessThan(ValueNode x, ValueNode y) {
-        return IntegerLessThanNode.create(x, y);
+        return IntegerLessThanNode.create(constantReflection, metaAccess, options, null, x, y);
     }
 
     protected ValueNode genUnique(ValueNode x) {
@@ -1212,7 +1212,7 @@ public class BytecodeParser implements GraphBuilderContext {
     protected void emitExplicitBoundsCheck(ValueNode index, ValueNode length) {
         AbstractBeginNode trueSucc = graph.add(new BeginNode());
         BytecodeExceptionNode exception = graph.add(new BytecodeExceptionNode(metaAccess, ArrayIndexOutOfBoundsException.class, index));
-        append(new IfNode(genUnique(IntegerBelowNode.create(index, length)), trueSucc, exception, 0.99));
+        append(new IfNode(genUnique(IntegerBelowNode.create(constantReflection, metaAccess, options, null, index, length)), trueSucc, exception, 0.99));
         lastInstr = trueSucc;
 
         exception.setStateAfter(createFrameState(bci(), exception));
@@ -2122,7 +2122,7 @@ public class BytecodeParser implements GraphBuilderContext {
         JsrScope scope = currentBlock.getJsrScope();
         int retAddress = scope.nextReturnAddress();
         ConstantNode returnBciNode = getJsrConstant(retAddress);
-        LogicNode guard = IntegerEqualsNode.create(local, returnBciNode);
+        LogicNode guard = IntegerEqualsNode.create(constantReflection, metaAccess, options, null, local, returnBciNode);
         guard = graph.addOrUniqueWithInputs(guard);
         append(new FixedGuardNode(guard, JavaSubroutineMismatch, InvalidateReprofile));
         if (!successor.getJsrScope().equals(scope.pop())) {
