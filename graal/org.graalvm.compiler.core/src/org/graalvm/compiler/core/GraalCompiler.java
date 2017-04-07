@@ -298,18 +298,10 @@ public class GraalCompiler {
             assert startBlock != null;
             assert startBlock.getPredecessorCount() == 0;
 
-            LIR lir = null;
-            AbstractBlockBase<?>[] codeEmittingOrder = null;
-            AbstractBlockBase<?>[] linearScanOrder = null;
-            try (Scope s = Debug.scope("ComputeLinearScanOrder", lir)) {
-                codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, startBlock);
-                linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, startBlock);
+            AbstractBlockBase<?>[] codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, startBlock);
+            AbstractBlockBase<?>[] linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, startBlock);
+            LIR lir = new LIR(schedule.getCFG(), linearScanOrder, codeEmittingOrder, graph.getOptions());
 
-                lir = new LIR(schedule.getCFG(), linearScanOrder, codeEmittingOrder, graph.getOptions());
-                Debug.dump(Debug.INFO_LEVEL, lir, "After linear scan order");
-            } catch (Throwable e) {
-                throw Debug.handle(e);
-            }
             FrameMapBuilder frameMapBuilder = backend.newFrameMapBuilder(registerConfig);
             LIRGenerationResult lirGenRes = backend.newLIRGenerationResult(graph.compilationId(), lir, frameMapBuilder, graph, stub);
             LIRGeneratorTool lirGen = backend.newLIRGenerator(lirGenRes);
@@ -320,9 +312,9 @@ public class GraalCompiler {
             new LIRGenerationPhase().apply(backend.getTarget(), lirGenRes, context);
 
             try (Scope s = Debug.scope("LIRStages", nodeLirGen, lir)) {
-                Debug.dump(Debug.BASIC_LEVEL, lir, "After LIR generation");
+                // Dump LIR along with HIR (the LIR is looked up from context)
+                Debug.dump(Debug.BASIC_LEVEL, graph.getLastSchedule(), "After LIR generation");
                 LIRGenerationResult result = emitLowLevel(backend.getTarget(), lirGenRes, lirGen, lirSuites, backend.newRegisterAllocationConfig(registerConfig, allocationRestrictedTo));
-                Debug.dump(Debug.BASIC_LEVEL, lir, "Before code generation");
                 return result;
             } catch (Throwable e) {
                 throw Debug.handle(e);
