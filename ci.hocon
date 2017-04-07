@@ -88,4 +88,5 @@ builds = [
   ${gateTest} ${requireGCC} { name: gate-travis2, run: [[mx, su-travis2]] }
   ${gateTest38} { name: gate-sulong-v38, run: [[mx, su-suite, sulong38], [mx, su-suite, nwcc38], [mx, su-suite, llvm38],[mx, -v, su-suite, sulongcpp38]] }
   ${gateTest38} { name: gate-gcc-v38, run: [[mx, su-suite, gcc38]] }
+  ${gateTest38} { name: gate-var-v38, run: [[mx, su-suite, interop], [mx, su-suite, tck], [mx, su-suite, assembly], [mx, su-suite, args], [mx, su-suite, callback], [mx, su-suite, vaargs]] }
 ]

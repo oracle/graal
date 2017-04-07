@@ -107,7 +107,7 @@ def executeGate():
     mx_testsuites.runSuite()
 
 def travis1(args=None):
-    """executes the first Travis job (Javac build, benchmarks, polyglot, interop, tck, asm, types, and LLVM test cases)"""
+    """executes a Travis job"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
         if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
@@ -115,20 +115,8 @@ def travis1(args=None):
         if t: mx_testsuites.runSuite(['shootout'])
     with Task('TestPolglot', tasks) as t:
         if t: mx_testsuites.runSuite(['polyglot'])
-    with Task('TestInterop', tasks) as t:
-        if t: mx_testsuites.runSuite(['interop'])
-    with Task('TestTck', tasks) as t:
-        if t: mx_testsuites.runSuite(['tck'])
-    with Task('TestAsm', tasks) as t:
-        if t: mx_testsuites.runSuite(['assembly'])
     with Task('TestTypes', tasks) as t:
         if t: mx_testsuites.runSuite(['type'])
-    with Task('TestMainArgs', tasks) as t:
-        if t: mx_testsuites.runSuite(['args'])
-    with Task('TestCallback', tasks) as t:
-        if t: mx_testsuites.runSuite(['callback'])
-    with Task('TestVAArgs', tasks) as t:
-        if t: mx_testsuites.runSuite(['vaargs'])
     with Task('TestPipe', tasks) as t:
         if t: mx_testsuites.runSuite(['pipe'])
     with Task('TestLLVM', tasks) as t:

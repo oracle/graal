@@ -135,43 +135,43 @@ def runGCCSuite38(vmArgs):
     compileSuite(['gcc38'])
     return run38(vmArgs + ['-Dsulong.IgnoreFortran=true'], "com.oracle.truffle.llvm.test.alpha.GCCSuite")
 
-def compileInteropTests():
+def compileInteropTests38():
     print("Compiling Interop with clang -O0 and mem2reg", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_interoptestsDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude', '-lm'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, optimizers=[mx_tools.Tool.MEM2REG]))
+    mx_tools.printProgress(mx_tools.multicompileFolder(_interoptestsDir, _cacheDir, [mx_tools.Tool.CLANG_V38], ['-Iinclude', '-lm'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, optimizers=[mx_tools.Tool.MEM2REG_V38]))
 
-def compileOtherTests():
+def compileOtherTests38():
     print("Compiling Other with clang -O0", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_otherDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude', '-lm'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC))
+    mx_tools.printProgress(mx_tools.multicompileFolder(_otherDir, _cacheDir, [mx_tools.Tool.CLANG_V38], ['-Iinclude', '-lm'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC))
 
-def runArgsTests(vmArgs):
+def runArgsTests38(vmArgs):
     """runs the Sulong test suite"""
     compileSuite(['args'])
-    return run32(vmArgs, "com.oracle.truffle.llvm.test.alpha.MainArgsTest")
+    return run38(vmArgs, "com.oracle.truffle.llvm.test.alpha.MainArgsTest")
 
-def runCallbackTests(vmArgs):
+def runCallbackTests38(vmArgs):
     """runs the Sulong test suite"""
     compileSuite(['callback'])
-    return run32(vmArgs, "com.oracle.truffle.llvm.test.alpha.CallbackTest")
+    return run38(vmArgs, "com.oracle.truffle.llvm.test.alpha.CallbackTest")
 
-def runVAargsTests(vmArgs):
+def runVAargsTests38(vmArgs):
     """runs the Sulong test suite"""
     compileSuite(['vaargs'])
-    return run32(vmArgs, "com.oracle.truffle.llvm.test.alpha.VAArgsTest")
+    return run38(vmArgs, "com.oracle.truffle.llvm.test.alpha.VAArgsTest")
 
-def runInteropTests(vmArgs):
+def runInteropTests38(vmArgs):
     """runs the Sulong test suite"""
     compileSuite(['interop'])
-    return run32(vmArgs, "com.oracle.truffle.llvm.test.interop.LLVMInteropTest")
+    return run38(vmArgs, "com.oracle.truffle.llvm.test.interop.LLVMInteropTest")
 
-def runTCKTests(vmArgs):
+def runTCKTests38(vmArgs):
     """runs the Sulong test suite"""
     compileSuite(['interop'])
-    return run32(vmArgs, "com.oracle.truffle.llvm.test.interop.LLVMTckTest")
+    return run38(vmArgs, "com.oracle.truffle.llvm.test.interop.LLVMTckTest")
 
-def runInlineAssemblySuite(vmArgs):
+def runInlineAssemblySuite38(vmArgs):
     """runs the InlineAssembly test suite"""
     compileSuite(['assembly'])
-    return run32(vmArgs, "com.oracle.truffle.llvm.test.alpha.InlineAssemblyTest")
+    return run38(vmArgs, "com.oracle.truffle.llvm.test.alpha.InlineAssemblyTest")
 
 def runLifetimeAnalysisTests(vmArgs):
     """runs the LTA test suite"""
@@ -216,11 +216,11 @@ def compileLLVMSuite():
     print("Compiling LLVM Suite with -O0 ", end='')
     mx_tools.printProgress(mx_tools.multicompileFolder(_llvmSuiteDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
 
-def compileInlineAssemblySuite():
+def compileInlineAssemblySuite38():
     print("Compiling Assembly Suite reference executables ", end='')
-    mx_tools.printProgress(mx_tools.multicompileRefFolder(_assemblySuiteDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude']))
+    mx_tools.printProgress(mx_tools.multicompileRefFolder(_assemblySuiteDir, _cacheDir, [mx_tools.Tool.CLANG_V38], ['-Iinclude']))
     print("Compiling Assembly Suite with -O0 ", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_assemblySuiteDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC))
+    mx_tools.printProgress(mx_tools.multicompileFolder(_assemblySuiteDir, _cacheDir, [mx_tools.Tool.CLANG_V38], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC))
 
 
 def compileGCCSuite():
@@ -282,12 +282,12 @@ def compileV38NWCCSuite():
     mx_tools.printProgress(mx_tools.multicompileFolder(_nwccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_V38], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
 
 testSuites = {
-    'args' : (compileOtherTests, runArgsTests),
-    'callback' : (compileOtherTests, runCallbackTests),
-    'vaargs' : (compileOtherTests, runVAargsTests),
+    'args' : (compileOtherTests38, runArgsTests38),
+    'callback' : (compileOtherTests38, runCallbackTests38),
+    'vaargs' : (compileOtherTests38, runVAargsTests38),
     'nwcc' : (compileNWCCSuite, runNWCCSuite),
     'nwcc38' : (compileV38NWCCSuite, runNWCCSuite38),
-    'assembly' : (compileInlineAssemblySuite, runInlineAssemblySuite),
+    'assembly' : (compileInlineAssemblySuite38, runInlineAssemblySuite38),
     'gcc' : (compileGCCSuite, runGCCSuite),
     'llvm' : (compileLLVMSuite, runLLVMSuite),
     'gcc38' : (compileV38GCCSuite, runGCCSuite38),
@@ -296,8 +296,8 @@ testSuites = {
     'sulong38' : (compileV38SulongSuite, runSulongSuite38),
     'sulongcpp38' : (compileV38SulongcppSuite, runSulongcppSuite38),
     'shootout' : (compileShootoutSuite, runShootoutSuite),
-    'interop' : (compileInteropTests, runInteropTests),
-    'tck' : (compileInteropTests, runTCKTests),
+    'interop' : (compileInteropTests38, runInteropTests38),
+    'tck' : (compileInteropTests38, runTCKTests38),
     'lifetimeanalysis' : (compileGCCSuite, runLifetimeAnalysisTests),
     'parserTorture' : (compileParserTurtureSuite, runParserTortureSuite),
     'polyglot' : (None, runPolyglotTests),

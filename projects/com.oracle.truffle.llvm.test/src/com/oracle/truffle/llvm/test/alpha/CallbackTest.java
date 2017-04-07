@@ -47,7 +47,7 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 public final class CallbackTest extends BaseSulongOnlyHarness {
 
     private static final Path OTHER_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../cache/tests/other").toPath();
-    private static final String testSuffix = "_clang_O0.bc";
+    private static final String testSuffix = "_clang_v38_O0.bc";
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public RunConfiguration configuration;
