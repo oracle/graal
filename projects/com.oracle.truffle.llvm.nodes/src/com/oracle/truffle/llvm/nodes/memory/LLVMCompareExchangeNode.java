@@ -29,89 +29,137 @@
  */
 package com.oracle.truffle.llvm.nodes.memory;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMFrameUtil;
 import com.oracle.truffle.llvm.nodes.memory.LLVMCompareExchangeNodeGen.LLVMCMPXCHInternalNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "address"), @NodeChild(type = LLVMExpressionNode.class, value = "comparisonValue"),
                 @NodeChild(type = LLVMExpressionNode.class, value = "newValue")})
 public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
 
-    @Child private LLVMCMPXCHInternalNode cmpxch = LLVMCMPXCHInternalNodeGen.create();
+    @Child private LLVMCMPXCHInternalNode cmpxch;
+
+    public LLVMCompareExchangeNode(FrameSlot stackPointerSlot, Type resultType, int resultSize, int secondValueOffset) {
+        this.cmpxch = LLVMCMPXCHInternalNodeGen.create(stackPointerSlot, resultType, resultSize, secondValueOffset);
+    }
 
     abstract static class LLVMCMPXCHInternalNode extends LLVMNode {
 
-        public abstract Object executeWithTarget(LLVMAddress address, Object cmpValue, Object newValue);
+        private final FrameSlot stackPointerSlot;
+        private final Type resultType;
+        private final int resultSize;
+        private final int secondValueOffset;
+
+        LLVMCMPXCHInternalNode(FrameSlot stackPointerSlot, Type resultType, int resultSize, int secondValueOffset) {
+            this.stackPointerSlot = stackPointerSlot;
+            this.resultType = resultType;
+            this.resultSize = resultSize;
+            this.secondValueOffset = secondValueOffset;
+        }
+
+        public abstract Object executeWithTarget(VirtualFrame frame, LLVMAddress address, Object cmpValue, Object newValue, LLVMStack stack);
+
+        private LLVMAddress getResultAllocation(VirtualFrame frame, LLVMStack stack) {
+            return LLVMFrameUtil.allocateMemory(stack, frame, stackPointerSlot, resultSize, 8, resultType);
+        }
 
         @Specialization
-        public Object execute(LLVMAddress address, byte comparisonValue, byte newValue) {
+        public Object execute(VirtualFrame frame, LLVMAddress address, byte comparisonValue, byte newValue, LLVMStack stack) {
             byte value = LLVMMemory.getI8(address);
+            LLVMAddress allocation = getResultAllocation(frame, stack);
             if (value == comparisonValue) {
                 LLVMMemory.putI8(address, newValue);
+                LLVMMemory.putI8(allocation, newValue);
+                LLVMMemory.putI1(allocation.increment(secondValueOffset), true);
+            } else {
+                LLVMMemory.putI8(allocation, value);
+                LLVMMemory.putI1(allocation.increment(secondValueOffset), false);
             }
-            return null;
+            return allocation;
         }
 
         @Specialization
-        public Object execute(LLVMAddress address, short comparisonValue, short newValue) {
+        public Object execute(VirtualFrame frame, LLVMAddress address, short comparisonValue, short newValue, LLVMStack stack) {
             short value = LLVMMemory.getI16(address);
+            LLVMAddress allocation = getResultAllocation(frame, stack);
             if (value == comparisonValue) {
                 LLVMMemory.putI16(address, newValue);
+                LLVMMemory.putI16(allocation, newValue);
+                LLVMMemory.putI1(allocation.increment(secondValueOffset), true);
+            } else {
+                LLVMMemory.putI16(allocation, value);
+                LLVMMemory.putI1(allocation.increment(secondValueOffset), false);
             }
-            return null;
+            return allocation;
         }
 
         @Specialization
-        public Object execute(LLVMAddress address, int comparisonValue, int newValue) {
+        public Object execute(VirtualFrame frame, LLVMAddress address, int comparisonValue, int newValue, LLVMStack stack) {
             int value = LLVMMemory.getI32(address);
+            LLVMAddress allocation = getResultAllocation(frame, stack);
             if (value == comparisonValue) {
                 LLVMMemory.putI32(address, newValue);
+                LLVMMemory.putI32(allocation, newValue);
+                LLVMMemory.putI1(allocation.increment(secondValueOffset), true);
+            } else {
+                LLVMMemory.putI32(allocation, value);
+                LLVMMemory.putI1(allocation.increment(secondValueOffset), false);
             }
-            return null;
+            return allocation;
         }
 
         @Specialization
-        public Object execute(LLVMAddress address, long comparisonValue, long newValue) {
+        public Object execute(VirtualFrame frame, LLVMAddress address, long comparisonValue, long newValue, LLVMStack stack) {
             long value = LLVMMemory.getI64(address);
+            LLVMAddress allocation = getResultAllocation(frame, stack);
             if (value == comparisonValue) {
                 LLVMMemory.putI64(address, newValue);
+                LLVMMemory.putI64(allocation, newValue);
+                LLVMMemory.putI1(allocation.increment(secondValueOffset), true);
+            } else {
+                LLVMMemory.putI64(allocation, value);
+                LLVMMemory.putI1(allocation.increment(secondValueOffset), false);
             }
-            return null;
+            return allocation;
         }
 
         @Specialization
-        public Object execute(LLVMAddress address, float comparisonValue, float newValue) {
-            float value = LLVMMemory.getFloat(address);
-            if (value == comparisonValue) {
-                LLVMMemory.putFloat(address, newValue);
+        public Object execute(VirtualFrame frame, LLVMAddress address, LLVMAddress comparisonValue, LLVMAddress newValue, LLVMStack stack) {
+            LLVMAddress value = LLVMMemory.getAddress(address);
+            LLVMAddress allocation = getResultAllocation(frame, stack);
+            if (value.getVal() == comparisonValue.getVal()) {
+                LLVMMemory.putAddress(address, newValue);
+                LLVMMemory.putAddress(allocation, newValue);
+                LLVMMemory.putI1(allocation.increment(secondValueOffset), true);
+            } else {
+                LLVMMemory.putAddress(allocation, value);
+                LLVMMemory.putI1(allocation.increment(secondValueOffset), false);
             }
-            return null;
+            return allocation;
         }
 
-        @Specialization
-        public Object execute(LLVMAddress address, double comparisonValue, double newValue) {
-            double value = LLVMMemory.getDouble(address);
-            if (value == comparisonValue) {
-                LLVMMemory.putDouble(address, newValue);
-            }
-            return null;
-        }
     }
 
     @Specialization
-    public Object execute(LLVMAddress address, Object comparisonValue, Object newValue) {
-        return cmpxch.executeWithTarget(address, comparisonValue, newValue);
+    public Object execute(VirtualFrame frame, LLVMAddress address, Object comparisonValue, Object newValue, @Cached("getContext().getStack()") LLVMStack stack) {
+        return cmpxch.executeWithTarget(frame, address, comparisonValue, newValue, stack);
     }
 
     @Specialization
-    public Object execute(LLVMGlobalVariableDescriptor address, Object comparisonValue, Object newValue) {
-        return cmpxch.executeWithTarget(address.getNativeAddress(), comparisonValue, newValue);
+    public Object execute(VirtualFrame frame, LLVMGlobalVariableDescriptor address, Object comparisonValue, Object newValue, @Cached("getContext().getStack()") LLVMStack stack) {
+        return cmpxch.executeWithTarget(frame, address.getNativeAddress(), comparisonValue, newValue, stack);
     }
 
 }
