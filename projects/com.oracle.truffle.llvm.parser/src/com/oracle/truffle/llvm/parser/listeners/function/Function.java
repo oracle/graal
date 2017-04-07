@@ -311,6 +311,7 @@ public abstract class Function implements ParserListener {
         final Type type = findCmpxchgResultType(((PointerType) ptrType).getPointeeType());
 
         code.createCompareExchange(type, ptr, cmp, replace, isVolatile, successOrdering, synchronizationScope, failureOrdering, addExtractValue, isWeak);
+        symbols.add(type);
     }
 
     private static final int CMPXCHG_TYPE_LENGTH = 2;
