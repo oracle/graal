@@ -30,8 +30,8 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -47,14 +47,9 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 public abstract class LLVMTruffleManagedToHandle extends LLVMIntrinsic {
 
     private static final boolean TRACE = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.traceExecution());
-    @CompilationFinal private LLVMContext context;
 
     @Specialization(guards = "notLLVM(value)")
-    public LLVMAddress executeIntrinsic(TruffleObject value) {
-        if (context == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.context = getContext();
-        }
+    public LLVMAddress executeIntrinsic(TruffleObject value, @Cached("getContext()") LLVMContext context) {
         LLVMAddress handle = context.getHandleForManagedObject(value);
         if (TRACE) {
             trace(handle, value);
@@ -64,9 +59,9 @@ public abstract class LLVMTruffleManagedToHandle extends LLVMIntrinsic {
     }
 
     @Specialization
-    public LLVMAddress executeFail(Object handle) {
+    public LLVMAddress executeFail(Object handle, @Cached("getContext()") LLVMContext context) {
         if (handle instanceof TruffleObject && notLLVM((TruffleObject) handle)) {
-            return executeIntrinsic((TruffleObject) handle);
+            return executeIntrinsic((TruffleObject) handle, context);
         }
         CompilerDirectives.transferToInterpreter();
         throw new UnsupportedOperationException(handle + " not supported.");

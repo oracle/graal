@@ -90,10 +90,11 @@ public abstract class LLVMDispatchNode extends LLVMNode {
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
                     @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative,
                     @Cached("createNativeCallNode()") Node nativeCall,
-                    @Cached("bindSymbol(frame, cachedDescriptor)") TruffleObject cachedBoundFunction) {
+                    @Cached("bindSymbol(frame, cachedDescriptor)") TruffleObject cachedBoundFunction,
+                    @Cached("getContext()") LLVMContext context) {
 
         Object[] nativeArgs = prepareNativeArguments(frame, arguments, toNative);
-        Object returnValue = LLVMNativeCallUtils.callNativeFunction(getContext(), nativeCall, cachedBoundFunction, nativeArgs, cachedDescriptor);
+        Object returnValue = LLVMNativeCallUtils.callNativeFunction(context, nativeCall, cachedBoundFunction, nativeArgs, cachedDescriptor);
         return fromNative.executeConvert(frame, returnValue);
     }
 

@@ -41,6 +41,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
@@ -73,8 +74,8 @@ import sun.misc.SignalHandler;
 public abstract class LLVMSignal extends LLVMExpressionNode {
 
     @Specialization
-    public LLVMFunction doSignal(int signal, LLVMFunction handler) {
-        return setSignalHandler(getLLVMLanguage(), getContext(), signal, handler);
+    public LLVMFunction doSignal(int signal, LLVMFunction handler, @Cached("getContext()") LLVMContext context) {
+        return setSignalHandler(getLLVMLanguage(), context, signal, handler);
     }
 
     private static LLVMFunction setSignalHandler(LLVMLanguage language, LLVMContext context, int signalId, LLVMFunction function) {
