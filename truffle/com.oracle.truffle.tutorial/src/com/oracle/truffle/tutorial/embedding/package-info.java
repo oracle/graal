@@ -171,7 +171,16 @@
  * </ul>
  *
  * <h3>Define and call a Ruby function</h3>
- * (TBD)
+ *
+ * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithRuby#callRubyFunctionFromJava}
+ *
+ * Notes:
+ * <ul>
+ * <li>Evaluating the Ruby source returns a Ruby Proc of two arguments wrapped
+ * in a {@link com.oracle.truffle.api.vm.PolyglotEngine.Value Value} that can be
+ * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Value#as(Class) "cast"}
+ * to a <em>foreign function</em> with a Java type.</li>
+ * </ul>
  *
  * <h3>Call an existing R function</h3>
  *
