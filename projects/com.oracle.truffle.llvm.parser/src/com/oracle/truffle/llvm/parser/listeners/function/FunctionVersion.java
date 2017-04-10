@@ -52,7 +52,7 @@ public final class FunctionVersion {
             int i = 0;
             PointerType type = new PointerType(types.get(args[i++]));
             i++; // Unused parameter
-            int count = getIndexV0(args[i++]);
+            int count = getIndexAbsolute(args[i++]);
             int align = getAlign(args[i]);
 
             code.createAllocation(type, count, align);
@@ -164,7 +164,7 @@ public final class FunctionVersion {
             int[] caseValues = new int[count];
             int[] caseBlocks = new int[count];
             for (int j = 0; j < count; j++) {
-                caseValues[j] = getIndexV0(args[i++]);
+                caseValues[j] = getIndexAbsolute(args[i++]);
                 caseBlocks[j] = (int) args[i++];
             }
 
@@ -186,7 +186,7 @@ public final class FunctionVersion {
             int i = 0;
             Type type = types.get(args[i++]);
             i++; // Unused parameter
-            int count = getIndexV0(args[i++]);
+            int count = getIndexAbsolute(args[i++]);
             int align = getAlign(args[i]);
 
             code.createAllocation(type, count, align);
