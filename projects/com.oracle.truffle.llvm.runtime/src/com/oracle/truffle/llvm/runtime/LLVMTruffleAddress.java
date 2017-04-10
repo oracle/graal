@@ -36,9 +36,17 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMTruffleAddress implements TruffleObject {
     private final LLVMAddress address;
+    private final Type type;
+    private final LLVMContext context;
 
-    public LLVMTruffleAddress(LLVMAddress address) {
+    public LLVMTruffleAddress(LLVMAddress address, Type type, LLVMContext context) {
         this.address = address;
+        this.type = type;
+        this.context = context;
+    }
+
+    public LLVMContext getContext() {
+        return context;
     }
 
     public LLVMAddress getAddress() {
@@ -46,7 +54,7 @@ public final class LLVMTruffleAddress implements TruffleObject {
     }
 
     public Type getType() {
-        return address.getType();
+        return type;
     }
 
     public static boolean isInstance(TruffleObject object) {

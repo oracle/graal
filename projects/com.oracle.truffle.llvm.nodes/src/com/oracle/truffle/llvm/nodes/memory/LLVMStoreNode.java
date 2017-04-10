@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.memory;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -50,6 +51,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMDataEscapeNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
@@ -65,24 +67,32 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions.MemCopyNode;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 
 @NodeChildren(value = {@NodeChild(type = LLVMExpressionNode.class, value = "pointerNode")})
 public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
     @Child protected Node foreignWrite = Message.WRITE.createNode();
-    @Child protected LLVMDataEscapeNode dataEscape = LLVMDataEscapeNodeGen.create();
+    @Child protected LLVMDataEscapeNode dataEscape;
+    protected final Type valueType;
 
-    protected void doForeignAccess(LLVMTruffleObject addr, int stride, Object value) {
+    public LLVMStoreNode(Type valueType) {
+        this.valueType = valueType;
+        this.dataEscape = LLVMDataEscapeNodeGen.create(valueType);
+    }
+
+    protected void doForeignAccess(LLVMTruffleObject addr, int stride, Object value, LLVMContext context) {
         try {
-            ForeignAccess.sendWrite(foreignWrite, addr.getObject(), (int) (addr.getOffset() / stride), dataEscape.executeWithTarget(value));
+            ForeignAccess.sendWrite(foreignWrite, addr.getObject(), (int) (addr.getOffset() / stride), dataEscape.executeWithTarget(value, context));
         } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException e) {
             throw new IllegalStateException(e);
         }
     }
 
-    protected void doForeignAccess(TruffleObject addr, Object value) {
+    protected void doForeignAccess(TruffleObject addr, Object value, LLVMContext context) {
         try {
-            ForeignAccess.sendWrite(foreignWrite, addr, 0, dataEscape.executeWithTarget(value));
+            ForeignAccess.sendWrite(foreignWrite, addr, 0, dataEscape.executeWithTarget(value, context));
         } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException e) {
             throw new IllegalStateException(e);
         }
@@ -90,6 +100,10 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
     @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMI1StoreNode extends LLVMStoreNode {
+
+        public LLVMI1StoreNode() {
+            super(PrimitiveType.I1);
+        }
 
         @Specialization
         public Object execute(LLVMGlobalVariableDescriptor address, boolean value) {
@@ -104,8 +118,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object execute(LLVMTruffleObject address, boolean value) {
-            doForeignAccess(address, 1, value);
+        public Object execute(LLVMTruffleObject address, boolean value, @Cached("getContext()") LLVMContext context) {
+            doForeignAccess(address, 1, value, context);
             return null;
         }
 
@@ -121,8 +135,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization(guards = "notLLVM(address)")
-        public Object execute(TruffleObject address, boolean value) {
-            execute(new LLVMTruffleObject(address, PrimitiveType.I1), value);
+        public Object execute(TruffleObject address, boolean value, @Cached("getContext()") LLVMContext context) {
+            execute(new LLVMTruffleObject(address, PrimitiveType.I1), value, context);
             return null;
         }
 
@@ -130,6 +144,10 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
     @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMI8StoreNode extends LLVMStoreNode {
+
+        public LLVMI8StoreNode() {
+            super(PrimitiveType.I8);
+        }
 
         @Specialization
         public Object execute(LLVMAddress address, byte value) {
@@ -144,8 +162,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object execute(LLVMTruffleObject address, byte value) {
-            doForeignAccess(address, 1, value);
+        public Object execute(LLVMTruffleObject address, byte value, @Cached("getContext()") LLVMContext context) {
+            doForeignAccess(address, 1, value, context);
             return null;
         }
 
@@ -161,14 +179,19 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization(guards = "notLLVM(address)")
-        public Object execute(TruffleObject address, byte value) {
-            execute(new LLVMTruffleObject(address, PrimitiveType.I8), value);
+        public Object execute(TruffleObject address, byte value, @Cached("getContext()") LLVMContext context) {
+            execute(new LLVMTruffleObject(address, PrimitiveType.I8), value, context);
             return null;
         }
     }
 
     @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMI16StoreNode extends LLVMStoreNode {
+
+        public LLVMI16StoreNode() {
+            super(PrimitiveType.I16);
+        }
+
         @Specialization
         public Object execute(LLVMGlobalVariableDescriptor address, short value) {
             LLVMMemory.putI16(address.getNativeAddress(), value);
@@ -182,8 +205,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object execute(LLVMTruffleObject address, short value) {
-            doForeignAccess(address, LLVMExpressionNode.I16_SIZE_IN_BYTES, value);
+        public Object execute(LLVMTruffleObject address, short value, @Cached("getContext()") LLVMContext context) {
+            doForeignAccess(address, LLVMExpressionNode.I16_SIZE_IN_BYTES, value, context);
             return null;
         }
 
@@ -199,8 +222,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization(guards = "notLLVM(address)")
-        public Object execute(TruffleObject address, short value) {
-            execute(new LLVMTruffleObject(address, PrimitiveType.I16), value);
+        public Object execute(TruffleObject address, short value, @Cached("getContext()") LLVMContext context) {
+            execute(new LLVMTruffleObject(address, PrimitiveType.I16), value, context);
             return null;
         }
 
@@ -208,6 +231,10 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
     @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMI32StoreNode extends LLVMStoreNode {
+
+        public LLVMI32StoreNode() {
+            super(PrimitiveType.I32);
+        }
 
         @Specialization
         public Object execute(LLVMGlobalVariableDescriptor address, int value) {
@@ -222,8 +249,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object execute(LLVMTruffleObject address, int value) {
-            doForeignAccess(address, LLVMExpressionNode.I32_SIZE_IN_BYTES, value);
+        public Object execute(LLVMTruffleObject address, int value, @Cached("getContext()") LLVMContext context) {
+            doForeignAccess(address, LLVMExpressionNode.I32_SIZE_IN_BYTES, value, context);
             return null;
         }
 
@@ -239,8 +266,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization(guards = "notLLVM(address)")
-        public Object execute(TruffleObject address, int value) {
-            execute(new LLVMTruffleObject(address, PrimitiveType.I32), value);
+        public Object execute(TruffleObject address, int value, @Cached("getContext()") LLVMContext context) {
+            execute(new LLVMTruffleObject(address, PrimitiveType.I32), value, context);
             return null;
         }
 
@@ -248,6 +275,11 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
     @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMI64StoreNode extends LLVMStoreNode {
+
+        public LLVMI64StoreNode() {
+            super(PrimitiveType.I64);
+        }
+
         @Specialization
         public Object execute(LLVMGlobalVariableDescriptor address, long value) {
             LLVMMemory.putI64(address.getNativeAddress(), value);
@@ -261,8 +293,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object execute(LLVMTruffleObject address, long value) {
-            doForeignAccess(address, LLVMExpressionNode.I64_SIZE_IN_BYTES, value);
+        public Object execute(LLVMTruffleObject address, long value, @Cached("getContext()") LLVMContext context) {
+            doForeignAccess(address, LLVMExpressionNode.I64_SIZE_IN_BYTES, value, context);
             return null;
         }
 
@@ -278,8 +310,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization(guards = "notLLVM(address)")
-        public Object execute(TruffleObject address, long value) {
-            execute(new LLVMTruffleObject(address, PrimitiveType.I64), value);
+        public Object execute(TruffleObject address, long value, @Cached("getContext()") LLVMContext context) {
+            execute(new LLVMTruffleObject(address, PrimitiveType.I64), value, context);
             return null;
         }
 
@@ -287,6 +319,10 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
     @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMIVarBitStoreNode extends LLVMStoreNode {
+
+        public LLVMIVarBitStoreNode(VariableBitWidthType type) {
+            super(type);
+        }
 
         @Specialization
         public Object execute(LLVMGlobalVariableDescriptor address, LLVMIVarBit value) {
@@ -305,6 +341,10 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
     @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMFloatStoreNode extends LLVMStoreNode {
 
+        public LLVMFloatStoreNode() {
+            super(PrimitiveType.FLOAT);
+        }
+
         @Specialization
         public Object execute(LLVMGlobalVariableDescriptor address, float value) {
             LLVMMemory.putFloat(address.getNativeAddress(), value);
@@ -318,8 +358,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object execute(LLVMTruffleObject address, float value) {
-            doForeignAccess(address, LLVMExpressionNode.FLOAT_SIZE_IN_BYTES, value);
+        public Object execute(LLVMTruffleObject address, float value, @Cached("getContext()") LLVMContext context) {
+            doForeignAccess(address, LLVMExpressionNode.FLOAT_SIZE_IN_BYTES, value, context);
             return null;
         }
 
@@ -335,8 +375,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization(guards = "notLLVM(address)")
-        public Object execute(TruffleObject address, float value) {
-            execute(new LLVMTruffleObject(address, PrimitiveType.FLOAT), value);
+        public Object execute(TruffleObject address, float value, @Cached("getContext()") LLVMContext context) {
+            execute(new LLVMTruffleObject(address, PrimitiveType.FLOAT), value, context);
             return null;
         }
 
@@ -344,6 +384,10 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
     @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMDoubleStoreNode extends LLVMStoreNode {
+
+        public LLVMDoubleStoreNode() {
+            super(PrimitiveType.DOUBLE);
+        }
 
         @Specialization
         public Object execute(LLVMGlobalVariableDescriptor address, double value) {
@@ -358,8 +402,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object execute(LLVMTruffleObject address, double value) {
-            doForeignAccess(address, LLVMExpressionNode.DOUBLE_SIZE_IN_BYTES, value);
+        public Object execute(LLVMTruffleObject address, double value, @Cached("getContext()") LLVMContext context) {
+            doForeignAccess(address, LLVMExpressionNode.DOUBLE_SIZE_IN_BYTES, value, context);
             return null;
         }
 
@@ -375,8 +419,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization(guards = "notLLVM(address)")
-        public Object execute(TruffleObject address, double value) {
-            doForeignAccess(address, value);
+        public Object execute(TruffleObject address, double value, @Cached("getContext()") LLVMContext context) {
+            doForeignAccess(address, value, context);
             return null;
         }
 
@@ -384,6 +428,10 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
     @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVM80BitFloatStoreNode extends LLVMStoreNode {
+
+        public LLVM80BitFloatStoreNode() {
+            super(PrimitiveType.X86_FP80);
+        }
 
         @Specialization
         public Object execute(LLVMGlobalVariableDescriptor address, LLVM80BitFloat value) {
@@ -401,6 +449,10 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
     @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMAddressStoreNode extends LLVMStoreNode {
+
+        public LLVMAddressStoreNode(Type type) {
+            super(type);
+        }
 
         @Specialization
         public Object doAddress(LLVMAddress address, LLVMAddress value) {
@@ -479,32 +531,32 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object execute(LLVMTruffleObject address, LLVMAddress value) {
-            doForeignAccess(address, LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES, new LLVMTruffleAddress(value));
+        public Object execute(LLVMTruffleObject address, LLVMAddress value, @Cached("getContext()") LLVMContext context) {
+            doForeignAccess(address, LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES, new LLVMTruffleAddress(value, valueType, context), context);
             return null;
         }
 
         @Specialization
-        public Object execute(LLVMTruffleObject address, Object value) {
-            doForeignAccess(address, LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES, value);
+        public Object execute(LLVMTruffleObject address, Object value, @Cached("getContext()") LLVMContext context) {
+            doForeignAccess(address, LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES, value, context);
             return null;
         }
 
         @Specialization(guards = "notLLVM(address)")
-        public Object execute(TruffleObject address, LLVMAddress value) {
-            doForeignAccess(address, new LLVMTruffleAddress(value));
+        public Object execute(TruffleObject address, LLVMAddress value, @Cached("getContext()") LLVMContext context) {
+            doForeignAccess(address, new LLVMTruffleAddress(value, valueType, context), context);
             return null;
         }
 
         @Specialization(guards = "notLLVM(address)")
-        public Object execute(TruffleObject address, LLVMGlobalVariableDescriptor value) {
-            doForeignAccess(address, new LLVMSharedGlobalVariableDescriptor(value));
+        public Object execute(TruffleObject address, LLVMGlobalVariableDescriptor value, @Cached("getContext()") LLVMContext context) {
+            doForeignAccess(address, new LLVMSharedGlobalVariableDescriptor(value, context), context);
             return null;
         }
 
         @Specialization(guards = "notLLVM(address)")
-        public Object execute(TruffleObject address, Object value) {
-            doForeignAccess(address, value);
+        public Object execute(TruffleObject address, Object value, @Cached("getContext()") LLVMContext context) {
+            doForeignAccess(address, value, context);
             return null;
         }
 
@@ -579,6 +631,10 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
     @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMFunctionStoreNode extends LLVMStoreNode {
 
+        public LLVMFunctionStoreNode(Type type) {
+            super(type);
+        }
+
         @Specialization
         public Object execute(LLVMAddress address, LLVMFunction function) {
             LLVMHeap.putFunctionIndex(address, function.getFunctionIndex());
@@ -601,7 +657,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
         public abstract int getStructSize();
 
-        protected LLVMStructStoreNode(LLVMNativeFunctions heapFunctions) {
+        protected LLVMStructStoreNode(LLVMNativeFunctions heapFunctions, Type type) {
+            super(type);
             memCopy = heapFunctions.createMemCopyNode();
         }
 

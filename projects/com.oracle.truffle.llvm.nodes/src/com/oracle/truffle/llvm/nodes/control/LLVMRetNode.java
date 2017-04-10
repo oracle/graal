@@ -40,6 +40,7 @@ import com.oracle.truffle.llvm.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
@@ -176,6 +177,12 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMFunctionRetNode extends LLVMRetNode {
+
+        @Specialization
+        public int executeGetSuccessorIndex(VirtualFrame frame, LLVMFunctionHandle retResult) {
+            frame.setObject(getRetSlot(), retResult);
+            return LLVMBasicBlockNode.DEFAULT_SUCCESSOR;
+        }
 
         @Specialization
         public int executeGetSuccessorIndex(VirtualFrame frame, TruffleObject retResult) {

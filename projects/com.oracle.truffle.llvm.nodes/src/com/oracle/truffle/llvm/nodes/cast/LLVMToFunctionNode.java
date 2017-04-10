@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.cast;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -41,7 +40,6 @@ import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
@@ -52,23 +50,23 @@ public abstract class LLVMToFunctionNode extends LLVMExpressionNode {
     @Child private ToLLVMNode toInt = ToLLVMNode.createNode(int.class);
 
     @Specialization
-    public LLVMFunction executeLLVMBoxedPrimitive(LLVMBoxedPrimitive from, @Cached("getContext()") LLVMContext cachedContext) {
-        return new LLVMFunctionHandle(cachedContext, (int) toInt.executeWithTarget(from.getValue()));
+    public LLVMFunction executeLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
+        return new LLVMFunctionHandle((int) toInt.executeWithTarget(from.getValue()));
     }
 
     @Specialization
-    public LLVMFunction executeI64(long from, @Cached("getContext()") LLVMContext cachedContext) {
-        return new LLVMFunctionHandle(cachedContext, (int) from);
+    public LLVMFunction executeI64(long from) {
+        return new LLVMFunctionHandle((int) from);
     }
 
     @Specialization
-    public LLVMFunction executeI64(LLVMAddress from, @Cached("getContext()") LLVMContext cachedContext) {
-        return new LLVMFunctionHandle(cachedContext, (int) from.getVal());
+    public LLVMFunction executeI64(LLVMAddress from) {
+        return new LLVMFunctionHandle((int) from.getVal());
     }
 
     @Specialization
-    public LLVMFunction executeI32(@SuppressWarnings("unused") LLVMTruffleNull from, @Cached("getContext()") LLVMContext cachedContext) {
-        return new LLVMFunctionHandle(cachedContext, 0);
+    public LLVMFunction executeI32(@SuppressWarnings("unused") LLVMTruffleNull from) {
+        return new LLVMFunctionHandle(0);
     }
 
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();

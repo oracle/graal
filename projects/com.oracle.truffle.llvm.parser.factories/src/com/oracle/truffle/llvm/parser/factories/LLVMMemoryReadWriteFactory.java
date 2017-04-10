@@ -177,19 +177,19 @@ final class LLVMMemoryReadWriteFactory {
                     throw new AssertionError(type);
             }
         } else if (type instanceof VariableBitWidthType) {
-            return LLVMIVarBitStoreNodeGen.create(pointerNode, valueNode);
+            return LLVMIVarBitStoreNodeGen.create((VariableBitWidthType) type, pointerNode, valueNode);
         } else if (Type.isFunctionOrFunctionPointer(type)) {
-            return LLVMFunctionStoreNodeGen.create(pointerNode, valueNode);
+            return LLVMFunctionStoreNodeGen.create(type, pointerNode, valueNode);
         } else if (type instanceof StructureType || type instanceof ArrayType) {
-            return LLVMStructStoreNodeGen.create(runtime.getNativeFunctions(), pointerNode, valueNode, size);
+            return LLVMStructStoreNodeGen.create(runtime.getNativeFunctions(), type, pointerNode, valueNode, size);
         } else if (type instanceof PointerType) {
             if (pointerNode instanceof LLVMAccessGlobalVariableStorageNode) {
                 return LLVMGlobalVariableStoreNodeGen.create(((LLVMAccessGlobalVariableStorageNode) pointerNode).getDescriptor(), valueNode);
             } else {
-                return LLVMAddressStoreNodeGen.create(pointerNode, valueNode);
+                return LLVMAddressStoreNodeGen.create(type, pointerNode, valueNode);
             }
         } else if (type instanceof VectorType) {
-            return LLVMStoreVectorNodeGen.create(pointerNode, valueNode);
+            return LLVMStoreVectorNodeGen.create(type, pointerNode, valueNode);
         } else {
             throw new AssertionError(type);
         }

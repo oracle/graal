@@ -29,40 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
+public interface LLVMFunction {
 
-public abstract class LLVMFunction implements TruffleObject {
+    int getFunctionIndex();
 
-    private final LLVMContext context;
-
-    public LLVMFunction(LLVMContext context) {
-        this.context = context;
-    }
-
-    public LLVMContext getContext() {
-        return context;
-    }
-
-    public abstract int getFunctionIndex();
-
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof LLVMFunction;
-    }
-
-    @CompilationFinal private static ForeignAccess ACCESS;
-
-    @Override
-    public ForeignAccess getForeignAccess() {
-        if (ACCESS == null) {
-            try {
-                Class<?> accessor = Class.forName("com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMFunctionMessageResolutionAccessor");
-                ACCESS = (ForeignAccess) accessor.getField("ACCESS").get(null);
-            } catch (Exception e) {
-                throw new AssertionError(e);
-            }
-        }
-        return ACCESS;
-    }
 }

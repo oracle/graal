@@ -46,7 +46,6 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleManagedMalloc
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
@@ -92,13 +91,13 @@ public abstract class LLVMDirectLoadNode {
     public abstract static class LLVMFunctionDirectLoadNode extends LLVMExpressionNode {
 
         @Specialization
-        public LLVMFunctionHandle executeAddress(LLVMAddress addr, @Cached("getContext()") LLVMContext cachedContext) {
-            return new LLVMFunctionHandle(cachedContext, LLVMHeap.getFunctionIndex(addr));
+        public LLVMFunctionHandle executeAddress(LLVMAddress addr) {
+            return new LLVMFunctionHandle(LLVMHeap.getFunctionIndex(addr));
         }
 
         @Specialization
-        public LLVMFunctionHandle executeAddress(LLVMGlobalVariableDescriptor addr, @Cached("getContext()") LLVMContext cachedContext) {
-            return new LLVMFunctionHandle(cachedContext, LLVMHeap.getFunctionIndex(addr.getNativeAddress()));
+        public LLVMFunctionHandle executeAddress(LLVMGlobalVariableDescriptor addr) {
+            return new LLVMFunctionHandle(LLVMHeap.getFunctionIndex(addr.getNativeAddress()));
         }
     }
 

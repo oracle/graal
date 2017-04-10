@@ -30,24 +30,16 @@
 package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
 @ValueType
 public final class LLVMAddress {
 
     public static final int WORD_LENGTH_BIT = 64;
 
-    private final Type type;
-
     private final long val;
 
-    private LLVMAddress(Type type, long val) {
-        this.type = type;
-        this.val = val;
-    }
-
     private LLVMAddress(long val) {
-        this(null, val);
+        this.val = val;
     }
 
     public static LLVMAddress nullPointer() {
@@ -58,14 +50,6 @@ public final class LLVMAddress {
         return new LLVMAddress(val);
     }
 
-    public static LLVMAddress fromLong(Type type, long val) {
-        return new LLVMAddress(type, val);
-    }
-
-    public Type getType() {
-        return type;
-    }
-
     public long getVal() {
         return val;
     }
@@ -74,16 +58,8 @@ public final class LLVMAddress {
         return this.increment((long) incr);
     }
 
-    private LLVMAddress increment(long incr) {
+    public LLVMAddress increment(long incr) {
         return new LLVMAddress(val + incr);
-    }
-
-    public LLVMAddress increment(int incr, Type newType) {
-        return increment((long) incr, newType);
-    }
-
-    public LLVMAddress increment(long incr, Type newType) {
-        return new LLVMAddress(newType, val + incr);
     }
 
     @Override
@@ -118,9 +94,6 @@ public final class LLVMAddress {
 
     @Override
     public String toString() {
-        if (getType() != null) {
-            return String.format("0x%x (%s)", getVal(), getType());
-        }
         return String.format("0x%x", getVal());
     }
 

@@ -54,7 +54,7 @@ public class LLVMGlobalVariableDescriptorMessageResolution {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 node = insert(LLVMAddressReadMessageResolutionNodeGen.create());
             }
-            return node.executeWithTarget(frame, receiver.getDescriptor(), index);
+            return node.executeWithTarget(frame, receiver, index);
         }
     }
 
@@ -68,7 +68,7 @@ public class LLVMGlobalVariableDescriptorMessageResolution {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 node = insert(LLVMAddressWriteMessageResolutionNodeGen.create());
             }
-            return node.executeWithTarget(frame, receiver.getDescriptor(), index, value);
+            return node.executeWithTarget(frame, receiver, index, value);
         }
 
     }

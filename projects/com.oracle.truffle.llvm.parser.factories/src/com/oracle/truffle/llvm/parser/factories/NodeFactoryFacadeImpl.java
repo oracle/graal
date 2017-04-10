@@ -428,20 +428,20 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     private Object allocateGlobalIntern(LLVMParserRuntime runtime, GlobalValueSymbol globalVariable) {
+        final Type resolvedType = ((PointerType) globalVariable.getType()).getPointeeType();
         final String name = globalVariable.getName();
 
         final NativeResolver nativeResolver = () -> LLVMAddress.fromLong(runtime.getNativeHandle(name));
 
         final LLVMGlobalVariableDescriptor descriptor;
         if (globalVariable.isStatic()) {
-            descriptor = LLVMGlobalVariableDescriptor.create(name, nativeResolver);
+            descriptor = LLVMGlobalVariableDescriptor.create(name, nativeResolver, resolvedType);
         } else {
             final LLVMContext context = runtime.getContext();
-            descriptor = context.getGlobalVariableRegistry().lookupOrAdd(name, nativeResolver);
+            descriptor = context.getGlobalVariableRegistry().lookupOrAdd(name, nativeResolver, resolvedType);
         }
 
         if ((globalVariable.getInitialiser() > 0 || !globalVariable.isExtern()) && descriptor.getState() == MemoryState.UNKNOWN) {
-            final Type resolvedType = ((PointerType) globalVariable.getType()).getPointeeType();
             final int byteSize = runtime.getByteSize(resolvedType);
             final LLVMAddress nativeStorage = LLVMHeap.allocateMemory(byteSize);
             final LLVMExpressionNode addressLiteralNode = createLiteral(runtime, nativeStorage, new PointerType(resolvedType));
@@ -512,10 +512,10 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMControlFlowNode tryCreateFunctionInvokeSubstitution(LLVMParserRuntime runtime, String name, FunctionType type, int argCount, LLVMExpressionNode[] argNodes,
+    public LLVMControlFlowNode tryCreateFunctionInvokeSubstitution(LLVMParserRuntime runtime, String name, FunctionType type, int argCount, LLVMExpressionNode[] argNodes, Type[] argTypes,
                     FrameSlot returnValueSlot, FrameSlot exceptionValueSlot, int normalIndex,
                     int unwindIndex, LLVMExpressionNode[] normalPhiWriteNodes, LLVMExpressionNode[] unwindPhiWriteNodes) {
-        LLVMExpressionNode substitution = getSubstitution(runtime, name, argNodes, argCount, exceptionValueSlot);
+        LLVMExpressionNode substitution = getSubstitution(runtime, name, argNodes, argTypes, argCount, exceptionValueSlot);
         if (substitution != null) {
             return LLVMFunctionFactory.createFunctionInvokeSubstitution(substitution, type, returnValueSlot, exceptionValueSlot, normalIndex, unwindIndex, normalPhiWriteNodes, unwindPhiWriteNodes);
         } else {
@@ -524,18 +524,19 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMExpressionNode tryCreateFunctionCallSubstitution(LLVMParserRuntime runtime, String name, LLVMExpressionNode[] argNodes, int numberOfExplicitArguments,
+    public LLVMExpressionNode tryCreateFunctionCallSubstitution(LLVMParserRuntime runtime, String name, LLVMExpressionNode[] argNodes, Type[] argTypes, int numberOfExplicitArguments,
                     FrameSlot exceptionValueSlot) {
-        return getSubstitution(runtime, name, argNodes, numberOfExplicitArguments, exceptionValueSlot);
+        return getSubstitution(runtime, name, argNodes, argTypes, numberOfExplicitArguments, exceptionValueSlot);
     }
 
-    private static LLVMExpressionNode getSubstitution(LLVMParserRuntime runtime, String name, LLVMExpressionNode[] argNodes, int numberOfExplicitArguments, FrameSlot exceptionValueSlot) {
+    private static LLVMExpressionNode getSubstitution(LLVMParserRuntime runtime, String name, LLVMExpressionNode[] argNodes, Type[] argTypes, int numberOfExplicitArguments,
+                    FrameSlot exceptionValueSlot) {
         if (name.startsWith("@llvm")) {
             return LLVMIntrinsicFactory.create(name, argNodes, numberOfExplicitArguments, runtime);
         } else if (name.startsWith("@__cxa_") || name.startsWith("@__clang")) {
             return LLVMExceptionIntrinsicFactory.create(name, argNodes, numberOfExplicitArguments, runtime, exceptionValueSlot);
         } else if (name.startsWith("@truffle")) {
-            return LLVMTruffleIntrinsicFactory.create(name, argNodes);
+            return LLVMTruffleIntrinsicFactory.create(name, argNodes, argTypes);
         } else if (name.startsWith("@__divdc3")) {
             // TODO: __divdc3 returns a struct by value, which TNI does not yet support - we
             // substitute for now

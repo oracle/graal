@@ -35,32 +35,30 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMPerformance;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-@NodeChildren({@NodeChild("receiver"), @NodeChild("arguments")})
-abstract class LLVMForeignCallNode extends LLVMExpressionNode {
+abstract class LLVMForeignCallNode extends LLVMNode {
 
     private final LLVMStack stack;
     @Child private ToLLVMNode slowConvertNode;
-    @Child protected LLVMDataEscapeNode prepareValueForEscape = LLVMDataEscapeNodeGen.create();
+    @Child protected LLVMDataEscapeNode prepareValueForEscape;
 
-    protected LLVMForeignCallNode(LLVMStack stack) {
+    protected LLVMForeignCallNode(LLVMStack stack, Type returnType) {
         this.stack = stack;
         this.slowConvertNode = ToLLVMNode.createNode(null);
+        this.prepareValueForEscape = LLVMDataEscapeNodeGen.create(returnType);
     }
 
     public abstract Object executeCall(VirtualFrame frame, LLVMFunction function, Object[] arguments);
@@ -70,10 +68,12 @@ abstract class LLVMForeignCallNode extends LLVMExpressionNode {
     public Object callDirect(LLVMFunctionDescriptor function, Object[] arguments,
                     @Cached("function.getFunctionIndex()") int functionIndex,
                     @Cached("create(getCallTarget(function))") DirectCallNode callNode,
-                    @Cached("createToLLVMNodes(function)") ToLLVMNode[] toLLVMNodes, @Cached("arguments.length") int cachedLength) {
+                    @Cached("createToLLVMNodes(function)") ToLLVMNode[] toLLVMNodes,
+                    @Cached("arguments.length") int cachedLength,
+                    @Cached("function.getContext()") LLVMContext context) {
         assert !(function.getType().getReturnType() instanceof StructureType);
         Object result = callNode.call(packArguments(arguments, toLLVMNodes, cachedLength));
-        return prepareValueForEscape.executeWithTarget(result);
+        return prepareValueForEscape.executeWithTarget(result, context);
     }
 
     @Specialization
@@ -82,32 +82,10 @@ abstract class LLVMForeignCallNode extends LLVMExpressionNode {
         assert !(function.getType().getReturnType() instanceof StructureType);
         LLVMPerformance.warn(this);
         Object result = callNode.call(getCallTarget(function), packArguments(function, arguments, cachedLength));
-        return prepareValueForEscape.executeWithTarget(result);
+        return prepareValueForEscape.executeWithTarget(result, function.getContext());
     }
 
-    @SuppressWarnings("unused")
-    @Specialization(guards = "function.getFunctionIndex() == functionIndex")
-    public Object callDirect(LLVMFunctionHandle function, Object[] arguments,
-                    @Cached("function.getFunctionIndex()") int functionIndex,
-                    @Cached("lookupFunction(function)") LLVMFunctionDescriptor descriptor,
-                    @Cached("create(getCallTarget(descriptor))") DirectCallNode callNode,
-                    @Cached("createToLLVMNodes(descriptor)") ToLLVMNode[] toLLVMNodes, @Cached("arguments.length") int cachedLength) {
-        assert !(descriptor.getType().getReturnType() instanceof StructureType);
-        Object result = callNode.call(packArguments(arguments, toLLVMNodes, cachedLength));
-        return prepareValueForEscape.executeWithTarget(result);
-    }
-
-    @Specialization
-    public Object callIndirect(LLVMFunctionHandle function, Object[] arguments,
-                    @Cached("create()") IndirectCallNode callNode, @Cached("arguments.length") int cachedLength) {
-        LLVMPerformance.warn(this);
-        LLVMFunctionDescriptor descriptor = lookupFunction(function);
-        assert !(descriptor.getType().getReturnType() instanceof StructureType);
-        Object result = callNode.call(getCallTarget(descriptor), packArguments(descriptor, arguments, cachedLength));
-        return prepareValueForEscape.executeWithTarget(result);
-    }
-
-    protected LLVMFunctionDescriptor lookupFunction(LLVMFunctionHandle function) {
+    protected LLVMFunctionDescriptor lookupFunction(LLVMFunctionDescriptor function) {
         return function.getContext().lookup(function);
     }
 

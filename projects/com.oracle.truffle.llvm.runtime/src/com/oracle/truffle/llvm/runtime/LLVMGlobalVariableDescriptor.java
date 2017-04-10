@@ -35,6 +35,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMGlobalVariableDescriptor {
 
@@ -49,6 +50,7 @@ public final class LLVMGlobalVariableDescriptor {
 
     private final String name;
     private final NativeResolver resolver;
+    private final Type type;
 
     @CompilationFinal private MemoryState memoryState;
     @CompilationFinal private Assumption stateAssumption;
@@ -57,15 +59,21 @@ public final class LLVMGlobalVariableDescriptor {
     @CompilationFinal private Object cachedManagedValue;
     private Object managedValue;
 
-    private LLVMGlobalVariableDescriptor(String name, NativeResolver resolver) {
+    private LLVMGlobalVariableDescriptor(String name, NativeResolver resolver, Type type) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         this.name = name;
         this.memoryState = MemoryState.UNKNOWN;
         this.resolver = resolver;
         stateAssumption = Truffle.getRuntime().createAssumption();
+        this.type = type;
     }
 
-    public static LLVMGlobalVariableDescriptor create(String name, NativeResolver resolver) {
-        return new LLVMGlobalVariableDescriptor(name, resolver);
+    public static LLVMGlobalVariableDescriptor create(String name, NativeResolver resolver, Type type) {
+        return new LLVMGlobalVariableDescriptor(name, resolver, type);
+    }
+
+    public Type getType() {
+        return type;
     }
 
     public void declareInSulong(LLVMAddress address) {

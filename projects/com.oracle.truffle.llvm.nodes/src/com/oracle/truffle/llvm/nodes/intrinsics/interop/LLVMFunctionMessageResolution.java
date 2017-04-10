@@ -34,17 +34,15 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 
-@MessageResolution(receiverType = LLVMFunction.class)
+@MessageResolution(receiverType = LLVMFunctionDescriptor.class)
 public class LLVMFunctionMessageResolution {
 
     @Resolve(message = "IS_NULL")
     public abstract static class ForeignIsNullNode extends Node {
 
-        protected Object access(@SuppressWarnings("unused") VirtualFrame frame, LLVMFunction object) {
+        protected Object access(@SuppressWarnings("unused") VirtualFrame frame, LLVMFunctionDescriptor object) {
             return object.getFunctionIndex() == 0;
         }
 
@@ -54,7 +52,7 @@ public class LLVMFunctionMessageResolution {
     public abstract static class ForeignIsExecutableNode extends Node {
 
         @SuppressWarnings("unused")
-        protected Object access(VirtualFrame frame, LLVMFunction object) {
+        protected Object access(VirtualFrame frame, LLVMFunctionDescriptor object) {
             return true;
         }
 
@@ -69,14 +67,10 @@ public class LLVMFunctionMessageResolution {
             return getHelperNode(object).executeCall(frame, object, arguments);
         }
 
-        protected Object access(VirtualFrame frame, LLVMFunctionHandle object, Object[] arguments) {
-            return getHelperNode(object).executeCall(frame, object, arguments);
-        }
-
-        private LLVMForeignCallNode getHelperNode(LLVMFunction function) {
+        private LLVMForeignCallNode getHelperNode(LLVMFunctionDescriptor function) {
             if (executeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                executeNode = insert(LLVMForeignCallNodeGen.create(function.getContext().getStack(), null, null));
+                executeNode = insert(LLVMForeignCallNodeGen.create(function.getContext().getStack(), function.getType().getReturnType()));
             }
 
             return executeNode;

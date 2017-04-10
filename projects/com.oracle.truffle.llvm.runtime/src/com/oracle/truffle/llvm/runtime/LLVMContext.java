@@ -120,9 +120,9 @@ public class LLVMContext {
         this.nativeCallStatistics = LLVMOptions.ENGINE.traceNativeCalls() ? new HashMap<>() : null;
         this.functionIndex = new HashMap<>();
         this.nativeFunctions = new LLVMNativeFunctionsImpl(nativeLookup);
-        this.sigDfl = new LLVMFunctionHandle(this, 0);
-        this.sigIgn = new LLVMFunctionHandle(this, 1);
-        this.sigErr = new LLVMFunctionHandle(this, -1);
+        this.sigDfl = new LLVMFunctionHandle(0);
+        this.sigIgn = new LLVMFunctionHandle(1);
+        this.sigErr = new LLVMFunctionHandle(-1);
         this.toNative = new HashMap<>();
         this.toManaged = new HashMap<>();
         this.handlesLock = new Object();

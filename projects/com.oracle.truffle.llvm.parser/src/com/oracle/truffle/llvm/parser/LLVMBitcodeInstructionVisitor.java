@@ -215,7 +215,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         LLVMExpressionNode result = null;
         if (target instanceof FunctionDeclaration) {
             FunctionDeclaration targetDecl = (FunctionDeclaration) target;
-            result = factoryFacade.tryCreateFunctionCallSubstitution(runtime, targetDecl.getName(), argNodes, targetDecl.getType().getArgumentTypes().length, method.getExceptionSlot());
+            result = factoryFacade.tryCreateFunctionCallSubstitution(runtime, targetDecl.getName(), argNodes, argTypes, targetDecl.getType().getArgumentTypes().length, method.getExceptionSlot());
         }
         if (result == null) {
             if (target instanceof InlineAsmConstant) {
@@ -291,7 +291,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         if (target instanceof FunctionDeclaration) {
             FunctionDeclaration delaration = (FunctionDeclaration) target;
             final int parentArgCount = method.getArgCount();
-            node = factoryFacade.tryCreateFunctionCallSubstitution(runtime, delaration.getName(), args, parentArgCount, method.getExceptionSlot());
+            node = factoryFacade.tryCreateFunctionCallSubstitution(runtime, delaration.getName(), args, argsType, parentArgCount, method.getExceptionSlot());
         }
         if (node == null) {
             if (target instanceof InlineAsmConstant) {
@@ -357,7 +357,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         if (target instanceof FunctionDeclaration) {
             FunctionDeclaration targetDecl = (FunctionDeclaration) target;
             result = factoryFacade.tryCreateFunctionInvokeSubstitution(runtime, targetDecl.getName(), targetDecl.getType(), targetDecl.getType().getArgumentTypes().length, argNodes,
-                            method.getSlot(call.getName()),
+                            argTypes, method.getSlot(call.getName()),
                             method.getExceptionSlot(), regularIndex, unwindIndex, normalPhiWriteNodesArray, unwindPhiWriteNodesArray);
         }
         if (result == null) {
@@ -423,7 +423,8 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             // number of arguments of the caller so llvm intrinsics can distinguish varargs
             final int parentArgCount = method.getArgCount();
             FunctionDeclaration targetDecl = (FunctionDeclaration) target;
-            result = factoryFacade.tryCreateFunctionInvokeSubstitution(runtime, targetDecl.getName(), targetDecl.getType(), parentArgCount, args, method.getReturnSlot(), method.getExceptionSlot(),
+            result = factoryFacade.tryCreateFunctionInvokeSubstitution(runtime, targetDecl.getName(), targetDecl.getType(), parentArgCount, args, argsType, method.getReturnSlot(),
+                            method.getExceptionSlot(),
                             regularIndex,
                             unwindIndex,
                             normalPhiWriteNodesArray, unwindPhiWriteNodesArray);
