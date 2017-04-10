@@ -1608,7 +1608,7 @@ public class BytecodeParser implements GraphBuilderContext {
             LoadHubNode hub = graph.unique(new LoadHubNode(stampProvider, nonNullReceiver));
             LoadMethodNode actual = append(new LoadMethodNode(methodStamp, targetMethod, receiverType, method.getDeclaringClass(), hub));
             ConstantNode expected = graph.unique(ConstantNode.forConstant(methodStamp, targetMethod.getEncoding(), getMetaAccess()));
-            LogicNode compare = graph.addOrUniqueWithInputs(CompareNode.createCompareNode(Condition.EQ, actual, expected, constantReflection));
+            LogicNode compare = graph.addOrUniqueWithInputs(CompareNode.createCompareNode(constantReflection, metaAccess, options, null, Condition.EQ, actual, expected));
 
             JavaTypeProfile profile = null;
             if (profilingInfo != null && this.optimisticOpts.useTypeCheckHints(getOptions())) {
