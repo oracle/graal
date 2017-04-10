@@ -37,8 +37,6 @@ public final class LLVMAddress {
 
     public static final int WORD_LENGTH_BIT = 64;
 
-    public static final LLVMAddress NULL_POINTER = fromLong(0);
-
     private final Type type;
 
     private final long val;
@@ -50,6 +48,10 @@ public final class LLVMAddress {
 
     private LLVMAddress(long val) {
         this(null, val);
+    }
+
+    public static LLVMAddress nullPointer() {
+        return new LLVMAddress(0);
     }
 
     public static LLVMAddress fromLong(long val) {

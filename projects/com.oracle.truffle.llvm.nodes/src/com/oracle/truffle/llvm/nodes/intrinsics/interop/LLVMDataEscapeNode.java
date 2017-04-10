@@ -113,7 +113,7 @@ public abstract class LLVMDataEscapeNode extends Node {
 
     @Specialization
     public TruffleObject escapingAddress(LLVMAddress escapingValue) {
-        if (LLVMAddress.NULL_POINTER.equals(escapingValue)) {
+        if (LLVMAddress.nullPointer().equals(escapingValue)) {
             return new LLVMTruffleNull();
         }
         return new LLVMTruffleAddress(escapingValue);

@@ -49,7 +49,7 @@ public abstract class LLVMFrameAddress extends LLVMExpressionNode {
         if (frameLevel == 0) {
             return LLVMFrameUtil.getAddress(frame, getStackSlot());
         } else {
-            return LLVMAddress.NULL_POINTER;
+            return LLVMAddress.nullPointer();
         }
     }
 
