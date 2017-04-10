@@ -74,14 +74,14 @@ default: ${TARGETS}
 
 native/libsulongeh.dylib: lib/sulongeh.cpp
 	@mkdir -p native
-	clang++ -dynamiclib -O0 -stdlib=libc++ -std=c++11 -lc++abi -I/usr/include/libcxxabi -o $@ $+
+	clang++ -dynamiclib -O0 -stdlib=libc++ -std=c++11 -lc++abi -o $@ $+
 else
 TARGETS=${SOURCES:lib/sulongeh.cpp=native/libsulongeh.so}
 default: ${TARGETS}
 
 native/libsulongeh.so: lib/sulongeh.cpp
 	@mkdir -p native
-	clang++ -shared -g -O0 -stdlib=libc++ -std=c++11 -lc++abi -I/usr/include/libcxxabi -o $@ -fPIC $+
+	clang++ -shared -g -O0 -stdlib=libc++ -std=c++11 -lc++abi -o $@ -fPIC $+
 endif
 
 
