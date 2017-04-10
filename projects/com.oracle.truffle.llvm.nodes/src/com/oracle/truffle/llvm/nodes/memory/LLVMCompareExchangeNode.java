@@ -79,12 +79,11 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         public Object execute(VirtualFrame frame, LLVMAddress address, byte comparisonValue, byte newValue, LLVMStack stack) {
             byte value = LLVMMemory.getI8(address);
             LLVMAddress allocation = getResultAllocation(frame, stack);
+            LLVMMemory.putI8(allocation, value);
             if (value == comparisonValue) {
                 LLVMMemory.putI8(address, newValue);
-                LLVMMemory.putI8(allocation, newValue);
                 LLVMMemory.putI1(allocation.increment(secondValueOffset), true);
             } else {
-                LLVMMemory.putI8(allocation, value);
                 LLVMMemory.putI1(allocation.increment(secondValueOffset), false);
             }
             return allocation;
@@ -94,12 +93,11 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         public Object execute(VirtualFrame frame, LLVMAddress address, short comparisonValue, short newValue, LLVMStack stack) {
             short value = LLVMMemory.getI16(address);
             LLVMAddress allocation = getResultAllocation(frame, stack);
+            LLVMMemory.putI16(allocation, value);
             if (value == comparisonValue) {
                 LLVMMemory.putI16(address, newValue);
-                LLVMMemory.putI16(allocation, newValue);
                 LLVMMemory.putI1(allocation.increment(secondValueOffset), true);
             } else {
-                LLVMMemory.putI16(allocation, value);
                 LLVMMemory.putI1(allocation.increment(secondValueOffset), false);
             }
             return allocation;
@@ -109,12 +107,11 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         public Object execute(VirtualFrame frame, LLVMAddress address, int comparisonValue, int newValue, LLVMStack stack) {
             int value = LLVMMemory.getI32(address);
             LLVMAddress allocation = getResultAllocation(frame, stack);
+            LLVMMemory.putI32(allocation, value);
             if (value == comparisonValue) {
                 LLVMMemory.putI32(address, newValue);
-                LLVMMemory.putI32(allocation, newValue);
                 LLVMMemory.putI1(allocation.increment(secondValueOffset), true);
             } else {
-                LLVMMemory.putI32(allocation, value);
                 LLVMMemory.putI1(allocation.increment(secondValueOffset), false);
             }
             return allocation;
@@ -124,12 +121,11 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         public Object execute(VirtualFrame frame, LLVMAddress address, long comparisonValue, long newValue, LLVMStack stack) {
             long value = LLVMMemory.getI64(address);
             LLVMAddress allocation = getResultAllocation(frame, stack);
+            LLVMMemory.putI64(allocation, value);
             if (value == comparisonValue) {
                 LLVMMemory.putI64(address, newValue);
-                LLVMMemory.putI64(allocation, newValue);
                 LLVMMemory.putI1(allocation.increment(secondValueOffset), true);
             } else {
-                LLVMMemory.putI64(allocation, value);
                 LLVMMemory.putI1(allocation.increment(secondValueOffset), false);
             }
             return allocation;
@@ -139,12 +135,11 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         public Object execute(VirtualFrame frame, LLVMAddress address, LLVMAddress comparisonValue, LLVMAddress newValue, LLVMStack stack) {
             LLVMAddress value = LLVMMemory.getAddress(address);
             LLVMAddress allocation = getResultAllocation(frame, stack);
+            LLVMMemory.putAddress(allocation, value);
             if (value.getVal() == comparisonValue.getVal()) {
                 LLVMMemory.putAddress(address, newValue);
-                LLVMMemory.putAddress(allocation, newValue);
                 LLVMMemory.putI1(allocation.increment(secondValueOffset), true);
             } else {
-                LLVMMemory.putAddress(allocation, value);
                 LLVMMemory.putI1(allocation.increment(secondValueOffset), false);
             }
             return allocation;
