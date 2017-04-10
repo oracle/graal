@@ -30,8 +30,8 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -47,14 +47,9 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 public abstract class LLVMTruffleReleaseHandle extends LLVMIntrinsic {
 
     private static final boolean TRACE = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.traceExecution());
-    @CompilationFinal private LLVMContext context;
 
     @Specialization
-    public Object executeIntrinsic(LLVMAddress handle) {
-        if (context == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.context = getContext();
-        }
+    public Object executeIntrinsic(LLVMAddress handle, @Cached("getContext()") LLVMContext context) {
         if (TRACE) {
             trace(handle);
         }
