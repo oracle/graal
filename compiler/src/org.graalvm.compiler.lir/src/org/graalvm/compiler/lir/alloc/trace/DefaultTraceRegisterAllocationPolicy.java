@@ -28,6 +28,7 @@ import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.alloc.Trace;
 import org.graalvm.compiler.core.common.alloc.TraceBuilderResult;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.lir.alloc.trace.TraceAllocationPhase.TraceAllocationContext;
 import org.graalvm.compiler.lir.alloc.trace.TraceRegisterAllocationPolicy.AllocationStrategy;
 import org.graalvm.compiler.lir.alloc.trace.bu.BottomUpAllocator;
@@ -52,7 +53,11 @@ public final class DefaultTraceRegisterAllocationPolicy {
     public enum TraceRAPolicies {
         Default,
         LinearScanOnly,
-        BottomUpOnly
+        BottomUpOnly,
+        Ratio,
+        Loops,
+        MaxFreq,
+        FreqBudget
     }
 
     public static class Options {
@@ -61,6 +66,10 @@ public final class DefaultTraceRegisterAllocationPolicy {
         public static final OptionKey<Boolean> TraceRAtrivialBlockAllocator = new OptionKey<>(true);
         @Option(help = "Use LSRA / BottomUp ratio", type = OptionType.Debug)
         public static final OptionKey<Double> TraceRAbottomUpRatio = new OptionKey<>(0.0);
+        @Option(help = "Probabiltiy Threshold", type = OptionType.Debug)
+        public static final OptionKey<Double> TraceRAprobalilityThreshold = new OptionKey<>(0.8);
+        @Option(help = "Sum Probabiltiy Budget Threshold", type = OptionType.Debug)
+        public static final OptionKey<Double> TraceRAsumBudget = new OptionKey<>(0.5);
         @Option(help = "TraceRA allocation policy to use.", type = OptionType.Debug)
         public static final EnumOptionKey<TraceRAPolicies> TraceRAPolicy = new EnumOptionKey<>(TraceRAPolicies.Default);
         // @formatter:on
@@ -117,6 +126,134 @@ public final class DefaultTraceRegisterAllocationPolicy {
         }
     }
 
+    public static final class BottomUpRatioStrategy extends BottomUpStrategy {
+
+        public BottomUpRatioStrategy(TraceRegisterAllocationPolicy plan) {
+            // explicitly specify the enclosing instance for the superclass constructor call
+            super(plan);
+        }
+
+        @Override
+        public boolean shouldApplyTo(Trace trace) {
+            if (!super.shouldApplyTo(trace)) {
+                return false;
+            }
+            double numTraces = getTraceBuilderResult().getTraces().size();
+            double traceId = trace.getId();
+            double ratio = Options.TraceRAbottomUpRatio.getValue(getOptions());
+            assert ratio >= 0 && ratio <= 1.0 : "Ratio out of range: " + ratio;
+            return (traceId / numTraces) >= ratio;
+        }
+
+    }
+
+    public static final class BottomUpLoopStrategy extends BottomUpStrategy {
+
+        public BottomUpLoopStrategy(TraceRegisterAllocationPolicy plan) {
+            // explicitly specify the enclosing instance for the superclass constructor call
+            super(plan);
+        }
+
+        @Override
+        public boolean shouldApplyTo(Trace trace) {
+            if (!super.shouldApplyTo(trace)) {
+                return false;
+            }
+            if (getLIR().getControlFlowGraph().getLoops().isEmpty()) {
+                // no loops at all -> use LSRA
+                return false;
+            }
+            for (AbstractBlockBase<?> block : trace.getBlocks()) {
+                if (block.getLoopDepth() > 0) {
+                    // do not use bottom up for traces with loops
+                    return false;
+                }
+            }
+            return true;
+        }
+
+    }
+
+    public static final class BottomUpMaxFrequencyStrategy extends BottomUpStrategy {
+
+        private double maxMethodProbability;
+
+        public BottomUpMaxFrequencyStrategy(TraceRegisterAllocationPolicy plan) {
+            // explicitly specify the enclosing instance for the superclass constructor call
+            super(plan);
+            this.maxMethodProbability = maxProbabiltiy(getLIR().getControlFlowGraph().getBlocks());
+        }
+
+        private static double maxProbabiltiy(AbstractBlockBase<?>[] blocks) {
+            double max = 0;
+            for (AbstractBlockBase<?> block : blocks) {
+                double probability = block.probability();
+                if (probability > max) {
+                    max = probability;
+                }
+            }
+            return max;
+        }
+
+        @Override
+        public boolean shouldApplyTo(Trace trace) {
+            if (!super.shouldApplyTo(trace)) {
+                return false;
+            }
+            return maxProbabiltiy(trace.getBlocks()) / maxMethodProbability <= Options.TraceRAprobalilityThreshold.getValue(getOptions());
+        }
+
+    }
+
+    public static final class BottomUpFrequencyBudgetStrategy extends BottomUpStrategy {
+
+        private final double sumMethodProbability;
+        private final double[] sumTraceProbability;
+        private double budget;
+
+        public BottomUpFrequencyBudgetStrategy(TraceRegisterAllocationPolicy plan) {
+            // explicitly specify the enclosing instance for the superclass constructor call
+            super(plan);
+            ArrayList<Trace> traces = getTraceBuilderResult().getTraces();
+            double[] sumTraces = new double[traces.size()];
+            this.sumMethodProbability = init(traces, sumTraces);
+            this.sumTraceProbability = sumTraces;
+            this.budget = this.sumMethodProbability;
+        }
+
+        private static double init(ArrayList<Trace> traces, double[] sumTraces) {
+            double sumMethod = 0;
+            for (Trace trace : traces) {
+                double traceSum = 0;
+                for (AbstractBlockBase<?> block : trace.getBlocks()) {
+                    traceSum += block.probability();
+                }
+                sumTraces[trace.getId()] = traceSum;
+                sumMethod += traceSum;
+            }
+            return sumMethod;
+        }
+
+        @Override
+        public boolean shouldApplyTo(Trace trace) {
+            Debug.log(1, "Trace%d: budget %f", (Object) trace.getId(), budget);
+            double traceCost = sumTraceProbability[trace.getId()];
+            double oldBudget = budget;
+            budget -= traceCost;
+            Debug.log(1, "Trace%d: budget %f", (Object) trace.getId(), budget);
+            if (!super.shouldApplyTo(trace)) {
+                return false;
+            }
+            double d = oldBudget / sumMethodProbability;
+            Debug.log(1, "Trace%d: ratio %f", (Object) trace.getId(), d);
+            if (d > Options.TraceRAsumBudget.getValue(getOptions())) {
+                return false;
+            }
+            return true;
+        }
+
+    }
+
     public static final class TraceLinearScanStrategy extends AllocationStrategy {
 
         public TraceLinearScanStrategy(TraceRegisterAllocationPolicy plan) {
@@ -148,16 +285,27 @@ public final class DefaultTraceRegisterAllocationPolicy {
         switch (Options.TraceRAPolicy.getValue(options)) {
             case Default:
             case LinearScanOnly:
-                plan.appendStrategy(new TraceLinearScanStrategy(plan));
                 break;
             case BottomUpOnly:
                 plan.appendStrategy(new BottomUpStrategy(plan));
-                // Fallback
-                plan.appendStrategy(new TraceLinearScanStrategy(plan));
+                break;
+            case Ratio:
+                plan.appendStrategy(new BottomUpRatioStrategy(plan));
+                break;
+            case Loops:
+                plan.appendStrategy(new BottomUpLoopStrategy(plan));
+                break;
+            case MaxFreq:
+                plan.appendStrategy(new BottomUpMaxFrequencyStrategy(plan));
+                break;
+            case FreqBudget:
+                plan.appendStrategy(new BottomUpFrequencyBudgetStrategy(plan));
                 break;
             default:
                 throw JVMCIError.shouldNotReachHere();
         }
+        // Fallback
+        plan.appendStrategy(new TraceLinearScanStrategy(plan));
         return plan;
     }
 }

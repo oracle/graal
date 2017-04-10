@@ -31,6 +31,7 @@ import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.alloc.trace.TraceAllocationPhase.TraceAllocationContext;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool.MoveFactory;
+import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.common.JVMCIError;
@@ -61,6 +62,10 @@ public final class TraceRegisterAllocationPolicy {
 
         protected final TraceBuilderResult getTraceBuilderResult() {
             return resultTraces;
+        }
+
+        protected final OptionValues getOptions() {
+            return getLIR().getOptions();
         }
 
         /**
