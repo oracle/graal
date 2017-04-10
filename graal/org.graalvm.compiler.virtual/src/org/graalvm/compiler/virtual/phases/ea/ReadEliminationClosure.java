@@ -35,6 +35,7 @@ import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
@@ -252,7 +253,7 @@ public final class ReadEliminationClosure extends EffectsClosure<ReadElimination
         }
 
         @Override
-        protected void merge(List<ReadEliminationBlockState> states) {
+        protected void merge(List<ReadEliminationBlockState> states, FrameState frameState) {
             MapCursor<CacheEntry<?>, ValueNode> cursor = states.get(0).readCache.getEntries();
             while (cursor.advance()) {
                 CacheEntry<?> key = cursor.getKey();

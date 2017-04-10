@@ -341,7 +341,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             stackSize = stackSizeToRestore;
             return res;
         } else {
-            if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
+            if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI || bci == BytecodeFrame.UNWIND_BCI) {
                 assert outerFrameState == null;
                 clearLocals();
             }
