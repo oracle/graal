@@ -4,7 +4,7 @@ hwloc.bench-common-8 : {
   environment: {
     BASE_BENCH_RESULTS_FILE_NAME: "bench-results.json"
     LOG_FILE_NAME : "-output.log"
-    NODE: undefined
+    MACHINE_NODE: undefined
     BENCH_RESULTS_FILE_PATH: undefined
   }
   teardown : [
@@ -16,16 +16,16 @@ hwloc.bench-common-8 : {
   ]
 }
 
-hwloc.cmd.nobackground.suffix : ["|","tee", "-a", "${LOGDIR}/node${NODE}${LOG_FILE_NAME}"]
+hwloc.cmd.nobackground.suffix : ["|","tee", "-a", "${LOGDIR}/node${MACHINE_NODE}${LOG_FILE_NAME}"]
 hwloc.cmd.suffix : ${hwloc.cmd.nobackground.suffix} ["&"]
 
 # command prefix for binding a command to a certain node
 hwloc.node0 : ["hwloc-bind", "--cpubind", "node:0", "--membind", "node:0", "--"]
 hwloc.node1 : ["hwloc-bind", "--cpubind", "node:1", "--membind", "node:1", "--"]
-hwloc.node : ["hwloc-bind", "--cpubind", "node:${NODE}", "--membind", "node:${NODE}", "--"]
+hwloc.node : ["hwloc-bind", "--cpubind", "node:${MACHINE_NODE}", "--membind", "node:${MACHINE_NODE}", "--"]
 
-export.node0: [export, "NODE=0", "BENCH_RESULTS_FILE_PATH=node0-${BASE_BENCH_RESULTS_FILE_NAME}"]
-export.node1: [export, "NODE=1", "BENCH_RESULTS_FILE_PATH=node1-${BASE_BENCH_RESULTS_FILE_NAME}"]
+export.node0: [export, "MACHINE_NODE=0", "BENCH_RESULTS_FILE_PATH=node0-${BASE_BENCH_RESULTS_FILE_NAME}"]
+export.node1: [export, "MACHINE_NODE=1", "BENCH_RESULTS_FILE_PATH=node1-${BASE_BENCH_RESULTS_FILE_NAME}"]
 
 bench-dacapo-hwloc: ${bench-dacapo} ${hwloc.bench-common-8} {
   run: [
