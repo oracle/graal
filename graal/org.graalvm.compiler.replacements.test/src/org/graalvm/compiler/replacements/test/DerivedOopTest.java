@@ -109,6 +109,26 @@ public class DerivedOopTest extends ReplacementsTest implements Snippets {
         }
     }
 
+    @Test
+    public void testFieldOffsetMergeLiveBasedPointer() {
+        // Run a couple times to encourage objects to move
+        for (int i = 0; i < 4; i++) {
+            Result r = new Result();
+            test("fieldOffsetMergeSnippet02", r, new Result(), new Result(), 8L, 16L);
+            Assert.assertEquals(r.beforeGC.delta(), r.afterGC.delta());
+        }
+    }
+
+    @Test
+    public void testFieldOffsetMergeNonLiveBasedPointer() {
+        // Run a couple times to encourage objects to move
+        for (int i = 0; i < 4; i++) {
+            Result r = new Result();
+            test("fieldOffsetMergeSnippet01", r, 8L, 16L);
+            Assert.assertEquals(r.beforeGC.delta(), r.afterGC.delta());
+        }
+    }
+
     static long getRawPointer(Object obj) {
         // fake implementation for interpreter
         return obj.hashCode();
@@ -133,6 +153,50 @@ public class DerivedOopTest extends ReplacementsTest implements Snippets {
         obj.afterGC.internalPointer = internalPointer;
 
         return obj;
+    }
+
+    public static boolean SideEffectB;
+    public static long SideEffect1 = 16;
+    public static long SideEffect2 = 16;
+    public static Object o1 = new Result();
+    public static Object o2 = o1;
+
+    public static Result fieldOffsetMergeSnippet01(Result objResult, long offsetA, long offsetB) {
+        long internalPointer;
+        if (SideEffectB) {
+            internalPointer = getRawPointer(o1) + offsetA;
+            SideEffect1 = internalPointer;
+        } else {
+            internalPointer = getRawPointer(o2) + offsetB;
+            SideEffect2 = internalPointer;
+        }
+        // make sure the internal pointer is computed before the safepoint
+        GraalDirectives.blackhole(internalPointer);
+        objResult.beforeGC.basePointer = getRawPointer(objResult);
+        objResult.beforeGC.internalPointer = internalPointer;
+        System.gc();
+        objResult.afterGC.basePointer = getRawPointer(objResult);
+        objResult.afterGC.internalPointer = internalPointer;
+        return objResult;
+    }
+
+    public static Result fieldOffsetMergeSnippet02(Result objResult, Result a, Result b, long offsetA, long offsetB) {
+        long internalPointer;
+        if (SideEffectB) {
+            internalPointer = getRawPointer(a) + offsetA;
+            SideEffect1 = internalPointer;
+        } else {
+            internalPointer = getRawPointer(b) + offsetB;
+            SideEffect2 = internalPointer;
+        }
+        // make sure the internal pointer is computed before the safepoint
+        GraalDirectives.blackhole(internalPointer);
+        objResult.beforeGC.basePointer = getRawPointer(objResult);
+        objResult.beforeGC.internalPointer = internalPointer;
+        System.gc();
+        objResult.afterGC.basePointer = getRawPointer(objResult);
+        objResult.afterGC.internalPointer = internalPointer;
+        return objResult;
     }
 
     @Override
