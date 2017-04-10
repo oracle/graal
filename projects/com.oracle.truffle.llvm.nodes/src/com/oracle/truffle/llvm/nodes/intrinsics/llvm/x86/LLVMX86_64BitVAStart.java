@@ -123,39 +123,41 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
         LLVMMemory.putI32(structAddress.increment(X86_64BitVarArgs.GP_OFFSET), 0);
         LLVMMemory.putI32(structAddress.increment(X86_64BitVarArgs.FP_OFFSET), X86_64BitVarArgs.GP_LIMIT);
 
-        int gpOffset = 0;
-        int fpOffset = X86_64BitVarArgs.GP_LIMIT;
-        int overflowOffset = 0;
-        Type[] types = getTypes(realArguments, varArgsStartIndex);
+        if (nrVarArgs > 0) {
+            int gpOffset = 0;
+            int fpOffset = X86_64BitVarArgs.GP_LIMIT;
+            int overflowOffset = 0;
+            Type[] types = getTypes(realArguments, varArgsStartIndex);
 
-        for (int i = 0; i < nrVarArgs; i++) {
-            Object object = realArguments[varArgsStartIndex + i];
-            VarArgArea area = getVarArgArea(types[i]);
-            if (area == VarArgArea.GP_AREA) {
-                if (gpOffset < X86_64BitVarArgs.GP_LIMIT) {
-                    storeArgument(types[i], regSaveArea.increment(gpOffset), object);
-                    gpOffset += X86_64BitVarArgs.GP_STEP;
-                } else {
+            for (int i = 0; i < nrVarArgs; i++) {
+                Object object = realArguments[varArgsStartIndex + i];
+                VarArgArea area = getVarArgArea(types[i]);
+                if (area == VarArgArea.GP_AREA) {
+                    if (gpOffset < X86_64BitVarArgs.GP_LIMIT) {
+                        storeArgument(types[i], regSaveArea.increment(gpOffset), object);
+                        gpOffset += X86_64BitVarArgs.GP_STEP;
+                    } else {
+                        storeArgument(types[i], overflowArgArea.increment(overflowOffset), object);
+                        overflowOffset += X86_64BitVarArgs.STACK_STEP;
+                    }
+                } else if (area == VarArgArea.FP_AREA) {
+                    if (fpOffset < X86_64BitVarArgs.FP_LIMIT) {
+                        storeArgument(types[i], regSaveArea.increment(fpOffset), object);
+                        fpOffset += X86_64BitVarArgs.FP_STEP;
+                    } else {
+                        storeArgument(types[i], overflowArgArea.increment(overflowOffset), object);
+                        overflowOffset += X86_64BitVarArgs.STACK_STEP;
+                    }
+                } else if (area == VarArgArea.OVERFLOW_AREA) {
+                    if (types[i] != PrimitiveType.X86_FP80) {
+                        throw new AssertionError();
+                    }
                     storeArgument(types[i], overflowArgArea.increment(overflowOffset), object);
-                    overflowOffset += X86_64BitVarArgs.STACK_STEP;
-                }
-            } else if (area == VarArgArea.FP_AREA) {
-                if (fpOffset < X86_64BitVarArgs.FP_LIMIT) {
-                    storeArgument(types[i], regSaveArea.increment(fpOffset), object);
-                    fpOffset += X86_64BitVarArgs.FP_STEP;
+                    overflowOffset += LONG_DOUBLE_SIZE;
                 } else {
-                    storeArgument(types[i], overflowArgArea.increment(overflowOffset), object);
-                    overflowOffset += X86_64BitVarArgs.STACK_STEP;
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException("TODO");
                 }
-            } else if (area == VarArgArea.OVERFLOW_AREA) {
-                if (types[i] != PrimitiveType.X86_FP80) {
-                    throw new AssertionError();
-                }
-                storeArgument(types[i], overflowArgArea.increment(overflowOffset), object);
-                overflowOffset += LONG_DOUBLE_SIZE;
-            } else {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException("TODO");
             }
         }
 

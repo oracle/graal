@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -131,6 +133,20 @@ abstract class LLVMForeignCallNode extends LLVMExpressionNode {
         return function.getCallTarget();
     }
 
+    private static void checkArgLength(int minLength, Object[] arguments) {
+        if (arguments.length < minLength) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throwArgLengthException(minLength, arguments);
+        }
+    }
+
+    private static void throwArgLengthException(int minLength, Object[] arguments) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("At least ").append(minLength).append(" arguments expected, but only ").append(arguments.length).append(" arguments received.");
+        sb.append(" Arguments=").append(Arrays.toString(arguments));
+        throw new IllegalStateException(sb.toString());
+    }
+
     @ExplodeLoop
     private Object[] packArguments(Object[] arguments, ToLLVMNode[] toLLVMNodes, int cachedLength) {
         if (arguments.length != cachedLength) {
@@ -140,6 +156,7 @@ abstract class LLVMForeignCallNode extends LLVMExpressionNode {
         int actualArgumentsLength = Math.max(cachedLength, toLLVMNodes.length);
         final Object[] packedArguments = new Object[1 + actualArgumentsLength];
         packedArguments[0] = stack.getUpperBounds();
+        checkArgLength(toLLVMNodes.length, arguments);
         for (int i = 0; i < toLLVMNodes.length; i++) {
             packedArguments[i + 1] = toLLVMNodes[i].executeWithTarget(arguments[i]);
         }
