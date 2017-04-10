@@ -49,8 +49,8 @@ abstract class LinearScanAllocationPhase {
     public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context, boolean dumpLIR) {
         try (Scope s = Debug.scope(getName(), this)) {
             run(target, lirGenRes, context);
-            if (dumpLIR && Debug.isDumpEnabled(Debug.BASIC_LEVEL)) {
-                Debug.dump(Debug.BASIC_LEVEL, lirGenRes.getLIR(), "%s", getName());
+            if (dumpLIR && Debug.isDumpEnabled(Debug.VERBOSE_LEVEL)) {
+                Debug.dump(Debug.VERBOSE_LEVEL, lirGenRes.getLIR(), "After %s", getName());
             }
         } catch (Throwable e) {
             throw Debug.handle(e);

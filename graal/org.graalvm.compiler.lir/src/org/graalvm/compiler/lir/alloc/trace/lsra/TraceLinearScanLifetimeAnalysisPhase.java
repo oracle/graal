@@ -85,7 +85,6 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
     }
 
     public static final class Analyser {
-        private static final int DUMP_DURING_ANALYSIS_LEVEL = 4;
         private final TraceLinearScan allocator;
         private final TraceBuilderResult traceBuilderResult;
         private int numInstructions;
@@ -534,7 +533,7 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
                         AbstractBlockBase<?> pred = blockId == 0 ? null : blocks[blockId - 1];
                         handleBlockBegin(block, pred);
                     }
-                    if (Debug.isDumpEnabled(DUMP_DURING_ANALYSIS_LEVEL)) {
+                    if (Debug.isDumpEnabled(Debug.VERY_DETAILED_LEVEL)) {
                         allocator.printIntervals("After Block " + block);
                     }
                 }   // end of block iteration
