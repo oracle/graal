@@ -40,6 +40,8 @@ import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.java.JavaInterop;
@@ -819,6 +821,106 @@ public final class LLVMInteropTest {
             Value globalSymbol = runner.findGlobalSymbol("registered_tagged_address");
             Object result = globalSymbol.execute().get();
             Assert.assertTrue(result instanceof Integer && (int) result == 42);
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    @Test
+    public void test070() {
+        Runner runner = new Runner("interop070");
+        runner.run();
+        try {
+            Value pointer = runner.findGlobalSymbol("returnPointerToGlobal");
+            TruffleObject pointerTruffleObject = (TruffleObject) pointer.execute().get();
+            ForeignAccess.sendWrite(Message.WRITE.createNode(), pointerTruffleObject, 0, 42);
+            Value value = runner.findGlobalSymbol("returnGlobal");
+            Object result = value.execute().get();
+            Assert.assertTrue(result instanceof Integer && (int) result == 42);
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    @Test
+    public void test071() {
+        Runner runner = new Runner("interop071");
+        runner.run();
+        try {
+            Object obj = new Object();
+            TruffleObject o = JavaInterop.asTruffleObject(obj);
+            Value pointer = runner.findGlobalSymbol("returnPointerToGlobal");
+            TruffleObject pointerTruffleObject = (TruffleObject) pointer.execute().get();
+            ForeignAccess.sendWrite(Message.WRITE.createNode(), pointerTruffleObject, 0, o);
+            Value value = runner.findGlobalSymbol("returnGlobal");
+            Object result = value.execute().get();
+            Assert.assertTrue(result == obj);
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    @Test
+    public void test072() {
+        Runner runner = new Runner("interop072");
+        runner.run();
+        try {
+            Object obj = new Object();
+            TruffleObject o = JavaInterop.asTruffleObject(obj);
+            Value pointer = runner.findGlobalSymbol("returnPointerToGlobal");
+            TruffleObject pointerTruffleObject = (TruffleObject) pointer.execute().get();
+
+            Value setter = runner.findGlobalSymbol("setter");
+            setter.execute(pointerTruffleObject, o);
+
+            Value value = runner.findGlobalSymbol("returnGlobal");
+            Object result = value.execute().get();
+            Assert.assertTrue(result == obj);
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    @Test
+    public void test072a() {
+        Runner runner = new Runner("interop072");
+        runner.run();
+        try {
+            Value pointer = runner.findGlobalSymbol("returnPointerToGlobal");
+            TruffleObject pointerTruffleObject = (TruffleObject) pointer.execute().get();
+
+            Value setter = runner.findGlobalSymbol("setter");
+            setter.execute(pointerTruffleObject, 42);
+
+            Value value = runner.findGlobalSymbol("returnGlobal");
+            Object result = value.execute().get();
+            Assert.assertTrue(result instanceof Integer && (int) result == 42);
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    @Test
+    public void test072b() {
+        Runner runner = new Runner("interop072");
+        runner.run();
+        try {
+            Value pointer = runner.findGlobalSymbol("returnPointerToGlobal");
+            TruffleObject pointerTruffleObject = (TruffleObject) pointer.execute().get();
+
+            Value setter = runner.findGlobalSymbol("setter");
+            setter.execute(pointerTruffleObject, 42);
+
+            Value value = runner.findGlobalSymbol("returnGlobal");
+            Object result = value.execute().get();
+            Assert.assertTrue(result instanceof Integer && (int) result == 42);
+
+            Object obj = new Object();
+            TruffleObject o = JavaInterop.asTruffleObject(obj);
+            setter.execute(pointerTruffleObject, o);
+            result = value.execute().get();
+            Assert.assertTrue(result == obj);
+
         } catch (Exception e) {
             throw new AssertionError(e);
         }

@@ -36,7 +36,7 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions.MemCopyNode;
 
 public abstract class LLVMMemMove {
@@ -66,22 +66,22 @@ public abstract class LLVMMemMove {
 
         @SuppressWarnings("unused")
         @Specialization
-        public Object executeVoid(LLVMGlobalVariableDescriptor dest, LLVMAddress source, long length, int align, boolean isVolatile) {
-            getMemMove().execute(dest.getNativeAddress(), source, length);
+        public Object executeVoid(LLVMGlobalVariable dest, LLVMAddress source, long length, int align, boolean isVolatile) {
+            getMemMove().execute(dest.getNativeLocation(), source, length);
             return null;
         }
 
         @SuppressWarnings("unused")
         @Specialization
-        public Object executeVoid(LLVMAddress dest, LLVMGlobalVariableDescriptor source, long length, int align, boolean isVolatile) {
-            getMemMove().execute(dest, source.getNativeAddress(), length);
+        public Object executeVoid(LLVMAddress dest, LLVMGlobalVariable source, long length, int align, boolean isVolatile) {
+            getMemMove().execute(dest, source.getNativeLocation(), length);
             return null;
         }
 
         @SuppressWarnings("unused")
         @Specialization
-        public Object executeVoid(LLVMGlobalVariableDescriptor dest, LLVMGlobalVariableDescriptor source, long length, int align, boolean isVolatile) {
-            getMemMove().execute(dest.getNativeAddress(), source.getNativeAddress(), length);
+        public Object executeVoid(LLVMGlobalVariable dest, LLVMGlobalVariable source, long length, int align, boolean isVolatile) {
+            getMemMove().execute(dest.getNativeLocation(), source.getNativeLocation(), length);
             return null;
         }
 

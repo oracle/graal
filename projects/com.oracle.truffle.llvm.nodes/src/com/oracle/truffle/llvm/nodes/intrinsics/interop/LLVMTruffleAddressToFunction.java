@@ -49,7 +49,7 @@ public abstract class LLVMTruffleAddressToFunction extends LLVMIntrinsic {
         return handle;
     }
 
-    @Specialization
+    @Specialization(replaces = "executeIntrinsicCached")
     public Object executeIntrinsic(LLVMAddress value, @Cached("getContext()") LLVMContext cachedContext) {
         return getDescriptor(value, cachedContext);
     }

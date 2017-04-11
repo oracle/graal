@@ -40,12 +40,12 @@ import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
-import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
-import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariableDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
@@ -204,8 +204,8 @@ public abstract class LLVMDataEscapeNode extends Node {
     }
 
     @Specialization
-    public Object escapingTruffleObject(LLVMGlobalVariableDescriptor escapingValue, LLVMContext context) {
-        return new LLVMSharedGlobalVariableDescriptor(escapingValue, context);
+    public Object escapingTruffleObject(LLVMGlobalVariable escapingValue, LLVMContext context) {
+        return new LLVMSharedGlobalVariable(escapingValue, context);
     }
 
     public boolean notLLVM(TruffleObject v) {
@@ -236,8 +236,8 @@ public abstract class LLVMDataEscapeNode extends Node {
             return ((LLVMTruffleObject) value).getObject();
         } else if (value instanceof LLVMTruffleObject) {
             throw new IllegalStateException("TruffleObject after pointer arithmetic must not leave Sulong.");
-        } else if (value instanceof LLVMGlobalVariableDescriptor) {
-            return new LLVMSharedGlobalVariableDescriptor((LLVMGlobalVariableDescriptor) value, context);
+        } else if (value instanceof LLVMGlobalVariable) {
+            return new LLVMSharedGlobalVariable((LLVMGlobalVariable) value, context);
         } else if (value instanceof TruffleObject && LLVMExpressionNode.notLLVM((TruffleObject) value)) {
             return value;
         } else if (value == null) {

@@ -43,8 +43,8 @@ import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
@@ -66,8 +66,8 @@ public abstract class LLVMDoubleLoadNode extends LLVMExpressionNode {
     private final DoubleValueProfile profile = DoubleValueProfile.createRawIdentityProfile();
 
     @Specialization
-    public double executeDouble(LLVMGlobalVariableDescriptor addr) {
-        return executeDouble(addr.getNativeAddress());
+    public double executeDouble(LLVMGlobalVariable addr) {
+        return profile.profile(addr.getDouble());
     }
 
     @Specialization

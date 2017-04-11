@@ -43,8 +43,8 @@ import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
@@ -72,9 +72,8 @@ public abstract class LLVMI8LoadNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    public byte executeI8(LLVMGlobalVariableDescriptor addr) {
-        byte val = LLVMMemory.getI8(addr.getNativeAddress());
-        return profile.profile(val);
+    public byte executeI8(LLVMGlobalVariable addr) {
+        return profile.profile(addr.getI8());
     }
 
     @Specialization

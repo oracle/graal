@@ -27,42 +27,19 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.c;
+package com.oracle.truffle.llvm.runtime.global;
 
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import java.util.HashMap;
+import java.util.Map;
 
-@NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMTruffleReadBytes extends LLVMIntrinsic {
+import com.oracle.truffle.llvm.runtime.NativeResolver;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
-    @Specialization
-    public Object executeIntrinsic(LLVMGlobalVariable value) {
-        return executeIntrinsic(value.getNativeLocation());
+public final class LLVMGlobalVariableRegistry {
+
+    private final Map<String, LLVMGlobalVariable> descriptors = new HashMap<>();
+
+    public synchronized LLVMGlobalVariable lookupOrAdd(String name, NativeResolver nativeResolver, Type type) {
+        return descriptors.computeIfAbsent(name, k -> LLVMGlobalVariable.create(name, nativeResolver, type));
     }
-
-    @Specialization
-    public Object executeIntrinsic(LLVMAddress value) {
-        byte c;
-        LLVMAddress adr = value;
-        int count = 0;
-        while ((c = LLVMMemory.getI8(adr)) != 0) {
-            count++;
-            adr = adr.increment(Byte.BYTES);
-        }
-        byte[] bytes = new byte[count];
-        count = 0;
-        adr = value;
-        while ((c = LLVMMemory.getI8(adr)) != 0) {
-            bytes[count++] = c;
-            adr = adr.increment(Byte.BYTES);
-        }
-        return JavaInterop.asTruffleObject(bytes);
-    }
-
 }

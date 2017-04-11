@@ -42,8 +42,8 @@ import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressCompareNodeGen.ToComp
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
-import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
@@ -189,8 +189,8 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMAddress doLLVMGlobalVariableDescriptor(LLVMGlobalVariableDescriptor address) {
-            return address.getNativeAddress();
+        protected LLVMAddress doLLVMGlobalVariableDescriptor(LLVMGlobalVariable address) {
+            return address.getNativeLocation();
         }
 
         @Child private Node isNull = Message.IS_NULL.createNode();

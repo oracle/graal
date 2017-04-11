@@ -55,13 +55,13 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
-import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
-import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariableDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
@@ -106,8 +106,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object execute(LLVMGlobalVariableDescriptor address, boolean value) {
-            LLVMMemory.putI1(address.getNativeAddress(), value);
+        public Object execute(LLVMGlobalVariable address, boolean value) {
+            address.putI1(value);
             return null;
         }
 
@@ -156,8 +156,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object execute(LLVMGlobalVariableDescriptor address, byte value) {
-            LLVMMemory.putI8(address.getNativeAddress(), value);
+        public Object execute(LLVMGlobalVariable address, byte value) {
+            address.putI8(value);
             return null;
         }
 
@@ -193,8 +193,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object execute(LLVMGlobalVariableDescriptor address, short value) {
-            LLVMMemory.putI16(address.getNativeAddress(), value);
+        public Object execute(LLVMGlobalVariable address, short value) {
+            address.putI16(value);
             return null;
         }
 
@@ -237,8 +237,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object execute(LLVMGlobalVariableDescriptor address, int value) {
-            LLVMMemory.putI32(address.getNativeAddress(), value);
+        public Object execute(LLVMGlobalVariable address, int value) {
+            address.putI32(value);
             return null;
         }
 
@@ -281,8 +281,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object execute(LLVMGlobalVariableDescriptor address, long value) {
-            LLVMMemory.putI64(address.getNativeAddress(), value);
+        public Object execute(LLVMGlobalVariable address, long value) {
+            address.putI64(value);
             return null;
         }
 
@@ -325,8 +325,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object execute(LLVMGlobalVariableDescriptor address, LLVMIVarBit value) {
-            LLVMMemory.putIVarBit(address.getNativeAddress(), value);
+        public Object execute(LLVMGlobalVariable address, LLVMIVarBit value) {
+            LLVMMemory.putIVarBit(address.getNativeLocation(), value);
             return null;
         }
 
@@ -346,8 +346,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object execute(LLVMGlobalVariableDescriptor address, float value) {
-            LLVMMemory.putFloat(address.getNativeAddress(), value);
+        public Object execute(LLVMGlobalVariable address, float value) {
+            address.putFloat(value);
             return null;
         }
 
@@ -390,8 +390,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object execute(LLVMGlobalVariableDescriptor address, double value) {
-            LLVMMemory.putDouble(address.getNativeAddress(), value);
+        public Object execute(LLVMGlobalVariable address, double value) {
+            address.putDouble(value);
             return null;
         }
 
@@ -434,8 +434,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object execute(LLVMGlobalVariableDescriptor address, LLVM80BitFloat value) {
-            LLVMMemory.put80BitFloat(address.getNativeAddress(), value);
+        public Object execute(LLVMGlobalVariable address, LLVM80BitFloat value) {
+            LLVMMemory.put80BitFloat(address.getNativeLocation(), value);
             return null;
         }
 
@@ -472,9 +472,9 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object execute(LLVMBoxedPrimitive address, LLVMGlobalVariableDescriptor value) {
+        public Object execute(LLVMBoxedPrimitive address, LLVMGlobalVariable value) {
             if (address.getValue() instanceof Long) {
-                LLVMMemory.putAddress(LLVMAddress.fromLong((long) address.getValue()), value.getNativeAddress());
+                LLVMMemory.putAddress(LLVMAddress.fromLong((long) address.getValue()), value.getNativeLocation());
                 return null;
             } else {
                 CompilerDirectives.transferToInterpreter();
@@ -483,38 +483,38 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object doAddress(LLVMGlobalVariableDescriptor address, LLVMAddress value) {
-            LLVMMemory.putAddress(address.getNativeAddress(), value);
+        public Object doAddress(LLVMGlobalVariable address, LLVMAddress value) {
+            address.putAddress(value);
             return null;
         }
 
         @Specialization
-        public Object doAddress(LLVMAddress address, LLVMGlobalVariableDescriptor value) {
-            LLVMMemory.putAddress(address, value.getNativeAddress());
+        public Object doAddress(LLVMAddress address, LLVMGlobalVariable value) {
+            LLVMMemory.putAddress(address, value.getNativeLocation());
             return null;
         }
 
         @Specialization
-        public Object doAddress(LLVMGlobalVariableDescriptor address, LLVMGlobalVariableDescriptor value) {
-            LLVMMemory.putAddress(address.getNativeAddress(), value.getNativeAddress());
+        public Object doAddress(LLVMGlobalVariable address, LLVMGlobalVariable value) {
+            LLVMMemory.putAddress(address.getNativeLocation(), value.getNativeLocation());
             return null;
         }
 
         @Specialization(guards = "notLLVM(value)")
-        public Object doAddress(LLVMGlobalVariableDescriptor address, TruffleObject value) {
-            address.storeTruffleObject(value);
+        public Object doAddress(LLVMGlobalVariable address, TruffleObject value) {
+            address.putTruffleObject(value);
             return null;
         }
 
         @Specialization
-        public Object doAddress(LLVMGlobalVariableDescriptor address, LLVMBoxedPrimitive value) {
-            address.storeTruffleObject(value);
+        public Object doAddress(LLVMGlobalVariable address, LLVMBoxedPrimitive value) {
+            address.putTruffleObject(value);
             return null;
         }
 
         @Specialization
-        public Object doAddress(LLVMGlobalVariableDescriptor address, LLVMTruffleObject value) {
-            address.storeLLVMTruffleObject(value);
+        public Object doAddress(LLVMGlobalVariable address, LLVMTruffleObject value) {
+            address.putLLVMTruffleObject(value);
             return null;
         }
 
@@ -549,8 +549,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization(guards = "notLLVM(address)")
-        public Object execute(TruffleObject address, LLVMGlobalVariableDescriptor value, @Cached("getContext()") LLVMContext context) {
-            doForeignAccess(address, new LLVMSharedGlobalVariableDescriptor(value, context), context);
+        public Object execute(TruffleObject address, LLVMGlobalVariable value, @Cached("getContext()") LLVMContext context) {
+            doForeignAccess(address, new LLVMSharedGlobalVariable(value, context), context);
             return null;
         }
 
@@ -565,51 +565,51 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
     @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMGlobalVariableStoreNode extends LLVMExpressionNode {
 
-        protected final LLVMGlobalVariableDescriptor descriptor;
+        protected final LLVMGlobalVariable descriptor;
 
-        public LLVMGlobalVariableStoreNode(LLVMGlobalVariableDescriptor descriptor) {
+        public LLVMGlobalVariableStoreNode(LLVMGlobalVariable descriptor) {
             this.descriptor = descriptor;
         }
 
         @Specialization
         public Object executeNative(LLVMAddress value) {
-            descriptor.storeLLVMAddress(value);
+            descriptor.putAddress(value);
             return null;
         }
 
         @Specialization
         public Object executeNative(LLVMTruffleAddress value) {
-            descriptor.storeLLVMAddress(value.getAddress());
+            descriptor.putAddress(value.getAddress());
             return null;
         }
 
         @Specialization
         public Object executeNative(LLVMFunctionHandle value) {
-            descriptor.storeFunction(value);
+            descriptor.putFunction(value);
             return null;
         }
 
         @Specialization
         public Object executeNative(LLVMFunctionDescriptor value) {
-            descriptor.storeFunction(value);
+            descriptor.putFunction(value);
             return null;
         }
 
         @Specialization
         public Object executeNative(LLVMTruffleNull value) {
-            descriptor.storeNull(value);
+            descriptor.putNull(value);
             return null;
         }
 
         @Specialization
-        public Object executeNative(LLVMGlobalVariableDescriptor value) {
-            descriptor.storeGlobalVariableDescriptor(value);
+        public Object executeNative(LLVMGlobalVariable value) {
+            descriptor.putGlobal(value);
             return null;
         }
 
         @Specialization
         public Object executeNative(LLVMTruffleObject value) {
-            descriptor.storeLLVMTruffleObject(value);
+            descriptor.putLLVMTruffleObject(value);
             return null;
         }
 
@@ -617,13 +617,13 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
         @Specialization
         public Object executeLLVMBoxedPrimitive(LLVMBoxedPrimitive value) {
-            descriptor.storeTruffleObject(value);
+            descriptor.putTruffleObject(value);
             return null;
         }
 
         @Specialization(guards = "notLLVM(value)")
         public Object executeManaged(TruffleObject value) {
-            descriptor.storeTruffleObject(value);
+            descriptor.putTruffleObject(value);
             return null;
         }
     }
@@ -642,8 +642,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object execute(LLVMGlobalVariableDescriptor address, LLVMFunction function) {
-            LLVMHeap.putFunctionIndex(address.getNativeAddress(), function.getFunctionIndex());
+        public Object execute(LLVMGlobalVariable address, LLVMFunction function) {
+            address.putFunction(function);
             return null;
         }
 
@@ -663,20 +663,20 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public Object execute(LLVMGlobalVariableDescriptor address, LLVMGlobalVariableDescriptor value) {
-            memCopy.execute(address.getNativeAddress(), value.getNativeAddress(), getStructSize());
+        public Object execute(LLVMGlobalVariable address, LLVMGlobalVariable value) {
+            memCopy.execute(address.getNativeLocation(), value.getNativeLocation(), getStructSize());
             return null;
         }
 
         @Specialization
-        public Object execute(LLVMAddress address, LLVMGlobalVariableDescriptor value) {
-            memCopy.execute(address, value.getNativeAddress(), getStructSize());
+        public Object execute(LLVMAddress address, LLVMGlobalVariable value) {
+            memCopy.execute(address, value.getNativeLocation(), getStructSize());
             return null;
         }
 
         @Specialization
-        public Object execute(LLVMGlobalVariableDescriptor address, LLVMAddress value) {
-            memCopy.execute(address.getNativeAddress(), value, getStructSize());
+        public Object execute(LLVMGlobalVariable address, LLVMAddress value) {
+            memCopy.execute(address.getNativeLocation(), value, getStructSize());
             return null;
         }
 
@@ -700,8 +700,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariableDescriptor global) {
-            return writeI8(frame, global.getNativeAddress());
+        protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global) {
+            return writeI8(frame, global.getNativeLocation());
         }
 
         @Specialization
@@ -735,8 +735,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariableDescriptor global) {
-            return writeI8(frame, global.getNativeAddress());
+        protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global) {
+            return writeI8(frame, global.getNativeLocation());
         }
 
         @Specialization
@@ -770,8 +770,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariableDescriptor global) {
-            return writeI8(frame, global.getNativeAddress());
+        protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global) {
+            return writeI8(frame, global.getNativeLocation());
         }
 
         @Specialization
@@ -805,8 +805,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariableDescriptor global) {
-            return writeI32(frame, global.getNativeAddress());
+        protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global) {
+            return writeI32(frame, global.getNativeLocation());
         }
 
         @Specialization
@@ -840,8 +840,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariableDescriptor global) {
-            return writeI64(frame, global.getNativeAddress());
+        protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global) {
+            return writeI64(frame, global.getNativeLocation());
         }
 
         @Specialization
@@ -875,8 +875,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariableDescriptor global) {
-            return writeI64(frame, global.getNativeAddress());
+        protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global) {
+            return writeI64(frame, global.getNativeLocation());
         }
 
         @Specialization
@@ -910,8 +910,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariableDescriptor global) {
-            return writeDouble(frame, global.getNativeAddress());
+        protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global) {
+            return writeDouble(frame, global.getNativeLocation());
         }
 
         @Specialization
@@ -945,8 +945,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariableDescriptor global) {
-            return write80BitFloat(frame, global.getNativeAddress());
+        protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global) {
+            return write80BitFloat(frame, global.getNativeLocation());
         }
 
         @Specialization
@@ -984,8 +984,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariableDescriptor global) {
-            return writeDouble(frame, global.getNativeAddress());
+        protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global) {
+            return writeDouble(frame, global.getNativeLocation());
         }
 
         @Specialization
@@ -1014,8 +1014,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariableDescriptor global) {
-            return writeDouble(frame, global.getNativeAddress());
+        protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global) {
+            return writeDouble(frame, global.getNativeLocation());
         }
 
         @Specialization
@@ -1052,8 +1052,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariableDescriptor global) {
-            return writeDouble(frame, global.getNativeAddress());
+        protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global) {
+            return writeDouble(frame, global.getNativeLocation());
         }
 
         @Specialization

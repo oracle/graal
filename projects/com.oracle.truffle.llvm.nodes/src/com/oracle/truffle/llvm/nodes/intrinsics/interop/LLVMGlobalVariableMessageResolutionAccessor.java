@@ -27,46 +27,12 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
 
-public final class LLVMSharedGlobalVariableDescriptor implements TruffleObject {
+public class LLVMGlobalVariableMessageResolutionAccessor {
 
-    private final LLVMGlobalVariableDescriptor descriptor;
-    private final LLVMContext context;
+    public static final ForeignAccess ACCESS = LLVMGlobalVariableMessageResolutionForeign.ACCESS;
 
-    public LLVMSharedGlobalVariableDescriptor(LLVMGlobalVariableDescriptor descriptor, LLVMContext context) {
-        this.descriptor = descriptor;
-        this.context = context;
-    }
-
-    public LLVMContext getContext() {
-        return context;
-    }
-
-    public LLVMGlobalVariableDescriptor getDescriptor() {
-        return descriptor;
-    }
-
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof LLVMSharedGlobalVariableDescriptor;
-    }
-
-    @CompilationFinal private static ForeignAccess ACCESS;
-
-    @Override
-    public ForeignAccess getForeignAccess() {
-        if (ACCESS == null) {
-            try {
-                Class<?> accessor = Class.forName("com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMGlobalVariableDescriptorMessageResolutionAccessor");
-                ACCESS = (ForeignAccess) accessor.getField("ACCESS").get(null);
-            } catch (Exception e) {
-                throw new AssertionError(e);
-            }
-        }
-        return ACCESS;
-    }
 }

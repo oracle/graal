@@ -27,12 +27,8 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.interop;
+package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-
-public class LLVMGlobalVariableDescriptorMessageResolutionAccessor {
-
-    public static final ForeignAccess ACCESS = LLVMGlobalVariableDescriptorMessageResolutionForeign.ACCESS;
-
+public interface NativeAllocator {
+    LLVMAddress allocate();
 }

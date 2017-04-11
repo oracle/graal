@@ -38,6 +38,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -65,7 +66,6 @@ import com.oracle.truffle.llvm.nodes.func.LLVMGlobalRootNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMInlineAssemblyRootNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMLandingpadNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMResumeNode;
-import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMFreeFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexDiv;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexDivSC;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexMul;
@@ -96,11 +96,11 @@ import com.oracle.truffle.llvm.parser.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor.MemoryState;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
+import com.oracle.truffle.llvm.runtime.NativeAllocator;
 import com.oracle.truffle.llvm.runtime.NativeResolver;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
@@ -427,26 +427,39 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
     }
 
-    private Object allocateGlobalIntern(LLVMParserRuntime runtime, GlobalValueSymbol globalVariable) {
+    private static Object allocateGlobalIntern(LLVMParserRuntime runtime, final GlobalValueSymbol globalVariable) {
         final Type resolvedType = ((PointerType) globalVariable.getType()).getPointeeType();
         final String name = globalVariable.getName();
 
         final NativeResolver nativeResolver = () -> LLVMAddress.fromLong(runtime.getNativeHandle(name));
 
-        final LLVMGlobalVariableDescriptor descriptor;
+        final LLVMGlobalVariable descriptor;
         if (globalVariable.isStatic()) {
-            descriptor = LLVMGlobalVariableDescriptor.create(name, nativeResolver, resolvedType);
+            descriptor = LLVMGlobalVariable.create(name, nativeResolver, resolvedType);
         } else {
             final LLVMContext context = runtime.getContext();
             descriptor = context.getGlobalVariableRegistry().lookupOrAdd(name, nativeResolver, resolvedType);
         }
 
-        if ((globalVariable.getInitialiser() > 0 || !globalVariable.isExtern()) && descriptor.getState() == MemoryState.UNKNOWN) {
-            final int byteSize = runtime.getByteSize(resolvedType);
-            final LLVMAddress nativeStorage = LLVMHeap.allocateMemory(byteSize);
-            final LLVMExpressionNode addressLiteralNode = createLiteral(runtime, nativeStorage, new PointerType(resolvedType));
-            runtime.addDestructor(LLVMFreeFactory.create(runtime.getNativeFunctions(), addressLiteralNode));
-            descriptor.declareInSulong(nativeStorage);
+        if ((globalVariable.getInitialiser() > 0 || !globalVariable.isExtern()) && descriptor.isUninitialized()) {
+            runtime.addDestructor(new LLVMExpressionNode() {
+
+                private final LLVMGlobalVariable global = descriptor;
+
+                @Override
+                public Object executeGeneric(VirtualFrame frame) {
+                    global.destroy();
+                    return null;
+                }
+            });
+            descriptor.declareInSulong(new NativeAllocator() {
+                private final int byteSize = runtime.getByteSize(resolvedType);
+
+                @Override
+                public LLVMAddress allocate() {
+                    return LLVMHeap.allocateMemory(byteSize);
+                }
+            });
         }
 
         return descriptor;

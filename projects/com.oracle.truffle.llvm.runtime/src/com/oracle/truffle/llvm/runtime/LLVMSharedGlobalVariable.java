@@ -29,16 +29,45 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.util.HashMap;
-import java.util.Map;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 
-import com.oracle.truffle.llvm.runtime.types.Type;
+public final class LLVMSharedGlobalVariable implements TruffleObject {
 
-public final class LLVMGlobalVariableRegistry {
+    private final LLVMGlobalVariable descriptor;
+    private final LLVMContext context;
 
-    private final Map<String, LLVMGlobalVariableDescriptor> descriptors = new HashMap<>();
+    public LLVMSharedGlobalVariable(LLVMGlobalVariable descriptor, LLVMContext context) {
+        this.descriptor = descriptor;
+        this.context = context;
+    }
 
-    public synchronized LLVMGlobalVariableDescriptor lookupOrAdd(String name, NativeResolver nativeResolver, Type type) {
-        return descriptors.computeIfAbsent(name, k -> LLVMGlobalVariableDescriptor.create(name, nativeResolver, type));
+    public LLVMContext getContext() {
+        return context;
+    }
+
+    public LLVMGlobalVariable getDescriptor() {
+        return descriptor;
+    }
+
+    public static boolean isInstance(TruffleObject object) {
+        return object instanceof LLVMSharedGlobalVariable;
+    }
+
+    @CompilationFinal private static ForeignAccess ACCESS;
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        if (ACCESS == null) {
+            try {
+                Class<?> accessor = Class.forName("com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMGlobalVariableMessageResolutionAccessor");
+                ACCESS = (ForeignAccess) accessor.getField("ACCESS").get(null);
+            } catch (Exception e) {
+                throw new AssertionError(e);
+            }
+        }
+        return ACCESS;
     }
 }

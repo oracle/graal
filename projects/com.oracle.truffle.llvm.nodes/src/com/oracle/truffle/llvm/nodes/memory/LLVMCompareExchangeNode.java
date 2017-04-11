@@ -40,7 +40,7 @@ import com.oracle.truffle.llvm.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMFrameUtil;
 import com.oracle.truffle.llvm.nodes.memory.LLVMCompareExchangeNodeGen.LLVMCMPXCHInternalNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -153,8 +153,8 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMGlobalVariableDescriptor address, Object comparisonValue, Object newValue, @Cached("getContext().getStack()") LLVMStack stack) {
-        return cmpxch.executeWithTarget(frame, address.getNativeAddress(), comparisonValue, newValue, stack);
+    public Object execute(VirtualFrame frame, LLVMGlobalVariable address, Object comparisonValue, Object newValue, @Cached("getContext().getStack()") LLVMStack stack) {
+        return cmpxch.executeWithTarget(frame, address.getNativeLocation(), comparisonValue, newValue, stack);
     }
 
 }

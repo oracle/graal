@@ -53,10 +53,10 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToShor
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToTruffleObjectNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariableDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -667,7 +667,7 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
-        public LLVMGlobalVariableDescriptor fromSharedDescriptor(LLVMSharedGlobalVariableDescriptor shared) {
+        public LLVMGlobalVariable fromSharedDescriptor(LLVMSharedGlobalVariable shared) {
             return shared.getDescriptor();
         }
 
@@ -739,7 +739,7 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
-        public LLVMGlobalVariableDescriptor fromSharedDescriptor(LLVMSharedGlobalVariableDescriptor shared) {
+        public LLVMGlobalVariable fromSharedDescriptor(LLVMSharedGlobalVariable shared) {
             return shared.getDescriptor();
         }
 
@@ -848,8 +848,8 @@ public abstract class ToLLVMNode extends Node {
             return value;
         } else if (value instanceof LLVMTruffleAddress) {
             return ((LLVMTruffleAddress) value).getAddress();
-        } else if (value instanceof LLVMSharedGlobalVariableDescriptor) {
-            return ((LLVMSharedGlobalVariableDescriptor) value).getDescriptor();
+        } else if (value instanceof LLVMSharedGlobalVariable) {
+            return ((LLVMSharedGlobalVariable) value).getDescriptor();
         } else if (value instanceof LLVMTruffleNull) {
             return LLVMAddress.fromLong(0);
         } else if (value instanceof TruffleObject && LLVMExpressionNode.notLLVM((TruffleObject) value)) {

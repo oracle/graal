@@ -43,9 +43,9 @@ import com.oracle.truffle.llvm.nodes.base.LLVMFrameUtil;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -255,7 +255,7 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
             type = PrimitiveType.FLOAT;
         } else if (arg instanceof Double) {
             type = PrimitiveType.DOUBLE;
-        } else if (arg instanceof LLVMAddress || arg instanceof LLVMGlobalVariableDescriptor) {
+        } else if (arg instanceof LLVMAddress || arg instanceof LLVMGlobalVariable) {
             type = new PointerType(null);
         } else if (arg instanceof LLVM80BitFloat) {
             type = PrimitiveType.X86_FP80;
@@ -270,8 +270,8 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
             doPrimitiveWrite(type, currentAddress, object);
         } else if (type instanceof PointerType && object instanceof LLVMAddress) {
             LLVMMemory.putAddress(currentAddress, (LLVMAddress) object);
-        } else if (type instanceof PointerType && object instanceof LLVMGlobalVariableDescriptor) {
-            LLVMMemory.putAddress(currentAddress, ((LLVMGlobalVariableDescriptor) object).getNativeAddress());
+        } else if (type instanceof PointerType && object instanceof LLVMGlobalVariable) {
+            LLVMMemory.putAddress(currentAddress, ((LLVMGlobalVariable) object).getNativeLocation());
         } else {
             throw new AssertionError(type);
         }

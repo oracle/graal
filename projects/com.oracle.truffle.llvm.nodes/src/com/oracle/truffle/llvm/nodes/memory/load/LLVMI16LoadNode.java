@@ -42,8 +42,8 @@ import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
@@ -64,8 +64,8 @@ public abstract class LLVMI16LoadNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    public short executeShort(LLVMGlobalVariableDescriptor addr) {
-        return executeShort(addr.getNativeAddress());
+    public short executeShort(LLVMGlobalVariable addr) {
+        return addr.getI16();
     }
 
     @Specialization

@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -82,6 +83,7 @@ abstract class LLVMForeignCallNode extends LLVMNode {
     }
 
     public static PackForeignArgumentsNode createFastPackArguments(LLVMFunctionDescriptor descriptor, int length) {
+        checkArgLength(descriptor.getType().getArgumentTypes().length, length);
         return new PackForeignArgumentsNode(descriptor.getType().getArgumentTypes(), length);
     }
 
@@ -134,17 +136,16 @@ abstract class LLVMForeignCallNode extends LLVMNode {
         return function.getCallTarget();
     }
 
-    private static void checkArgLength(int minLength, Object[] arguments) {
-        if (arguments.length < minLength) {
+    private static void checkArgLength(int minLength, int actualLength) {
+        if (actualLength < minLength) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throwArgLengthException(minLength, arguments);
+            throwArgLengthException(minLength, actualLength);
         }
     }
 
-    private static void throwArgLengthException(int minLength, Object[] arguments) {
+    private static void throwArgLengthException(int minLength, int actualLength) {
         StringBuilder sb = new StringBuilder();
-        sb.append("At least ").append(minLength).append(" arguments expected, but only ").append(arguments.length).append(" arguments received.");
-        sb.append(" Arguments=").append(Arrays.toString(arguments));
+        sb.append("At least ").append(minLength).append(" arguments expected, but only ").append(actualLength).append(" arguments received.");
         throw new IllegalStateException(sb.toString());
     }
 }
