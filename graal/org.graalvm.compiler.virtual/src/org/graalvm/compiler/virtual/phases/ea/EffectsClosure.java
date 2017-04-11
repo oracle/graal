@@ -38,7 +38,6 @@ import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
@@ -394,7 +393,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
             }
             mergeProcessor.setStateIndexes(stateIndexes);
             mergeProcessor.setNewState(getInitialState());
-            mergeProcessor.merge(states, mergeProcessor.merge.stateAfter());
+            mergeProcessor.merge(states);
         } else {
             ArrayList<BlockT> aliveStates = new ArrayList<>(alive);
             int[] stateIndexes = new int[alive];
@@ -406,7 +405,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
             }
             mergeProcessor.setStateIndexes(stateIndexes);
             mergeProcessor.setNewState(getInitialState());
-            mergeProcessor.merge(aliveStates, mergeProcessor.merge.stateAfter());
+            mergeProcessor.merge(aliveStates);
         }
     }
 
@@ -448,9 +447,8 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
         /**
          * @param states the states that should be merged.
-         * @param frameState
          */
-        protected abstract void merge(List<BlockT> states, FrameState frameState);
+        protected abstract void merge(List<BlockT> states);
 
         private void setNewState(BlockT state) {
             newState = state;
