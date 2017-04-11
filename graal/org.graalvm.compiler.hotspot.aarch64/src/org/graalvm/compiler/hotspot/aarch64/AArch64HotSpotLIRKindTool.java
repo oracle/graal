@@ -20,50 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core.aarch64;
+package org.graalvm.compiler.hotspot.aarch64;
 
+import org.graalvm.compiler.core.aarch64.AArch64LIRKindTool;
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.spi.LIRKindTool;
-import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.hotspot.nodes.type.HotSpotLIRKindTool;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
 
-public class AArch64LIRKindTool implements LIRKindTool {
+public class AArch64HotSpotLIRKindTool extends AArch64LIRKindTool implements HotSpotLIRKindTool {
 
     @Override
-    public LIRKind getIntegerKind(int bits) {
-        if (bits <= 8) {
-            return LIRKind.value(AArch64Kind.BYTE);
-        } else if (bits <= 16) {
-            return LIRKind.value(AArch64Kind.WORD);
-        } else if (bits <= 32) {
-            return LIRKind.value(AArch64Kind.DWORD);
-        } else {
-            assert bits <= 64;
-            return LIRKind.value(AArch64Kind.QWORD);
-        }
+    public LIRKind getNarrowOopKind() {
+        return LIRKind.reference(AArch64Kind.DWORD);
     }
 
     @Override
-    public LIRKind getFloatingKind(int bits) {
-        switch (bits) {
-            case 32:
-                return LIRKind.value(AArch64Kind.SINGLE);
-            case 64:
-                return LIRKind.value(AArch64Kind.DOUBLE);
-            default:
-                throw GraalError.shouldNotReachHere();
-        }
+    public LIRKind getNarrowPointerKind() {
+        return LIRKind.value(AArch64Kind.DWORD);
     }
-
-    @Override
-    public LIRKind getObjectKind() {
-        return LIRKind.reference(AArch64Kind.QWORD);
-    }
-
-    @Override
-    public LIRKind getWordKind() {
-        return LIRKind.value(AArch64Kind.QWORD);
-    }
-
 }

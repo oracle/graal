@@ -23,8 +23,10 @@
 
 package org.graalvm.compiler.hotspot.test;
 
+import org.junit.Assume;
+import org.junit.Test;
 import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.hotspot.nodes.HotSpotCompressionNode;
+import org.graalvm.compiler.hotspot.nodes.CompressionNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.debug.OpaqueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -32,8 +34,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import org.junit.Assume;
-import org.junit.Test;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -80,9 +80,9 @@ public class DataPatchTest extends HotSpotGraalCompilerTest {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 CompressEncoding encoding = runtime().getVMConfig().getOopEncoding();
-                ValueNode compressed = b.add(HotSpotCompressionNode.compress(arg, encoding));
+                ValueNode compressed = b.add(CompressionNode.compress(arg, encoding));
                 ValueNode proxy = b.add(new OpaqueNode(compressed));
-                b.addPush(JavaKind.Object, HotSpotCompressionNode.uncompress(proxy, encoding));
+                b.addPush(JavaKind.Object, CompressionNode.uncompress(proxy, encoding));
                 return true;
             }
         });
