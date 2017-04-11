@@ -41,6 +41,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToAnyLLVMValueNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToBooleanNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToByteNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToCharNodeGen;
@@ -87,6 +88,8 @@ public abstract class ToLLVMNode extends Node {
             return ToBooleanNodeGen.create();
         } else if (expectedType == null || expectedType == void.class) {
             return new SlowConvertNodeObject();
+        } else if (expectedType == Object.class) {
+            return ToAnyLLVMValueNodeGen.create();
         } else {
             throw new IllegalStateException("Unsupported Type");
         }
@@ -683,6 +686,78 @@ public abstract class ToLLVMNode extends Node {
         }
     }
 
+    abstract static class ToAnyLLVMValue extends ToLLVMNode {
+
+        @Specialization
+        public int fromInt(int value) {
+            return value;
+        }
+
+        @Specialization
+        public char fromChar(char value) {
+            return value;
+        }
+
+        @Specialization
+        public long fromLong(long value) {
+            return value;
+        }
+
+        @Specialization
+        public byte fromByte(byte value) {
+            return value;
+        }
+
+        @Specialization
+        public short fromShort(short value) {
+            return value;
+        }
+
+        @Specialization
+        public float fromFloat(float value) {
+            return value;
+        }
+
+        @Specialization
+        public double fromDouble(double value) {
+            return value;
+        }
+
+        @Specialization
+        public boolean fromBoolean(boolean value) {
+            return value;
+        }
+
+        @Specialization
+        public String fromString(String obj) {
+            return obj;
+        }
+
+        @Specialization
+        public LLVMAddress fromLLVMTruffleAddress(LLVMTruffleAddress obj) {
+            return obj.getAddress();
+        }
+
+        @Specialization
+        public LLVMGlobalVariableDescriptor fromSharedDescriptor(LLVMSharedGlobalVariableDescriptor shared) {
+            return shared.getDescriptor();
+        }
+
+        @Specialization
+        public LLVMAddress fromNull(@SuppressWarnings("unused") LLVMTruffleNull n) {
+            return LLVMAddress.fromLong(0);
+        }
+
+        protected boolean notLLVM(TruffleObject value) {
+            return LLVMExpressionNode.notLLVM(value);
+        }
+
+        @Specialization(guards = "notLLVM(obj)")
+        public TruffleObject fromTruffleObject(TruffleObject obj) {
+            return obj;
+        }
+    }
+
     public static Class<?> convert(Type type) {
         Class<?> t;
         if (type instanceof PrimitiveType) {
@@ -763,6 +838,25 @@ public abstract class ToLLVMNode extends Node {
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Requested class: " + requestedType + " - but got value: " + value);
+        }
+    }
+
+    public Object slowConvert(Object value) {
+        if (isPrimitiveType(value.getClass())) {
+            return value;
+        } else if (value instanceof String) {
+            return value;
+        } else if (value instanceof LLVMTruffleAddress) {
+            return ((LLVMTruffleAddress) value).getAddress();
+        } else if (value instanceof LLVMSharedGlobalVariableDescriptor) {
+            return ((LLVMSharedGlobalVariableDescriptor) value).getDescriptor();
+        } else if (value instanceof LLVMTruffleNull) {
+            return LLVMAddress.fromLong(0);
+        } else if (value instanceof TruffleObject && LLVMExpressionNode.notLLVM((TruffleObject) value)) {
+            return value;
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException();
         }
     }
 
