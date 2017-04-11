@@ -89,11 +89,7 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
         if (value != null) {
             return value;
         }
-        value = create(x, y);
-        if (value != null) {
-            return value;
-        }
-        return new IntegerEqualsNode(x, y).maybeCommuteInputs();
+        return create(x, y);
     }
 
     @Override
@@ -107,7 +103,8 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
 
     public static class IntegerEqualsOp extends CompareOp {
         @Override
-        protected LogicNode optimizeNormalizeCompare(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
+        protected LogicNode optimizeNormalizeCompare(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth,
+                        Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
             PrimitiveConstant primitive = (PrimitiveConstant) constant;
             ValueNode a = normalizeNode.getX();
             ValueNode b = normalizeNode.getY();
@@ -115,21 +112,21 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
 
             if (cst == 0) {
                 if (normalizeNode.getX().getStackKind() == JavaKind.Double || normalizeNode.getX().getStackKind() == JavaKind.Float) {
-                    return FloatEqualsNode.create(a, b);
+                    return FloatEqualsNode.create(constantReflection, metaAccess, options, smallestCompareWidth, a, b);
                 } else {
-                    return IntegerEqualsNode.create(a, b);
+                    return IntegerEqualsNode.create(constantReflection, metaAccess, options, smallestCompareWidth, a, b);
                 }
             } else if (cst == 1) {
                 if (normalizeNode.getX().getStackKind() == JavaKind.Double || normalizeNode.getX().getStackKind() == JavaKind.Float) {
                     return FloatLessThanNode.create(b, a, !normalizeNode.isUnorderedLess);
                 } else {
-                    return IntegerLessThanNode.create(b, a);
+                    return IntegerLessThanNode.create(constantReflection, metaAccess, options, smallestCompareWidth, b, a);
                 }
             } else if (cst == -1) {
                 if (normalizeNode.getX().getStackKind() == JavaKind.Double || normalizeNode.getX().getStackKind() == JavaKind.Float) {
                     return FloatLessThanNode.create(a, b, normalizeNode.isUnorderedLess);
                 } else {
-                    return IntegerLessThanNode.create(a, b);
+                    return IntegerLessThanNode.create(constantReflection, metaAccess, options, smallestCompareWidth, a, b);
                 }
             } else {
                 return LogicConstantNode.contradiction();
@@ -194,14 +191,15 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
                     // (respective -1) for a more canonical graph and also to allow for faster
                     // execution
                     // on specific platforms.
-                    return LogicNegationNode.create(IntegerEqualsNode.create(nonConstant, ConstantNode.forIntegerKind(nonConstant.getStackKind(), 0)));
+                    return LogicNegationNode.create(
+                                    IntegerEqualsNode.create(constantReflection, metaAccess, options, smallestCompareWidth, nonConstant, ConstantNode.forIntegerKind(nonConstant.getStackKind(), 0)));
                 } else if (primitiveConstant.asLong() == 0) {
                     if (nonConstant instanceof AndNode) {
                         AndNode andNode = (AndNode) nonConstant;
                         return new IntegerTestNode(andNode.getX(), andNode.getY());
                     } else if (nonConstant instanceof SubNode) {
                         SubNode subNode = (SubNode) nonConstant;
-                        return IntegerEqualsNode.create(subNode.getX(), subNode.getY());
+                        return IntegerEqualsNode.create(constantReflection, metaAccess, options, smallestCompareWidth, subNode.getX(), subNode.getY());
                     } else if (nonConstant instanceof ShiftNode && nonConstant.stamp() instanceof IntegerStamp) {
                         if (nonConstant instanceof LeftShiftNode) {
                             LeftShiftNode shift = (LeftShiftNode) nonConstant;

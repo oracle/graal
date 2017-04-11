@@ -109,7 +109,8 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
         }
 
         @Override
-        protected LogicNode optimizeNormalizeCompare(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
+        protected LogicNode optimizeNormalizeCompare(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth,
+                        Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
             PrimitiveConstant primitive = (PrimitiveConstant) constant;
             /* @formatter:off
              * a NC b < c  (not mirrored)
@@ -137,18 +138,18 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
 
             if (cst == 0) {
                 if (normalizeNode.getX().getStackKind() == JavaKind.Double || normalizeNode.getX().getStackKind() == JavaKind.Float) {
-                    return FloatLessThanNode.create(a, b, mirrored ^ normalizeNode.isUnorderedLess);
+                    return FloatLessThanNode.create(constantReflection, metaAccess, options, smallestCompareWidth, a, b, mirrored ^ normalizeNode.isUnorderedLess);
                 } else {
-                    return IntegerLessThanNode.create(a, b);
+                    return IntegerLessThanNode.create(constantReflection, metaAccess, options, smallestCompareWidth, a, b);
                 }
             } else if (cst == 1) {
                 // a <= b <=> !(a > b)
                 LogicNode compare;
                 if (normalizeNode.getX().getStackKind() == JavaKind.Double || normalizeNode.getX().getStackKind() == JavaKind.Float) {
                     // since we negate, we have to reverse the unordered result
-                    compare = FloatLessThanNode.create(b, a, mirrored == normalizeNode.isUnorderedLess);
+                    compare = FloatLessThanNode.create(constantReflection, metaAccess, options, smallestCompareWidth, b, a, mirrored == normalizeNode.isUnorderedLess);
                 } else {
-                    compare = IntegerLessThanNode.create(b, a);
+                    compare = IntegerLessThanNode.create(constantReflection, metaAccess, options, smallestCompareWidth, b, a);
                 }
                 return LogicNegationNode.create(compare);
             } else if (cst <= -1) {
