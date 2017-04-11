@@ -30,6 +30,8 @@ from argparse import ArgumentParser
 import re
 import zipfile
 import subprocess
+import tempfile
+import shutil
 import mx_truffle
 
 import mx
@@ -717,11 +719,64 @@ def _check_bootstrap_config(args):
     if bootstrap and not useJVMCICompiler:
         mx.warn('-XX:+BootstrapJVMCI is ignored since -XX:+UseJVMCICompiler is not enabled')
 
+class StdoutUnstripping:
+    """
+    A context manager for logging and unstripping the console output for a subprocess
+    execution. The logging and unstripping is only attempted if stdout and stderr
+    for the execution were not already being redirected and existing *.map files
+    were detected in the arguments to the execution.
+    """
+    def __init__(self, args, out, err):
+        self.args = args
+        self.out = out
+        self.err = err
+        self.capture = None
+        self.mapFiles = None
+
+    def __enter__(self):
+        if mx.get_opts().strip_jars and self.out is None and (self.err is None or self.err == subprocess.STDOUT):
+            delims = re.compile('[' + os.pathsep + '=]')
+            for a in self.args:
+                for e in delims.split(a):
+                    candidate = e + '.map'
+                    if exists(candidate):
+                        if self.mapFiles is None:
+                            self.mapFiles = set()
+                        self.mapFiles.add(candidate)
+            self.capture = mx.OutputCapture()
+            self.out = mx.TeeOutputCapture(self.capture)
+            self.err = self.out
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self.mapFiles:
+            try:
+                with tempfile.NamedTemporaryFile() as inputFile:
+                    with tempfile.NamedTemporaryFile() as mapFile:
+                        if len(self.capture.data) != 0:
+                            inputFile.write(self.capture.data)
+                            inputFile.flush()
+                            for e in self.mapFiles:
+                                with open(e, 'r') as m:
+                                    shutil.copyfileobj(m, mapFile)
+                                    mapFile.flush()
+                            retraceOut = mx.OutputCapture()
+                            proguard_cp = mx.classpath(['PROGUARD_RETRACE', 'PROGUARD'])
+                            mx.run([jdk.java, '-cp', proguard_cp, 'proguard.retrace.ReTrace', mapFile.name, inputFile.name], out=retraceOut)
+                            if self.capture.data != retraceOut.data:
+                                mx.log('>>>> BEGIN UNSTRIPPED OUTPUT')
+                                mx.log(retraceOut.data)
+                                mx.log('<<<< END UNSTRIPPED OUTPUT')
+            except BaseException as e:
+                mx.log('Error unstripping output from VM execution with stripped jars: ' + str(e))
+        return None
+
 def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, env=None, addDefaultArgs=True):
     args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'] + _parseVmArgs(args, addDefaultArgs=addDefaultArgs)
     _check_bootstrap_config(args)
     cmd = get_vm_prefix() + [jdk.java] + ['-server'] + args
-    return mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, env=env)
+    with StdoutUnstripping(args, out, err) as u:
+        return mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=u.out, err=u.err, cwd=cwd, env=env)
 
 _JVMCI_JDK_TAG = 'jvmci'
 
