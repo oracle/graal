@@ -167,7 +167,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
     }
 
     private void verifyAfterExceptionState() {
-        if (this.bci == BytecodeFrame.AFTER_EXCEPTION_BCI || bci == BytecodeFrame.UNWIND_BCI) {
+        if (this.bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
             assert this.outerFrameState == null;
             for (int i = 0; i < this.localsSize; i++) {
                 assertTrue(this.values.get(i) == null, "locals should be null in AFTER_EXCEPTION_BCI state");
