@@ -61,9 +61,9 @@ public abstract class TruffleLanguageRunner extends BlockJUnit4ClassRunner {
         }
     }
 
-    public static final class FastRRunner extends TruffleLanguageRunner {
+    public static final class RRunner extends TruffleLanguageRunner {
 
-        public FastRRunner(Class<?> klass) throws InitializationError {
+        public RRunner(Class<?> klass) throws InitializationError {
             super(klass, "text/x-r");
         }
     }

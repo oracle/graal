@@ -33,14 +33,14 @@ import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.tck.impl.TruffleLanguageRunner.FastRRunner;
+import com.oracle.truffle.tck.impl.TruffleLanguageRunner.RRunner;
 
 /**
- * Tests with code snippets referencing FastR. They are used from {@link PolyglotEngine} & co.
- * classes, but executed only when implementation of FastR is around.
+ * Tests with code snippets in R language. They are used from {@link PolyglotEngine} & co. classes,
+ * but executed only when an implementation of R is around.
  */
-@RunWith(FastRRunner.class)
-public class PolyglotEngineWithFastR {
+@RunWith(RRunner.class)
+public class PolyglotEngineWithR {
 
     private PolyglotEngine engine;
 
@@ -61,7 +61,7 @@ public class PolyglotEngineWithFastR {
         callRFunctionFromJava();
     }
 
-    // BEGIN: com.oracle.truffle.tck.impl.PolyglotEngineWithFastR#callRFunctionFromJava
+    // BEGIN: com.oracle.truffle.tck.impl.PolyglotEngineWithR#callRFunctionFromJava
     @FunctionalInterface
     interface BinomQuantile {
         int qbinom(double q, int count, double prob);
@@ -73,5 +73,5 @@ public class PolyglotEngineWithFastR {
         BinomQuantile func = engine.eval(src).as(BinomQuantile.class);
         assertEquals(4, func.qbinom(0.37, 10, 0.5));
     }
-    // END: com.oracle.truffle.tck.impl.PolyglotEngineWithFastR#callRFunctionFromJava
+    // END: com.oracle.truffle.tck.impl.PolyglotEngineWithR#callRFunctionFromJava
 }
