@@ -254,7 +254,17 @@ abstract class SerializeArgumentNode extends Node {
             this.signature = signature;
         }
 
-        @Specialization(limit = "5", guards = "object == cachedObject")
+        protected boolean isSpecialized(TruffleObject arg) {
+            return arg instanceof NativePointer;
+        }
+
+        @Specialization
+        protected Object serializeNativePointer(NativeArgumentBuffer buffer, NativePointer object) {
+            argType.serialize(buffer, object);
+            return null;
+        }
+
+        @Specialization(limit = "5", guards = {"!isSpecialized(object)", "object == cachedObject"})
         @SuppressWarnings("unused")
         protected Object serializeCached(NativeArgumentBuffer buffer, TruffleObject object,
                         @Cached("object") TruffleObject cachedObject,
@@ -263,7 +273,7 @@ abstract class SerializeArgumentNode extends Node {
             return null;
         }
 
-        @Specialization
+        @Specialization(guards = "!isSpecialized(object)")
         protected Object serializeFallback(NativeArgumentBuffer buffer, TruffleObject object) {
             argType.serialize(buffer, createClosure(object));
             return null;

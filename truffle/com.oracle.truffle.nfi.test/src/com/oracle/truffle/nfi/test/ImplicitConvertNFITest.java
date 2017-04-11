@@ -24,10 +24,13 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.nfi.test.interop.TestCallback;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
+import com.oracle.truffle.tck.TruffleRunner;
+import com.oracle.truffle.tck.TruffleRunner.Inject;
 import java.util.ArrayList;
 import java.util.Collection;
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -40,6 +43,7 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
+@Parameterized.UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
 public class ImplicitConvertNFITest extends NFITest {
 
     private static final Object[] NUMERIC_VALUES = {
@@ -79,11 +83,17 @@ public class ImplicitConvertNFITest extends NFITest {
      * Test implicit conversion between different numeric types when used as argument to native
      * functions or return type from callback.
      */
+    public class TestConvertNode extends SendExecuteNode {
+
+        public TestConvertNode() {
+            super("callback_" + type, String.format("((%s):%s, %s) : %s", type, type, type, type), 2);
+        }
+    }
+
     @Test
-    public void testConvert() {
+    public void testConvert(@Inject(TestConvertNode.class) CallTarget callTarget) {
         TruffleObject callback = new TestCallback(1, this::callback);
-        TruffleObject function = lookupAndBind("callback_" + type, String.format("((%s):%s, %s) : %s", type, type, type, type));
-        Object ret = sendExecute(function, callback, value);
+        Object ret = callTarget.call(callback, value);
 
         if (type == NativeSimpleType.POINTER) {
             Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));

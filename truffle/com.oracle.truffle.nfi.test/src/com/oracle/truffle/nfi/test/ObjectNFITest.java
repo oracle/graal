@@ -24,21 +24,25 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.test.interop.TestCallback;
+import com.oracle.truffle.tck.TruffleRunner;
+import com.oracle.truffle.tck.TruffleRunner.Inject;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+@RunWith(TruffleRunner.class)
 public class ObjectNFITest extends NFITest {
 
     private static TruffleObject nativeEnv;
@@ -106,87 +110,98 @@ public class ObjectNFITest extends NFITest {
         }
     }
 
-    interface DeleteEnv {
-
-        void delete(TruffleObject env);
-    }
-
     @AfterClass
     public static void deleteEnv() {
         TruffleObject deleteEnv = lookupAndBind("delete_env", "(pointer):void");
-        JavaInterop.asJavaFunction(DeleteEnv.class, deleteEnv).delete(nativeEnv);
-        nativeEnv = null;
+        try {
+            ForeignAccess.sendExecute(Message.createExecute(1).createNode(), deleteEnv, nativeEnv);
+            nativeEnv = null;
+        } catch (InteropException ex) {
+            throw new AssertionError(ex);
+        }
+    }
+
+    public static class CopyAndIncrementNode extends SendExecuteNode {
+
+        public CopyAndIncrementNode() {
+            super("copy_and_increment", "(pointer, object) : object", 2);
+        }
     }
 
     @Test
-    public void testCopyAndIncrement() {
-        TruffleObject copyAndIncrement = lookupAndBind("copy_and_increment", "(pointer, object) : object");
-        TestObject testArg = new TestObject(42);
+    public void testCopyAndIncrement(@Inject(CopyAndIncrementNode.class) CallTarget callTarget) {
+        TestObject testObj = new TestObject(42);
 
-        Object ret = sendExecute(copyAndIncrement, nativeEnv, testArg);
+        Object ret = callTarget.call(nativeEnv, testObj);
         Assert.assertThat("return value", ret, is(instanceOf(TestObject.class)));
 
         TestObject testRet = (TestObject) ret;
-        Assert.assertNotSame("return value", testArg, testRet);
+        Assert.assertNotSame("return value", testObj, testRet);
         Assert.assertEquals("intField", 43, testRet.intField);
     }
 
+    private TestObject testArg;
+
+    public class TestKeepObjectNode extends NFITestRootNode {
+
+        final TruffleObject keepExistingObject = lookupAndBind("keep_existing_object", "(object):pointer");
+        final TruffleObject freeAndGetObject = lookupAndBind("free_and_get_object", "(pointer):object");
+        final TruffleObject freeAndGetContent = lookupAndBind("free_and_get_content", "(pointer, pointer):sint32");
+
+        @Child Node executeKeepExistingObject = Message.createExecute(1).createNode();
+        @Child Node executeFreeAndGetObject = Message.createExecute(1).createNode();
+        @Child Node executeFreeAndGetContent = Message.createExecute(2).createNode();
+
+        @Override
+        public Object executeTest(VirtualFrame frame) throws InteropException {
+            Object obj = frame.getArguments()[0];
+
+            testArg.intField = 42;
+
+            Object nativePtr1 = ForeignAccess.sendExecute(executeKeepExistingObject, keepExistingObject, obj);
+            Object nativePtr2 = ForeignAccess.sendExecute(executeKeepExistingObject, keepExistingObject, obj);
+            Object nativePtr3 = ForeignAccess.sendExecute(executeKeepExistingObject, keepExistingObject, obj);
+
+            Object ret = ForeignAccess.sendExecute(executeFreeAndGetContent, freeAndGetContent, nativeEnv, nativePtr1);
+            assertEquals(42, (int) (Integer) ret);
+
+            testArg.intField--;
+
+            ret = ForeignAccess.sendExecute(executeFreeAndGetContent, freeAndGetContent, nativeEnv, nativePtr2);
+            assertEquals(41, (int) (Integer) ret);
+
+            return ForeignAccess.sendExecute(executeFreeAndGetObject, freeAndGetObject, nativePtr3);
+        }
+    }
+
     @Test
-    public void testKeepObject() {
-        TestObject testArg = new TestObject();
+    public void testKeepObject(@Inject(TestKeepObjectNode.class) CallTarget callTarget) {
+        testArg = new TestObject();
 
-        Object finalRet = run(new TestRootNode() {
-
-            final TruffleObject keepExistingObject = lookupAndBind("keep_existing_object", "(object):pointer");
-            final TruffleObject freeAndGetObject = lookupAndBind("free_and_get_object", "(pointer):object");
-            final TruffleObject freeAndGetContent = lookupAndBind("free_and_get_content", "(pointer, pointer):sint32");
-
-            @Child Node executeKeepExistingObject = Message.createExecute(1).createNode();
-            @Child Node executeFreeAndGetObject = Message.createExecute(1).createNode();
-            @Child Node executeFreeAndGetContent = Message.createExecute(2).createNode();
-
-            @Override
-            public Object executeTest(VirtualFrame frame) throws InteropException {
-                Object obj = frame.getArguments()[0];
-
-                testArg.intField = 42;
-
-                Object nativePtr1 = ForeignAccess.sendExecute(executeKeepExistingObject, keepExistingObject, obj);
-                Object nativePtr2 = ForeignAccess.sendExecute(executeKeepExistingObject, keepExistingObject, obj);
-                Object nativePtr3 = ForeignAccess.sendExecute(executeKeepExistingObject, keepExistingObject, obj);
-
-                Object ret = ForeignAccess.sendExecute(executeFreeAndGetContent, freeAndGetContent, nativeEnv, nativePtr1);
-                assertEquals(42, (int) (Integer) ret);
-
-                testArg.intField--;
-
-                ret = ForeignAccess.sendExecute(executeFreeAndGetContent, freeAndGetContent, nativeEnv, nativePtr2);
-                assertEquals(41, (int) (Integer) ret);
-
-                return ForeignAccess.sendExecute(executeFreeAndGetObject, freeAndGetObject, nativePtr3);
-            }
-        }, testArg);
+        Object finalRet = callTarget.call(testArg);
 
         Assert.assertThat("return value", finalRet, is(instanceOf(TestObject.class)));
         Assert.assertSame("return value", testArg, finalRet);
     }
 
+    public static class TestKeepNewObjectNode extends NFITestRootNode {
+
+        final TruffleObject keepNewObject = lookupAndBind("keep_new_object", "(pointer):pointer");
+        final TruffleObject freeAndGetObject = lookupAndBind("free_and_get_object", "(pointer):object");
+
+        @Child Node executeKeepNewObject = Message.createExecute(1).createNode();
+        @Child Node executeFreeAndGetObject = Message.createExecute(1).createNode();
+
+        @Override
+        public Object executeTest(VirtualFrame frame) throws InteropException {
+            Object nativePtr = ForeignAccess.sendExecute(executeKeepNewObject, keepNewObject, nativeEnv);
+            return ForeignAccess.sendExecute(executeFreeAndGetObject, freeAndGetObject, nativePtr);
+        }
+    }
+
     @Test
-    public void testKeepNewObject() {
-        Object ret = run(new TestRootNode() {
-
-            final TruffleObject keepNewObject = lookupAndBind("keep_new_object", "(pointer):pointer");
-            final TruffleObject freeAndGetObject = lookupAndBind("free_and_get_object", "(pointer):object");
-
-            @Child Node executeKeepNewObject = Message.createExecute(1).createNode();
-            @Child Node executeFreeAndGetObject = Message.createExecute(1).createNode();
-
-            @Override
-            public Object executeTest(VirtualFrame frame) throws InteropException {
-                Object nativePtr = ForeignAccess.sendExecute(executeKeepNewObject, keepNewObject, nativeEnv);
-                return ForeignAccess.sendExecute(executeFreeAndGetObject, freeAndGetObject, nativePtr);
-            }
-        });
+    public void testKeepNewObject(@Inject(TestKeepNewObjectNode.class) CallTarget callTarget) {
+        Object ret = callTarget.call();
 
         Assert.assertThat("return value", ret, is(instanceOf(TestObject.class)));
         Assert.assertEquals("intField", 8472, ((TestObject) ret).intField);

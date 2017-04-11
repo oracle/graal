@@ -24,40 +24,39 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.tck.TruffleRunner;
+import com.oracle.truffle.tck.TruffleRunner.Inject;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+@RunWith(TruffleRunner.class)
 public class LateBindNFITest extends NFITest {
 
-    private static class BindAndExecuteNode extends TestRootNode {
-
-        private final String signature;
+    public static class BindAndExecuteNode extends NFITestRootNode {
 
         @Child Node bind = Message.createInvoke(1).createNode();
         @Child Node execute = Message.createExecute(1).createNode();
 
-        BindAndExecuteNode(String signature) {
-            this.signature = signature;
-        }
-
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {
             TruffleObject symbol = (TruffleObject) frame.getArguments()[0];
-            TruffleObject bound = (TruffleObject) ForeignAccess.sendInvoke(bind, symbol, "bind", signature);
+            TruffleObject bound = (TruffleObject) ForeignAccess.sendInvoke(bind, symbol, "bind", "(sint32):sint32");
             return ForeignAccess.sendExecute(execute, bound, frame.getArguments()[1]);
         }
     }
 
     @Test
-    public void testLateBind() {
+    public void testLateBind(@Inject(BindAndExecuteNode.class) CallTarget callTarget) {
         TruffleObject increment;
         try {
             increment = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), testLibrary, "increment_SINT32");
@@ -65,7 +64,7 @@ public class LateBindNFITest extends NFITest {
             throw new AssertionError(e);
         }
 
-        Object ret = run(new BindAndExecuteNode("(sint32):sint32"), increment, 41);
+        Object ret = callTarget.call(increment, 41);
 
         Assert.assertThat("return value", ret, is(instanceOf(Integer.class)));
         Assert.assertEquals("return value", 42, (int) (Integer) ret);

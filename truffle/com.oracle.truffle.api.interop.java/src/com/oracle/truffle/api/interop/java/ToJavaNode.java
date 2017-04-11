@@ -114,13 +114,13 @@ abstract class ToJavaNode extends Node {
         if (foreignObject == null) {
             return null;
         }
+        if (isNull) {
+            return null;
+        }
         if (clazz.isInstance(foreignObject)) {
             obj = foreignObject;
         } else {
             if (!clazz.isInterface()) {
-                if (isNull) {
-                    return null;
-                }
                 throw new ClassCastException();
             }
             if (clazz == List.class && hasSize) {
@@ -172,7 +172,8 @@ abstract class ToJavaNode extends Node {
             if (type == null) {
                 return raw;
             }
-            return toJava.execute(raw, type);
+            Object real = JavaInterop.ACCESSOR.engine().findOriginalObject(raw);
+            return toJava.execute(real, type);
         }
     }
 

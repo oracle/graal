@@ -24,15 +24,7 @@
  */
 package com.oracle.truffle.nfi.test;
 
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.CoreMatchers.is;
-
-import java.util.HashMap;
-import java.util.Map;
-
-import org.junit.Assert;
-import org.junit.Test;
-
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -45,7 +37,17 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.tck.TruffleRunner;
+import com.oracle.truffle.tck.TruffleRunner.Inject;
+import java.util.HashMap;
+import java.util.Map;
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
+@RunWith(TruffleRunner.class)
 public class RegisterPackageNFITest extends NFITest {
 
     static class FunctionRegistry implements TruffleObject {
@@ -123,7 +125,7 @@ public class RegisterPackageNFITest extends NFITest {
         }
     }
 
-    static class RegisterPackageTestNode extends TestRootNode {
+    public static class RegisterPackageTestNode extends NFITestRootNode {
 
         @Child LoadPackageNode loadPackage = new LoadPackageNode();
 
@@ -150,8 +152,8 @@ public class RegisterPackageNFITest extends NFITest {
     }
 
     @Test
-    public void testPythagoras() {
-        Object ret = run(new RegisterPackageTestNode(), 3.0, 4.0);
+    public void testPythagoras(@Inject(RegisterPackageTestNode.class) CallTarget callTarget) {
+        Object ret = callTarget.call(3.0, 4.0);
         Assert.assertThat("return value", ret, is(instanceOf(Double.class)));
         Assert.assertEquals("return value", 5.0, ret);
     }

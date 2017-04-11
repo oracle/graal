@@ -66,6 +66,7 @@
  * <li>{@link com.oracle.truffle.api.TruffleLanguage}: base class for Truffle language implementations.</li>
  * <li>{@link com.oracle.truffle.api.vm.PolyglotEngine}: execution environment for Truffle-implemented languages.</li>
  * <li><a href="https://github.com/graalvm/simplelanguage">SimpleLanguage</a>: the tutorial Truffle language implementation.</li>
+ * <li>{@link com.oracle.truffle.tck.TruffleRunner}: unit testing Truffle language implementations.</li>
  * <li>{@linkplain com.oracle.truffle.tutorial Other Truffle Tutorials}
  * </ul>
  *
