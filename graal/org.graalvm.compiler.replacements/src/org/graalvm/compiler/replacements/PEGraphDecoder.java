@@ -790,7 +790,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                  */
                 MergeNode unwindMergeNode = graph.add(new MergeNode());
                 exceptionValue = InliningUtil.mergeValueProducers(unwindMergeNode, getMatchingNodes(returnAndUnwindNodes, returnNodeCount > 0, UnwindNode.class, unwindNodeCount),
-                                unwindNode -> unwindNode.exception());
+                                null, unwindNode -> unwindNode.exception());
                 unwindMergeNode.setNext(unwindReplacement);
 
                 ensureExceptionStateDecoded(inlineScope);
