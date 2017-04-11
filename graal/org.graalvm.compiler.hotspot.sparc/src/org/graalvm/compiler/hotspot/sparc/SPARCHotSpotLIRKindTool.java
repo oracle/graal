@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,32 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core.common.spi;
+package org.graalvm.compiler.hotspot.sparc;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.sparc.SPARCLIRKindTool;
+import org.graalvm.compiler.hotspot.nodes.type.HotSpotLIRKindTool;
 
-/**
- * This interface can be used to access platform and VM specific kinds.
- */
-public interface LIRKindTool {
+import jdk.vm.ci.sparc.SPARCKind;
 
-    /**
-     * Get an architecture specific integer kind of a certain size.
-     */
-    LIRKind getIntegerKind(int bits);
+public class SPARCHotSpotLIRKindTool extends SPARCLIRKindTool implements HotSpotLIRKindTool {
 
-    /**
-     * Get an architecture specific floating point kind of a certain size.
-     */
-    LIRKind getFloatingKind(int bits);
+    @Override
+    public LIRKind getNarrowOopKind() {
+        return LIRKind.reference(SPARCKind.WORD);
+    }
 
-    /**
-     * Get the architecture specific kind used to represent Java objects.
-     */
-    LIRKind getObjectKind();
-
-    /**
-     * Get the architecture specific kind pointer-sized integer kind.
-     */
-    LIRKind getWordKind();
+    @Override
+    public LIRKind getNarrowPointerKind() {
+        return LIRKind.value(SPARCKind.WORD);
+    }
 }

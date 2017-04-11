@@ -20,50 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core.amd64;
+package org.graalvm.compiler.hotspot.nodes.type;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
-import org.graalvm.compiler.debug.GraalError;
 
-import jdk.vm.ci.amd64.AMD64Kind;
+/**
+ * Extension of {@link LIRKindTool} that includes support for compressed pointer kinds.
+ */
+public interface HotSpotLIRKindTool extends LIRKindTool {
 
-public class AMD64LIRKindTool implements LIRKindTool {
+    /**
+     * Get the platform specific kind used to represent compressed oops.
+     */
+    LIRKind getNarrowOopKind();
 
-    @Override
-    public LIRKind getIntegerKind(int bits) {
-        if (bits <= 8) {
-            return LIRKind.value(AMD64Kind.BYTE);
-        } else if (bits <= 16) {
-            return LIRKind.value(AMD64Kind.WORD);
-        } else if (bits <= 32) {
-            return LIRKind.value(AMD64Kind.DWORD);
-        } else {
-            assert bits <= 64;
-            return LIRKind.value(AMD64Kind.QWORD);
-        }
-    }
-
-    @Override
-    public LIRKind getFloatingKind(int bits) {
-        switch (bits) {
-            case 32:
-                return LIRKind.value(AMD64Kind.SINGLE);
-            case 64:
-                return LIRKind.value(AMD64Kind.DOUBLE);
-            default:
-                throw GraalError.shouldNotReachHere();
-        }
-    }
-
-    @Override
-    public LIRKind getObjectKind() {
-        return LIRKind.reference(AMD64Kind.QWORD);
-    }
-
-    @Override
-    public LIRKind getWordKind() {
-        return LIRKind.value(AMD64Kind.QWORD);
-    }
-
+    /**
+     * Gets the platform specific kind used to represent compressed metaspace pointers.
+     */
+    LIRKind getNarrowPointerKind();
 }
