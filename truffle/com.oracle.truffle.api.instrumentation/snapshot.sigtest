@@ -54,6 +54,8 @@ meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.Executio
 meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachFactory(com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0})
 meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.LoadSourceListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachLoadSourceListener(com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0},boolean)
 meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.LoadSourceSectionListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachLoadSourceSectionListener(com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0},boolean)
+meth public abstract <%0 extends java.io.OutputStream> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachErrConsumer({%%0})
+meth public abstract <%0 extends java.io.OutputStream> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachOutConsumer({%%0})
 meth public abstract java.util.Set<java.lang.Class<?>> queryTags(com.oracle.truffle.api.nodes.Node)
 meth public final java.util.List<com.oracle.truffle.api.source.SourceSection> querySourceSections(com.oracle.truffle.api.instrumentation.SourceSectionFilter)
 supr java.lang.Object
@@ -181,6 +183,7 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.instrum
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=SOURCE)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault java.lang.Class<?>[] services()
 meth public abstract !hasdefault java.lang.String id()
 meth public abstract !hasdefault java.lang.String name()
 meth public abstract !hasdefault java.lang.String version()
@@ -215,6 +218,7 @@ meth public final void adoptChildren()
 meth public final void atomic(java.lang.Runnable)
 meth public java.lang.String getDescription()
 meth public java.lang.String getLanguage()
+ anno 0 java.lang.Deprecated()
 meth public java.lang.String toString()
 meth public java.util.Map<java.lang.String,java.lang.Object> getDebugProperties()
 supr java.lang.Object

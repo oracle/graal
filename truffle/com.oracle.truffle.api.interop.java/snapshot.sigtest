@@ -14,6 +14,7 @@ meth public static com.oracle.truffle.api.interop.TruffleObject asTruffleObject(
 meth public static java.lang.Object asTruffleValue(java.lang.Object)
 meth public static java.lang.Object unbox(com.oracle.truffle.api.interop.TruffleObject)
 supr java.lang.Object
+hfds ACCESSOR
 hcls TemporaryConvertRoot
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.interop.java.MethodMessage
