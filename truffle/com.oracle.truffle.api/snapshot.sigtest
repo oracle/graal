@@ -82,6 +82,7 @@ meth public static long subtractExact(long,long)
 supr java.lang.Object
 
 CLSS public abstract com.oracle.truffle.api.ExecutionContext
+ anno 0 java.lang.Deprecated()
 cons protected init()
 meth public com.oracle.truffle.api.CompilerOptions getCompilerOptions()
 supr java.lang.Object
@@ -113,6 +114,7 @@ hfds RUNTIME
 CLSS public abstract com.oracle.truffle.api.TruffleLanguage<%0 extends java.lang.Object>
 cons protected init()
 innr public abstract interface static !annotation Registration
+innr public final static ContextReference
 innr public final static Env
 innr public final static ParsingRequest
 meth protected !varargs com.oracle.truffle.api.CallTarget parse(com.oracle.truffle.api.source.Source,com.oracle.truffle.api.nodes.Node,java.lang.String[]) throws java.lang.Exception
@@ -125,16 +127,25 @@ meth protected boolean isVisible({com.oracle.truffle.api.TruffleLanguage%0},java
 meth protected com.oracle.truffle.api.CallTarget parse(com.oracle.truffle.api.TruffleLanguage$ParsingRequest) throws java.lang.Exception
 meth protected com.oracle.truffle.api.source.SourceSection findSourceLocation({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Object)
 meth protected final com.oracle.truffle.api.nodes.Node createFindContextNode()
+ anno 0 java.lang.Deprecated()
 meth protected final {com.oracle.truffle.api.TruffleLanguage%0} findContext(com.oracle.truffle.api.nodes.Node)
+ anno 0 java.lang.Deprecated()
 meth protected java.lang.Object evalInContext(com.oracle.truffle.api.source.Source,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.MaterializedFrame) throws java.io.IOException
  anno 0 java.lang.Deprecated()
 meth protected java.lang.Object findMetaObject({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Object)
 meth protected java.lang.String toString({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Object)
 meth protected void disposeContext({com.oracle.truffle.api.TruffleLanguage%0})
 meth protected void initializeContext({com.oracle.truffle.api.TruffleLanguage%0}) throws java.lang.Exception
+meth public final com.oracle.truffle.api.TruffleLanguage$ContextReference<{com.oracle.truffle.api.TruffleLanguage%0}> getContextReference()
 supr java.lang.Object
-hfds API
-hcls AccessAPI,LangCtx,LanguageImpl
+hfds API,languageInfo,reference,singletonLanguage
+hcls AccessAPI,LanguageImpl
+
+CLSS public final static com.oracle.truffle.api.TruffleLanguage$ContextReference<%0 extends java.lang.Object>
+ outer com.oracle.truffle.api.TruffleLanguage
+meth public {com.oracle.truffle.api.TruffleLanguage$ContextReference%0} get()
+supr java.lang.Object
+hfds languageShared
 
 CLSS public final static com.oracle.truffle.api.TruffleLanguage$Env
  outer com.oracle.truffle.api.TruffleLanguage
@@ -148,7 +159,7 @@ meth public java.lang.Iterable<?> importSymbols(java.lang.String)
 meth public java.lang.Object importSymbol(java.lang.String)
 meth public java.util.Map<java.lang.String,java.lang.Object> getConfig()
 supr java.lang.Object
-hfds config,err,in,lang,langCtx,out,services,vm
+hfds config,context,err,in,language,out,services,spi,vmObject
 
 CLSS public final static com.oracle.truffle.api.TruffleLanguage$ParsingRequest
  outer com.oracle.truffle.api.TruffleLanguage
@@ -196,14 +207,15 @@ meth public abstract com.oracle.truffle.api.nodes.DirectCallNode createDirectCal
 meth public abstract com.oracle.truffle.api.nodes.IndirectCallNode createIndirectCallNode()
 meth public abstract com.oracle.truffle.api.nodes.LoopNode createLoopNode(com.oracle.truffle.api.nodes.RepeatingNode)
 meth public abstract java.lang.String getName()
-meth public abstract java.util.Collection<com.oracle.truffle.api.RootCallTarget> getCallTargets()
- anno 0 java.lang.Deprecated()
 meth public abstract void notifyTransferToInterpreter()
+meth public java.util.Collection<com.oracle.truffle.api.RootCallTarget> getCallTargets()
+ anno 0 java.lang.Deprecated()
 
 CLSS public abstract interface com.oracle.truffle.api.TruffleRuntimeAccess
 meth public abstract com.oracle.truffle.api.TruffleRuntime getRuntime()
 
 CLSS public abstract interface com.oracle.truffle.api.TypedObject
+ anno 0 java.lang.Deprecated()
 meth public abstract java.lang.Object getTypeIdentifier()
 
 CLSS public abstract interface com.oracle.truffle.api.frame.Frame
@@ -450,6 +462,13 @@ cons public init()
 supr com.oracle.truffle.api.nodes.SlowPathException
 hfds serialVersionUID
 
+CLSS public final com.oracle.truffle.api.nodes.LanguageInfo
+meth public java.lang.String getName()
+meth public java.lang.String getVersion()
+meth public java.util.Set<java.lang.String> getMimeTypes()
+supr java.lang.Object
+hfds engineObject,mimeTypes,name,spi,version
+
 CLSS public abstract com.oracle.truffle.api.nodes.LoopNode
 cons protected init()
 meth public abstract com.oracle.truffle.api.nodes.RepeatingNode getRepeatingNode()
@@ -487,6 +506,7 @@ meth public final void adoptChildren()
 meth public final void atomic(java.lang.Runnable)
 meth public java.lang.String getDescription()
 meth public java.lang.String getLanguage()
+ anno 0 java.lang.Deprecated()
 meth public java.lang.String toString()
 meth public java.util.Map<java.lang.String,java.lang.Object> getDebugProperties()
 supr java.lang.Object
@@ -661,7 +681,10 @@ intf com.oracle.truffle.api.nodes.NodeInterface
 meth public abstract boolean executeRepeating(com.oracle.truffle.api.frame.VirtualFrame)
 
 CLSS public abstract com.oracle.truffle.api.nodes.RootNode
+cons protected init(com.oracle.truffle.api.TruffleLanguage<?>)
+cons protected init(com.oracle.truffle.api.TruffleLanguage<?>,com.oracle.truffle.api.frame.FrameDescriptor)
 cons protected init(java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage>,com.oracle.truffle.api.source.SourceSection,com.oracle.truffle.api.frame.FrameDescriptor)
+ anno 0 java.lang.Deprecated()
 meth protected boolean isCloneUninitializedSupported()
 meth protected boolean isInstrumentable()
 meth protected com.oracle.truffle.api.nodes.RootNode cloneUninitialized()
@@ -669,10 +692,13 @@ meth public abstract java.lang.Object execute(com.oracle.truffle.api.frame.Virtu
 meth public boolean isCloningAllowed()
 meth public com.oracle.truffle.api.CompilerOptions getCompilerOptions()
 meth public com.oracle.truffle.api.ExecutionContext getExecutionContext()
+ anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.nodes.Node copy()
 meth public com.oracle.truffle.api.source.SourceSection getSourceSection()
+meth public final <%0 extends com.oracle.truffle.api.TruffleLanguage> {%%0} getLanguage(java.lang.Class<{%%0}>)
 meth public final com.oracle.truffle.api.RootCallTarget getCallTarget()
 meth public final com.oracle.truffle.api.frame.FrameDescriptor getFrameDescriptor()
+meth public final com.oracle.truffle.api.nodes.LanguageInfo getLanguageInfo()
 meth public final void reportLoopCount(int)
  anno 0 java.lang.Deprecated()
 meth public final void setCallTarget(com.oracle.truffle.api.RootCallTarget)
@@ -680,7 +706,7 @@ meth public final void setCallTarget(com.oracle.truffle.api.RootCallTarget)
 meth public java.lang.String getName()
 meth public static com.oracle.truffle.api.nodes.RootNode createConstantNode(java.lang.Object)
 supr com.oracle.truffle.api.nodes.Node
-hfds callTarget,frameDescriptor,language,lock,sourceSection
+hfds callTarget,frameDescriptor,languageInfo,lock,sourceSection
 hcls Constant
 
 CLSS public com.oracle.truffle.api.nodes.SlowPathException

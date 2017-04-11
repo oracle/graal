@@ -2,6 +2,7 @@
 #Version 
 
 CLSS public abstract interface com.oracle.truffle.api.TypedObject
+ anno 0 java.lang.Deprecated()
 meth public abstract java.lang.Object getTypeIdentifier()
 
 CLSS public abstract interface com.oracle.truffle.api.interop.TruffleObject
@@ -141,6 +142,7 @@ meth public abstract int getPropertyCount()
 meth public abstract java.lang.Iterable<com.oracle.truffle.api.object.Property> getProperties()
 meth public abstract java.lang.Iterable<java.lang.Object> getKeys()
 meth public abstract java.lang.Object getData()
+ anno 0 java.lang.Deprecated()
 meth public abstract java.lang.Object getMutex()
 meth public abstract java.lang.Object getSharedData()
 meth public abstract java.util.List<com.oracle.truffle.api.object.Property> getPropertyList()
@@ -184,6 +186,7 @@ supr java.lang.Object
 hcls DebugCounterImpl,Dummy
 
 CLSS public abstract com.oracle.truffle.object.DebugShapeVisitor<%0 extends java.lang.Object>
+ anno 0 java.lang.Deprecated()
 cons protected init()
 intf com.oracle.truffle.object.ShapeVisitor<{com.oracle.truffle.object.DebugShapeVisitor%0}>
 meth public abstract {com.oracle.truffle.object.DebugShapeVisitor%0} visitShape(com.oracle.truffle.api.object.Shape,java.util.Map<? extends com.oracle.truffle.object.Transition,? extends com.oracle.truffle.api.object.Shape>)
@@ -245,7 +248,7 @@ meth protected abstract com.oracle.truffle.api.object.Location getObjectArrayLoc
 meth protected abstract com.oracle.truffle.api.object.Location getPrimitiveArrayLocation()
 meth protected abstract int getObjectFieldCount()
 meth protected abstract int getPrimitiveFieldCount()
-meth protected abstract int objectFieldIndex(com.oracle.truffle.api.object.Location)
+meth protected int objectFieldIndex(com.oracle.truffle.api.object.Location)
 meth public abstract com.oracle.truffle.api.object.DynamicObject newInstance(com.oracle.truffle.api.object.Shape)
 meth public abstract com.oracle.truffle.api.object.Shape$Allocator createAllocator()
 meth public boolean isAllowedIntToDouble()
@@ -498,6 +501,7 @@ meth public final int getPrimitiveFieldSize()
 meth public final int getPropertyCount()
 meth public final java.lang.Iterable<com.oracle.truffle.api.object.Property> getProperties()
 meth public final java.lang.Object getData()
+ anno 0 java.lang.Deprecated()
 meth public final java.lang.Object getSharedData()
 meth public final java.util.List<com.oracle.truffle.api.object.Property> getPropertyList()
 meth public final java.util.List<com.oracle.truffle.api.object.Property> getPropertyList(com.oracle.truffle.api.object.Shape$Pred<com.oracle.truffle.api.object.Property>)
@@ -556,6 +560,7 @@ meth public void visitPrimitiveField(int,int)
 supr com.oracle.truffle.api.object.Shape$Allocator
 
 CLSS public abstract interface com.oracle.truffle.object.ShapeVisitor<%0 extends java.lang.Object>
+ anno 0 java.lang.Deprecated()
 meth public abstract {com.oracle.truffle.object.ShapeVisitor%0} visitShape(com.oracle.truffle.api.object.Shape)
 
 CLSS public abstract com.oracle.truffle.object.Transition
@@ -645,6 +650,12 @@ supr com.oracle.truffle.object.Transition
 
 CLSS public abstract interface java.lang.Cloneable
 
+CLSS public abstract interface !annotation java.lang.Deprecated
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, PARAMETER, TYPE])
+intf java.lang.annotation.Annotation
+
 CLSS public java.lang.Object
 cons public init()
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
@@ -658,6 +669,32 @@ meth public final void wait(long) throws java.lang.InterruptedException
 meth public final void wait(long,int) throws java.lang.InterruptedException
 meth public int hashCode()
 meth public java.lang.String toString()
+
+CLSS public abstract interface java.lang.annotation.Annotation
+meth public abstract boolean equals(java.lang.Object)
+meth public abstract int hashCode()
+meth public abstract java.lang.Class<? extends java.lang.annotation.Annotation> annotationType()
+meth public abstract java.lang.String toString()
+
+CLSS public abstract interface !annotation java.lang.annotation.Documented
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface !annotation java.lang.annotation.Retention
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.annotation.RetentionPolicy value()
+
+CLSS public abstract interface !annotation java.lang.annotation.Target
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.annotation.ElementType[] value()
 
 CLSS public abstract interface java.util.Map<%0 extends java.lang.Object, %1 extends java.lang.Object>
 innr public abstract interface static Entry

@@ -78,7 +78,7 @@ meth public static java.lang.Object sendWrite(com.oracle.truffle.api.nodes.Node,
 meth public static java.lang.Object sendWrite(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject,java.lang.Object,java.lang.Object) throws com.oracle.truffle.api.interop.UnknownIdentifierException,com.oracle.truffle.api.interop.UnsupportedMessageException,com.oracle.truffle.api.interop.UnsupportedTypeException
 meth public static java.util.List<java.lang.Object> getArguments(com.oracle.truffle.api.frame.Frame)
 supr java.lang.Object
-hfds factory,initThread,languageCheck
+hfds ACCESSOR,factory,initThread,languageCheck
 hcls DelegatingFactory10,DelegatingFactory18
 
 CLSS public abstract interface static com.oracle.truffle.api.interop.ForeignAccess$Factory
@@ -149,7 +149,8 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.interop.Messag
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=SOURCE)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
-meth public abstract java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage<?>> language()
+meth public abstract !hasdefault java.lang.Class<?> language()
+ anno 0 java.lang.Deprecated()
 meth public abstract java.lang.Class<?> receiverType()
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.interop.Resolve
