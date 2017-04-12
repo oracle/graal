@@ -399,6 +399,7 @@ import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.util.ValueMergeUtil;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.Equivalence;
 
@@ -578,6 +579,16 @@ public class BytecodeParser implements GraphBuilderContext {
         }
     }
 
+    protected static class ReturnToCallerData {
+        protected final ValueNode returnValue;
+        protected final FixedWithNextNode beforeReturnNode;
+
+        protected ReturnToCallerData(ValueNode returnValue, FixedWithNextNode beforeReturnNode) {
+            this.returnValue = returnValue;
+            this.beforeReturnNode = beforeReturnNode;
+        }
+    }
+
     private final GraphBuilderPhase.Instance graphBuilderInstance;
     protected final StructuredGraph graph;
     protected final OptionValues options;
@@ -593,8 +604,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
     private ValueNode methodSynchronizedObject;
 
-    private ValueNode returnValue;
-    private FixedWithNextNode beforeReturnNode;
+    private List<ReturnToCallerData> returnDataList;
     private ValueNode unwindValue;
     private FixedWithNextNode beforeUnwindNode;
 
@@ -639,14 +649,6 @@ public class BytecodeParser implements GraphBuilderContext {
 
     protected GraphBuilderPhase.Instance getGraphBuilderInstance() {
         return graphBuilderInstance;
-    }
-
-    public ValueNode getReturnValue() {
-        return returnValue;
-    }
-
-    public FixedWithNextNode getBeforeReturnNode() {
-        return this.beforeReturnNode;
     }
 
     public ValueNode getUnwindValue() {
@@ -1959,13 +1961,30 @@ public class BytecodeParser implements GraphBuilderContext {
             startFrameState.initializeFromArgumentsArray(args);
             parser.build(this.lastInstr, startFrameState);
 
-            FixedWithNextNode calleeBeforeReturnNode = parser.getBeforeReturnNode();
-            this.lastInstr = calleeBeforeReturnNode;
-            JavaKind calleeReturnKind = targetMethod.getSignature().getReturnKind();
-            if (calleeBeforeReturnNode != null) {
-                ValueNode calleeReturnValue = parser.getReturnValue();
+            if (parser.returnDataList == null) {
+                /* Callee does not return. */
+                lastInstr = null;
+            } else {
+                ValueNode calleeReturnValue;
+                MergeNode returnMergeNode = null;
+                if (parser.returnDataList.size() == 1) {
+                    /* Callee has a single return, we can continue parsing at that point. */
+                    ReturnToCallerData singleReturnData = parser.returnDataList.get(0);
+                    lastInstr = singleReturnData.beforeReturnNode;
+                    calleeReturnValue = singleReturnData.returnValue;
+                } else {
+                    assert parser.returnDataList.size() > 1;
+                    /* Callee has multiple returns, we need to insert a control flow merge. */
+                    returnMergeNode = graph.add(new MergeNode());
+                    calleeReturnValue = ValueMergeUtil.mergeValueProducers(returnMergeNode, parser.returnDataList, returnData -> returnData.beforeReturnNode, returnData -> returnData.returnValue);
+                }
+
                 if (calleeReturnValue != null) {
-                    frameState.push(calleeReturnKind.getStackKind(), calleeReturnValue);
+                    frameState.push(targetMethod.getSignature().getReturnKind().getStackKind(), calleeReturnValue);
+                }
+                if (returnMergeNode != null) {
+                    returnMergeNode.setStateAfter(createFrameState(stream.nextBCI(), returnMergeNode));
+                    lastInstr = finishInstruction(returnMergeNode, frameState);
                 }
             }
 
@@ -2028,27 +2047,18 @@ public class BytecodeParser implements GraphBuilderContext {
                 }
             }
         }
+
+        frameState.setRethrowException(false);
+        frameState.clearStack();
+        beforeReturn(returnVal, returnKind);
         if (parent == null) {
-            frameState.setRethrowException(false);
-            frameState.clearStack();
-            beforeReturn(returnVal, returnKind);
             append(new ReturnNode(returnVal));
         } else {
-            if (blockMap.getReturnCount() == 1 || !controlFlowSplit) {
-                // There is only a single return.
-                beforeReturn(returnVal, returnKind);
-                this.returnValue = returnVal;
-                this.beforeReturnNode = this.lastInstr;
-                this.lastInstr = null;
-            } else {
-                frameState.setRethrowException(false);
-                frameState.clearStack();
-                if (returnVal != null) {
-                    frameState.push(returnKind, returnVal);
-                }
-                assert blockMap.getReturnCount() > 1;
-                appendGoto(blockMap.getReturnBlock());
+            if (returnDataList == null) {
+                returnDataList = new ArrayList<>();
             }
+            returnDataList.add(new ReturnToCallerData(returnVal, lastInstr));
+            lastInstr = null;
         }
     }
 
@@ -2417,9 +2427,7 @@ public class BytecodeParser implements GraphBuilderContext {
                 setMergeStateAfter(block, firstInstruction);
             }
 
-            if (block == blockMap.getReturnBlock()) {
-                handleReturnBlock();
-            } else if (block == blockMap.getUnwindBlock()) {
+            if (block == blockMap.getUnwindBlock()) {
                 handleUnwindBlock((ExceptionDispatchBlock) block);
             } else if (block instanceof ExceptionDispatchBlock) {
                 createExceptionDispatch((ExceptionDispatchBlock) block);
@@ -2440,15 +2448,6 @@ public class BytecodeParser implements GraphBuilderContext {
             this.unwindValue = exception;
             this.beforeUnwindNode = this.lastInstr;
         }
-    }
-
-    private void handleReturnBlock() {
-        JavaKind returnKind = method.getSignature().getReturnKind().getStackKind();
-        ValueNode x = returnKind == JavaKind.Void ? null : frameState.pop(returnKind);
-        assert frameState.stackSize() == 0;
-        beforeReturn(x, returnKind);
-        this.returnValue = x;
-        this.beforeReturnNode = this.lastInstr;
     }
 
     private void setMergeStateAfter(BciBlock block, FixedWithNextNode firstInstruction) {
