@@ -111,7 +111,7 @@ public abstract class HotSpotHostBackend extends HotSpotBackend {
             // is greater than a page.
 
             int pageSize = config.vmPageSize;
-            int bangEnd = config.stackShadowPages * NumUtil.roundUp(config.stackShadowPages * 4 * K, pageSize);
+            int bangEnd = NumUtil.roundUp(config.stackShadowPages * 4 * K, pageSize);
 
             // This is how far the previous frame's stack banging extended.
             int bangEndSafe = bangEnd;
