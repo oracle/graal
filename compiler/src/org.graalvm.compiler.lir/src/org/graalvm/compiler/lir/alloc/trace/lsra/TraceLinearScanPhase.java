@@ -24,7 +24,6 @@ package org.graalvm.compiler.lir.alloc.trace.lsra;
 
 import static jdk.vm.ci.code.CodeUtil.isEven;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.code.ValueUtil.asRegisterValue;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isLegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
@@ -33,7 +32,6 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
@@ -46,11 +44,9 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
-import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
 import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
-import org.graalvm.compiler.lir.ValueConsumer;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
 import org.graalvm.compiler.lir.alloc.trace.GlobalLivenessInfo;
@@ -730,74 +726,6 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
                         boolean intersects = i2.intersects(i1);
                         if (intersects && !isIllegal(l1) && (l1.equals(l2))) {
                             throw GraalError.shouldNotReachHere(String.format("Intervals %s and %s overlap and have the same register assigned\n%s\n%s", i1, i2, i1.logString(), i2.logString()));
-                        }
-                    }
-                }
-            }
-        }
-
-        class CheckConsumer implements ValueConsumer {
-
-            boolean ok;
-            FixedInterval curInterval;
-
-            @Override
-            public void visitValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                if (isRegister(operand)) {
-                    if (fixedIntervalFor(asRegisterValue(operand)) == curInterval) {
-                        ok = true;
-                    }
-                }
-            }
-        }
-
-        @SuppressWarnings("try")
-        void verifyNoOopsInFixedIntervals() {
-            try (Indent indent = Debug.logAndIndent("verifying that no oops are in fixed intervals *")) {
-                CheckConsumer checkConsumer = new CheckConsumer();
-
-                TraceInterval otherIntervals;
-                FixedInterval fixedInts = createFixedUnhandledList();
-                // to ensure a walking until the last instruction id, add a dummy interval
-                // with a high operation id
-                otherIntervals = new TraceInterval(Value.ILLEGAL, -1, getOptions());
-                otherIntervals.addRange(Integer.MAX_VALUE - 2, Integer.MAX_VALUE - 1);
-                TraceIntervalWalker iw = new TraceIntervalWalker(this, fixedInts, otherIntervals);
-
-                for (AbstractBlockBase<?> block : sortedBlocks()) {
-                    ArrayList<LIRInstruction> instructions = getLIR().getLIRforBlock(block);
-
-                    for (int j = 0; j < instructions.size(); j++) {
-                        LIRInstruction op = instructions.get(j);
-
-                        if (op.hasState()) {
-                            iw.walkBefore(op.id());
-                            boolean checkLive = true;
-
-                            /*
-                             * Make sure none of the fixed registers is live across an oopmap since
-                             * we can't handle that correctly.
-                             */
-                            if (checkLive) {
-                                for (FixedInterval interval = iw.activeFixedList.getFixed(); interval != FixedInterval.EndMarker; interval = interval.next) {
-                                    if (interval.to() > op.id() + 1) {
-                                        /*
-                                         * This interval is live out of this op so make sure that
-                                         * this interval represents some value that's referenced by
-                                         * this op either as an input or output.
-                                         */
-                                        checkConsumer.curInterval = interval;
-                                        checkConsumer.ok = false;
-
-                                        op.visitEachInput(checkConsumer);
-                                        op.visitEachAlive(checkConsumer);
-                                        op.visitEachTemp(checkConsumer);
-                                        op.visitEachOutput(checkConsumer);
-
-                                        assert checkConsumer.ok : "fixed intervals should never be live across an oopmap point";
-                                    }
-                                }
-                            }
                         }
                     }
                 }
