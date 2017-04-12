@@ -243,7 +243,7 @@ def ctw(args, extraVMarguments=None):
 
     if args.ctwopts:
         # Replace spaces with '#' since it cannot contain spaces
-        vmargs.append('-Dgraal.CompileTheWorldConfig=' + re.sub(r'\s+', '#', args.ctwopts))
+        vmargs.append('-DCompileTheWorld.Config=' + re.sub(r'\s+', '#', args.ctwopts))
 
     # suppress menubar and dock when running on Mac; exclude x11 classes as they may cause VM crashes (on Solaris)
     vmargs = ['-Djava.awt.headless=true'] + vmargs
@@ -253,22 +253,23 @@ def ctw(args, extraVMarguments=None):
         if not isJDK8 and not _is_jvmci_enabled(vmargs):
             mx.abort('Non-Graal CTW does not support specifying a specific class path or jar to compile')
     else:
-        if isJDK8:
-            cp = join(jdk.home, 'jre', 'lib', 'rt.jar')
-        else:
-            # Compile all classes in the JRT image by default.
-            cp = join(jdk.home, 'lib', 'modules')
+        # Default to the CompileTheWorld.SUN_BOOT_CLASS_PATH token
+        cp = None
 
-    vmargs.append('-Dgraal.CompileTheWorldExcludeMethodFilter=sun.awt.X11.*.*')
+    vmargs.append('-DCompileTheWorld.ExcludeMethodFilter=sun.awt.X11.*.*')
 
     if _get_XX_option_value(vmargs + _remove_empty_entries(extraVMarguments), 'UseJVMCICompiler', False):
         vmargs.append('-XX:+BootstrapJVMCI')
 
     if isJDK8:
         if not _is_jvmci_enabled(vmargs):
-            vmargs.extend(['-XX:+CompileTheWorld', '-Xbootclasspath/p:' + cp])
+            vmargs.append('-XX:+CompileTheWorld')
+            if cp is not None:
+                vmargs.append('-Xbootclasspath/p:' + cp)
         else:
-            vmargs.extend(['-Dgraal.CompileTheWorldClasspath=' + cp, '-XX:-UseJVMCIClassLoader', 'org.graalvm.compiler.hotspot.CompileTheWorld'])
+            if cp is not None:
+                vmargs.append('-DCompileTheWorld.Classpath=' + cp)
+            vmargs.extend(['-XX:-UseJVMCIClassLoader', '-cp', mx.classpath('org.graalvm.compiler.hotspot.test', jdk=jdk), 'org.graalvm.compiler.hotspot.test.CompileTheWorld'])
     else:
         if _is_jvmci_enabled(vmargs):
             # To be able to load all classes in the JRT with Class.forName,
@@ -279,7 +280,12 @@ def ctw(args, extraVMarguments=None):
                 vmargs.append('--add-modules=' + ','.join(nonBootJDKModules))
             if args.limitmods:
                 vmargs.append('-DCompileTheWorld.limitmods=' + args.limitmods)
-            vmargs.extend(['-Dgraal.CompileTheWorldClasspath=' + cp, 'org.graalvm.compiler.hotspot.CompileTheWorld'])
+            if cp is not None:
+                vmargs.append('-DCompileTheWorld.Classpath=' + cp)
+            # Need export below since jdk.vm.ci.services is not exported in all JDK 9 EA releases.
+            vmargs.append('--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED')
+            vmargs.extend(['-cp', mx.classpath('org.graalvm.compiler.hotspot.test', jdk=jdk)])
+            vmargs.append('org.graalvm.compiler.hotspot.test.CompileTheWorld')
         else:
             vmargs.append('-XX:+CompileTheWorld')
 
@@ -443,9 +449,9 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     with Task('CTW:hosted', tasks, tags=GraalTags.ctw) as t:
         if t:
             ctw([
-                    '--ctwopts', 'Inline=false ExitVMOnException=true', '-esa', '-XX:-UseJVMCICompiler',
-                    '-Dgraal.CompileTheWorldMultiThreaded=true', '-Dgraal.InlineDuringParsing=false',
-                    '-Dgraal.CompileTheWorldVerbose=false', '-XX:ReservedCodeCacheSize=300m',
+                    '--ctwopts', 'Inline=false ExitVMOnException=true', '-esa', '-XX:-UseJVMCICompiler', '-XX:+EnableJVMCI',
+                    '-DCompileTheWorld.MultiThreaded=true', '-Dgraal.InlineDuringParsing=false',
+                    '-DCompileTheWorld.Verbose=false', '-XX:ReservedCodeCacheSize=300m',
                 ], _remove_empty_entries(extraVMarguments))
 
     # bootstrap tests
