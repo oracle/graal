@@ -2,6 +2,11 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 0.26
+
+* Renamed `DebugValue.isWriteable` to [DebugValue.isWritable](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/debug/DebugValue.html#isWritable--) to fix spelling.
+* [Breakpoint.setCondition](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/debug/Breakpoint.html#setCondition-java.lang.String-) does not throw the IOException any more.
+
 ## Version 0.25
 3-Apr-2017
 

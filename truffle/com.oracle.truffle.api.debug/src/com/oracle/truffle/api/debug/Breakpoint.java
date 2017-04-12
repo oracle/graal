@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.debug;
 
-import java.io.IOException;
 import java.net.URI;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
@@ -216,12 +215,11 @@ public final class Breakpoint {
      *
      * @param expression if non{@code -null}, a boolean expression, expressed in the guest language
      *            of the breakpoint's location.
-     * @throws IOException never actually thrown
      * @see SuspendedEvent#getBreakpointConditionException(Breakpoint)
      *
      * @since 0.9
      */
-    public synchronized void setCondition(String expression) throws IOException {
+    public synchronized void setCondition(String expression) {
         this.condition = expression;
         Assumption assumption = conditionUnchanged;
         if (assumption != null) {
