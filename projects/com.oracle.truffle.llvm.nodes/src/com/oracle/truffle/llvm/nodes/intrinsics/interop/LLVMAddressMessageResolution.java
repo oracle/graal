@@ -38,10 +38,9 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMAddressMessageResolu
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMAddressMessageResolutionNode.LLVMAddressWriteMessageResolutionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMAddressMessageResolutionNodeFactory.LLVMAddressReadMessageResolutionNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMAddressMessageResolutionNodeFactory.LLVMAddressWriteMessageResolutionNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 
-@MessageResolution(receiverType = LLVMTruffleAddress.class, language = LLVMLanguage.class)
+@MessageResolution(receiverType = LLVMTruffleAddress.class)
 public class LLVMAddressMessageResolution {
 
     @Resolve(message = "HAS_SIZE")

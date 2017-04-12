@@ -38,10 +38,9 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMAddressMessageResolu
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMAddressMessageResolutionNode.LLVMAddressWriteMessageResolutionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMAddressMessageResolutionNodeFactory.LLVMAddressReadMessageResolutionNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMAddressMessageResolutionNodeFactory.LLVMAddressWriteMessageResolutionNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 
-@MessageResolution(receiverType = LLVMSharedGlobalVariable.class, language = LLVMLanguage.class)
+@MessageResolution(receiverType = LLVMSharedGlobalVariable.class)
 public class LLVMGlobalVariableMessageResolution {
 
     @Resolve(message = "READ")

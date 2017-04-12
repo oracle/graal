@@ -34,11 +34,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
 
-@MessageResolution(receiverType = LLVMTruffleAddress.class, language = LLVMLanguage.class)
+@MessageResolution(receiverType = LLVMTruffleAddress.class)
 public class LLVMNullMessageResolution {
 
     @Resolve(message = "IS_NULL")
