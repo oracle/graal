@@ -61,6 +61,13 @@ public abstract class TruffleLanguageRunner extends BlockJUnit4ClassRunner {
         }
     }
 
+    public static final class RubyRunner extends TruffleLanguageRunner {
+
+        public RubyRunner(Class<?> klass) throws InitializationError {
+            super(klass, "application/x-ruby");
+        }
+    }
+
     public static final class RRunner extends TruffleLanguageRunner {
 
         public RRunner(Class<?> klass) throws InitializationError {
