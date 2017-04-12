@@ -43,8 +43,7 @@ import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
 import org.graalvm.compiler.lir.StandardOp.LabelOp;
 import org.graalvm.compiler.lir.StandardOp.ValueMoveOp;
 import org.graalvm.compiler.lir.alloc.OutOfRegistersException;
-import org.graalvm.compiler.lir.alloc.trace.lsra.FixedInterval.FixedList;
-import org.graalvm.compiler.lir.alloc.trace.lsra.TraceInterval.AnyList;
+import org.graalvm.compiler.lir.alloc.trace.lsra.TraceInterval.RegisterBinding;
 import org.graalvm.compiler.lir.alloc.trace.lsra.TraceInterval.RegisterPriority;
 import org.graalvm.compiler.lir.alloc.trace.lsra.TraceInterval.SpillState;
 import org.graalvm.compiler.lir.alloc.trace.lsra.TraceInterval.State;
@@ -57,6 +56,152 @@ import jdk.vm.ci.meta.Value;
 /**
  */
 final class TraceLinearScanWalker {
+
+    private static final class FixedList {
+
+        public FixedInterval fixed;
+
+        FixedList(FixedInterval fixed) {
+            this.fixed = fixed;
+        }
+
+        /**
+         * Gets the fixed list.
+         */
+        public FixedInterval getFixed() {
+            return fixed;
+        }
+
+        /**
+         * Sets the fixed list.
+         */
+        public void setFixed(FixedInterval list) {
+            fixed = list;
+        }
+
+        /**
+         * Adds an interval to a list sorted by {@linkplain FixedInterval#currentFrom() current
+         * from} positions.
+         *
+         * @param interval the interval to add
+         */
+        public void addToListSortedByCurrentFromPositions(FixedInterval interval) {
+            FixedInterval list = getFixed();
+            FixedInterval prev = null;
+            FixedInterval cur = list;
+            while (cur.currentFrom() < interval.currentFrom()) {
+                prev = cur;
+                cur = cur.next;
+            }
+            FixedInterval result = list;
+            if (prev == null) {
+                // add to head of list
+                result = interval;
+            } else {
+                // add before 'cur'
+                prev.next = interval;
+            }
+            interval.next = cur;
+            setFixed(result);
+        }
+
+    }
+
+    private static final class AnyList {
+
+        /**
+         * List of intervals whose binding is currently {@link RegisterBinding#Any}.
+         */
+        public TraceInterval any;
+
+        AnyList(TraceInterval any) {
+            this.any = any;
+        }
+
+        /**
+         * Gets the any list.
+         */
+        public TraceInterval getAny() {
+            return any;
+        }
+
+        /**
+         * Sets the any list.
+         */
+        public void setAny(TraceInterval list) {
+            any = list;
+        }
+
+        /**
+         * Adds an interval to a list sorted by {@linkplain TraceInterval#from() current from}
+         * positions.
+         *
+         * @param interval the interval to add
+         */
+        public void addToListSortedByFromPositions(TraceInterval interval) {
+            TraceInterval list = getAny();
+            TraceInterval prev = null;
+            TraceInterval cur = list;
+            while (cur.from() < interval.from()) {
+                prev = cur;
+                cur = cur.next;
+            }
+            TraceInterval result = list;
+            if (prev == null) {
+                // add to head of list
+                result = interval;
+            } else {
+                // add before 'cur'
+                prev.next = interval;
+            }
+            interval.next = cur;
+            setAny(result);
+        }
+
+        /**
+         * Adds an interval to a list sorted by {@linkplain TraceInterval#from() start} positions
+         * and {@linkplain TraceInterval#firstUsage(RegisterPriority) first usage} positions.
+         *
+         * @param interval the interval to add
+         */
+        public void addToListSortedByStartAndUsePositions(TraceInterval interval) {
+            TraceInterval list = getAny();
+            TraceInterval prev = null;
+            TraceInterval cur = list;
+            while (cur.from() < interval.from() || (cur.from() == interval.from() && cur.firstUsage(RegisterPriority.None) < interval.firstUsage(RegisterPriority.None))) {
+                prev = cur;
+                cur = cur.next;
+            }
+            if (prev == null) {
+                list = interval;
+            } else {
+                prev.next = interval;
+            }
+            interval.next = cur;
+            setAny(list);
+        }
+
+        /**
+         * Removes an interval from a list.
+         *
+         * @param i the interval to remove
+         */
+        public void removeAny(TraceInterval i) {
+            TraceInterval list = getAny();
+            TraceInterval prev = null;
+            TraceInterval cur = list;
+            while (cur != i) {
+                assert cur != null && cur != TraceInterval.EndMarker : "interval has not been found in list: " + i;
+                prev = cur;
+                cur = cur.next;
+            }
+            if (prev == null) {
+                setAny(cur.next);
+            } else {
+                prev.next = cur.next;
+            }
+        }
+    }
 
     private Register[] availableRegs;
 
