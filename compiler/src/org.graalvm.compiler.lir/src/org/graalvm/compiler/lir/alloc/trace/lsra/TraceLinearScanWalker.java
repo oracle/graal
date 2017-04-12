@@ -43,7 +43,6 @@ import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
 import org.graalvm.compiler.lir.StandardOp.LabelOp;
 import org.graalvm.compiler.lir.StandardOp.ValueMoveOp;
 import org.graalvm.compiler.lir.alloc.OutOfRegistersException;
-import org.graalvm.compiler.lir.alloc.trace.lsra.TraceInterval.RegisterBinding;
 import org.graalvm.compiler.lir.alloc.trace.lsra.TraceInterval.RegisterPriority;
 import org.graalvm.compiler.lir.alloc.trace.lsra.TraceInterval.SpillState;
 import org.graalvm.compiler.lir.alloc.trace.lsra.TraceInterval.State;
@@ -56,27 +55,6 @@ import jdk.vm.ci.meta.Value;
 /**
  */
 final class TraceLinearScanWalker {
-
-    private static final class FixedList {
-
-        public FixedInterval fixed;
-
-        FixedList(FixedInterval fixed) {
-            this.fixed = fixed;
-        }
-
-        /**
-         * Gets the fixed list.
-         */
-        public FixedInterval getFixed() {
-            return fixed;
-        }
-
-        public void addToListSortedByCurrentFromPositions(FixedInterval interval) {
-            fixed = TraceLinearScanWalker.addToListSortedByCurrentFromPositions(getFixed(), interval);
-        }
-
-    }
 
     /**
      * Adds an interval to a list sorted by {@linkplain FixedInterval#currentFrom() current from}
@@ -103,38 +81,6 @@ final class TraceLinearScanWalker {
         }
         interval.next = cur;
         return result;
-    }
-
-    private static final class AnyList {
-
-        /**
-         * List of intervals whose binding is currently {@link RegisterBinding#Any}.
-         */
-        public TraceInterval any;
-
-        AnyList(TraceInterval any) {
-            this.any = any;
-        }
-
-        /**
-         * Gets the any list.
-         */
-        public TraceInterval getAny() {
-            return any;
-        }
-
-        public void addToListSortedByFromPositions(TraceInterval interval) {
-            any = TraceLinearScanWalker.addToListSortedByFromPositions(getAny(), interval);
-        }
-
-        public void addToListSortedByStartAndUsePositions(TraceInterval interval) {
-            any = TraceLinearScanWalker.addToListSortedByStartAndUsePositions(getAny(), interval);
-        }
-
-        public void removeAny(TraceInterval i) {
-            any = TraceLinearScanWalker.removeAny(getAny(), i);
-        }
-
     }
 
     /**
@@ -232,19 +178,19 @@ final class TraceLinearScanWalker {
     /**
      * Sorted list of intervals, not live before the current position.
      */
-    private AnyList unhandledAnyList;
+    private TraceInterval unhandledAnyList;
 
     /**
      * Sorted list of intervals, live at the current position.
      */
-    private AnyList activeAnyList;
+    private TraceInterval activeAnyList;
 
-    private FixedList activeFixedList;
+    private FixedInterval activeFixedList;
 
     /**
      * Sorted list of intervals in a life time hole at the current position.
      */
-    private FixedList inactiveFixedList;
+    private FixedInterval inactiveFixedList;
 
     /**
      * The current position (intercept point through the intervals).
@@ -276,11 +222,11 @@ final class TraceLinearScanWalker {
     TraceLinearScanWalker(TraceLinearScan allocator, FixedInterval unhandledFixedFirst, TraceInterval unhandledAnyFirst) {
         this.allocator = allocator;
 
-        unhandledAnyList = new AnyList(unhandledAnyFirst);
-        activeAnyList = new AnyList(TraceInterval.EndMarker);
-        activeFixedList = new FixedList(FixedInterval.EndMarker);
+        unhandledAnyList = unhandledAnyFirst;
+        activeAnyList = TraceInterval.EndMarker;
+        activeFixedList = FixedInterval.EndMarker;
         // we don't need a separate unhandled list for fixed.
-        inactiveFixedList = new FixedList(unhandledFixedFirst);
+        inactiveFixedList = unhandledFixedFirst;
         currentPosition = -1;
 
         moveResolver = allocator.createMoveResolver();
@@ -379,7 +325,7 @@ final class TraceLinearScanWalker {
     }
 
     private void freeExcludeActiveFixed() {
-        FixedInterval interval = activeFixedList.getFixed();
+        FixedInterval interval = activeFixedList;
         while (interval != FixedInterval.EndMarker) {
             assert isRegister(interval.location()) : "active interval must have a register assigned";
             excludeFromUse(interval);
@@ -388,7 +334,7 @@ final class TraceLinearScanWalker {
     }
 
     private void freeExcludeActiveAny() {
-        TraceInterval interval = activeAnyList.getAny();
+        TraceInterval interval = activeAnyList;
         while (interval != TraceInterval.EndMarker) {
             assert isRegister(interval.location()) : "active interval must have a register assigned";
             excludeFromUse(interval);
@@ -397,7 +343,7 @@ final class TraceLinearScanWalker {
     }
 
     private void freeCollectInactiveFixed(TraceInterval current) {
-        FixedInterval interval = inactiveFixedList.getFixed();
+        FixedInterval interval = inactiveFixedList;
         while (interval != FixedInterval.EndMarker) {
             if (current.to() <= interval.from()) {
                 assert interval.intersectsAt(current) == -1 : "must not intersect";
@@ -410,7 +356,7 @@ final class TraceLinearScanWalker {
     }
 
     private void spillExcludeActiveFixed() {
-        FixedInterval interval = activeFixedList.getFixed();
+        FixedInterval interval = activeFixedList;
         while (interval != FixedInterval.EndMarker) {
             excludeFromUse(interval);
             interval = interval.next;
@@ -418,7 +364,7 @@ final class TraceLinearScanWalker {
     }
 
     private void spillBlockInactiveFixed(TraceInterval current) {
-        FixedInterval interval = inactiveFixedList.getFixed();
+        FixedInterval interval = inactiveFixedList;
         while (interval != FixedInterval.EndMarker) {
             if (current.to() > interval.currentFrom()) {
                 setBlockPos(interval, interval.currentIntersectsAt(current));
@@ -431,7 +377,7 @@ final class TraceLinearScanWalker {
     }
 
     private void spillCollectActiveAny(RegisterPriority registerPriority) {
-        TraceInterval interval = activeAnyList.getAny();
+        TraceInterval interval = activeAnyList;
         while (interval != TraceInterval.EndMarker) {
             setUsePos(interval, Math.min(interval.nextUsage(registerPriority, currentPosition), interval.to()), false);
             interval = interval.next;
@@ -630,7 +576,7 @@ final class TraceLinearScanWalker {
             splitPart.setInsertMoveWhenActivated(moveNecessary);
 
             assert splitPart.from() >= currentPosition : "cannot append new interval before current walk position";
-            unhandledAnyList.addToListSortedByStartAndUsePositions(splitPart);
+            unhandledAnyList = TraceLinearScanWalker.addToListSortedByStartAndUsePositions(unhandledAnyList, splitPart);
 
             if (Debug.isLogEnabled()) {
                 Debug.log("left interval  %s: %s", moveNecessary ? "      " : "", interval.logString());
@@ -1371,11 +1317,11 @@ final class TraceLinearScanWalker {
     @SuppressWarnings("try")
     private void logCurrentStatus() {
         try (Indent i = Debug.logAndIndent("active:")) {
-            logList(activeFixedList.getFixed());
-            logList(activeAnyList.getAny());
+            logList(activeFixedList);
+            logList(activeAnyList);
         }
         try (Indent i = Debug.logAndIndent("inactive(fixed):")) {
-            logList(inactiveFixedList.getFixed());
+            logList(inactiveFixedList);
         }
     }
 
@@ -1384,7 +1330,7 @@ final class TraceLinearScanWalker {
     }
 
     private void removeFromList(TraceInterval interval) {
-        activeAnyList.removeAny(interval);
+        activeAnyList = TraceLinearScanWalker.removeAny(activeAnyList, interval);
     }
 
     /**
@@ -1398,7 +1344,7 @@ final class TraceLinearScanWalker {
     private void walkToFixed(State state, int from) {
         assert state == State.Active || state == State.Inactive : "wrong state";
         FixedInterval prevprev = null;
-        FixedInterval prev = (state == State.Active) ? activeFixedList.getFixed() : inactiveFixedList.getFixed();
+        FixedInterval prev = (state == State.Active) ? activeFixedList : inactiveFixedList;
         FixedInterval next = prev;
         if (Debug.isLogEnabled()) {
             try (Indent i = Debug.logAndIndent("walkToFixed(%s, %d):", state, from)) {
@@ -1422,9 +1368,9 @@ final class TraceLinearScanWalker {
                 // remove cur from list
                 if (prevprev == null) {
                     if (state == State.Active) {
-                        activeFixedList.fixed = next;
+                        activeFixedList = next;
                     } else {
-                        inactiveFixedList.fixed = next;
+                        inactiveFixedList = next;
                     }
                 } else {
                     prevprev.next = next;
@@ -1437,11 +1383,11 @@ final class TraceLinearScanWalker {
                 } else {
                     if (cur.currentFrom() <= from) {
                         // sort into active list
-                        activeFixedList.addToListSortedByCurrentFromPositions(cur);
+                        activeFixedList = TraceLinearScanWalker.addToListSortedByCurrentFromPositions(activeFixedList, cur);
                         newState = State.Active;
                     } else {
                         // sort into inactive list
-                        inactiveFixedList.addToListSortedByCurrentFromPositions(cur);
+                        inactiveFixedList = TraceLinearScanWalker.addToListSortedByCurrentFromPositions(inactiveFixedList, cur);
                         newState = State.Inactive;
                     }
                     if (prev == cur) {
@@ -1467,7 +1413,7 @@ final class TraceLinearScanWalker {
     @SuppressWarnings("try")
     private void walkToAny(int from) {
         TraceInterval prevprev = null;
-        TraceInterval prev = activeAnyList.getAny();
+        TraceInterval prev = activeAnyList;
         TraceInterval next = prev;
         if (Debug.isLogEnabled()) {
             try (Indent i = Debug.logAndIndent("walkToAny(%d):", from)) {
@@ -1481,7 +1427,7 @@ final class TraceLinearScanWalker {
             if (cur.to() <= from) {
                 // remove cur from list
                 if (prevprev == null) {
-                    activeAnyList.any = next;
+                    activeAnyList = next;
                 } else {
                     prevprev.next = next;
                 }
@@ -1503,15 +1449,15 @@ final class TraceLinearScanWalker {
      *         interval at position {@code toOpId}.
      */
     private TraceInterval nextInterval(int toOpId) {
-        TraceInterval any = unhandledAnyList.getAny();
+        TraceInterval any = unhandledAnyList;
 
         if (any != TraceInterval.EndMarker) {
-            TraceInterval currentInterval = unhandledAnyList.getAny();
+            TraceInterval currentInterval = unhandledAnyList;
             if (toOpId < currentInterval.from()) {
                 return null;
             }
 
-            unhandledAnyList.any = currentInterval.next;
+            unhandledAnyList = currentInterval.next;
             currentInterval.next = TraceInterval.EndMarker;
             return currentInterval;
         }
@@ -1544,7 +1490,7 @@ final class TraceLinearScanWalker {
 
             try (Indent indent = Debug.logAndIndent("walk to op %d", opId)) {
                 if (activateCurrent(currentInterval)) {
-                    activeAnyList.addToListSortedByFromPositions(currentInterval);
+                    activeAnyList = TraceLinearScanWalker.addToListSortedByFromPositions(activeAnyList, currentInterval);
                     intervalMoved(currentInterval, State.Unhandled, State.Active);
                 }
             }
