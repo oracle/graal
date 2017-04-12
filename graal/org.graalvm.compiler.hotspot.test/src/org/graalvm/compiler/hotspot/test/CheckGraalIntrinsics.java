@@ -29,14 +29,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
-
-import org.junit.Test;
 
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
@@ -45,30 +41,34 @@ import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Binding;
 import org.graalvm.compiler.runtime.RuntimeProvider;
+import org.graalvm.compiler.test.AddExports;
 import org.graalvm.compiler.test.GraalTest;
-import org.graalvm.util.EconomicSet;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.MapCursor;
+import org.junit.Test;
 
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.hotspot.VMIntrinsicMethod;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.MethodHandleAccessProvider.IntrinsicMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Checks the set of intrinsics implemented by Graal against the set of intrinsics declared by
- * HotSpot. The purpose of this test is to detect when new intrinsics are added to HotSpot and
- * process them appropriately in Graal. This will be achieved by working through
- * {@link #TO_BE_INVESTIGATED} and either implementing the intrinsic or moving it to {@link #IGNORE}
- * .
+ * Checks the intrinsics implemented by Graal against the set of intrinsics declared by HotSpot. The
+ * purpose of this test is to detect when new intrinsics are added to HotSpot and process them
+ * appropriately in Graal. This will be achieved by working through {@link #TO_BE_INVESTIGATED} and
+ * either implementing the intrinsic or moving it to {@link #IGNORE} .
  */
+@AddExports("java.base/jdk.internal.module")
 public class CheckGraalIntrinsics extends GraalTest {
 
-    public static boolean match(ResolvedJavaMethod method, VMIntrinsicMethod intrinsic) {
-        if (intrinsic.name.equals(method.getName())) {
-            if (intrinsic.descriptor.equals(method.getSignature().toMethodDescriptor())) {
-                String declaringClass = method.getDeclaringClass().toClassName().replace('.', '/');
-                if (declaringClass.equals(intrinsic.declaringClass)) {
+    public static boolean match(String type, Binding binding, VMIntrinsicMethod intrinsic) {
+        if (intrinsic.name.equals(binding.name)) {
+            if (intrinsic.descriptor.startsWith(binding.argumentsDescriptor)) {
+                if (type.equals(intrinsic.declaringClass)) {
                     return true;
                 }
             }
@@ -76,16 +76,21 @@ public class CheckGraalIntrinsics extends GraalTest {
         return false;
     }
 
-    private static ResolvedJavaMethod findMethod(EconomicSet<ResolvedJavaMethod> methods, VMIntrinsicMethod intrinsic) {
-        for (ResolvedJavaMethod method : methods) {
-            if (match(method, intrinsic)) {
-                return method;
+    public static InvocationPlugin findPlugin(EconomicMap<String, List<Binding>> bindings, VMIntrinsicMethod intrinsic) {
+        MapCursor<String, List<Binding>> cursor = bindings.getEntries();
+        while (cursor.advance()) {
+            // Match format of VMIntrinsicMethod.declaringClass
+            String type = MetaUtil.internalNameToJava(cursor.getKey(), true, false).replace('.', '/');
+            for (Binding binding : cursor.getValue()) {
+                if (match(type, binding, intrinsic)) {
+                    return binding.plugin;
+                }
             }
         }
         return null;
     }
 
-    private static ResolvedJavaMethod resolveIntrinsic(MetaAccessProvider metaAccess, VMIntrinsicMethod intrinsic) throws ClassNotFoundException {
+    public static ResolvedJavaMethod resolveIntrinsic(MetaAccessProvider metaAccess, VMIntrinsicMethod intrinsic) throws ClassNotFoundException {
         Class<?> c = Class.forName(intrinsic.declaringClass.replace('/', '.'), false, CheckGraalIntrinsics.class.getClassLoader());
         for (Method javaMethod : c.getDeclaredMethods()) {
             if (javaMethod.getName().equals(intrinsic.name)) {
@@ -426,28 +431,20 @@ public class CheckGraalIntrinsics extends GraalTest {
     public void test() throws ClassNotFoundException {
         HotSpotGraalRuntimeProvider rt = (HotSpotGraalRuntimeProvider) Graal.getRequiredCapability(RuntimeProvider.class);
         HotSpotProviders providers = rt.getHostBackend().getProviders();
-        Map<ResolvedJavaMethod, Object> impl = new HashMap<>();
         Plugins graphBuilderPlugins = providers.getGraphBuilderPlugins();
         InvocationPlugins invocationPlugins = graphBuilderPlugins.getInvocationPlugins();
-        for (ResolvedJavaMethod method : invocationPlugins.getMethods()) {
-            InvocationPlugin plugin = invocationPlugins.lookupInvocation(method);
-            assert plugin != null;
-            impl.put(method, plugin);
-        }
 
-        EconomicSet<ResolvedJavaMethod> methods = invocationPlugins.getMethods();
         HotSpotVMConfigStore store = rt.getVMConfig().getStore();
         List<VMIntrinsicMethod> intrinsics = store.getIntrinsics();
 
         List<String> missing = new ArrayList<>();
+        EconomicMap<String, List<Binding>> bindings = invocationPlugins.getBindings();
         for (VMIntrinsicMethod intrinsic : intrinsics) {
-            ResolvedJavaMethod method = findMethod(methods, intrinsic);
-            if (method == null) {
-                method = resolveIntrinsic(providers.getMetaAccess(), intrinsic);
-
-                IntrinsicMethod intrinsicMethod = null;
+            InvocationPlugin plugin = findPlugin(bindings, intrinsic);
+            if (plugin == null) {
+                ResolvedJavaMethod method = resolveIntrinsic(providers.getMetaAccess(), intrinsic);
                 if (method != null) {
-                    intrinsicMethod = providers.getConstantReflection().getMethodHandleAccess().lookupMethodHandleIntrinsic(method);
+                    IntrinsicMethod intrinsicMethod = providers.getConstantReflection().getMethodHandleAccess().lookupMethodHandleIntrinsic(method);
                     if (intrinsicMethod != null) {
                         continue;
                     }
