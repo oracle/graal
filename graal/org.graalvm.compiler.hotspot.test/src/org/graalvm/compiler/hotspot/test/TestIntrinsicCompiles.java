@@ -62,7 +62,7 @@ public class TestIntrinsicCompiles extends GraalCompilerTest {
         Plugins graphBuilderPlugins = providers.getGraphBuilderPlugins();
         InvocationPlugins invocationPlugins = graphBuilderPlugins.getInvocationPlugins();
 
-        EconomicMap<String, List<Binding>> bindings = invocationPlugins.getBindings();
+        EconomicMap<String, List<Binding>> bindings = invocationPlugins.getBindings(true);
         HotSpotVMConfigStore store = rt.getVMConfig().getStore();
         List<VMIntrinsicMethod> intrinsics = store.getIntrinsics();
         for (VMIntrinsicMethod intrinsic : intrinsics) {

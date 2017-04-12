@@ -23,6 +23,7 @@
 package org.graalvm.compiler.nodes.graphbuilderconf;
 
 import static java.lang.String.format;
+import static org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.LateClassPlugins.FINAL_LATE_CLASS_PLUGIN;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
@@ -30,6 +31,7 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -53,6 +55,17 @@ import jdk.vm.ci.meta.Signature;
 
 /**
  * Manages a set of {@link InvocationPlugin}s.
+ *
+ * Most plugins are registered during initialization (i.e., before
+ * {@link #lookupInvocation(ResolvedJavaMethod)} or {@link #getBindings} is called). These
+ * registrations can be made with {@link Registration},
+ * {@link #register(InvocationPlugin, String, String, Type...)},
+ * {@link #register(InvocationPlugin, Type, String, Type...)} or
+ * {@link #registerOptional(InvocationPlugin, Type, String, Type...)}. Initialization is not
+ * thread-safe and so must only be performed by a single thread.
+ *
+ * Plugins that are not guaranteed to be made during initialization must use
+ * {@link LateRegistration}.
  */
 public class InvocationPlugins {
 
@@ -370,6 +383,60 @@ public class InvocationPlugins {
 
     }
 
+    /**
+     * Utility for registering plugins after Graal may have been initialized. Registrations made via
+     * this class are not finalized until {@link #close} is called.
+     */
+    public static class LateRegistration implements AutoCloseable {
+
+        private InvocationPlugins plugins;
+        private final List<Binding> bindings = new ArrayList<>();
+        private final Type declaringType;
+
+        /**
+         * Creates an object for registering {@link InvocationPlugin}s for methods declared by a
+         * given class.
+         *
+         * @param plugins where to register the plugins
+         * @param declaringType the class declaring the methods for which plugins will be registered
+         *            via this object
+         */
+        public LateRegistration(InvocationPlugins plugins, Type declaringType) {
+            this.plugins = plugins;
+            this.declaringType = declaringType;
+        }
+
+        /**
+         * Registers an invocation plugin for a given method. There must be no plugin currently
+         * registered for {@code method}.
+         *
+         * @param argumentTypes the argument types of the method. Element 0 of this array must be
+         *            the {@link Class} value for {@link InvocationPlugin.Receiver} iff the method
+         *            is non-static. Upon returning, element 0 will have been rewritten to
+         *            {@code declaringClass}
+         */
+        public void register(InvocationPlugin plugin, String name, Type... argumentTypes) {
+            boolean isStatic = argumentTypes.length == 0 || argumentTypes[0] != InvocationPlugin.Receiver.class;
+            if (!isStatic) {
+                argumentTypes[0] = declaringType;
+            }
+
+            assert isStatic || argumentTypes[0] == declaringType;
+            Binding binding = new Binding(plugin, isStatic, name, argumentTypes);
+            bindings.add(binding);
+
+            assert Checker.check(this.plugins, declaringType, binding);
+            assert plugins.checkResolvable(false, declaringType, isStatic, name, argumentTypes);
+        }
+
+        @Override
+        public void close() {
+            assert plugins != null : String.format("Late registrations of invocation plugins for %s is already closed", declaringType);
+            plugins.registerLate(declaringType, bindings);
+            plugins = null;
+        }
+    }
+
     boolean checkResolvable(boolean isOptional, Type declaringType, boolean isStatic, String name, Type... argumentTypes) {
         Class<?> declaringClass = resolveType(declaringType, isOptional);
         if (declaringClass == null) {
@@ -470,9 +537,8 @@ public class InvocationPlugins {
     private final EconomicMap<String, ClassPlugins> registrations = EconomicMap.create(Equivalence.DEFAULT);
 
     /**
-     * Deferred registrations as well as guard for ensuring no registrations are made after the
-     * first read access to the plugins. The guard uses double-checked locking which is why this
-     * field is {@code volatile}.
+     * Deferred registrations as well as the guard for delimiting the initial registration phase.
+     * The guard uses double-checked locking which is why this field is {@code volatile}.
      */
     private volatile List<Runnable> deferredRegistrations = new ArrayList<>();
 
@@ -486,9 +552,14 @@ public class InvocationPlugins {
     }
 
     /**
+     * Support for registering plugins once this object may be accessed by multiple threads.
+     */
+    private volatile LateClassPlugins lateRegistrations;
+
+    /**
      * Per-class bindings.
      */
-    protected static class ClassPlugins {
+    static class ClassPlugins {
 
         /**
          * Maps method names to binding lists.
@@ -545,6 +616,18 @@ public class InvocationPlugins {
         }
     }
 
+    static class LateClassPlugins extends ClassPlugins {
+        static final String FINAL_LATE_CLASS_PLUGIN = "-----";
+        private final String className;
+        private final LateClassPlugins next;
+
+        LateClassPlugins(LateClassPlugins next, String className) {
+            assert next == null || next.className != FINAL_LATE_CLASS_PLUGIN : "Late registration of invocation plugins is closed";
+            this.next = next;
+            this.className = className;
+        }
+    }
+
     /**
      * Registers a binding of a method to an invocation plugin.
      *
@@ -557,16 +640,15 @@ public class InvocationPlugins {
      * @return an object representing the method
      */
     Binding put(InvocationPlugin plugin, boolean isStatic, boolean allowOverwrite, Type declaringClass, String name, Type... argumentTypes) {
-        assert deferredRegistrations != null : "registration is closed";
-        assert isStatic || argumentTypes[0] == declaringClass;
-
         String internalName = MetaUtil.toInternalName(declaringClass.getTypeName());
+        assert isStatic || argumentTypes[0] == declaringClass;
+        assert deferredRegistrations != null : "initial registration is closed - use " + LateRegistration.class.getName() + " for late registrations";
+
         ClassPlugins classPlugins = registrations.get(internalName);
         if (classPlugins == null) {
             classPlugins = new ClassPlugins();
             registrations.put(internalName, classPlugins);
         }
-        assert isStatic || argumentTypes[0] == declaringClass;
         Binding binding = new Binding(plugin, isStatic, name, argumentTypes);
         classPlugins.register(binding, allowOverwrite);
         return binding;
@@ -588,6 +670,20 @@ public class InvocationPlugins {
         if (classPlugins != null) {
             return classPlugins.get(method);
         }
+        LateClassPlugins lcp = findLateClassPlugins(internalName);
+        if (lcp != null) {
+            return lcp.get(method);
+        }
+
+        return null;
+    }
+
+    LateClassPlugins findLateClassPlugins(String internalClassName) {
+        for (LateClassPlugins lcp = lateRegistrations; lcp != null; lcp = lcp.next) {
+            if (lcp.className.equals(internalClassName)) {
+                return lcp;
+            }
+        }
         return null;
     }
 
@@ -604,16 +700,33 @@ public class InvocationPlugins {
         }
     }
 
+    synchronized void registerLate(Type declaringType, List<Binding> bindings) {
+        String internalName = MetaUtil.toInternalName(declaringType.getTypeName());
+        assert findLateClassPlugins(internalName) == null : "Cannot have more than one late registration of invocation plugins for " + internalName;
+        LateClassPlugins lateClassPlugins = new LateClassPlugins(lateRegistrations, internalName);
+        for (Binding b : bindings) {
+            lateClassPlugins.register(b);
+        }
+        lateRegistrations = lateClassPlugins;
+    }
+
+    private synchronized boolean closeLateRegistrations() {
+        if (lateRegistrations == null || lateRegistrations.className != FINAL_LATE_CLASS_PLUGIN) {
+            lateRegistrations = new LateClassPlugins(lateRegistrations, FINAL_LATE_CLASS_PLUGIN);
+        }
+        return true;
+    }
+
     /**
-     * Disallows new registrations of new plugins, and creates the internal tables for method
-     * lookup.
+     * Processes deferred registrations and then closes this object for future registration.
      */
     public void closeRegistration() {
+        assert closeLateRegistrations();
         flushDeferrables();
     }
 
-    public int size() {
-        return registrations.size();
+    public boolean isEmpty() {
+        return registrations.size() == 0 && lateRegistrations == null;
     }
 
     /**
@@ -725,29 +838,37 @@ public class InvocationPlugins {
      * @return a map from class names in {@linkplain MetaUtil#toInternalName(String) internal} form
      *         to the invocation plugin bindings for methods in the class
      */
-    public EconomicMap<String, List<Binding>> getBindings() {
+    public EconomicMap<String, List<Binding>> getBindings(boolean includeParents) {
         EconomicMap<String, List<Binding>> res = EconomicMap.create(Equivalence.DEFAULT);
-        if (parent != null) {
-            res.putAll(parent.getBindings());
+        if (parent != null && includeParents) {
+            res.putAll(parent.getBindings(true));
         }
         flushDeferrables();
         MapCursor<String, ClassPlugins> classes = registrations.getEntries();
         while (classes.advance()) {
             String type = classes.getKey();
             ClassPlugins cp = classes.getValue();
-            MapCursor<String, Binding> methods = cp.bindings.getEntries();
-            while (methods.advance()) {
-                List<Binding> bindings = res.get(type);
-                if (bindings == null) {
-                    bindings = new ArrayList<>();
-                    res.put(type, bindings);
-                }
-                for (Binding b = methods.getValue(); b != null; b = b.next) {
-                    bindings.add(b);
-                }
-            }
+            addBindings(res, type, cp);
+        }
+        for (LateClassPlugins lcp = lateRegistrations; lcp != null; lcp = lcp.next) {
+            String type = lcp.className;
+            addBindings(res, type, lcp);
         }
         return res;
+    }
+
+    private static void addBindings(EconomicMap<String, List<Binding>> res, String type, ClassPlugins cp) {
+        MapCursor<String, Binding> methods = cp.bindings.getEntries();
+        while (methods.advance()) {
+            List<Binding> bindings = res.get(type);
+            if (bindings == null) {
+                bindings = new ArrayList<>();
+                res.put(type, bindings);
+            }
+            for (Binding b = methods.getValue(); b != null; b = b.next) {
+                bindings.add(b);
+            }
+        }
     }
 
     /**
@@ -760,17 +881,30 @@ public class InvocationPlugins {
 
     @Override
     public String toString() {
-        StringBuilder buf = new StringBuilder();
-        UnmodifiableMapCursor<String, ClassPlugins> entries = registrations.getEntries();
+        UnmodifiableMapCursor<String, List<Binding>> entries = getBindings(false).getEntries();
+        List<String> all = new ArrayList<>();
         while (entries.advance()) {
-            buf.append(entries.getKey()).append('.').append(entries.getValue()).append(", ");
+            String c = MetaUtil.internalNameToJava(entries.getKey(), true, false);
+            for (Binding b : entries.getValue()) {
+                all.add(c + '.' + b);
+            }
         }
-
-        String s = buf.toString();
-        if (buf.length() != 0) {
-            s = s.substring(buf.length() - ", ".length());
+        Collections.sort(all);
+        StringBuilder buf = new StringBuilder();
+        String nl = String.format("%n");
+        for (String s : all) {
+            if (buf.length() != 0) {
+                buf.append(nl);
+            }
+            buf.append(s);
         }
-        return s + " / parent: " + this.parent;
+        if (parent != null) {
+            if (buf.length() != 0) {
+                buf.append(nl);
+            }
+            buf.append("// parent").append(nl).append(parent);
+        }
+        return buf.toString();
     }
 
     private static class Checker {
