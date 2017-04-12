@@ -91,7 +91,7 @@ class LLVMRootNodeFactory {
             if (llvmRuntimeTypes.length == 2) {
                 return new Object[]{argsCount, allocatedArgsStartAddress};
             } else if (llvmRuntimeTypes.length == 3) {
-                LLVMAddress posixEnvPointer = LLVMAddress.NULL_POINTER;
+                LLVMAddress posixEnvPointer = LLVMAddress.nullPointer();
                 return new Object[]{argsCount, allocatedArgsStartAddress, posixEnvPointer};
             } else {
                 throw new AssertionError(sourceFile + " " + Arrays.toString(mainArgs) + " " + Arrays.toString(llvmRuntimeTypes));

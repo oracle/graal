@@ -41,7 +41,7 @@ public abstract class LLVMReturnAddress extends LLVMExpressionNode {
 
     @Specialization
     public LLVMAddress executePointee(@SuppressWarnings("unused") int frameLevel) {
-        return LLVMAddress.NULL_POINTER;
+        return LLVMAddress.nullPointer();
     }
 
 }

@@ -86,10 +86,10 @@ public interface NodeFactoryFacade {
 
     LLVMExpressionNode createVectorLiteralNode(LLVMParserRuntime runtime, List<LLVMExpressionNode> listValues, Type type);
 
-    LLVMExpressionNode tryCreateFunctionCallSubstitution(LLVMParserRuntime runtime, String name, LLVMExpressionNode[] argNodes, int numberOfExplicitArguments,
+    LLVMExpressionNode tryCreateFunctionCallSubstitution(LLVMParserRuntime runtime, String name, LLVMExpressionNode[] argNodes, Type[] argTypes, int numberOfExplicitArguments,
                     FrameSlot exceptionValueSlot);
 
-    LLVMControlFlowNode tryCreateFunctionInvokeSubstitution(LLVMParserRuntime runtime, String name, FunctionType type, int numberOfExplicitArguments, LLVMExpressionNode[] argNodes,
+    LLVMControlFlowNode tryCreateFunctionInvokeSubstitution(LLVMParserRuntime runtime, String name, FunctionType type, int numberOfExplicitArguments, LLVMExpressionNode[] argNodes, Type[] argTypes,
                     FrameSlot returnValueSlot, FrameSlot exceptionValueSlot, int normalIndex,
                     int unwindIndex, LLVMExpressionNode[] normalPhiWriteNodes, LLVMExpressionNode[] unwindPhiWriteNodes);
 

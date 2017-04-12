@@ -46,12 +46,11 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleManagedMalloc
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
-import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
@@ -69,8 +68,8 @@ public abstract class LLVMDirectLoadNode {
         }
 
         @Specialization
-        public LLVMIVarBit executeI64(LLVMGlobalVariableDescriptor addr) {
-            return LLVMMemory.getIVarBit(addr.getNativeAddress(), getBitWidth());
+        public LLVMIVarBit executeI64(LLVMGlobalVariable addr) {
+            return LLVMMemory.getIVarBit(addr.getNativeLocation(), getBitWidth());
         }
     }
 
@@ -83,8 +82,8 @@ public abstract class LLVMDirectLoadNode {
         }
 
         @Specialization
-        public LLVM80BitFloat executeDouble(LLVMGlobalVariableDescriptor addr) {
-            return LLVMMemory.get80BitFloat(addr.getNativeAddress());
+        public LLVM80BitFloat executeDouble(LLVMGlobalVariable addr) {
+            return LLVMMemory.get80BitFloat(addr.getNativeLocation());
         }
     }
 
@@ -92,13 +91,13 @@ public abstract class LLVMDirectLoadNode {
     public abstract static class LLVMFunctionDirectLoadNode extends LLVMExpressionNode {
 
         @Specialization
-        public LLVMFunctionHandle executeAddress(LLVMAddress addr, @Cached("getContext()") LLVMContext cachedContext) {
-            return new LLVMFunctionHandle(cachedContext, LLVMHeap.getFunctionIndex(addr));
+        public LLVMFunctionHandle executeAddress(LLVMAddress addr) {
+            return new LLVMFunctionHandle(LLVMHeap.getFunctionIndex(addr));
         }
 
         @Specialization
-        public LLVMFunctionHandle executeAddress(LLVMGlobalVariableDescriptor addr, @Cached("getContext()") LLVMContext cachedContext) {
-            return new LLVMFunctionHandle(cachedContext, LLVMHeap.getFunctionIndex(addr.getNativeAddress()));
+        public LLVMFunctionHandle executeAddress(LLVMGlobalVariable addr) {
+            return new LLVMFunctionHandle(LLVMHeap.getFunctionIndex(addr.getNativeLocation()));
         }
     }
 
@@ -113,8 +112,8 @@ public abstract class LLVMDirectLoadNode {
         }
 
         @Specialization
-        public Object executeAddress(LLVMGlobalVariableDescriptor addr) {
-            return addr.load();
+        public Object executeAddress(LLVMGlobalVariable addr) {
+            return addr.get();
         }
 
         @Specialization
@@ -170,15 +169,15 @@ public abstract class LLVMDirectLoadNode {
 
     public static final class LLVMGlobalVariableDirectLoadNode extends LLVMExpressionNode {
 
-        protected final LLVMGlobalVariableDescriptor descriptor;
+        protected final LLVMGlobalVariable descriptor;
 
-        public LLVMGlobalVariableDirectLoadNode(LLVMGlobalVariableDescriptor descriptor) {
+        public LLVMGlobalVariableDirectLoadNode(LLVMGlobalVariable descriptor) {
             this.descriptor = descriptor;
         }
 
         @Override
         public Object executeGeneric(VirtualFrame frame) {
-            return descriptor.load();
+            return descriptor.get();
         }
 
     }

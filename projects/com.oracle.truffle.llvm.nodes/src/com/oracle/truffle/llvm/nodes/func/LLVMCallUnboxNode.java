@@ -35,6 +35,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
@@ -199,6 +200,11 @@ public abstract class LLVMCallUnboxNode {
 
     @NodeChild(type = LLVMExpressionNode.class, value = "functionCallNode")
     public abstract static class LLVMFunctionCallUnboxNode extends LLVMExpressionNode {
+
+        @Specialization
+        public LLVMFunctionHandle executeFunction(LLVMFunctionHandle value) {
+            return value;
+        }
 
         @Specialization
         public TruffleObject executeFunction(TruffleObject value) {

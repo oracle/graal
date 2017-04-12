@@ -36,7 +36,7 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions.MemSetNode;
 
 @GenerateNodeFactory
@@ -65,8 +65,8 @@ public abstract class LLVMMemSet extends LLVMExpressionNode {
 
         @SuppressWarnings("unused")
         @Specialization
-        public Object executeVoid(LLVMGlobalVariableDescriptor address, byte value, long length, int align, boolean isVolatile) {
-            getMemSet().execute(address.getNativeAddress(), value, length);
+        public Object executeVoid(LLVMGlobalVariable address, byte value, long length, int align, boolean isVolatile) {
+            getMemSet().execute(address.getNativeLocation(), value, length);
             return null;
         }
     }
@@ -94,8 +94,8 @@ public abstract class LLVMMemSet extends LLVMExpressionNode {
 
         @SuppressWarnings("unused")
         @Specialization
-        public Object executeVoid(LLVMGlobalVariableDescriptor address, byte value, int length, int align, boolean isVolatile) {
-            getMemSet().execute(address.getNativeAddress(), value, length);
+        public Object executeVoid(LLVMGlobalVariable address, byte value, int length, int align, boolean isVolatile) {
+            getMemSet().execute(address.getNativeLocation(), value, length);
             return null;
         }
     }

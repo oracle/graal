@@ -62,7 +62,7 @@ public final class LLVMThrowExceptionNode extends LLVMExpressionNode {
         LLVMAddress thrownObject = exceptionInfo.enforceLLVMAddress(frame);
         LLVMAddress thrownType = thrownTypeID.enforceLLVMAddress(frame);
         LLVMAddress dest = destructor.enforceLLVMAddress(frame);
-        getExceptionInitializaton().throvv(thrownObject, thrownType, dest, LLVMAddress.NULL_POINTER, LLVMAddress.NULL_POINTER);
+        getExceptionInitializaton().throvv(thrownObject, thrownType, dest, LLVMAddress.nullPointer(), LLVMAddress.nullPointer());
         throw new LLVMException(thrownObject);
     }
 

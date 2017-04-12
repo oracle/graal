@@ -31,8 +31,8 @@ package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.interop.ForeignAccess;
 
-public class LLVMGlobalVariableDescriptorMessageResolutionAccessor {
+public class LLVMGlobalVariableMessageResolutionAccessor {
 
-    public static final ForeignAccess ACCESS = LLVMGlobalVariableDescriptorMessageResolutionForeign.ACCESS;
+    public static final ForeignAccess ACCESS = LLVMGlobalVariableMessageResolutionForeign.ACCESS;
 
 }

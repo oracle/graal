@@ -32,12 +32,11 @@ package com.oracle.truffle.llvm.runtime;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 
 @ValueType
-public final class LLVMFunctionHandle extends LLVMFunction {
+public final class LLVMFunctionHandle implements LLVMFunction {
 
     private final int functionIndex;
 
-    public LLVMFunctionHandle(LLVMContext context, int functionIndex) {
-        super(context);
+    public LLVMFunctionHandle(int functionIndex) {
         this.functionIndex = functionIndex;
     }
 

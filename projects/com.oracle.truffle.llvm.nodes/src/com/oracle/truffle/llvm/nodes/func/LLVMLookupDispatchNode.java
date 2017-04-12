@@ -30,8 +30,6 @@
 package com.oracle.truffle.llvm.nodes.func;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -40,11 +38,11 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMDataEscapeNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
@@ -61,7 +59,7 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
         this.type = type;
     }
 
-    public abstract Object executeDispatch(VirtualFrame frame, TruffleObject function, Object[] arguments);
+    public abstract Object executeDispatch(VirtualFrame frame, Object function, Object[] arguments);
 
     @Specialization
     protected static Object doDirect(VirtualFrame frame, LLVMFunctionDescriptor descriptor, Object[] arguments,
@@ -98,9 +96,10 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
     protected Object doForeign(TruffleObject function, Object[] arguments,
                     @Cached("createCrossLanguageCallNode(arguments)") Node crossLanguageCallNode,
                     @Cached("createLLVMDataEscapeNodes()") LLVMDataEscapeNode[] dataEscapeNodes,
-                    @Cached("createToLLVMNode()") ToLLVMNode toLLVMNode) {
+                    @Cached("createToLLVMNode()") ToLLVMNode toLLVMNode,
+                    @Cached("getContext()") LLVMContext context) {
         try {
-            Object ret = ForeignAccess.sendExecute(crossLanguageCallNode, function, getForeignArguments(dataEscapeNodes, arguments));
+            Object ret = ForeignAccess.sendExecute(crossLanguageCallNode, function, getForeignArguments(dataEscapeNodes, arguments, context));
             return toLLVMNode.executeWithTarget(ret);
         } catch (InteropException e) {
             throw new IllegalStateException(e);
@@ -108,11 +107,11 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
     }
 
     @ExplodeLoop
-    private Object[] getForeignArguments(LLVMDataEscapeNode[] dataEscapeNodes, Object[] arguments) {
+    private Object[] getForeignArguments(LLVMDataEscapeNode[] dataEscapeNodes, Object[] arguments, LLVMContext context) {
         assert arguments.length == type.getArgumentTypes().length;
         Object[] args = new Object[type.getArgumentTypes().length - 1];
         for (int i = 0; i < type.getArgumentTypes().length - 1; i++) {
-            args[i] = dataEscapeNodes[i].executeWithTarget(arguments[i + 1]);
+            args[i] = dataEscapeNodes[i].executeWithTarget(arguments[i + 1], context);
         }
         return args;
     }
@@ -120,7 +119,7 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
     protected LLVMDataEscapeNode[] createLLVMDataEscapeNodes() {
         LLVMDataEscapeNode[] args = new LLVMDataEscapeNode[type.getArgumentTypes().length - 1];
         for (int i = 0; i < type.getArgumentTypes().length - 1; i++) {
-            args[i] = LLVMDataEscapeNodeGen.create();
+            args[i] = LLVMDataEscapeNodeGen.create(type.getArgumentTypes()[i + 1]);
         }
         return args;
     }

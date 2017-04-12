@@ -47,9 +47,9 @@ import com.oracle.truffle.llvm.nodes.func.LLVMNativeConvertNodeFactory.NativeToA
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
-import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions.NullPointerNode;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -87,8 +87,8 @@ abstract class LLVMNativeConvertNode extends LLVMNode {
         }
 
         @Specialization
-        long addressToNative(LLVMGlobalVariableDescriptor address) {
-            return address.getNativeAddress().getVal();
+        long addressToNative(LLVMGlobalVariable address) {
+            return address.getNativeLocation().getVal();
         }
 
         @Specialization

@@ -81,7 +81,7 @@ public abstract class LLVMToAddressNode extends LLVMExpressionNode {
 
     @Specialization
     public LLVMAddress executeI64(@SuppressWarnings("unused") LLVMTruffleNull from) {
-        return LLVMAddress.NULL_POINTER;
+        return LLVMAddress.nullPointer();
     }
 
     @Child private ToLLVMNode toLong = ToLLVMNode.createNode(long.class);

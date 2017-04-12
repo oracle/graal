@@ -29,14 +29,16 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
-public final class LLVMFunctionDescriptor extends LLVMFunction implements Comparable<LLVMFunctionDescriptor> {
+public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject, Comparable<LLVMFunctionDescriptor> {
 
     private final String functionName;
     private final FunctionType type;
@@ -48,8 +50,11 @@ public final class LLVMFunctionDescriptor extends LLVMFunction implements Compar
     @CompilationFinal private LazyToTruffleConverter lazyConverter;
     @CompilationFinal private CyclicAssumption functionDescriptorState;
 
+    private final LLVMContext context;
+
     private LLVMFunctionDescriptor(LLVMContext context, String name, FunctionType type, int functionId) {
-        super(context);
+        CompilerAsserts.neverPartOfCompilation();
+        this.context = context;
         this.functionName = name;
         this.type = type;
         this.functionId = functionId;
@@ -166,6 +171,29 @@ public final class LLVMFunctionDescriptor extends LLVMFunction implements Compar
             LLVMFunctionDescriptor other = (LLVMFunctionDescriptor) obj;
             return getFunctionIndex() == other.getFunctionIndex();
         }
+    }
+
+    public static boolean isInstance(TruffleObject object) {
+        return object instanceof LLVMFunctionDescriptor;
+    }
+
+    public LLVMContext getContext() {
+        return context;
+    }
+
+    @CompilationFinal private static ForeignAccess ACCESS;
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        if (ACCESS == null) {
+            try {
+                Class<?> accessor = Class.forName("com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMFunctionMessageResolutionAccessor");
+                ACCESS = (ForeignAccess) accessor.getField("ACCESS").get(null);
+            } catch (Exception e) {
+                throw new AssertionError(e);
+            }
+        }
+        return ACCESS;
     }
 
 }

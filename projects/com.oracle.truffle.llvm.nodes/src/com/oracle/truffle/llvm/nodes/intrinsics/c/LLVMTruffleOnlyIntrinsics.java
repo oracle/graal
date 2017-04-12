@@ -46,7 +46,7 @@ import com.oracle.truffle.llvm.nodes.func.LLVMNativeCallUtils;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
 public final class LLVMTruffleOnlyIntrinsics {
@@ -107,8 +107,8 @@ public final class LLVMTruffleOnlyIntrinsics {
         }
 
         @Specialization
-        public long executeIntrinsic(LLVMGlobalVariableDescriptor string) {
-            return callNative(string.getNativeAddress().getVal());
+        public long executeIntrinsic(LLVMGlobalVariable string) {
+            return callNative(string.getNativeLocation().getVal());
         }
 
         @Child private Node foreignHasSize = Message.HAS_SIZE.createNode();
@@ -148,18 +148,18 @@ public final class LLVMTruffleOnlyIntrinsics {
         }
 
         @Specialization
-        public int executeIntrinsic(LLVMGlobalVariableDescriptor str1, LLVMAddress str2) {
-            return callNative(str1.getNativeAddress().getVal(), str2.getVal());
+        public int executeIntrinsic(LLVMGlobalVariable str1, LLVMAddress str2) {
+            return callNative(str1.getNativeLocation().getVal(), str2.getVal());
         }
 
         @Specialization
-        public int executeIntrinsic(LLVMAddress str1, LLVMGlobalVariableDescriptor str2) {
-            return callNative(str1.getVal(), str2.getNativeAddress().getVal());
+        public int executeIntrinsic(LLVMAddress str1, LLVMGlobalVariable str2) {
+            return callNative(str1.getVal(), str2.getNativeLocation().getVal());
         }
 
         @Specialization
-        public int executeIntrinsic(LLVMGlobalVariableDescriptor str1, LLVMGlobalVariableDescriptor str2) {
-            return callNative(str1.getNativeAddress().getVal(), str2.getNativeAddress().getVal());
+        public int executeIntrinsic(LLVMGlobalVariable str1, LLVMGlobalVariable str2) {
+            return callNative(str1.getNativeLocation().getVal(), str2.getNativeLocation().getVal());
         }
 
         @Child private Node readStr1 = Message.READ.createNode();

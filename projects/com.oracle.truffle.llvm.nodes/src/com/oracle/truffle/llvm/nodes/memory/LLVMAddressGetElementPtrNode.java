@@ -39,8 +39,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -55,13 +55,13 @@ public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
     @Specialization
     public LLVMAddress executePointee(LLVMAddress addr, int val) {
         int incr = getTypeWidth() * val;
-        return addr.increment(incr, new PointerType(getTargetType()));
+        return addr.increment(incr);
     }
 
     @Specialization
-    public LLVMAddress executePointee(LLVMGlobalVariableDescriptor addr, int val) {
+    public LLVMAddress executePointee(LLVMGlobalVariable addr, int val) {
         int incr = getTypeWidth() * val;
-        return addr.getNativeAddress().increment(incr, new PointerType(getTargetType()));
+        return addr.getNativeLocation().increment(incr);
     }
 
     @Specialization
@@ -74,7 +74,7 @@ public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
     public LLVMAddress executeLLVMBoxedPrimitive(LLVMBoxedPrimitive addr, int val) {
         if (addr.getValue() instanceof Long) {
             int incr = getTypeWidth() * val;
-            return LLVMAddress.fromLong(new PointerType(getTargetType()), (long) addr.getValue() + incr);
+            return LLVMAddress.fromLong((long) addr.getValue() + incr);
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalAccessError("Cannot do pointer arithmetic with address: " + addr.getValue());
@@ -90,7 +90,7 @@ public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
     @Specialization
     public LLVMAddress executePointee(LLVMAddress addr, long val) {
         long incr = getTypeWidth() * val;
-        return addr.increment(incr, new PointerType(getTargetType()));
+        return addr.increment(incr);
     }
 
     @Specialization
@@ -103,7 +103,7 @@ public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
     public LLVMAddress executeLLVMBoxedPrimitive(LLVMBoxedPrimitive addr, long val) {
         if (addr.getValue() instanceof Long) {
             long incr = getTypeWidth() * val;
-            return LLVMAddress.fromLong(new PointerType(getTargetType()), (long) addr.getValue() + incr);
+            return LLVMAddress.fromLong((long) addr.getValue() + incr);
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalAccessError("Cannot do pointer arithmetic with address: " + addr.getValue());
@@ -117,9 +117,9 @@ public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    public LLVMAddress executePointee(LLVMGlobalVariableDescriptor addr, long val) {
+    public LLVMAddress executePointee(LLVMGlobalVariable addr, long val) {
         long incr = getTypeWidth() * val;
-        return addr.getNativeAddress().increment(incr, new PointerType(getTargetType()));
+        return addr.getNativeLocation().increment(incr);
     }
 
 }

@@ -61,6 +61,7 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
 
 /**
  * The global entry point initializes the global scope and starts execution with the main function.
@@ -119,7 +120,8 @@ public class LLVMGlobalRootNode extends RootNode {
     private void runDestructors() {
         for (DestructorStackElement destructorStackElement : getContext().getDestructorStack()) {
             try {
-                ForeignAccess.sendExecute(executeDestructor, destructorStackElement.getDestructor(), new LLVMTruffleAddress(destructorStackElement.getThiz()));
+                ForeignAccess.sendExecute(executeDestructor, destructorStackElement.getDestructor(),
+                                new LLVMTruffleAddress(destructorStackElement.getThiz(), new PointerType(null), getContext()));
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(e);

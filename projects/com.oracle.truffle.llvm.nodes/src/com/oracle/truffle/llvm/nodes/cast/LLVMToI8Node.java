@@ -43,11 +43,11 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
-import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 
 @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
 public abstract class LLVMToI8Node extends LLVMExpressionNode {
@@ -68,8 +68,8 @@ public abstract class LLVMToI8Node extends LLVMExpressionNode {
     }
 
     @Specialization
-    public byte executeLLVMAddress(LLVMGlobalVariableDescriptor from) {
-        return (byte) from.getNativeAddress().getVal();
+    public byte executeLLVMAddress(LLVMGlobalVariable from) {
+        return (byte) from.getNativeLocation().getVal();
     }
 
     @Specialization

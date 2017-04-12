@@ -45,8 +45,10 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMPerformance;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleExecute extends LLVMIntrinsic {
@@ -56,12 +58,12 @@ public abstract class LLVMTruffleExecute extends LLVMIntrinsic {
     @Child private Node foreignExecute;
     @Child private ToLLVMNode toLLVM;
 
-    public LLVMTruffleExecute(ToLLVMNode toLLVM, LLVMExpressionNode[] args) {
+    public LLVMTruffleExecute(ToLLVMNode toLLVM, LLVMExpressionNode[] args, Type[] argTypes) {
         this.toLLVM = toLLVM;
         this.args = args;
         this.prepareValuesForEscape = new LLVMDataEscapeNode[args.length];
         for (int i = 0; i < prepareValuesForEscape.length; i++) {
-            prepareValuesForEscape[i] = LLVMDataEscapeNodeGen.create();
+            prepareValuesForEscape[i] = LLVMDataEscapeNodeGen.create(argTypes[i]);
         }
         this.foreignExecute = Message.createExecute(args.length).createNode();
     }
@@ -74,10 +76,10 @@ public abstract class LLVMTruffleExecute extends LLVMIntrinsic {
     }
 
     @ExplodeLoop
-    private Object doExecute(VirtualFrame frame, TruffleObject value) {
+    private Object doExecute(VirtualFrame frame, TruffleObject value, LLVMContext context) {
         Object[] evaluatedArgs = new Object[args.length];
         for (int i = 0; i < args.length; i++) {
-            evaluatedArgs[i] = prepareValuesForEscape[i].executeWithTarget(args[i].executeGeneric(frame));
+            evaluatedArgs[i] = prepareValuesForEscape[i].executeWithTarget(args[i].executeGeneric(frame), context);
         }
         try {
             Object rawValue = ForeignAccess.sendExecute(foreignExecute, value, evaluatedArgs);
@@ -90,27 +92,27 @@ public abstract class LLVMTruffleExecute extends LLVMIntrinsic {
 
     @SuppressWarnings("unused")
     @Specialization(guards = "value == cachedValue", limit = "2")
-    public Object doIntrinsicCachedTruffleObject(VirtualFrame frame, TruffleObject value, @Cached("value") TruffleObject cachedValue) {
-        return doExecute(frame, cachedValue);
+    public Object doIntrinsicCachedTruffleObject(VirtualFrame frame, TruffleObject value, @Cached("value") TruffleObject cachedValue, @Cached("getContext()") LLVMContext context) {
+        return doExecute(frame, cachedValue, context);
     }
 
     @Specialization(replaces = "doIntrinsicCachedTruffleObject")
-    public Object doIntrinsicTruffleObject(VirtualFrame frame, TruffleObject value) {
+    public Object doIntrinsicTruffleObject(VirtualFrame frame, TruffleObject value, @Cached("getContext()") LLVMContext context) {
         LLVMPerformance.warn(this);
-        return doExecute(frame, value);
+        return doExecute(frame, value, context);
     }
 
     @SuppressWarnings("unused")
     @Specialization(guards = "value == cachedValue")
-    public Object doIntrinsicCachedLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject value, @Cached("value") LLVMTruffleObject cachedValue) {
+    public Object doIntrinsicCachedLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject value, @Cached("value") LLVMTruffleObject cachedValue, @Cached("getContext()") LLVMContext context) {
         checkLLVMTruffleObject(cachedValue);
-        return doExecute(frame, cachedValue.getObject());
+        return doExecute(frame, cachedValue.getObject(), context);
     }
 
     @Specialization(replaces = "doIntrinsicCachedLLVMTruffleObject")
-    public Object doIntrinsicLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject value) {
+    public Object doIntrinsicLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject value, @Cached("getContext()") LLVMContext context) {
         LLVMPerformance.warn(this);
         checkLLVMTruffleObject(value);
-        return doExecute(frame, value.getObject());
+        return doExecute(frame, value.getObject(), context);
     }
 }

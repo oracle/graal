@@ -29,14 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.util.HashMap;
-import java.util.Map;
-
-public final class LLVMGlobalVariableRegistry {
-
-    private final Map<String, LLVMGlobalVariableDescriptor> descriptors = new HashMap<>();
-
-    public synchronized LLVMGlobalVariableDescriptor lookupOrAdd(String name, NativeResolver nativeResolver) {
-        return descriptors.computeIfAbsent(name, k -> LLVMGlobalVariableDescriptor.create(name, nativeResolver));
-    }
+public interface NativeAllocator {
+    LLVMAddress allocate();
 }

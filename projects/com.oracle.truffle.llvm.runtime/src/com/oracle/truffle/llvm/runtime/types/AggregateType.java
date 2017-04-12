@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.types;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
@@ -40,7 +41,12 @@ import com.oracle.truffle.llvm.runtime.types.metadata.MetadataReferenceType;
 public abstract class AggregateType implements Type, MetadataReferenceType {
 
     @CompilationFinal private MetadataReference metadata = MetadataBlock.voidRef;
-    @CompilationFinal private Assumption finalMetadata = Truffle.getRuntime().createAssumption();
+    @CompilationFinal private Assumption finalMetadata;
+
+    public AggregateType() {
+        CompilerAsserts.neverPartOfCompilation();
+        this.finalMetadata = Truffle.getRuntime().createAssumption();
+    }
 
     public abstract int getNumberOfElements();
 

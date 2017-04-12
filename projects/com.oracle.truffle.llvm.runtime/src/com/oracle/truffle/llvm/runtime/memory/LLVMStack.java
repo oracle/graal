@@ -127,7 +127,7 @@ public final class LLVMStack extends LLVMMemory {
             CompilerDirectives.transferToInterpreter();
             throw new StackOverflowError("stack overflow");
         }
-        final LLVMAddress allocatedMemory = LLVMAddress.fromLong(type, alignedAllocation);
+        final LLVMAddress allocatedMemory = LLVMAddress.fromLong(alignedAllocation);
         return new AllocationResult(newStackPointer, allocatedMemory);
     }
 
