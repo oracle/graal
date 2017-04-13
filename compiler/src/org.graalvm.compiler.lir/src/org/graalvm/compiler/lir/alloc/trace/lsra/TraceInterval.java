@@ -288,9 +288,13 @@ final class TraceInterval extends IntervalHint {
     /**
      * Sentinel interval to denote the end of an interval list.
      */
-    static final TraceInterval EndMarker = new TraceInterval(Value.ILLEGAL, -1, null);
+    static final TraceInterval EndMarker = new TraceInterval(Value.ILLEGAL, -1, null, 0);
 
-    TraceInterval(AllocatableValue operand, int operandNumber, OptionValues options) {
+    TraceInterval(Variable operand, int operandNumber, OptionValues options) {
+        this(operand, operandNumber, options, 0);
+    }
+
+    private TraceInterval(AllocatableValue operand, int operandNumber, OptionValues options, @SuppressWarnings("unused") int dummy) {
         assert operand != null;
         this.operand = operand;
         this.operandNumber = operandNumber;

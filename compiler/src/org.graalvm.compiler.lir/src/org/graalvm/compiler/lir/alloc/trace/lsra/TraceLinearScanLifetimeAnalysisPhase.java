@@ -404,9 +404,9 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
                                     return null;
                                 }
                                 from = getIntervalHint(toValue);
-                                to = allocator.getOrCreateInterval(fromValue);
+                                to = allocator.getOrCreateInterval(asVariable(fromValue));
                             } else {
-                                to = allocator.getOrCreateInterval(toValue);
+                                to = allocator.getOrCreateInterval(asVariable(toValue));
                                 from = getIntervalHint(fromValue);
                             }
 
@@ -699,7 +699,7 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
             if (isRegister(from)) {
                 return allocator.getOrCreateFixedInterval(asRegisterValue(from));
             }
-            return allocator.getOrCreateInterval(from);
+            return allocator.getOrCreateInterval(asVariable(from));
         }
 
     }

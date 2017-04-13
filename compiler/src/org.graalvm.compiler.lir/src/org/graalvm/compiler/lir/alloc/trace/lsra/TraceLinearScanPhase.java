@@ -838,7 +838,7 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
          * @param operand the operand for the interval
          * @return the created interval
          */
-        private TraceInterval createInterval(AllocatableValue operand) {
+        private TraceInterval createInterval(Variable operand) {
             assert isLegal(operand);
             int operandNumber = operandNumber(operand);
             TraceInterval interval = new TraceInterval(operand, operandNumber, getOptions());
@@ -913,7 +913,7 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
             return intervals[operandNumber];
         }
 
-        TraceInterval getOrCreateInterval(AllocatableValue operand) {
+        TraceInterval getOrCreateInterval(Variable operand) {
             TraceInterval ret = intervalFor(operand);
             if (ret == null) {
                 return createInterval(operand);
