@@ -30,18 +30,18 @@
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBaseNode;
+import com.oracle.truffle.llvm.parser.metadata.MDLocation;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 public abstract class Instruction implements Symbol {
 
-    private MetadataBaseNode debugLocation = null;
+    private MDLocation debugLocation = null;
 
-    public MetadataBaseNode getDebugLocation() {
+    public MDLocation getDebugLocation() {
         return debugLocation;
     }
 
-    public void setDebugLocation(MetadataBaseNode debugLocation) {
+    public void setDebugLocation(MDLocation debugLocation) {
         this.debugLocation = debugLocation;
     }
 

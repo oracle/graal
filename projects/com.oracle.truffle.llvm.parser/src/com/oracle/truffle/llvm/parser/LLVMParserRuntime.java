@@ -68,7 +68,9 @@ import com.oracle.truffle.llvm.parser.util.Pair;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
@@ -96,6 +98,11 @@ public final class LLVMParserRuntime {
         final LLVMParserRuntime visitor = new LLVMParserRuntime(source, language, context, stackAllocation, parserResult.getLabels(), parserResult.getPhis(), targetDataLayout, factoryFacade,
                         functionRegistry);
         final LLVMModelVisitor module = new LLVMModelVisitor(visitor, functionRegistry);
+
+        if (!LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.printMetadata())) {
+            model.getMetadata().print(LLVMLogger.print(LLVMOptions.DEBUG.printMetadata()));
+        }
+
         model.accept(module);
 
         LLVMFunctionDescriptor mainFunction = visitor.getFunction("@main");

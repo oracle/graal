@@ -27,24 +27,43 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
+public final class MDKind implements MDBaseNode {
 
-public final class NullConstant extends AbstractConstant {
+    private final long id;
 
-    public NullConstant(Type type) {
-        super(type);
-    }
+    private final String name;
 
     @Override
-    public void accept(ConstantVisitor visitor) {
+    public void accept(MetadataVisitor visitor) {
         visitor.visit(this);
+    }
+
+    private MDKind(long id, String name) {
+        this.id = id;
+        this.name = name;
+    }
+
+    public long getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
     }
 
     @Override
     public String toString() {
-        return Type.isIntegerType(getType()) || Type.isFloatingpointType(getType()) ? "0" : "null";
+        return String.format("Kind (id=%d, name=\"%s\")", id, name);
     }
+
+    private static final int ARG_ID = 0;
+
+    public static MDKind create(long[] args) {
+        final long id = args[ARG_ID];
+        final String name = ParseUtil.longArrayToString(1, args);
+        return new MDKind(id, name);
+    }
+
 }

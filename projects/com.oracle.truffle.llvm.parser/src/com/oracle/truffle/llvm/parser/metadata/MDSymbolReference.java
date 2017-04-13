@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,24 +27,51 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
+import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
-public final class NullConstant extends AbstractConstant {
+import java.util.function.Supplier;
 
-    public NullConstant(Type type) {
-        super(type);
+public class MDSymbolReference extends MDTypedValue implements MDBaseNode {
+
+    public static final MDSymbolReference VOID = new MDSymbolReference(VoidType.INSTANCE, null) {
+
+        @Override
+        public Symbol get() {
+            throw new IndexOutOfBoundsException("VOID cannot be dereferenced!");
+        }
+
+        @Override
+        public String toString() {
+            return "VOID";
+        }
+    };
+
+    private final Supplier<Symbol> valueSupplier;
+
+    public MDSymbolReference(Type baseType, Supplier<Symbol> valueSupplier) {
+        super(baseType);
+        this.valueSupplier = valueSupplier;
+    }
+
+    public Symbol get() {
+        return valueSupplier.get();
+    }
+
+    public boolean isPresent() {
+        return valueSupplier.get() != null;
     }
 
     @Override
-    public void accept(ConstantVisitor visitor) {
+    public void accept(MetadataVisitor visitor) {
         visitor.visit(this);
     }
 
     @Override
     public String toString() {
-        return Type.isIntegerType(getType()) || Type.isFloatingpointType(getType()) ? "0" : "null";
+        return String.format("SymbolRef (%s %s)", getType(), isPresent() ? get() : "<forward ref>");
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,24 +27,31 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 
-public final class NullConstant extends AbstractConstant {
+public final class MDOldNode extends ArrayList<MDTypedValue> implements MDBaseNode {
 
-    public NullConstant(Type type) {
-        super(type);
+    private static final long serialVersionUID = 1L;
+
+    public MDOldNode(Collection<? extends MDTypedValue> c) {
+        super(c);
     }
 
     @Override
-    public void accept(ConstantVisitor visitor) {
+    public void accept(MetadataVisitor visitor) {
         visitor.visit(this);
     }
 
     @Override
     public String toString() {
-        return Type.isIntegerType(getType()) || Type.isFloatingpointType(getType()) ? "0" : "null";
+        return String.format("!{%s}", super.toString());
+    }
+
+    public static MDOldNode create32(MDTypedValue[] args) {
+        return new MDOldNode(Arrays.asList(args));
     }
 }

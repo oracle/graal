@@ -34,6 +34,7 @@ import java.util.List;
 
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.enums.Visibility;
+import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.MetadataConstant;
@@ -103,11 +104,18 @@ public final class VoidCallInstruction extends VoidInstruction implements Call {
     public static VoidCallInstruction fromSymbols(Symbols symbols, int targetIndex, int[] arguments, long visibility, long linkage) {
         final VoidCallInstruction inst = new VoidCallInstruction(Linkage.decode(linkage), Visibility.decode(visibility));
         inst.target = symbols.getSymbol(targetIndex, inst);
+        final Type[] argTypes;
         if (inst.target instanceof FunctionDefinition) {
-            Type[] types = ((FunctionDefinition) (inst.target)).getType().getArgumentTypes();
+            argTypes = ((FunctionDefinition) (inst.target)).getType().getArgumentTypes();
+        } else if (inst.target instanceof FunctionDeclaration) {
+            argTypes = ((FunctionDeclaration) (inst.target)).getType().getArgumentTypes();
+        } else {
+            argTypes = null;
+        }
+        if (argTypes != null) {
             for (int i = 0; i < arguments.length; i++) {
-                // TODO: why it's possible to have more arguments than argument types?
-                if (types.length > i && types[i] instanceof MetaType) {
+                // TODO: why is it possible to have more arguments than argument types?
+                if (argTypes.length > i && argTypes[i] == MetaType.METADATA) {
                     inst.arguments.add(new MetadataConstant(arguments[i]));
                 } else {
                     inst.arguments.add(symbols.getSymbol(arguments[i], inst));

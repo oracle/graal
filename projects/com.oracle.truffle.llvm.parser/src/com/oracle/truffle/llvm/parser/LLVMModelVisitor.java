@@ -86,6 +86,10 @@ final class LLVMModelVisitor implements ModelVisitor {
 
     @Override
     public void visit(FunctionDefinition method) {
+        final String name = method.getName();
+        if (!LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.printMetadata())) {
+            method.getMetadata().print(LLVMLogger.print(LLVMOptions.DEBUG.printMetadata()), name);
+        }
         LLVMFunctionDescriptor function = registry.lookupFunctionDescriptor(method.getName(), method.getType());
         if (LLVMOptions.ENGINE.lazyParsing()) {
             function.setLazyToTruffleConverter(new LazyToTruffleConverterImpl(method, function, visitor));

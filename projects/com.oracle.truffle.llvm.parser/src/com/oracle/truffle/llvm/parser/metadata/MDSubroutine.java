@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,24 +27,43 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
+public final class MDSubroutine implements MDBaseNode {
 
-public final class NullConstant extends AbstractConstant {
+    private final long flags;
 
-    public NullConstant(Type type) {
-        super(type);
+    private final MDReference types;
+
+    private MDSubroutine(long flags, MDReference types) {
+        this.flags = flags;
+        this.types = types;
+    }
+
+    public long getFlags() {
+        return flags;
+    }
+
+    public MDReference getTypes() {
+        return types;
     }
 
     @Override
-    public void accept(ConstantVisitor visitor) {
+    public void accept(MetadataVisitor visitor) {
         visitor.visit(this);
     }
 
     @Override
     public String toString() {
-        return Type.isIntegerType(getType()) || Type.isFloatingpointType(getType()) ? "0" : "null";
+        return String.format("Subroutine (flags=%d, types=%s)", flags, types);
+    }
+
+    private static final int ARGINDEX_FLAGS = 1;
+    private static final int ARGINDEX_TYPES = 2;
+
+    public static MDSubroutine create38(long[] args, MetadataList md) {
+        final long flags = args[ARGINDEX_FLAGS];
+        final MDReference subroutineTypes = md.getMDRefOrNullRef(args[ARGINDEX_TYPES]);
+        return new MDSubroutine(flags, subroutineTypes);
     }
 }

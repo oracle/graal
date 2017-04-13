@@ -56,6 +56,14 @@ public final class Symbols {
         symbols = new Symbol[INITIAL_CAPACITY];
     }
 
+    private boolean hasSymbol(int index) {
+        return index >= 0 && index < symbols.length && symbols[index] != null && !(symbols[index] instanceof ForwardReference);
+    }
+
+    public Symbol getOrNull(int index) {
+        return hasSymbol(index) ? getSymbol(index) : null;
+    }
+
     public void addSymbol(Symbol symbol) {
         ensureCapacity(size + 1);
 

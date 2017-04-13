@@ -27,24 +27,38 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.metadata.subtypes;
 
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.parser.metadata.MDReference;
 
-public final class NullConstant extends AbstractConstant {
+public abstract class MDVariable extends MDName {
 
-    public NullConstant(Type type) {
-        super(type);
+    private final MDReference scope;
+    private final MDReference type;
+    private final MDReference file;
+    private final long line;
+
+    protected MDVariable(MDReference scope, MDReference name, MDReference type, MDReference file, long line) {
+        super(name);
+        this.scope = scope;
+        this.type = type;
+        this.file = file;
+        this.line = line;
     }
 
-    @Override
-    public void accept(ConstantVisitor visitor) {
-        visitor.visit(this);
+    public MDReference getScope() {
+        return scope;
     }
 
-    @Override
-    public String toString() {
-        return Type.isIntegerType(getType()) || Type.isFloatingpointType(getType()) ? "0" : "null";
+    public MDReference getType() {
+        return type;
+    }
+
+    public MDReference getFile() {
+        return file;
+    }
+
+    public long getLine() {
+        return line;
     }
 }

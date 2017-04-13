@@ -27,24 +27,31 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import java.util.ArrayList;
 
-public final class NullConstant extends AbstractConstant {
+public final class MDNamedNode extends ArrayList<MDReference> implements MDBaseNode {
 
-    public NullConstant(Type type) {
-        super(type);
+    private static final long serialVersionUID = 1L;
+
+    private final String name;
+
+    public MDNamedNode(String name) {
+        this.name = name;
+    }
+
+    public String getName() {
+        return name;
     }
 
     @Override
-    public void accept(ConstantVisitor visitor) {
+    public void accept(MetadataVisitor visitor) {
         visitor.visit(this);
     }
 
     @Override
     public String toString() {
-        return Type.isIntegerType(getType()) || Type.isFloatingpointType(getType()) ? "0" : "null";
+        return String.format("!%s %s", getName(), super.toString());
     }
 }

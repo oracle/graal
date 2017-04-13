@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,24 +27,34 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
+public final class MDAttachment implements MDBaseNode {
 
-public final class NullConstant extends AbstractConstant {
+    private final MDKind kind;
 
-    public NullConstant(Type type) {
-        super(type);
+    private final MDReference mdRef;
+
+    public MDAttachment(MDKind kind, MDReference mdRef) {
+        this.kind = kind;
+        this.mdRef = mdRef;
     }
 
-    @Override
-    public void accept(ConstantVisitor visitor) {
-        visitor.visit(this);
+    public MDKind getKind() {
+        return kind;
+    }
+
+    public MDReference getMdRef() {
+        return mdRef;
     }
 
     @Override
     public String toString() {
-        return Type.isIntegerType(getType()) || Type.isFloatingpointType(getType()) ? "0" : "null";
+        return String.format("Attachment (kind=%s, md=%s)", kind, mdRef);
+    }
+
+    @Override
+    public void accept(MetadataVisitor visitor) {
+        visitor.visit(this);
     }
 }

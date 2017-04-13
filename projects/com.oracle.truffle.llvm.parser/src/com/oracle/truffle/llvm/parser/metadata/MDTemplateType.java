@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,24 +27,39 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.parser.metadata.subtypes.MDName;
 
-public final class NullConstant extends AbstractConstant {
+public final class MDTemplateType extends MDName implements MDBaseNode {
 
-    public NullConstant(Type type) {
-        super(type);
+    private final MDReference type;
+
+    private MDTemplateType(MDReference name, MDReference type) {
+        super(name);
+        this.type = type;
     }
 
-    @Override
-    public void accept(ConstantVisitor visitor) {
-        visitor.visit(this);
+    public MDReference getType() {
+        return type;
     }
 
     @Override
     public String toString() {
-        return Type.isIntegerType(getType()) || Type.isFloatingpointType(getType()) ? "0" : "null";
+        return String.format("TemplateType (name=%s, type=%s)", getName(), getType());
+    }
+
+    @Override
+    public void accept(MetadataVisitor visitor) {
+        visitor.visit(this);
+    }
+
+    private static final int ARGINDEX_NAME = 1;
+    private static final int ARGINDEX_TYPE = 2;
+
+    public static MDTemplateType create38(long[] args, MetadataList md) {
+        final MDReference name = md.getMDRefOrNullRef(args[ARGINDEX_NAME]);
+        final MDReference type = md.getMDRefOrNullRef(args[ARGINDEX_TYPE]);
+        return new MDTemplateType(name, type);
     }
 }

@@ -29,44 +29,11 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBlock;
-import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBlock.MetadataReference;
-import com.oracle.truffle.llvm.runtime.types.metadata.MetadataReferenceType;
-
-public abstract class AggregateType implements Type, MetadataReferenceType {
-
-    @CompilationFinal private MetadataReference metadata = MetadataBlock.voidRef;
-    @CompilationFinal private Assumption finalMetadata;
-
-    public AggregateType() {
-        CompilerAsserts.neverPartOfCompilation();
-        this.finalMetadata = Truffle.getRuntime().createAssumption();
-    }
+public abstract class AggregateType implements Type {
 
     public abstract int getNumberOfElements();
 
     public abstract Type getElementType(int index);
 
     public abstract int getOffsetOf(int index, DataSpecConverter targetDataLayout);
-
-    @Override
-    public void setMetadataReference(MetadataReference metadata) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        finalMetadata.invalidate();
-        this.metadata = metadata;
-        finalMetadata = Truffle.getRuntime().createAssumption();
-    }
-
-    @Override
-    public MetadataReference getMetadataReference() {
-        if (!finalMetadata.isValid()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-        }
-        return metadata;
-    }
 }

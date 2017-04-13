@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,24 +27,33 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import java.util.Arrays;
 
-public final class NullConstant extends AbstractConstant {
+public final class MDExpression implements MDBaseNode {
 
-    public NullConstant(Type type) {
-        super(type);
+    private final long[] elements;
+
+    public MDExpression(long[] elements) {
+        this.elements = elements;
     }
 
-    @Override
-    public void accept(ConstantVisitor visitor) {
-        visitor.visit(this);
+    public long getElement(int i) {
+        return elements[i];
+    }
+
+    public int getElementCount() {
+        return elements.length;
     }
 
     @Override
     public String toString() {
-        return Type.isIntegerType(getType()) || Type.isFloatingpointType(getType()) ? "0" : "null";
+        return String.format("Expression (elements=%s)", Arrays.toString(elements));
+    }
+
+    @Override
+    public void accept(MetadataVisitor visitor) {
+        visitor.visit(this);
     }
 }

@@ -27,24 +27,51 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
+public final class MDFile implements MDBaseNode {
 
-public final class NullConstant extends AbstractConstant {
+    private final MDReference directory;
 
-    public NullConstant(Type type) {
-        super(type);
+    private final MDReference file;
+
+    private MDFile(MDReference file, MDReference directory) {
+        this.file = file;
+        this.directory = directory;
     }
 
     @Override
-    public void accept(ConstantVisitor visitor) {
+    public void accept(MetadataVisitor visitor) {
         visitor.visit(this);
+    }
+
+    public MDReference getFile() {
+        return file;
+    }
+
+    public MDReference getDirectory() {
+        return directory;
     }
 
     @Override
     public String toString() {
-        return Type.isIntegerType(getType()) || Type.isFloatingpointType(getType()) ? "0" : "null";
+        return String.format("File (file=%s, directory=%s)", file, directory);
     }
+
+    private static final int ARGINDEX_FILENAME = 1;
+    private static final int ARGINDEX_DIRECTORY = 2;
+
+    public static MDFile create38(long[] args, MetadataList md) {
+        // [distinct, filename, directory]
+        final MDReference file = md.getMDRefOrNullRef(args[ARGINDEX_FILENAME]);
+        final MDReference directory = md.getMDRefOrNullRef(args[ARGINDEX_DIRECTORY]);
+        return new MDFile(file, directory);
+    }
+
+    public static MDFile create32(MDTypedValue[] args) {
+        final MDReference file = ParseUtil.getReference(args[ARGINDEX_FILENAME]);
+        final MDReference directory = ParseUtil.getReference(args[ARGINDEX_DIRECTORY]);
+        return new MDFile(file, directory);
+    }
+
 }

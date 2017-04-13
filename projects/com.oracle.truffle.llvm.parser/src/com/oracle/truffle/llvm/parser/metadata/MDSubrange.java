@@ -27,24 +27,54 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
+public final class MDSubrange implements MDBaseNode {
 
-public final class NullConstant extends AbstractConstant {
+    private final long lowerBound;
 
-    public NullConstant(Type type) {
-        super(type);
+    private final long size;
+
+    private MDSubrange(long lowerBound, long size) {
+        this.lowerBound = lowerBound;
+        this.size = size;
     }
 
     @Override
-    public void accept(ConstantVisitor visitor) {
+    public void accept(MetadataVisitor visitor) {
         visitor.visit(this);
+    }
+
+    public long getLowerBound() {
+        return lowerBound;
+    }
+
+    public long getSize() {
+        return size;
     }
 
     @Override
     public String toString() {
-        return Type.isIntegerType(getType()) || Type.isFloatingpointType(getType()) ? "0" : "null";
+        return String.format("Subrange (lowerBound=%d, size=%d)", lowerBound, size);
     }
+
+    private static final int ARGINDEX_COUNT = 1;
+    private static final int ARGINDEX_STARTFROM = 2;
+
+    public static MDSubrange create38(long[] args) {
+        final long count = args[ARGINDEX_COUNT];
+        final long startFrom = ParseUtil.unrotateSign(args[ARGINDEX_STARTFROM]);
+        return new MDSubrange(startFrom, count);
+    }
+
+    private static final int ARGINDEX_32_LOWERBOUND = 1;
+    private static final int ARGINDEX_32_UPPERBOUND = 2;
+
+    public static MDSubrange create32(MDTypedValue[] args) {
+        final long lowerBound = ParseUtil.asInt64(args[ARGINDEX_32_LOWERBOUND]);
+        final long upperBound = ParseUtil.asInt64(args[ARGINDEX_32_UPPERBOUND]);
+        final long size = upperBound - lowerBound + 1;
+        return new MDSubrange(lowerBound, size);
+    }
+
 }

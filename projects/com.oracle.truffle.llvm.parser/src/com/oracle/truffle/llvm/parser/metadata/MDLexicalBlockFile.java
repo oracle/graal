@@ -27,24 +27,51 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
+public final class MDLexicalBlockFile implements MDBaseNode {
 
-public final class NullConstant extends AbstractConstant {
+    private final MDReference scope;
 
-    public NullConstant(Type type) {
-        super(type);
+    private final MDReference file;
+
+    private final long discriminator;
+
+    private MDLexicalBlockFile(MDReference scope, MDReference file, long discriminator) {
+        this.scope = scope;
+        this.file = file;
+        this.discriminator = discriminator;
     }
 
     @Override
-    public void accept(ConstantVisitor visitor) {
+    public void accept(MetadataVisitor visitor) {
         visitor.visit(this);
+    }
+
+    public MDReference getFile() {
+        return file;
     }
 
     @Override
     public String toString() {
-        return Type.isIntegerType(getType()) || Type.isFloatingpointType(getType()) ? "0" : "null";
+        return String.format("LexicalBlockFile (file=%s, scope=%s, discriminator=%d)", file, scope, discriminator);
+    }
+
+    private static final int ARGINDEX_SCOPE = 1;
+    private static final int ARGINDEX_FILE = 2;
+    private static final int ARGINDEX_38_DISCRIMINATOR = 3;
+
+    public static MDLexicalBlockFile create38(long[] args, MetadataList md) {
+        // [distinct, scope, file, discriminator]
+        final MDReference scope = md.getMDRefOrNullRef(args[ARGINDEX_SCOPE]);
+        final MDReference file = md.getMDRefOrNullRef(args[ARGINDEX_FILE]);
+        final long discriminator = args[ARGINDEX_38_DISCRIMINATOR];
+        return new MDLexicalBlockFile(scope, file, discriminator);
+    }
+
+    public static MDLexicalBlockFile create32(MDTypedValue[] args) {
+        final MDReference scope = ParseUtil.getReference(args[ARGINDEX_SCOPE]);
+        final MDReference file = ParseUtil.getReference(args[ARGINDEX_FILE]);
+        return new MDLexicalBlockFile(scope, file, -1L);
     }
 }

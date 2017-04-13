@@ -36,6 +36,7 @@ import com.oracle.truffle.llvm.parser.listeners.IRVersionController;
 import com.oracle.truffle.llvm.parser.listeners.ParserListener;
 import com.oracle.truffle.llvm.parser.listeners.Types;
 import com.oracle.truffle.llvm.parser.listeners.ValueSymbolTable;
+import com.oracle.truffle.llvm.parser.listeners.metadata.Metadata;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.generators.FunctionGenerator;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
@@ -51,6 +52,7 @@ import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
+import com.oracle.truffle.llvm.parser.metadata.MDLocation;
 
 public abstract class Function implements ParserListener {
 
@@ -66,7 +68,11 @@ public abstract class Function implements ParserListener {
 
     private final int mode;
 
-    protected InstructionBlock code;
+    InstructionBlock instructionBlock = null;
+
+    boolean isLastBlockTerminated = true;
+
+    private MDLocation lastLocation = null;
 
     private final List<Integer> implicitIndices = new ArrayList<>();
 
@@ -88,10 +94,9 @@ public abstract class Function implements ParserListener {
                 return new ValueSymbolTable(generator);
 
             case METADATA:
-                return version.createMetadata(types, symbols, generator); // TODO
-
             case METADATA_ATTACHMENT:
-                return version.createMetadata(types, symbols, generator); // TODO
+            case METADATA_KIND:
+                return new Metadata(types, symbols, generator);
 
             default:
                 LLVMLogger.info("Entering Unknown Block inside Function: " + block);
@@ -124,47 +129,31 @@ public abstract class Function implements ParserListener {
     public void record(long id, long[] args) {
         FunctionRecord record = FunctionRecord.decode(id);
 
-        if (record == FunctionRecord.DECLAREBLOCKS) {
-            generator.allocateBlocks((int) args[0]);
-            return;
+        // debug locations can occur after terminating instructions, we process them before we
+        // replace the old block
+        switch (record) {
+            case DEBUG_LOC:
+                parseDebugLocation(args); // intentional fallthrough
+
+            case DEBUG_LOC_AGAIN:
+                applyDebugLocation();
+                return;
+
+            case DECLAREBLOCKS:
+                generator.allocateBlocks((int) args[0]);
+                return;
+
+            default:
+                break;
         }
 
-        /*
-         * FUNC_CODE_DEBUG_LOC as well as FUNC_CODE_DEBUG_LOC_AGAIN also occur after the RET
-         * Instruction, where the InstructionGenerator would already been deleted. This has to be
-         * improved in the future, but for now we simply parse those instructions before checking
-         * for an existing InstructionGenerator. Otherwise we would cause an RuntimeException.
-         */
-        if (record == FunctionRecord.DEBUG_LOC) {
-            /*
-             * TODO: implement intial debugging support
-             *
-             * http://llvm.org/releases/3.2/docs/SourceLevelDebugging.html#format_common_lifetime
-             * http://llvm.org/releases/3.4/docs/SourceLevelDebugging.html#object-lifetimes-and-scoping
-             *
-             * @formatter:off
-             *
-             * metadata !{
-             *  i32 4,          ;; line number
-             *  i32 0,          ;; column number
-             *  metadata !12,   ;; scope
-             *  null            ;; original scope
-             * }
-             *
-             * @formatter:on
-             */
-            return;
-        }
-
-        if (record == FunctionRecord.DEBUG_LOC_AGAIN) {
-            return;
-        }
-
-        if (code == null) {
-            code = generator.generateBlock();
+        if (isLastBlockTerminated) {
+            instructionBlock = generator.generateBlock();
+            isLastBlockTerminated = false;
         }
 
         switch (record) {
+
             case BINOP:
                 createBinaryOperation(args);
                 break;
@@ -288,7 +277,7 @@ public abstract class Function implements ParserListener {
     }
 
     private void createCompareExchange(long[] args, FunctionRecord record) {
-        final Symbols functionSymbols = code.getFunctionSymbols();
+        final Symbols functionSymbols = instructionBlock.getFunctionSymbols();
         int i = 0;
 
         final Type ptrType;
@@ -312,7 +301,7 @@ public abstract class Function implements ParserListener {
 
         final Type type = findCmpxchgResultType(((PointerType) ptrType).getPointeeType());
 
-        code.createCompareExchange(type, ptr, cmp, replace, isVolatile, successOrdering, synchronizationScope, failureOrdering, isWeak);
+        instructionBlock.createCompareExchange(type, ptr, cmp, replace, isVolatile, successOrdering, synchronizationScope, failureOrdering, isWeak);
         symbols.add(type);
 
         if (addExtractValue) {
@@ -343,6 +332,17 @@ public abstract class Function implements ParserListener {
         return new StructureType(true, new Type[]{elementType, PrimitiveType.I1});
     }
 
+    private void parseDebugLocation(long[] args) {
+        // if e.g. the previous instruction was @llvm.debug.declare this will be the location of the
+        // declaration of the variable in the source file
+        lastLocation = MDLocation.createFromFunctionArgs(args, generator.getMetadata());
+    }
+
+    private void applyDebugLocation() {
+        final int lastInstructionIndex = instructionBlock.getInstructionCount() - 1;
+        instructionBlock.getInstruction(lastInstructionIndex).setDebugLocation(lastLocation);
+    }
+
     private void createAtomicStore(long[] args) {
         int i = 0;
 
@@ -361,7 +361,7 @@ public abstract class Function implements ParserListener {
         final long atomicOrdering = args[i++];
         final long synchronizationScope = args[i];
 
-        code.createAtomicStore(destination, source, align, isVolatile, atomicOrdering, synchronizationScope);
+        instructionBlock.createAtomicStore(destination, source, align, isVolatile, atomicOrdering, synchronizationScope);
     }
 
     private void createBinaryOperation(long[] args) {
@@ -377,19 +377,19 @@ public abstract class Function implements ParserListener {
         int opcode = (int) args[i++];
         int flags = i < args.length ? (int) args[i] : 0;
 
-        code.createBinaryOperation(type, opcode, flags, lhs, rhs);
+        instructionBlock.createBinaryOperation(type, opcode, flags, lhs, rhs);
 
         symbols.add(type);
     }
 
     private void createBranch(long[] args) {
         if (args.length == 1) {
-            code.createBranch((int) args[0]);
+            instructionBlock.createBranch((int) args[0]);
         } else {
-            code.createBranch(getIndex(args[2]), (int) args[0], (int) args[1]);
+            instructionBlock.createBranch(getIndex(args[2]), (int) args[0], (int) args[1]);
         }
 
-        code = null;
+        isLastBlockTerminated = true;
     }
 
     private void createCast(long[] args) {
@@ -401,7 +401,7 @@ public abstract class Function implements ParserListener {
         Type type = types.get(args[i++]);
         int opcode = (int) args[i];
 
-        code.createCast(type, opcode, value);
+        instructionBlock.createCast(type, opcode, value);
 
         symbols.add(type);
     }
@@ -422,7 +422,7 @@ public abstract class Function implements ParserListener {
                         ? new VectorType(PrimitiveType.I1, ((VectorType) operandType).getNumberOfElements())
                         : PrimitiveType.I1;
 
-        code.createCompare(type, opcode, lhs, rhs);
+        instructionBlock.createCompare(type, opcode, lhs, rhs);
 
         symbols.add(type);
     }
@@ -433,7 +433,7 @@ public abstract class Function implements ParserListener {
 
         Type type = ((VectorType) symbols.get(vector)).getElementType();
 
-        code.createExtractElement(type, vector, index);
+        instructionBlock.createExtractElement(type, vector, index);
 
         symbols.add(type);
     }
@@ -449,7 +449,7 @@ public abstract class Function implements ParserListener {
 
         Type type = ((AggregateType) symbols.get(aggregate)).getElementType(index);
 
-        code.createExtractValue(type, aggregate, index);
+        instructionBlock.createExtractValue(type, aggregate, index);
 
         symbols.add(type);
     }
@@ -468,7 +468,7 @@ public abstract class Function implements ParserListener {
         int[] indices = getIndices(args, i);
         Type type = new PointerType(getElementPointerType(base, indices));
 
-        code.createGetElementPointer(
+        instructionBlock.createGetElementPointer(
                         type,
                         pointer,
                         indices,
@@ -490,7 +490,7 @@ public abstract class Function implements ParserListener {
 
         Type type = new PointerType(getElementPointerType(base, indices));
 
-        code.createGetElementPointer(
+        instructionBlock.createGetElementPointer(
                         type,
                         pointer,
                         indices,
@@ -506,9 +506,9 @@ public abstract class Function implements ParserListener {
             successors[i] = (int) args[i + 2];
         }
 
-        code.createIndirectBranch(address, successors);
+        instructionBlock.createIndirectBranch(address, successors);
 
-        code = null;
+        isLastBlockTerminated = true;
     }
 
     private void createInsertElement(long[] args) {
@@ -518,7 +518,7 @@ public abstract class Function implements ParserListener {
 
         Type symbol = symbols.get(vector);
 
-        code.createInsertElement(symbol, vector, index, value);
+        instructionBlock.createInsertElement(symbol, vector, index, value);
 
         symbols.add(symbol);
     }
@@ -535,7 +535,7 @@ public abstract class Function implements ParserListener {
 
         Type symbol = symbols.get(aggregate);
 
-        code.createInsertValue(symbol, aggregate, index, value);
+        instructionBlock.createInsertValue(symbol, aggregate, index, value);
 
         symbols.add(symbol);
     }
@@ -550,19 +550,19 @@ public abstract class Function implements ParserListener {
             blocks[i] = (int) args[j++];
         }
 
-        code.createPhi(type, values, blocks);
+        instructionBlock.createPhi(type, values, blocks);
 
         symbols.add(type);
     }
 
     private void createReturn(long[] args) {
         if (args.length == 0 || args[0] == 0) {
-            code.createReturn();
+            instructionBlock.createReturn();
         } else {
-            code.createReturn(getIndex(args[0]));
+            instructionBlock.createReturn(getIndex(args[0]));
         }
 
-        code = null;
+        isLastBlockTerminated = true;
     }
 
     private void createSelect(long[] args) {
@@ -577,7 +577,7 @@ public abstract class Function implements ParserListener {
         int falseValue = getIndex(args[i++]);
         int condition = getIndex(args[i]);
 
-        code.createSelect(type, condition, trueValue, falseValue);
+        instructionBlock.createSelect(type, condition, trueValue, falseValue);
 
         symbols.add(type);
     }
@@ -591,7 +591,7 @@ public abstract class Function implements ParserListener {
         int length = ((VectorType) symbols.get(mask)).getNumberOfElements();
         Type type = new VectorType(subtype, length);
 
-        code.createShuffleVector(type, vector1, vector2, mask);
+        instructionBlock.createShuffleVector(type, vector1, vector2, mask);
 
         symbols.add(type);
     }
@@ -612,7 +612,7 @@ public abstract class Function implements ParserListener {
         int align = getAlign(args[i++]);
         boolean isVolatile = args[i] != 0;
 
-        code.createStore(destination, source, align, isVolatile);
+        instructionBlock.createStore(destination, source, align, isVolatile);
     }
 
     private void createStoreOld(long[] args) {
@@ -627,13 +627,12 @@ public abstract class Function implements ParserListener {
         int align = getAlign(args[i++]);
         boolean isVolatile = args[i] != 0;
 
-        code.createStore(destination, source, align, isVolatile);
+        instructionBlock.createStore(destination, source, align, isVolatile);
     }
 
     private void createUnreachable(@SuppressWarnings("unused") long[] args) {
-        code.createUnreachable();
-
-        code = null;
+        instructionBlock.createUnreachable();
+        isLastBlockTerminated = true;
     }
 
     protected int getAlign(long argument) {

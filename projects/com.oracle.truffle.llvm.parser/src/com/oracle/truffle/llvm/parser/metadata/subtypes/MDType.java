@@ -27,24 +27,55 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.metadata.subtypes;
 
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.parser.metadata.MDReference;
 
-public final class NullConstant extends AbstractConstant {
+public abstract class MDType extends MDName {
 
-    public NullConstant(Type type) {
-        super(type);
+    private final long size;
+
+    private final long align;
+
+    private final long offset;
+
+    private final MDReference file;
+
+    private final long line;
+
+    private final long flags;
+
+    public MDType(MDReference name, long size, long align, long offset, MDReference file, long line, long flags) {
+        super(name);
+        this.size = size;
+        this.align = align;
+        this.offset = offset;
+        this.file = file;
+        this.line = line;
+        this.flags = flags;
     }
 
-    @Override
-    public void accept(ConstantVisitor visitor) {
-        visitor.visit(this);
+    public long getSize() {
+        return size;
     }
 
-    @Override
-    public String toString() {
-        return Type.isIntegerType(getType()) || Type.isFloatingpointType(getType()) ? "0" : "null";
+    public long getAlign() {
+        return align;
+    }
+
+    public long getOffset() {
+        return offset;
+    }
+
+    public MDReference getFile() {
+        return file;
+    }
+
+    public long getLine() {
+        return line;
+    }
+
+    public long getFlags() {
+        return flags;
     }
 }

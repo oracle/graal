@@ -27,24 +27,37 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
+public final class MDFnNode implements MDBaseNode {
 
-public final class NullConstant extends AbstractConstant {
-
-    public NullConstant(Type type) {
-        super(type);
-    }
+    private final MDSymbolReference pointer;
 
     @Override
-    public void accept(ConstantVisitor visitor) {
+    public void accept(MetadataVisitor visitor) {
         visitor.visit(this);
+    }
+
+    private MDFnNode(MDSymbolReference pointer) {
+        this.pointer = pointer;
+    }
+
+    public MDSymbolReference getPointer() {
+        return pointer;
     }
 
     @Override
     public String toString() {
-        return Type.isIntegerType(getType()) || Type.isFloatingpointType(getType()) ? "0" : "null";
+        return String.format("FnNode (%s)", pointer);
     }
+
+    public static MDFnNode create(MDTypedValue arg) {
+        if (arg instanceof MDSymbolReference) {
+            return new MDFnNode((MDSymbolReference) arg);
+
+        } else {
+            return null;
+        }
+    }
+
 }
