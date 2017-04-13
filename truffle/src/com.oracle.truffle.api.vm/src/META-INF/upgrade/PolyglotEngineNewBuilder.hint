@@ -1,0 +1,6 @@
+'PolyglotEngine.buildNew() is misleading':
+com.oracle.truffle.api.vm.PolyglotEngine.buildNew()
+=>
+'Use newBuilder()':
+com.oracle.truffle.api.vm.PolyglotEngine.newBuilder()
+;;

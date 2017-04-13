@@ -1,0 +1,257 @@
+#Signature file v4.1
+#Version 
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Cached
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[PARAMETER])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.String value()
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.CreateCast
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.String[] value()
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Fallback
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GenerateNodeFactory
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GeneratedBy
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault java.lang.String methodName()
+meth public abstract java.lang.Class<?> value()
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.ImplicitCast
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.ImportStatic
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.Class<?>[] value()
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Introspectable
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+
+CLSS public final com.oracle.truffle.api.dsl.Introspection
+innr public abstract interface static Provider
+innr public final static SpecializationInfo
+meth public static boolean isIntrospectable(com.oracle.truffle.api.nodes.Node)
+meth public static com.oracle.truffle.api.dsl.Introspection$SpecializationInfo getSpecialization(com.oracle.truffle.api.nodes.Node,java.lang.String)
+meth public static java.util.List<com.oracle.truffle.api.dsl.Introspection$SpecializationInfo> getSpecializations(com.oracle.truffle.api.nodes.Node)
+supr java.lang.Object
+hfds EMPTY_CACHED,NO_CACHED,data
+
+CLSS public abstract interface static com.oracle.truffle.api.dsl.Introspection$Provider
+ outer com.oracle.truffle.api.dsl.Introspection
+meth public !varargs static com.oracle.truffle.api.dsl.Introspection create(java.lang.Object[])
+meth public abstract com.oracle.truffle.api.dsl.Introspection getIntrospectionData()
+
+CLSS public final static com.oracle.truffle.api.dsl.Introspection$SpecializationInfo
+ outer com.oracle.truffle.api.dsl.Introspection
+meth public boolean isActive()
+meth public boolean isExcluded()
+meth public int getInstances()
+meth public java.lang.String getMethodName()
+meth public java.util.List<java.lang.Object> getCachedData(int)
+supr java.lang.Object
+hfds cachedData,methodName,state
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.NodeChild
+ anno 0 java.lang.annotation.Repeatable(java.lang.Class<? extends java.lang.annotation.Annotation> value=class com.oracle.truffle.api.dsl.NodeChildren)
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault java.lang.Class<?> type()
+meth public abstract !hasdefault java.lang.String value()
+meth public abstract !hasdefault java.lang.String[] executeWith()
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.NodeChildren
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault com.oracle.truffle.api.dsl.NodeChild[] value()
+
+CLSS public abstract interface com.oracle.truffle.api.dsl.NodeFactory<%0 extends java.lang.Object>
+meth public abstract !varargs {com.oracle.truffle.api.dsl.NodeFactory%0} createNode(java.lang.Object[])
+meth public abstract java.lang.Class<{com.oracle.truffle.api.dsl.NodeFactory%0}> getNodeClass()
+meth public abstract java.util.List<java.lang.Class<? extends com.oracle.truffle.api.nodes.Node>> getExecutionSignature()
+meth public abstract java.util.List<java.util.List<java.lang.Class<?>>> getNodeSignatures()
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.NodeField
+ anno 0 java.lang.annotation.Repeatable(java.lang.Class<? extends java.lang.annotation.Annotation> value=class com.oracle.truffle.api.dsl.NodeFields)
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.Class<?> type()
+meth public abstract java.lang.String name()
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.NodeFields
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault com.oracle.truffle.api.dsl.NodeField[] value()
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.ShortCircuit
+ anno 0 java.lang.Deprecated()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.String value()
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Specialization
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault java.lang.Class<? extends java.lang.Throwable>[] rewriteOn()
+meth public abstract !hasdefault java.lang.String insertBefore()
+meth public abstract !hasdefault java.lang.String limit()
+meth public abstract !hasdefault java.lang.String[] assumptions()
+meth public abstract !hasdefault java.lang.String[] contains()
+ anno 0 java.lang.Deprecated()
+meth public abstract !hasdefault java.lang.String[] guards()
+meth public abstract !hasdefault java.lang.String[] replaces()
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.TypeCast
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.Class<?> value()
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.TypeCheck
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.Class<?> value()
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.TypeSystem
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault java.lang.Class<?>[] value()
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.TypeSystemReference
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.Class<?> value()
+
+CLSS public final com.oracle.truffle.api.dsl.UnsupportedSpecializationException
+cons public !varargs init(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node[],java.lang.Object[])
+meth public com.oracle.truffle.api.nodes.Node getNode()
+meth public com.oracle.truffle.api.nodes.Node[] getSuppliedNodes()
+meth public java.lang.Object[] getSuppliedValues()
+meth public java.lang.String getMessage()
+supr java.lang.RuntimeException
+hfds node,serialVersionUID,suppliedNodes,suppliedValues
+
+CLSS public abstract interface java.io.Serializable
+
+CLSS public abstract interface !annotation java.lang.Deprecated
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, PARAMETER, TYPE])
+intf java.lang.annotation.Annotation
+
+CLSS public java.lang.Exception
+cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)
+cons public init()
+cons public init(java.lang.String)
+cons public init(java.lang.String,java.lang.Throwable)
+cons public init(java.lang.Throwable)
+supr java.lang.Throwable
+hfds serialVersionUID
+
+CLSS public java.lang.Object
+cons public init()
+meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
+meth protected void finalize() throws java.lang.Throwable
+meth public boolean equals(java.lang.Object)
+meth public final java.lang.Class<?> getClass()
+meth public final void notify()
+meth public final void notifyAll()
+meth public final void wait() throws java.lang.InterruptedException
+meth public final void wait(long) throws java.lang.InterruptedException
+meth public final void wait(long,int) throws java.lang.InterruptedException
+meth public int hashCode()
+meth public java.lang.String toString()
+
+CLSS public java.lang.RuntimeException
+cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)
+cons public init()
+cons public init(java.lang.String)
+cons public init(java.lang.String,java.lang.Throwable)
+cons public init(java.lang.Throwable)
+supr java.lang.Exception
+hfds serialVersionUID
+
+CLSS public java.lang.Throwable
+cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)
+cons public init()
+cons public init(java.lang.String)
+cons public init(java.lang.String,java.lang.Throwable)
+cons public init(java.lang.Throwable)
+intf java.io.Serializable
+meth public final java.lang.Throwable[] getSuppressed()
+meth public final void addSuppressed(java.lang.Throwable)
+meth public java.lang.StackTraceElement[] getStackTrace()
+meth public java.lang.String getLocalizedMessage()
+meth public java.lang.String getMessage()
+meth public java.lang.String toString()
+meth public java.lang.Throwable fillInStackTrace()
+meth public java.lang.Throwable getCause()
+meth public java.lang.Throwable initCause(java.lang.Throwable)
+meth public void printStackTrace()
+meth public void printStackTrace(java.io.PrintStream)
+meth public void printStackTrace(java.io.PrintWriter)
+meth public void setStackTrace(java.lang.StackTraceElement[])
+supr java.lang.Object
+hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,detailMessage,serialVersionUID,stackTrace,suppressedExceptions
+hcls PrintStreamOrWriter,SentinelHolder,WrappedPrintStream,WrappedPrintWriter
+
+CLSS public abstract interface java.lang.annotation.Annotation
+meth public abstract boolean equals(java.lang.Object)
+meth public abstract int hashCode()
+meth public abstract java.lang.Class<? extends java.lang.annotation.Annotation> annotationType()
+meth public abstract java.lang.String toString()
+
+CLSS public abstract interface !annotation java.lang.annotation.Documented
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface !annotation java.lang.annotation.Repeatable
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.Class<? extends java.lang.annotation.Annotation> value()
+
+CLSS public abstract interface !annotation java.lang.annotation.Retention
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.annotation.RetentionPolicy value()
+
+CLSS public abstract interface !annotation java.lang.annotation.Target
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.annotation.ElementType[] value()
+

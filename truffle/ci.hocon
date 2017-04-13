@@ -1,0 +1,172 @@
+java7 : {name : oraclejdk, version : "7",    platformspecific: true}
+java8 : {name : oraclejdk, version : "8u66", platformspecific: true}
+#java9 : {name : oraclejdk, version : "9",    platformspecific: true}
+java9 : {name : labsjdk, version : "9-20170301-144518",    platformspecific: true}
+
+# Used in overlay
+labsjdk8 : {name : labsjdk, version : "8u121-jvmci-0.25", platformspecific: true}
+
+ecj : {name: ecj, version: "4.5.1", platformspecific: false}
+eclipse : {name: eclipse, version: "4.5.2.1", platformspecific: true}
+maven : {name: maven, version: "3.3.9", platformspecific: false}
+
+common : {
+  packages : {
+    git : ">=1.8.3"
+    mercurial : ">=2.2"
+    "pip:astroid" : "==1.1.0"
+    "pip:pylint" : "==1.1.0"
+    ruby: ">=2.1.0"
+  }
+
+  downloads : {
+    ECLIPSE : ${eclipse}
+    MAVEN_HOME: ${maven}
+  }
+
+  environment : {
+    PATH : "$MAVEN_HOME/bin:$JAVA_HOME/bin:$PATH"
+    ECLIPSE_EXE : "$ECLIPSE/eclipse"
+  }
+
+  timelimit : "30:00"
+}
+
+solaris : {
+  packages : {
+    git : ">=1.8.3"
+  }
+
+  downloads : {
+    MAVEN_HOME: ${maven}
+  }
+
+  environment : {
+    PATH : "$MAVEN_HOME/bin:$JAVA_HOME/bin:$PATH"
+  }
+
+  timelimit : "30:00"
+}
+
+darwin : {
+  downloads : {
+    MAVEN_HOME: ${maven}
+  }
+
+  environment : ${common.environment} {
+    PATH : "/usr/local/bin:$MAVEN_HOME/bin:$JAVA_HOME/bin:$PATH"
+  }
+}
+
+maven-deploy-dry-run : ${common} ${java8Downloads} {
+  capabilities : [linux, amd64]
+  targets : [gate]
+  name : gate-maven-deploy-dry-run
+  setup : [
+     ["mx", "--strict-compliance", "build"]
+  ]
+  run : [
+     ["mx", "maven-deploy", "--licenses", "GPLv2-CPE,UPL", "--dry-run", "ossrh", "https://this-is-only-a-test"]
+  ]
+}
+
+deploy-binary : ${java8Downloads} {
+  targets : [post-merge]
+  setup : [
+     ["mx", "--strict-compliance", "build"]
+  ]
+  run : [
+     ["mx", "deploy-binary", "--skip-existing", "lafo-snapshots"]
+  ]
+}
+
+java8Downloads : {
+  downloads : {
+    JDT : ${ecj}
+    EXTRA_JAVA_HOMES : { pathlist :[
+      ${java7}
+    ]}
+    JAVA_HOME : ${java8}
+  }
+}
+
+java9Downloads : {
+  downloads : {
+    EXTRA_JAVA_HOMES : { pathlist :[
+      ${java7}
+      ${java8}
+    ]}
+    JAVA_HOME : ${java9}
+  }
+}
+
+gateLite : {
+  run : [
+    ["mx", "build" ],
+    ["mx", "unittest", "--verbose" ]
+  ]
+}
+
+# overlay version
+overlay = 6f81c5bbf74d901d5d58287e6de2fef068333702
+
+builds = [
+  ${common} ${java8Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64], targets : [gate], name: "gate-truffle-8"},
+  ${common} ${java8Downloads} {
+    run : [
+        ["mx", "build"],
+        ["mx", "javadoc"],
+    ],
+    capabilities : [linux, amd64],
+    targets : [gate],
+    name: "gate-truffle-javadoc"
+  },
+  ${common} ${java9Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64], targets : [gate], name: "gate-truffle-9"},
+  ${common} ${java8Downloads} {run : [["sh", ".travis.sigtest.sh"]], capabilities : [linux, amd64], targets : [gate], name: "gate-sigtest"},
+  ${common} ${java9Downloads} {run : [["mx", "-v", "testgraal"]], capabilities : [linux, amd64], targets : [gate], name: "gate-testgraal9"},
+  ${common} ${java8Downloads} {run : [["mx", "-v", "testgraal"]], capabilities : [linux, amd64], targets : [gate], name: "gate-testgraal8"},
+  ${maven-deploy-dry-run}
+  ${common} ${deploy-binary} {capabilities : [linux, amd64], name : "postmerge-deploy-binary-linux-amd64"}
+  ${darwin} ${deploy-binary} {capabilities : [darwin, amd64], name : "postmerge-deploy-binary-darwin-amd64"}
+  ${solaris} ${deploy-binary} {capabilities : [solaris, sparcv9], name : "postmerge-deploy-binary-solaris-sparcv9"}
+  ${solaris} ${java8Downloads} ${gateLite} {
+    capabilities : [solaris, sparcv9],
+    targets : [ gate ],
+    name: "gate-solaris-lite-8"
+  }
+  ${solaris} ${java9Downloads} ${gateLite} {
+    capabilities : [solaris, sparcv9],
+    targets : [ gate ],
+    name: "gate-solaris-lite-9"
+  }
+  ${darwin} ${java8Downloads} ${gateLite} {
+    capabilities : [darwin],
+    targets : [ gate ],
+    name: "gate-mac-lite-8"
+  }
+  ${darwin} ${java9Downloads} ${gateLite} {
+    capabilities : [darwin],
+    targets : [ gate ],
+    name: "gate-mac-lite-9"
+  }
+  ${common} ${java8Downloads} {
+    run : [
+        ["mx", "build"],
+        ["mx", "javadoc"],
+        ["zip", "-r", "javadoc.zip", "javadoc"],
+        ["git", "fetch", "origin", "gh-pages"],
+        ["git", "checkout", "-f", "FETCH_HEAD", "-B", "gh-pages"],
+        ["rm", "-rf", "javadoc"],
+        ["git", "status" ],
+        ["unzip", "-o", "javadoc.zip"],
+        ["git", "add", "javadoc"],
+        ["git", "config", "user.name", "Javadoc Publisher"],
+        ["git", "config", "user.email", "graal-dev@openjdk.java.net"],
+        ["git", "commit", "-m", [ "echo", "Javadoc as of", [ "date", "+%Y/%m/%d" ] ], "javadoc" ],
+        ["git", "push", "origin", "gh-pages"],
+    ],
+    capabilities : [linux, amd64],
+    targets : [post-merge],
+    name: "publish-javadoc"
+  }
+]

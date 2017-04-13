@@ -1,0 +1,107 @@
+#Signature file v4.1
+#Version 
+
+CLSS public abstract com.oracle.truffle.api.nodes.NodeCloneable
+cons protected init()
+intf java.lang.Cloneable
+meth protected java.lang.Object clone()
+supr java.lang.Object
+
+CLSS public abstract com.oracle.truffle.api.profiles.BranchProfile
+meth public abstract boolean isVisited()
+ anno 0 java.lang.Deprecated()
+meth public abstract void enter()
+meth public static com.oracle.truffle.api.profiles.BranchProfile create()
+supr com.oracle.truffle.api.profiles.Profile
+hcls Disabled,Enabled
+
+CLSS public abstract com.oracle.truffle.api.profiles.ByteValueProfile
+meth public abstract byte profile(byte)
+meth public static com.oracle.truffle.api.profiles.ByteValueProfile createIdentityProfile()
+supr com.oracle.truffle.api.profiles.Profile
+hcls Disabled,Enabled
+
+CLSS public abstract com.oracle.truffle.api.profiles.ConditionProfile
+meth public abstract boolean profile(boolean)
+meth public static com.oracle.truffle.api.profiles.ConditionProfile createBinaryProfile()
+meth public static com.oracle.truffle.api.profiles.ConditionProfile createCountingProfile()
+supr com.oracle.truffle.api.profiles.Profile
+hcls Binary,Counting,Disabled
+
+CLSS public abstract com.oracle.truffle.api.profiles.DoubleValueProfile
+meth public abstract double profile(double)
+meth public static com.oracle.truffle.api.profiles.DoubleValueProfile createRawIdentityProfile()
+supr com.oracle.truffle.api.profiles.Profile
+hcls Disabled,Enabled
+
+CLSS public abstract com.oracle.truffle.api.profiles.FloatValueProfile
+meth public abstract float profile(float)
+meth public static com.oracle.truffle.api.profiles.FloatValueProfile createRawIdentityProfile()
+supr com.oracle.truffle.api.profiles.Profile
+hcls Disabled,Enabled
+
+CLSS public abstract com.oracle.truffle.api.profiles.IntValueProfile
+meth public abstract int profile(int)
+meth public static com.oracle.truffle.api.profiles.IntValueProfile createIdentityProfile()
+supr com.oracle.truffle.api.profiles.Profile
+hcls Disabled,Enabled
+
+CLSS public abstract com.oracle.truffle.api.profiles.LongValueProfile
+meth public abstract long profile(long)
+meth public static com.oracle.truffle.api.profiles.LongValueProfile createIdentityProfile()
+supr com.oracle.truffle.api.profiles.Profile
+hcls Disabled,Enabled
+
+CLSS public abstract com.oracle.truffle.api.profiles.LoopConditionProfile
+meth public abstract boolean inject(boolean)
+meth public abstract boolean profile(boolean)
+meth public abstract void profileCounted(long)
+meth public static com.oracle.truffle.api.profiles.LoopConditionProfile createCountingProfile()
+supr com.oracle.truffle.api.profiles.ConditionProfile
+hcls Disabled,Enabled
+
+CLSS public abstract com.oracle.truffle.api.profiles.PrimitiveValueProfile
+meth public abstract <%0 extends java.lang.Object> {%%0} profile({%%0})
+meth public abstract boolean profile(boolean)
+meth public abstract byte profile(byte)
+meth public abstract char profile(char)
+meth public abstract double profile(double)
+meth public abstract float profile(float)
+meth public abstract int profile(int)
+meth public abstract long profile(long)
+meth public abstract short profile(short)
+meth public static boolean exactCompare(double,double)
+ anno 0 java.lang.Deprecated()
+meth public static boolean exactCompare(float,float)
+ anno 0 java.lang.Deprecated()
+meth public static com.oracle.truffle.api.profiles.PrimitiveValueProfile createEqualityProfile()
+supr com.oracle.truffle.api.profiles.ValueProfile
+hcls Disabled,Enabled
+
+CLSS public abstract com.oracle.truffle.api.profiles.Profile
+supr com.oracle.truffle.api.nodes.NodeCloneable
+
+CLSS public abstract com.oracle.truffle.api.profiles.ValueProfile
+meth public abstract <%0 extends java.lang.Object> {%%0} profile({%%0})
+meth public static com.oracle.truffle.api.profiles.ValueProfile createClassProfile()
+meth public static com.oracle.truffle.api.profiles.ValueProfile createEqualityProfile()
+meth public static com.oracle.truffle.api.profiles.ValueProfile createIdentityProfile()
+supr com.oracle.truffle.api.profiles.Profile
+hcls Disabled,Equality,ExactClass,Identity
+
+CLSS public abstract interface java.lang.Cloneable
+
+CLSS public java.lang.Object
+cons public init()
+meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
+meth protected void finalize() throws java.lang.Throwable
+meth public boolean equals(java.lang.Object)
+meth public final java.lang.Class<?> getClass()
+meth public final void notify()
+meth public final void notifyAll()
+meth public final void wait() throws java.lang.InterruptedException
+meth public final void wait(long) throws java.lang.InterruptedException
+meth public final void wait(long,int) throws java.lang.InterruptedException
+meth public int hashCode()
+meth public java.lang.String toString()
+

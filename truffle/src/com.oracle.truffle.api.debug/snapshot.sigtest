@@ -1,0 +1,140 @@
+#Signature file v4.1
+#Version 
+
+CLSS public final com.oracle.truffle.api.debug.Breakpoint
+innr public final Builder
+meth public boolean isDisposed()
+meth public boolean isEnabled()
+meth public boolean isOneShot()
+meth public boolean isResolved()
+meth public int getHitCount()
+meth public int getIgnoreCount()
+meth public java.lang.String getCondition()
+meth public java.lang.String getLocationDescription()
+meth public java.lang.String toString()
+meth public static com.oracle.truffle.api.debug.Breakpoint$Builder newBuilder(com.oracle.truffle.api.source.Source)
+meth public static com.oracle.truffle.api.debug.Breakpoint$Builder newBuilder(com.oracle.truffle.api.source.SourceSection)
+meth public static com.oracle.truffle.api.debug.Breakpoint$Builder newBuilder(java.net.URI)
+meth public void dispose()
+meth public void setCondition(java.lang.String) throws java.io.IOException
+meth public void setEnabled(boolean)
+meth public void setIgnoreCount(int)
+supr java.lang.Object
+hfds BUILDER_INSTANCE,breakpointBinding,condition,conditionUnchanged,disposed,enabled,filter,hitCount,ignoreCount,locationKey,oneShot,resolved,session,sourceBinding
+hcls BreakpointConditionFailure,BreakpointNode,BreakpointNodeFactory,ConditionalBreakNode
+
+CLSS public final com.oracle.truffle.api.debug.Breakpoint$Builder
+ outer com.oracle.truffle.api.debug.Breakpoint
+meth public com.oracle.truffle.api.debug.Breakpoint build()
+meth public com.oracle.truffle.api.debug.Breakpoint$Builder ignoreCount(int)
+meth public com.oracle.truffle.api.debug.Breakpoint$Builder lineIs(int)
+meth public com.oracle.truffle.api.debug.Breakpoint$Builder oneShot()
+supr java.lang.Object
+hfds ignoreCount,key,line,oneShot,sourceSection
+
+CLSS public final com.oracle.truffle.api.debug.DebugStackFrame
+intf java.lang.Iterable<com.oracle.truffle.api.debug.DebugValue>
+meth public boolean isInternal()
+meth public com.oracle.truffle.api.debug.DebugValue eval(java.lang.String)
+meth public com.oracle.truffle.api.debug.DebugValue getValue(java.lang.String)
+meth public com.oracle.truffle.api.source.SourceSection getSourceSection()
+meth public java.lang.String getName()
+meth public java.util.Iterator<com.oracle.truffle.api.debug.DebugValue> iterator()
+supr java.lang.Object
+hfds currentFrame,event
+
+CLSS public abstract com.oracle.truffle.api.debug.DebugValue
+meth public abstract <%0 extends java.lang.Object> {%%0} as(java.lang.Class<{%%0}>)
+meth public abstract boolean isReadable()
+meth public abstract boolean isWriteable()
+meth public abstract java.lang.String getName()
+meth public abstract void set(com.oracle.truffle.api.debug.DebugValue)
+meth public final boolean isArray()
+meth public final com.oracle.truffle.api.debug.DebugValue getMetaObject()
+meth public final com.oracle.truffle.api.source.SourceSection getSourceLocation()
+meth public final java.util.Collection<com.oracle.truffle.api.debug.DebugValue> getProperties()
+meth public final java.util.List<com.oracle.truffle.api.debug.DebugValue> getArray()
+meth public java.lang.String toString()
+supr java.lang.Object
+hcls HeapValue,PropertyValue,StackValue
+
+CLSS public final com.oracle.truffle.api.debug.Debugger
+meth public com.oracle.truffle.api.debug.DebuggerSession startSession(com.oracle.truffle.api.debug.SuspendedCallback)
+meth public java.util.List<com.oracle.truffle.api.source.Source> getLoadedSources()
+meth public static com.oracle.truffle.api.debug.Debugger find(com.oracle.truffle.api.TruffleLanguage$Env)
+meth public static com.oracle.truffle.api.debug.Debugger find(com.oracle.truffle.api.vm.PolyglotEngine)
+supr java.lang.Object
+hfds ACCESSOR,TRACE,env,sourceVM
+hcls AccessorDebug
+
+CLSS public final com.oracle.truffle.api.debug.DebuggerSession
+intf java.io.Closeable
+meth public boolean isBreakpointsActive()
+meth public com.oracle.truffle.api.debug.Breakpoint install(com.oracle.truffle.api.debug.Breakpoint)
+meth public com.oracle.truffle.api.debug.Debugger getDebugger()
+meth public java.lang.String toString()
+meth public java.util.List<com.oracle.truffle.api.debug.Breakpoint> getBreakpoints()
+meth public void close()
+meth public void resumeAll()
+meth public void setBreakpointsActive(boolean)
+meth public void suspendNextExecution()
+supr java.lang.Object
+hfds SESSIONS,alwaysHaltBreakpoint,breakpoints,breakpointsActive,callBinding,callback,closed,currentSuspendedEventMap,debugger,sessionId,statementBinding,stepping,strategyMap,suspendAll,suspendNext
+hcls CallSteppingNode,StableBoolean,StatementSteppingNode,SteppingLocation
+
+CLSS public final com.oracle.truffle.api.debug.DebuggerTags
+innr public final AlwaysHalt
+supr java.lang.Object
+
+CLSS public final com.oracle.truffle.api.debug.DebuggerTags$AlwaysHalt
+ outer com.oracle.truffle.api.debug.DebuggerTags
+supr java.lang.Object
+
+CLSS public abstract interface com.oracle.truffle.api.debug.SuspendedCallback
+meth public abstract void onSuspend(com.oracle.truffle.api.debug.SuspendedEvent)
+
+CLSS public final com.oracle.truffle.api.debug.SuspendedEvent
+meth public boolean isHaltedBefore()
+meth public com.oracle.truffle.api.debug.DebugStackFrame getTopStackFrame()
+meth public com.oracle.truffle.api.debug.DebugValue getReturnValue()
+meth public com.oracle.truffle.api.debug.DebuggerSession getSession()
+meth public com.oracle.truffle.api.source.SourceSection getSourceSection()
+meth public java.lang.Iterable<com.oracle.truffle.api.debug.DebugStackFrame> getStackFrames()
+meth public java.lang.String toString()
+meth public java.lang.Throwable getBreakpointConditionException(com.oracle.truffle.api.debug.Breakpoint)
+meth public java.util.List<com.oracle.truffle.api.debug.Breakpoint> getBreakpoints()
+meth public void prepareContinue()
+meth public void prepareKill()
+meth public void prepareStepInto(int)
+meth public void prepareStepOut()
+meth public void prepareStepOver(int)
+supr java.lang.Object
+hfds breakpoints,cachedFrames,conditionFailures,context,disposed,location,materializedFrame,nextStrategy,returnValue,session,sourceSection,thread
+hcls DebugStackFrameIterable
+
+CLSS public abstract interface java.io.Closeable
+intf java.lang.AutoCloseable
+meth public abstract void close() throws java.io.IOException
+
+CLSS public abstract interface java.lang.AutoCloseable
+meth public abstract void close() throws java.lang.Exception
+
+CLSS public abstract interface java.lang.Iterable<%0 extends java.lang.Object>
+meth public abstract java.util.Iterator<{java.lang.Iterable%0}> iterator()
+meth public java.util.Spliterator<{java.lang.Iterable%0}> spliterator()
+meth public void forEach(java.util.function.Consumer<? super {java.lang.Iterable%0}>)
+
+CLSS public java.lang.Object
+cons public init()
+meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
+meth protected void finalize() throws java.lang.Throwable
+meth public boolean equals(java.lang.Object)
+meth public final java.lang.Class<?> getClass()
+meth public final void notify()
+meth public final void notifyAll()
+meth public final void wait() throws java.lang.InterruptedException
+meth public final void wait(long) throws java.lang.InterruptedException
+meth public final void wait(long,int) throws java.lang.InterruptedException
+meth public int hashCode()
+meth public java.lang.String toString()
+
