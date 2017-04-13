@@ -182,7 +182,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         if (testTvmci == null) {
             synchronized (this) {
                 if (testTvmci == null) {
-                    testTvmci = new GraalTestTVMCI(this, getTruffleCompiler());
+                    testTvmci = new GraalTestTVMCI(this);
                 }
             }
         }

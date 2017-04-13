@@ -25,6 +25,7 @@ package org.graalvm.compiler.truffle;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.nodes.RootNode;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import static org.graalvm.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
 import org.graalvm.compiler.debug.Debug;
@@ -35,7 +36,6 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 final class GraalTestTVMCI extends TVMCI.Test<GraalTestTVMCI.TestCallTarget> {
 
     private final GraalTruffleRuntime truffleRuntime;
-    private final TruffleCompiler truffleCompiler;
 
     static final class TestCallTarget implements CallTarget {
 
@@ -53,9 +53,8 @@ final class GraalTestTVMCI extends TVMCI.Test<GraalTestTVMCI.TestCallTarget> {
         }
     }
 
-    GraalTestTVMCI(GraalTruffleRuntime truffleRuntime, TruffleCompiler truffleCompiler) {
+    GraalTestTVMCI(GraalTruffleRuntime truffleRuntime) {
         this.truffleRuntime = truffleRuntime;
-        this.truffleCompiler = truffleCompiler;
     }
 
     @Override
@@ -65,16 +64,18 @@ final class GraalTestTVMCI extends TVMCI.Test<GraalTestTVMCI.TestCallTarget> {
 
     @Override
     public void finishWarmup(TestCallTarget callTarget) {
-        CompilationIdentifier compilationId = truffleRuntime.getCompilationIdentifier(callTarget.optimizedCallTarget, truffleCompiler.getPartialEvaluator().getCompilationRootMethods()[0],
-                        truffleCompiler.backend);
+        TruffleCompiler compiler = truffleRuntime.getTruffleCompiler();
+        ResolvedJavaMethod rootMethod = compiler.getPartialEvaluator().rootForCallTarget(callTarget.optimizedCallTarget);
+        CompilationIdentifier compilationId = truffleRuntime.getCompilationIdentifier(callTarget.optimizedCallTarget, rootMethod, compiler.backend);
         StructuredGraph graph = partialEval(callTarget.optimizedCallTarget, AllowAssumptions.YES, compilationId);
-        truffleCompiler.compileMethodHelper(graph, callTarget.testName, null, callTarget.optimizedCallTarget, asCompilationRequest(compilationId), null);
+        truffleRuntime.getTruffleCompiler().compileMethodHelper(graph, callTarget.testName, null, callTarget.optimizedCallTarget, asCompilationRequest(compilationId), null);
     }
 
     @SuppressWarnings("try")
     protected StructuredGraph partialEval(OptimizedCallTarget compilable, AllowAssumptions allowAssumptions, CompilationIdentifier compilationId) {
         try (Scope s = Debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
-            return truffleCompiler.getPartialEvaluator().createGraph(compilable, new TruffleInlining(compilable, new DefaultInliningPolicy()), allowAssumptions, compilationId, null);
+            TruffleCompiler compiler = truffleRuntime.getTruffleCompiler();
+            return compiler.getPartialEvaluator().createGraph(compilable, new TruffleInlining(compilable, new DefaultInliningPolicy()), allowAssumptions, compilationId, null);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
