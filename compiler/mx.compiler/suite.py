@@ -117,14 +117,14 @@ suite = {
     # ------------- NFI -------------
 
     "com.oracle.nfi" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",
     },
 
     "com.oracle.nfi.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["test"],
       "dependencies" : [
         "com.oracle.nfi",
@@ -138,7 +138,7 @@ suite = {
     # ------------- Graal -------------
 
     "org.graalvm.compiler.serviceprovider" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["JVMCI_SERVICES"],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -147,7 +147,7 @@ suite = {
     },
 
     "org.graalvm.compiler.serviceprovider.processor" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["org.graalvm.compiler.serviceprovider"],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -156,7 +156,7 @@ suite = {
     },
 
     "org.graalvm.compiler.options" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["JVMCI_API", "org.graalvm.util"],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -166,7 +166,7 @@ suite = {
     },
 
     "org.graalvm.compiler.options.processor" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.options",
@@ -177,7 +177,7 @@ suite = {
     },
 
     "org.graalvm.compiler.options.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.options",
@@ -189,7 +189,7 @@ suite = {
     },
 
     "org.graalvm.compiler.debug" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "uses" : [
@@ -208,7 +208,7 @@ suite = {
     },
 
     "org.graalvm.compiler.debug.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "mx:JUNIT",
@@ -220,7 +220,7 @@ suite = {
     },
 
     "org.graalvm.compiler.code" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.graph",
@@ -232,7 +232,7 @@ suite = {
     },
 
     "org.graalvm.util" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",
@@ -240,7 +240,7 @@ suite = {
     },
 
     "org.graalvm.util.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "mx:JUNIT",
@@ -252,7 +252,7 @@ suite = {
     },
 
     "org.graalvm.compiler.api.directives" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",
@@ -260,7 +260,7 @@ suite = {
     },
 
     "org.graalvm.compiler.api.directives.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "dependencies" : [
@@ -272,7 +272,7 @@ suite = {
     },
 
     "org.graalvm.compiler.api.runtime" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "JVMCI_API",
@@ -283,7 +283,7 @@ suite = {
     },
 
     "org.graalvm.compiler.api.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "mx:JUNIT",
@@ -296,7 +296,7 @@ suite = {
     },
 
     "org.graalvm.compiler.api.replacements" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["JVMCI_API"],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -305,7 +305,7 @@ suite = {
     },
 
     "org.graalvm.compiler.hotspot" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "JVMCI_HOTSPOT",
@@ -332,7 +332,7 @@ suite = {
     },
 
     "org.graalvm.compiler.hotspot.aarch64" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.core.aarch64",
@@ -349,7 +349,7 @@ suite = {
     },
 
     "org.graalvm.compiler.hotspot.amd64" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.core.amd64",
@@ -366,7 +366,7 @@ suite = {
     },
 
     "org.graalvm.compiler.hotspot.sparc" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.hotspot",
@@ -380,7 +380,7 @@ suite = {
     },
 
     "org.graalvm.compiler.hotspot.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.replacements.test",
@@ -393,7 +393,7 @@ suite = {
     },
 
     "org.graalvm.compiler.hotspot.lir.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.hotspot",
@@ -408,7 +408,7 @@ suite = {
     },
 
     "org.graalvm.compiler.hotspot.aarch64.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.asm.aarch64",
@@ -421,7 +421,7 @@ suite = {
     },
 
     "org.graalvm.compiler.hotspot.amd64.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.asm.amd64",
@@ -436,7 +436,7 @@ suite = {
     },
 
     "org.graalvm.compiler.nodeinfo" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",
@@ -444,7 +444,7 @@ suite = {
     },
 
     "org.graalvm.compiler.nodeinfo.processor" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "dependencies" : [
@@ -455,7 +455,7 @@ suite = {
     },
 
     "org.graalvm.compiler.graph" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.nodeinfo",
@@ -470,7 +470,7 @@ suite = {
     },
 
     "org.graalvm.compiler.graph.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "dependencies" : [
@@ -484,7 +484,7 @@ suite = {
     },
 
     "org.graalvm.compiler.asm" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "JVMCI_API",
@@ -496,7 +496,7 @@ suite = {
     },
 
     "org.graalvm.compiler.asm.aarch64" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.asm",
@@ -507,7 +507,7 @@ suite = {
     },
 
     "org.graalvm.compiler.asm.amd64" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.asm",
@@ -518,7 +518,7 @@ suite = {
     },
 
     "org.graalvm.compiler.asm.sparc" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.asm",
@@ -529,7 +529,7 @@ suite = {
     },
 
     "org.graalvm.compiler.asm.sparc.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.asm.test",
@@ -541,7 +541,7 @@ suite = {
     },
 
     "org.graalvm.compiler.bytecode" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["JVMCI_API"],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -550,7 +550,7 @@ suite = {
     },
 
     "org.graalvm.compiler.asm.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.api.test",
@@ -565,7 +565,7 @@ suite = {
     },
 
     "org.graalvm.compiler.asm.aarch64.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.asm.test",
@@ -577,7 +577,7 @@ suite = {
     },
 
     "org.graalvm.compiler.asm.amd64.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.asm.test",
@@ -589,7 +589,7 @@ suite = {
     },
 
     "org.graalvm.compiler.lir" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.asm",
@@ -602,7 +602,7 @@ suite = {
     },
 
     "org.graalvm.compiler.lir.jtt" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.jtt",
@@ -615,7 +615,7 @@ suite = {
     },
 
     "org.graalvm.compiler.lir.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "mx:JUNIT",
@@ -627,7 +627,7 @@ suite = {
     },
 
     "org.graalvm.compiler.lir.aarch64" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.lir",
@@ -640,7 +640,7 @@ suite = {
     },
 
     "org.graalvm.compiler.lir.amd64" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.lir",
@@ -653,7 +653,7 @@ suite = {
     },
 
     "org.graalvm.compiler.lir.sparc" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.asm.sparc",
@@ -665,7 +665,7 @@ suite = {
     },
 
     "org.graalvm.compiler.word" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["org.graalvm.compiler.nodes"],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -675,7 +675,7 @@ suite = {
     },
 
     "org.graalvm.compiler.replacements" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.api.directives",
@@ -694,7 +694,7 @@ suite = {
     },
 
     "org.graalvm.compiler.replacements.aarch64" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.replacements",
@@ -710,7 +710,7 @@ suite = {
     },
 
     "org.graalvm.compiler.replacements.amd64" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.replacements",
@@ -726,7 +726,7 @@ suite = {
     },
 
     "org.graalvm.compiler.replacements.sparc" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.replacements",
@@ -737,7 +737,7 @@ suite = {
     },
 
     "org.graalvm.compiler.replacements.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.core.test",
@@ -754,7 +754,7 @@ suite = {
     },
 
     "org.graalvm.compiler.replacements.verifier" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.api.replacements",
@@ -766,7 +766,7 @@ suite = {
     },
 
     "org.graalvm.compiler.nodes" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.api.replacements",
@@ -784,7 +784,7 @@ suite = {
     },
 
     "org.graalvm.compiler.nodes.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["org.graalvm.compiler.core.test"],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -793,7 +793,7 @@ suite = {
     },
 
     "org.graalvm.compiler.phases" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["org.graalvm.compiler.nodes"],
       "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
@@ -803,7 +803,7 @@ suite = {
     },
 
     "org.graalvm.compiler.phases.common" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["org.graalvm.compiler.phases"],
       "annotationProcessors" : [
@@ -816,7 +816,7 @@ suite = {
     },
 
     "org.graalvm.compiler.phases.common.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.api.test",
@@ -829,7 +829,7 @@ suite = {
     },
 
     "org.graalvm.compiler.virtual" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["org.graalvm.compiler.phases.common"],
       "annotationProcessors" : [
@@ -842,7 +842,7 @@ suite = {
     },
 
     "org.graalvm.compiler.virtual.bench" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["mx:JMH_1_18", "org.graalvm.compiler.microbenchmarks"],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -853,7 +853,7 @@ suite = {
     },
 
     "org.graalvm.compiler.microbenchmarks" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "mx:JMH_1_18",
@@ -870,7 +870,7 @@ suite = {
     },
 
     "org.graalvm.compiler.loop" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["org.graalvm.compiler.nodes"],
       "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
@@ -880,7 +880,7 @@ suite = {
     },
 
     "org.graalvm.compiler.loop.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.loop",
@@ -892,7 +892,7 @@ suite = {
     },
 
     "org.graalvm.compiler.loop.phases" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
      "org.graalvm.compiler.loop",
@@ -905,7 +905,7 @@ suite = {
     },
 
     "org.graalvm.compiler.core" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.virtual",
@@ -922,7 +922,7 @@ suite = {
     },
 
     "org.graalvm.compiler.core.match.processor" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.core",
@@ -933,7 +933,7 @@ suite = {
     },
 
     "org.graalvm.compiler.core.aarch64" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.core",
@@ -950,7 +950,7 @@ suite = {
     },
 
     "org.graalvm.compiler.core.aarch64.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.lir.jtt",
@@ -963,7 +963,7 @@ suite = {
     },
 
     "org.graalvm.compiler.core.amd64" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.core",
@@ -980,7 +980,7 @@ suite = {
     },
 
     "org.graalvm.compiler.core.amd64.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.lir.jtt",
@@ -993,7 +993,7 @@ suite = {
     },
 
     "org.graalvm.compiler.core.sparc" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.core",
@@ -1010,7 +1010,7 @@ suite = {
     },
 
     "org.graalvm.compiler.core.sparc.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.lir.jtt",
@@ -1022,7 +1022,7 @@ suite = {
     },
 
     "org.graalvm.compiler.runtime" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["org.graalvm.compiler.core"],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -1031,7 +1031,7 @@ suite = {
     },
 
     "org.graalvm.compiler.java" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.phases",
@@ -1043,7 +1043,7 @@ suite = {
     },
 
     "org.graalvm.compiler.core.common" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.debug",
@@ -1055,7 +1055,7 @@ suite = {
     },
 
     "org.graalvm.compiler.printer" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.core",
@@ -1072,7 +1072,7 @@ suite = {
     },
 
     "org.graalvm.compiler.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.util",
@@ -1084,7 +1084,7 @@ suite = {
     },
 
     "org.graalvm.compiler.core.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.api.directives",
@@ -1105,7 +1105,7 @@ suite = {
     },
 
     "org.graalvm.compiler.jtt" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.core.test",
@@ -1120,7 +1120,7 @@ suite = {
     # ------------- GraalTruffle -------------
 
     "org.graalvm.compiler.truffle" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "truffle:TRUFFLE_API",
@@ -1148,7 +1148,7 @@ suite = {
     },
 
     "org.graalvm.compiler.truffle.bench" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "mx:JMH_1_18",
@@ -1164,7 +1164,7 @@ suite = {
     },
 
     "org.graalvm.compiler.truffle.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.truffle",
@@ -1182,7 +1182,7 @@ suite = {
     },
 
     "org.graalvm.compiler.truffle.hotspot" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.truffle",
@@ -1205,7 +1205,7 @@ suite = {
     },
 
     "org.graalvm.compiler.truffle.hotspot.test" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.truffle.hotspot",
@@ -1217,7 +1217,7 @@ suite = {
     },
 
     "org.graalvm.compiler.truffle.hotspot.amd64" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.truffle.hotspot",
@@ -1232,7 +1232,7 @@ suite = {
     },
 
     "org.graalvm.compiler.truffle.hotspot.sparc" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.truffle.hotspot",
@@ -1245,7 +1245,7 @@ suite = {
     },
 
     "org.graalvm.compiler.truffle.hotspot.aarch64" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.truffle.hotspot",
@@ -1264,7 +1264,7 @@ suite = {
     # ------------- Distributions -------------
 
     "GRAAL_OPTIONS" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "dependencies" : ["org.graalvm.compiler.options"],
       "distDependencies" : [
         "JVMCI_API",
@@ -1272,7 +1272,7 @@ suite = {
     },
 
     "GRAAL_OPTIONS_PROCESSOR" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "dependencies" : ["org.graalvm.compiler.options.processor"],
       "distDependencies" : [
         "GRAAL_OPTIONS",
@@ -1280,14 +1280,14 @@ suite = {
     },
 
     "GRAAL_NODEINFO" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "dependencies" : [
         "org.graalvm.compiler.nodeinfo",
       ],
     },
 
     "GRAAL_SERVICEPROVIDER" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "dependencies" : ["org.graalvm.compiler.serviceprovider"],
       "distDependencies" : [
         "GRAAL_NODEINFO",
@@ -1296,7 +1296,7 @@ suite = {
     },
 
     "GRAAL_API" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "dependencies" : [
         "org.graalvm.compiler.api.replacements",
         "org.graalvm.compiler.api.runtime",
@@ -1311,7 +1311,7 @@ suite = {
     },
 
     "GRAAL_COMPILER" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "dependencies" : [
         "org.graalvm.compiler.core",
       ],
@@ -1322,7 +1322,7 @@ suite = {
     },
 
     "GRAAL_RUNTIME" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "dependencies" : [
         "org.graalvm.compiler.replacements",
         "org.graalvm.compiler.runtime",
@@ -1342,7 +1342,7 @@ suite = {
     },
 
     "GRAAL_HOTSPOT" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "dependencies" : [
         "org.graalvm.compiler.hotspot.aarch64",
         "org.graalvm.compiler.hotspot.amd64",
@@ -1357,7 +1357,7 @@ suite = {
     },
 
     "GRAAL_TEST" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "dependencies" : [
         "org.graalvm.compiler.api.test",
         "org.graalvm.compiler.api.directives.test",
@@ -1397,7 +1397,7 @@ suite = {
     },
 
     "GRAAL_TRUFFLE" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "dependencies" : [
         "org.graalvm.compiler.truffle",
       ],
@@ -1408,7 +1408,7 @@ suite = {
     },
 
     "GRAAL_TRUFFLE_HOTSPOT" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "dependencies" : [
         "org.graalvm.compiler.truffle.hotspot.amd64",
         "org.graalvm.compiler.truffle.hotspot.sparc",
@@ -1422,7 +1422,7 @@ suite = {
     },
 
     "GRAAL_SERVICEPROVIDER_PROCESSOR" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "dependencies" : ["org.graalvm.compiler.serviceprovider.processor"],
       "distDependencies" : [
         "GRAAL_SERVICEPROVIDER",
@@ -1430,7 +1430,7 @@ suite = {
     },
 
     "GRAAL_NODEINFO_PROCESSOR" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "dependencies" : ["org.graalvm.compiler.nodeinfo.processor"],
       "distDependencies" : [
         "GRAAL_NODEINFO",
@@ -1438,7 +1438,7 @@ suite = {
     },
 
     "GRAAL_REPLACEMENTS_VERIFIER" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "dependencies" : ["org.graalvm.compiler.replacements.verifier"],
       "distDependencies" : [
         "GRAAL_API",
@@ -1448,7 +1448,7 @@ suite = {
     },
 
     "GRAAL_COMPILER_MATCH_PROCESSOR" : {
-      "subDir" : "graal",
+      "subDir" : "src",
       "dependencies" : ["org.graalvm.compiler.core.match.processor"],
       "distDependencies" : [
         "GRAAL_COMPILER",
@@ -1464,7 +1464,7 @@ suite = {
         # see org.graalvm.compiler.hotspot.HotSpotGraalJVMCIServiceLocator
         "java.base/jdk.internal.module",
       ],
-      "subDir" : "graal",
+      "subDir" : "src",
       "overlaps" : [
         "GRAAL_OPTIONS",
         "GRAAL_NODEINFO",
