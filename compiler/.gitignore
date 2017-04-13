@@ -23,8 +23,8 @@
 *~
 core.*
 /graph-strings-*/
-/mx.graal-core/env
-/mx.graal-core/eclipse-launches/
+/mx.compiler/env
+/mx.compiler/eclipse-launches/
 /graal.options
 /workingsets.xml
 .idea

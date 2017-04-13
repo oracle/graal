@@ -36,7 +36,7 @@ import mx_graal_core
 from mx_benchmark import ParserEntry
 from argparse import ArgumentParser
 
-_suite = mx.suite('graal-core')
+_suite = mx.suite('compiler')
 
 # Short-hand commands used to quickly run common benchmarks.
 mx.update_commands(_suite, {

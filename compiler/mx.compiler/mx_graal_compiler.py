@@ -49,7 +49,7 @@ import argparse
 import shlex
 import glob
 
-_suite = mx.suite('graal-core')
+_suite = mx.suite('compiler')
 
 """ Prefix for running the VM. """
 _vm_prefix = None

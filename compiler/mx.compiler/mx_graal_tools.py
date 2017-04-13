@@ -30,7 +30,7 @@ from argparse import ArgumentParser, REMAINDER
 
 import mx
 
-_suite = mx.suite('graal-core')
+_suite = mx.suite('compiler')
 
 def _run_netbeans_app(app_name, env=None, args=None):
     args = [] if args is None else args

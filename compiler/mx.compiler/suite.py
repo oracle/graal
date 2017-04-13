@@ -1,6 +1,6 @@
 suite = {
   "mxversion" : "5.86.0",
-  "name" : "graal-core",
+  "name" : "compiler",
 
   "imports" : {
     "suites": [
