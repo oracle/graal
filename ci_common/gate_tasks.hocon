@@ -14,6 +14,7 @@ builds += [
   ${gateTest9}                 ${gateLinuxAMD64}   {name: "gate-test-9-linux-amd64"}
   ${gateTest9EA}               ${gateLinuxAMD64}   {name: "gate-test-9EA-linux-amd64"}
   ${gateTestCTW8}              ${gateLinuxAMD64}   {name: "gate-ctw-8-linux-amd64"}
+  ${gateTestCTW9}              ${gateLinuxAMD64}   {name: "gate-ctw-9-linux-amd64"}
 # ${gateTest8Debug}            ${gateLinuxAMD64}   {name: "gate-test-8-linux-amd64-fastdebug"}
   ${gateTestBenchmark8}        ${gateLinuxAMD64}   {name: "gate-benchmarktest-8-linux-amd64"}
 # ${gateTestBenchmark8Debug}   ${gateLinuxAMD64}   {name: "gate-benchmarktest-8-linux-amd64-fastdebug"}
@@ -23,6 +24,7 @@ builds += [
   ${gateTest8}                 ${gateSolarisSPARC} {name: "gate-test-8-solaris-sparcv9",                    timelimit: "1:00:00"}
   ${gateTest9}                 ${gateSolarisSPARC} {name: "gate-test-9-solaris-sparcv9",                    timelimit: "1:00:00"}
   ${gateTestCTW8}              ${gateSolarisSPARC} {name: "gate-ctw-8-solaris-sparcv9",                     timelimit: "1:00:00"}
+  ${gateTestCTW9}              ${gateSolarisSPARC} {name: "gate-ctw-9-solaris-sparcv9",                     timelimit: "1:00:00"}
 # ${gateTest8Debug}            ${gateSolarisSPARC} {name: "gate-test-8-solaris-sparcv9-fastdebug",          timelimit: "1:00:00"}
   ${gateTestBenchmark8}        ${gateSolarisSPARC} {name: "gate-benchmarktest-8-solaris-sparcv9",           timelimit: "1:00:00"}
 # ${gateTestBenchmark8Debug}   ${gateSolarisSPARC} {name: "gate-benchmarktest-8-solaris-sparcv9-fastdebug", timelimit: "1:00:00"}

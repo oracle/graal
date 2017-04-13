@@ -37,7 +37,6 @@ import java.util.Map;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.Debug;
@@ -104,9 +103,7 @@ public abstract class TruffleCompiler {
         this.compilationNotify = graalTruffleRuntime.getCompilationNotify();
         this.backend = backend;
         this.snippetReflection = snippetReflection;
-        Providers backendProviders = backend.getProviders();
-        ConstantFieldProvider constantFieldProvider = new TruffleConstantFieldProvider(backendProviders.getConstantFieldProvider(), backendProviders.getMetaAccess());
-        this.providers = backendProviders.copyWith(constantFieldProvider);
+        this.providers = backend.getProviders();
         this.suites = suites;
         this.lirSuites = lirSuites;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -124,8 +124,7 @@ public final class RawStoreNode extends UnsafeAccessNode implements StateSplit, 
                 int entryIndex = virtual.entryIndexForOffset(off, accessKind());
                 if (entryIndex != -1) {
                     JavaKind entryKind = virtual.entryKind(entryIndex);
-                    ValueNode entry = tool.getEntry(virtual, entryIndex);
-                    if (entry.getStackKind() == value.getStackKind() || entryKind == accessKind()) {
+                    if (entryKind == accessKind() || entryKind == accessKind().getStackKind()) {
                         tool.setVirtualEntry(virtual, entryIndex, value(), true);
                         tool.delete();
                     } else {

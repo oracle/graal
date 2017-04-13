@@ -22,24 +22,22 @@
  */
 package org.graalvm.compiler.replacements;
 
-import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
+import static org.graalvm.compiler.debug.GraalError.unimplemented;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.cfg.CFGVerifier;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.Debug;
@@ -102,16 +100,22 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.Equivalence;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import static org.graalvm.compiler.debug.GraalError.unimplemented;
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * A graph decoder that performs partial evaluation, i.e., that performs method inlining and
@@ -126,6 +130,8 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
  * {@link IntegerSwitchNode switches} with constant conditions are simplified.
  */
 public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
+
+    private static final Object CACHED_NULL_VALUE = new Object();
 
     public static class Options {
         @Option(help = "Maximum inlining depth during partial evaluation before reporting an infinite recursion")//
@@ -428,12 +434,42 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
     }
 
+    protected static class SpecialCallTargetCacheKey {
+        private final InvokeKind invokeKind;
+        private final ResolvedJavaMethod targetMethod;
+        private final ResolvedJavaType contextType;
+        private final Stamp receiverStamp;
+
+        public SpecialCallTargetCacheKey(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ResolvedJavaType contextType, Stamp receiverStamp) {
+            this.invokeKind = invokeKind;
+            this.targetMethod = targetMethod;
+            this.contextType = contextType;
+            this.receiverStamp = receiverStamp;
+        }
+
+        @Override
+        public int hashCode() {
+            return invokeKind.hashCode() ^ targetMethod.hashCode() ^ contextType.hashCode() ^ receiverStamp.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof SpecialCallTargetCacheKey) {
+                SpecialCallTargetCacheKey key = (SpecialCallTargetCacheKey) obj;
+                return key.invokeKind.equals(this.invokeKind) && key.targetMethod.equals(this.targetMethod) && key.contextType.equals(this.contextType) && key.receiverStamp.equals(this.receiverStamp);
+            }
+            return false;
+        }
+    }
+
     protected final OptionValues options;
     private final LoopExplosionPlugin loopExplosionPlugin;
     private final InvocationPlugins invocationPlugins;
     private final InlineInvokePlugin[] inlineInvokePlugins;
     private final ParameterPlugin parameterPlugin;
     private final NodePlugin[] nodePlugins;
+    private final EconomicMap<SpecialCallTargetCacheKey, Object> specialCallTargetCache;
+    private final EconomicMap<ResolvedJavaMethod, Object> invocationPluginCache;
 
     public PEGraphDecoder(Architecture architecture, StructuredGraph graph, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
                     StampProvider stampProvider, OptionValues options, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins,
@@ -445,6 +481,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         this.parameterPlugin = parameterPlugin;
         this.options = options;
         this.nodePlugins = nodePlugins;
+        this.specialCallTargetCache = EconomicMap.create(Equivalence.DEFAULT);
+        this.invocationPluginCache = EconomicMap.create(Equivalence.DEFAULT);
     }
 
     protected static LoopExplosionKind loopExplosionKind(ResolvedJavaMethod method, LoopExplosionPlugin loopExplosionPlugin) {
@@ -537,7 +575,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     protected LoopScope trySimplifyInvoke(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, MethodCallTargetNode callTarget) {
         // attempt to devirtualize the call
-        ResolvedJavaMethod specialCallTarget = MethodCallTargetNode.findSpecialCallTarget(callTarget.invokeKind(), callTarget.receiver(), callTarget.targetMethod(), invokeData.contextType);
+        ResolvedJavaMethod specialCallTarget = getSpecialCallTarget(invokeData, callTarget);
         if (specialCallTarget != null) {
             callTarget.setTargetMethod(specialCallTarget);
             callTarget.setInvokeKind(InvokeKind.Special);
@@ -563,15 +601,39 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         return null;
     }
 
+    private ResolvedJavaMethod getSpecialCallTarget(InvokeData invokeData, MethodCallTargetNode callTarget) {
+        if (callTarget.invokeKind().isDirect()) {
+            return null;
+        }
+
+        // check for trivial cases (e.g. final methods, nonvirtual methods)
+        if (callTarget.targetMethod().canBeStaticallyBound()) {
+            return callTarget.targetMethod();
+        }
+
+        SpecialCallTargetCacheKey key = new SpecialCallTargetCacheKey(callTarget.invokeKind(), callTarget.targetMethod(), invokeData.contextType, callTarget.receiver().stamp());
+        Object specialCallTarget = specialCallTargetCache.get(key);
+        if (specialCallTarget == null) {
+            specialCallTarget = MethodCallTargetNode.devirtualizeCall(key.invokeKind, key.targetMethod, key.contextType, graph.getAssumptions(),
+                            key.receiverStamp);
+            if (specialCallTarget == null) {
+                specialCallTarget = CACHED_NULL_VALUE;
+            }
+            specialCallTargetCache.put(key, specialCallTarget);
+        }
+
+        return specialCallTarget == CACHED_NULL_VALUE ? null : (ResolvedJavaMethod) specialCallTarget;
+    }
+
     protected boolean tryInvocationPlugin(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, MethodCallTargetNode callTarget) {
-        if (invocationPlugins == null) {
+        if (invocationPlugins == null || invocationPlugins.size() == 0) {
             return false;
         }
 
         Invoke invoke = invokeData.invoke;
 
         ResolvedJavaMethod targetMethod = callTarget.targetMethod();
-        InvocationPlugin invocationPlugin = invocationPlugins.lookupInvocation(targetMethod);
+        InvocationPlugin invocationPlugin = getInvocationPlugin(targetMethod);
         if (invocationPlugin == null) {
             return false;
         }
@@ -609,6 +671,19 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             invokePredecessor.setNext(invoke.asNode());
             return false;
         }
+    }
+
+    private InvocationPlugin getInvocationPlugin(ResolvedJavaMethod targetMethod) {
+        Object invocationPlugin = invocationPluginCache.get(targetMethod);
+        if (invocationPlugin == null) {
+            invocationPlugin = invocationPlugins.lookupInvocation(targetMethod);
+            if (invocationPlugin == null) {
+                invocationPlugin = CACHED_NULL_VALUE;
+            }
+            invocationPluginCache.put(targetMethod, invocationPlugin);
+        }
+
+        return invocationPlugin == CACHED_NULL_VALUE ? null : (InvocationPlugin) invocationPlugin;
     }
 
     protected LoopScope tryInline(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, MethodCallTargetNode callTarget) {
@@ -715,7 +790,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                  */
                 MergeNode unwindMergeNode = graph.add(new MergeNode());
                 exceptionValue = InliningUtil.mergeValueProducers(unwindMergeNode, getMatchingNodes(returnAndUnwindNodes, returnNodeCount > 0, UnwindNode.class, unwindNodeCount),
-                                unwindNode -> unwindNode.exception());
+                                null, unwindNode -> unwindNode.exception());
                 unwindMergeNode.setNext(unwindReplacement);
 
                 ensureExceptionStateDecoded(inlineScope);
