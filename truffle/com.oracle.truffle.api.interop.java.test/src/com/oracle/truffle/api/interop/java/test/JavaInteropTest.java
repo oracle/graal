@@ -48,6 +48,7 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.interop.java.MethodMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -138,6 +139,16 @@ public class JavaInteropTest {
         assertTrue("Contains null " + list, list.contains("null"));
         assertTrue("Contains three " + list, list.contains("three"));
 
+    }
+
+    @Test
+    public void readUnknownField() throws Exception {
+        try {
+            ForeignAccess.sendRead(Message.READ.createNode(), obj, "unknown");
+            fail("Exception thrown when reading unknown field");
+        } catch (UnknownIdentifierException ex) {
+            assertEquals("unknown", ex.getUnknownIdentifier());
+        }
     }
 
     static CallTarget sendKeys() {
@@ -558,7 +569,7 @@ public class JavaInteropTest {
             try {
                 return ForeignAccess.send(foreignAccess, function, args);
             } catch (InteropException e) {
-                throw new AssertionError(e);
+                throw e.raise();
             }
         }
     } // end of TemporaryRoot
