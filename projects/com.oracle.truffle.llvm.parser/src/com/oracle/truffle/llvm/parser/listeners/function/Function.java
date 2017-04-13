@@ -36,6 +36,7 @@ import com.oracle.truffle.llvm.parser.listeners.IRVersionController;
 import com.oracle.truffle.llvm.parser.listeners.ParserListener;
 import com.oracle.truffle.llvm.parser.listeners.Types;
 import com.oracle.truffle.llvm.parser.listeners.ValueSymbolTable;
+import com.oracle.truffle.llvm.parser.listeners.constants.Constants;
 import com.oracle.truffle.llvm.parser.listeners.metadata.Metadata;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.generators.FunctionGenerator;
@@ -88,7 +89,7 @@ public abstract class Function implements ParserListener {
     public ParserListener enter(Block block) {
         switch (block) {
             case CONSTANTS:
-                return version.createConstants(types, symbols, generator);
+                return new Constants(types, symbols, generator);
 
             case VALUE_SYMTAB:
                 return new ValueSymbolTable(generator);

@@ -53,7 +53,8 @@ public enum ConstantsRecord {
     CE_INBOUNDS_GEP,
     BLOCKADDRESS,
     DATA,
-    INLINEASM;
+    INLINEASM,
+    CE_GEP_WITH_INRANGE_INDEX;
 
     public static ConstantsRecord decode(long id) {
         return values()[(int) id];

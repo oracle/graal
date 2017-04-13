@@ -37,6 +37,7 @@ import com.oracle.truffle.llvm.parser.listeners.Identification;
 import com.oracle.truffle.llvm.parser.listeners.ParserListener;
 import com.oracle.truffle.llvm.parser.listeners.Types;
 import com.oracle.truffle.llvm.parser.listeners.ValueSymbolTable;
+import com.oracle.truffle.llvm.parser.listeners.constants.Constants;
 import com.oracle.truffle.llvm.parser.listeners.metadata.Metadata;
 import com.oracle.truffle.llvm.parser.model.enums.Visibility;
 import com.oracle.truffle.llvm.parser.model.generators.FunctionGenerator;
@@ -130,7 +131,7 @@ public final class Module implements ParserListener {
                 return this; // Entering from root
 
             case CONSTANTS:
-                return version.createConstants(types, symbols, generator);
+                return new Constants(types, symbols, generator);
 
             case FUNCTION: {
                 FunctionType function = functions.remove(0);
