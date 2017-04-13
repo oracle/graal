@@ -53,7 +53,7 @@ suite = {
     # ------------- Truffle -------------
 
     "com.oracle.truffle.api.source" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
       ],
@@ -70,7 +70,7 @@ suite = {
     },
 
     "com.oracle.truffle.api" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.source"
@@ -87,7 +87,7 @@ suite = {
     },
 
     "com.oracle.truffle.api.utilities" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api"
@@ -101,7 +101,7 @@ suite = {
     },
 
     "com.oracle.truffle.api.vm" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "uses" : ["com.oracle.truffle.api.impl.TruffleLocator"],
       "dependencies" : [
@@ -118,7 +118,7 @@ suite = {
     },
 
     "com.oracle.truffle.api.test" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.profiles",
@@ -137,7 +137,7 @@ suite = {
     },
 
     "com.oracle.truffle.api.benchmark" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api",
@@ -153,7 +153,7 @@ suite = {
     },
 
     "com.oracle.truffle.api.dsl" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.api"],
       "exports" : [
@@ -166,7 +166,7 @@ suite = {
     },
 
     "com.oracle.truffle.api.dsl.test" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.dsl.processor",
@@ -182,7 +182,7 @@ suite = {
     },
 
     "com.oracle.truffle.dsl.processor" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.dsl",
@@ -201,7 +201,7 @@ suite = {
     },
 
     "com.oracle.truffle.dsl.processor.interop" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.interop",
@@ -220,7 +220,7 @@ suite = {
     },
 
     "com.oracle.truffle.api.interop" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.api.dsl"],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTERNAL"],
@@ -233,7 +233,7 @@ suite = {
     },
 
    "com.oracle.truffle.api.instrumentation" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.api"],
       "exports" : [
@@ -245,7 +245,7 @@ suite = {
     },
 
     "com.oracle.truffle.api.instrumentation.test" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.tools",
@@ -260,7 +260,7 @@ suite = {
     },
 
     "com.oracle.truffle.api.debug" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.api.vm"],
       "exports" : [
@@ -273,7 +273,7 @@ suite = {
     },
 
     "com.oracle.truffle.api.debug.test" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.debug",
@@ -288,7 +288,7 @@ suite = {
     },
 
     "com.oracle.truffle.api.interop.java" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.interop",
@@ -303,7 +303,7 @@ suite = {
     },
 
     "com.oracle.truffle.api.interop.java.test" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.interop.java",
@@ -319,7 +319,7 @@ suite = {
     },
 
     "com.oracle.truffle.api.object" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.interop",
@@ -334,7 +334,7 @@ suite = {
     },
 
     "com.oracle.truffle.api.object.dsl" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.api.object"],
       "exports" : [
@@ -346,7 +346,7 @@ suite = {
     },
 
     "com.oracle.truffle.api.object.dsl.test" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.object",
@@ -362,7 +362,7 @@ suite = {
     },
 
     "com.oracle.truffle.object.dsl.processor" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.object.dsl",
@@ -374,7 +374,7 @@ suite = {
     },
 
     "com.oracle.truffle.api.profiles" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.api"],
       "exports" : [
@@ -386,7 +386,7 @@ suite = {
     },
 
     "com.oracle.truffle.object" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.api.object"],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
@@ -395,7 +395,7 @@ suite = {
     },
 
     "com.oracle.truffle.object.basic" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.object"],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
@@ -404,7 +404,7 @@ suite = {
     },
 
     "com.oracle.truffle.object.basic.test" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.object.basic",
@@ -416,7 +416,7 @@ suite = {
     },
 
     "com.oracle.truffle.tck" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "TRUFFLE_API",
@@ -432,7 +432,7 @@ suite = {
     },
 
     "com.oracle.truffle.tools" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
                         "com.oracle.truffle.api.vm"],
@@ -443,7 +443,7 @@ suite = {
     },
 
     "com.oracle.truffle.tools.test" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
           "com.oracle.truffle.tools",
@@ -457,7 +457,7 @@ suite = {
     },
 
     "com.oracle.truffle.tools.debug.shell" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.vm",
@@ -470,7 +470,7 @@ suite = {
     },
 
     "com.oracle.truffle.nfi" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.interop.java",
@@ -483,7 +483,7 @@ suite = {
     },
 
     "com.oracle.truffle.nfi.types" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
       ],
@@ -493,7 +493,7 @@ suite = {
     },
 
     "com.oracle.truffle.nfi.native" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "native" : True,
       "vpath" : True,
       "results" : [
@@ -513,7 +513,7 @@ suite = {
     },
 
     "com.oracle.truffle.nfi.test" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "mx:JUNIT",
@@ -530,7 +530,7 @@ suite = {
     },
 
     "com.oracle.truffle.nfi.test.native" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "native" : True,
       "vpath" : True,
       "results" : [
@@ -547,7 +547,7 @@ suite = {
     },
 
     "com.oracle.truffle.sl" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "TRUFFLE_API",
@@ -559,7 +559,7 @@ suite = {
     },
 
     "com.oracle.truffle.sl.test" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.tck",
@@ -574,7 +574,7 @@ suite = {
     },
 
     "com.oracle.truffle.tutorial" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "TRUFFLE_API",
@@ -601,7 +601,7 @@ suite = {
     "TRUFFLE_API" : {
       # This distribution defines a module.
       "moduleName" : "com.oracle.truffle.truffle_api",
-      "subDir" : "truffle",
+      "subDir" : "src",
       "javaCompliance" : "1.8",
       "dependencies" : [
         "com.oracle.truffle.api.interop.java",
@@ -621,7 +621,7 @@ suite = {
     },
 
     "TRUFFLE_NFI" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "javaCompliance" : "1.8",
       "dependencies" : [
         "com.oracle.truffle.nfi",
@@ -650,7 +650,7 @@ suite = {
     },
 
     "TRUFFLE_TCK" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "javaCompliance" : "1.8",
       "dependencies" : [
         "com.oracle.truffle.tck"
@@ -664,7 +664,7 @@ suite = {
 
     "TRUFFLE_DSL_PROCESSOR_INTERNAL" : {
       "internal" : True,
-      "subDir" : "truffle",
+      "subDir" : "src",
       "javaCompliance" : "1.8",
       "dependencies" : ["com.oracle.truffle.dsl.processor"],
       "distDependencies" : [],
@@ -673,7 +673,7 @@ suite = {
 
     "TRUFFLE_DSL_PROCESSOR_INTEROP_INTERNAL" : {
       "internal" : True,
-      "subDir" : "truffle",
+      "subDir" : "src",
       "javaCompliance" : "1.8",
       "dependencies" : ["com.oracle.truffle.dsl.processor", "com.oracle.truffle.dsl.processor.interop"],
       "distDependencies" : [],
@@ -681,7 +681,7 @@ suite = {
     },
 
     "TRUFFLE_DSL_PROCESSOR" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "javaCompliance" : "1.8",
       "dependencies" : ["com.oracle.truffle.dsl.processor", "com.oracle.truffle.dsl.processor.interop", "com.oracle.truffle.object.dsl.processor"],
       "distDependencies" : ["TRUFFLE_API"],
@@ -690,7 +690,7 @@ suite = {
     },
 
     "TRUFFLE_SL" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "javaCompliance" : "1.8",
       "dependencies" : [
         "com.oracle.truffle.sl",
@@ -709,7 +709,7 @@ suite = {
     },
 
     "TRUFFLE_SL_TEST" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "javaCompliance" : "1.8",
       "dependencies" : [
         "com.oracle.truffle.sl.test"
@@ -729,7 +729,7 @@ suite = {
     },
 
      "TRUFFLE_DEBUG" : {
-      "subDir" : "truffle",
+      "subDir" : "src",
       "javaCompliance" : "1.8",
       "dependencies" : [
         "com.oracle.truffle.tools.debug.shell",
@@ -744,7 +744,7 @@ suite = {
      },
 
      "TRUFFLE_TEST" : {
-       "subDir" : "truffle",
+       "subDir" : "src",
        "javaCompliance" : "1.8",
        "dependencies" : [
          "com.oracle.truffle.api.test",
