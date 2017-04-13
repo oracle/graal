@@ -69,6 +69,7 @@ supportedLLVMVersions = [
     '3.3',
     '3.8',
     '3.9',
+    '4.0',
 ]
 
 # the clang-format versions that can be used for formatting the test case C and C++ files
@@ -498,7 +499,7 @@ def getVersion(program):
 def getLLVMVersion(llvmProgram):
     """executes the program with --version and extracts the LLVM version string"""
     versionString = getVersion(llvmProgram)
-    printLLVMVersion = re.search(r'(clang |LLVM )?(version )?(3\.\d)', versionString, re.IGNORECASE)
+    printLLVMVersion = re.search(r'(clang |LLVM )?(version )?((3|4)\.\d)', versionString, re.IGNORECASE)
     if printLLVMVersion is None:
         return None
     else:
@@ -581,10 +582,10 @@ def exportMxClang32(ret):
         ret['MX_OPT_V32'] = exp
 
 def exportMxClang38(ret):
-    exp = findLLVMProgram('clang', ['3.8', '3.9'])
+    exp = findLLVMProgram('clang', ['3.8', '3.9', '4.0'])
     if not exp is None:
         ret['MX_CLANG_V38'] = exp
-    exp = findLLVMProgram('opt', ['3.8', '3.9'])
+    exp = findLLVMProgram('opt', ['3.8', '3.9', '4.0'])
     if not exp is None:
         ret['MX_OPT_V38'] = exp
 
