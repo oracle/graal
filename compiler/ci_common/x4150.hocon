@@ -1,5 +1,5 @@
-x4150.default : ${commonLinux} {
-  capabilities: [linux, x4150, no_frequency_scaling]
+x4150.default : ${linux-amd64} {
+  capabilities: ${linux-amd64.capabilities} [x4150, no_frequency_scaling]
   environment : {
     XMX         : "64g"
     XMS         : "64g"
@@ -16,7 +16,7 @@ x4150.default-g1gc : ${x4150.default} {
 }
 
 builds += [
-  ${x4150.default} ${bench-specjbb2005} { name: "bench-specjbb2005-linux-x4150"}
+  ${x4150.default} ${bench-specjbb2005} { name: "bench-compiler-specjbb2005-linux-x4150"}
 
-  ${x4150.default-g1gc} ${bench-specjbb2005} { targets : [weekly, bench], name: "bench-specjbb2005-g1gc-linux-x4150"}  
+  ${x4150.default-g1gc} ${bench-specjbb2005} { targets : [weekly, bench], name: "bench-compiler-specjbb2005-g1gc-linux-x4150"}  
 ]

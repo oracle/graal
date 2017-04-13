@@ -10,5 +10,5 @@ x32.c2 : {
 }
 
 builds += [
-  ${x32.c2} ${bench-renaissance-hwloc}        { targets: [weekly], name: "bench-renaissance-linux-x32-c2" }
+  ${x32.c2} ${bench-renaissance-hwloc}        { targets: [weekly], name: "bench-compiler-renaissance-linux-x32-c2" }
 ]

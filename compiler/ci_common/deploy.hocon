@@ -1,17 +1,3 @@
-deploy-binaries : ${commonLinux} ${java8Downloads} {
-  name : "postmerge-deploy-binaries"
-  targets : [post-merge, deploy]
-  capabilities : [linux, amd64],
-  packages : {
-    maven : ">=3.3.9"
-  }
-  run : [
-    ["mx", "--strict-compliance", "build"]
-    # Note that MX_URL_REWRITES apply here
-    ["mx", "deploy-binary", "--skip-existing", ${binaries-repository}]
-  ]
-}
-
 builds += [
-  ${deploy-binaries}
+  ${deploy-binaries} ${compilerCommon} ${linux-amd64} ${linux-deploy} {name: "postmerge-compiler-deploy-binaries-linux-amd64"}
 ]

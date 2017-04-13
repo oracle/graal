@@ -1,5 +1,5 @@
-x32.default : ${commonLinux} {
-  capabilities: [linux, x32, no_frequency_scaling, tmpfs25g]
+x32.default : ${linux-amd64} {
+  capabilities: ${linux-amd64.capabilities} [x32, no_frequency_scaling, tmpfs25g]
   environment : {
     XMX         : "8g"
     XMS         : "8g"
@@ -16,7 +16,7 @@ x32.default-g1gc : ${x32.default} {
 }
 
 builds += [
-  ${x32.default} ${bench-renaissance-hwloc}         { name: "bench-renaissance-linux-x32" }
+  ${x32.default} ${bench-renaissance-hwloc}         { name: "bench-compiler-renaissance-linux-x32" }
 
-  ${x32.default-g1gc} ${bench-renaissance-hwloc}         { targets : [weekly, bench], name: "bench-renaissance-g1gc-linux-x32" }  
+  ${x32.default-g1gc} ${bench-renaissance-hwloc}         { targets : [weekly, bench], name: "bench-compiler-renaissance-g1gc-linux-x32" }  
 ]

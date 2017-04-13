@@ -1,0 +1,34 @@
+include "common.hocon"
+builds = []
+
+binaries-repository = "lafo-snapshots"
+
+#Truffle
+include "truffle/ci.hocon"
+
+#Compiler
+compiler-suite-root = "./compiler"
+logPatterns = ["*.bgv"]
+
+jvm-config.default = "graal-core"
+
+include "compiler/ci_common/common.hocon"
+include "compiler/ci_common/gate.hocon"
+include "compiler/ci_common/gate_tasks.hocon"
+include "compiler/ci_common/gate_tasks_bootstrap.hocon"
+include "compiler/ci_common/deploy.hocon"
+
+include "compiler/ci_common/bench.hocon"
+include "compiler/ci_common/bench-hwloc.hocon"
+include "compiler/ci_common/x32.hocon"
+include "compiler/ci_common/x32-tracera.hocon"
+include "compiler/ci_common/x52.hocon"
+include "compiler/ci_common/x52-tracera.hocon"
+include "compiler/ci_common/x4150.hocon"
+include "compiler/ci_common/m7_eighth.hocon"
+# C1 & C2 configs
+include "compiler/ci_includes/x32-c2.hocon"
+include "compiler/ci_includes/x52-c1.hocon"
+include "compiler/ci_includes/x52-c2.hocon"
+include "compiler/ci_includes/m7_eighth-c1.hocon"
+include "compiler/ci_includes/m7_eighth-c2.hocon"
