@@ -12,12 +12,12 @@ mx.truffle/eclipse-launches/**
 /src/*/\.project
 /src/*/\bin
 /src/*/\.checkstyle
-/src/*/*.iml
 /src/*/\.factorypath
 /src/TRUFFLE*dist/\.externalToolBuilders
 hs_err_pid*.log
 workingsets.xml
 \.idea
+*.iml
 *.swp
 findbugs.results
 .metadata/
