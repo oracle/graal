@@ -145,27 +145,12 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
         abstract boolean apply(TraceInterval i);
     }
 
-    static final IntervalPredicate IS_PRECOLORED_INTERVAL = new IntervalPredicate() {
-
-        @Override
-        public boolean apply(TraceInterval i) {
-            return isRegister(i.operand);
-        }
-    };
-
     static final IntervalPredicate IS_VARIABLE_INTERVAL = new IntervalPredicate() {
 
         @Override
         public boolean apply(TraceInterval i) {
-            return isVariable(i.operand);
-        }
-    };
-
-    static final IntervalPredicate IS_STACK_INTERVAL = new IntervalPredicate() {
-
-        @Override
-        public boolean apply(TraceInterval i) {
-            return !isRegister(i.operand);
+            // all TraceIntervals are variable intervals
+            return true;
         }
     };
 
