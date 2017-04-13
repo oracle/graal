@@ -47,7 +47,9 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.datalayout.DataLayoutConverter;
+import com.oracle.truffle.llvm.parser.metadata.SourceSectionGenerator;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
@@ -85,7 +87,7 @@ import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 public final class LLVMParserRuntime {
 
-    public static LLVMParserResult parse(Source source, LLVMLanguage language, LLVMContext context, SulongNodeFactory factoryFacade) {
+    public static LLVMParserResult parse(Source source, LLVMLanguage language, LLVMContext context, NodeFactoryFacade factoryFacade) {
         final BitcodeParserResult parserResult = BitcodeParserResult.getFromSource(source);
         final ModelModule model = parserResult.getModel();
         final StackAllocation stackAllocation = parserResult.getStackAllocation();
@@ -158,6 +160,8 @@ public final class LLVMParserRuntime {
 
     private final LLVMFunctionRegistry functionRegistry;
 
+    private final SourceSectionGenerator sourceSectionGenerator;
+
     private LLVMParserRuntime(Source source, LLVMLanguage language, LLVMContext context, StackAllocation stack, LLVMLabelList labels, LLVMPhiManager phis,
                     DataLayoutConverter.DataSpecConverterImpl layout, SulongNodeFactory factoryFacade, LLVMFunctionRegistry functionRegistry) {
         this.source = source;
@@ -170,6 +174,7 @@ public final class LLVMParserRuntime {
         this.functionRegistry = functionRegistry;
         this.language = language;
         this.symbolResolver = new LLVMSymbolResolver(labels, this);
+        this.sourceSectionGenerator = new SourceSectionGenerator();
     }
 
     LLVMExpressionNode createFunction(FunctionDefinition method, LLVMLifetimeAnalysis lifetimes) {
@@ -540,5 +545,9 @@ public final class LLVMParserRuntime {
 
     public LLVMLanguage getLanguage() {
         return language;
+    }
+
+    SourceSection getSourceSection(FunctionDefinition function) {
+        return sourceSectionGenerator.getOrDefault(function, source);
     }
 }

@@ -31,6 +31,8 @@ package com.oracle.truffle.llvm.parser.metadata;
 
 public final class MDKind implements MDBaseNode {
 
+    static final String DBG_NAME = "dbg";
+
     private final long id;
 
     private final String name;

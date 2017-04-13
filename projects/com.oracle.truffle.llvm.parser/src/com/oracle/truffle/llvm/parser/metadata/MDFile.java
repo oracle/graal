@@ -29,6 +29,10 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
+import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 public final class MDFile implements MDBaseNode {
 
     private final MDReference directory;
@@ -51,6 +55,18 @@ public final class MDFile implements MDBaseNode {
 
     public MDReference getDirectory() {
         return directory;
+    }
+
+    public File asFile() {
+        final String fileName = ((MDString) getFile().get()).getString();
+        final String dirPath = ((MDString) getDirectory().get()).getString();
+
+        final Path filePath = Paths.get(fileName);
+        if (filePath.isAbsolute()) {
+            return filePath.normalize().toFile();
+        } else {
+            return Paths.get(dirPath, fileName).normalize().toFile();
+        }
     }
 
     @Override

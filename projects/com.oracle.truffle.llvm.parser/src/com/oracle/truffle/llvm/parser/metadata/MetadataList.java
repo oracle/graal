@@ -151,6 +151,12 @@ public final class MetadataList {
         mdKinds.stream().map(k -> String.format("-> %s", k)).forEach(target);
     }
 
+    public void accept(MetadataVisitor visitor) {
+        mdKinds.forEach(md -> md.accept(visitor));
+        namedMetadata.forEach(md -> md.accept(visitor));
+        metadata.forEach(md -> md.accept(visitor));
+    }
+
     @Override
     public String toString() {
         return String.format("MetadataList [size=%d, parent=%s]", size(), parent);
