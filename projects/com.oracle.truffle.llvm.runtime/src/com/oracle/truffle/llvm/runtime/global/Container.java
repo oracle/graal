@@ -111,54 +111,63 @@ abstract class Container {
 
         @Override
         LLVMAddress getNativeLocation(LLVMGlobalVariable global) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             global.setContainer(new NativeContainer(type, resolver.resolve()));
             return global.getContainer().getNativeLocation(global);
         }
 
         @Override
         void putI1(LLVMGlobalVariable global, boolean value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             global.setContainer(new NativeContainer(type, resolver.resolve()));
             global.getContainer().putI1(global, value);
         }
 
         @Override
         void putI8(LLVMGlobalVariable global, byte value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             global.setContainer(new NativeContainer(type, resolver.resolve()));
             global.getContainer().putI8(global, value);
         }
 
         @Override
         void putI16(LLVMGlobalVariable global, short value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             global.setContainer(new NativeContainer(type, resolver.resolve()));
             global.getContainer().putI16(global, value);
         }
 
         @Override
         void putI32(LLVMGlobalVariable global, int value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             global.setContainer(new NativeContainer(type, resolver.resolve()));
             global.getContainer().putI32(global, value);
         }
 
         @Override
         void putI64(LLVMGlobalVariable global, long value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             global.setContainer(new NativeContainer(type, resolver.resolve()));
             global.getContainer().putI64(global, value);
         }
 
         @Override
         void putFloat(LLVMGlobalVariable global, float value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             global.setContainer(new NativeContainer(type, resolver.resolve()));
             global.getContainer().putFloat(global, value);
         }
 
         @Override
         void putDouble(LLVMGlobalVariable global, double value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             global.setContainer(new NativeContainer(type, resolver.resolve()));
             global.getContainer().putDouble(global, value);
         }
 
         @Override
         void putAddress(LLVMGlobalVariable global, LLVMAddress value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             global.setContainer(new NativeContainer(type, resolver.resolve()));
             global.getContainer().putAddress(global, value);
         }
@@ -177,66 +186,77 @@ abstract class Container {
 
         @Override
         void putFunction(LLVMGlobalVariable global, LLVMFunction value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             global.setContainer(new NativeContainer(type, resolver.resolve()));
             global.getContainer().putFunction(global, value);
         }
 
         @Override
         void putNull(LLVMGlobalVariable global, LLVMTruffleNull value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             global.setContainer(new NativeContainer(type, resolver.resolve()));
             global.getContainer().putNull(global, value);
         }
 
         @Override
         Object get(LLVMGlobalVariable global) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             global.setContainer(new NativeContainer(type, resolver.resolve()));
             return global.getContainer().get(global);
         }
 
         @Override
         boolean getI1(LLVMGlobalVariable global) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             global.setContainer(new NativeContainer(type, resolver.resolve()));
             return global.getContainer().getI1(global);
         }
 
         @Override
         byte getI8(LLVMGlobalVariable global) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             global.setContainer(new NativeContainer(type, resolver.resolve()));
             return global.getContainer().getI8(global);
         }
 
         @Override
         short getI16(LLVMGlobalVariable global) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             global.setContainer(new NativeContainer(type, resolver.resolve()));
             return global.getContainer().getI16(global);
         }
 
         @Override
         int getI32(LLVMGlobalVariable global) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             global.setContainer(new NativeContainer(type, resolver.resolve()));
             return global.getContainer().getI32(global);
         }
 
         @Override
         long getI64(LLVMGlobalVariable global) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             global.setContainer(new NativeContainer(type, resolver.resolve()));
             return global.getContainer().getI64(global);
         }
 
         @Override
         float getFloat(LLVMGlobalVariable global) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             global.setContainer(new NativeContainer(type, resolver.resolve()));
             return global.getContainer().getFloat(global);
         }
 
         @Override
         double getDouble(LLVMGlobalVariable global) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             global.setContainer(new NativeContainer(type, resolver.resolve()));
             return global.getContainer().getDouble(global);
         }
 
         @Override
         void putGlobal(LLVMGlobalVariable global, LLVMGlobalVariable value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             global.setContainer(new NativeContainer(type, resolver.resolve()));
             global.getContainer().putGlobal(global, value);
         }
@@ -510,36 +530,42 @@ abstract class Container {
 
         @Override
         void putAddress(LLVMGlobalVariable global, LLVMAddress value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             CachedManagedContainer newContainer = new CachedManagedContainer(type, allocator, value);
             global.setContainer(newContainer);
         }
 
         @Override
         void putTruffleObject(LLVMGlobalVariable global, TruffleObject value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             CachedManagedContainer newContainer = new CachedManagedContainer(type, allocator, value);
             global.setContainer(newContainer);
         }
 
         @Override
         void putLLVMTruffleObject(LLVMGlobalVariable global, LLVMTruffleObject value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             CachedManagedContainer newContainer = new CachedManagedContainer(type, allocator, value);
             global.setContainer(newContainer);
         }
 
         @Override
         void putFunction(LLVMGlobalVariable global, LLVMFunction value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             CachedManagedContainer newContainer = new CachedManagedContainer(type, allocator, value);
             global.setContainer(newContainer);
         }
 
         @Override
         void putNull(LLVMGlobalVariable global, LLVMTruffleNull value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             CachedManagedContainer newContainer = new CachedManagedContainer(type, allocator, value);
             global.setContainer(newContainer);
         }
 
         @Override
         void putGlobal(LLVMGlobalVariable global, LLVMGlobalVariable value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             CachedManagedContainer newContainer = new CachedManagedContainer(type, allocator, value);
             global.setContainer(newContainer);
         }
@@ -605,36 +631,42 @@ abstract class Container {
 
         @Override
         void putAddress(LLVMGlobalVariable global, LLVMAddress value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             GenericManagedContainer newContainer = new GenericManagedContainer(type, allocator, value);
             global.setContainer(newContainer);
         }
 
         @Override
         void putTruffleObject(LLVMGlobalVariable global, TruffleObject value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             GenericManagedContainer newContainer = new GenericManagedContainer(type, allocator, value);
             global.setContainer(newContainer);
         }
 
         @Override
         void putLLVMTruffleObject(LLVMGlobalVariable global, LLVMTruffleObject value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             GenericManagedContainer newContainer = new GenericManagedContainer(type, allocator, value);
             global.setContainer(newContainer);
         }
 
         @Override
         void putFunction(LLVMGlobalVariable global, LLVMFunction value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             GenericManagedContainer newContainer = new GenericManagedContainer(type, allocator, value);
             global.setContainer(newContainer);
         }
 
         @Override
         void putNull(LLVMGlobalVariable global, LLVMTruffleNull value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             GenericManagedContainer newContainer = new GenericManagedContainer(type, allocator, value);
             global.setContainer(newContainer);
         }
 
         @Override
         void putGlobal(LLVMGlobalVariable global, LLVMGlobalVariable value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             GenericManagedContainer newContainer = new GenericManagedContainer(type, allocator, value);
             global.setContainer(newContainer);
         }
