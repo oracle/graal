@@ -285,6 +285,31 @@ final class TraceInterval extends IntervalHint {
 
     private final OptionValues options;
 
+    /**
+     * Sentinel interval to denote the end of an interval list.
+     */
+    static final TraceInterval EndMarker = new TraceInterval(Value.ILLEGAL, -1, null);
+
+    TraceInterval(AllocatableValue operand, int operandNumber, OptionValues options) {
+        assert operand != null;
+        this.operand = operand;
+        this.operandNumber = operandNumber;
+        this.options = options;
+        if (isRegister(operand)) {
+            location = operand;
+        } else {
+            assert isIllegal(operand) || isVariable(operand);
+        }
+        this.intFrom = Integer.MAX_VALUE;
+        this.intTo = Integer.MAX_VALUE;
+        this.usePosListArray = new int[4 * 2];
+        this.next = EndMarker;
+        this.spillState = SpillState.NoDefinitionFound;
+        this.spillDefinitionPos = -1;
+        splitParent = this;
+        currentSplitChild = this;
+    }
+
     private boolean splitChildrenEmpty() {
         assert splitChildren == null || !splitChildren.isEmpty();
         return splitChildren == null;
@@ -452,31 +477,6 @@ final class TraceInterval extends IntervalHint {
             return -1;
         }
         return i2.from();
-    }
-
-    /**
-     * Sentinel interval to denote the end of an interval list.
-     */
-    static final TraceInterval EndMarker = new TraceInterval(Value.ILLEGAL, -1, null);
-
-    TraceInterval(AllocatableValue operand, int operandNumber, OptionValues options) {
-        assert operand != null;
-        this.operand = operand;
-        this.operandNumber = operandNumber;
-        this.options = options;
-        if (isRegister(operand)) {
-            location = operand;
-        } else {
-            assert isIllegal(operand) || isVariable(operand);
-        }
-        this.intFrom = Integer.MAX_VALUE;
-        this.intTo = Integer.MAX_VALUE;
-        this.usePosListArray = new int[4 * 2];
-        this.next = EndMarker;
-        this.spillState = SpillState.NoDefinitionFound;
-        this.spillDefinitionPos = -1;
-        splitParent = this;
-        currentSplitChild = this;
     }
 
     /**
