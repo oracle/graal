@@ -30,14 +30,13 @@ import static org.graalvm.compiler.core.GraalCompilerOptions.PrintCompilation;
 import static org.graalvm.compiler.core.GraalCompilerOptions.PrintFilter;
 import static org.graalvm.compiler.core.GraalCompilerOptions.PrintStackTraceOnException;
 import static org.graalvm.compiler.core.phases.HighTier.Options.Inline;
-import static org.graalvm.compiler.debug.Debug.INFO_LEVEL;
+import static org.graalvm.compiler.debug.Debug.VERBOSE_LEVEL;
 import static org.graalvm.compiler.debug.DelegatingDebugConfig.Feature.DUMP_METHOD;
 import static org.graalvm.compiler.debug.DelegatingDebugConfig.Level.DUMP;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Dump;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.DumpPath;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.ForceDebugEnable;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintCFGFileName;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintGraphFile;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintGraphFileName;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 
@@ -219,11 +218,10 @@ public class CompilationTask {
             TTY.println("Retrying " + CompilationTask.this);
             retryDumpHandlers = new ArrayList<>();
             retryOptions = new OptionValues(options,
-                            PrintGraphFile, true,
                             PrintCFGFileName, methodFQN,
                             PrintGraphFileName, methodFQN,
                             DumpPath, dumpPath.getPath());
-            override(DUMP, INFO_LEVEL).enable(DUMP_METHOD);
+            override(DUMP, VERBOSE_LEVEL).enable(DUMP_METHOD);
             new GraalDebugConfigCustomizer().customize(this);
             return true;
         }

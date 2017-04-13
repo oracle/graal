@@ -25,7 +25,7 @@ package org.graalvm.compiler.nodes.graphbuilderconf;
 import static java.lang.String.format;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.LateClassPlugins.FINAL_LATE_CLASS_PLUGIN;
 
-import java.lang.reflect.Executable;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
@@ -38,11 +38,13 @@ import java.util.Map;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.api.replacements.MethodSubstitutionRegistry;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
+import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+import org.graalvm.util.CollectionsUtil;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.MapCursor;
@@ -426,8 +428,8 @@ public class InvocationPlugins {
             Binding binding = new Binding(plugin, isStatic, name, argumentTypes);
             bindings.add(binding);
 
-            assert Checker.check(this.plugins, declaringType, binding);
-            assert plugins.checkResolvable(false, declaringType, isStatic, name, argumentTypes);
+            assert Checks.check(this.plugins, declaringType, binding);
+            assert Checks.checkResolvable(false, declaringType, isStatic, name, argumentTypes);
         }
 
         @Override
@@ -436,29 +438,6 @@ public class InvocationPlugins {
             plugins.registerLate(declaringType, bindings);
             plugins = null;
         }
-    }
-
-    boolean checkResolvable(boolean isOptional, Type declaringType, boolean isStatic, String name, Type... argumentTypes) {
-        Class<?> declaringClass = resolveType(declaringType, isOptional);
-        if (declaringClass == null) {
-            return true;
-        }
-        try {
-            Executable res;
-            Class<?>[] parameterTypes = resolveTypes(argumentTypes, isStatic ? 0 : 1, argumentTypes.length);
-            if (name.equals("<init>")) {
-                res = declaringClass.getDeclaredConstructor(parameterTypes);
-            } else {
-                res = declaringClass.getDeclaredMethod(name, parameterTypes);
-            }
-            assert Modifier.isStatic(res.getModifiers()) == isStatic : res;
-        } catch (NoSuchMethodException | SecurityException e) {
-            if (isOptional) {
-                return true;
-            }
-            throw new AssertionError(e);
-        }
-        return true;
     }
 
     /**
@@ -579,12 +558,12 @@ public class InvocationPlugins {
          *
          * @return the invocation plugin for {@code method} or {@code null}
          */
-        public InvocationPlugin get(ResolvedJavaMethod method) {
+        InvocationPlugin get(ResolvedJavaMethod method) {
+            assert !method.isBridge();
             Binding binding = bindings.get(method.getName());
             while (binding != null) {
                 if (method.isStatic() == binding.isStatic) {
-                    String md = method.getSignature().toMethodDescriptor();
-                    if (md.startsWith(binding.argumentsDescriptor)) {
+                    if (method.getSignature().toMethodDescriptor().startsWith(binding.argumentsDescriptor)) {
                         return binding.plugin;
                     }
                 }
@@ -679,15 +658,21 @@ public class InvocationPlugins {
         if (resolvedRegistrations != null) {
             return resolvedRegistrations.get(method);
         } else {
-            flushDeferrables();
-            String internalName = method.getDeclaringClass().getName();
-            ClassPlugins classPlugins = registrations.get(internalName);
-            if (classPlugins != null) {
-                return classPlugins.get(method);
-            }
-            LateClassPlugins lcp = findLateClassPlugins(internalName);
-            if (lcp != null) {
-                return lcp.get(method);
+            if (!method.isBridge()) {
+                flushDeferrables();
+                String internalName = method.getDeclaringClass().getName();
+                ClassPlugins classPlugins = registrations.get(internalName);
+                if (classPlugins != null) {
+                    return classPlugins.get(method);
+                }
+                LateClassPlugins lcp = findLateClassPlugins(internalName);
+                if (lcp != null) {
+                    return lcp.get(method);
+                }
+            } else {
+                // Supporting plugins for bridge methods would require including
+                // the return type in the registered signature. Until needed,
+                // this extra complexity is best avoided.
             }
         }
         return null;
@@ -800,8 +785,8 @@ public class InvocationPlugins {
             argumentTypes[0] = declaringClass;
         }
         Binding binding = put(plugin, isStatic, allowOverwrite, declaringClass, name, argumentTypes);
-        assert Checker.check(this, declaringClass, binding);
-        assert checkResolvable(isOptional, declaringClass, isStatic, name, argumentTypes);
+        assert Checks.check(this, declaringClass, binding);
+        assert Checks.checkResolvable(isOptional, declaringClass, isStatic, name, argumentTypes);
     }
 
     /**
@@ -940,7 +925,10 @@ public class InvocationPlugins {
         return buf.toString();
     }
 
-    private static class Checker {
+    /**
+     * Code only used in assertions. Putting this in a separate class reduces class load time.
+     */
+    private static class Checks {
         private static final int MAX_ARITY = 7;
         /**
          * The set of all {@link InvocationPlugin#apply} method signatures.
@@ -948,6 +936,9 @@ public class InvocationPlugins {
         static final Class<?>[][] SIGS;
 
         static {
+            if (!Assertions.ENABLED) {
+                throw new GraalError("%s must only be used in assertions", Checks.class.getName());
+            }
             ArrayList<Class<?>[]> sigs = new ArrayList<>(MAX_ARITY);
             for (Method method : InvocationPlugin.class.getDeclaredMethods()) {
                 if (!Modifier.isStatic(method.getModifiers()) && method.getName().equals("apply")) {
@@ -983,7 +974,7 @@ public class InvocationPlugins {
                 assert substitute.getAnnotation(MethodSubstitution.class) != null : format("Substitute method must be annotated with @%s: %s", MethodSubstitution.class.getSimpleName(), substitute);
                 return true;
             }
-            int arguments = plugins.metaAccess.parseMethodDescriptor(binding.argumentsDescriptor + "V").getParameterCount(false);
+            int arguments = countParameters(binding.argumentsDescriptor);
             assert arguments < SIGS.length : format("need to extend %s to support method with %d arguments: %s", InvocationPlugin.class.getSimpleName(), arguments, binding);
             for (Method m : plugin.getClass().getDeclaredMethods()) {
                 if (m.getName().equals("apply")) {
@@ -995,6 +986,117 @@ public class InvocationPlugins {
             }
             throw new AssertionError(format("graph builder plugin for %s not found", binding));
         }
+
+        static boolean checkResolvable(boolean isOptional, Type declaringType, boolean isStatic, String name, Type... argumentTypes) {
+            Class<?> declaringClass = InvocationPlugins.resolveType(declaringType, isOptional);
+            if (declaringClass == null) {
+                return true;
+            }
+            Class<?>[] parameterTypes = resolveTypes(argumentTypes, isStatic ? 0 : 1, argumentTypes.length);
+            if (name.equals("<init>")) {
+                try {
+                    Constructor<?> res = declaringClass.getDeclaredConstructor(parameterTypes);
+                    assert Modifier.isStatic(res.getModifiers()) == isStatic : res;
+                } catch (NoSuchMethodException | SecurityException e) {
+                    if (isOptional) {
+                        return true;
+                    }
+                    throw new AssertionError(e);
+                }
+            } else {
+                Method res = Checks.lookupMethod(declaringClass, isStatic, name, parameterTypes);
+                if (res == null && !isOptional) {
+                    throw new AssertionError(String.format("Method not found: %s.%s(%s)", declaringClass.getName(), name, CollectionsUtil.mapAndJoin(parameterTypes, Class::getName, ", ")));
+                }
+            }
+            return true;
+        }
+
+        private static Method lookupMethod(Class<?> declaringClass, boolean isStatic, String name, Class<?>[] parameterTypes) {
+            Method[] methods = declaringClass.getDeclaredMethods();
+            for (int i = 0; i < methods.length; ++i) {
+                Method m = methods[i];
+                if (isStatic == Modifier.isStatic(m.getModifiers()) && m.getName().equals(name)) {
+                    if (Arrays.equals(parameterTypes, m.getParameterTypes())) {
+                        for (int j = i + 1; j < methods.length; ++j) {
+                            Method other = methods[j];
+                            if (isStatic == Modifier.isStatic(other.getModifiers()) && other.getName().equals(name)) {
+                                if (Arrays.equals(parameterTypes, other.getParameterTypes())) {
+                                    if (m.getReturnType().isAssignableFrom(other.getReturnType())) {
+                                        // `other` has a more specific return type - choose it
+                                        // (m is probably a bridge method)
+                                        m = other;
+                                    } else {
+                                        assert other.getReturnType().isAssignableFrom(m.getReturnType()) : String.format(
+                                                        "Found 2 methods with same name and parameter types but unrelated return types:%n %s%n %s", m, other);
+                                    }
+                                }
+                            }
+                        }
+                        return m;
+                    }
+                }
+            }
+            return null;
+        }
+
+        private static int countParameters(String argumentsDescriptor) {
+            assert argumentsDescriptor.startsWith("(") && argumentsDescriptor.endsWith(")") : argumentsDescriptor;
+            int cur = 1;
+            int count = 0;
+            int end = argumentsDescriptor.length() - 1;
+            while (cur != end) {
+                char first;
+                do {
+                    first = argumentsDescriptor.charAt(cur++);
+                } while (first == '[');
+
+                switch (first) {
+                    case 'L':
+                        int endObject = argumentsDescriptor.indexOf(';', cur);
+                        if (endObject == -1) {
+                            throw new GraalError("Invalid object type at index %d in signature: %s", cur, argumentsDescriptor);
+                        }
+                        cur = endObject + 1;
+                        break;
+                    case 'V':
+                    case 'I':
+                    case 'B':
+                    case 'C':
+                    case 'D':
+                    case 'F':
+                    case 'J':
+                    case 'S':
+                    case 'Z':
+                        break;
+                    default:
+                        throw new GraalError("Invalid character at index %d in signature: %s", cur, argumentsDescriptor);
+                }
+                count++;
+            }
+            return count;
+        }
+
+        /**
+         * Resolves an array of {@link Type}s to an array of {@link Class}es.
+         *
+         * @param types the types to resolve
+         * @param from the initial index of the range to be resolved, inclusive
+         * @param to the final index of the range to be resolved, exclusive
+         * @return the resolved class or null if resolution fails and {@code optional} is true
+         */
+        public static Class<?>[] resolveTypes(Type[] types, int from, int to) {
+            int length = to - from;
+            if (length <= 0) {
+                return NO_CLASSES;
+            }
+            Class<?>[] classes = new Class<?>[length];
+            for (int i = 0; i < length; i++) {
+                classes[i] = resolveType(types[i + from], false);
+            }
+            return classes;
+        }
+
     }
 
     /**
@@ -1052,23 +1154,4 @@ public class InvocationPlugins {
 
     private static final Class<?>[] NO_CLASSES = {};
 
-    /**
-     * Resolves an array of {@link Type}s to an array of {@link Class}es.
-     *
-     * @param types the types to resolve
-     * @param from the initial index of the range to be resolved, inclusive
-     * @param to the final index of the range to be resolved, exclusive
-     * @return the resolved class or null if resolution fails and {@code optional} is true
-     */
-    public static Class<?>[] resolveTypes(Type[] types, int from, int to) {
-        int length = to - from;
-        if (length <= 0) {
-            return NO_CLASSES;
-        }
-        Class<?>[] classes = new Class<?>[length];
-        for (int i = 0; i < length; i++) {
-            classes[i] = resolveType(types[i + from], false);
-        }
-        return classes;
-    }
 }
