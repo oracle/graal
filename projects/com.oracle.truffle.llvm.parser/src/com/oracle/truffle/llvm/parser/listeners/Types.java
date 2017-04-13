@@ -195,7 +195,7 @@ public final class Types implements ParserListener, Iterable<Type> {
                 break;
             }
             case FUNCTION:
-                type = new FunctionType(get(args[1]), toTypes(this, args, 2, args.length), false);
+                type = new FunctionType(get(args[1]), toTypes(this, args, 2, args.length), args[0] != 0);
                 break;
 
             case TOKEN:
