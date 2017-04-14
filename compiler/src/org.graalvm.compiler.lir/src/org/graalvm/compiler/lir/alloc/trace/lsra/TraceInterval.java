@@ -283,22 +283,19 @@ final class TraceInterval extends IntervalHint {
      */
     private int numMaterializationValuesAdded;
 
-    private final OptionValues options;
-
     /**
      * Sentinel interval to denote the end of an interval list.
      */
-    static final TraceInterval EndMarker = new TraceInterval(new Variable(ValueKind.Illegal, Integer.MAX_VALUE), -1, null, -1);
+    static final TraceInterval EndMarker = new TraceInterval(new Variable(ValueKind.Illegal, Integer.MAX_VALUE), -1);
 
-    TraceInterval(Variable operand, OptionValues options) {
-        this(operand, operand.index, options, 0);
+    TraceInterval(Variable operand) {
+        this(operand, operand.index);
     }
 
-    private TraceInterval(AllocatableValue operand, int operandNumber, OptionValues options, @SuppressWarnings("unused") int dummy) {
+    private TraceInterval(AllocatableValue operand, int operandNumber) {
         assert operand != null;
         this.operand = operand;
         this.operandNumber = operandNumber;
-        this.options = options;
         if (isRegister(operand)) {
             location = operand;
         } else {
@@ -346,7 +343,6 @@ final class TraceInterval extends IntervalHint {
         return location;
     }
 
-    @Deprecated
     private ValueKind<?> kind() {
         return operand.getValueKind();
     }
@@ -777,7 +773,7 @@ final class TraceInterval extends IntervalHint {
         return prev;
     }
 
-    public void addUsePos(int pos, RegisterPriority registerPriority) {
+    public void addUsePos(int pos, RegisterPriority registerPriority, OptionValues options) {
         assert isEmpty() || covers(pos, LIRInstruction.OperandMode.USE) : String.format("use position %d not covered by live range of interval %s", pos, this);
 
         // do not add use positions for precolored intervals because they are never used
@@ -862,7 +858,7 @@ final class TraceInterval extends IntervalHint {
         // split list of use positions
         splitUsePosAt(result, splitPos);
 
-        if (DetailedAsserts.getValue(options)) {
+        if (DetailedAsserts.getValue(allocator.getOptions())) {
             for (int i = 0; i < numUsePos(); i++) {
                 assert getUsePos(i) < splitPos;
             }

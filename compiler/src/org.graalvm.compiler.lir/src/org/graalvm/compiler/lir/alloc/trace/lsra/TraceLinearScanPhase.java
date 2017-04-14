@@ -826,7 +826,7 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
             assert isLegal(operand);
             int operandNumber = operandNumber(operand);
             assert operand.index == operandNumber;
-            TraceInterval interval = new TraceInterval(operand, getOptions());
+            TraceInterval interval = new TraceInterval(operand);
             assert operandNumber < intervalsSize;
             assert intervals[operandNumber] == null;
             intervals[operandNumber] = interval;

@@ -215,7 +215,7 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
             interval.addRange(from, to);
 
             // Register use position at even instruction id.
-            interval.addUsePos(to & ~1, registerPriority);
+            interval.addUsePos(to & ~1, registerPriority, allocator.getOptions());
 
             if (Debug.isLogEnabled()) {
                 Debug.log("add use: %s, at %d (%s)", interval, to, registerPriority.name());
@@ -280,7 +280,7 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
             }
             if (!(op instanceof LabelOp)) {
                 // no use positions for labels
-                interval.addUsePos(defPos, registerPriority);
+                interval.addUsePos(defPos, registerPriority, allocator.getOptions());
             }
 
             changeSpillDefinitionPos(op, operand, interval, defPos);
@@ -325,7 +325,7 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
                 interval.setFrom(tempPos);
             }
 
-            interval.addUsePos(tempPos, registerPriority);
+            interval.addUsePos(tempPos, registerPriority, allocator.getOptions());
             interval.addMaterializationValue(null);
 
             if (Debug.isLogEnabled()) {
