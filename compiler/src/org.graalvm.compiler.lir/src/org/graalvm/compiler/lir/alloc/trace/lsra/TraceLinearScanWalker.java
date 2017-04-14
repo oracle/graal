@@ -39,6 +39,7 @@ import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
 import org.graalvm.compiler.lir.StandardOp.LabelOp;
 import org.graalvm.compiler.lir.StandardOp.ValueMoveOp;
@@ -986,7 +987,7 @@ final class TraceLinearScanWalker {
             }
 
             splitPos = usePos[reg.number];
-            interval.assignLocation(reg.asValue(interval.kind()));
+            interval.assignLocation(reg.asValue(allocator.getKind(interval)));
             if (Debug.isLogEnabled()) {
                 Debug.log("selected register %d (%s)", reg.number, reg);
             }
@@ -1113,7 +1114,7 @@ final class TraceLinearScanWalker {
             assert splitPos > 0 : "invalid splitPos";
             assert needSplit || splitPos > interval.from() : "splitting interval at from";
 
-            interval.assignLocation(reg.asValue(interval.kind()));
+            interval.assignLocation(reg.asValue(allocator.getKind(interval)));
             if (needSplit) {
                 // register not available for full interval : so split it
                 splitWhenPartialRegisterAvailable(interval, splitPos);
@@ -1170,7 +1171,7 @@ final class TraceLinearScanWalker {
     }
 
     private void initVarsForAlloc(TraceInterval interval) {
-        AllocatableRegisters allocatableRegisters = allocator.getRegisterAllocationConfig().getAllocatableRegisters(interval.kind().getPlatformKind());
+        AllocatableRegisters allocatableRegisters = allocator.getRegisterAllocationConfig().getAllocatableRegisters(allocator.getKind(interval).getPlatformKind());
         availableRegs = allocatableRegisters.allocatableRegisters;
         minReg = allocatableRegisters.minRegisterNumber;
         maxReg = allocatableRegisters.maxRegisterNumber;
@@ -1180,7 +1181,8 @@ final class TraceLinearScanWalker {
         if (ValueMoveOp.isValueMoveOp(op)) {
             ValueMoveOp move = ValueMoveOp.asValueMoveOp(op);
             if (isVariable(move.getInput()) && isVariable(move.getResult())) {
-                return move.getInput() != null && move.getInput().equals(from.operand) && move.getResult() != null && move.getResult().equals(to.operand);
+                return move.getInput() != null && LIRValueUtil.asVariable(move.getInput()).index == from.operandNumber && move.getResult() != null &&
+                                LIRValueUtil.asVariable(move.getResult()).index == to.operandNumber;
             }
         }
         return false;
@@ -1255,7 +1257,6 @@ final class TraceLinearScanWalker {
 
         try (Indent indent = Debug.logAndIndent("activating interval %s,  splitParent: %d", interval, interval.splitParent().operandNumber)) {
 
-            final Value operand = interval.operand;
             if (interval.location() != null && isStackSlotValue(interval.location())) {
                 // activating an interval that has a stack slot assigned . split it at first use
                 // position
@@ -1295,7 +1296,7 @@ final class TraceLinearScanWalker {
             if (interval.insertMoveWhenActivated()) {
                 assert interval.isSplitChild();
                 assert interval.currentSplitChild() != null;
-                assert !interval.currentSplitChild().operand.equals(operand) : "cannot insert move between same interval";
+                assert interval.currentSplitChild().operandNumber != interval.operandNumber : "cannot insert move between same interval";
                 if (Debug.isLogEnabled()) {
                     Debug.log("Inserting move from interval %d to %d because insertMoveWhenActivated is set", interval.currentSplitChild().operandNumber, interval.operandNumber);
                 }

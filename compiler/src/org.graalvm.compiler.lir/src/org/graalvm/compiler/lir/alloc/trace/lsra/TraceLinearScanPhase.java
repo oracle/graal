@@ -45,7 +45,6 @@ import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
-import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
@@ -312,20 +311,20 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
 
         /**
          * Returns a new spill slot or a cached entry if there is already one for the
-         * {@linkplain TraceInterval#operand variable}.
+         * {@linkplain TraceInterval variable}.
          */
         private AllocatableValue allocateSpillSlot(TraceInterval interval) {
-            int variableIndex = LIRValueUtil.asVariable(interval.splitParent().operand).index;
+            int variableIndex = interval.splitParent().operandNumber;
             OptionValues options = getOptions();
             if (TraceRegisterAllocationPhase.Options.TraceRACacheStackSlots.getValue(options)) {
                 AllocatableValue cachedStackSlot = cachedStackSlots[variableIndex];
                 if (cachedStackSlot != null) {
                     TraceRegisterAllocationPhase.globalStackSlots.increment();
-                    assert cachedStackSlot.getValueKind().equals(interval.kind()) : "CachedStackSlot: kind mismatch? " + interval.kind() + " vs. " + cachedStackSlot.getValueKind();
+                    assert cachedStackSlot.getValueKind().equals(getKind(interval)) : "CachedStackSlot: kind mismatch? " + getKind(interval) + " vs. " + cachedStackSlot.getValueKind();
                     return cachedStackSlot;
                 }
             }
-            VirtualStackSlot slot = frameMapBuilder.allocateSpillSlot(interval.kind());
+            VirtualStackSlot slot = frameMapBuilder.allocateSpillSlot(getKind(interval));
             if (TraceRegisterAllocationPhase.Options.TraceRACacheStackSlots.getValue(options)) {
                 cachedStackSlots[variableIndex] = slot;
             }
@@ -652,7 +651,7 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
                         throw new GraalError("");
                     }
 
-                    if (isVariable(i1.operand) && i1.kind().equals(LIRKind.Illegal)) {
+                    if (getKind(i1).equals(LIRKind.Illegal)) {
                         Debug.log("Interval %d has no type assigned", i1.operandNumber);
                         Debug.log(i1.logString());
                         throw new GraalError("");
@@ -847,7 +846,7 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
                 intervals = Arrays.copyOf(intervals, intervals.length + (intervals.length >> SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT) + 1);
             }
             // increments intervalsSize
-            Variable variable = createVariable(source.kind());
+            Variable variable = createVariable(getKind(source));
 
             assert intervalsSize <= intervals.length;
 
@@ -1008,6 +1007,34 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
             return TraceUtil.hasInterTraceSuccessor(traceBuilderResult, trace, block);
         }
 
+        private void printInterval(TraceInterval interval, IntervalVisitor visitor) {
+            Value hint = interval.locationHint(false) != null ? interval.locationHint(false).location() : null;
+            AllocatableValue operand = getOperand(interval);
+            String type = getKind(interval).getPlatformKind().toString();
+            visitor.visitIntervalStart(getOperand(interval.splitParent()), operand, interval.location(), hint, type);
+
+            // print ranges
+            visitor.visitRange(interval.from(), interval.to());
+
+            // print use positions
+            int prev = -1;
+            for (int i = interval.numUsePos() - 1; i >= 0; --i) {
+                assert prev < interval.getUsePos(i) : "use positions not sorted";
+                visitor.visitUsePos(interval.getUsePos(i), interval.getUsePosRegisterPriority(i));
+                prev = interval.getUsePos(i);
+            }
+
+            visitor.visitIntervalEnd(interval.spillState());
+        }
+
+        AllocatableValue getOperand(TraceInterval interval) {
+            return interval.operand;
+        }
+
+        ValueKind<?> getKind(TraceInterval interval) {
+            return getOperand(interval).getValueKind();
+        }
+
     }
 
     public static boolean verifyEquals(TraceLinearScan a, TraceLinearScan b) {
@@ -1037,7 +1064,7 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
             return;
         }
         assert b != null : "Second interval is null but forst is: " + a;
-        assert a.operand.equals(b.operand) : "Operand mismatch: " + a + " vs. " + b;
+        assert a.operandNumber == b.operandNumber : "Operand mismatch: " + a + " vs. " + b;
         assert a.from() == b.from() : "From mismatch: " + a + " vs. " + b;
         assert a.to() == b.to() : "To mismatch: " + a + " vs. " + b;
         assert verifyIntervalsEquals(a, b);
@@ -1122,23 +1149,4 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
 
     }
 
-    private static void printInterval(TraceInterval interval, IntervalVisitor visitor) {
-        Value hint = interval.locationHint(false) != null ? interval.locationHint(false).location() : null;
-        AllocatableValue operand = interval.operand;
-        String type = isRegister(operand) ? "fixed" : operand.getValueKind().getPlatformKind().toString();
-        visitor.visitIntervalStart(interval.splitParent().operand, operand, interval.location(), hint, type);
-
-        // print ranges
-        visitor.visitRange(interval.from(), interval.to());
-
-        // print use positions
-        int prev = -1;
-        for (int i = interval.numUsePos() - 1; i >= 0; --i) {
-            assert prev < interval.getUsePos(i) : "use positions not sorted";
-            visitor.visitUsePos(interval.getUsePos(i), interval.getUsePosRegisterPriority(i));
-            prev = interval.getUsePos(i);
-        }
-
-        visitor.visitIntervalEnd(interval.spillState());
-    }
 }

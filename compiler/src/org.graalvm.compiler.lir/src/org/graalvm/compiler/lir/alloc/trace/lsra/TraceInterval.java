@@ -194,9 +194,7 @@ final class TraceInterval extends IntervalHint {
      * The {@linkplain RegisterValue register} or {@linkplain Variable variable} for this interval
      * prior to register allocation.
      */
-    public final AllocatableValue operand;
-
-    public final ValueKind<?> kind;
+    @Deprecated public final AllocatableValue operand;
 
     /**
      * The operand number for this interval's {@linkplain #operand operand}.
@@ -299,7 +297,6 @@ final class TraceInterval extends IntervalHint {
     private TraceInterval(AllocatableValue operand, int operandNumber, OptionValues options, @SuppressWarnings("unused") int dummy) {
         assert operand != null;
         this.operand = operand;
-        this.kind = operand.getValueKind();
         this.operandNumber = operandNumber;
         this.options = options;
         if (isRegister(operand)) {
@@ -349,8 +346,9 @@ final class TraceInterval extends IntervalHint {
         return location;
     }
 
-    public ValueKind<?> kind() {
-        return kind;
+    @Deprecated
+    private ValueKind<?> kind() {
+        return operand.getValueKind();
     }
 
     public boolean isEmpty() {
@@ -529,7 +527,7 @@ final class TraceInterval extends IntervalHint {
                 for (int j = i + 1; j < splitChildren.size(); j++) {
                     TraceInterval i2 = splitChildren.get(j);
 
-                    assert !i1.operand.equals(i2.operand) : "same register number";
+                    assert i1.operandNumber != i2.operandNumber : "same register number";
 
                     if (i1.from() < i2.from()) {
                         assert i1.to() <= i2.from() && i1.to() < i2.to() : "intervals overlapping";
@@ -735,8 +733,6 @@ final class TraceInterval extends IntervalHint {
 
     // Note: use positions are sorted descending . first use has highest index
     int firstUsage(RegisterPriority minRegisterPriority) {
-        assert isVariable(operand) : "cannot access use positions for fixed intervals";
-
         for (int i = numUsePos() - 1; i >= 0; --i) {
             RegisterPriority registerPriority = adaptPriority(getUsePosRegisterPriority(i));
             if (registerPriority.greaterEqual(minRegisterPriority)) {
@@ -747,8 +743,6 @@ final class TraceInterval extends IntervalHint {
     }
 
     int nextUsage(RegisterPriority minRegisterPriority, int from) {
-        assert isVariable(operand) : "cannot access use positions for fixed intervals";
-
         for (int i = numUsePos() - 1; i >= 0; --i) {
             int usePos = getUsePos(i);
             if (usePos >= from && adaptPriority(getUsePosRegisterPriority(i)).greaterEqual(minRegisterPriority)) {
@@ -759,7 +753,6 @@ final class TraceInterval extends IntervalHint {
     }
 
     int nextUsageExact(RegisterPriority exactRegisterPriority, int from) {
-        assert isVariable(operand) : "cannot access use positions for fixed intervals";
 
         for (int i = numUsePos() - 1; i >= 0; --i) {
             int usePos = getUsePos(i);
@@ -771,8 +764,6 @@ final class TraceInterval extends IntervalHint {
     }
 
     int previousUsage(RegisterPriority minRegisterPriority, int from) {
-        assert isVariable(operand) : "cannot access use positions for fixed intervals";
-
         int prev = -1;
         for (int i = numUsePos() - 1; i >= 0; --i) {
             int usePos = getUsePos(i);
@@ -790,7 +781,7 @@ final class TraceInterval extends IntervalHint {
         assert isEmpty() || covers(pos, LIRInstruction.OperandMode.USE) : String.format("use position %d not covered by live range of interval %s", pos, this);
 
         // do not add use positions for precolored intervals because they are never used
-        if (registerPriority != RegisterPriority.None && isVariable(operand)) {
+        if (registerPriority != RegisterPriority.None) {
             if (DetailedAsserts.getValue(options)) {
                 for (int i = 0; i < numUsePos(); i++) {
                     assert pos <= getUsePos(i) : "already added a use-position with lower position";
@@ -859,7 +850,6 @@ final class TraceInterval extends IntervalHint {
      * @return the child interval split off from this interval
      */
     TraceInterval split(int splitPos, TraceLinearScan allocator) {
-        assert isVariable(operand) : "cannot split fixed intervals";
 
         // allocate new interval
         TraceInterval result = newSplitChild(allocator);
@@ -946,59 +936,6 @@ final class TraceInterval extends IntervalHint {
 
     List<TraceInterval> getSplitChildren() {
         return Collections.unmodifiableList(splitChildren);
-    }
-
-    boolean isFixedInterval() {
-        return isRegister(operand);
-    }
-
-    private static boolean isDefinitionPosition(int usePos) {
-        return (usePos & 1) == 1;
-    }
-
-    int currentFrom(int currentPosition) {
-        assert isFixedInterval();
-        for (int i = 0; i < numUsePos(); i++) {
-            int usePos = getUsePos(i);
-            if (usePos <= currentPosition && isDefinitionPosition(usePos)) {
-                return usePos;
-            }
-
-        }
-        return Integer.MAX_VALUE;
-    }
-
-    int currentIntersectsAt(int currentPosition, TraceInterval current) {
-        assert isFixedInterval();
-        assert !current.isFixedInterval();
-        int from = Integer.MAX_VALUE;
-        int to = Integer.MIN_VALUE;
-
-        for (int i = 0; i < numUsePos(); i++) {
-            int usePos = getUsePos(i);
-            if (isDefinitionPosition(usePos)) {
-                if (usePos <= currentPosition) {
-                    from = usePos;
-                    break;
-                }
-                to = Integer.MIN_VALUE;
-            } else {
-                if (to < usePos) {
-                    to = usePos;
-                }
-            }
-        }
-        if (from < current.from()) {
-            if (to <= current.from()) {
-                return -1;
-            }
-            return current.from();
-        } else {
-            if (current.to() <= from) {
-                return -1;
-            }
-            return from;
-        }
     }
 
     /*

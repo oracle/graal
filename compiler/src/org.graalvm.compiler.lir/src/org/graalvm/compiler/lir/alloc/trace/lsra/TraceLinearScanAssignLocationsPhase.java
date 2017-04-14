@@ -108,7 +108,7 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
             return getLocation(op, interval, mode);
         }
 
-        private static Value getLocation(LIRInstruction op, TraceInterval interval, OperandMode mode) {
+        private Value getLocation(LIRInstruction op, TraceInterval interval, OperandMode mode) {
             if (isIllegal(interval.location()) && interval.canMaterialize()) {
                 if (op instanceof LabelOp) {
                     /*
@@ -118,7 +118,7 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
                     return Value.ILLEGAL;
                 }
                 assert mode != OperandMode.DEF;
-                return new ConstantValue(interval.kind(), interval.getMaterializedValue());
+                return new ConstantValue(allocator.getKind(interval), interval.getMaterializedValue());
             }
             return interval.location();
         }
@@ -226,7 +226,7 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
             return values;
         }
 
-        private static Value valueAtBlockBoundary(LIRInstruction instruction, TraceInterval interval, OperandMode mode) {
+        private Value valueAtBlockBoundary(LIRInstruction instruction, TraceInterval interval, OperandMode mode) {
             if (mode == OperandMode.DEF && interval == null) {
                 // not needed in this trace
                 return Value.ILLEGAL;

@@ -189,7 +189,7 @@ final class RegisterVerifier {
             Register reg = asRegister(location);
             int regNum = reg.number;
             if (interval != null) {
-                Debug.log("%s = %s", reg, interval.operand);
+                Debug.log("%s = v%d", reg, interval.operandNumber);
             } else if (inputState[regNum] != null) {
                 Debug.log("%s = null", reg);
             }
@@ -222,7 +222,7 @@ final class RegisterVerifier {
                         interval = interval.getSplitChildAtOpId(op.id(), mode);
                     }
 
-                    assert checkState(block, op, inputState, interval.operand, interval.location(), interval.splitParent());
+                    assert checkState(block, op, inputState, allocator.getOperand(interval), interval.location(), interval.splitParent());
                 }
             }
         };
