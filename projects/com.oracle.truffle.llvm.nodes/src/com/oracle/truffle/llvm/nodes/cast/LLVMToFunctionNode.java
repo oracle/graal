@@ -70,10 +70,13 @@ public abstract class LLVMToFunctionNode extends LLVMExpressionNode {
     }
 
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
+    @Child private Node isNull = Message.IS_NULL.createNode();
 
     @Specialization(guards = "notLLVM(from)")
-    public TruffleObject executeTruffleObject(TruffleObject from) {
-        if (ForeignAccess.sendIsExecutable(isExecutable, from)) {
+    public Object executeTruffleObject(TruffleObject from) {
+        if (ForeignAccess.sendIsNull(isNull, from)) {
+            return new LLVMFunctionHandle(0);
+        } else if (ForeignAccess.sendIsExecutable(isExecutable, from)) {
             return from;
         }
         CompilerDirectives.transferToInterpreter();

@@ -46,11 +46,13 @@ public final class LLVMAtExitNode extends LLVMExpressionNode {
     @Child private LLVMExpressionNode destructor;
     @Child private LLVMExpressionNode thiz;
     @Child private LLVMExpressionNode dsoHandle;
+    @Child private LLVMForceLLVMAddressNode forceToAddress;
 
     public LLVMAtExitNode(LLVMExpressionNode destructor, LLVMExpressionNode thiz, LLVMExpressionNode dsoHandle) {
         this.destructor = destructor;
         this.thiz = thiz;
         this.dsoHandle = dsoHandle;
+        this.forceToAddress = getForceLLVMAddressNode();
     }
 
     public LinkedList<DestructorStackElement> getDestructorStack() {
@@ -65,8 +67,8 @@ public final class LLVMAtExitNode extends LLVMExpressionNode {
     public Object executeGeneric(VirtualFrame frame) {
         try {
             LLVMFunctionDescriptor d = destructor.executeLLVMFunctionDescriptor(frame);
-            LLVMAddress t = thiz.enforceLLVMAddress(frame);
-            LLVMAddress h = thiz.enforceLLVMAddress(frame);
+            LLVMAddress t = forceToAddress.executeWithTarget(thiz.executeGeneric(frame));
+            LLVMAddress h = forceToAddress.executeWithTarget(thiz.executeGeneric(frame));
             addDestructorStackElement(d, t, h);
         } catch (Throwable t) {
             CompilerDirectives.transferToInterpreter();

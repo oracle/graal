@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.asm;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RdtscNodeGen.LLVMAMD64RdtscReadNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI64RegisterNode;
@@ -50,12 +49,7 @@ public abstract class LLVMAMD64RdtscNode extends LLVMExpressionNode {
 
     @Specialization
     public Object execute(VirtualFrame frame) {
-        long value;
-        try {
-            value = rdtsc.executeI64(frame);
-        } catch (UnexpectedResultException e) {
-            throw new RuntimeException(e);
-        }
+        long value = rdtsc.executeI64(frame);
         long lo = value & LLVMExpressionNode.I32_MASK;
         long hi = (value >> LLVMExpressionNode.I32_SIZE_IN_BITS) & LLVMExpressionNode.I32_MASK;
         low.execute(frame, lo);

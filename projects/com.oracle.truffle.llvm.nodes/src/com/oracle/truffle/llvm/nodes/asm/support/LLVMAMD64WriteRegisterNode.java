@@ -33,7 +33,6 @@ import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 
 @NodeField(name = "slot", type = FrameSlot.class)
@@ -60,12 +59,7 @@ public abstract class LLVMAMD64WriteRegisterNode extends Node {
         }
 
         public void execute(VirtualFrame frame, short value) {
-            long reg;
-            try {
-                reg = register.executeI64(frame);
-            } catch (UnexpectedResultException e) {
-                throw new RuntimeException(e);
-            }
+            long reg = register.executeI64(frame);
             long val = (reg & MASK_16) | Short.toUnsignedLong(value);
             frame.setLong(getSlot(), val);
         }
@@ -81,12 +75,7 @@ public abstract class LLVMAMD64WriteRegisterNode extends Node {
         }
 
         public void execute(VirtualFrame frame, int value) {
-            long reg;
-            try {
-                reg = register.executeI64(frame);
-            } catch (UnexpectedResultException e) {
-                throw new RuntimeException(e);
-            }
+            long reg = register.executeI64(frame);
             long val = (reg & MASK_32) | Integer.toUnsignedLong(value);
             frame.setLong(getSlot(), val);
         }

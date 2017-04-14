@@ -85,16 +85,11 @@ public abstract class LLVMInsertValueNode extends LLVMExpressionNode {
 
         @Override
         public LLVMAddress executeLLVMAddress(VirtualFrame frame) {
-            try {
-                LLVMAddress targetAggr = super.executeLLVMAddress(frame);
-                LLVMAddress insertPosition = targetAggr.increment(offset);
-                float value = element.executeFloat(frame);
-                LLVMMemory.putFloat(insertPosition, value);
-                return targetAggr;
-            } catch (UnexpectedResultException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
-            }
+            LLVMAddress targetAggr = super.executeLLVMAddress(frame);
+            LLVMAddress insertPosition = targetAggr.increment(offset);
+            float value = element.executeFloat(frame);
+            LLVMMemory.putFloat(insertPosition, value);
+            return targetAggr;
         }
     }
 
@@ -110,16 +105,11 @@ public abstract class LLVMInsertValueNode extends LLVMExpressionNode {
 
         @Override
         public LLVMAddress executeLLVMAddress(VirtualFrame frame) {
-            try {
-                LLVMAddress targetAggr = super.executeLLVMAddress(frame);
-                LLVMAddress insertPosition = targetAggr.increment(offset);
-                double value = element.executeDouble(frame);
-                LLVMMemory.putDouble(insertPosition, value);
-                return targetAggr;
-            } catch (UnexpectedResultException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
-            }
+            LLVMAddress targetAggr = super.executeLLVMAddress(frame);
+            LLVMAddress insertPosition = targetAggr.increment(offset);
+            double value = element.executeDouble(frame);
+            LLVMMemory.putDouble(insertPosition, value);
+            return targetAggr;
         }
     }
 
@@ -135,16 +125,11 @@ public abstract class LLVMInsertValueNode extends LLVMExpressionNode {
 
         @Override
         public LLVMAddress executeLLVMAddress(VirtualFrame frame) {
-            try {
-                LLVMAddress targetAggr = super.executeLLVMAddress(frame);
-                LLVMAddress insertPosition = targetAggr.increment(offset);
-                int value = element.executeI32(frame);
-                LLVMMemory.putI32(insertPosition, value);
-                return targetAggr;
-            } catch (UnexpectedResultException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
-            }
+            LLVMAddress targetAggr = super.executeLLVMAddress(frame);
+            LLVMAddress insertPosition = targetAggr.increment(offset);
+            int value = element.executeI32(frame);
+            LLVMMemory.putI32(insertPosition, value);
+            return targetAggr;
         }
     }
 

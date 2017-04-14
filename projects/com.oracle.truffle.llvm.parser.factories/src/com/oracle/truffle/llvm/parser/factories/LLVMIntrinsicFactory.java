@@ -35,7 +35,6 @@ import java.util.Map;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMTypeIdForExceptionNode;
@@ -200,24 +199,20 @@ final class LLVMIntrinsicFactory {
     }
 
     private static LLVMExpressionNode getExpect(LLVMExpressionNode[] argNodes, String functionName) {
-        try {
-            if (functionName.startsWith("@llvm.expect.i1")) {
-                boolean expectedValue = argNodes[2].executeI1(null);
-                LLVMExpressionNode actualValueNode = argNodes[1];
-                return LLVMExpectI1NodeGen.create(expectedValue, actualValueNode);
-            } else if (functionName.startsWith("@llvm.expect.i32")) {
-                int expectedValue = argNodes[2].executeI32(null);
-                LLVMExpressionNode actualValueNode = argNodes[1];
-                return LLVMExpectI32NodeGen.create(expectedValue, actualValueNode);
-            } else if (functionName.startsWith("@llvm.expect.i64")) {
-                long expectedValue = argNodes[2].executeI64(null);
-                LLVMExpressionNode actualValueNode = argNodes[1];
-                return LLVMExpectI64NodeGen.create(expectedValue, actualValueNode);
-            } else {
-                throw new IllegalStateException(functionName);
-            }
-        } catch (UnexpectedResultException e) {
-            throw new IllegalStateException(e);
+        if (functionName.startsWith("@llvm.expect.i1")) {
+            boolean expectedValue = argNodes[2].executeI1(null);
+            LLVMExpressionNode actualValueNode = argNodes[1];
+            return LLVMExpectI1NodeGen.create(expectedValue, actualValueNode);
+        } else if (functionName.startsWith("@llvm.expect.i32")) {
+            int expectedValue = argNodes[2].executeI32(null);
+            LLVMExpressionNode actualValueNode = argNodes[1];
+            return LLVMExpectI32NodeGen.create(expectedValue, actualValueNode);
+        } else if (functionName.startsWith("@llvm.expect.i64")) {
+            long expectedValue = argNodes[2].executeI64(null);
+            LLVMExpressionNode actualValueNode = argNodes[1];
+            return LLVMExpectI64NodeGen.create(expectedValue, actualValueNode);
+        } else {
+            throw new IllegalStateException(functionName);
         }
     }
 

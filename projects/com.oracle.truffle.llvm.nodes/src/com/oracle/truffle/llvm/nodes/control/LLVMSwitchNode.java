@@ -30,10 +30,8 @@
 package com.oracle.truffle.llvm.nodes.control;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 
@@ -78,20 +76,15 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
         @Override
         @ExplodeLoop
         public int executeGetSuccessorIndex(VirtualFrame frame) {
-            try {
-                int val = cond.executeI8(frame);
-                executePhiWrites(frame);
-                for (int i = 0; i < cases.length; i++) {
-                    int caseValue = cases[i].executeI8(frame);
-                    if (val == caseValue) {
-                        return i + CASE_LABEL_START_INDEX;
-                    }
+            int val = cond.executeI8(frame);
+            executePhiWrites(frame);
+            for (int i = 0; i < cases.length; i++) {
+                int caseValue = cases[i].executeI8(frame);
+                if (val == caseValue) {
+                    return i + CASE_LABEL_START_INDEX;
                 }
-                return DEFAULT_LABEL_INDEX;
-            } catch (UnexpectedResultException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
             }
+            return DEFAULT_LABEL_INDEX;
         }
 
     }
@@ -110,20 +103,15 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
         @Override
         @ExplodeLoop
         public int executeGetSuccessorIndex(VirtualFrame frame) {
-            try {
-                short val = cond.executeI16(frame);
-                executePhiWrites(frame);
-                for (short i = 0; i < cases.length; i++) {
-                    short caseValue = cases[i].executeI16(frame);
-                    if (val == caseValue) {
-                        return i + CASE_LABEL_START_INDEX;
-                    }
+            short val = cond.executeI16(frame);
+            executePhiWrites(frame);
+            for (short i = 0; i < cases.length; i++) {
+                short caseValue = cases[i].executeI16(frame);
+                if (val == caseValue) {
+                    return i + CASE_LABEL_START_INDEX;
                 }
-                return DEFAULT_LABEL_INDEX;
-            } catch (UnexpectedResultException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
             }
+            return DEFAULT_LABEL_INDEX;
         }
 
     }
@@ -142,20 +130,15 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
         @Override
         @ExplodeLoop
         public int executeGetSuccessorIndex(VirtualFrame frame) {
-            try {
-                int val = cond.executeI32(frame);
-                executePhiWrites(frame);
-                for (int i = 0; i < cases.length; i++) {
-                    int caseValue = cases[i].executeI32(frame);
-                    if (val == caseValue) {
-                        return i + CASE_LABEL_START_INDEX;
-                    }
+            int val = cond.executeI32(frame);
+            executePhiWrites(frame);
+            for (int i = 0; i < cases.length; i++) {
+                int caseValue = cases[i].executeI32(frame);
+                if (val == caseValue) {
+                    return i + CASE_LABEL_START_INDEX;
                 }
-                return DEFAULT_LABEL_INDEX;
-            } catch (UnexpectedResultException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
             }
+            return DEFAULT_LABEL_INDEX;
         }
 
     }
@@ -174,20 +157,15 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
         @Override
         @ExplodeLoop
         public int executeGetSuccessorIndex(VirtualFrame frame) {
-            try {
-                long val = cond.executeI64(frame);
-                executePhiWrites(frame);
-                for (int i = 0; i < cases.length; i++) {
-                    long caseValue = cases[i].executeI64(frame);
-                    if (val == caseValue) {
-                        return i + CASE_LABEL_START_INDEX;
-                    }
+            long val = cond.executeI64(frame);
+            executePhiWrites(frame);
+            for (int i = 0; i < cases.length; i++) {
+                long caseValue = cases[i].executeI64(frame);
+                if (val == caseValue) {
+                    return i + CASE_LABEL_START_INDEX;
                 }
-                return DEFAULT_LABEL_INDEX;
-            } catch (UnexpectedResultException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
             }
+            return DEFAULT_LABEL_INDEX;
         }
 
     }
