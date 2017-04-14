@@ -539,14 +539,20 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(IndirectBranchInstruction branch) {
-        int[] labelTargets = new int[branch.getSuccessorCount()];
-        for (int i = 0; i < labelTargets.length; i++) {
-            labelTargets[i] = method.labels().get(branch.getSuccessor(i).getName());
-        }
-        LLVMExpressionNode value = symbols.resolve(branch.getAddress());
+        if (branch.getSuccessorCount() > 1) {
+            int[] labelTargets = new int[branch.getSuccessorCount()];
+            for (int i = 0; i < labelTargets.length; i++) {
+                labelTargets[i] = method.labels().get(branch.getSuccessor(i).getName());
+            }
+            LLVMExpressionNode value = symbols.resolve(branch.getAddress());
 
-        LLVMControlFlowNode node = nodeFactory.createIndirectBranch(runtime, value, labelTargets, getPhiWriteNodes());
-        method.addTerminatingInstruction(node, block.getBlockIndex(), block.getName());
+            LLVMControlFlowNode node = nodeFactory.createIndirectBranch(runtime, value, labelTargets, getPhiWriteNodes());
+            method.addTerminatingInstruction(node, block.getBlockIndex(), block.getName());
+        } else {
+            assert branch.getSuccessorCount() == 1;
+            LLVMControlFlowNode node = nodeFactory.createUnconditionalBranch(runtime, method.labels().get(branch.getSuccessor(0).getName()), getPhiWriteNodes());
+            method.addTerminatingInstruction(node, block.getBlockIndex(), block.getName());
+        }
     }
 
     @Override
@@ -690,7 +696,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             }
         }
 
-        final LLVMControlFlowNode node = nodeFactory.createSwitch(runtime, cond, defaultLabel, otherLabels, cases, llvmType, getPhiWriteNodes());
+        LLVMControlFlowNode node = nodeFactory.createSwitch(runtime, cond, defaultLabel, otherLabels, cases, llvmType, getPhiWriteNodes());
         method.addTerminatingInstruction(node, block.getBlockIndex(), block.getName());
     }
 

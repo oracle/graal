@@ -29,50 +29,58 @@
  */
 package com.oracle.truffle.llvm.nodes.control;
 
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMConditionalBranchNode extends LLVMControlFlowNode {
+public class LLVMConditionalBranchNode extends LLVMControlFlowNode {
 
+    @Child private LLVMExpressionNode condition;
     @Children final LLVMExpressionNode[] truePhiWriteNodes;
     @Children final LLVMExpressionNode[] falsePhiWriteNodes;
+    private final int trueSuccessor;
+    private final int falseSuccessor;
 
     public static final int TRUE_SUCCESSOR = 0;
     public static final int FALSE_SUCCESSOR = 1;
 
-    public LLVMConditionalBranchNode(int trueSuccessor, int falseSuccessor, LLVMExpressionNode[] truePhiWriteNodes, LLVMExpressionNode[] falsePhiWriteNodes) {
-        super(trueSuccessor, falseSuccessor);
+    public LLVMConditionalBranchNode(int trueSuccessor, int falseSuccessor, LLVMExpressionNode[] truePhiWriteNodes, LLVMExpressionNode[] falsePhiWriteNodes, LLVMExpressionNode condition) {
+        this.trueSuccessor = trueSuccessor;
+        this.falseSuccessor = falseSuccessor;
         this.truePhiWriteNodes = truePhiWriteNodes;
         this.falsePhiWriteNodes = falsePhiWriteNodes;
+        this.condition = condition;
     }
 
-    // TODO find a better name
-    public abstract static class LLVMBrConditionalNode extends LLVMConditionalBranchNode {
+    @Override
+    public int getSuccessorCount() {
+        return 2;
+    }
 
-        public LLVMBrConditionalNode(int trueSuccessor, int falseSuccessor, LLVMExpressionNode[] truePhiWriteNodes, LLVMExpressionNode[] falsePhiWriteNodes) {
-            super(trueSuccessor, falseSuccessor, truePhiWriteNodes, falsePhiWriteNodes);
-        }
-
-        @ExplodeLoop
-        @Specialization
-        public int executeGetSuccessorIndex(VirtualFrame frame, boolean condition) {
-            if (condition) {
-                for (int i = 0; i < truePhiWriteNodes.length; i++) {
-                    truePhiWriteNodes[i].executeGeneric(frame);
-                }
-                return TRUE_SUCCESSOR;
-            } else {
-                for (int i = 0; i < falsePhiWriteNodes.length; i++) {
-                    falsePhiWriteNodes[i].executeGeneric(frame);
-                }
-                return FALSE_SUCCESSOR;
+    @ExplodeLoop
+    public void writePhis(VirtualFrame frame, int successorIndex) {
+        if (successorIndex == TRUE_SUCCESSOR) {
+            for (int i = 0; i < truePhiWriteNodes.length; i++) {
+                truePhiWriteNodes[i].executeGeneric(frame);
+            }
+        } else {
+            assert successorIndex == FALSE_SUCCESSOR;
+            for (int i = 0; i < falsePhiWriteNodes.length; i++) {
+                falsePhiWriteNodes[i].executeGeneric(frame);
             }
         }
     }
 
+    public boolean executeCondition(VirtualFrame frame) {
+        return condition.executeI1(frame);
+    }
+
+    public int getTrueSuccessor() {
+        return trueSuccessor;
+    }
+
+    public int getFalseSuccessor() {
+        return falseSuccessor;
+    }
 }

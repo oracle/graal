@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.control;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -39,40 +40,38 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public class LLVMIndirectBranchNode extends LLVMControlFlowNode {
 
     @Child private LLVMExpressionNode address;
-
     @Children private final LLVMExpressionNode[] writeNodes;
+    @CompilationFinal(dimensions = 1) private final int[] successors;
 
     public LLVMIndirectBranchNode(LLVMExpressionNode address, int[] indices, LLVMExpressionNode[] writeNodes) {
-        super(indices);
+        assert indices.length > 1;
+        this.successors = indices;
         this.address = address;
         this.writeNodes = writeNodes;
     }
 
     @Override
-    @ExplodeLoop
-    public int executeGetSuccessorIndex(VirtualFrame frame) {
-        // TODO specialize
-        int val;
-        try {
-            val = (int) address.executeLLVMAddress(frame).getVal();
-        } catch (UnexpectedResultException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
-        }
-        for (int i = 0; i < nrSuccessors(); i++) {
-            if (val == getSuccessors()[i]) {
-                executePhiWrites(frame);
-                return i;
-            }
-        }
-        throw new AssertionError();
+    public int getSuccessorCount() {
+        return successors.length;
     }
 
     @ExplodeLoop
-    private void executePhiWrites(VirtualFrame frame) {
+    public void writePhis(VirtualFrame frame) {
         for (int j = 0; j < writeNodes.length; j++) {
             writeNodes[j].executeGeneric(frame);
         }
     }
 
+    public int executeCondition(VirtualFrame frame) {
+        try {
+            return (int) address.executeLLVMAddress(frame).getVal();
+        } catch (UnexpectedResultException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException("should not reach here", e);
+        }
+    }
+
+    public int[] getSuccessors() {
+        return successors;
+    }
 }

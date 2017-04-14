@@ -45,7 +45,11 @@ public final class LLVMResumeNode extends LLVMControlFlowNode {
     }
 
     @Override
-    public int executeGetSuccessorIndex(VirtualFrame frame) {
+    public int getSuccessorCount() {
+        return 0;
+    }
+
+    public void execute(VirtualFrame frame) {
         try {
             LLVMException thrownException = (LLVMException) frame.getObject(exceptionSlot);
             throw thrownException;

@@ -30,7 +30,7 @@
 package com.oracle.truffle.llvm.parser.factories;
 
 import com.oracle.truffle.llvm.nodes.control.LLVMBrUnconditionalNode;
-import com.oracle.truffle.llvm.nodes.control.LLVMConditionalBranchNodeFactory;
+import com.oracle.truffle.llvm.nodes.control.LLVMConditionalBranchNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMIndirectBranchNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -43,7 +43,7 @@ final class LLVMBranchFactory {
 
     static LLVMControlFlowNode createConditionalBranch(int trueIndex, int falseIndex, LLVMExpressionNode conditionNode, LLVMExpressionNode[] truePhiWriteNodes,
                     LLVMExpressionNode[] falsePhiWriteNodes) {
-        return LLVMConditionalBranchNodeFactory.LLVMBrConditionalNodeGen.create(trueIndex, falseIndex, truePhiWriteNodes, falsePhiWriteNodes, conditionNode);
+        return new LLVMConditionalBranchNode(trueIndex, falseIndex, truePhiWriteNodes, falsePhiWriteNodes, conditionNode);
     }
 
     static LLVMControlFlowNode createUnconditionalBranch(int unconditionalIndex, LLVMExpressionNode[] phiWrites) {
