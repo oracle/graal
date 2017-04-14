@@ -59,6 +59,7 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
     private final int numberOfExplicitArguments;
     private final FrameSlot stackpointer;
     @Child private LLVMExpressionNode target;
+    @Child private LLVMForceLLVMAddressNode targetToAddress;
     @Child private Node isBoxedNode = Message.IS_BOXED.createNode();
     @Child private Node unboxNode = Message.UNBOX.createNode();
 
@@ -78,6 +79,7 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
         }
         this.numberOfExplicitArguments = numberOfExplicitArguments;
         this.target = target;
+        this.targetToAddress = getForceLLVMAddressNode();
         this.stackpointer = stackpointer;
     }
 
@@ -105,7 +107,7 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
         // Init reg_save_area:
         // #############################
         // Allocate worst amount of memory - saves a few ifs
-        LLVMAddress structAddress = target.enforceLLVMAddress(frame);
+        LLVMAddress structAddress = targetToAddress.executeWithTarget(target.executeGeneric(frame));
         LLVMAddress regSaveArea = LLVMFrameUtil.allocateMemory(getStack(), frame, stackpointer, X86_64BitVarArgs.GP_LIMIT + X86_64BitVarArgs.FP_LIMIT, 8, new PointerType(null));
         LLVMMemory.putAddress(structAddress.increment(X86_64BitVarArgs.REG_SAVE_AREA), regSaveArea);
 

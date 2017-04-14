@@ -33,7 +33,10 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNodeFactory.LLVMForceLLVMAddressNodeGen;
@@ -106,64 +109,78 @@ public abstract class LLVMExpressionNode extends LLVMNode {
         return LLVMTypesGen.expectByteArray(executeGeneric(frame));
     }
 
-    public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectDouble(executeGeneric(frame));
+    public double executeDouble(VirtualFrame frame) {
+        // An UnexpectedResultException would be an error
+        return (double) executeGeneric(frame);
     }
 
-    public float executeFloat(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectFloat(executeGeneric(frame));
+    public float executeFloat(VirtualFrame frame) {
+        // An UnexpectedResultException would be an error
+        return (float) executeGeneric(frame);
     }
 
-    public short executeI16(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectShort(executeGeneric(frame));
+    public short executeI16(VirtualFrame frame) {
+        // An UnexpectedResultException would be an error
+        return (short) executeGeneric(frame);
     }
 
-    public boolean executeI1(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectBoolean(executeGeneric(frame));
+    public boolean executeI1(VirtualFrame frame) {
+        // An UnexpectedResultException would be an error
+        return (boolean) executeGeneric(frame);
     }
 
-    public int executeI32(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectInteger(executeGeneric(frame));
+    public int executeI32(VirtualFrame frame) {
+        // An UnexpectedResultException would be an error
+        return (int) executeGeneric(frame);
     }
 
-    public long executeI64(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectLong(executeGeneric(frame));
+    public long executeI64(VirtualFrame frame) {
+        // An UnexpectedResultException would be an error
+        return (long) executeGeneric(frame);
     }
 
     public LLVMIVarBit executeLLVMIVarBit(VirtualFrame frame) throws UnexpectedResultException {
         return LLVMTypesGen.expectLLVMIVarBit(executeGeneric(frame));
     }
 
-    public byte executeI8(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectByte(executeGeneric(frame));
+    public byte executeI8(VirtualFrame frame) {
+        // An UnexpectedResultException would be an error
+        return (byte) executeGeneric(frame);
     }
 
-    public LLVMI8Vector executeLLVMI8Vector(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectLLVMI8Vector(executeGeneric(frame));
+    public LLVMI8Vector executeLLVMI8Vector(VirtualFrame frame) {
+        // An UnexpectedResultException would be an error
+        return (LLVMI8Vector) executeGeneric(frame);
     }
 
-    public LLVMI64Vector executeLLVMI64Vector(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectLLVMI64Vector(executeGeneric(frame));
+    public LLVMI64Vector executeLLVMI64Vector(VirtualFrame frame) {
+        // An UnexpectedResultException would be an error
+        return (LLVMI64Vector) executeGeneric(frame);
     }
 
-    public LLVMI32Vector executeLLVMI32Vector(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectLLVMI32Vector(executeGeneric(frame));
+    public LLVMI32Vector executeLLVMI32Vector(VirtualFrame frame) {
+        // An UnexpectedResultException would be an error
+        return (LLVMI32Vector) executeGeneric(frame);
     }
 
-    public LLVMI1Vector executeLLVMI1Vector(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectLLVMI1Vector(executeGeneric(frame));
+    public LLVMI1Vector executeLLVMI1Vector(VirtualFrame frame) {
+        // An UnexpectedResultException would be an error
+        return (LLVMI1Vector) executeGeneric(frame);
     }
 
-    public LLVMI16Vector executeLLVMI16Vector(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectLLVMI16Vector(executeGeneric(frame));
+    public LLVMI16Vector executeLLVMI16Vector(VirtualFrame frame) {
+        // An UnexpectedResultException would be an error
+        return (LLVMI16Vector) executeGeneric(frame);
     }
 
-    public LLVMFloatVector executeLLVMFloatVector(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectLLVMFloatVector(executeGeneric(frame));
+    public LLVMFloatVector executeLLVMFloatVector(VirtualFrame frame) {
+        // An UnexpectedResultException would be an error
+        return (LLVMFloatVector) executeGeneric(frame);
     }
 
-    public LLVMDoubleVector executeLLVMDoubleVector(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectLLVMDoubleVector(executeGeneric(frame));
+    public LLVMDoubleVector executeLLVMDoubleVector(VirtualFrame frame) {
+        // An UnexpectedResultException would be an error
+        return (LLVMDoubleVector) executeGeneric(frame);
     }
 
     public LLVMFunctionDescriptor executeLLVMFunctionDescriptor(VirtualFrame frame) throws UnexpectedResultException {
@@ -183,7 +200,7 @@ public abstract class LLVMExpressionNode extends LLVMNode {
                         object instanceof LLVMTruffleAddress || object instanceof LLVMBoxedPrimitive);
     }
 
-    abstract static class LLVMForceLLVMAddressNode extends Node {
+    protected abstract static class LLVMForceLLVMAddressNode extends Node {
 
         public abstract LLVMAddress executeWithTarget(Object object);
 
@@ -196,16 +213,54 @@ public abstract class LLVMExpressionNode extends LLVMNode {
         public LLVMAddress doAddressCase(LLVMGlobalVariable a) {
             return a.getNativeLocation();
         }
+
+        @Specialization
+        public LLVMAddress executeLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
+            if (from.getValue() instanceof Long) {
+                return LLVMAddress.fromLong((long) from.getValue());
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalAccessError(String.format("Cannot convert a primitive value (type: %s, value: %s) to an LLVMAddress).", String.valueOf(from.getValue().getClass()),
+                                String.valueOf(from.getValue())));
+            }
+        }
+
+        @Child private Node unbox = Message.UNBOX.createNode();
+        @Child private Node isBoxed = Message.IS_BOXED.createNode();
+        @Child private Node isNull = Message.IS_NULL.createNode();
+
+        @Specialization(guards = "notLLVM(pointer)")
+        LLVMAddress nativeToAddress(TruffleObject pointer) {
+            try {
+                if (ForeignAccess.sendIsNull(isNull, pointer)) {
+                    return LLVMAddress.fromLong(0);
+                } else if (ForeignAccess.sendIsBoxed(isBoxed, pointer)) {
+                    return LLVMAddress.fromLong((long) ForeignAccess.sendUnbox(unbox, pointer));
+                } else {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException("Cannot convert " + pointer + " to LLVMAddress");
+                }
+            } catch (UnsupportedMessageException | ClassCastException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Cannot convert " + pointer + " to LLVMAddress", e);
+            }
+        }
+
+        protected boolean notLLVM(TruffleObject pointer) {
+            return LLVMExpressionNode.notLLVM(pointer);
+        }
     }
 
-    @Child private LLVMForceLLVMAddressNode forceAddress;
+    public static final LLVMForceLLVMAddressNode getForceLLVMAddressNode() {
+        return LLVMForceLLVMAddressNodeGen.create();
+    }
 
-    public final LLVMAddress enforceLLVMAddress(VirtualFrame frame) {
-        if (forceAddress == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.forceAddress = LLVMForceLLVMAddressNodeGen.create();
+    public static final LLVMForceLLVMAddressNode[] getForceLLVMAddressNodes(int size) {
+        LLVMForceLLVMAddressNode[] forceToLLVM = new LLVMForceLLVMAddressNode[size];
+        for (int i = 0; i < size; i++) {
+            forceToLLVM[i] = getForceLLVMAddressNode();
         }
-        return forceAddress.executeWithTarget(this.executeGeneric(frame));
+        return forceToLLVM;
     }
 
 }

@@ -35,9 +35,11 @@ import java.util.Arrays;
 import javax.xml.bind.DatatypeConverter;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMPerformance;
 
+@ValueType
 public final class LLVM80BitFloat {
 
     private static final int BIT_TO_HEX_FACTOR = 4;

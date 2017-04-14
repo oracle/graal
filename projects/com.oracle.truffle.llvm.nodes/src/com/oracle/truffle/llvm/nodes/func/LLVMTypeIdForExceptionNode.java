@@ -35,14 +35,16 @@ import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 public final class LLVMTypeIdForExceptionNode extends LLVMExpressionNode {
 
     @Child private LLVMExpressionNode thrownTypeID;
+    @Child private LLVMForceLLVMAddressNode thrownTypeIDToAddress;
 
     public LLVMTypeIdForExceptionNode(LLVMExpressionNode thrownTypeID) {
         this.thrownTypeID = thrownTypeID;
+        this.thrownTypeIDToAddress = getForceLLVMAddressNode();
     }
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
-        return (int) thrownTypeID.enforceLLVMAddress(frame).getVal();
+        return (int) thrownTypeIDToAddress.executeWithTarget(thrownTypeID.executeGeneric(frame)).getVal();
     }
 
 }

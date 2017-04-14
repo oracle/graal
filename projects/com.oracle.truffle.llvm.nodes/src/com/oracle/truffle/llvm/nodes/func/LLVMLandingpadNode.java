@@ -125,10 +125,12 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
     public static final class LandingpadCatchEntryNode extends LandingpadEntryNode {
 
         @Child private LLVMExpressionNode catchType;
+        @Child private LLVMForceLLVMAddressNode forceToLLVMcatchType;
         @Child private LLVMNativeFunctions.SulongCanCatchNode canCatch;
 
         public LandingpadCatchEntryNode(LLVMExpressionNode catchType) {
             this.catchType = catchType;
+            this.forceToLLVMcatchType = getForceLLVMAddressNode();
         }
 
         public LLVMNativeFunctions.SulongCanCatchNode getCanCatch() {
@@ -141,7 +143,7 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
 
         @Override
         public int getIdentifier(VirtualFrame frame, LLVMAddress exceptionInfo, LLVMAddress thrownTypeID) {
-            LLVMAddress catchAddress = catchType.enforceLLVMAddress(frame);
+            LLVMAddress catchAddress = forceToLLVMcatchType.executeWithTarget(catchType.executeGeneric(frame));
             if (catchAddress.getVal() == 0) {
                 /*
                  * If ExcType is null, any exception matches, so the landing pad should always be
@@ -159,10 +161,12 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
     public static final class LandingpadFilterEntryNode extends LandingpadEntryNode {
 
         @Children private final LLVMExpressionNode[] filterTypes;
+        @Children private final LLVMForceLLVMAddressNode[] forceToLLVMfilterTypes;
         @Child private LLVMNativeFunctions.SulongCanCatchNode canCatch;
 
         public LandingpadFilterEntryNode(LLVMExpressionNode[] filterTypes) {
             this.filterTypes = filterTypes;
+            this.forceToLLVMfilterTypes = getForceLLVMAddressNodes(filterTypes.length);
         }
 
         public LLVMNativeFunctions.SulongCanCatchNode getCanCatch() {
@@ -189,7 +193,7 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
              * types in the list
              */
             for (int i = 0; i < filterTypes.length; i++) {
-                LLVMAddress filterAddress = filterTypes[i].enforceLLVMAddress(frame);
+                LLVMAddress filterAddress = forceToLLVMfilterTypes[i].executeWithTarget(filterTypes[i].executeGeneric(frame));
                 if (filterAddress.getVal() == 0) {
                     /*
                      * If ExcType is null, any exception matches, so the landing pad should always
