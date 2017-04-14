@@ -61,6 +61,7 @@ import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.parser.metadata.MetadataList;
+import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 public final class ModelModule implements ModuleGenerator {
@@ -220,7 +221,12 @@ public final class ModelModule implements ModuleGenerator {
 
     @Override
     public void exitModule() {
+        int globalIndex = 0;
         for (GlobalValueSymbol variable : globals) {
+            if (variable.getName().equals(LLVMIdentifier.UNKNOWN)) {
+                variable.setName(String.valueOf(globalIndex++));
+            }
+
             variable.initialise(symbols);
         }
     }
