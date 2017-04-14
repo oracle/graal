@@ -70,7 +70,7 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
 
             for (int i = 0; i < successors.length; i++) {
                 if (CompilerDirectives.injectBranchProbability(bb.getBranchProbability(i), i == successorSelection)) {
-                    bb.increaseBranchProbabilityDeoptIfZero(i);
+                    bb.increaseBranchProbability(i);
                     if (CompilerDirectives.inInterpreter()) {
                         if (successors[i] < bci) {
                             // backedge

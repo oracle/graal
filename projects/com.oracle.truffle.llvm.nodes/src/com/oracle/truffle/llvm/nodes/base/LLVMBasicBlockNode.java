@@ -67,7 +67,6 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
     private final String blockName;
 
     private final BranchProfile controlFlowExceptionProfile = BranchProfile.create();
-    private final BranchProfile blockProfile = BranchProfile.create();
 
     @CompilationFinal private SourceSection sourceSection;
 
@@ -90,7 +89,6 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
 
     @ExplodeLoop
     public int executeGetSuccessorIndex(VirtualFrame frame) {
-        blockProfile.enter();
         for (LLVMExpressionNode statement : statements) {
             try {
                 if (TRACE) {
@@ -174,10 +172,7 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
         return successorBranchProbability;
     }
 
-    public void increaseBranchProbabilityDeoptIfZero(int successorIndex) {
-        if (successorCount[successorIndex] == 0) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-        }
+    public void increaseBranchProbability(int successorIndex) {
         if (CompilerDirectives.inInterpreter()) {
             incrementCountAtIndex(successorIndex);
         }
