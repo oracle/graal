@@ -279,11 +279,6 @@ final class TraceInterval extends IntervalHint {
     private JavaConstant materializedValue;
 
     /**
-     * The number of times {@link #addMaterializationValue(JavaConstant)} is called.
-     */
-    private int numMaterializationValuesAdded;
-
-    /**
      * Sentinel interval to denote the end of an interval list.
      */
     static final TraceInterval EndMarker = new TraceInterval(new Variable(ValueKind.Illegal, Integer.MAX_VALUE), -1);
@@ -484,13 +479,10 @@ final class TraceInterval extends IntervalHint {
      * Sets the value which is used for re-materialization.
      */
     public void addMaterializationValue(JavaConstant value) {
-        if (numMaterializationValuesAdded == 0) {
-            materializedValue = value;
-        } else {
-            // Interval is defined on multiple places -> no materialization is possible.
-            materializedValue = null;
+        if (materializedValue != null) {
+            throw GraalError.shouldNotReachHere(String.format("Multiple materialization values for %s?", this));
         }
-        numMaterializationValuesAdded++;
+        materializedValue = value;
     }
 
     /**
