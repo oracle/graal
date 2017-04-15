@@ -44,14 +44,12 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
-import org.graalvm.util.CollectionsUtil;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.MapCursor;
 import org.graalvm.util.UnmodifiableEconomicMap;
 import org.graalvm.util.UnmodifiableMapCursor;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
@@ -429,7 +427,7 @@ public class InvocationPlugins {
             bindings.add(binding);
 
             assert Checks.check(this.plugins, declaringType, binding);
-            assert Checks.checkResolvable(false, declaringType, isStatic, name, argumentTypes);
+            assert Checks.checkResolvable(false, declaringType, binding);
         }
 
         @Override
@@ -483,6 +481,7 @@ public class InvocationPlugins {
             }
             buf.append(')');
             this.argumentsDescriptor = buf.toString();
+            assert !name.equals("<init>") || !isStatic : this;
         }
 
         Binding(ResolvedJavaMethod resolved, InvocationPlugin data) {
@@ -493,6 +492,7 @@ public class InvocationPlugins {
             String desc = sig.toMethodDescriptor();
             assert desc.indexOf(')') != -1 : desc;
             this.argumentsDescriptor = desc.substring(0, desc.indexOf(')') + 1);
+            assert !name.equals("<init>") || !isStatic : this;
         }
 
         @Override
@@ -507,8 +507,6 @@ public class InvocationPlugins {
             return next;
         }
     }
-
-    private final MetaAccessProvider metaAccess;
 
     /**
      * Plugin registrations for already resolved methods. If non-null, then {@link #registrations}
@@ -738,8 +736,19 @@ public class InvocationPlugins {
      */
     protected final InvocationPlugins parent;
 
-    private InvocationPlugins(InvocationPlugins parent, MetaAccessProvider metaAccess) {
-        this.metaAccess = metaAccess;
+    /**
+     * Creates a set of invocation plugins with no parent.
+     */
+    public InvocationPlugins() {
+        this(null);
+    }
+
+    /**
+     * Creates a set of invocation plugins.
+     *
+     * @param parent if non-null, this object will be searched first when looking up plugins
+     */
+    public InvocationPlugins(InvocationPlugins parent) {
         InvocationPlugins p = parent;
         this.parent = p;
         this.registrations = EconomicMap.create();
@@ -747,20 +756,11 @@ public class InvocationPlugins {
     }
 
     /**
-     * Creates a set of invocation plugins with a non-null {@linkplain #getParent() parent}.
-     */
-    public InvocationPlugins(InvocationPlugins parent) {
-        this(parent, parent.getMetaAccess());
-    }
-
-    /**
      * Creates a closed set of invocation plugins for a set of resolved methods. Such an object
      * cannot have further plugins registered.
      */
-    public InvocationPlugins(Map<ResolvedJavaMethod, InvocationPlugin> plugins, InvocationPlugins parent, MetaAccessProvider metaAccess) {
-        this.metaAccess = metaAccess;
+    public InvocationPlugins(Map<ResolvedJavaMethod, InvocationPlugin> plugins, InvocationPlugins parent) {
         this.parent = parent;
-
         this.registrations = null;
         this.deferredRegistrations = null;
         EconomicMap<ResolvedJavaMethod, InvocationPlugin> map = EconomicMap.create(plugins.size());
@@ -771,14 +771,6 @@ public class InvocationPlugins {
         this.resolvedRegistrations = map;
     }
 
-    public MetaAccessProvider getMetaAccess() {
-        return metaAccess;
-    }
-
-    public InvocationPlugins(MetaAccessProvider metaAccess) {
-        this(null, metaAccess);
-    }
-
     protected void register(InvocationPlugin plugin, boolean isOptional, boolean allowOverwrite, Type declaringClass, String name, Type... argumentTypes) {
         boolean isStatic = argumentTypes.length == 0 || argumentTypes[0] != InvocationPlugin.Receiver.class;
         if (!isStatic) {
@@ -786,7 +778,7 @@ public class InvocationPlugins {
         }
         Binding binding = put(plugin, isStatic, allowOverwrite, declaringClass, name, argumentTypes);
         assert Checks.check(this, declaringClass, binding);
-        assert Checks.checkResolvable(isOptional, declaringClass, isStatic, name, argumentTypes);
+        assert Checks.checkResolvable(isOptional, declaringClass, binding);
     }
 
     /**
@@ -974,7 +966,7 @@ public class InvocationPlugins {
                 assert substitute.getAnnotation(MethodSubstitution.class) != null : format("Substitute method must be annotated with @%s: %s", MethodSubstitution.class.getSimpleName(), substitute);
                 return true;
             }
-            int arguments = countParameters(binding.argumentsDescriptor);
+            int arguments = parseParameters(binding.argumentsDescriptor).size();
             assert arguments < SIGS.length : format("need to extend %s to support method with %d arguments: %s", InvocationPlugin.class.getSimpleName(), arguments, binding);
             for (Method m : plugin.getClass().getDeclaredMethods()) {
                 if (m.getName().equals("apply")) {
@@ -987,116 +979,22 @@ public class InvocationPlugins {
             throw new AssertionError(format("graph builder plugin for %s not found", binding));
         }
 
-        static boolean checkResolvable(boolean isOptional, Type declaringType, boolean isStatic, String name, Type... argumentTypes) {
+        static boolean checkResolvable(boolean isOptional, Type declaringType, Binding binding) {
             Class<?> declaringClass = InvocationPlugins.resolveType(declaringType, isOptional);
             if (declaringClass == null) {
                 return true;
             }
-            Class<?>[] parameterTypes = resolveTypes(argumentTypes, isStatic ? 0 : 1, argumentTypes.length);
-            if (name.equals("<init>")) {
-                try {
-                    Constructor<?> res = declaringClass.getDeclaredConstructor(parameterTypes);
-                    assert Modifier.isStatic(res.getModifiers()) == isStatic : res;
-                } catch (NoSuchMethodException | SecurityException e) {
-                    if (isOptional) {
-                        return true;
-                    }
-                    throw new AssertionError(e);
+            if (binding.name.equals("<init>")) {
+                if (resolveConstructor(declaringClass, binding) == null && !isOptional) {
+                    throw new AssertionError(String.format("Constructor not found: %s%s", declaringClass.getName(), binding.argumentsDescriptor));
                 }
             } else {
-                Method res = Checks.lookupMethod(declaringClass, isStatic, name, parameterTypes);
-                if (res == null && !isOptional) {
-                    throw new AssertionError(String.format("Method not found: %s.%s(%s)", declaringClass.getName(), name, CollectionsUtil.mapAndJoin(parameterTypes, Class::getName, ", ")));
+                if (resolveMethod(declaringClass, binding) == null && !isOptional) {
+                    throw new AssertionError(String.format("Method not found: %s.%s%s", declaringClass.getName(), binding.name, binding.argumentsDescriptor));
                 }
             }
             return true;
         }
-
-        private static Method lookupMethod(Class<?> declaringClass, boolean isStatic, String name, Class<?>[] parameterTypes) {
-            Method[] methods = declaringClass.getDeclaredMethods();
-            for (int i = 0; i < methods.length; ++i) {
-                Method m = methods[i];
-                if (isStatic == Modifier.isStatic(m.getModifiers()) && m.getName().equals(name)) {
-                    if (Arrays.equals(parameterTypes, m.getParameterTypes())) {
-                        for (int j = i + 1; j < methods.length; ++j) {
-                            Method other = methods[j];
-                            if (isStatic == Modifier.isStatic(other.getModifiers()) && other.getName().equals(name)) {
-                                if (Arrays.equals(parameterTypes, other.getParameterTypes())) {
-                                    if (m.getReturnType().isAssignableFrom(other.getReturnType())) {
-                                        // `other` has a more specific return type - choose it
-                                        // (m is probably a bridge method)
-                                        m = other;
-                                    } else {
-                                        assert other.getReturnType().isAssignableFrom(m.getReturnType()) : String.format(
-                                                        "Found 2 methods with same name and parameter types but unrelated return types:%n %s%n %s", m, other);
-                                    }
-                                }
-                            }
-                        }
-                        return m;
-                    }
-                }
-            }
-            return null;
-        }
-
-        private static int countParameters(String argumentsDescriptor) {
-            assert argumentsDescriptor.startsWith("(") && argumentsDescriptor.endsWith(")") : argumentsDescriptor;
-            int cur = 1;
-            int count = 0;
-            int end = argumentsDescriptor.length() - 1;
-            while (cur != end) {
-                char first;
-                do {
-                    first = argumentsDescriptor.charAt(cur++);
-                } while (first == '[');
-
-                switch (first) {
-                    case 'L':
-                        int endObject = argumentsDescriptor.indexOf(';', cur);
-                        if (endObject == -1) {
-                            throw new GraalError("Invalid object type at index %d in signature: %s", cur, argumentsDescriptor);
-                        }
-                        cur = endObject + 1;
-                        break;
-                    case 'V':
-                    case 'I':
-                    case 'B':
-                    case 'C':
-                    case 'D':
-                    case 'F':
-                    case 'J':
-                    case 'S':
-                    case 'Z':
-                        break;
-                    default:
-                        throw new GraalError("Invalid character at index %d in signature: %s", cur, argumentsDescriptor);
-                }
-                count++;
-            }
-            return count;
-        }
-
-        /**
-         * Resolves an array of {@link Type}s to an array of {@link Class}es.
-         *
-         * @param types the types to resolve
-         * @param from the initial index of the range to be resolved, inclusive
-         * @param to the final index of the range to be resolved, exclusive
-         * @return the resolved class or null if resolution fails and {@code optional} is true
-         */
-        public static Class<?>[] resolveTypes(Type[] types, int from, int to) {
-            int length = to - from;
-            if (length <= 0) {
-                return NO_CLASSES;
-            }
-            Class<?>[] classes = new Class<?>[length];
-            for (int i = 0; i < length; i++) {
-                classes[i] = resolveType(types[i + from], false);
-            }
-            return classes;
-        }
-
     }
 
     /**
@@ -1152,6 +1050,113 @@ public class InvocationPlugins {
         return resolveClass(type.getTypeName(), optional);
     }
 
-    private static final Class<?>[] NO_CLASSES = {};
+    private static List<String> toInternalTypeNames(Class<?>[] types) {
+        String[] res = new String[types.length];
+        for (int i = 0; i < types.length; i++) {
+            res[i] = MetaUtil.toInternalName(types[i].getTypeName());
+        }
+        return Arrays.asList(res);
+    }
 
+    /**
+     * Resolves a given binding to a method in a given class. If more than one method with the
+     * parameter types matching {@code binding} is found and the return types of all the matching
+     * methods form an inheritance chain, the one with the most specific type is returned; otherwise
+     * a {@link NoSuchMethodError} is thrown.
+     *
+     * @param declaringClass the class to search for a method matching {@code binding}
+     * @return the method (if any) in {@code declaringClass} matching binding
+     */
+    public static Method resolveMethod(Class<?> declaringClass, Binding binding) {
+        if (binding.name.equals("<init>")) {
+            return null;
+        }
+        Method[] methods = declaringClass.getDeclaredMethods();
+        List<String> parameterTypeNames = parseParameters(binding.argumentsDescriptor);
+        for (int i = 0; i < methods.length; ++i) {
+            Method m = methods[i];
+            if (binding.isStatic == Modifier.isStatic(m.getModifiers()) && m.getName().equals(binding.name)) {
+                if (parameterTypeNames.equals(toInternalTypeNames(m.getParameterTypes()))) {
+                    for (int j = i + 1; j < methods.length; ++j) {
+                        Method other = methods[j];
+                        if (binding.isStatic == Modifier.isStatic(other.getModifiers()) && other.getName().equals(binding.name)) {
+                            if (parameterTypeNames.equals(toInternalTypeNames(other.getParameterTypes()))) {
+                                if (m.getReturnType().isAssignableFrom(other.getReturnType())) {
+                                    // `other` has a more specific return type - choose it
+                                    // (m is probably a bridge method)
+                                    m = other;
+                                } else {
+                                    if (!other.getReturnType().isAssignableFrom(m.getReturnType())) {
+                                        throw new NoSuchMethodError(String.format(
+                                                        "Found 2 methods with same name and parameter types but unrelated return types:%n %s%n %s", m, other));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    return m;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Resolves a given binding to a constructor in a given class.
+     *
+     * @param declaringClass the class to search for a constructor matching {@code binding}
+     * @return the constructor (if any) in {@code declaringClass} matching binding
+     */
+    public static Constructor<?> resolveConstructor(Class<?> declaringClass, Binding binding) {
+        if (!binding.name.equals("<init>")) {
+            return null;
+        }
+        Constructor<?>[] constructors = declaringClass.getDeclaredConstructors();
+        List<String> parameterTypeNames = parseParameters(binding.argumentsDescriptor);
+        for (int i = 0; i < constructors.length; ++i) {
+            Constructor<?> c = constructors[i];
+            if (parameterTypeNames.equals(toInternalTypeNames(c.getParameterTypes()))) {
+                return c;
+            }
+        }
+        return null;
+    }
+
+    private static List<String> parseParameters(String argumentsDescriptor) {
+        assert argumentsDescriptor.startsWith("(") && argumentsDescriptor.endsWith(")") : argumentsDescriptor;
+        List<String> res = new ArrayList<>();
+        int cur = 1;
+        int end = argumentsDescriptor.length() - 1;
+        while (cur != end) {
+            char first;
+            int start = cur;
+            do {
+                first = argumentsDescriptor.charAt(cur++);
+            } while (first == '[');
+
+            switch (first) {
+                case 'L':
+                    int endObject = argumentsDescriptor.indexOf(';', cur);
+                    if (endObject == -1) {
+                        throw new GraalError("Invalid object type at index %d in signature: %s", cur, argumentsDescriptor);
+                    }
+                    cur = endObject + 1;
+                    break;
+                case 'V':
+                case 'I':
+                case 'B':
+                case 'C':
+                case 'D':
+                case 'F':
+                case 'J':
+                case 'S':
+                case 'Z':
+                    break;
+                default:
+                    throw new GraalError("Invalid character at index %d in signature: %s", cur, argumentsDescriptor);
+            }
+            res.add(argumentsDescriptor.substring(start, cur));
+        }
+        return res;
+    }
 }
