@@ -23,7 +23,7 @@
 package org.graalvm.compiler.nodes.graphbuilderconf;
 
 import static java.lang.String.format;
-import static org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.LateClassPlugins.FINAL_LATE_CLASS_PLUGIN;
+import static org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.LateClassPlugins.CLOSED_LATE_CLASS_PLUGIN;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -499,13 +499,6 @@ public class InvocationPlugins {
         public String toString() {
             return name + argumentsDescriptor;
         }
-
-        /**
-         * Gets next binding in a list of bindings headed by this object.
-         */
-        public Binding getNext() {
-            return next;
-        }
     }
 
     /**
@@ -605,12 +598,12 @@ public class InvocationPlugins {
     }
 
     static class LateClassPlugins extends ClassPlugins {
-        static final String FINAL_LATE_CLASS_PLUGIN = "-----";
+        static final String CLOSED_LATE_CLASS_PLUGIN = "-----";
         private final String className;
         private final LateClassPlugins next;
 
         LateClassPlugins(LateClassPlugins next, String className) {
-            assert next == null || next.className != FINAL_LATE_CLASS_PLUGIN : "Late registration of invocation plugins is closed";
+            assert next == null || next.className != CLOSED_LATE_CLASS_PLUGIN : "Late registration of invocation plugins is closed";
             this.next = next;
             this.className = className;
         }
@@ -641,15 +634,6 @@ public class InvocationPlugins {
         Binding binding = new Binding(plugin, isStatic, name, argumentTypes);
         classPlugins.register(binding, allowOverwrite);
         return binding;
-    }
-
-    /**
-     * Determines if a method denoted by a given {@link Binding} is in this map.
-     */
-    boolean containsKey(Type declaringType, Binding key) {
-        String internalName = MetaUtil.toInternalName(declaringType.getTypeName());
-        ClassPlugins classPlugins = registrations.get(internalName);
-        return classPlugins != null && classPlugins.lookup(key) != null;
     }
 
     InvocationPlugin get(ResolvedJavaMethod method) {
@@ -709,8 +693,8 @@ public class InvocationPlugins {
     }
 
     private synchronized boolean closeLateRegistrations() {
-        if (lateRegistrations == null || lateRegistrations.className != FINAL_LATE_CLASS_PLUGIN) {
-            lateRegistrations = new LateClassPlugins(lateRegistrations, FINAL_LATE_CLASS_PLUGIN);
+        if (lateRegistrations == null || lateRegistrations.className != CLOSED_LATE_CLASS_PLUGIN) {
+            lateRegistrations = new LateClassPlugins(lateRegistrations, CLOSED_LATE_CLASS_PLUGIN);
         }
         return true;
     }
@@ -950,11 +934,17 @@ public class InvocationPlugins {
             SIGS = sigs.toArray(new Class<?>[sigs.size()][]);
         }
 
+        static boolean containsBinding(InvocationPlugins p, Type declaringType, Binding key) {
+            String internalName = MetaUtil.toInternalName(declaringType.getTypeName());
+            ClassPlugins classPlugins = p.registrations.get(internalName);
+            return classPlugins != null && classPlugins.lookup(key) != null;
+        }
+
         public static boolean check(InvocationPlugins plugins, Type declaringType, Binding binding) {
             InvocationPlugin plugin = binding.plugin;
             InvocationPlugins p = plugins.parent;
             while (p != null) {
-                assert !p.containsKey(declaringType, binding) : "a plugin is already registered for " + binding;
+                assert !containsBinding(p, declaringType, binding) : "a plugin is already registered for " + binding;
                 p = p.parent;
             }
             if (plugin instanceof ForeignCallPlugin || plugin instanceof GeneratedInvocationPlugin) {
@@ -1062,7 +1052,7 @@ public class InvocationPlugins {
      * Resolves a given binding to a method in a given class. If more than one method with the
      * parameter types matching {@code binding} is found and the return types of all the matching
      * methods form an inheritance chain, the one with the most specific type is returned; otherwise
-     * a {@link NoSuchMethodError} is thrown.
+     * {@link NoSuchMethodError} is thrown.
      *
      * @param declaringClass the class to search for a method matching {@code binding}
      * @return the method (if any) in {@code declaringClass} matching binding
@@ -1083,7 +1073,7 @@ public class InvocationPlugins {
                             if (parameterTypeNames.equals(toInternalTypeNames(other.getParameterTypes()))) {
                                 if (m.getReturnType().isAssignableFrom(other.getReturnType())) {
                                     // `other` has a more specific return type - choose it
-                                    // (m is probably a bridge method)
+                                    // (m is most likely a bridge method)
                                     m = other;
                                 } else {
                                     if (!other.getReturnType().isAssignableFrom(m.getReturnType())) {
