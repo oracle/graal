@@ -52,7 +52,6 @@ import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.GraalCompiler.Request;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.util.ModuleAPI;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
@@ -112,6 +111,7 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.test.AddExports;
 import org.graalvm.compiler.test.GraalTest;
+import org.graalvm.compiler.test.JLModule;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -158,6 +158,7 @@ import jdk.vm.ci.services.Services;
                 "jdk.internal.vm.ci/jdk.vm.ci.services",
                 "jdk.internal.vm.ci/jdk.vm.ci.code",
                 "jdk.internal.vm.ci/jdk.vm.ci.services",
+                "jdk.internal.vm.compiler/*",
                 "java.base/jdk.internal.org.objectweb.asm",
                 "java.base/jdk.internal.org.objectweb.asm.tree"})
 public abstract class GraalCompilerTest extends GraalTest {
@@ -191,7 +192,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      */
     protected final void exportPackage(Class<?> moduleMember, String packageName) {
         if (!Java8OrEarlier) {
-            ModuleAPI.exportPackageTo(moduleMember, packageName, getClass());
+            JLModule.exportPackageTo(moduleMember, packageName, getClass());
         }
     }
 

@@ -193,9 +193,6 @@ public class Util {
      * {@code flag}.
      */
     public static void setAccessible(Field field, boolean flag) {
-        if (!Java8OrEarlier) {
-            ModuleAPI.openForReflectionTo(field.getDeclaringClass(), Util.class);
-        }
         field.setAccessible(flag);
     }
 
@@ -204,9 +201,6 @@ public class Util {
      * {@code flag}.
      */
     public static void setAccessible(Executable executable, boolean flag) {
-        if (!Java8OrEarlier) {
-            ModuleAPI.openForReflectionTo(executable.getDeclaringClass(), Util.class);
-        }
         executable.setAccessible(flag);
     }
 }

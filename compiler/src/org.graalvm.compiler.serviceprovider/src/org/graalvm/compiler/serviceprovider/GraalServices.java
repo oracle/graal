@@ -52,7 +52,7 @@ public final class GraalServices {
         if (Java8OrEarlier) {
             return Services.load(service);
         }
-        ServiceLoader<S> iterable = ServiceLoader.load(service);
+        Iterable<S> iterable = ServiceLoader.load(service);
         return new Iterable<S>() {
             @Override
             public Iterator<S> iterator() {

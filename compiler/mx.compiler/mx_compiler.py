@@ -497,7 +497,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
 
     # ensure -Xbatch still works
     with Task('DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test) as t:
-        if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xbatch'])
+        if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xbatch', '-Dgraal.ForceDebugEnable=true'])
 
     # ensure benchmark counters still work
     with Task('DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test) as t:
@@ -676,7 +676,8 @@ def _parseVmArgs(args, addDefaultArgs=True):
                 # No need to explicitly export JVMCI - it's exported via reflection
                 if concealingModule != 'jdk.internal.vm.ci':
                     for package in packages:
-                        addedExports.setdefault(concealingModule + '/' + package, set()).add(deployedModule.name)
+                        pass
+                        #addedExports.setdefault(concealingModule + '/' + package, set()).add(deployedModule.name)
 
         for export, targets in addedExports.iteritems():
             argsPrefix.append('--add-exports=' + export + '=' + ','.join(sorted(targets)))
@@ -704,7 +705,8 @@ def _parseVmArgs(args, addDefaultArgs=True):
                 # The upgraded module may not be upgradeable by default. In this case, supplying
                 # a non-existent jar file as a patch for the module makes it upgradeable (i.e.,
                 # disables the hash based checking of the module's contents).
-                argsPrefix.append('--patch-module=' + m.name + '=.jar')
+                #argsPrefix.append('--patch-module=' + m.name + '=.jar')
+                pass
 
     if '-version' in args:
         ignoredArgs = args[args.index('-version') + 1:]

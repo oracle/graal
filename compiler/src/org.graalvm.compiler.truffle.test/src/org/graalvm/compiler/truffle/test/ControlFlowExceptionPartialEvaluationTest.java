@@ -39,6 +39,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.SlowPathException;
 
+@AddExports("jdk.internal.vm.ci/jdk.vm.ci.code")
 public class ControlFlowExceptionPartialEvaluationTest extends PartialEvaluationTest {
     public static Object constant42() {
         return 42;

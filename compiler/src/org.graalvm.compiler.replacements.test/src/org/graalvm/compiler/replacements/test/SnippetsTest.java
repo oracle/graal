@@ -32,7 +32,7 @@ import org.graalvm.compiler.replacements.classfile.ClassfileBytecodeProvider;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public abstract class SnippetsTest extends ReplacementsTest implements Snippets {
+public abstract class SnippetsTest extends ReplacementsTest {
 
     protected final ReplacementsImpl installer;
     protected final ClassfileBytecodeProvider bytecodeProvider;

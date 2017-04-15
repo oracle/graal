@@ -23,8 +23,7 @@
 
 package org.graalvm.compiler.hotspot.test;
 
-import static org.graalvm.compiler.core.common.util.ModuleAPI.addExports;
-import static org.graalvm.compiler.core.common.util.ModuleAPI.getModule;
+import static org.graalvm.compiler.test.JLModule.uncheckedAddExports;
 
 import java.lang.reflect.Method;
 
@@ -36,6 +35,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.test.JLModule;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.objectweb.asm.ClassWriter;
@@ -110,10 +110,10 @@ public class ConstantPoolSubstitutionsTests extends GraalCompilerTest {
      */
     private static void addExports(Class<?> c) {
         if (!Util.Java8OrEarlier) {
-            Object javaBaseModule = getModule.invoke(String.class);
-            Object cModule = getModule.invoke(c);
-            addExports.invokeStatic(javaBaseModule, "jdk.internal.reflect", cModule);
-            addExports.invokeStatic(javaBaseModule, "jdk.internal.misc", cModule);
+            Object javaBaseModule = JLModule.fromClass(String.class);
+            Object cModule = JLModule.fromClass(c);
+            uncheckedAddExports(javaBaseModule, "jdk.internal.reflect", cModule);
+            uncheckedAddExports(javaBaseModule, "jdk.internal.misc", cModule);
         }
     }
 

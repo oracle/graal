@@ -39,7 +39,7 @@ import org.graalvm.compiler.word.Word;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class PointerTrackingTest extends ReplacementsTest implements Snippets {
+public class PointerTrackingTest extends ReplacementsTest /* implements Snippets */ {
 
     @Test
     public void testTracking() {

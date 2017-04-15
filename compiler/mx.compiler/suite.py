@@ -155,7 +155,7 @@ suite = {
     "org.graalvm.compiler.options" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["JVMCI_API", "org.graalvm.util"],
+      "dependencies" : ["JVMCI_SERVICES", "JVMCI_API", "org.graalvm.util"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "uses" : ["org.graalvm.compiler.options.OptionDescriptors"],
       "javaCompliance" : "1.8",

@@ -642,15 +642,19 @@ public class InvocationPlugins {
             return resolvedRegistrations.get(method);
         } else {
             if (!method.isBridge()) {
-                flushDeferrables();
-                String internalName = method.getDeclaringClass().getName();
-                ClassPlugins classPlugins = registrations.get(internalName);
-                if (classPlugins != null) {
-                    return classPlugins.get(method);
-                }
-                LateClassPlugins lcp = findLateClassPlugins(internalName);
-                if (lcp != null) {
-                    return lcp.get(method);
+                if (method.getDeclaringClass().isPlatformType()) {
+                    flushDeferrables();
+                    String internalName = method.getDeclaringClass().getName();
+                    ClassPlugins classPlugins = registrations.get(internalName);
+                    if (classPlugins != null) {
+                        return classPlugins.get(method);
+                    }
+                    LateClassPlugins lcp = findLateClassPlugins(internalName);
+                    if (lcp != null) {
+                        return lcp.get(method);
+                    }
+                } else {
+                    // Don't want to intrinsify application loaded classes
                 }
                 if (testExtensions != null) {
                     // Avoid the synchronization in the common case that there
