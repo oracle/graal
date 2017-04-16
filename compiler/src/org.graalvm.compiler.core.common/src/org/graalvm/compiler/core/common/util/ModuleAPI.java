@@ -28,6 +28,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
+import org.graalvm.compiler.debug.GraalError;
+
 /**
  * Reflection based access to the Module API introduced by JDK 9. This allows the API to be used in
  * code that must be compiled on a JDK prior to 9. Use of this class must be guarded by a test for
@@ -41,11 +43,19 @@ import java.lang.reflect.Modifier;
  */
 public final class ModuleAPI {
 
-    private ModuleAPI(Method method) {
-        this.method = method;
+    public ModuleAPI(Class<?> declaringClass, String name, Class<?>... parameterTypes) {
+        try {
+            this.method = declaringClass.getMethod(name, parameterTypes);
+        } catch (Exception e) {
+            throw new GraalError(e);
+        }
     }
 
     public final Method method;
+
+    public Class<?> getReturnType() {
+        return method.getReturnType();
+    }
 
     /**
      * {@code Class.getModule()}.
@@ -56,26 +66,6 @@ public final class ModuleAPI {
      * {@code java.lang.Module.getResourceAsStream(String)}.
      */
     public static final ModuleAPI getResourceAsStream;
-
-    /**
-     * {@code java.lang.Module.getPackages()}.
-     */
-    public static final ModuleAPI getPackages;
-
-    /**
-     * {@code java.lang.Module.appOpens(String, Module)}.
-     */
-    public static final ModuleAPI addOpens;
-
-    /**
-     * {@code java.lang.Module.canRead(Module)}.
-     */
-    public static final ModuleAPI canRead;
-
-    /**
-     * {@code java.lang.Module.isExported(String)}.
-     */
-    public static final ModuleAPI isExported;
 
     /**
      * {@code java.lang.Module.isExported(String, Module)}.
@@ -92,7 +82,7 @@ public final class ModuleAPI {
         try {
             return (T) method.invoke(null, args);
         } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-            throw new InternalError(e);
+            throw new GraalError(e);
         }
     }
 
@@ -106,40 +96,31 @@ public final class ModuleAPI {
         try {
             return (T) method.invoke(receiver, args);
         } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-            throw new InternalError(e);
+            throw new GraalError(e);
         }
     }
 
-    private void checkAvailability() throws InternalError {
+    private void checkAvailability() throws GraalError {
         if (method == null) {
-            throw new InternalError("Cannot use Module API on JDK " + JAVA_SPECIFICATION_VERSION);
+            throw new GraalError("Cannot use Module API on JDK " + JAVA_SPECIFICATION_VERSION);
         }
     }
 
     static {
         if (JAVA_SPECIFICATION_VERSION >= 9) {
-            try {
-                getModule = new ModuleAPI(Class.class.getMethod("getModule"));
-                Class<?> moduleClass = getModule.method.getReturnType();
-                getResourceAsStream = new ModuleAPI(moduleClass.getMethod("getResourceAsStream", String.class));
-                getPackages = new ModuleAPI(moduleClass.getMethod("getPackages"));
-                addOpens = new ModuleAPI(moduleClass.getMethod("addOpens", String.class, moduleClass));
-                canRead = new ModuleAPI(moduleClass.getMethod("canRead", moduleClass));
-                isExported = new ModuleAPI(moduleClass.getMethod("isExported", String.class));
-                isExportedTo = new ModuleAPI(moduleClass.getMethod("isExported", String.class, moduleClass));
-            } catch (NoSuchMethodException | SecurityException e) {
-                throw new InternalError(e);
-            }
+            getModule = new ModuleAPI(Class.class, "getModule");
+            Class<?> moduleClass = getModule.getReturnType();
+            getResourceAsStream = new ModuleAPI(moduleClass, "getResourceAsStream", String.class);
+            isExportedTo = new ModuleAPI(moduleClass, "isExported", String.class, moduleClass);
         } else {
-            ModuleAPI unavailable = new ModuleAPI(null);
+            ModuleAPI unavailable = new ModuleAPI();
             getModule = unavailable;
             getResourceAsStream = unavailable;
-            addOpens = unavailable;
-            getPackages = unavailable;
-            canRead = unavailable;
-            isExported = unavailable;
             isExportedTo = unavailable;
         }
+    }
 
+    private ModuleAPI() {
+        method = null;
     }
 }

@@ -53,6 +53,7 @@ import org.graalvm.util.UnmodifiableMapCursor;
 
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
 /**
@@ -642,19 +643,24 @@ public class InvocationPlugins {
             return resolvedRegistrations.get(method);
         } else {
             if (!method.isBridge()) {
-                if (method.getDeclaringClass().isPlatformType()) {
-                    flushDeferrables();
-                    String internalName = method.getDeclaringClass().getName();
-                    ClassPlugins classPlugins = registrations.get(internalName);
-                    if (classPlugins != null) {
-                        return classPlugins.get(method);
-                    }
+                ResolvedJavaType declaringClass = method.getDeclaringClass();
+                flushDeferrables();
+                String internalName = declaringClass.getName();
+                ClassPlugins classPlugins = registrations.get(internalName);
+                InvocationPlugin res = null;
+                if (classPlugins != null) {
+                    res = classPlugins.get(method);
+                }
+                if (res == null) {
                     LateClassPlugins lcp = findLateClassPlugins(internalName);
                     if (lcp != null) {
-                        return lcp.get(method);
+                        res = lcp.get(method);
                     }
-                } else {
-                    // Don't want to intrinsify application loaded classes
+                }
+                if (res != null) {
+                    if (canBeIntrinsified(declaringClass)) {
+                        return res;
+                    }
                 }
                 if (testExtensions != null) {
                     // Avoid the synchronization in the common case that there
@@ -683,6 +689,15 @@ public class InvocationPlugins {
             }
         }
         return null;
+    }
+
+    /**
+     * Determines if methods in a given class can have invocation plugins.
+     *
+     * @param declaringClass the class to test
+     */
+    protected boolean canBeIntrinsified(ResolvedJavaType declaringClass) {
+        return true;
     }
 
     LateClassPlugins findLateClassPlugins(String internalClassName) {
