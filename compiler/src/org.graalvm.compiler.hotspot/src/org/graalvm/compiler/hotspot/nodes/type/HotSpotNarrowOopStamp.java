@@ -54,8 +54,12 @@ public final class HotSpotNarrowOopStamp extends NarrowOopStamp {
 
     @Override
     public Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement) {
-        HotSpotMemoryAccessProvider hsProvider = (HotSpotMemoryAccessProvider) provider;
-        return hsProvider.readNarrowOopConstant(base, displacement);
+        try {
+            HotSpotMemoryAccessProvider hsProvider = (HotSpotMemoryAccessProvider) provider;
+            return hsProvider.readNarrowOopConstant(base, displacement);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     @Override
