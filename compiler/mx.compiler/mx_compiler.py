@@ -609,28 +609,6 @@ def _uniqify(alist):
     seen = set()
     return [e for e in alist if e not in seen and seen.add(e) is None]
 
-def _extract_added_exports(args, addedExports):
-    """
-    Extracts ``--add-exports`` entries from `args` and updates `addedExports` based on their values.
-
-    :param list args: command line arguments
-    :param dict addedExports: map from a module/package specifier to the set of modules it must be exported to
-    :return: the value of `args` minus all valid ``--add-exports`` entries
-    """
-    res = []
-    for arg in args:
-        if arg.startswith('--add-exports='):
-            parts = arg[len('--add-exports='):].split('=', 1)
-            if len(parts) == 2:
-                export, targets = parts
-                addedExports.setdefault(export, set()).update(targets.split(','))
-            else:
-                # Invalid format - let the VM deal with it
-                res.append(arg)
-        else:
-            res.append(arg)
-    return res
-
 def _parseVmArgs(args, addDefaultArgs=True):
     args = mx.expand_project_in_args(args, insitu=False)
 
@@ -668,20 +646,6 @@ def _parseVmArgs(args, addDefaultArgs=True):
             _addToModulepath(deployedModule.modulepath)
             _addToModulepath([deployedModule])
 
-        # Update added exports to include concealed JDK packages required by Graal
-        addedExports = {}
-        args = _extract_added_exports(args, addedExports)
-        for deployedModule in deployedModules:
-            for concealingModule, packages in deployedModule.concealedRequires.iteritems():
-                # No need to explicitly export JVMCI - it's exported via reflection
-                if concealingModule != 'jdk.internal.vm.ci':
-                    for package in packages:
-                        pass
-                        #addedExports.setdefault(concealingModule + '/' + package, set()).add(deployedModule.name)
-
-        for export, targets in addedExports.iteritems():
-            argsPrefix.append('--add-exports=' + export + '=' + ','.join(sorted(targets)))
-
         # Extend or set --module-path argument
         mpUpdated = False
         for mpIndex in range(len(args)):
@@ -701,12 +665,6 @@ def _parseVmArgs(args, addDefaultArgs=True):
 
         if graalUpgrademodulepath:
             argsPrefix.append('--upgrade-module-path=' + os.pathsep.join([m.jarpath for m in graalUpgrademodulepath]))
-            for m in graalUpgrademodulepath:
-                # The upgraded module may not be upgradeable by default. In this case, supplying
-                # a non-existent jar file as a patch for the module makes it upgradeable (i.e.,
-                # disables the hash based checking of the module's contents).
-                #argsPrefix.append('--patch-module=' + m.name + '=.jar')
-                pass
 
     if '-version' in args:
         ignoredArgs = args[args.index('-version') + 1:]
