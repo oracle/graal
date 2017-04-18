@@ -27,7 +27,6 @@ import static org.graalvm.compiler.test.JLModule.uncheckedAddExports;
 
 import java.lang.reflect.Method;
 
-import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
@@ -109,7 +108,7 @@ public class ConstantPoolSubstitutionsTests extends GraalCompilerTest {
      * This test uses some API hidden by the JDK9 module system.
      */
     private static void addExports(Class<?> c) {
-        if (!Util.Java8OrEarlier) {
+        if (!Java8OrEarlier) {
             Object javaBaseModule = JLModule.fromClass(String.class);
             Object cModule = JLModule.fromClass(c);
             uncheckedAddExports(javaBaseModule, "jdk.internal.reflect", cModule);

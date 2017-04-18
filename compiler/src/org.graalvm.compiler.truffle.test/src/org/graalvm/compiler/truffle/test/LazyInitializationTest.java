@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.core.common.util.Util.JAVA_SPECIFICATION_VERSION;
 import static org.graalvm.compiler.test.SubprocessUtil.formatExecutedCommand;
 import static org.graalvm.compiler.test.SubprocessUtil.getVMCommandLine;
 import static org.graalvm.compiler.test.SubprocessUtil.withoutDebuggerArguments;
@@ -39,7 +38,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.core.CompilerThreadFactory;
-import org.graalvm.compiler.core.common.util.ModuleAPI;
 import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.nodes.Cancellable;
@@ -49,6 +47,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionValuesAccess;
 import org.graalvm.compiler.options.OptionsParser;
+import org.graalvm.compiler.serviceprovider.JDK9Method;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -241,7 +240,7 @@ public class LazyInitializationTest {
             return true;
         }
 
-        if (JAVA_SPECIFICATION_VERSION >= 9 && cls.equals(ModuleAPI.class)) {
+        if (JDK9Method.JAVA_SPECIFICATION_VERSION >= 9 && cls.equals(JDK9Method.class)) {
             // Graal initialization needs access to Module API on JDK 9.
             return true;
         }

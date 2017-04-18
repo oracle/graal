@@ -53,10 +53,8 @@ public class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
 
     @Override
     public TruffleRuntime getRuntime() {
-        Services.exportJVMCITo(getClass());
-
         // initialize JVMCI to make sure the TruffleCompiler option is parsed
-        JVMCI.initialize();
+        Services.initializeJVMCI();
 
         return new HotSpotTruffleRuntime(new LazyGraalRuntime());
     }

@@ -133,7 +133,6 @@ import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
-import jdk.vm.ci.services.Services;
 
 /**
  * Base class for Graal compiler unit tests.
@@ -157,6 +156,7 @@ import jdk.vm.ci.services.Services;
 @AddExports({"jdk.internal.vm.ci/jdk.vm.ci.meta",
                 "jdk.internal.vm.ci/jdk.vm.ci.services",
                 "jdk.internal.vm.ci/jdk.vm.ci.code",
+                "jdk.internal.vm.ci/jdk.vm.ci.runtime",
                 "jdk.internal.vm.ci/jdk.vm.ci.services",
                 "jdk.internal.vm.compiler/*",
                 "java.base/jdk.internal.org.objectweb.asm",
@@ -179,11 +179,6 @@ public abstract class GraalCompilerTest extends GraalTest {
      * Representative class for the {@code java.base} module.
      */
     public static final Class<?> JAVA_BASE = Class.class;
-
-    /**
-     * Representative class for the {@code jdk.vm.ci} module.
-     */
-    public static final Class<?> JDK_VM_CI = Services.class;
 
     /**
      * Exports the package named {@code packageName} declared in {@code moduleMember}'s module to

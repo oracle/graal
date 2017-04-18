@@ -60,20 +60,10 @@ public final class NativeFunctionInterfaceRuntime {
                 }
             }
         } else {
-
             try {
-                servicesClass = Class.forName("jdk.vm.ci.services.Services");
+                servicesClass = Class.forName("org.graalvm.compiler.serviceprovider.GraalServices");
             } catch (ClassNotFoundException e) {
-                try {
-                    servicesClass = Class.forName("jdk.vm.ci.service.Services");
-                } catch (ClassNotFoundException e2) {
-                    try {
-                        // Legacy support
-                        servicesClass = Class.forName("com.oracle.jvmci.service.Services");
-                    } catch (ClassNotFoundException e3) {
-                        // JVMCI is unavailable
-                    }
-                }
+                // JVMCI is unavailable
             }
         }
         if (servicesClass != null) {

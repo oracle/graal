@@ -40,7 +40,6 @@ import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.common.InitTimer;
-import jdk.vm.ci.services.Services;
 
 /**
  * The {@link #HOTSPOT_OPTIONS} value contains the options values initialized in a HotSpot VM. The
@@ -89,7 +88,7 @@ public class HotSpotGraalOptionValues implements OptionValuesAccess {
         try (InitTimer t = timer("InitializeOptions")) {
 
             Iterable<OptionDescriptors> loader = OptionsParser.getOptionsLoader();
-            Map<String, String> savedProps = Services.getSavedProperties();
+            Map<String, String> savedProps = jdk.vm.ci.services.Services.getSavedProperties();
             String optionsFile = savedProps.get(GRAAL_OPTIONS_FILE_PROPERTY_NAME);
 
             if (optionsFile != null) {

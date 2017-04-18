@@ -22,13 +22,12 @@
  */
 package org.graalvm.compiler.hotspot.meta;
 
-import static org.graalvm.compiler.core.common.util.Util.Java8OrEarlier;
+import static org.graalvm.compiler.serviceprovider.JDK9Method.Java8OrEarlier;
 
 import java.lang.reflect.Type;
 import java.util.Set;
 
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.core.common.util.ModuleAPI;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
@@ -42,6 +41,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.replacements.nodes.MacroNode;
+import org.graalvm.compiler.serviceprovider.JDK9Method;
 import org.graalvm.util.EconomicSet;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
@@ -129,7 +129,7 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
                 ClassLoader cl = javaClass.getClassLoader();
                 return cl == null || cl == getClass().getClassLoader() || cl == extLoader;
             } else {
-                Object module = ModuleAPI.getModule.invoke(javaClass);
+                Object module = JDK9Method.getModule.invoke(javaClass);
                 return trustedModules.contains(module);
             }
         }
@@ -151,20 +151,20 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
     private static EconomicSet<Object> initTrustedModules(CompilerConfiguration compilerConfiguration) throws GraalError {
         try {
             EconomicSet<Object> res = EconomicSet.create();
-            Object compilerConfigurationModule = ModuleAPI.getModule.invoke(compilerConfiguration.getClass());
+            Object compilerConfigurationModule = JDK9Method.getModule.invoke(compilerConfiguration.getClass());
             res.add(compilerConfigurationModule);
             Class<?> moduleClass = compilerConfigurationModule.getClass();
-            Object layer = new ModuleAPI(moduleClass, "getLayer").invoke(compilerConfigurationModule);
+            Object layer = new JDK9Method(moduleClass, "getLayer").invoke(compilerConfigurationModule);
             Class<? extends Object> layerClass = layer.getClass();
-            ModuleAPI getName = new ModuleAPI(moduleClass, "getName");
-            Set<Object> modules = new ModuleAPI(layerClass, "modules").invoke(layer);
-            Object descriptor = new ModuleAPI(moduleClass, "getDescriptor").invoke(compilerConfigurationModule);
+            JDK9Method getName = new JDK9Method(moduleClass, "getName");
+            Set<Object> modules = new JDK9Method(layerClass, "modules").invoke(layer);
+            Object descriptor = new JDK9Method(moduleClass, "getDescriptor").invoke(compilerConfigurationModule);
             Class<?> moduleDescriptorClass = descriptor.getClass();
-            Set<Object> requires = new ModuleAPI(moduleDescriptorClass, "requires").invoke(descriptor);
-            ModuleAPI requireNameGetter = null;
+            Set<Object> requires = new JDK9Method(moduleDescriptorClass, "requires").invoke(descriptor);
+            JDK9Method requireNameGetter = null;
             for (Object require : requires) {
                 if (requireNameGetter == null) {
-                    requireNameGetter = new ModuleAPI(require.getClass(), "name");
+                    requireNameGetter = new JDK9Method(require.getClass(), "name");
                 }
                 String name = requireNameGetter.invoke(require);
                 for (Object module : modules) {

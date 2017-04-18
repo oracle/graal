@@ -27,15 +27,13 @@ import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import jdk.vm.ci.hotspot.HotSpotVMEventListener;
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
 import jdk.vm.ci.services.JVMCIServiceLocator;
-import jdk.vm.ci.services.Services;
 
 @ServiceProvider(JVMCIServiceLocator.class)
 public final class HotSpotGraalJVMCIServiceLocator extends JVMCIServiceLocator {
 
     /**
      * Holds the state shared between all {@link HotSpotGraalJVMCIServiceLocator} instances. This is
-     * necessary as {@link Services} can create a new instance of a service provider each time
-     * {@link Services#load(Class)} or {@link Services#loadSingle(Class, boolean)} is called.
+     * necessary as a service provider instance is created each time the service is loaded.
      */
     private static final class Shared {
         static final Shared SINGLETON = new Shared();

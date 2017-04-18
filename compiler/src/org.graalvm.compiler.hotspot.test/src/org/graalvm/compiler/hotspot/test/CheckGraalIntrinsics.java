@@ -22,8 +22,6 @@
  */
 package org.graalvm.compiler.hotspot.test;
 
-import static org.graalvm.compiler.core.common.util.Util.JAVA_SPECIFICATION_VERSION;
-
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,6 +41,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Binding;
 import org.graalvm.compiler.runtime.RuntimeProvider;
+import org.graalvm.compiler.serviceprovider.JDK9Method;
 import org.graalvm.compiler.test.AddExports;
 import org.graalvm.compiler.test.GraalTest;
 import org.graalvm.util.EconomicMap;
@@ -371,7 +370,7 @@ public class CheckGraalIntrinsics extends GraalTest {
         if (!config.useCRC32Intrinsics) {
             // Registration of the CRC32 plugins is guarded by UseCRC32Intrinsics
             add(IGNORE, "java/util/zip/CRC32.update(II)I");
-            if (JAVA_SPECIFICATION_VERSION < 9) {
+            if (JDK9Method.JAVA_SPECIFICATION_VERSION < 9) {
                 add(IGNORE,
                                 "java/util/zip/CRC32.updateByteBuffer(IJII)I",
                                 "java/util/zip/CRC32.updateBytes(I[BII)I");
@@ -383,7 +382,7 @@ public class CheckGraalIntrinsics extends GraalTest {
                                 "java/util/zip/CRC32C.updateDirectByteBuffer(IJII)I");
             }
         } else {
-            if (JAVA_SPECIFICATION_VERSION >= 9) {
+            if (JDK9Method.JAVA_SPECIFICATION_VERSION >= 9) {
                 add(TO_BE_INVESTIGATED,
                                 "java/util/zip/CRC32C.updateBytes(I[BII)I",
                                 "java/util/zip/CRC32C.updateDirectByteBuffer(IJII)I");
@@ -392,7 +391,7 @@ public class CheckGraalIntrinsics extends GraalTest {
 
         if (!config.useAESIntrinsics) {
             // Registration of the AES plugins is guarded by UseAESIntrinsics
-            if (JAVA_SPECIFICATION_VERSION < 9) {
+            if (JDK9Method.JAVA_SPECIFICATION_VERSION < 9) {
                 add(IGNORE,
                                 "com/sun/crypto/provider/AESCrypt.decryptBlock([BI[BI)V",
                                 "com/sun/crypto/provider/AESCrypt.encryptBlock([BI[BI)V",
@@ -408,7 +407,7 @@ public class CheckGraalIntrinsics extends GraalTest {
         }
         if (!config.useMultiplyToLenIntrinsic()) {
             // Registration of the AES plugins is guarded by UseAESIntrinsics
-            if (JAVA_SPECIFICATION_VERSION < 9) {
+            if (JDK9Method.JAVA_SPECIFICATION_VERSION < 9) {
                 add(IGNORE, "java/math/BigInteger.multiplyToLen([II[II[I)[I");
             } else {
                 add(IGNORE, "java/math/BigInteger.implMultiplyToLen([II[II[I)[I");
