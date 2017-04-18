@@ -33,6 +33,7 @@ import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.test.AddExports;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -43,6 +44,7 @@ import jdk.vm.ci.sparc.SPARC;
  * Tests the {@link BailoutException} thrown, when trying to compile huge methods, which have branch
  * displacements which does not fit into 19 bit signed.
  */
+@AddExports("jdk.internal.vm.ci/jdk.vm.ci.sparc")
 public class SPARCBranchBailoutTest extends LIRTest {
     private static class BranchSpec extends LIRTestSpecification {
         private final int n;
