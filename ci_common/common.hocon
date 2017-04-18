@@ -3,7 +3,7 @@ overlay = d8d8bb68148b7e5a1ec7958a55f4a340397a3757
 
 java7 : {name : oraclejdk, version : "7",    platformspecific: true}
 java8 : {name : labsjdk, version : "8u121-jvmci-0.26-dev", platformspecific: true}
-java9 : {name : labsjdk, version : "9-20170417-142534-dev", platformspecific: true}
+java9 : {name : labsjdk, version : "9-20170418-180705-dev", platformspecific: true}
 java9EA : {name : labsjdk, version : "9-ea+161", platformspecific: true}
 java8Debug : {name : labsjdk, version : "8u121-jvmci-0.26-dev-fastdebug", platformspecific: true}
 
