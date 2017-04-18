@@ -153,11 +153,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * <p>
  * These tests will be run by the {@code mx unittest} command.
  */
-@AddExports({"jdk.internal.vm.ci/jdk.vm.ci.meta",
-                "jdk.internal.vm.ci/jdk.vm.ci.services",
-                "jdk.internal.vm.ci/jdk.vm.ci.code",
-                "jdk.internal.vm.ci/jdk.vm.ci.runtime",
-                "jdk.internal.vm.ci/jdk.vm.ci.services",
+@AddExports({"jdk.internal.vm.ci/*",
                 "jdk.internal.vm.compiler/*",
                 "java.base/jdk.internal.org.objectweb.asm",
                 "java.base/jdk.internal.org.objectweb.asm.tree"})

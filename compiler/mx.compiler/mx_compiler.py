@@ -284,8 +284,10 @@ def ctw(args, extraVMarguments=None):
                 vmargs.append('-DCompileTheWorld.limitmods=' + args.limitmods)
             if cp is not None:
                 vmargs.append('-DCompileTheWorld.Classpath=' + cp)
-            # Need export below since jdk.vm.ci.services is not exported in all JDK 9 EA releases.
+            vmargs.append('--add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot=ALL-UNNAMED')
+            vmargs.append('--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED')
             vmargs.append('--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED')
+            vmargs.append('--add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED')
             vmargs.extend(['-cp', mx.classpath('org.graalvm.compiler.hotspot.test', jdk=jdk)])
             mainClassAndArgs = ['org.graalvm.compiler.hotspot.test.CompileTheWorld']
         else:
