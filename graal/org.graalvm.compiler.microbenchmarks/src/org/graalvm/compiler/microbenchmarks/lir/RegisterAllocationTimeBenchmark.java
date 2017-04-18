@@ -24,21 +24,24 @@ package org.graalvm.compiler.microbenchmarks.lir;
 
 import java.util.HashMap;
 
-import org.openjdk.jmh.annotations.Benchmark;
-
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
-import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.microbenchmarks.graal.GraalBenchmark;
 import org.graalvm.compiler.microbenchmarks.graal.util.MethodSpec;
+import org.graalvm.compiler.options.OptionValues;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Warmup;
 
+@Warmup(iterations = 10)
+@Measurement(iterations = 10)
 public class RegisterAllocationTimeBenchmark extends GraalBenchmark {
 
     // Checkstyle: stop method name check
     public static class LSRA_Allocation extends GraalCompilerState.AllocationStage {
-        @SuppressWarnings("try")
         @Override
-        protected LIRSuites createLIRSuites() {
-            return super.createLIRSuites();
+        protected OptionValues getOptions() {
+            return new OptionValues(super.getOptions(), GraalOptions.TraceRA, false);
         }
     }
 
@@ -61,10 +64,9 @@ public class RegisterAllocationTimeBenchmark extends GraalBenchmark {
     }
 
     public static class TraceRA_Allocation extends GraalCompilerState.AllocationStage {
-        @SuppressWarnings("try")
         @Override
-        protected LIRSuites createLIRSuites() {
-            return super.createLIRSuites();
+        protected OptionValues getOptions() {
+            return new OptionValues(super.getOptions(), GraalOptions.TraceRA, true);
         }
     }
 
