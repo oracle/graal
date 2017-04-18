@@ -1,5 +1,5 @@
 # overlay version
-overlay = fc2002ce249412343ae6e7e31e63e2e98d50d87c
+overlay = d8d8bb68148b7e5a1ec7958a55f4a340397a3757
 
 java7 : {name : oraclejdk, version : "7",    platformspecific: true}
 java8 : {name : labsjdk, version : "8u121-jvmci-0.25", platformspecific: true}
