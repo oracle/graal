@@ -33,7 +33,7 @@ import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeField(name = "slot", type = FrameSlot.class)
 public abstract class LLVMAMD64WriteRegisterNode extends Node {

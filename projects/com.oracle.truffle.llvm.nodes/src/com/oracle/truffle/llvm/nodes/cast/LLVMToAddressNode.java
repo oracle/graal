@@ -33,14 +33,13 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.interop.ToLLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
@@ -77,11 +76,6 @@ public abstract class LLVMToAddressNode extends LLVMExpressionNode {
     @Specialization
     public LLVMAddress executeLLVMAddress(LLVMAddress from) {
         return from;
-    }
-
-    @Specialization
-    public LLVMAddress executeI64(@SuppressWarnings("unused") LLVMTruffleNull from) {
-        return LLVMAddress.nullPointer();
     }
 
     @Child private ToLLVMNode toLong = ToLLVMNode.createNode(long.class);

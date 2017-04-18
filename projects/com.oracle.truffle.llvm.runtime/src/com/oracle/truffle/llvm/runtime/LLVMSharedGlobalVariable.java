@@ -29,10 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
+import com.oracle.truffle.llvm.runtime.interop.LLVMGlobalVariableMessageResolutionForeign;
 
 public final class LLVMSharedGlobalVariable implements TruffleObject {
 
@@ -56,18 +56,8 @@ public final class LLVMSharedGlobalVariable implements TruffleObject {
         return object instanceof LLVMSharedGlobalVariable;
     }
 
-    @CompilationFinal private static ForeignAccess ACCESS;
-
     @Override
     public ForeignAccess getForeignAccess() {
-        if (ACCESS == null) {
-            try {
-                Class<?> accessor = Class.forName("com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMGlobalVariableMessageResolutionAccessor");
-                ACCESS = (ForeignAccess) accessor.getField("ACCESS").get(null);
-            } catch (Exception e) {
-                throw new AssertionError(e);
-            }
-        }
-        return ACCESS;
+        return LLVMGlobalVariableMessageResolutionForeign.ACCESS;
     }
 }

@@ -32,8 +32,8 @@ package com.oracle.truffle.llvm.nodes.op.arith.floating;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChildren({@NodeChild("leftNode"), @NodeChild("rightNode")})
 public abstract class LLVM80BitFloatArithmeticNode extends LLVMExpressionNode {

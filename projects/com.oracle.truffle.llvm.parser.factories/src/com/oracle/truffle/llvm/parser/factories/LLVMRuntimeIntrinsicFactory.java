@@ -33,7 +33,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.oracle.truffle.api.dsl.NodeFactory;
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMAbortFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMAtExitFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMAbsFactory;
@@ -52,6 +51,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMExitFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMSignalFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMTruffleOnlyIntrinsicsFactory.LLVMStrCmpFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMTruffleOnlyIntrinsicsFactory.LLVMStrlenFactory;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 /**
  * This class creates intrinsic functions and is designed to be inherited.

@@ -36,8 +36,8 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.NativeAllocator;
 import com.oracle.truffle.llvm.runtime.NativeResolver;
@@ -176,8 +176,8 @@ public final class LLVMGlobalVariable {
         getContainer().putFunction(this, value);
     }
 
-    public void putNull(LLVMTruffleNull value) {
-        getContainer().putNull(this, value);
+    public void putBoxedPrimitive(LLVMBoxedPrimitive value) {
+        getContainer().putBoxedPrimitive(this, value);
     }
 
     public boolean isUninitialized() {

@@ -27,25 +27,18 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.api;
+package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 
-public abstract class LLVMControlFlowNode extends LLVMNode {
-    @CompilationFinal(dimensions = 1) private final int[] successors;
-
-    public LLVMControlFlowNode(int... successors) {
-        this.successors = successors;
+public abstract class LLVMNode extends Node {
+    public final LLVMContext getContext() {
+        return getRootNode().getLanguage(LLVMLanguage.class).getContextReference().get();
     }
 
-    public int nrSuccessors() {
-        return successors.length;
+    public final LLVMLanguage getLLVMLanguage() {
+        return getRootNode().getLanguage(LLVMLanguage.class);
     }
-
-    public int[] getSuccessors() {
-        return successors;
-    }
-
-    public abstract int executeGetSuccessorIndex(VirtualFrame frame);
 }

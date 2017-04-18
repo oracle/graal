@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.op.logical.integer.LLVMI16LogicalNodeFactory.LLVMI16AndNodeGen;
 import com.oracle.truffle.llvm.nodes.op.logical.integer.LLVMI16LogicalNodeFactory.LLVMI16AshrNodeGen;
 import com.oracle.truffle.llvm.nodes.op.logical.integer.LLVMI16LogicalNodeFactory.LLVMI16LshrNodeGen;
@@ -91,6 +90,7 @@ import com.oracle.truffle.llvm.nodes.op.logical.vector.LLVMI8VectorLogicalNodeFa
 import com.oracle.truffle.llvm.nodes.op.logical.vector.LLVMI8VectorLogicalNodeFactory.LLVMI8VectorShlNodeGen;
 import com.oracle.truffle.llvm.nodes.op.logical.vector.LLVMI8VectorLogicalNodeFactory.LLVMI8VectorXorNodeGen;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionKind;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;

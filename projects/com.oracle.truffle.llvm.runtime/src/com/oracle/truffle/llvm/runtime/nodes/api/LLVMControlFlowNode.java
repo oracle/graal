@@ -27,12 +27,25 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.interop;
+package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
-public class LLVMNullMessageResolutionAccessor {
+public abstract class LLVMControlFlowNode extends LLVMNode {
+    @CompilationFinal(dimensions = 1) private final int[] successors;
 
-    public static final ForeignAccess ACCESS = LLVMNullMessageResolutionForeign.ACCESS;
+    public LLVMControlFlowNode(int... successors) {
+        this.successors = successors;
+    }
 
+    public int nrSuccessors() {
+        return successors.length;
+    }
+
+    public int[] getSuccessors() {
+        return successors;
+    }
+
+    public abstract int executeGetSuccessorIndex(VirtualFrame frame);
 }

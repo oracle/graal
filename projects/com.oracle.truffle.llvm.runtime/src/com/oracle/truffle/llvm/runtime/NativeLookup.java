@@ -261,7 +261,7 @@ public final class NativeLookup {
         if (symbol == null) {
             CompilerDirectives.transferToInterpreter();
             if (descriptor.isNullFunction()) {
-                symbol = new LLVMTruffleNull();
+                symbol = descriptor;
             } else {
                 symbol = getNativeFunction(descriptor.getName());
             }

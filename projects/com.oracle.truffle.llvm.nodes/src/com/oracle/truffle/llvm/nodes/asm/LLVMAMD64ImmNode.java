@@ -30,7 +30,7 @@
 package com.oracle.truffle.llvm.nodes.asm;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMAMD64ImmNode extends LLVMExpressionNode {
     public abstract static class LLVMAMD64I8Node extends LLVMExpressionNode {

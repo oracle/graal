@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.op.arith.floating.LLVM80BitFloatArithmeticNodeFactory.LLVM80BitFloatAddNodeGen;
 import com.oracle.truffle.llvm.nodes.op.arith.floating.LLVM80BitFloatArithmeticNodeFactory.LLVM80BitFloatDivNodeGen;
 import com.oracle.truffle.llvm.nodes.op.arith.floating.LLVM80BitFloatArithmeticNodeFactory.LLVM80BitFloatMulNodeGen;
@@ -119,6 +118,7 @@ import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI8VectorArithmeticNodeF
 import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI8VectorArithmeticNodeFactory.LLVMI8VectorRemNodeGen;
 import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI8VectorArithmeticNodeFactory.LLVMI8VectorSubNodeGen;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
