@@ -257,7 +257,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         StructuredGraph graph = new StructuredGraph.Builder(options, AllowAssumptions.NO).method(javaMethod).compilationId(compilationId).build();
 
         MetaAccessProvider metaAccess = providers.getMetaAccess();
-        Plugins plugins = new Plugins(new InvocationPlugins(metaAccess));
+        Plugins plugins = new Plugins(new InvocationPlugins());
         HotSpotCodeCacheProvider codeCache = providers.getCodeCache();
         boolean infoPoints = codeCache.shouldDebugNonSafepoints();
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true).withNodeSourcePosition(infoPoints);
