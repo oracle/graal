@@ -165,7 +165,9 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
     private static <T extends IntervalHint> boolean isSortedByFrom(T[] intervals) {
         int from = -1;
         for (T interval : intervals) {
-            assert interval != null;
+            if (interval == null) {
+                continue;
+            }
             assert from <= interval.from();
             from = interval.from();
         }
@@ -182,13 +184,13 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
         return true;
     }
 
-    private static <T extends IntervalHint> T[] sortIntervalsBeforeAllocation(T[] intervals, T[] sortedList) {
+    private static TraceInterval[] sortIntervalsBeforeAllocation(TraceInterval[] intervals, TraceInterval[] sortedList) {
         int sortedIdx = 0;
         int sortedFromMax = -1;
 
         // special sorting algorithm: the original interval-list is almost sorted,
         // only some intervals are swapped. So this is much faster than a complete QuickSort
-        for (T interval : intervals) {
+        for (TraceInterval interval : intervals) {
             if (interval != null) {
                 int from = interval.from();
 
@@ -216,11 +218,6 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
          * Intervals sorted by {@link TraceInterval#from()}.
          */
         private TraceInterval[] sortedIntervals;
-
-        /**
-         * Fixed intervals sorted by {@link FixedInterval#from()}.
-         */
-        private FixedInterval[] sortedFixedIntervals;
 
         private final Trace trace;
 
@@ -437,16 +434,13 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
         }
 
         FixedInterval createFixedUnhandledList() {
-            assert isSortedByFrom(sortedFixedIntervals) : "interval list is not sorted";
+            assert isSortedByFrom(fixedIntervals) : "interval list is not sorted";
 
             FixedInterval list1 = FixedInterval.EndMarker;
 
             FixedInterval list1Prev = null;
-            FixedInterval v;
+            for (FixedInterval v : fixedIntervals) {
 
-            int n = sortedFixedIntervals.length;
-            for (int i = 0; i < n; i++) {
-                v = sortedFixedIntervals[i];
                 if (v == null) {
                     continue;
                 }
@@ -475,16 +469,6 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
                 }
             }
             sortedIntervals = TraceLinearScanPhase.sortIntervalsBeforeAllocation(intervals(), new TraceInterval[sortedLen]);
-        }
-
-        protected void sortFixedIntervalsBeforeAllocation() {
-            int sortedLen = 0;
-            for (FixedInterval interval : fixedIntervals()) {
-                if (interval != null) {
-                    sortedLen++;
-                }
-            }
-            sortedFixedIntervals = TraceLinearScanPhase.sortIntervalsBeforeAllocation(fixedIntervals(), new FixedInterval[sortedLen]);
         }
 
         void sortIntervalsAfterAllocation() {
@@ -580,7 +564,6 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
                     printIntervals("Before register allocation");
 
                     sortIntervalsBeforeAllocation();
-                    sortFixedIntervalsBeforeAllocation();
 
                     TRACE_LINEAR_SCAN_REGISTER_ALLOCATION_PHASE.apply(target, lirGenRes, trace, spillMoveFactory, registerAllocationConfig, traceBuilderResult, this, false);
                     printIntervals("After register allocation");
