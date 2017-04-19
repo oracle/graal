@@ -430,7 +430,7 @@ final class JavaInteropReflect {
         @Specialization(rewriteOn = UnsupportedMessageException.class)
         Object doReadExec(TruffleObject obj, String name, Object[] args) throws UnsupportedMessageException {
             try {
-                if (readNode == null) {
+                if (readNode == null || primitive == null || isExecNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     readNode = insert(Message.READ.createNode());
                     primitive = insert(ToPrimitiveNode.create());
