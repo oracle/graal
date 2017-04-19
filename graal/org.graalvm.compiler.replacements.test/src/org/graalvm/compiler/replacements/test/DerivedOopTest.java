@@ -25,6 +25,8 @@ package org.graalvm.compiler.replacements.test;
 import java.util.Objects;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugConfigScope;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -141,14 +143,17 @@ public class DerivedOopTest extends ReplacementsTest implements Snippets {
     private static final String UNKNOWN_REFERENCE_AT_SAFEPOINT_MSG = "should not reach here: unknown reference alive across safepoint";
 
     @Test
+    @SuppressWarnings("try")
     public void testFieldOffsetMergeNonLiveBasePointer() {
         thrown.expect(GraalError.class);
         thrown.expectMessage(UNKNOWN_REFERENCE_AT_SAFEPOINT_MSG);
-        // Run a couple times to encourage objects to move
-        for (int i = 0; i < 4; i++) {
-            Result r = new Result();
-            test("fieldOffsetMergeSnippet01", r, 8L, 16L);
-            Assert.assertEquals(r.beforeGC.delta(), r.afterGC.delta());
+        try (DebugConfigScope s = Debug.setConfig(Debug.silentConfig())) {
+            // Run a couple times to encourage objects to move
+            for (int i = 0; i < 4; i++) {
+                Result r = new Result();
+                test("fieldOffsetMergeSnippet01", r, 8L, 16L);
+                Assert.assertEquals(r.beforeGC.delta(), r.afterGC.delta());
+            }
         }
     }
 
@@ -162,14 +167,17 @@ public class DerivedOopTest extends ReplacementsTest implements Snippets {
     }
 
     @Test
+    @SuppressWarnings("try")
     public void testFieldOffsetMergeLiveBasePointer() {
         thrown.expect(GraalError.class);
         thrown.expectMessage(UNKNOWN_REFERENCE_AT_SAFEPOINT_MSG);
-        // Run a couple times to encourage objects to move
-        for (int i = 0; i < 4; i++) {
-            Result r = new Result();
-            test("fieldOffsetMergeSnippet03", r, new Result(), new Result(), 8L, 16L);
-            Assert.assertEquals(r.beforeGC.delta(), r.afterGC.delta());
+        try (DebugConfigScope s = Debug.setConfig(Debug.silentConfig())) {
+            // Run a couple times to encourage objects to move
+            for (int i = 0; i < 4; i++) {
+                Result r = new Result();
+                test("fieldOffsetMergeSnippet03", r, new Result(), new Result(), 8L, 16L);
+                Assert.assertEquals(r.beforeGC.delta(), r.afterGC.delta());
+            }
         }
     }
 
