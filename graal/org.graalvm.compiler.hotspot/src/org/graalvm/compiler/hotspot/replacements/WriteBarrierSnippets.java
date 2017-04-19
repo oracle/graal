@@ -54,7 +54,6 @@ import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
-import org.graalvm.compiler.hotspot.nodes.CompressionNode;
 import org.graalvm.compiler.hotspot.nodes.G1ArrayRangePostWriteBarrier;
 import org.graalvm.compiler.hotspot.nodes.G1ArrayRangePreWriteBarrier;
 import org.graalvm.compiler.hotspot.nodes.G1PostWriteBarrier;
@@ -62,10 +61,10 @@ import org.graalvm.compiler.hotspot.nodes.G1PreWriteBarrier;
 import org.graalvm.compiler.hotspot.nodes.G1ReferentFieldReadBarrier;
 import org.graalvm.compiler.hotspot.nodes.GetObjectAddressNode;
 import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
+import org.graalvm.compiler.hotspot.nodes.HotSpotCompressionNode;
 import org.graalvm.compiler.hotspot.nodes.SerialArrayRangeWriteBarrier;
 import org.graalvm.compiler.hotspot.nodes.SerialWriteBarrier;
 import org.graalvm.compiler.hotspot.nodes.VMErrorNode;
-import org.graalvm.compiler.hotspot.nodes.type.NarrowOopStamp;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -78,6 +77,7 @@ import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode.Address;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.type.NarrowOopStamp;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.Log;
 import org.graalvm.compiler.replacements.SnippetCounter;
@@ -444,7 +444,7 @@ public class WriteBarrierSnippets implements Snippets {
             ValueNode expected = writeBarrierPre.getExpectedObject();
             if (expected != null && expected.stamp() instanceof NarrowOopStamp) {
                 assert oopEncoding != null;
-                expected = CompressionNode.uncompress(expected, oopEncoding);
+                expected = HotSpotCompressionNode.uncompress(expected, oopEncoding);
             }
             args.add("expectedObject", expected);
 
@@ -469,7 +469,7 @@ public class WriteBarrierSnippets implements Snippets {
             ValueNode expected = readBarrier.getExpectedObject();
             if (expected != null && expected.stamp() instanceof NarrowOopStamp) {
                 assert oopEncoding != null;
-                expected = CompressionNode.uncompress(expected, oopEncoding);
+                expected = HotSpotCompressionNode.uncompress(expected, oopEncoding);
             }
 
             args.add("expectedObject", expected);
@@ -500,7 +500,7 @@ public class WriteBarrierSnippets implements Snippets {
             ValueNode value = writeBarrierPost.getValue();
             if (value.stamp() instanceof NarrowOopStamp) {
                 assert oopEncoding != null;
-                value = CompressionNode.uncompress(value, oopEncoding);
+                value = HotSpotCompressionNode.uncompress(value, oopEncoding);
             }
             args.add("value", value);
 

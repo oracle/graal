@@ -23,20 +23,15 @@
 
 package org.graalvm.compiler.hotspot.amd64.test;
 
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-
-import org.junit.Assume;
-import org.junit.Before;
-import org.junit.Test;
 
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.hotspot.nodes.CompressionNode;
-import org.graalvm.compiler.hotspot.nodes.type.NarrowOopStamp;
+import org.graalvm.compiler.hotspot.nodes.HotSpotCompressionNode;
 import org.graalvm.compiler.hotspot.test.HotSpotGraalCompilerTest;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstructionClass;
@@ -52,6 +47,10 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.nodes.type.NarrowOopStamp;
+import org.junit.Assume;
+import org.junit.Before;
+import org.junit.Test;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -156,9 +155,9 @@ public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
         r.register1("loadThroughCompressedPatch", Object.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
-                ValueNode compressed = b.add(CompressionNode.compress(arg, runtime().getVMConfig().getOopEncoding()));
+                ValueNode compressed = b.add(HotSpotCompressionNode.compress(arg, runtime().getVMConfig().getOopEncoding()));
                 ValueNode patch = b.add(new LoadThroughPatchNode(compressed));
-                b.addPush(JavaKind.Object, CompressionNode.uncompress(patch, runtime().getVMConfig().getOopEncoding()));
+                b.addPush(JavaKind.Object, HotSpotCompressionNode.uncompress(patch, runtime().getVMConfig().getOopEncoding()));
                 return true;
             }
         });
