@@ -198,8 +198,8 @@ public class LinearScanAssignLocationsPhase extends LinearScanAllocationPhase {
         assert op != null;
 
         // remove useless moves
-        if (op instanceof MoveOp) {
-            AllocatableValue result = ((MoveOp) op).getResult();
+        if (MoveOp.isMoveOp(op)) {
+            AllocatableValue result = MoveOp.asMoveOp(op).getResult();
             if (isVariable(result) && allocator.isMaterialized(result, op.id(), OperandMode.DEF)) {
                 /*
                  * This happens if a materializable interval is originally not spilled but then
@@ -219,8 +219,8 @@ public class LinearScanAssignLocationsPhase extends LinearScanAllocationPhase {
         op.forEachState(debugInfoProc);
 
         // remove useless moves
-        if (op instanceof ValueMoveOp) {
-            ValueMoveOp move = (ValueMoveOp) op;
+        if (ValueMoveOp.isValueMoveOp(op)) {
+            ValueMoveOp move = ValueMoveOp.asValueMoveOp(op);
             if (move.getInput().equals(move.getResult())) {
                 return true;
             }

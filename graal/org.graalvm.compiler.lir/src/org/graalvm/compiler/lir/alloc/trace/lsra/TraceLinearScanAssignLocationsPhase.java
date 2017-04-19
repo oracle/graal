@@ -273,8 +273,8 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
             assert op != null && instructions.get(j) == op;
 
             // remove useless moves
-            if (op instanceof MoveOp) {
-                AllocatableValue result = ((MoveOp) op).getResult();
+            if (MoveOp.isMoveOp(op)) {
+                AllocatableValue result = MoveOp.asMoveOp(op).getResult();
                 if (isVariable(result) && allocator.isMaterialized(result, op.id(), OperandMode.DEF)) {
                     /*
                      * This happens if a materializable interval is originally not spilled but then
@@ -295,8 +295,8 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
             op.forEachState(debugInfoValueProc);
 
             // remove useless moves
-            if (op instanceof ValueMoveOp) {
-                ValueMoveOp move = (ValueMoveOp) op;
+            if (ValueMoveOp.isValueMoveOp(op)) {
+                ValueMoveOp move = ValueMoveOp.asValueMoveOp(op);
                 if (move.getInput().equals(move.getResult())) {
                     instructions.set(j, null);
                     return true;
