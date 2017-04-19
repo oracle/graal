@@ -13,10 +13,10 @@ m7_eighth.c1 : {
 }
 
 builds += [
-  ${bench-dacapo}              ${m7_eighth.c1} { name: "bench-dacapo-solaris-m7_eighth-c1" }
-  ${bench-scala-dacapo}        ${m7_eighth.c1} { name: "bench-scala-dacapo-solaris-m7_eighth-c1" }
-  ${bench-specjvm2008-Single}  ${m7_eighth.c1} { name: "bench-specjvm2008-Single-solaris-m7_eighth-c1" }
-  ${bench-specjvm2008-OneVM}   ${m7_eighth.c1} { name: "bench-specjvm2008-OneVm-solaris-m7_eighth-c1" }  
-  ${bench-specjbb2015}         ${m7_eighth.c1} { name: "bench-specjbb2015-solaris-m7_eighth-c1" }
-#  ${bench-micros-graal}        ${m7_eighth.c1} { name: "bench-jmh-micros-graal-solaris-m7_eighth-c1" }
+  ${bench-dacapo}              ${m7_eighth.c1} { name: "bench-compiler-dacapo-solaris-m7_eighth-c1" }
+  ${bench-scala-dacapo}        ${m7_eighth.c1} { name: "bench-compiler-scala-dacapo-solaris-m7_eighth-c1" }
+  ${bench-specjvm2008-Single}  ${m7_eighth.c1} { name: "bench-compiler-specjvm2008-Single-solaris-m7_eighth-c1" }
+  ${bench-specjvm2008-OneVM}   ${m7_eighth.c1} { name: "bench-compiler-specjvm2008-OneVM-solaris-m7_eighth-c1" }  
+  ${bench-specjbb2015}         ${m7_eighth.c1} { name: "bench-compiler-specjbb2015-solaris-m7_eighth-c1" }
+#  ${bench-micros-graal}        ${m7_eighth.c1} { name: "bench-compiler-jmh-micros-graal-solaris-m7_eighth-c1" }
 ]

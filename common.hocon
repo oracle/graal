@@ -1,0 +1,151 @@
+# overlay version
+overlay = cbdba93f9f5d815885be015e140a075f5f9fa51e
+
+jdk-downloads: {
+  java7 : {name : oraclejdk, version : "7",    platformspecific: true}
+  java8 : {name : labsjdk, version : "8u121-jvmci-0.25", platformspecific: true}
+  java9 : {name : labsjdk, version : "9-20170301-144518", platformspecific: true}
+  java9EA : {name : labsjdk, version : "9-ea+161", platformspecific: true}
+  java8Debug : {name : labsjdk, version : "8u121-jvmci-0.25-fastdebug", platformspecific: true}
+}
+
+# Overlay placeholder for pinning mx to a specific revision
+mx : {}
+
+common : ${mx} {
+  timelimit : "30:00"
+  catch_files : [
+    "Graal diagnostic output saved in (?P<filename>.+\\.zip)"
+  ]
+}
+
+linux : ${common} {
+  packages : {
+    git : ">=1.8.3"
+    mercurial : ">=2.2"
+    "pip:astroid" : "==1.1.0"
+    "pip:pylint" : "==1.1.0"
+  }
+}
+
+solaris : ${common} {
+  packages : {
+    git : ">=1.8.3"
+    mercurial : ">=2.2"
+    "pip:astroid" : "==1.1.0"
+    "pip:pylint" : "==1.1.0"
+  }
+}
+
+darwin : ${common} {
+  packages : {
+    # Brew does not support versions
+    mercurial : ""
+    "pip:astroid" : "==1.1.0"
+    "pip:pylint" : "==1.1.0"
+  }
+  environment : {
+    PATH : "/usr/local/bin:$PATH"
+  }
+}
+
+linux-amd64 : ${linux} {
+  capabilities : [linux, amd64]
+}
+
+darwin-amd64 : ${darwin} {
+  capabilities : [darwin, amd64]
+}
+
+solaris-sparcv9 : ${solaris} {
+  capabilities : [solaris, sparcv9]
+}
+
+java8 : {
+  downloads : {
+    EXTRA_JAVA_HOMES : { pathlist :[
+      ${jdk-downloads.java7}
+    ]}
+    JAVA_HOME : ${jdk-downloads.java8}
+  }
+}
+
+java8Debug : {
+  downloads : {
+    EXTRA_JAVA_HOMES : { pathlist :[
+      ${jdk-downloads.java7}
+    ]}
+    JAVA_HOME : ${jdk-downloads.java8Debug}
+  }
+}
+
+java9 : {
+  downloads : {
+    EXTRA_JAVA_HOMES : { pathlist :[
+      ${jdk-downloads.java7}
+      ${jdk-downloads.java8}
+    ]}
+    JAVA_HOME : ${jdk-downloads.java9}
+  }
+}
+
+java9EA : ${java9} {
+  downloads : {
+    JAVA_HOME : ${jdk-downloads.java9EA}
+  }
+}
+
+eclipse : {
+  downloads : {
+    ECLIPSE : {name: eclipse, version: "4.5.2", platformspecific: true}
+  }
+  environment : {
+    ECLIPSE_EXE : "$ECLIPSE/eclipse"
+  }
+}
+
+jdt : {
+  downloads : {
+    JDT : {name: ecj, version: "4.5.1", platformspecific: false}
+  }
+}
+
+# for cases where a maven package is not easily accessible
+maven-download-unix : ${java8} {
+  downloads : {
+    MAVEN_HOME: {name: maven, version: "3.3.9", platformspecific: false}
+  }
+  environment : {
+    PATH : "$MAVEN_HOME/bin:$JAVA_HOME/bin:$PATH"
+  }
+}
+
+linux-deploy : ${linux} {
+  packages : {
+    maven : ">=3.3.9"
+  }
+}
+
+solaris-deploy : ${solaris} ${maven-download-unix}
+
+darwin-deploy : ${darwin} ${maven-download-unix} {
+  environment : {
+    PATH : "$MAVEN_HOME/bin:$JAVA_HOME/bin:/usr/local/bin:$PATH"
+  }
+}
+
+deploy-binaries : ${java8} {
+  targets : [post-merge, deploy]
+  run : [
+    ["mx", "--strict-compliance", "build"]
+    ["mx", "deploy-binary", "--skip-existing", ${binaries-repository}]
+  ]
+}
+
+maven-deploy-dry-run : ${java8} {
+  targets : [gate]
+  run : [
+    ["mx", "--strict-compliance", "build"]
+    ["mx", "maven-deploy", "--licenses", "GPLv2-CPE,UPL", "--dry-run", "ossrh", "https://this-is-only-a-test"]
+  ]
+}

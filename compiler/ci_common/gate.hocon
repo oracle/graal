@@ -54,23 +54,23 @@ gateBootstrapFullVerify : {
   ]
 }
 
-gateTest8               : ${gateTest} ${java8Downloads}
-gateTestCTW8            : ${gateTestCTW} ${java8Downloads}
-gateTestCTW9            : ${gateTestCTW} ${java9Downloads}
-gateTest8Debug          : ${gateTest} ${java8DownloadsDebug}
-gateTest9               : ${gateTest} ${java9Downloads}
-gateTest9EA             : ${gateTest} ${java9EADownloads}
-gateTestBenchmark8      : ${gateTestBenchmark} ${java8Downloads}
-gateTestBenchmark8Debug : ${gateTestBenchmark} ${java8DownloadsDebug}
-gateTestBenchmark9      : ${gateTestBenchmark} ${java9Downloads}
-gateBootstrap8          : ${gateBootstrap} ${java8Downloads}
-gateBootstrap9          : ${gateBootstrap} ${java9Downloads}
-gateBootstrap9EA        : ${gateBootstrap} ${java9EADownloads}
-gateBootstrap8FullVerify: ${gateBootstrapFullVerify} ${java8Downloads}
-gateBootstrapLite8      : ${gateBootstrapLite} ${java8Downloads}
-gateBootstrapLite9      : ${gateBootstrapLite} ${java9Downloads}
+gateTest8               : ${gateTest} ${java8}
+gateTestCTW8            : ${gateTestCTW} ${java8}
+gateTestCTW9            : ${gateTestCTW} ${java9}
+gateTest8Debug          : ${gateTest} ${java8Debug}
+gateTest9               : ${gateTest} ${java9}
+gateTest9EA             : ${gateTest} ${java9EA}
+gateTestBenchmark8      : ${gateTestBenchmark} ${java8}
+gateTestBenchmark8Debug : ${gateTestBenchmark} ${java8Debug}
+gateTestBenchmark9      : ${gateTestBenchmark} ${java9}
+gateBootstrap8          : ${gateBootstrap} ${java8}
+gateBootstrap9          : ${gateBootstrap} ${java9}
+gateBootstrap9EA        : ${gateBootstrap} ${java9EA}
+gateBootstrap8FullVerify: ${gateBootstrapFullVerify} ${java8}
+gateBootstrapLite8      : ${gateBootstrapLite} ${java8}
+gateBootstrapLite9      : ${gateBootstrapLite} ${java9}
 
-gateStyle : ${java8Downloads} {
+gateStyle : ${java8} ${eclipse} ${jdt} {
   downloads : {
     JDT : {name: ecj, version: "4.5.1", platformspecific: false}
     ECLIPSE : {name: eclipse, version: "4.5.2", platformspecific: true}
@@ -84,22 +84,16 @@ gateStyle : ${java8Downloads} {
   ]
 }
 
-gateCommon : {
+gateCommon : ${compilerCommon} {
   targets : [gate]
   logs: ${logPatterns}
 }
 
-gateLinuxAMD64 : ${commonLinux} ${gateCommon} {
-  capabilities : [linux, amd64]
-}
+gateLinuxAMD64 : ${linux-amd64} ${gateCommon}
 
-gateDarwinAMD64 : ${commonDarwin} ${gateCommon} {
-  capabilities : [darwin, amd64]
-}
+gateDarwinAMD64 : ${darwin-amd64} ${gateCommon}
 
-gateSolarisSPARC : ${commonSolaris} ${gateCommon} {
-  capabilities : [solaris, sparcv9]
-}
+gateSolarisSPARC : ${solaris-sparcv9} ${gateCommon}
 
 gateLinuxAMD64TraceRA : ${gateLinuxAMD64} {
   environment : {

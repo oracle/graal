@@ -32,7 +32,7 @@ from shutil import rmtree
 
 import mx
 import mx_benchmark
-import mx_graal_core
+import mx_compiler
 from mx_benchmark import ParserEntry
 from argparse import ArgumentParser
 
@@ -111,10 +111,10 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
 
     def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
         tag = mx.get_jdk_option().tag
-        if tag and tag != mx_graal_core._JVMCI_JDK_TAG:
+        if tag and tag != mx_compiler._JVMCI_JDK_TAG:
             mx.abort("The '{0}/{1}' VM requires '--jdk={2}'".format(
-                self.name(), self.config_name(), mx_graal_core._JVMCI_JDK_TAG))
-        mx.get_jdk(tag=mx_graal_core._JVMCI_JDK_TAG).run_java(
+                self.name(), self.config_name(), mx_compiler._JVMCI_JDK_TAG))
+        mx.get_jdk(tag=mx_compiler._JVMCI_JDK_TAG).run_java(
             args, out=out, err=out, cwd=cwd, nonZeroIsFatal=False)
 
 

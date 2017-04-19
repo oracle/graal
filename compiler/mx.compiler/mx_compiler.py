@@ -90,7 +90,7 @@ def _check_jvmci_version(jdk):
                 with open(javaSource, 'w') as fp:
                     fp.write(zf.read(name.replace('.', '/') + '.java'))
     else:
-        javaSource = join(_suite.dir, 'graal', 'org.graalvm.compiler.hotspot', 'src', name.replace('.', '/') + '.java')
+        javaSource = join(_suite.dir, 'src', 'org.graalvm.compiler.hotspot', 'src', name.replace('.', '/') + '.java')
     javaClass = join(binDir, name.replace('.', '/') + '.class')
     if not exists(javaClass) or getmtime(javaClass) < getmtime(javaSource):
         mx.run([jdk.javac, '-d', binDir, javaSource])
@@ -327,7 +327,7 @@ def verify_jvmci_ci_versions(args):
             mx.abort("No JVMCI version found in {0} files!".format(msg))
         return version, dev
 
-    hocon_version, hocon_dev = _grep_version(glob.glob(join(mx.primary_suite().dir, 'ci*.hocon')) + glob.glob(join(mx.primary_suite().dir, 'ci*/*.hocon')), 'ci.hocon')
+    hocon_version, hocon_dev = _grep_version(glob.glob(join(mx.primary_suite().vc_dir, '*.hocon')) + glob.glob(join(mx.primary_suite().dir, 'ci*.hocon')) + glob.glob(join(mx.primary_suite().dir, 'ci*/*.hocon')), 'ci.hocon')
     travis_version, travis_dev = _grep_version(glob.glob('.travis.yml'), 'TravisCI')
 
     if hocon_version != travis_version or hocon_dev != travis_dev:
@@ -536,7 +536,7 @@ graal_bootstrap_tests = [
 ]
 
 def _graal_gate_runner(args, tasks):
-    compiler_gate_runner(['graal-core', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
+    compiler_gate_runner(['compiler', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
     jvmci_ci_version_gate_runner(tasks)
 
 class ShellEscapedStringAction(argparse.Action):
