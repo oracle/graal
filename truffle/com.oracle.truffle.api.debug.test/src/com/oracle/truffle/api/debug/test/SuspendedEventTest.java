@@ -213,7 +213,7 @@ public class SuspendedEventTest extends AbstractDebugTest {
                         });
                         runExpectIllegalState(() -> value.getName());
                         runExpectIllegalState(() -> value.isReadable());
-                        runExpectIllegalState(() -> value.isWriteable());
+                        runExpectIllegalState(() -> value.isWritable());
                     }
 
                     run(() -> frame.getName());

@@ -108,8 +108,18 @@ public abstract class DebugValue {
      *
      * @see #as(Class)
      * @since 0.17
+     * @deprecated Use {@link #isWritable()}
      */
+    @Deprecated
     public abstract boolean isWriteable();
+
+    /**
+     * Returns <code>true</code> if this value can be written to, else <code>false</code>.
+     *
+     * @see #as(Class)
+     * @since 0.26
+     */
+    public abstract boolean isWritable();
 
     /**
      * Provides properties representing an internal structure of this value. The returned collection
@@ -257,6 +267,7 @@ public abstract class DebugValue {
      * on FrameSlot.
      */
 
+    @SuppressWarnings("deprecation")
     static class HeapValue extends DebugValue {
 
         // identifies the debugger and engine
@@ -316,6 +327,11 @@ public abstract class DebugValue {
         }
 
         @Override
+        public boolean isWritable() {
+            return false;
+        }
+
+        @Override
         Debugger getDebugger() {
             return debugger;
         }
@@ -370,6 +386,7 @@ public abstract class DebugValue {
 
     }
 
+    @SuppressWarnings("deprecation")
     static final class StackValue extends DebugValue {
 
         protected final DebugStackFrame origin;
@@ -431,6 +448,12 @@ public abstract class DebugValue {
 
         @Override
         public boolean isWriteable() {
+            origin.verifyValidState(false);
+            return true;
+        }
+
+        @Override
+        public boolean isWritable() {
             origin.verifyValidState(false);
             return true;
         }

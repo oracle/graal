@@ -32,7 +32,6 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
-import java.io.IOException;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -46,7 +45,7 @@ import com.oracle.truffle.api.source.SourceSection;
 public class BreakpointTest extends AbstractDebugTest {
 
     @Test
-    public void testBreakpointDefaults() throws IOException {
+    public void testBreakpointDefaults() {
         Source testSource = testSource("STATEMENT");
         Breakpoint breakpoint = Breakpoint.newBuilder(testSource).lineIs(1).build();
         assertEquals(0, breakpoint.getHitCount());
@@ -105,7 +104,7 @@ public class BreakpointTest extends AbstractDebugTest {
     }
 
     @Test
-    public void testBreakpointCondition() throws IOException {
+    public void testBreakpointCondition() {
         Source testSource = testSource("ROOT(\n" +
                         "STATEMENT,\n" +
                         "STATEMENT,\n" +
