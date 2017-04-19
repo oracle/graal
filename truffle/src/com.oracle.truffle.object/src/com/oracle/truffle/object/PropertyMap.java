@@ -28,7 +28,7 @@ import java.util.Map;
 
 /**
  * Immutable property map.
- * 
+ *
  * @since 0.17 or earlier
  */
 public abstract class PropertyMap implements ImmutableMap<Object, Property> {
@@ -59,13 +59,13 @@ public abstract class PropertyMap implements ImmutableMap<Object, Property> {
     public abstract Property getLastProperty();
 
     /** @since 0.17 or earlier */
-    public abstract PropertyMap putCopy(final Property element);
+    public abstract PropertyMap putCopy(Property element);
 
     /** @since 0.17 or earlier */
-    public abstract PropertyMap replaceCopy(final Property oldValue, final Property newValue);
+    public abstract PropertyMap replaceCopy(Property oldValue, Property newValue);
 
     /** @since 0.17 or earlier */
-    public abstract PropertyMap removeCopy(final Property value);
+    public abstract PropertyMap removeCopy(Property value);
 
     /** @since 0.17 or earlier */
     public abstract PropertyMap getParentMap();
