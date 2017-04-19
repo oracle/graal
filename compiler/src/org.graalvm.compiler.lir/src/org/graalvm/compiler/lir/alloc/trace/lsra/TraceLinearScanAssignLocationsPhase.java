@@ -24,6 +24,7 @@ package org.graalvm.compiler.lir.alloc.trace.lsra;
 
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
@@ -275,7 +276,7 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
             // remove useless moves
             if (MoveOp.isMoveOp(op)) {
                 AllocatableValue result = MoveOp.asMoveOp(op).getResult();
-                if (isVariable(result) && allocator.isMaterialized(result, op.id(), OperandMode.DEF)) {
+                if (isVariable(result) && allocator.isMaterialized(asVariable(result), op.id(), OperandMode.DEF)) {
                     /*
                      * This happens if a materializable interval is originally not spilled but then
                      * kicked out in LinearScanWalker.splitForSpilling(). When kicking out such an

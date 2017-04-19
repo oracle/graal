@@ -246,14 +246,10 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
         }
 
         /**
-         * Converts an operand (variable or register) to an index in a flat address space covering
-         * all the {@linkplain Variable variables} and {@linkplain RegisterValue registers} being
-         * processed by this allocator.
+         * @return {@link Variable#index}
          */
-        int operandNumber(Value operand) {
-            assert !isRegister(operand) : "Register do not have operand numbers: " + operand;
-            assert isVariable(operand) : "Unsupported Value " + operand;
-            return ((Variable) operand).index;
+        int operandNumber(Variable operand) {
+            return operand.index;
         }
 
         OptionValues getOptions() {
@@ -544,7 +540,7 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
             return interval.spillSlot();
         }
 
-        boolean isMaterialized(AllocatableValue operand, int opId, OperandMode mode) {
+        boolean isMaterialized(Variable operand, int opId, OperandMode mode) {
             TraceInterval interval = intervalFor(operand);
             assert interval != null : "interval must exist";
 
@@ -782,14 +778,14 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
         private AbstractBlockBase<?>[] opIdToBlockMap;
 
         /**
-         * Map from {@linkplain #operandNumber(Value) operand numbers} to intervals.
+         * Map from {@linkplain #operandNumber operand numbers} to intervals.
          */
         TraceInterval[] intervals() {
             return intervals;
         }
 
         /**
-         * Map from {@linkplain #operandNumber(Value) operand numbers} to intervals.
+         * Map from {@linkplain Register#number} to fixed intervals.
          */
         FixedInterval[] fixedIntervals() {
             return fixedIntervals;
@@ -887,7 +883,7 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
             }
         }
 
-        TraceInterval intervalFor(Value operand) {
+        TraceInterval intervalFor(Variable operand) {
             return intervalFor(operandNumber(operand));
         }
 
