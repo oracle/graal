@@ -27,14 +27,13 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.interop;
+package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -43,9 +42,10 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
@@ -124,7 +124,7 @@ public abstract class LLVMDataEscapeNode extends Node {
     @Specialization
     public TruffleObject escapingAddress(LLVMAddress escapingValue, LLVMContext context) {
         if (LLVMAddress.nullPointer().equals(escapingValue)) {
-            return new LLVMTruffleNull();
+            return new LLVMTruffleAddress(LLVMAddress.fromLong(0), new PointerType(null), context);
         }
         assert typeForExport != null;
         return new LLVMTruffleAddress(escapingValue, typeForExport, context);
@@ -219,7 +219,7 @@ public abstract class LLVMDataEscapeNode extends Node {
 
     @Specialization(guards = "escapingValue == null")
     public Object escapingNull(Object escapingValue, LLVMContext context) {
-        return new LLVMTruffleNull();
+        return new LLVMTruffleAddress(LLVMAddress.fromLong(0), new PointerType(null), context);
     }
 
     @TruffleBoundary
@@ -227,7 +227,7 @@ public abstract class LLVMDataEscapeNode extends Node {
         if (value instanceof LLVMBoxedPrimitive) {
             return ((LLVMBoxedPrimitive) value).getValue();
         } else if (value instanceof LLVMAddress && LLVMAddress.nullPointer().equals(value)) {
-            return new LLVMTruffleNull();
+            return new LLVMTruffleAddress(LLVMAddress.fromLong(0), new PointerType(null), context);
         } else if (value instanceof LLVMAddress) {
             return new LLVMTruffleAddress((LLVMAddress) value, type, context);
         } else if (value instanceof LLVMFunctionHandle) {
@@ -241,7 +241,7 @@ public abstract class LLVMDataEscapeNode extends Node {
         } else if (value instanceof TruffleObject && LLVMExpressionNode.notLLVM((TruffleObject) value)) {
             return value;
         } else if (value == null) {
-            return new LLVMTruffleNull();
+            return new LLVMTruffleAddress(LLVMAddress.fromLong(0), new PointerType(null), context);
         } else {
             return value;
         }

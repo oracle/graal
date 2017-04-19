@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.interop;
+package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -40,23 +40,22 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToAnyLLVMValueNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToBooleanNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToByteNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToCharNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToDoubleNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToFloatNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToIntNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToLongNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToShortNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToTruffleObjectNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
+import com.oracle.truffle.llvm.runtime.interop.ToLLVMNodeFactory.ToAnyLLVMValueNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.ToLLVMNodeFactory.ToBooleanNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.ToLLVMNodeFactory.ToByteNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.ToLLVMNodeFactory.ToCharNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.ToLLVMNodeFactory.ToDoubleNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.ToLLVMNodeFactory.ToFloatNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.ToLLVMNodeFactory.ToIntNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.ToLLVMNodeFactory.ToLongNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.ToLLVMNodeFactory.ToShortNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.ToLLVMNodeFactory.ToTruffleObjectNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -617,42 +616,42 @@ public abstract class ToLLVMNode extends Node {
     abstract static class ToTruffleObject extends ToLLVMNode {
 
         @Specialization
-        public TruffleObject fromInt(int value) {
+        public Object fromInt(int value) {
             return new LLVMBoxedPrimitive(value);
         }
 
         @Specialization
-        public TruffleObject fromChar(char value) {
+        public Object fromChar(char value) {
             return new LLVMBoxedPrimitive(value);
         }
 
         @Specialization
-        public TruffleObject fromLong(long value) {
+        public Object fromLong(long value) {
             return new LLVMBoxedPrimitive(value);
         }
 
         @Specialization
-        public TruffleObject fromByte(byte value) {
+        public Object fromByte(byte value) {
             return new LLVMBoxedPrimitive(value);
         }
 
         @Specialization
-        public TruffleObject fromShort(short value) {
+        public Object fromShort(short value) {
             return new LLVMBoxedPrimitive(value);
         }
 
         @Specialization
-        public TruffleObject fromFloat(float value) {
+        public Object fromFloat(float value) {
             return new LLVMBoxedPrimitive(value);
         }
 
         @Specialization
-        public TruffleObject fromDouble(double value) {
+        public Object fromDouble(double value) {
             return new LLVMBoxedPrimitive(value);
         }
 
         @Specialization
-        public TruffleObject fromBoolean(boolean value) {
+        public Object fromBoolean(boolean value) {
             return new LLVMBoxedPrimitive(value);
         }
 
@@ -669,11 +668,6 @@ public abstract class ToLLVMNode extends Node {
         @Specialization
         public LLVMGlobalVariable fromSharedDescriptor(LLVMSharedGlobalVariable shared) {
             return shared.getDescriptor();
-        }
-
-        @Specialization
-        public LLVMAddress fromNull(@SuppressWarnings("unused") LLVMTruffleNull n) {
-            return LLVMAddress.fromLong(0);
         }
 
         protected boolean notLLVM(TruffleObject value) {
@@ -741,11 +735,6 @@ public abstract class ToLLVMNode extends Node {
         @Specialization
         public LLVMGlobalVariable fromSharedDescriptor(LLVMSharedGlobalVariable shared) {
             return shared.getDescriptor();
-        }
-
-        @Specialization
-        public LLVMAddress fromNull(@SuppressWarnings("unused") LLVMTruffleNull n) {
-            return LLVMAddress.fromLong(0);
         }
 
         protected boolean notLLVM(TruffleObject value) {
@@ -850,8 +839,6 @@ public abstract class ToLLVMNode extends Node {
             return ((LLVMTruffleAddress) value).getAddress();
         } else if (value instanceof LLVMSharedGlobalVariable) {
             return ((LLVMSharedGlobalVariable) value).getDescriptor();
-        } else if (value instanceof LLVMTruffleNull) {
-            return LLVMAddress.fromLong(0);
         } else if (value instanceof TruffleObject && LLVMExpressionNode.notLLVM((TruffleObject) value)) {
             return value;
         } else {

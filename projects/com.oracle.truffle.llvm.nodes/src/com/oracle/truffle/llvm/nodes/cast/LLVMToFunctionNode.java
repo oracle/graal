@@ -36,13 +36,12 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
+import com.oracle.truffle.llvm.runtime.interop.ToLLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
 public abstract class LLVMToFunctionNode extends LLVMExpressionNode {
@@ -62,11 +61,6 @@ public abstract class LLVMToFunctionNode extends LLVMExpressionNode {
     @Specialization
     public LLVMFunction executeI64(LLVMAddress from) {
         return new LLVMFunctionHandle((int) from.getVal());
-    }
-
-    @Specialization
-    public LLVMFunction executeI32(@SuppressWarnings("unused") LLVMTruffleNull from) {
-        return new LLVMFunctionHandle(0);
     }
 
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();

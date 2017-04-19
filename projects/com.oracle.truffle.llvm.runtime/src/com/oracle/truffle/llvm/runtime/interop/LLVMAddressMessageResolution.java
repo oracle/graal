@@ -27,18 +27,18 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.interop;
+package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMAddressMessageResolutionNode.LLVMAddressReadMessageResolutionNode;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMAddressMessageResolutionNode.LLVMAddressWriteMessageResolutionNode;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMAddressMessageResolutionNodeFactory.LLVMAddressReadMessageResolutionNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMAddressMessageResolutionNodeFactory.LLVMAddressWriteMessageResolutionNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
+import com.oracle.truffle.llvm.runtime.interop.LLVMAddressMessageResolutionNode.LLVMAddressReadMessageResolutionNode;
+import com.oracle.truffle.llvm.runtime.interop.LLVMAddressMessageResolutionNode.LLVMAddressWriteMessageResolutionNode;
+import com.oracle.truffle.llvm.runtime.interop.LLVMAddressMessageResolutionNodeFactory.LLVMAddressReadMessageResolutionNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.LLVMAddressMessageResolutionNodeFactory.LLVMAddressWriteMessageResolutionNodeGen;
 
 @MessageResolution(receiverType = LLVMTruffleAddress.class)
 public class LLVMAddressMessageResolution {
@@ -51,12 +51,29 @@ public class LLVMAddressMessageResolution {
         }
     }
 
+    @Resolve(message = "IS_NULL")
+    public abstract static class ForeignIsNull extends Node {
+        @SuppressWarnings("unused")
+        protected boolean access(VirtualFrame frame, LLVMTruffleAddress receiver) {
+            return isNull(receiver);
+        }
+
+    }
+
+    private static boolean isNull(LLVMTruffleAddress receiver) {
+        return receiver.getAddress().getVal() == 0;
+    }
+
     @Resolve(message = "READ")
     public abstract static class ForeignRead extends Node {
 
         @Child private LLVMAddressReadMessageResolutionNode node;
 
         protected Object access(VirtualFrame frame, LLVMTruffleAddress receiver, int index) {
+            if (isNull(receiver)) {
+                CompilerDirectives.transferToInterpreter();
+                throw new UnsupportedOperationException(String.format("Cannot read (identifier = %s) from null (0x0) pointer.", String.valueOf(index)));
+            }
             if (node == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 node = insert(LLVMAddressReadMessageResolutionNodeGen.create());
@@ -71,6 +88,10 @@ public class LLVMAddressMessageResolution {
         @Child private LLVMAddressWriteMessageResolutionNode node;
 
         protected Object access(VirtualFrame frame, LLVMTruffleAddress receiver, int index, Object value) {
+            if (isNull(receiver)) {
+                CompilerDirectives.transferToInterpreter();
+                throw new UnsupportedOperationException(String.format("Cannot read (identifier = %s) from null (0x0) pointer.", String.valueOf(index)));
+            }
             if (node == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 node = insert(LLVMAddressWriteMessageResolutionNodeGen.create());

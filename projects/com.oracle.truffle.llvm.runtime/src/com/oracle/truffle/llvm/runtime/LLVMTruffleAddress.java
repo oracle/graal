@@ -29,9 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.runtime.interop.LLVMAddressMessageResolutionForeign;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMTruffleAddress implements TruffleObject {
@@ -61,24 +61,9 @@ public final class LLVMTruffleAddress implements TruffleObject {
         return object instanceof LLVMTruffleAddress;
     }
 
-    @CompilationFinal private static ForeignAccess ACCESS;
-
     @Override
     public ForeignAccess getForeignAccess() {
-        if (ACCESS == null) {
-            try {
-                Class<?> accessor = getLLVMAddressMessageResolutionAccessorClass();
-                ACCESS = (ForeignAccess) accessor.getField("ACCESS").get(null);
-            } catch (Exception e) {
-                throw new AssertionError(e);
-            }
-        }
-        return ACCESS;
-    }
-
-    // needed by SVM
-    private static Class<?> getLLVMAddressMessageResolutionAccessorClass() throws ClassNotFoundException {
-        return Class.forName("com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMAddressMessageResolutionAccessor");
+        return LLVMAddressMessageResolutionForeign.ACCESS;
     }
 
     @Override

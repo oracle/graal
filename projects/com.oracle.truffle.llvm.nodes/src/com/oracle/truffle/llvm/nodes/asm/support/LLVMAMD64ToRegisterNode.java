@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.nodes.asm.support;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMAMD64ToRegisterNode extends LLVMExpressionNode {
     @NodeChildren({@NodeChild(value = "register", type = LLVMExpressionNode.class), @NodeChild(value = "from", type = LLVMExpressionNode.class)})

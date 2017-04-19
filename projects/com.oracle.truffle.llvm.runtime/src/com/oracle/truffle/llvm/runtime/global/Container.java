@@ -33,8 +33,8 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.NativeAllocator;
 import com.oracle.truffle.llvm.runtime.NativeResolver;
@@ -80,7 +80,7 @@ abstract class Container {
 
     abstract void putFunction(LLVMGlobalVariable global, LLVMFunction value);
 
-    abstract void putNull(LLVMGlobalVariable global, LLVMTruffleNull value);
+    abstract void putBoxedPrimitive(LLVMGlobalVariable global, LLVMBoxedPrimitive value);
 
     abstract void putGlobal(LLVMGlobalVariable global, LLVMGlobalVariable value);
 
@@ -192,10 +192,10 @@ abstract class Container {
         }
 
         @Override
-        void putNull(LLVMGlobalVariable global, LLVMTruffleNull value) {
+        void putBoxedPrimitive(LLVMGlobalVariable global, LLVMBoxedPrimitive value) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             global.setContainer(new NativeContainer(type, resolver.resolve()));
-            global.getContainer().putNull(global, value);
+            global.getContainer().putBoxedPrimitive(global, value);
         }
 
         @Override
@@ -345,8 +345,12 @@ abstract class Container {
         }
 
         @Override
-        void putNull(LLVMGlobalVariable global, LLVMTruffleNull value) {
-            LLVMMemory.putAddress(address, LLVMAddress.fromLong(0));
+        void putBoxedPrimitive(LLVMGlobalVariable global, LLVMBoxedPrimitive value) {
+            // do not store the boxed primitive to native memory.
+            // the boxed primitive was never converted to an address; when reading it would be
+            // interpreted as an address
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException("Cannot store managed object to native memory");
         }
 
         @Override
@@ -557,7 +561,7 @@ abstract class Container {
         }
 
         @Override
-        void putNull(LLVMGlobalVariable global, LLVMTruffleNull value) {
+        void putBoxedPrimitive(LLVMGlobalVariable global, LLVMBoxedPrimitive value) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             CachedManagedContainer newContainer = new CachedManagedContainer(type, allocator, value);
             global.setContainer(newContainer);
@@ -614,8 +618,6 @@ abstract class Container {
             assert type instanceof PointerType;
             if (managedValue instanceof LLVMFunction) {
                 LLVMMemory.putAddress(address, LLVMAddress.fromLong(((LLVMFunction) managedValue).getFunctionIndex()));
-            } else if (managedValue instanceof LLVMTruffleNull) {
-                LLVMMemory.putAddress(address, LLVMAddress.fromLong(0));
             } else if (managedValue instanceof LLVMAddress) {
                 LLVMMemory.putAddress(address, (LLVMAddress) managedValue);
             } else if (managedValue instanceof LLVMGlobalVariable) {
@@ -658,7 +660,7 @@ abstract class Container {
         }
 
         @Override
-        void putNull(LLVMGlobalVariable global, LLVMTruffleNull value) {
+        void putBoxedPrimitive(LLVMGlobalVariable global, LLVMBoxedPrimitive value) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             GenericManagedContainer newContainer = new GenericManagedContainer(type, allocator, value);
             global.setContainer(newContainer);
@@ -716,8 +718,6 @@ abstract class Container {
             assert type instanceof PointerType;
             if (managedValue instanceof LLVMFunction) {
                 LLVMMemory.putAddress(address, LLVMAddress.fromLong(((LLVMFunction) managedValue).getFunctionIndex()));
-            } else if (managedValue instanceof LLVMTruffleNull) {
-                LLVMMemory.putAddress(address, LLVMAddress.fromLong(0));
             } else if (managedValue instanceof LLVMAddress) {
                 LLVMMemory.putAddress(address, (LLVMAddress) managedValue);
             } else if (managedValue instanceof LLVMGlobalVariable) {
@@ -752,7 +752,7 @@ abstract class Container {
         }
 
         @Override
-        void putNull(LLVMGlobalVariable global, LLVMTruffleNull value) {
+        void putBoxedPrimitive(LLVMGlobalVariable global, LLVMBoxedPrimitive value) {
             this.managedValue = value;
         }
 

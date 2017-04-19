@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.parser.factories;
 
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMAtExitNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMBeginCatchNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMEndCatchNode;
@@ -40,6 +39,7 @@ import com.oracle.truffle.llvm.nodes.func.LLVMRethrowNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMThrowExceptionNode;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 final class LLVMExceptionIntrinsicFactory {
 
