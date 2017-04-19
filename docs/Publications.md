@@ -34,6 +34,11 @@ PLDI 2016, June 13, 2016, Santa Barbara, CA<br>
 
 
 ### Truffle Papers
+*   Michael Van De Vanter:</br>
+    __Building Flexible, Low-Overhead Tooling Support into a High-Performance Polyglot VM (Extended Abstract)__<br>
+    _MoreVMs Workshop on Modern Language Runtimes, Ecosystems, and VMs_, 2017.<br>
+    [Download Paper](http://vandevanter.net/mlvdv/publications/mlvdv-morevms-2017.pdf)
+
 *   Benoit Daloze, Stefan Marr, Daniele Bonetta, Hanspeter Mössenböck:<br>
     __Efficient and Thread-Safe Objects for Dynamically-Typed Languages__<br>
     Accepted for the _Annual ACM SIGPLAN Conference on Object-Oriented Programming, Systems, Languages, and Applications 2016 (OOPSLA)_, 2016.<br>
