@@ -139,20 +139,29 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
                         return false;
                     }
                 }
+                return true;
             }
-            return true;
         }
         return false;
+    }
+
+    private Method lookupSubstitute(Method excluding) {
+        for (Method m : declaringClass.getDeclaredMethods()) {
+            if (!m.equals(excluding) && isSubstitute(m)) {
+                return m;
+            }
+        }
+        return null;
     }
 
     /**
      * Gets the substitute method of this plugin.
      */
     private Method lookupSubstitute() {
-        for (Method m : declaringClass.getDeclaredMethods()) {
-            if (isSubstitute(m)) {
-                return m;
-            }
+        Method m = lookupSubstitute(null);
+        if (m != null) {
+            assert lookupSubstitute(m) == null : String.format("multiple matches found for %s:%n%s%n%s", this, m, lookupSubstitute(m));
+            return m;
         }
         throw new GraalError("No method found specified by %s", this);
     }
