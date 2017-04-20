@@ -239,7 +239,7 @@ public abstract class TruffleInstrument {
          * @since 0.26
          */
         public <S> S lookup(LanguageInfo language, Class<S> type) {
-            return null;
+            return AccessorInstrumentHandler.langAccess().lookup(language, type);
         }
 
         Object[] onCreate(TruffleInstrument instrument) {

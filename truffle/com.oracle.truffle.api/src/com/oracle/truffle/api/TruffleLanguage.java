@@ -172,20 +172,6 @@ public abstract class TruffleLanguage<C> {
      * @since 0.8 or earlier
      */
     protected TruffleLanguage() {
-        this(new Object[0]);
-    }
-
-    /**
-     * Constructor to be called by subclasses and to register additional services. The services are
-     * then available to {@link com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#lookup
-     * instruments}. The services must be previously declared during the language
-     * {@link Registration#services() registration}.
-     *
-     * @param services additional language services
-     * @since 0.26
-     */
-    protected TruffleLanguage(Object... services) {
-
     }
 
     /**
@@ -608,6 +594,24 @@ public abstract class TruffleLanguage<C> {
      */
     protected boolean isVisible(C context, Object value) {
         return true;
+    }
+
+    /**
+     * Looks an additional language service up. By default it checks if the language itself is
+     * implementing the requested class and if so, it returns <code>this</code>.
+     * <p>
+     * In future this method can be made protected and overridable by language implementors to
+     * create more dynamic service system.
+     *
+     * @param <T> the type to request
+     * @param clazz
+     * @return
+     */
+    final /* protected */ <T> T lookup(Class<T> clazz) {
+        if (clazz.isInstance(this)) {
+            return clazz.cast(this);
+        }
+        return null;
     }
 
     /**
@@ -1256,6 +1260,11 @@ public abstract class TruffleLanguage<C> {
             return env.findSourceLocation(obj);
         }
 
+        @Override
+        public <S> S lookup(LanguageInfo language, Class<S> type) {
+            TruffleLanguage<?> spi = AccessAPI.nodesAccess().getLanguageSpi(language);
+            return spi.lookup(type);
+        }
     }
 }
 

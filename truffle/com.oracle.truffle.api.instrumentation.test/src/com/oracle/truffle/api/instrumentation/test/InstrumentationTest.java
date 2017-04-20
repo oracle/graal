@@ -40,6 +40,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -110,22 +111,38 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
     @Registration(name = "name", version = "version", id = "beforeUse", services = Runnable.class)
     public static class BeforeUseInstrument extends TruffleInstrument implements Runnable {
+        private Env env;
+
         @Override
         protected void onCreate(Env env) {
-            LanguageInfo info = null; // obtain somehow from an env...
-            SpecialService ss = env.lookup(info, SpecialService.class);
-            assertNotNull("Service found", ss);
-            assertEquals("The right extension", ss.fileExtension(), InstrumentationTestLanguage.FILENAME_EXTENSION);
+            this.env = env;
             env.registerService(this);
         }
 
         @Override
         public void run() {
+            LanguageInfo info = obtainInstrumentationLanguage(env);
+            SpecialService ss = env.lookup(info, SpecialService.class);
+            assertNotNull("Service found", ss);
+            assertEquals("The right extension", ss.fileExtension(), InstrumentationTestLanguage.FILENAME_EXTENSION);
+        }
+
+        private LanguageInfo obtainInstrumentationLanguage(Env env) {
+            Source src = Source.newBuilder("").mimeType(InstrumentationTestLanguage.MIME_TYPE).name("getroot").build();
+            CallTarget target;
+            try {
+                target = env.parse(src);
+            } catch (Exception ex) {
+                throw new AssertionError(ex.getMessage(), ex);
+            }
+            assertTrue("Root node target", target instanceof RootCallTarget);
+            RootCallTarget rootTarget = (RootCallTarget) target;
+            return rootTarget.getRootNode().getLanguageInfo();
         }
     }
 
     @Test
-    public void queryInstrumentsBeforeUse() throws Exception {
+    public void queryInstrumentsBeforeUseAndObtainSpecialService() throws Exception {
         final PolyglotRuntime runtime = PolyglotRuntime.newBuilder().setErr(err).build();
         Runnable start = null;
         for (PolyglotRuntime.Instrument instr : runtime.getInstruments().values()) {
@@ -558,7 +575,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                     final CallTarget target;
                     try {
                         target = env.parse(Source.newBuilder("EXPRESSION").name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build());
-                    } catch (IOException e) {
+                    } catch (Exception e) {
                         throw new AssertionError();
                     }
 
