@@ -237,6 +237,7 @@ public abstract class TruffleInstrument {
          * @return the registered service or <code>null</code> if none is found
          * @since 0.26
          */
+        @SuppressWarnings("static-method")
         public <S> S lookup(LanguageInfo language, Class<S> type) {
             return AccessorInstrumentHandler.langAccess().lookup(language, type);
         }
