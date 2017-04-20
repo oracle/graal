@@ -27,7 +27,7 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
         benchDir = _benchmarksDirectory()
         if not exists(benchDir):
             mx.abort('Benchmarks directory {} is missing'.format(benchDir))
-        return [f for f in os.listdir(benchDir) if f.endswith('.c') and os.path.isfile(join(benchDir, f))]
+        return [f for f in os.listdir(benchDir) if os.path.isdir(join(benchDir, f))]
 
     def benchHigherScoreRegex(self):
         return r'^(### )?(?P<benchmark>[a-zA-Z0-9\.\-_]+): +(?P<score>[0-9]+(?:\.[0-9]+)?)'
@@ -84,27 +84,44 @@ class GccLikeVm(Vm):
     def cpp_compiler(self):
         return self.compiler_name() + "++"
 
-    def before(self, bmSuiteArgs):
+    def run(self, cwd, args):
+        # save current Directory
         self.currentDir = os.getcwd()
         os.chdir(_benchmarksDirectory())
 
-    def after(self, bmSuiteArgs):
-        os.chdir(self.currentDir)
-
-    def run(self, cwd, args):
-        inputFile = args[0]
-        _, ext = os.path.splitext(inputFile)
         f = open(os.devnull, 'w')
-        if ext == '.c':
-            mx.run([self.c_compiler()] + self.options + ['-o', 'a.out'] + [inputFile] + _env_flags + ['-lm', '-lgmp'], out=f, err=f)
-        elif ext == '.cpp':
-            mx.run([self.cpp_compiler()] + self.options + ['-o', 'a.out'] +  [inputFile] + _env_flags + ['-lm', '-lgmp'], out=f, err=f)
-        else:
-            exit(ext + " is not supported!")
+        benchmarkDir = args[0]
+
+        # enter benchmark dir
+        os.chdir(benchmarkDir)
+
+        # create directory for executable of this vm
+        if not os.path.exists(self.name()):
+            os.makedirs(self.name())
+        os.chdir(self.name())
+
+        if os.path.exists('bench'):
+            os.remove('bench')
+
+        env = os.environ.copy()
+        env['CFLAGS'] = ' '.join(self.options + _env_flags + ['-lm', '-lgmp'])
+        env['CC'] = 'clang'
+        env['VPATH'] = '..'
+        cmdline = ['make', '-f', '../Makefile']
+
+        print env
+        print os.getcwd()
+        print cmdline
+
+        mx.run(cmdline, out=f, err=f, env=env)
 
         myStdOut = mx.OutputCapture()
-        retCode = mx.run(['./a.out'], out=myStdOut, err=f)
+        retCode = mx.run(['./bench'], out=myStdOut, err=f)
         print myStdOut.data
+
+        # reset current Directory
+        os.chdir(self.currentDir)
+
         return [retCode, myStdOut.data]
 
 
@@ -139,12 +156,37 @@ class SulongVm(GuestVm):
         return "sulong"
 
     def run(self, cwd, args):
+        # save current Directory
+        self.currentDir = os.getcwd()
+        os.chdir(_benchmarksDirectory())
+
         f = open(os.devnull, 'w')
 
         mx_sulong.ensureLLVMBinariesExist()
-        inputFile = args[0]
-        outputFile = 'test.bc'
-        mx_sulong.compileWithClangOpt(inputFile, outputFile, ['3.2', '3.3'], out=f, err=f)
+        benchmarkDir = args[0]
+
+        # enter benchmark dir
+        os.chdir(benchmarkDir)
+
+        # create directory for executable of this vm
+        if not os.path.exists(self.name()):
+            os.makedirs(self.name())
+        os.chdir(self.name())
+
+        if os.path.exists('bench'):
+            os.remove('bench')
+
+        env = os.environ.copy()
+        env['CFLAGS'] = ' '.join(_env_flags + ['-lm', '-lgmp'])
+        env['LLVM_COMPILER'] = 'clang'
+        env['CC'] = 'wllvm'
+        env['VPATH'] = '..'
+
+        cmdline = ['make', '-f', '../Makefile']
+
+        mx.run(cmdline, out=f, err=f, env=env)
+        mx.run(['extract-bc', 'bench'], out=f, err=f)
+        mx_sulong.opt(['-o', 'bench.bc', 'bench.bc'] + mx_sulong.getStandardLLVMOptFlags(), out=f, err=f)
 
         suTruffleOptions = [
             '-Dgraal.TruffleBackgroundCompilation=false',
@@ -152,8 +194,13 @@ class SulongVm(GuestVm):
             '-Dgraal.TruffleInliningMaxCallerSize=10000',
             '-Dgraal.TruffleCompilationExceptionsAreFatal=true',
         ]
-        sulongCmdLine = suTruffleOptions + [mx_sulong.getSearchPathOption()] + mx_sulong.getBitcodeLibrariesOption() + mx_sulong.getClasspathOptions() + ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.LLVM"] + [outputFile]
-        return self.host_vm().run(cwd, sulongCmdLine + args)
+        sulongCmdLine = suTruffleOptions + [mx_sulong.getSearchPathOption()] + mx_sulong.getBitcodeLibrariesOption() + mx_sulong.getClasspathOptions() + ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.LLVM"] + ['bench.bc']
+        result = self.host_vm().run(cwd, sulongCmdLine + args)
+
+        # reset current Directory
+        os.chdir(self.currentDir)
+
+        return result
 
     def hosting_registry(self):
         return java_vm_registry
