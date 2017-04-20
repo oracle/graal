@@ -638,32 +638,6 @@ final class TraceInterval extends IntervalHint {
         return true;
     }
 
-    // returns the interval that covers the given opId or null if there is none
-    TraceInterval getIntervalCoveringOpId(int opId) {
-        assert opId >= 0 : "invalid opId";
-        assert opId < to() : "can only look into the past";
-
-        if (opId >= from()) {
-            return this;
-        }
-
-        TraceInterval parent = splitParent();
-        TraceInterval result = null;
-
-        assert !parent.splitChildrenEmpty() : "no split children available";
-        int len = parent.splitChildren.size();
-
-        for (int i = len - 1; i >= 0; i--) {
-            TraceInterval cur = parent.splitChildren.get(i);
-            if (cur.from() <= opId && opId < cur.to()) {
-                assert result == null : "covered by multiple split children " + result + " and " + cur;
-                result = cur;
-            }
-        }
-
-        return result;
-    }
-
     // returns the last split child that ends before the given opId
     TraceInterval getSplitChildBeforeOpId(int opId) {
         assert opId >= 0 : "invalid opId";
@@ -683,28 +657,6 @@ final class TraceInterval extends IntervalHint {
 
         assert result != null : "no split child found";
         return result;
-    }
-
-    // checks if opId is covered by any split child
-    boolean splitChildCovers(int opId, LIRInstruction.OperandMode mode) {
-        assert isSplitParent() : "can only be called for split parents";
-        assert opId >= 0 : "invalid opId (method can not be called for spill moves)";
-
-        if (splitChildrenEmpty()) {
-            // simple case if interval was not split
-            return covers(opId, mode);
-
-        } else {
-            // extended case: check all split children
-            int len = splitChildren.size();
-            for (int i = 0; i < len; i++) {
-                TraceInterval cur = splitChildren.get(i);
-                if (cur.covers(opId, mode)) {
-                    return true;
-                }
-            }
-            return false;
-        }
     }
 
     private RegisterPriority adaptPriority(RegisterPriority priority) {
