@@ -191,11 +191,11 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
         };
 
         private void addUse(AllocatableValue operand, int from, int to, RegisterPriority registerPriority) {
-            if (!allocator.isProcessed(operand)) {
-                return;
-            }
             if (isRegister(operand)) {
-                addFixedUse(asRegisterValue(operand), from, to);
+                RegisterValue reg = asRegisterValue(operand);
+                if (allocator.isAllocatable(reg)) {
+                    addFixedUse(reg, from, to);
+                }
             } else {
                 assert isVariable(operand) : operand;
                 addVariableUse(asVariable(operand), from, to, registerPriority);
@@ -223,11 +223,11 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
         }
 
         private void addDef(AllocatableValue operand, LIRInstruction op, RegisterPriority registerPriority) {
-            if (!allocator.isProcessed(operand)) {
-                return;
-            }
             if (isRegister(operand)) {
-                addFixedDef(asRegisterValue(operand), op);
+                RegisterValue reg = asRegisterValue(operand);
+                if (allocator.isAllocatable(reg)) {
+                    addFixedDef(reg, op);
+                }
             } else {
                 assert isVariable(operand) : operand;
                 addVariableDef(asVariable(operand), op, registerPriority);
@@ -297,11 +297,11 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
         }
 
         private void addTemp(AllocatableValue operand, int tempPos, RegisterPriority registerPriority) {
-            if (!allocator.isProcessed(operand)) {
-                return;
-            }
             if (isRegister(operand)) {
-                addFixedTemp(asRegisterValue(operand), tempPos);
+                RegisterValue reg = asRegisterValue(operand);
+                if (allocator.isAllocatable(reg)) {
+                    addFixedTemp(reg, tempPos);
+                }
             } else {
                 assert isVariable(operand) : operand;
                 addVariableTemp(asVariable(operand), tempPos, registerPriority);
