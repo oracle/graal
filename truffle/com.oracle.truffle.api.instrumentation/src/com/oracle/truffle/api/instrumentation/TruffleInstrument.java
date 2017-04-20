@@ -227,15 +227,14 @@ public abstract class TruffleInstrument {
         }
 
         /**
-         * Searches for services of the requested type allong the associated
-         * {@link com.oracle.truffle.api.vm.PolyglotRuntime runtime}. The services may be registered
-         * by {@link TruffleLanguage#TruffleLanguage(java.lang.Object...) language implementations}
-         * when constructing a language.
+         * Queries a {@link TruffleLanguage language implementation} for a special service. The
+         * services can be provided by the language by directly implementing them when subclassing
+         * {@link TruffleLanguage}.
          *
          * @param <S> the requested type
-         * @param language the language to query for the service
+         * @param language identification of the language to query
          * @param type the class of the requested type
-         * @return the registered service or <code>null</code> if none found
+         * @return the registered service or <code>null</code> if none is found
          * @since 0.26
          */
         public <S> S lookup(LanguageInfo language, Class<S> type) {
