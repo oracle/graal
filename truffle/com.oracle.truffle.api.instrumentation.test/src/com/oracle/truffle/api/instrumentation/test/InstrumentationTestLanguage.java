@@ -86,7 +86,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * )
  * </code>
  */
-@Registration(mimeType = InstrumentationTestLanguage.MIME_TYPE, name = "InstrumentTestLang", version = "2.0", services = SpecialService.class)
+@Registration(mimeType = InstrumentationTestLanguage.MIME_TYPE, name = "InstrumentTestLang", version = "2.0")
 @ProvidedTags({ExpressionNode.class, DefineNode.class, LoopNode.class,
                 StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, BlockNode.class, StandardTags.RootTag.class})
 public class InstrumentationTestLanguage extends TruffleLanguage<Context>
