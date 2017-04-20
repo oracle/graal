@@ -47,7 +47,6 @@ final class NodeClassImpl extends NodeClass {
     // The comprehensive list of all fields.
     private final NodeFieldAccessor[] fields;
     private final NodeFieldAccessor parentField;
-    private final NodeFieldAccessor nodeClassField;
 
     private final Class<? extends Node> clazz;
 
@@ -59,15 +58,11 @@ final class NodeClassImpl extends NodeClass {
 
         List<NodeFieldAccessor> fieldsList = new ArrayList<>();
         NodeFieldAccessor parentFieldTmp = null;
-        NodeFieldAccessor nodeClassFieldTmp = null;
 
         try {
             Field field = Node.class.getDeclaredField("parent");
             assert Node.class.isAssignableFrom(field.getType());
             parentFieldTmp = NodeFieldAccessor.create(NodeFieldAccessor.NodeFieldKind.PARENT, field);
-            field = Node.class.getDeclaredField("nodeClass");
-            assert NodeClass.class.isAssignableFrom(field.getType());
-            nodeClassFieldTmp = NodeFieldAccessor.create(NodeFieldAccessor.NodeFieldKind.NODE_CLASS, field);
         } catch (NoSuchFieldException e) {
             throw new AssertionError("Node field not found", e);
         }
@@ -85,7 +80,6 @@ final class NodeClassImpl extends NodeClass {
         });
 
         this.fields = fieldsList.toArray(EMPTY_NODE_FIELD_ARRAY);
-        this.nodeClassField = nodeClassFieldTmp;
         this.parentField = parentFieldTmp;
         this.clazz = clazz;
     }
@@ -114,11 +108,6 @@ final class NodeClassImpl extends NodeClass {
             }
             fieldsList.add(nodeField);
         }
-    }
-
-    @Override
-    public NodeFieldAccessor getNodeClassField() {
-        return nodeClassField;
     }
 
     private static boolean isNodeType(Class<?> clazz) {

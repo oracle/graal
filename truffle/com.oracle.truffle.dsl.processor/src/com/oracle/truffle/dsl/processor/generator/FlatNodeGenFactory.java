@@ -974,17 +974,20 @@ public class FlatNodeGenFactory {
         List<CodeTree> values = new ArrayList<>();
 
         for (NodeExecutionData execution : node.getChildExecutions()) {
-            if (execution.getChild() != null) {
-                LocalVariable var = frameState.getValue(execution);
-                LocalVariable shortCircuit = frameState.getShortCircuit(execution);
-                if (shortCircuit != null) {
-                    builder.string("null");
-                    values.add(shortCircuit.createReference());
-                }
+            NodeChildData child = execution.getChild();
+            LocalVariable var = frameState.getValue(execution);
+            LocalVariable shortCircuit = frameState.getShortCircuit(execution);
+            if (shortCircuit != null) {
+                builder.string("null");
+                values.add(shortCircuit.createReference());
+            }
+            if (child != null) {
                 builder.string("this.", nodeFieldName(execution));
-                if (var != null) {
-                    values.add(var.createReference());
-                }
+            } else {
+                builder.string("null");
+            }
+            if (var != null) {
+                values.add(var.createReference());
             }
         }
         builder.end();

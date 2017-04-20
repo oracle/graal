@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.dsl.test.UnsupportedSpecializationTestFactory.Unsupported1Factory;
 import com.oracle.truffle.api.dsl.test.UnsupportedSpecializationTestFactory.Unsupported2Factory;
+import com.oracle.truffle.api.dsl.test.UnsupportedSpecializationTestFactory.UnsupportedNoChildNodeGen;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 
@@ -99,6 +100,38 @@ public class UnsupportedSpecializationTest {
         @Specialization
         public int doInteger(int a, boolean hasB, int b) {
             throw new AssertionError();
+        }
+    }
+
+    @Test
+    public void testUnsupportedNoChildNode() {
+        UnsupportedNoChildNode child = UnsupportedNoChildNodeGen.create();
+
+        try {
+            child.execute(42d);
+            Assert.fail();
+        } catch (UnsupportedSpecializationException e) {
+            Assert.assertNotNull(e.getSuppliedValues());
+            Assert.assertNotNull(e.getSuppliedNodes());
+            Assert.assertEquals(1, e.getSuppliedValues().length);
+            Assert.assertEquals(1, e.getSuppliedNodes().length);
+            Assert.assertEquals(42d, e.getSuppliedValues()[0]);
+            Assert.assertNull(e.getSuppliedNodes()[0]);
+        }
+    }
+
+    abstract static class UnsupportedNoChildNode extends Node {
+
+        abstract Object execute(Object value);
+
+        @Specialization
+        String s1(String v) {
+            return v;
+        }
+
+        @Specialization
+        int s2(int v) {
+            return v;
         }
     }
 

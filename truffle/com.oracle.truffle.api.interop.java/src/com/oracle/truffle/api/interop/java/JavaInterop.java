@@ -252,6 +252,9 @@ public final class JavaInterop {
         if (obj == null) {
             return JavaObject.NULL;
         }
+        if (obj.getClass().isArray()) {
+            return new JavaObject(obj, obj.getClass());
+        }
         if (TruffleOptions.AOT) {
             throw new IllegalArgumentException();
         }

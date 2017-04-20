@@ -26,23 +26,23 @@ import java.util.Map;
 
 /**
  * An immutable {@link Map}. Does not permit null keys or values.
- * 
+ *
  * @since 0.17 or earlier
  */
 public interface ImmutableMap<K, V> extends Map<K, V> {
 
     /**
      * Creates an immutable copy of this map with the given entry put in the map.
-     * 
+     *
      * @since 0.17 or earlier
      */
-    ImmutableMap<K, V> copyAndPut(final K key, final V value);
+    ImmutableMap<K, V> copyAndPut(K key, V value);
 
     /**
      * Creates an immutable copy of this map with the given entry removed from the map.
-     * 
+     *
      * @since 0.17 or earlier
      */
-    ImmutableMap<K, V> copyAndRemove(final K key);
+    ImmutableMap<K, V> copyAndRemove(K key);
 
 }

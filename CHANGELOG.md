@@ -5,8 +5,11 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 ## Version 0.26
 
 * Language can provide additional services and instruments can [look them up](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html#lookup).
+* Renamed `DebugValue.isWriteable` to [DebugValue.isWritable](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/debug/DebugValue.html#isWritable--) to fix spelling.
+* [Breakpoint.setCondition](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/debug/Breakpoint.html#setCondition-java.lang.String-) does not throw the IOException any more.
 
 ## Version 0.25
+3-Apr-2017
 
 * Added [Instrumenter.attachOutConsumer](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/Instrumenter.html#attachOutConsumer-T-) and [Instrumenter.attachErrConsumer](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/Instrumenter.html#attachErrConsumer-T-) to receive output from executions run in the associated PolyglotEngine.
 * [JavaInterop.asTruffleObject](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/interop/java/JavaInterop.html#asTruffleObject-java.lang.Object-) lists methods as keys

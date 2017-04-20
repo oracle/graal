@@ -78,7 +78,7 @@ final class JavaInteropReflect {
                     return new JavaFunctionObject(m, obj);
                 }
             }
-            throw (NoSuchFieldError) new NoSuchFieldError(ex.getMessage()).initCause(ex);
+            throw UnknownIdentifierException.raise(name);
         }
         return JavaInterop.asTruffleObject(val);
     }
@@ -297,6 +297,9 @@ final class JavaInteropReflect {
                 TruffleObject receiver = (TruffleObject) frame.getArguments()[0];
                 Object[] params = (Object[]) frame.getArguments()[1];
                 Object res = executeImpl(receiver, params);
+                if (!returnType.clazz.isInterface()) {
+                    res = JavaInterop.ACCESSOR.engine().findOriginalObject(res);
+                }
                 return toJavaNode.execute(res, returnType);
             } catch (InteropException ex) {
                 throw reraise(ex);
@@ -427,7 +430,7 @@ final class JavaInteropReflect {
         @Specialization(rewriteOn = UnsupportedMessageException.class)
         Object doReadExec(TruffleObject obj, String name, Object[] args) throws UnsupportedMessageException {
             try {
-                if (readNode == null) {
+                if (readNode == null || primitive == null || isExecNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     readNode = insert(Message.READ.createNode());
                     primitive = insert(ToPrimitiveNode.create());

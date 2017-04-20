@@ -32,7 +32,7 @@ import java.util.Objects;
 /**
  * Thrown by the generated code of Truffle-DSL if no compatible Specialization could be found for
  * the provided values.
- * 
+ *
  * @since 0.8 or earlier
  */
 public final class UnsupportedSpecializationException extends RuntimeException {
@@ -68,7 +68,7 @@ public final class UnsupportedSpecializationException extends RuntimeException {
 
     /**
      * Returns the {@link Node} that caused the this {@link UnsupportedSpecializationException}.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public Node getNode() {
@@ -80,7 +80,7 @@ public final class UnsupportedSpecializationException extends RuntimeException {
      * values returned by {@link #getSuppliedValues()}. The array returned by
      * {@link #getSuppliedNodes()} has the same length as the array returned by
      * {@link #getSuppliedValues()}. Never returns null.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public Node[] getSuppliedNodes() {
@@ -91,7 +91,7 @@ public final class UnsupportedSpecializationException extends RuntimeException {
      * Returns the dynamic values that were supplied to the node.The array returned by
      * {@link #getSuppliedNodes()} has the same length as the array returned by
      * {@link #getSuppliedValues()}. Never returns null.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public Object[] getSuppliedValues() {

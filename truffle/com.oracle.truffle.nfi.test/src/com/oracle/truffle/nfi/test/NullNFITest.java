@@ -24,10 +24,13 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.nfi.test.interop.NullObject;
 import com.oracle.truffle.nfi.test.interop.TestCallback;
+import com.oracle.truffle.tck.TruffleRunner;
+import com.oracle.truffle.tck.TruffleRunner.Inject;
 import java.util.ArrayList;
 import java.util.Collection;
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -41,6 +44,7 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
+@Parameterized.UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
 public class NullNFITest extends NFITest {
 
     public enum NullMode {
@@ -62,11 +66,16 @@ public class NullNFITest extends NFITest {
     @Parameter(0) public String type;
     @Parameter(1) public NullMode nullMode;
 
-    @Test
-    public void testNullRet() {
-        TruffleObject function = lookupAndBind("return_null", String.format("() : %s", type));
+    public class TestNullRetNode extends SendExecuteNode {
 
-        Object ret = sendExecute(function);
+        public TestNullRetNode() {
+            super("return_null", String.format("() : %s", type), 0);
+        }
+    }
+
+    @Test
+    public void testNullRet(@Inject(TestNullRetNode.class) CallTarget callTarget) {
+        Object ret = callTarget.call();
         Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
 
         TruffleObject obj = (TruffleObject) ret;
@@ -88,13 +97,18 @@ public class NullNFITest extends NFITest {
         return null;
     }
 
+    public class TestNullArgNode extends SendExecuteNode {
+
+        public TestNullArgNode() {
+            super("null_arg", String.format("(%s) : string", type), 1);
+        }
+    }
+
     @Test
-    public void testNullArg() {
+    public void testNullArg(@Inject(TestNullArgNode.class) CallTarget callTarget) {
         String expected = getExpected();
 
-        TruffleObject function = lookupAndBind("null_arg", String.format("(%s) : string", type));
-
-        Object ret = sendExecute(function, JavaInterop.asTruffleObject(null));
+        Object ret = callTarget.call(new NullObject());
         Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
 
         TruffleObject obj = (TruffleObject) ret;
@@ -102,28 +116,40 @@ public class NullNFITest extends NFITest {
         Assert.assertEquals("return value", expected, JavaInterop.unbox(obj));
     }
 
+    public class TestNullCallbackArgNode extends SendExecuteNode {
+
+        public TestNullCallbackArgNode() {
+            super("callback_null_arg", String.format("((%s):void) : void", type), 1);
+        }
+    }
+
     @Test
-    public void testNullCallbackArg() {
-        TruffleObject function = lookupAndBind("callback_null_arg", String.format("((%s):void) : void", type));
+    public void testNullCallbackArg(@Inject(TestNullCallbackArgNode.class) CallTarget callTarget) {
         TruffleObject nullCallback = new TestCallback(1, (args) -> {
             Assert.assertThat("callback argument", args[0], is(instanceOf(TruffleObject.class)));
             Assert.assertTrue("isNull", JavaInterop.isNull((TruffleObject) args[0]));
             return null;
         });
 
-        sendExecute(function, nullCallback);
+        callTarget.call(nullCallback);
+    }
+
+    public class TestNullCallbackRetNode extends SendExecuteNode {
+
+        public TestNullCallbackRetNode() {
+            super("callback_null_ret", String.format("(():%s) : string", type), 1);
+        }
     }
 
     @Test
-    public void testNullCallbackRet() {
+    public void testNullCallbackRet(@Inject(TestNullCallbackRetNode.class) CallTarget callTarget) {
         String expected = getExpected();
 
-        TruffleObject function = lookupAndBind("callback_null_ret", String.format("(():%s) : string", type));
         TruffleObject nullCallback = new TestCallback(0, (args) -> {
             return new NullObject();
         });
 
-        Object ret = sendExecute(function, nullCallback);
+        Object ret = callTarget.call(nullCallback);
         Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
 
         TruffleObject obj = (TruffleObject) ret;
