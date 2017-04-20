@@ -114,20 +114,20 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         private Env env;
 
         @Override
-        protected void onCreate(Env env) {
-            this.env = env;
-            env.registerService(this);
+        protected void onCreate(Env anEnv) {
+            this.env = anEnv;
+            this.env.registerService(this);
         }
 
         @Override
         public void run() {
-            LanguageInfo info = obtainInstrumentationLanguage(env);
+            LanguageInfo info = obtainInstrumentationLanguage();
             SpecialService ss = env.lookup(info, SpecialService.class);
             assertNotNull("Service found", ss);
             assertEquals("The right extension", ss.fileExtension(), InstrumentationTestLanguage.FILENAME_EXTENSION);
         }
 
-        private LanguageInfo obtainInstrumentationLanguage(Env env) {
+        private LanguageInfo obtainInstrumentationLanguage() {
             Source src = Source.newBuilder("").mimeType(InstrumentationTestLanguage.MIME_TYPE).name("getroot").build();
             CallTarget target;
             try {
