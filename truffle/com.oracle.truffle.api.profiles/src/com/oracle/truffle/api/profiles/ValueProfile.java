@@ -28,6 +28,7 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * <p>
@@ -43,21 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  *
  * <p>
  * <b> Usage example: </b>
- *
- * <pre>
- * class SampleNode extends Node {
- * 
- * final ValueProfile profile = ValueProfile.create{Identity,Class}Profile();
- * 
- *     Object execute(Object input) {
- *         Object profiledValue = profile.profile(input);
- *         // compiler may know now more about profiledValue
- *         return profieldValue;
- *     }
- * }
- * </pre>
- * <p>
- *
+ * {@link com.oracle.truffle.api.profiles.ValueProfileSnippets.SampleNode#profile}
  *
  * {@inheritDoc}
  *
@@ -112,7 +99,7 @@ public abstract class ValueProfile extends Profile {
      * object identity. If two identities have been seen on a single profile instance then this
      * profile will transition to a generic state with no overhead.
      * </p>
-     * 
+     *
      * @since 0.10
      */
     public static ValueProfile createIdentityProfile() {
@@ -137,7 +124,7 @@ public abstract class ValueProfile extends Profile {
      * seen on a single profile instance then this profile will transition to a generic state with
      * no overhead.
      * </p>
-     * 
+     *
      * @since 0.10
      */
     public static ValueProfile createEqualityProfile() {
@@ -337,4 +324,28 @@ public abstract class ValueProfile extends Profile {
 
     }
 
+}
+
+class ValueProfileSnippets {
+    // BEGIN: com.oracle.truffle.api.profiles.ValueProfileSnippets.SampleNode#profile
+    class SampleNode extends Node {
+        final ValueProfile profile;
+
+        SampleNode(boolean useIdentity, boolean useClass) {
+            if (useIdentity) {
+                profile = ValueProfile.createIdentityProfile();
+            } else if (useClass) {
+                profile = ValueProfile.createClassProfile();
+            } else {
+                profile = ValueProfile.createEqualityProfile();
+            }
+        }
+
+        Object execute(Object input) {
+            Object profiledValue = profile.profile(input);
+            // compiler may know now more about profiledValue
+            return profiledValue;
+        }
+    }
+    // END: com.oracle.truffle.api.profiles.ValueProfileSnippets.SampleNode#profile
 }
