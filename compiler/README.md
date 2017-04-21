@@ -22,7 +22,8 @@ export PATH=$PWD/mx:$PATH
 ```
 
 Graal depends on a JDK that supports JVMCI ([JVM Compiler Interface](https://bugs.openjdk.java.net/browse/JDK-8062493)).
-Graal works with build 161 or later of a [JDK9 Early Access Release](https://jdk9.java.net/download/)
+Graal does not currently work with a [JDK9 Early Access Release](https://jdk9.java.net/download/).
+Once recent JVMCI API changes (e.g., [8177845](https://bugs.openjdk.java.net/browse/JDK-8177845)) propagate to an Early Access Release, this document will be updated.
 JVMCI-enabled builds of JDK8 for selected platforms are available via [OTN](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html).
 If you are not on one of these platforms (e.g., Windows), see [Building JVMCI JDK8](#building-jvmci-jdk8) below.
 
@@ -66,7 +67,7 @@ Further information on how to import these project configurations into individua
 
 The Graal code base includes the [Ideal Graph Visualizer](http://ssw.jku.at/General/Staff/TW/igv.html) which is very useful in terms of visualizing Graal's intermediate representation (IR).
 You can get a quick insight into this tool by running the commands below.
-The first command launches the tool and the second runs one of the unit tests included in the Graal code base with extra options to make Graal output the IR for all methods it compiles to the tool.
+The first command launches the tool and the second runs one of the unit tests included in the Graal code base with extra options to make Graal dump the IR for all methods it compiles.
 You should wait for the GUI to appear before running the second command.
 
 ```
@@ -76,10 +77,6 @@ mx unittest -Dgraal.Dump BC_athrow0
 
 If you added `-XX:+UseJVMCICompiler` as described above, you will see IR for compilations requested by the VM itself in addition to compilations requested by the unit test.
 The former are those with a prefix in the UI denoting the compiler thread and id of the compilation (e.g., `JVMCI CompilerThread0:390`).
-
-The first time you run `mx igv`, the Ideal Graph Visualizer will be transparently built.
-This only works if `ant` has internet access because it needs to download the NetBeans platform packages.
-You therefore have to configure `ant` to use proxies if necessary (e.g., set `ANT_ARGS=-autoproxy` in your environment).
 
 Further information can be found on the [Debugging](docs/Debugging.md) page.
 
@@ -95,6 +92,7 @@ To create a JVMCI enabled JDK8 on other platforms (e.g., Windows):
 hg clone http://hg.openjdk.java.net/graal/graal-jvmci-8
 cd graal-jvmci-8
 mx --java-home /path/to/jdk8 build
+mx --java-home /path/to/jdk8 unittest
 export JAVA_HOME=$(mx --java-home /path/to/jdk8 jdkhome)
 ```
 
