@@ -38,9 +38,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  *
  * <pre>
  * class LoopNode extends Node {
- * 
+ *
  *     final LoopConditionProfile loopProfile = LoopConditionProfile.createCountingProfile();
- * 
+ *
  *     void execute() {
  *         // loop count cannot be predicted
  *         while (loopProfile.profile(Math.random() &gt;= 0.9)) {
@@ -57,9 +57,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  *
  * <pre>
  * class CountedLoopNode extends Node {
- * 
+ *
  *     final LoopConditionProfile loopProfile = LoopConditionProfile.createCountingProfile();
- * 
+ *
  *     void execute(int length) {
  *         // loop count can be predicted
  *         loopProfile.profileCounted(length);
@@ -136,33 +136,30 @@ public abstract class LoopConditionProfile extends ConditionProfile {
 
         @Override
         public boolean profile(boolean condition) {
+            // locals required to guarantee no overflow in multi-threaded environments
+            long trueCountLocal = trueCount;
+            int falseCountLocal = falseCount;
+            if (trueCountLocal == 0) {
+                // Deopt for never entering the loop.
+                if (condition) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                }
+            }
+            // No deopt for not entering the loop.
+
             if (CompilerDirectives.inInterpreter()) {
                 if (condition) {
-                    // local required to guarantee no overflow in multi-threaded environments
-                    long localTrueCount = trueCount;
-                    if (localTrueCount < Long.MAX_VALUE) {
-                        trueCount = localTrueCount + 1;
+                    if (trueCountLocal < Long.MAX_VALUE) {
+                        trueCount = trueCountLocal + 1;
                     }
                 } else {
-                    // local required to guarantee no overflow in multi-threaded environments
-                    int localFalseCount = falseCount;
-                    if (localFalseCount < Integer.MAX_VALUE) {
-                        falseCount = localFalseCount + 1;
+                    if (falseCountLocal < Integer.MAX_VALUE) {
+                        falseCount = falseCountLocal + 1;
                     }
                 }
                 // no branch probability calculation in the interpreter
                 return condition;
             } else {
-                long trueCountLocal = trueCount;
-                int falseCountLocal = falseCount;
-                if (trueCountLocal == 0) {
-                    /* Deopt for never entering the loop. */
-                    if (condition) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        trueCount = trueCountLocal = 1;
-                    }
-                }
-                /* No deopt for not entering the loop. */
                 return CompilerDirectives.injectBranchProbability(calculateProbability(trueCountLocal, falseCountLocal), condition);
             }
         }
