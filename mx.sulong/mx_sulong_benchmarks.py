@@ -27,7 +27,7 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
         benchDir = _benchmarksDirectory()
         if not exists(benchDir):
             mx.abort('Benchmarks directory {} is missing'.format(benchDir))
-        return [f for f in os.listdir(benchDir) if os.path.isdir(join(benchDir, f))]
+        return [f for f in os.listdir(benchDir) if os.path.isdir(join(benchDir, f)) and os.path.isfile(join(join(benchDir, f), 'Makefile'))]
 
     def benchHigherScoreRegex(self):
         return r'^(### )?(?P<benchmark>[a-zA-Z0-9\.\-_]+): +(?P<score>[0-9]+(?:\.[0-9]+)?)'
@@ -54,12 +54,12 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
             }),
         ]
 
-    def before(self, bmSuiteArgs):
-        self.currentDir = os.getcwd()
-        os.chdir(_benchmarksDirectory())
+    # def before(self, bmSuiteArgs):
+    #     self.currentDir = os.getcwd()
+    #     os.chdir(_benchmarksDirectory())
 
-    def after(self, bmSuiteArgs):
-        os.chdir(self.currentDir)
+    # def after(self, bmSuiteArgs):
+    #     os.chdir(self.currentDir)
 
     def createCommandLineArgs(self, benchmarks, runArgs):
         if len(benchmarks) != 1:
