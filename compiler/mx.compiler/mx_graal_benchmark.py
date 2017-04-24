@@ -123,17 +123,19 @@ mx_benchmark.add_java_vm(JvmciJdkVm('server', 'hosted', ['-server', '-XX:+Enable
 
 def build_jvmci_vm_variants(raw_name, raw_config_name, extra_args, variants, include_default=True, suite=None, priority=0):
     for prefix, args in [('', ['-XX:+UseJVMCICompiler']), ('hosted-', [])]:
-        raw_config_name = prefix + raw_config_name
-        extra_args = extra_args + args
+        extended_raw_config_name = prefix + raw_config_name
+        extended_extra_args = extra_args + args
         if include_default:
-            mx_benchmark.add_java_vm(JvmciJdkVm(raw_name, raw_config_name, extra_args), suite, priority)
+            mx_benchmark.add_java_vm(
+                JvmciJdkVm(raw_name, extended_raw_config_name, extended_extra_args), suite, priority)
         for variant in variants:
             if len(variant) == 2:
                 var_name, var_args = variant
                 var_priority = priority
             else:
                 var_name, var_args, var_priority = variant
-            mx_benchmark.add_java_vm(JvmciJdkVm(raw_name, raw_config_name + '-' + var_name, extra_args + var_args), suite, var_priority)
+            mx_benchmark.add_java_vm(
+                JvmciJdkVm(raw_name, extended_raw_config_name + '-' + var_name, extended_extra_args + var_args), suite, var_priority)
 
 _graal_variants = [
     ('tracera', ['-Dgraal.TraceRA=true'], 11),
