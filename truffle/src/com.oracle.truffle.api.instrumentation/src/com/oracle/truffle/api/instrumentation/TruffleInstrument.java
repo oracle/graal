@@ -226,6 +226,22 @@ public abstract class TruffleInstrument {
             services.add(service);
         }
 
+        /**
+         * Queries a {@link TruffleLanguage language implementation} for a special service. The
+         * services can be provided by the language by directly implementing them when subclassing
+         * {@link TruffleLanguage}.
+         *
+         * @param <S> the requested type
+         * @param language identification of the language to query
+         * @param type the class of the requested type
+         * @return the registered service or <code>null</code> if none is found
+         * @since 0.26
+         */
+        @SuppressWarnings("static-method")
+        public <S> S lookup(LanguageInfo language, Class<S> type) {
+            return AccessorInstrumentHandler.langAccess().lookup(language, type);
+        }
+
         Object[] onCreate(TruffleInstrument instrument) {
             List<Object> arr = new ArrayList<>();
             services = arr;

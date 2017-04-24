@@ -81,7 +81,7 @@ public class GraalTest {
         }
     }
 
-    protected Method getMethod(Class<?> clazz, String methodName, Class<?>[] parameterTypes) {
+    protected Method getMethod(Class<?> clazz, String methodName, Class<?>... parameterTypes) {
         try {
             return clazz.getMethod(methodName, parameterTypes);
         } catch (NoSuchMethodException | SecurityException e) {

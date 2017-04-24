@@ -638,7 +638,10 @@ public final class DebuggerSession implements Closeable {
             if (stepping.get()) {
                 EventBinding<? extends ExecutionEventNodeFactory> localStatementBinding = statementBinding;
                 if (localStatementBinding != null) {
-                    nodes.add((DebuggerNode) context.lookupExecutionEventNode(localStatementBinding));
+                    DebuggerNode node = (DebuggerNode) context.lookupExecutionEventNode(localStatementBinding);
+                    if (node != null) {
+                        nodes.add(node);
+                    }
                 }
             }
             if (!breakpoints.isEmpty()) {

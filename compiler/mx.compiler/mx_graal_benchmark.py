@@ -121,24 +121,28 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default', ['-server', '-XX:-EnableJVMCI']), _suite, 2)
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'hosted', ['-server', '-XX:+EnableJVMCI']), _suite, 3)
 
-
 def build_jvmci_vm_variants(raw_name, raw_config_name, extra_args, variants, include_default=True, suite=None, priority=0):
-    if include_default:
-        mx_benchmark.add_java_vm(JvmciJdkVm(raw_name, raw_config_name, extra_args), suite, priority)
-    for variant in variants:
-        if len(variant) == 2:
-            var_name, var_args = variant
-            var_priority = priority
-        else:
-            var_name, var_args, var_priority = variant
-        mx_benchmark.add_java_vm(JvmciJdkVm(raw_name, raw_config_name + '-' + var_name, extra_args + var_args), suite, var_priority)
+    for prefix, args in [('', ['-XX:+UseJVMCICompiler']), ('hosted-', [])]:
+        extended_raw_config_name = prefix + raw_config_name
+        extended_extra_args = extra_args + args
+        if include_default:
+            mx_benchmark.add_java_vm(
+                JvmciJdkVm(raw_name, extended_raw_config_name, extended_extra_args), suite, priority)
+        for variant in variants:
+            if len(variant) == 2:
+                var_name, var_args = variant
+                var_priority = priority
+            else:
+                var_name, var_args, var_priority = variant
+            mx_benchmark.add_java_vm(
+                JvmciJdkVm(raw_name, extended_raw_config_name + '-' + var_name, extended_extra_args + var_args), suite, var_priority)
 
 _graal_variants = [
     ('tracera', ['-Dgraal.TraceRA=true'], 11),
     ('tracera-bu', ['-Dgraal.TraceRA=true', '-Dgraal.TraceRAPolicy=BottomUpOnly'], 10),
     ('g1gc', ['-XX:+UseG1GC'], 12)
 ]
-build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-XX:+UseJVMCICompiler', '-Dgraal.CompilerConfiguration=core', '-Djvmci.Compiler=graal'], _graal_variants, suite=_suite, priority=15)
+build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=core', '-Djvmci.Compiler=graal'], _graal_variants, suite=_suite, priority=15)
 
 # On 64 bit systems -client is not supported. Nevertheless, when running with -server, we can
 # force the VM to just compile code with C1 but not with C2 by adding option -XX:TieredStopAtLevel=1.

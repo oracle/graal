@@ -24,10 +24,10 @@ package org.graalvm.compiler.replacements.test;
 
 import java.util.Objects;
 
-import org.junit.Assert;
-import org.junit.Test;
-
 import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugConfigScope;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -38,6 +38,10 @@ import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.replacements.classfile.ClassfileBytecodeProvider;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.nodes.WordCastNode;
+import org.junit.Assert;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -133,6 +137,110 @@ public class DerivedOopTest extends ReplacementsTest implements Snippets {
         obj.afterGC.internalPointer = internalPointer;
 
         return obj;
+    }
+
+    @Rule public final ExpectedException thrown = ExpectedException.none();
+    private static final String UNKNOWN_REFERENCE_AT_SAFEPOINT_MSG = "should not reach here: unknown reference alive across safepoint";
+
+    @Test
+    @SuppressWarnings("try")
+    public void testFieldOffsetMergeNonLiveBasePointer() {
+        thrown.expect(GraalError.class);
+        thrown.expectMessage(UNKNOWN_REFERENCE_AT_SAFEPOINT_MSG);
+        try (DebugConfigScope s = Debug.setConfig(Debug.silentConfig())) {
+            // Run a couple times to encourage objects to move
+            for (int i = 0; i < 4; i++) {
+                Result r = new Result();
+                test("fieldOffsetMergeSnippet01", r, 8L, 16L);
+                Assert.assertEquals(r.beforeGC.delta(), r.afterGC.delta());
+            }
+        }
+    }
+
+    @Test
+    public void testFieldOffsetMergeNonLiveBasePointerNotAccrossSafepoint() {
+        // Run a couple times to encourage objects to move
+        for (int i = 0; i < 4; i++) {
+            Result r = new Result();
+            test("fieldOffsetMergeSnippet02", r, 8L, 16L);
+        }
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testFieldOffsetMergeLiveBasePointer() {
+        thrown.expect(GraalError.class);
+        thrown.expectMessage(UNKNOWN_REFERENCE_AT_SAFEPOINT_MSG);
+        try (DebugConfigScope s = Debug.setConfig(Debug.silentConfig())) {
+            // Run a couple times to encourage objects to move
+            for (int i = 0; i < 4; i++) {
+                Result r = new Result();
+                test("fieldOffsetMergeSnippet03", r, new Result(), new Result(), 8L, 16L);
+                Assert.assertEquals(r.beforeGC.delta(), r.afterGC.delta());
+            }
+        }
+    }
+
+    public static boolean SideEffectB;
+    public static long SideEffect1 = 16;
+    public static long SideEffect2 = 16;
+    public static Object o1 = new Result();
+    public static Object o2 = o1;
+
+    public static Result fieldOffsetMergeSnippet01(Result objResult, long offsetA, long offsetB) {
+        long internalPointer;
+        if (SideEffectB) {
+            internalPointer = getRawPointer(o1) + offsetA;
+            SideEffect1 = internalPointer;
+        } else {
+            internalPointer = getRawPointer(o2) + offsetB;
+            SideEffect2 = internalPointer;
+        }
+        // make sure the internal pointer is computed before the safepoint
+        GraalDirectives.blackhole(internalPointer);
+        objResult.beforeGC.basePointer = getRawPointer(objResult);
+        objResult.beforeGC.internalPointer = internalPointer;
+        System.gc();
+        objResult.afterGC.basePointer = getRawPointer(objResult);
+        objResult.afterGC.internalPointer = internalPointer;
+        return objResult;
+    }
+
+    public static Result fieldOffsetMergeSnippet02(Result objResult, long offsetA, long offsetB) {
+        long internalPointer;
+        if (SideEffectB) {
+            internalPointer = getRawPointer(o1) + offsetA;
+            SideEffect1 = internalPointer;
+        } else {
+            internalPointer = getRawPointer(o2) + offsetB;
+            SideEffect2 = internalPointer;
+        }
+        // make sure the internal pointer is computed before the safepoint
+        GraalDirectives.blackhole(internalPointer);
+        objResult.beforeGC.basePointer = getRawPointer(objResult);
+        objResult.beforeGC.internalPointer = internalPointer;
+        objResult.afterGC.basePointer = getRawPointer(objResult);
+        objResult.afterGC.internalPointer = internalPointer;
+        return objResult;
+    }
+
+    public static Result fieldOffsetMergeSnippet03(Result objResult, Result a, Result b, long offsetA, long offsetB) {
+        long internalPointer;
+        if (SideEffectB) {
+            internalPointer = getRawPointer(a) + offsetA;
+            SideEffect1 = internalPointer;
+        } else {
+            internalPointer = getRawPointer(b) + offsetB;
+            SideEffect2 = internalPointer;
+        }
+        // make sure the internal pointer is computed before the safepoint
+        GraalDirectives.blackhole(internalPointer);
+        objResult.beforeGC.basePointer = getRawPointer(objResult);
+        objResult.beforeGC.internalPointer = internalPointer;
+        System.gc();
+        objResult.afterGC.basePointer = getRawPointer(objResult);
+        objResult.afterGC.internalPointer = internalPointer;
+        return objResult;
     }
 
     @Override
