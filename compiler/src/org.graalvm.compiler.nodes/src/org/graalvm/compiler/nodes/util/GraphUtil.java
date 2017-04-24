@@ -684,24 +684,29 @@ public class GraphUtil {
      */
     public static ValueNode originalValue(ValueNode proxy) {
         ValueNode v = proxy;
-        do {
+        while (true) {
             if (v instanceof LimitedValueProxy) {
                 v = ((LimitedValueProxy) v).getOriginalNode();
             } else if (v instanceof PhiNode) {
                 PhiNode phiNode = (PhiNode) v;
                 v = phiNode.singleValueOrThis();
                 if (v == phiNode) {
-                    v = null;
+                    v = new OriginalValueSearch(proxy).result;
+                    if (v != null) {
+                        /* Exhaustive search through PhiNode found a result. */
+                        return v;
+                    } else {
+                        /*
+                         * Exhaustive search through PhiNode did not find a result, so the PhiNode
+                         * itself is the best possible result.
+                         */
+                        return phiNode;
+                    }
                 }
             } else {
-                break;
+                return v;
             }
-        } while (v != null);
-
-        if (v == null) {
-            v = new OriginalValueSearch(proxy).result;
         }
-        return v;
     }
 
     public static boolean tryKillUnused(Node node) {
