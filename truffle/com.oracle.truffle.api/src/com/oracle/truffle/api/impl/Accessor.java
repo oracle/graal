@@ -169,6 +169,7 @@ public abstract class Accessor {
 
         public abstract Object getContext(Env env);
 
+        public abstract <S> S lookup(LanguageInfo language, Class<S> type);
     }
 
     public abstract static class InstrumentSupport {

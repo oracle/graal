@@ -4,6 +4,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 0.26
 
+* Language can provide additional services and instruments can [look them up](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html#lookup).
 * Renamed `DebugValue.isWriteable` to [DebugValue.isWritable](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/debug/DebugValue.html#isWritable--) to fix spelling.
 * [Breakpoint.setCondition](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/debug/Breakpoint.html#setCondition-java.lang.String-) does not throw the IOException any more.
 

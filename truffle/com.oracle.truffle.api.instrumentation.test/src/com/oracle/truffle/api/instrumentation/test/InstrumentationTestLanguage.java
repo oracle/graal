@@ -89,7 +89,8 @@ import com.oracle.truffle.api.source.SourceSection;
 @Registration(mimeType = InstrumentationTestLanguage.MIME_TYPE, name = "InstrumentTestLang", version = "2.0")
 @ProvidedTags({ExpressionNode.class, DefineNode.class, LoopNode.class,
                 StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, BlockNode.class, StandardTags.RootTag.class})
-public class InstrumentationTestLanguage extends TruffleLanguage<Context> {
+public class InstrumentationTestLanguage extends TruffleLanguage<Context>
+                implements SpecialService {
 
     public static final String MIME_TYPE = "application/x-truffle-instrumentation-test-language";
     public static final String FILENAME_EXTENSION = ".titl";
@@ -109,6 +110,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context> {
     private static int rootSourceSectionQueryCount;
 
     public InstrumentationTestLanguage() {
+    }
+
+    @Override
+    public String fileExtension() {
+        return FILENAME_EXTENSION;
     }
 
     @Override
