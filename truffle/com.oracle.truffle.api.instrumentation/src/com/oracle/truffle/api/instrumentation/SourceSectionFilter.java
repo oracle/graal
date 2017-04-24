@@ -361,6 +361,27 @@ public final class SourceSectionFilter {
         }
 
         /**
+         * Add a filter for a specific source section starting at a column and has a given length.
+         *
+         * Requires {@link #lineIs(int) line predicated} to be set as well.
+         *
+         * @param column start column (inclusive)
+         * @param length number of characters (exclusive)
+         * @return the builder to chain calls
+         * @since unreleased
+         */
+        public Builder columnAndLength(int column, int length) {
+            if (column < 1) {
+                throw new IllegalArgumentException("Column has to be >= 1");
+            }
+            if (length < 1) {
+                throw new IllegalArgumentException("Length has to be >= 1");
+            }
+            expressions.add(new EventFilterExpression.SourceCoordinateEquals(column, length));
+            return this;
+        }
+
+        /**
          * Add a filter for all sources sections end in one of the given index ranges. Line indices
          * must be greater or equal to <code>1</code>.
          *
@@ -1029,6 +1050,38 @@ public final class SourceSectionFilter {
                 appendRanges(builder, ranges);
                 builder.append(")");
                 return builder.toString();
+            }
+        }
+
+        private static final class SourceCoordinateEquals extends EventFilterExpression {
+            private final int column;
+            private final int length;
+
+            SourceCoordinateEquals(int column, int length) {
+                this.column = column;
+                this.length = length;
+            }
+
+            @Override
+            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSourceSection) {
+                // we can't really check that here
+                // we rely on the combination with other predicates for that to be correct
+                return true;
+            }
+
+            @Override
+            boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection sourceSection) {
+                return sourceSection.getStartColumn() == column && sourceSection.getCharLength() == length;
+            }
+
+            @Override
+            protected int getOrder() {
+                return 10;
+            }
+
+            @Override
+            public String toString() {
+                return "(column: " + column + " length: " + length + ")";
             }
         }
 

@@ -37,6 +37,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.api.debug.Breakpoint.Builder;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.source.Source;
@@ -323,6 +324,28 @@ public class BreakpointTest extends AbstractDebugTest {
 
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, 1, true, "STATEMENT");
+                Assert.assertEquals(sourceSection, event.getSourceSection());
+                assertSame(breakpoint, event.getBreakpoints().iterator().next());
+                event.prepareContinue();
+            });
+
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testBreakSourceSectionFromCoordinates() throws Throwable {
+        final Source source = testSource("ROOT(STATEMENT,\nSTATEMENT,\nSTATEMENT)\n");
+        try (DebuggerSession session = startSession()) {
+            SourceSection sourceSection = source.createSection(16, 9);
+            Builder builder = Breakpoint.newBuilder(source.getURI());
+            builder.lineIs(2).columnIs(1).sectionLength(9);
+            Breakpoint breakpoint = session.install(builder.build());
+
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 2, true, "STATEMENT");
                 Assert.assertEquals(sourceSection, event.getSourceSection());
                 assertSame(breakpoint, event.getBreakpoints().iterator().next());
                 event.prepareContinue();

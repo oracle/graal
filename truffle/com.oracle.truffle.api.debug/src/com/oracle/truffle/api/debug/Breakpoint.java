@@ -490,6 +490,8 @@ public final class Breakpoint {
         private final Object key;
 
         private int line = -1;
+        private int column = -1;
+        private int sectionLength = -1;
         private int ignoreCount;
         private boolean oneShot;
         private SourceSection sourceSection;
@@ -531,6 +533,60 @@ public final class Breakpoint {
         }
 
         /**
+         * Specifies the breakpoint's starting column.
+         *
+         * Requires {@link #sectionLength(int) section length} to be set as well.
+         *
+         * Can only be invoked once per builder. Cannot be used together with
+         * {@link Breakpoint#newBuilder(SourceSection)}.
+         *
+         * @param column 1-based start column
+         * @throws IllegalStateException if {@code column < 1}
+         *
+         * @since unreleased
+         */
+        public Builder columnIs(@SuppressWarnings("hiding") int column) {
+            if (column <= 0) {
+                throw new IllegalArgumentException("Column argument must be > 0.");
+            }
+            if (this.column != -1) {
+                throw new IllegalStateException("ColumnIs can only be called once per breakpoint builder.");
+            }
+            if (sourceSection != null) {
+                throw new IllegalArgumentException("ColumnIs cannot be used with source section based breakpoint. ");
+            }
+            this.column = column;
+            return this;
+        }
+
+        /**
+         * Specifies the breakpoint's section length.
+         *
+         * Requires {@link #columnIs(int) starting column} to be set as well.
+         *
+         * Can only be invoked once per builder. Cannot be used together with
+         * {@link Breakpoint#newBuilder(SourceSection)}.
+         *
+         * @param length number of characters in the source section
+         * @throws IllegalStateException if {@code length < 1}
+         *
+         * @since unreleased
+         */
+        public Builder sectionLength(int length) {
+            if (length <= 0) {
+                throw new IllegalArgumentException("Length argument must be > 0.");
+            }
+            if (this.sectionLength != -1) {
+                throw new IllegalStateException("SectionLength can only be called once per breakpoint builder.");
+            }
+            if (sourceSection != null) {
+                throw new IllegalArgumentException("SectionLength cannot be used with source section based breakpoint. ");
+            }
+            this.sectionLength = length;
+            return this;
+        }
+
+        /**
          * Specifies the number of times a breakpoint is ignored until it hits (i.e. suspends
          * execution}.
          *
@@ -566,6 +622,9 @@ public final class Breakpoint {
          * @since 0.17
          */
         public Breakpoint build() {
+            if (column != -1 ^ sectionLength != -1) {
+                throw new IllegalArgumentException("Column and sectionLength need to be set both to indicate a source section");
+            }
             SourceSectionFilter f = buildFilter();
             BreakpointLocation location = new BreakpointLocation(key, line);
             Breakpoint breakpoint = new Breakpoint(location, f, oneShot);
@@ -595,6 +654,10 @@ public final class Breakpoint {
             }
             if (line != -1) {
                 f.lineStartsIn(IndexRange.byLength(line, 1));
+            }
+            if (column != -1) {
+                assert sectionLength != -1;
+                f.columnAndLength(column, sectionLength);
             }
             if (sourceSection != null) {
                 f.sourceSectionEquals(sourceSection);
