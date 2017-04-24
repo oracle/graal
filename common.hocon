@@ -1,5 +1,5 @@
 # overlay version
-overlay = c8e057e06c3ef7885dc165f33e9127bfac6616db
+overlay = 8da6cb776d4aff883b9cbe6c645dbcd7623a387f
 
 jdk-downloads: {
   java7 : {name : oraclejdk, version : "7",    platformspecific: true}
