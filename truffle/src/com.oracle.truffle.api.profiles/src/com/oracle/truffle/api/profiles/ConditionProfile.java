@@ -37,9 +37,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  *
  * <pre>
  * class AbsoluteNode extends Node {
- * 
+ *
  *     final ConditionProfile greaterZeroProfile = ConditionProfile.create{Binary,Counting}Profile();
- * 
+ *
  *     void execute(int value) {
  *         if (greaterZeroProfile.profile(value >= 0)) {
  *             return value;
@@ -136,40 +136,36 @@ public abstract class ConditionProfile extends Profile {
         public static final int MAX_VALUE = 0x3fffffff;
 
         Counting() {
-            /* package protected constructor */
         }
 
         @Override
         public boolean profile(boolean value) {
-            if (CompilerDirectives.inInterpreter()) {
-                if (value) {
-                    // local required to guarantee no overflow in multi-threaded environments
-                    int t = trueCount;
+            // locals required to guarantee no overflow in multi-threaded environments
+            int t = trueCount;
+            int f = falseCount;
+            if (value) {
+                if (t == 0) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                }
+                if (CompilerDirectives.inInterpreter()) {
                     if (t < MAX_VALUE) {
                         trueCount = t + 1;
                     }
-                } else {
-                    // local required to guarantee no overflow in multi-threaded environments
-                    int f = falseCount;
+                }
+            } else {
+                if (f == 0) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                }
+                if (CompilerDirectives.inInterpreter()) {
                     if (f < MAX_VALUE) {
                         falseCount = f + 1;
                     }
                 }
+            }
+            if (CompilerDirectives.inInterpreter()) {
                 // no branch probability calculation in the interpreter
                 return value;
             } else {
-                // use trueCount and falseCount as locals for compilation speed
-                int t = trueCount;
-                int f = falseCount;
-                if (value) {
-                    if (t == 0) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                    }
-                } else {
-                    if (f == 0) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                    }
-                }
                 int sum = t + f;
                 return CompilerDirectives.injectBranchProbability((double) t / (double) sum, value);
             }
@@ -210,7 +206,6 @@ public abstract class ConditionProfile extends Profile {
         @CompilationFinal private boolean wasFalse;
 
         Binary() {
-            /* package protected constructor */
         }
 
         @Override
