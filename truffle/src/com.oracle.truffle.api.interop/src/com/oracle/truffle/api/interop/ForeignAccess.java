@@ -66,8 +66,7 @@ public final class ForeignAccess {
      * Creates new instance of {@link ForeignAccess} that delegates to provided factory.
      *
      * @param baseClass the super class of all {@link TruffleObject}s handled by this factory (if
-     *            <code>null</code> than the second interface also needs to implement
-     *            {@link Factory})
+     *            <code>null</code> then the second interface must also implement {@link Factory})
      * @param factory the factory that handles access requests to {@link Message}s known as of
      *            version 0.10
      * @return new instance wrapping <code>factory</code>
@@ -88,8 +87,7 @@ public final class ForeignAccess {
      * Creates new instance of {@link ForeignAccess} that delegates to provided factory.
      *
      * @param baseClass the super class of all {@link TruffleObject}s handled by this factory (if
-     *            <code>null</code> than the second interface also needs to implement
-     *            {@link Factory})
+     *            <code>null</code> then the second interface must also implement {@link Factory})
      * @param factory the factory that handles access requests to {@link Message}s known as of
      *            version 0.18
      * @return new instance wrapping <code>factory</code>
@@ -110,8 +108,7 @@ public final class ForeignAccess {
      * Creates new instance of {@link ForeignAccess} that delegates to provided factory.
      *
      * @param baseClass the super class of all {@link TruffleObject}s handled by this factory (if
-     *            <code>null</code> than the second interface also needs to implement
-     *            {@link Factory})
+     *            <code>null</code> then the second interface must also implement {@link Factory})
      * @param factory the factory that handles access requests to {@link Message}s known as of
      *            version 0.26
      * @return new instance wrapping <code>factory</code>
@@ -148,8 +145,8 @@ public final class ForeignAccess {
      * @param factory the factory that handles access requests to {@link Message}s known as of
      *            version 0.18
      * @param languageCheck a {@link RootNode} that performs the language check on receiver objects,
-     *            can be <code>null</code>, but then the factory has to also implement
-     *            {@link Factory} interface
+     *            can be <code>null</code>, but then the factory must also implement {@link Factory}
+     *            interface
      * @return new instance wrapping <code>factory</code>
      * @since 0.18
      * @deprecated Use {@link Factory26} and
@@ -171,8 +168,8 @@ public final class ForeignAccess {
      * @param factory the factory that handles access requests to {@link Message}s known as of
      *            version 0.26
      * @param languageCheck a {@link RootNode} that performs the language check on receiver objects,
-     *            can be <code>null</code>, but then the factory has to also implement
-     *            {@link Factory} interface
+     *            can be <code>null</code>, but then the factory must also implement {@link Factory}
+     *            interface
      * @return new instance wrapping <code>factory</code>
      * @since 0.26
      */
