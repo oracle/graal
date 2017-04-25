@@ -127,6 +127,15 @@ public class SLTckTest extends TruffleTCK {
                     "  obj.value = 42;\n" +
                     "  return obj;\n" +
                     "}\n" +
+                    "function anInvocable() {\n" +
+                    "  return \"invocable\";\n" +
+                    "}\n" +
+                    "function objectWithKeyInfoAttributes() {\n" +
+                    "  obj = new();\n" +
+                    "  obj.rw = \"rw\";\n" +
+                    "  obj.invocable = anInvocable;\n" +
+                    "  return obj;\n" +
+                    "}\n" +
                     "function callFunction(f) {\n" +
                     "  return f(41, 42);\n" +
                     "}\n" +
@@ -221,6 +230,11 @@ public class SLTckTest extends TruffleTCK {
     protected String objectWithValueAndAddProperty() {
         // skip these tests; SL doesn't have objects with methods
         return null;
+    }
+
+    @Override
+    protected String objectWithKeyInfoAttributes() {
+        return "objectWithKeyInfoAttributes";
     }
 
     @Override

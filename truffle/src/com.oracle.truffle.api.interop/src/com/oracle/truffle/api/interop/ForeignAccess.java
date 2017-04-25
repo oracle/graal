@@ -94,13 +94,35 @@ public final class ForeignAccess {
      *            version 0.18
      * @return new instance wrapping <code>factory</code>
      * @since 0.18
+     * @deprecated Use {@link Factory26} and
+     *             {@link #create(java.lang.Class, com.oracle.truffle.api.interop.ForeignAccess.Factory26)}
      */
+    @Deprecated
     public static ForeignAccess create(final Class<? extends TruffleObject> baseClass, final Factory18 factory) {
         if (baseClass == null) {
             Factory f = (Factory) factory;
             assert f != null;
         }
         return new ForeignAccess(new DelegatingFactory18(baseClass, factory));
+    }
+
+    /**
+     * Creates new instance of {@link ForeignAccess} that delegates to provided factory.
+     *
+     * @param baseClass the super class of all {@link TruffleObject}s handled by this factory (if
+     *            <code>null</code> than the second interface also needs to implement
+     *            {@link Factory})
+     * @param factory the factory that handles access requests to {@link Message}s known as of
+     *            version 0.26
+     * @return new instance wrapping <code>factory</code>
+     * @since 0.26
+     */
+    public static ForeignAccess create(final Class<? extends TruffleObject> baseClass, final Factory26 factory) {
+        if (baseClass == null) {
+            Factory f = (Factory) factory;
+            assert f != null;
+        }
+        return new ForeignAccess(new DelegatingFactory26(baseClass, factory));
     }
 
     /**
@@ -130,13 +152,36 @@ public final class ForeignAccess {
      *            {@link Factory} interface
      * @return new instance wrapping <code>factory</code>
      * @since 0.18
+     * @deprecated Use {@link Factory26} and
+     *             {@link #create(com.oracle.truffle.api.interop.ForeignAccess.Factory26, com.oracle.truffle.api.nodes.RootNode)
+     *             its associated factory} method
      */
+    @Deprecated
     public static ForeignAccess create(final Factory18 factory, final RootNode languageCheck) {
         if (languageCheck == null) {
             Factory f = (Factory) factory;
             assert f != null;
         }
         return new ForeignAccess(languageCheck, new DelegatingFactory18(null, factory));
+    }
+
+    /**
+     * Creates new instance of {@link ForeignAccess} that delegates to provided factory.
+     *
+     * @param factory the factory that handles access requests to {@link Message}s known as of
+     *            version 0.26
+     * @param languageCheck a {@link RootNode} that performs the language check on receiver objects,
+     *            can be <code>null</code>, but then the factory has to also implement
+     *            {@link Factory} interface
+     * @return new instance wrapping <code>factory</code>
+     * @since 0.26
+     */
+    public static ForeignAccess create(final Factory26 factory, final RootNode languageCheck) {
+        if (languageCheck == null) {
+            Factory f = (Factory) factory;
+            assert f != null;
+        }
+        return new ForeignAccess(languageCheck, new DelegatingFactory26(null, factory));
     }
 
     /**
@@ -625,6 +670,45 @@ public final class ForeignAccess {
     }
 
     /**
+     * Sends a {@link Message#KEY_INFO KEY_INFO message} to the foreign receiver object by executing
+     * the <code>keyInfoNode</code>. If the object does not support the message, the presence of the
+     * key is found by iteration over it's keys on a slow path and a default info is returned.
+     *
+     * @param keyInfoNode the createNode created by {@link Message#createNode()}
+     * @param receiver foreign object to receive the message passed to {@link Message#createNode()}
+     *            method
+     * @param identifier name of the property to get the info of.
+     * @return an integer value with bit flags described at {@link KeyInfo}.
+     * @throws ClassCastException if the createNode has not been created by
+     *             {@link Message#createNode()} method.
+     * @since 0.26
+     */
+    public static int sendKeyInfo(Node keyInfoNode, TruffleObject receiver, Object identifier) {
+        try {
+            return (Integer) send(keyInfoNode, receiver, identifier);
+        } catch (UnsupportedMessageException ex) {
+            CompilerDirectives.transferToInterpreter();
+            try {
+                TruffleObject keys = sendKeys(Message.KEYS.createNode(), receiver, true);
+                int size = (Integer) sendGetSize(Message.GET_SIZE.createNode(), keys);
+                Node readNode = Message.READ.createNode();
+                for (int i = 0; i < size; i++) {
+                    Object key = sendRead(readNode, keys, i);
+                    // identifier must not be null
+                    if (identifier.equals(key)) {
+                        return 0b111;
+                    }
+                }
+            } catch (UnsupportedMessageException | UnknownIdentifierException uex) {
+            }
+            return 0;
+        } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError("Unexpected exception caught.", e);
+        }
+    }
+
+    /**
      * Sends a {@link Message#KEYS} message to the foreign receiver object.
      *
      * @param keysNode the createNode created by {@link Message#createNode()}
@@ -641,6 +725,35 @@ public final class ForeignAccess {
     public static TruffleObject sendKeys(Node keysNode, TruffleObject receiver) throws UnsupportedMessageException {
         try {
             return (TruffleObject) send(keysNode, receiver);
+        } catch (UnsupportedMessageException ex) {
+            CompilerDirectives.transferToInterpreter();
+            throw ex;
+        } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError("Unexpected exception caught.", e);
+        }
+    }
+
+    /**
+     * Sends a {@link Message#KEYS} message to the foreign receiver object, with a specification of
+     * whether internal keys should be included in the result, or not.
+     *
+     * @param keysNode the createNode created by {@link Message#createNode()}
+     * @param receiver foreign object to receive the message passed to {@link Message#createNode()}
+     *            method
+     * @param includeInternal <code>true</code> to include internal keys in the result,
+     *            <code>false</code> to abandon them.
+     * @return return an instance of {@link TruffleObject} that responds to {@link Message#HAS_SIZE}
+     *         and {@link Message#GET_SIZE} and its 0 to {@link Message#GET_SIZE size - 1} indexes
+     *         contain {@link String} names of the properties of the <code>receiver</code> object
+     * @throws UnsupportedMessageException if the message isn't handled
+     * @throws ClassCastException if the createNode has not been created by
+     *             {@link Message#createNode()} method.
+     * @since 0.26
+     */
+    public static TruffleObject sendKeys(Node keysNode, TruffleObject receiver, boolean includeInternal) throws UnsupportedMessageException {
+        try {
+            return (TruffleObject) send(keysNode, receiver, includeInternal);
         } catch (UnsupportedMessageException ex) {
             CompilerDirectives.transferToInterpreter();
             throw ex;
@@ -679,7 +792,9 @@ public final class ForeignAccess {
     @Override
     public String toString() {
         Object f;
-        if (factory instanceof DelegatingFactory18) {
+        if (factory instanceof DelegatingFactory26) {
+            f = ((DelegatingFactory26) factory).factory;
+        } else if (factory instanceof DelegatingFactory18) {
             f = ((DelegatingFactory18) factory).factory;
         } else if (factory instanceof DelegatingFactory10) {
             f = ((DelegatingFactory10) factory).factory;
@@ -746,10 +861,155 @@ public final class ForeignAccess {
 
     /**
      * Specialized {@link Factory factory} that handles {@link Message messages} known as of release
+     * 0.26 of the Truffle API.
+     *
+     * @since 0.26
+     */
+    public interface Factory26 {
+        /**
+         * Handles {@link Message#IS_NULL} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.26
+         */
+        CallTarget accessIsNull();
+
+        /**
+         * Handles {@link Message#IS_EXECUTABLE} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.26
+         */
+        CallTarget accessIsExecutable();
+
+        /**
+         * Handles {@link Message#IS_BOXED} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.26
+         */
+        CallTarget accessIsBoxed();
+
+        /**
+         * Handles {@link Message#HAS_SIZE} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.26
+         */
+        CallTarget accessHasSize();
+
+        /**
+         * Handles {@link Message#GET_SIZE} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.26
+         */
+        CallTarget accessGetSize();
+
+        /**
+         * Handles {@link Message#UNBOX} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.26
+         */
+        CallTarget accessUnbox();
+
+        /**
+         * Handles {@link Message#READ} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.26
+         */
+        CallTarget accessRead();
+
+        /**
+         * Handles {@link Message#WRITE} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.26
+         */
+        CallTarget accessWrite();
+
+        /**
+         * Handles {@link Message#createExecute(int)} messages.
+         *
+         * @param argumentsLength number of parameters the messages has been created for
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.26
+         */
+        CallTarget accessExecute(int argumentsLength);
+
+        /**
+         * Handles {@link Message#createInvoke(int)} messages.
+         *
+         * @param argumentsLength number of parameters the messages has been created for
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.26
+         */
+        CallTarget accessInvoke(int argumentsLength);
+
+        /**
+         * Handles {@link Message#createNew(int)} messages.
+         *
+         * @param argumentsLength number of parameters the messages has been created for
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.26
+         */
+        CallTarget accessNew(int argumentsLength);
+
+        /**
+         * Handles request for access to a message not known in version 0.10. The parameter to the
+         * returned {@link CallTarget} is going to be the object/receiver. The return value is
+         * supposed to be a {@link TruffleObject} that represents an array (responds to
+         * {@link Message#HAS_SIZE} and {@link Message#GET_SIZE} and its element represent
+         * {@link String} names of properties of the receiver.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.26
+         */
+        CallTarget accessKeys();
+
+        /**
+         * Handles {@link Message#KEY_INFO} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.26
+         */
+        CallTarget accessKeyInfo();
+
+        /**
+         * Handles request for access to a message not known in version 0.18.
+         *
+         * @param unknown the message
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.26
+         */
+        CallTarget accessMessage(Message unknown);
+    }
+
+    /**
+     * Specialized {@link Factory factory} that handles {@link Message messages} known as of release
      * 0.18 of the Truffle API.
      *
      * @since 0.18
+     * @deprecated extended set of messages is now supported, consider implementing
+     *             {@link Factory26}
      */
+    @Deprecated
     public interface Factory18 {
         /**
          * Handles {@link Message#IS_NULL} message.
@@ -1102,6 +1362,63 @@ public final class ForeignAccess {
                         return factory.accessWrite();
                     case Keys.HASH:
                         return factory.accessKeys();
+                }
+            }
+            return factory.accessMessage(msg);
+        }
+    }
+
+    private static class DelegatingFactory26 implements Factory {
+        private final Class<?> baseClass;
+        private final Factory26 factory;
+
+        DelegatingFactory26(Class<?> baseClass, Factory26 factory) {
+            this.baseClass = baseClass;
+            this.factory = factory;
+        }
+
+        @Override
+        public boolean canHandle(TruffleObject obj) {
+            if (baseClass == null) {
+                return ((Factory) factory).canHandle(obj);
+            }
+            return baseClass.isInstance(obj);
+        }
+
+        @Override
+        public CallTarget accessMessage(Message msg) {
+            return accessMessage(factory, msg);
+        }
+
+        private static CallTarget accessMessage(Factory26 factory, Message msg) {
+            if (msg instanceof KnownMessage) {
+                switch (msg.hashCode()) {
+                    case Execute.EXECUTE:
+                        return factory.accessExecute(((Execute) msg).getArity());
+                    case Execute.INVOKE:
+                        return factory.accessInvoke(((Execute) msg).getArity());
+                    case Execute.NEW:
+                        return factory.accessNew(((Execute) msg).getArity());
+                    case GetSize.HASH:
+                        return factory.accessGetSize();
+                    case HasSize.HASH:
+                        return factory.accessHasSize();
+                    case IsBoxed.HASH:
+                        return factory.accessIsBoxed();
+                    case IsExecutable.HASH:
+                        return factory.accessIsExecutable();
+                    case IsNull.HASH:
+                        return factory.accessIsNull();
+                    case Read.HASH:
+                        return factory.accessRead();
+                    case Unbox.HASH:
+                        return factory.accessUnbox();
+                    case Write.HASH:
+                        return factory.accessWrite();
+                    case Keys.HASH:
+                        return factory.accessKeys();
+                    case KeyInfoMsg.HASH:
+                        return factory.accessKeyInfo();
                 }
             }
             return factory.accessMessage(msg);

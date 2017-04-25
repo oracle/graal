@@ -64,7 +64,7 @@ import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.ForeignAccess.Factory;
-import com.oracle.truffle.api.interop.ForeignAccess.Factory18;
+import com.oracle.truffle.api.interop.ForeignAccess.Factory26;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
@@ -462,7 +462,7 @@ public class SLDebugDirectTest {
 
     }
 
-    private static class ExecNotifyHandlerForeign implements Factory18, Factory {
+    private static class ExecNotifyHandlerForeign implements Factory26, Factory {
 
         private final ExecNotifyHandler nh;
 
@@ -533,6 +533,11 @@ public class SLDebugDirectTest {
         @Override
         public boolean canHandle(TruffleObject to) {
             return (to instanceof ExecNotifyHandler);
+        }
+
+        @Override
+        public CallTarget accessKeyInfo() {
+            return null;
         }
 
         @Override

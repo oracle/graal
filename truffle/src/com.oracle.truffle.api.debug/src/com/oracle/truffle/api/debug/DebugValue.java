@@ -28,10 +28,12 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -122,6 +124,26 @@ public abstract class DebugValue {
     public abstract boolean isWritable();
 
     /**
+     * Returns <code>true</code> if this value represents an internal implementation detail,
+     * <code>false</code> otherwise. Internal values should be hidden during normal guest language
+     * debugging.
+     * <p>
+     * Language implementations sometimes create internal helper variables that do not correspond to
+     * anything explicitly written by a programmer. Language implementors mark these variables as
+     * <em>internal</em>.
+     * </p>
+     * <p>
+     * Clients of the debugging API should assume that displaying <em>internal</em> values is
+     * unlikely to help programmers debug guest language programs and might possibly create
+     * confusion. However, clients may choose to display all values, for example in a special mode
+     * to support development of programming language implementations.
+     * </p>
+     *
+     * @since 0.26
+     */
+    public abstract boolean isInternal();
+
+    /**
      * Provides properties representing an internal structure of this value. The returned collection
      * is not thread-safe. If the value is not {@link #isReadable() readable} then an
      * {@link IllegalStateException} is thrown.
@@ -138,10 +160,12 @@ public abstract class DebugValue {
         Object value = get();
         Collection<DebugValue> properties = null;
         if (value instanceof TruffleObject) {
-            Map<Object, Object> map = JavaInterop.asJavaObject(Map.class, (TruffleObject) value);
+            TruffleObject object = (TruffleObject) value;
+            Map<Object, Object> map = JavaInterop.asJavaObject(Map.class, object);
             if (map != null) {
+                Set<Map.Entry<Object, Object>> allEntries = JavaInterop.getMapView(map, true).entrySet();
                 try {
-                    properties = new ValuePropertiesCollection(getDebugger(), getSourceRoot(), map.entrySet());
+                    properties = new ValuePropertiesCollection(getDebugger(), getSourceRoot(), object, allEntries);
                 } catch (Exception ex) {
                     if (isUnsupportedException(ex)) {
                         // Not supported, no properties
@@ -332,6 +356,11 @@ public abstract class DebugValue {
         }
 
         @Override
+        public boolean isInternal() {
+            return false;
+        }
+
+        @Override
         Debugger getDebugger() {
             return debugger;
         }
@@ -346,10 +375,12 @@ public abstract class DebugValue {
     static final class PropertyValue extends HeapValue {
 
         private final Map.Entry<Object, Object> property;
+        private final int keyInfo;
 
-        PropertyValue(Debugger debugger, RootNode root, Map.Entry<Object, Object> property) {
+        PropertyValue(Debugger debugger, RootNode root, TruffleObject object, Map.Entry<Object, Object> property) {
             super(debugger, root, null);
             this.property = property;
+            this.keyInfo = JavaInterop.getKeyInfo(object, property.getKey());
         }
 
         @Override
@@ -375,8 +406,18 @@ public abstract class DebugValue {
         }
 
         @Override
-        public boolean isWriteable() {
-            return true; // Suppose that yes...
+        public boolean isReadable() {
+            return KeyInfo.isReadable(keyInfo);
+        }
+
+        @Override
+        public boolean isWritable() {
+            return KeyInfo.isWritable(keyInfo);
+        }
+
+        @Override
+        public boolean isInternal() {
+            return KeyInfo.isInternal(keyInfo);
         }
 
         @Override
@@ -456,6 +497,12 @@ public abstract class DebugValue {
         public boolean isWritable() {
             origin.verifyValidState(false);
             return true;
+        }
+
+        @Override
+        public boolean isInternal() {
+            origin.verifyValidState(false);
+            return false;
         }
 
         @Override

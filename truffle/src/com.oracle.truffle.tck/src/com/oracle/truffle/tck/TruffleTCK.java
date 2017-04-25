@@ -25,6 +25,7 @@
 package com.oracle.truffle.tck;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
@@ -54,7 +55,8 @@ import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.interop.ForeignAccess.Factory18;
+import com.oracle.truffle.api.interop.ForeignAccess.Factory26;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
@@ -122,7 +124,7 @@ import java.lang.reflect.Field;
  * interop package} defines what types of data can be interchanged between the languages and the
  * <em>TCK</em> does its best to make sure all these data are really accepted as an input on a
  * boundary of your {@link TruffleLanguage language implementation}. That doesn't mean such data
- * need to be used internally, many languages do conversions in their {@link Factory18 foreign
+ * need to be used internally, many languages do conversions in their {@link Factory26 foreign
  * access} {@link RootNode nodes} to more suitable internal representation. Such conversion is fully
  * acceptable as nobody prescribes what is the actual type of output after executing a function/code
  * snippet in your language.
@@ -412,6 +414,23 @@ public abstract class TruffleTCK {
      */
     protected String objectWithElement() {
         throw new UnsupportedOperationException("implement objectWithElement() method");
+    }
+
+    /**
+     * Name of a function that returns an object supporting {@link Message#KEY_INFO} and having five
+     * properties named "ro", "wo", "rw", "invocable" and "intern". The "ro" property should be
+     * read-only (readable and not writable), the "wo" property should be write-only (writable and
+     * not readable), "rw" property readable and writable, "invocable" property should return an
+     * "invoked" String on {@link Message#createInvoke(int) invoke message} and the "ii" property
+     * should be internal. The object should support {@link Message#KEYS KEYS message} as well and
+     * it should provide the "ii" property iff it gets a boolean true as an argument. When the
+     * language does not support some attribute, it can return <code>0</code> as the key info
+     * instead.
+     *
+     * @since 0.26
+     */
+    protected String objectWithKeyInfoAttributes() {
+        throw new UnsupportedOperationException("implement objectWithKeyInfoAttributes() method");
     }
 
     /**
@@ -1970,6 +1989,93 @@ public abstract class TruffleTCK {
 
     private interface FunctionFooInterface {
         double eval(double a, double b);
+    }
+
+    /** @since 0.26 */
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public void testObjectWithKeyInfoAttributes() throws Exception {
+        String id = objectWithKeyInfoAttributes();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value apply = findGlobalSymbol(id);
+        TruffleObject obj = (TruffleObject) apply.execute().get();
+        KeyInfoInterface object = JavaInterop.asJavaObject(KeyInfoInterface.class, obj);
+
+        int numKeys = 0;
+        assertEquals("An unknown property", 0, object.unknown());
+        int ro = object.ro();
+        if (ro != 0) {
+            assertEquals("Read-only property", 0b00011, ro);
+            numKeys++;
+        }
+        int wo = object.wo();
+        if (wo != 0) {
+            assertEquals("Write-only property", 0b00101, wo);
+            numKeys++;
+        }
+        int rw = object.rw();
+        if (rw != 0) {
+            assertEquals("Read-only property", 0b00111, rw);
+            numKeys++;
+        }
+        int invocable = object.invocable();
+        if (invocable != 0) {
+            assertTrue(KeyInfo.isInvocable(invocable));
+            assertFalse(KeyInfo.isInternal(invocable));
+            numKeys++;
+        }
+        int intern = object.intern();
+        if (intern != 0) {
+            assertTrue(KeyInfo.isInternal(intern));
+        }
+
+        Map map = JavaInterop.asJavaObject(Map.class, obj);
+        assertEquals(map.toString(), numKeys, map.size());
+        if (ro != 0) {
+            assertTrue(map.containsKey("ro"));
+        }
+        if (wo != 0) {
+            assertTrue(map.containsKey("wo"));
+        }
+        if (rw != 0) {
+            assertTrue(map.containsKey("rw"));
+        }
+        if (invocable != 0) {
+            assertTrue(map.containsKey("invocable"));
+        }
+        assertFalse(map.containsKey("intern"));
+
+        map = JavaInterop.getMapView(map, true);
+        if (intern != 0) {
+            assertEquals(numKeys + 1, map.size());
+            assertTrue(map.containsKey("intern"));
+        } else {
+            assertEquals(numKeys, map.size());
+        }
+    }
+
+    private interface KeyInfoInterface {
+
+        @MethodMessage(message = "KEY_INFO")
+        int ro();
+
+        @MethodMessage(message = "KEY_INFO")
+        int wo();
+
+        @MethodMessage(message = "KEY_INFO")
+        int rw();
+
+        @MethodMessage(message = "KEY_INFO")
+        int invocable();
+
+        @MethodMessage(message = "KEY_INFO")
+        int intern();
+
+        @MethodMessage(message = "KEY_INFO")
+        int unknown();
+
     }
 
     /** @since 0.16 */
