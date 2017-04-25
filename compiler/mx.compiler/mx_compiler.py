@@ -261,6 +261,7 @@ def ctw(args, extraVMarguments=None):
     if _get_XX_option_value(vmargs + _remove_empty_entries(extraVMarguments), 'UseJVMCICompiler', False):
         vmargs.append('-XX:+BootstrapJVMCI')
 
+    mainClassAndArgs = []
     if isJDK8:
         if not _is_jvmci_enabled(vmargs):
             vmargs.append('-XX:+CompileTheWorld')
@@ -285,11 +286,11 @@ def ctw(args, extraVMarguments=None):
             # Need export below since jdk.vm.ci.services is not exported in all JDK 9 EA releases.
             vmargs.append('--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED')
             vmargs.extend(['-cp', mx.classpath('org.graalvm.compiler.hotspot.test', jdk=jdk)])
-            vmargs.append('org.graalvm.compiler.hotspot.test.CompileTheWorld')
+            mainClassAndArgs = ['org.graalvm.compiler.hotspot.test.CompileTheWorld']
         else:
             vmargs.append('-XX:+CompileTheWorld')
 
-    run_vm(vmargs + _remove_empty_entries(extraVMarguments))
+    run_vm(vmargs + _remove_empty_entries(extraVMarguments) + mainClassAndArgs)
 
 
 def verify_jvmci_ci_versions(args):
