@@ -34,7 +34,6 @@ import java.util.List;
 
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.parser.LLVMPhiManager.Phi;
-import com.oracle.truffle.llvm.parser.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionKind;
@@ -99,11 +98,11 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     private final LLVMSymbolResolver symbols;
 
-    private final NodeFactoryFacade factoryFacade;
+    private final SulongNodeFactory factoryFacade;
 
     private final LLVMParserRuntime runtime;
 
-    LLVMBitcodeInstructionVisitor(LLVMBitcodeFunctionVisitor method, InstructionBlock block, NodeFactoryFacade factoryFacade) {
+    LLVMBitcodeInstructionVisitor(LLVMBitcodeFunctionVisitor method, InstructionBlock block, SulongNodeFactory factoryFacade) {
         this.method = method;
         this.block = block;
         this.symbols = method.getSymbolResolver();

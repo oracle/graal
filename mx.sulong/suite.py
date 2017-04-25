@@ -150,7 +150,7 @@ suite = {
     "com.oracle.truffle.llvm" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
-      "dependencies" : [
+      "generatedDependencies" : [
         "com.oracle.truffle.llvm.parser.factories",
        ],
       "checkstyle" : "com.oracle.truffle.llvm",

@@ -67,7 +67,7 @@ import com.oracle.truffle.llvm.nodes.func.LLVMInvokeNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMLandingpadNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicExpressionNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
-import com.oracle.truffle.llvm.parser.facade.NodeFactoryFacade;
+import com.oracle.truffle.llvm.parser.SulongNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -223,7 +223,7 @@ final class LLVMFunctionFactory {
         throw new AssertionError(returnType);
     }
 
-    static LLVMExpressionNode createFunctionArgNode(NodeFactoryFacade facade, int i) {
+    static LLVMExpressionNode createFunctionArgNode(SulongNodeFactory facade, int i) {
         int realIndex = facade.getArgStartIndex().get() + i;
         return LLVMArgNodeGen.create(realIndex);
     }

@@ -48,7 +48,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.datalayout.DataLayoutConverter;
-import com.oracle.truffle.llvm.parser.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
@@ -84,7 +83,7 @@ import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 public final class LLVMParserRuntime {
 
-    public static LLVMParserResult parse(Source source, LLVMLanguage language, LLVMContext context, NodeFactoryFacade factoryFacade) {
+    public static LLVMParserResult parse(Source source, LLVMLanguage language, LLVMContext context, SulongNodeFactory factoryFacade) {
         final BitcodeParserResult parserResult = BitcodeParserResult.getFromSource(source);
         final ModelModule model = parserResult.getModel();
         final StackAllocation stackAllocation = parserResult.getStackAllocation();
@@ -142,7 +141,7 @@ public final class LLVMParserRuntime {
 
     private final DataLayoutConverter.DataSpecConverterImpl targetDataLayout;
 
-    private final NodeFactoryFacade factoryFacade;
+    private final SulongNodeFactory factoryFacade;
 
     private final Source source;
 
@@ -153,7 +152,7 @@ public final class LLVMParserRuntime {
     private final LLVMFunctionRegistry functionRegistry;
 
     private LLVMParserRuntime(Source source, LLVMLanguage language, LLVMContext context, StackAllocation stack, LLVMLabelList labels, LLVMPhiManager phis,
-                    DataLayoutConverter.DataSpecConverterImpl layout, NodeFactoryFacade factoryFacade, LLVMFunctionRegistry functionRegistry) {
+                    DataLayoutConverter.DataSpecConverterImpl layout, SulongNodeFactory factoryFacade, LLVMFunctionRegistry functionRegistry) {
         this.source = source;
         this.context = context;
         this.stack = stack;
@@ -504,7 +503,7 @@ public final class LLVMParserRuntime {
         return context.getNativeFunctions();
     }
 
-    public NodeFactoryFacade getNodeFactoryFacade() {
+    public SulongNodeFactory getNodeFactoryFacade() {
         return factoryFacade;
     }
 
