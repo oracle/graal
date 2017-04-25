@@ -78,7 +78,7 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.ConvertDeoptimizeToGuardPhase;
-import org.graalvm.compiler.phases.common.DominatorConditionalEliminationPhase;
+import org.graalvm.compiler.phases.common.ConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
@@ -477,7 +477,7 @@ public class PartialEvaluator {
         }
 
         // Perform conditional elimination.
-        DominatorConditionalEliminationPhase.create(false).apply(graph, tierContext);
+        new ConditionalEliminationPhase(false).apply(graph, tierContext);
 
         canonicalizer.apply(graph, tierContext);
 

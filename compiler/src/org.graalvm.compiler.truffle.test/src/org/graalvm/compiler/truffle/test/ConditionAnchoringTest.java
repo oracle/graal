@@ -45,9 +45,9 @@ import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool.StandardLoweringStage;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.phases.common.DominatorConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.ConditionalEliminationPhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.truffle.nodes.ObjectLocationIdentity;
 import org.graalvm.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
@@ -129,8 +129,7 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
         NodeIterable<FloatingReadNode> floatingReads = graph.getNodes().filter(FloatingReadNode.class);
         assertThat(floatingReads, hasCount(ids + 1)); // 1 id read, 1 'field' access
 
-        // apply DominatorConditionalEliminationPhase
-        DominatorConditionalEliminationPhase.create(false).apply(graph, context);
+        new ConditionalEliminationPhase(false).apply(graph, context);
 
         floatingReads = graph.getNodes().filter(FloatingReadNode.class).filter(n -> ((FloatingReadNode) n).getLocationIdentity() instanceof ObjectLocationIdentity);
         conditionAnchors = graph.getNodes().filter(ConditionAnchorNode.class);
