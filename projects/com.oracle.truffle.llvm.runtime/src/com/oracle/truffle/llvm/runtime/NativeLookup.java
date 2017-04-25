@@ -33,7 +33,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -204,7 +203,7 @@ public final class NativeLookup {
         return symbol;
     }
 
-    TruffleObject getNativeDataObject(String name) {
+    public TruffleObject getNativeDataObject(String name) {
         CompilerAsserts.neverPartOfCompilation();
         return getNativeDataObject(libraryHandles, defaultLibrary, name);
     }
@@ -253,24 +252,6 @@ public final class NativeLookup {
         sb.append(":");
         sb.append(nativeRet);
         return sb.toString();
-    }
-
-    TruffleObject resolveAsNative(LLVMFunctionDescriptor descriptor) {
-        assert descriptor.getCallTarget() == null;
-        TruffleObject symbol = descriptor.getNativeSymbol();
-        if (symbol == null) {
-            CompilerDirectives.transferToInterpreter();
-            if (descriptor.isNullFunction()) {
-                symbol = descriptor;
-            } else {
-                symbol = getNativeFunction(descriptor.getName());
-            }
-            if (symbol == null) {
-                throw new RuntimeException("could not resolve external symbol " + descriptor.getName());
-            }
-            descriptor.setNativeSymbol(symbol);
-        }
-        return symbol;
     }
 
     void addLibraryToNativeLookup(String library) {

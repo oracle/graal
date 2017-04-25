@@ -31,13 +31,49 @@ package com.oracle.truffle.llvm.runtime.types;
 
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
-public enum MetaType implements Type {
-    UNKNOWN,
-    OPAQUE,
-    LABEL,
-    TOKEN,
-    METADATA,
-    X86_MMX;
+public final class MetaType extends Type {
+    public static MetaType UNKNOWN = new MetaType();
+    public static MetaType OPAQUE = new MetaType();
+    public static MetaType LABEL = new MetaType();
+    public static MetaType TOKEN = new MetaType();
+    public static MetaType METADATA = new MetaType();
+    public static MetaType X86MMX = new MetaType();
+
+    private final Object identity;
+
+    private MetaType() {
+        this.identity = new Object();
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((identity == null) ? 0 : identity.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        MetaType other = (MetaType) obj;
+        if (identity == null) {
+            if (other.identity != null) {
+                return false;
+            }
+        } else if (!identity.equals(other.identity)) {
+            return false;
+        }
+        return true;
+    }
 
     @Override
     public int getBitSize() {

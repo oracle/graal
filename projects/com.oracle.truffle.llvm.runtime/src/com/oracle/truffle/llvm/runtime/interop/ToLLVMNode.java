@@ -821,6 +821,8 @@ public abstract class ToLLVMNode extends Node {
                 return ((LLVMTruffleAddress) value).getAddress();
             } else if (isPrimitiveType(value.getClass())) {
                 return new LLVMBoxedPrimitive(value);
+            } else if (value instanceof LLVMSharedGlobalVariable) {
+                return ((LLVMSharedGlobalVariable) value).getDescriptor();
             } else {
                 return value;
             }

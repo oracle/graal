@@ -33,8 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions.MemSetNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public class LLVMAddressZeroNode extends LLVMExpressionNode {
@@ -42,18 +41,15 @@ public class LLVMAddressZeroNode extends LLVMExpressionNode {
     @Child private LLVMExpressionNode addressNode;
     private final int size;
 
-    @Child private MemSetNode memSet;
-
-    public LLVMAddressZeroNode(LLVMNativeFunctions heapFunctions, LLVMExpressionNode addressNode, int size) {
+    public LLVMAddressZeroNode(LLVMExpressionNode addressNode, int size) {
         this.addressNode = addressNode;
         this.size = size;
-        this.memSet = heapFunctions.createMemSetNode();
     }
 
     @Override
     public LLVMAddress executeLLVMAddress(VirtualFrame frame) throws UnexpectedResultException {
         LLVMAddress address = addressNode.executeLLVMAddress(frame);
-        memSet.execute(address, 0, size);
+        LLVMMemory.memset(address, size, (byte) 0);
         return address;
     }
 

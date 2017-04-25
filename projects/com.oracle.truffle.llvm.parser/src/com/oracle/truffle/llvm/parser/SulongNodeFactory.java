@@ -30,11 +30,9 @@
 package com.oracle.truffle.llvm.parser;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.nodes.Node;
@@ -51,6 +49,7 @@ import com.oracle.truffle.llvm.parser.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.NativeIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStackFrameNuller;
@@ -58,6 +57,7 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
+import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 /**
  * This interface decouples the parser and the concrete implementation of the nodes by only making
@@ -86,13 +86,6 @@ public interface SulongNodeFactory {
     LLVMExpressionNode createSimpleConstantNoArray(LLVMParserRuntime runtime, Object constant, Type instructionType);
 
     LLVMExpressionNode createVectorLiteralNode(LLVMParserRuntime runtime, List<LLVMExpressionNode> listValues, Type type);
-
-    LLVMExpressionNode tryCreateFunctionCallSubstitution(LLVMParserRuntime runtime, String name, LLVMExpressionNode[] argNodes, Type[] argTypes, int numberOfExplicitArguments,
-                    FrameSlot exceptionValueSlot);
-
-    LLVMControlFlowNode tryCreateFunctionInvokeSubstitution(LLVMParserRuntime runtime, String name, FunctionType type, int numberOfExplicitArguments, LLVMExpressionNode[] argNodes, Type[] argTypes,
-                    FrameSlot returnValueSlot, FrameSlot exceptionValueSlot, int normalIndex,
-                    int unwindIndex, LLVMExpressionNode[] normalPhiWriteNodes, LLVMExpressionNode[] unwindPhiWriteNodes);
 
     LLVMControlFlowNode createRetVoid(LLVMParserRuntime runtime);
 
@@ -270,23 +263,6 @@ public interface SulongNodeFactory {
      */
     LLVMExpressionNode createInlineAssemblerExpression(LLVMParserRuntime runtime, String asmExpression, String asmFlags, LLVMExpressionNode[] args, Type[] argTypes, Type retType);
 
-    /**
-     * Gets factories that provide substitutions for (standard library) functions. The substitutions
-     * are installed when a function is called the first time.
-     *
-     * @return a map of function names that map to node factories
-     */
-    Map<String, NodeFactory<? extends LLVMExpressionNode>> getFunctionSubstitutionFactories();
-
-    /**
-     * Creates a function substitution root node from an already existing function substitution
-     * node.
-     *
-     * @param intrinsicNode the existing function substitution node
-     * @return the root node for the intrinsic
-     */
-    RootNode createFunctionSubstitutionRootNode(LLVMLanguage language, LLVMExpressionNode intrinsicNode);
-
     Object allocateGlobalVariable(LLVMParserRuntime runtime, GlobalVariable globalVariable);
 
     Object allocateGlobalConstant(LLVMParserRuntime runtime, GlobalConstant globalConstant);
@@ -313,5 +289,9 @@ public interface SulongNodeFactory {
 
     LLVMExpressionNode createCompareExchangeInstruction(LLVMParserRuntime runtime, Type returnType, Type elementType, LLVMExpressionNode ptrNode, LLVMExpressionNode cmpNode,
                     LLVMExpressionNode newNode);
+
+    LLVMExpressionNode createLLVMBuiltin(Symbol target, LLVMExpressionNode[] args, FrameSlot stack, int callerArgumentCount);
+
+    NativeIntrinsicProvider getNativeIntrinsicsFactory(LLVMLanguage language, LLVMContext context);
 
 }

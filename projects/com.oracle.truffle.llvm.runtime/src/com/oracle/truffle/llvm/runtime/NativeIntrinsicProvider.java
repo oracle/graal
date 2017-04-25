@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,20 +27,15 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith;
+package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
-@GenerateNodeFactory
-@NodeChildren({@NodeChild(value = "val")})
-public abstract class LLVMFabs extends LLVMExpressionNode {
+public interface NativeIntrinsicProvider {
+    boolean isIntrinsified(String name);
 
-    @Specialization
-    public double doDouble(double val) {
-        return Math.abs(val);
-    }
+    RootCallTarget generateIntrinsic(String name, FunctionType type);
+
+    boolean forceInline(String name);
 }

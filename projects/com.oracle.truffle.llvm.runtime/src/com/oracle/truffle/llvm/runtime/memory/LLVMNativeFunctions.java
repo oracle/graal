@@ -44,12 +44,6 @@ public abstract class LLVMNativeFunctions {
 
     public abstract MemCopyNode createMemCopyNode();
 
-    public abstract MemSetNode createMemSetNode();
-
-    public abstract FreeNode createFreeNode();
-
-    public abstract MallocNode createMallocNode();
-
     public abstract DynamicCastNode createDynamicCast();
 
     public abstract SulongCanCatchNode createSulongCanCatch();

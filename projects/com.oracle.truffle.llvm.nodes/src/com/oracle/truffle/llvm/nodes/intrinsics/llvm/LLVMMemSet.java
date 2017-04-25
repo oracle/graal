@@ -29,44 +29,31 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions.MemSetNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@GenerateNodeFactory
 public abstract class LLVMMemSet extends LLVMExpressionNode {
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class),
                     @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMMemSetI64 extends LLVMMemSet {
 
-        @Child private MemSetNode memSet;
-
-        public MemSetNode getMemSet() {
-            if (memSet == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.memSet = insert(getContext().getNativeFunctions().createMemSetNode());
-            }
-            return memSet;
-        }
-
         @SuppressWarnings("unused")
         @Specialization
         public Object executeVoid(LLVMAddress address, byte value, long length, int align, boolean isVolatile) {
-            getMemSet().execute(address, value, length);
+            LLVMMemory.memset(address, length, value);
             return null;
         }
 
         @SuppressWarnings("unused")
         @Specialization
         public Object executeVoid(LLVMGlobalVariable address, byte value, long length, int align, boolean isVolatile) {
-            getMemSet().execute(address.getNativeLocation(), value, length);
+            LLVMMemory.memset(address.getNativeLocation(), length, value);
             return null;
         }
     }
@@ -75,27 +62,17 @@ public abstract class LLVMMemSet extends LLVMExpressionNode {
                     @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMMemSetI32 extends LLVMMemSet {
 
-        @Child private MemSetNode memSet;
-
-        public MemSetNode getMemSet() {
-            if (memSet == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.memSet = insert(getContext().getNativeFunctions().createMemSetNode());
-            }
-            return memSet;
-        }
-
         @SuppressWarnings("unused")
         @Specialization
         public Object executeVoid(LLVMAddress address, byte value, int length, int align, boolean isVolatile) {
-            getMemSet().execute(address, value, length);
+            LLVMMemory.memset(address, length, value);
             return null;
         }
 
         @SuppressWarnings("unused")
         @Specialization
         public Object executeVoid(LLVMGlobalVariable address, byte value, int length, int align, boolean isVolatile) {
-            getMemSet().execute(address.getNativeLocation(), value, length);
+            LLVMMemory.memset(address.getNativeLocation(), length, value);
             return null;
         }
     }

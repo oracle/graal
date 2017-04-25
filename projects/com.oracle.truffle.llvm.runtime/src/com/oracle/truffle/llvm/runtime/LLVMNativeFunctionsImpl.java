@@ -60,9 +60,6 @@ final class LLVMNativeFunctionsImpl extends LLVMNativeFunctions {
 
     private final TruffleObject memmove;
     private final TruffleObject memcpy;
-    private final TruffleObject memset;
-    private final TruffleObject free;
-    private final TruffleObject malloc;
     private final TruffleObject dynamicCast;
     private final TruffleObject sulongCanCatch;
     private final TruffleObject sulongThrow;
@@ -82,9 +79,6 @@ final class LLVMNativeFunctionsImpl extends LLVMNativeFunctions {
     LLVMNativeFunctionsImpl(NativeLookup nativeLookup) {
         memmove = nativeLookup == null ? null : nativeLookup.getNativeFunction("@memmove", "(POINTER,POINTER,UINT64):POINTER");
         memcpy = nativeLookup == null ? null : nativeLookup.getNativeFunction("@memcpy", "(POINTER,POINTER,UINT64):POINTER");
-        memset = nativeLookup == null ? null : nativeLookup.getNativeFunction("@memset", "(POINTER,SINT32,UINT64):VOID");
-        free = nativeLookup == null ? null : nativeLookup.getNativeFunction("@free", "(POINTER):VOID");
-        malloc = nativeLookup == null ? null : nativeLookup.getNativeFunction("@malloc", "(UINT64):POINTER");
         dynamicCast = nativeLookup == null ? null : nativeLookup.getNativeFunction("@__dynamic_cast", "(POINTER,POINTER,POINTER,UINT64):POINTER");
         sulongCanCatch = nativeLookup == null ? null : nativeLookup.getNativeFunction("@sulong_eh_canCatch", "(POINTER,POINTER,POINTER):UINT32");
         sulongThrow = nativeLookup == null ? null : nativeLookup.getNativeFunction("@sulong_eh_throw", "(POINTER,POINTER,POINTER,POINTER,POINTER):VOID");
@@ -115,21 +109,6 @@ final class LLVMNativeFunctionsImpl extends LLVMNativeFunctions {
     @Override
     public MemCopyNode createMemCopyNode() {
         return new MemCopyNodeImpl(memcpy);
-    }
-
-    @Override
-    public MemSetNode createMemSetNode() {
-        return new MemSetNodeImpl(memset);
-    }
-
-    @Override
-    public FreeNode createFreeNode() {
-        return new FreeNodeImpl(free);
-    }
-
-    @Override
-    public MallocNode createMallocNode() {
-        return new MallocNodeImpl(malloc);
     }
 
     @Override
@@ -405,44 +384,6 @@ final class LLVMNativeFunctionsImpl extends LLVMNativeFunctions {
         @Override
         public void execute(LLVMAddress target, LLVMAddress source, long length) {
             UNSAFE.copyMemory(source.getVal(), target.getVal(), length);
-        }
-    }
-
-    private static class MemSetNodeImpl extends MemSetNode {
-
-        MemSetNodeImpl(TruffleObject function) {
-            super(function, 2);
-        }
-
-        @Override
-        public void execute(LLVMAddress target, int value, long length) {
-            UNSAFE.setMemory(target.getVal(), length, (byte) value);
-        }
-    }
-
-    private static class FreeNodeImpl extends FreeNode {
-
-        FreeNodeImpl(TruffleObject function) {
-            super(function, 1);
-        }
-
-        @Override
-        public void execute(LLVMAddress addr) {
-            UNSAFE.freeMemory(addr.getVal());
-        }
-    }
-
-    private static class MallocNodeImpl extends MallocNode {
-
-        MallocNodeImpl(TruffleObject function) {
-            super(function, 1);
-        }
-
-        @Child private Node unbox = Message.UNBOX.createNode();
-
-        @Override
-        public LLVMAddress execute(long size) {
-            return LLVMAddress.fromLong(UNSAFE.allocateMemory(size));
         }
     }
 

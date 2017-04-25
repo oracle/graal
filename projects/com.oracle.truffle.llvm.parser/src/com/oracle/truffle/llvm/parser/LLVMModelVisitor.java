@@ -57,11 +57,9 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 final class LLVMModelVisitor implements ModelVisitor {
 
     private final LLVMParserRuntime visitor;
-    private final LLVMFunctionRegistry registry;
 
-    LLVMModelVisitor(LLVMParserRuntime visitor, LLVMFunctionRegistry registry) {
+    LLVMModelVisitor(LLVMParserRuntime visitor) {
         this.visitor = visitor;
-        this.registry = registry;
     }
 
     @Override
@@ -89,30 +87,27 @@ final class LLVMModelVisitor implements ModelVisitor {
         if (!LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.printMetadata())) {
             method.getMetadata().print(LLVMLogger.print(LLVMOptions.DEBUG.printMetadata()), name);
         }
-        LLVMFunctionDescriptor function = registry.lookupFunctionDescriptor(method.getName(), method.getType());
+        LLVMFunctionDescriptor function = visitor.getContext().lookupFunctionDescriptor(method.getName(),
+                        i -> visitor.getNodeFactory().createFunctionDescriptor(visitor.getContext(), method.getName(), method.getType(), i));
         if (LLVMOptions.ENGINE.lazyParsing()) {
-            function.setLazyToTruffleConverter(new LazyToTruffleConverterImpl(method, function, visitor));
+            function.declareInSulong(new LazyToTruffleConverterImpl(method, visitor));
         } else {
-            (new LazyToTruffleConverterImpl(method, function, visitor)).convert();
+            function.declareInSulong((new LazyToTruffleConverterImpl(method, visitor)).convert());
         }
-
         visitor.addFunction(function);
-
     }
 
     private static class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         private final FunctionDefinition method;
-        private final LLVMFunctionDescriptor function;
         private final LLVMParserRuntime visitor;
 
-        LazyToTruffleConverterImpl(FunctionDefinition method, LLVMFunctionDescriptor function, LLVMParserRuntime visitor) {
+        LazyToTruffleConverterImpl(FunctionDefinition method, LLVMParserRuntime visitor) {
             this.method = method;
-            this.function = function;
             this.visitor = visitor;
         }
 
         @Override
-        public void convert() {
+        public RootCallTarget convert() {
             CompilerAsserts.neverPartOfCompilation();
 
             FrameDescriptor frame = visitor.getStack().getFrame(method.getName());
@@ -127,7 +122,7 @@ final class LLVMModelVisitor implements ModelVisitor {
             LLVMExpressionNode[] afterFunction = new LLVMExpressionNode[0];
 
             final SourceSection sourceSection = visitor.getSourceSection(method);
-            RootNode rootNode = visitor.getNodeFactoryFacade().createFunctionStartNode(visitor, body, beforeFunction, afterFunction, sourceSection, frame, method);
+            RootNode rootNode = visitor.getNodeFactory().createFunctionStartNode(visitor, body, beforeFunction, afterFunction, sourceSection, frame, method);
 
             final String astPrintTarget = LLVMOptions.DEBUG.printFunctionASTs();
             if (LLVMLogger.TARGET_STDOUT.equals(astPrintTarget) || LLVMLogger.TARGET_ANY.equals(astPrintTarget)) {
@@ -152,8 +147,8 @@ final class LLVMModelVisitor implements ModelVisitor {
             }
 
             RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-            function.setCallTarget(callTarget);
             visitor.exitFunction();
+            return callTarget;
         }
 
     }

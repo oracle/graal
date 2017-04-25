@@ -62,6 +62,10 @@ public abstract class LLVMMemory {
         }
     }
 
+    public static void memset(LLVMAddress address, long size, byte value) {
+        UNSAFE.setMemory(address.getVal(), size, value);
+    }
+
     public static void free(LLVMAddress address) {
         UNSAFE.freeMemory(address.getVal());
     }

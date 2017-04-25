@@ -33,17 +33,23 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
-public interface Type {
+public abstract class Type {
 
-    int getBitSize();
+    public abstract int getBitSize();
 
-    void accept(TypeVisitor visitor);
+    public abstract void accept(TypeVisitor visitor);
 
-    int getAlignment(DataSpecConverter targetDataLayout);
+    public abstract int getAlignment(DataSpecConverter targetDataLayout);
 
-    int getSize(DataSpecConverter targetDataLayout);
+    public abstract int getSize(DataSpecConverter targetDataLayout);
 
-    static Type getIntegerType(int size) {
+    @Override
+    public abstract boolean equals(Object obj);
+
+    @Override
+    public abstract int hashCode();
+
+    public static Type getIntegerType(int size) {
         switch (size) {
             case 1:
                 return PrimitiveType.I1;
@@ -60,11 +66,11 @@ public interface Type {
         }
     }
 
-    static boolean isFunctionOrFunctionPointer(Type type) {
+    public static boolean isFunctionOrFunctionPointer(Type type) {
         return type instanceof FunctionType || (type instanceof PointerType && ((PointerType) type).getPointeeType() instanceof FunctionType);
     }
 
-    static Type createConstantForType(Type type, Object value) {
+    public static Type createConstantForType(Type type, Object value) {
         if (type instanceof PrimitiveType) {
             return new PrimitiveType(((PrimitiveType) type).getPrimitiveKind(), value);
         } else {
@@ -72,7 +78,7 @@ public interface Type {
         }
     }
 
-    static boolean isIntegerType(Type type) {
+    public static boolean isIntegerType(Type type) {
         if (type instanceof PrimitiveType) {
             PrimitiveType primitive = (PrimitiveType) type;
             PrimitiveKind kind = primitive.getPrimitiveKind();
@@ -81,7 +87,7 @@ public interface Type {
         return type instanceof VariableBitWidthType;
     }
 
-    static boolean isFloatingpointType(Type type) {
+    public static boolean isFloatingpointType(Type type) {
         if (type instanceof PrimitiveType) {
             PrimitiveType primitive = (PrimitiveType) type;
             PrimitiveKind kind = primitive.getPrimitiveKind();
@@ -91,7 +97,7 @@ public interface Type {
         return false;
     }
 
-    static FrameSlotKind getFrameSlotKind(Type type) {
+    public static FrameSlotKind getFrameSlotKind(Type type) {
         if (type instanceof PrimitiveType) {
             PrimitiveType primitive = (PrimitiveType) type;
             PrimitiveKind kind = primitive.getPrimitiveKind();
@@ -131,11 +137,11 @@ public interface Type {
         return FrameSlotKind.Object;
     }
 
-    static int getPadding(int offset, int alignment) {
+    public static int getPadding(int offset, int alignment) {
         return alignment == 0 ? 0 : (alignment - (offset % alignment)) % alignment;
     }
 
-    static int getPadding(int offset, Type type, DataSpecConverter targetDataLayout) {
+    public static int getPadding(int offset, Type type, DataSpecConverter targetDataLayout) {
         final int alignment = type.getAlignment(targetDataLayout);
         return getPadding(offset, alignment);
     }

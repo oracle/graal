@@ -62,20 +62,20 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
 
     private final LLVMSymbolResolver symbolResolver;
 
-    private final SulongNodeFactory factoryFacade;
+    private final SulongNodeFactory nodeFactory;
 
     private final int argCount;
 
     private final FunctionDefinition function;
 
     LLVMBitcodeFunctionVisitor(LLVMParserRuntime module, FrameDescriptor frame, Map<String, Integer> labels,
-                    Map<InstructionBlock, List<Phi>> phis, SulongNodeFactory factoryFacade, int argCount, LLVMSymbolResolver symbolResolver, FunctionDefinition functionDefinition) {
+                    Map<InstructionBlock, List<Phi>> phis, SulongNodeFactory nodeFactory, int argCount, LLVMSymbolResolver symbolResolver, FunctionDefinition functionDefinition) {
         this.module = module;
         this.frame = frame;
         this.labels = labels;
         this.phis = phis;
         this.symbolResolver = symbolResolver;
-        this.factoryFacade = factoryFacade;
+        this.nodeFactory = nodeFactory;
         this.argCount = argCount;
         this.function = functionDefinition;
     }
@@ -85,7 +85,7 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
     }
 
     void addTerminatingInstruction(LLVMControlFlowNode node, int blockId, String blockName) {
-        blocks.add(factoryFacade.createBasicBlockNode(module, getBlock(), node, blockId, blockName));
+        blocks.add(nodeFactory.createBasicBlockNode(module, getBlock(), node, blockId, blockName));
         instructions.add(node);
     }
 
@@ -144,7 +144,7 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
     @Override
     public void visit(InstructionBlock block) {
         this.instructions.clear();
-        block.accept(new LLVMBitcodeInstructionVisitor(this, block, factoryFacade));
+        block.accept(new LLVMBitcodeInstructionVisitor(this, block, nodeFactory));
     }
 
 }

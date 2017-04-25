@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.runtime.types;
 
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
-public final class VariableBitWidthType implements Type {
+public final class VariableBitWidthType extends Type {
 
     private final int bitWidth;
     private final Object constant;
@@ -63,6 +63,7 @@ public final class VariableBitWidthType implements Type {
         final int prime = 31;
         int result = 1;
         result = prime * result + bitWidth;
+        result = prime * result + ((constant == null) ? 0 : constant.hashCode());
         return result;
     }
 
@@ -79,6 +80,13 @@ public final class VariableBitWidthType implements Type {
         }
         VariableBitWidthType other = (VariableBitWidthType) obj;
         if (bitWidth != other.bitWidth) {
+            return false;
+        }
+        if (constant == null) {
+            if (other.constant != null) {
+                return false;
+            }
+        } else if (!constant.equals(other.constant)) {
             return false;
         }
         return true;

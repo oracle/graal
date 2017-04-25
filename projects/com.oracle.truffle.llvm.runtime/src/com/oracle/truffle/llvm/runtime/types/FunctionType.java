@@ -29,10 +29,13 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
-public final class FunctionType implements Type {
+public final class FunctionType extends Type {
+
     private final Type returnType;
 
     private final Type[] argumentTypes;
@@ -100,4 +103,41 @@ public final class FunctionType implements Type {
         return sb.toString();
     }
 
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + Arrays.hashCode(argumentTypes);
+        result = prime * result + (isVarargs ? 1231 : 1237);
+        result = prime * result + ((returnType == null) ? 0 : returnType.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        FunctionType other = (FunctionType) obj;
+        if (!Arrays.equals(argumentTypes, other.argumentTypes)) {
+            return false;
+        }
+        if (isVarargs != other.isVarargs) {
+            return false;
+        }
+        if (returnType == null) {
+            if (other.returnType != null) {
+                return false;
+            }
+        } else if (!returnType.equals(other.returnType)) {
+            return false;
+        }
+        return true;
+    }
 }

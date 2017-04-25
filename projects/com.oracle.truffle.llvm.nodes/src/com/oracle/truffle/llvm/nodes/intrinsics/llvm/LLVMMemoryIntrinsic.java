@@ -27,33 +27,58 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith;
+package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public abstract class LLVMPowI {
+public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
 
-    @GenerateNodeFactory
-    @NodeChildren({@NodeChild(value = "val"), @NodeChild(value = "power", type = LLVMExpressionNode.class)})
-    public abstract static class LLVMPowIFloat extends LLVMExpressionNode {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMMalloc extends LLVMMemoryIntrinsic {
 
         @Specialization
-        public float executeFloat(float val, int pow) {
-            return (float) Math.pow(val, pow);
+        public LLVMAddress executeVoid(int size) {
+            return LLVMMemory.allocateMemory(size);
+        }
+
+        @Specialization
+        public LLVMAddress executeVoid(long size) {
+            return LLVMMemory.allocateMemory(size);
         }
     }
 
-    @GenerateNodeFactory
-    @NodeChildren({@NodeChild(value = "val"), @NodeChild(value = "power", type = LLVMExpressionNode.class)})
-    public abstract static class LLVMPowIDouble extends LLVMExpressionNode {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMCalloc extends LLVMMemoryIntrinsic {
 
         @Specialization
-        public double executeDouble(double val, int pow) {
-            return Math.pow(val, pow);
+        public LLVMAddress executeVoid(int n, int size) {
+            LLVMAddress address = LLVMMemory.allocateMemory(n * size);
+            LLVMMemory.memset(address, n * size, (byte) 0);
+            return address;
+        }
+
+        @Specialization
+        public LLVMAddress executeVoid(long n, long size) {
+            LLVMAddress address = LLVMMemory.allocateMemory(n * size);
+            LLVMMemory.memset(address, n * size, (byte) 0);
+            return address;
         }
     }
+
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMFree extends LLVMMemoryIntrinsic {
+
+        @Specialization
+        public Object executeVoid(LLVMAddress address) {
+            LLVMMemory.free(address);
+            return null;
+        }
+
+    }
+
 }

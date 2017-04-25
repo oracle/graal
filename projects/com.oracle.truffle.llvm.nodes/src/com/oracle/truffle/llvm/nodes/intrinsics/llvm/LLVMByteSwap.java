@@ -29,14 +29,12 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMByteSwap {
 
-    @GenerateNodeFactory
     @NodeChild
     public abstract static class LLVMByteSwapI16 extends LLVMExpressionNode {
 
@@ -47,7 +45,6 @@ public abstract class LLVMByteSwap {
 
     }
 
-    @GenerateNodeFactory
     @NodeChild
     public abstract static class LLVMByteSwapI32 extends LLVMExpressionNode {
 
@@ -57,7 +54,6 @@ public abstract class LLVMByteSwap {
         }
     }
 
-    @GenerateNodeFactory
     @NodeChild
     public abstract static class LLVMByteSwapI64 extends LLVMExpressionNode {
 

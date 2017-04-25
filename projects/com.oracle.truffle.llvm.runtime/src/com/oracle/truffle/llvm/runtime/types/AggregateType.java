@@ -29,8 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
-public abstract class AggregateType implements Type {
-
+public abstract class AggregateType extends Type {
     public abstract int getNumberOfElements();
 
     public abstract Type getElementType(int index);

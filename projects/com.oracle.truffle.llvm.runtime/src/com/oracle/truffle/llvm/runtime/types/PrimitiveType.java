@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.runtime.types;
 
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
-public final class PrimitiveType implements Type {
+public final class PrimitiveType extends Type {
 
     public static final PrimitiveType I1 = new PrimitiveType(PrimitiveKind.I1, null);
     public static final PrimitiveType I8 = new PrimitiveType(PrimitiveKind.I8, null);
@@ -127,6 +127,40 @@ public final class PrimitiveType implements Type {
         } else {
             return kind.name();
         }
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((constant == null) ? 0 : constant.hashCode());
+        result = prime * result + ((kind == null) ? 0 : kind.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        PrimitiveType other = (PrimitiveType) obj;
+        if (constant == null) {
+            if (other.constant != null) {
+                return false;
+            }
+        } else if (!constant.equals(other.constant)) {
+            return false;
+        }
+        if (kind != other.kind) {
+            return false;
+        }
+        return true;
     }
 
 }
