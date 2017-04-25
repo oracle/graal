@@ -22,7 +22,7 @@
  */
 package org.graalvm.compiler.core.common.util;
 
-import static org.graalvm.compiler.core.common.util.Util.JAVA_SPECIFICATION_VERSION;
+import static org.graalvm.compiler.serviceprovider.JDK9Method.JAVA_SPECIFICATION_VERSION;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;

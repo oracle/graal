@@ -32,12 +32,13 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.word.Word;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class PointerTrackingTest extends ReplacementsTest /* implements Snippets */ {
+public class PointerTrackingTest extends ReplacementsTest implements Snippets {
 
     @Test
     public void testTracking() {
