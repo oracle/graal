@@ -38,7 +38,6 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.llvm.parser.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -56,11 +55,11 @@ public final class LLVMFunctionRegistry {
     private static final String ZERO_FUNCTION = "<zero function>";
 
     private final Map<String, NodeFactory<? extends LLVMExpressionNode>> intrinsics;
-    private final NodeFactoryFacade facade;
+    private final SulongNodeFactory facade;
 
     private final LLVMContext context;
 
-    LLVMFunctionRegistry(LLVMLanguage language, LLVMContext context, NodeFactoryFacade facade) {
+    LLVMFunctionRegistry(LLVMLanguage language, LLVMContext context, SulongNodeFactory facade) {
         this.facade = facade;
         this.context = context;
         this.intrinsics = facade.getFunctionSubstitutionFactories();

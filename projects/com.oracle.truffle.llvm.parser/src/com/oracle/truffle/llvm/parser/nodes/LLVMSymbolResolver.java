@@ -36,7 +36,7 @@ import java.util.List;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.parser.LLVMLabelList;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
-import com.oracle.truffle.llvm.parser.facade.NodeFactoryFacade;
+import com.oracle.truffle.llvm.parser.SulongNodeFactory;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionKind;
@@ -215,7 +215,7 @@ public final class LLVMSymbolResolver {
     private LLVMExpressionNode toStr(StringConstant constant) {
         final String chars = constant.getString();
 
-        final NodeFactoryFacade factoryFacade = runtime.getNodeFactoryFacade();
+        final SulongNodeFactory factoryFacade = runtime.getNodeFactoryFacade();
         final List<LLVMExpressionNode> values = new ArrayList<>(chars.length());
         for (int i = 0; i < chars.length(); i++) {
             values.add(factoryFacade.createLiteral(runtime, (byte) chars.charAt(i), PrimitiveType.I8));

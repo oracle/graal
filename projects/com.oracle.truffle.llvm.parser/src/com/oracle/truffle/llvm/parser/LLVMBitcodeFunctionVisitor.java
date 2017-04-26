@@ -37,7 +37,6 @@ import java.util.Map;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.parser.LLVMPhiManager.Phi;
-import com.oracle.truffle.llvm.parser.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
@@ -63,14 +62,14 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
 
     private final LLVMSymbolResolver symbolResolver;
 
-    private final NodeFactoryFacade factoryFacade;
+    private final SulongNodeFactory factoryFacade;
 
     private final int argCount;
 
     private final FunctionDefinition function;
 
     LLVMBitcodeFunctionVisitor(LLVMParserRuntime module, FrameDescriptor frame, Map<String, Integer> labels,
-                    Map<InstructionBlock, List<Phi>> phis, NodeFactoryFacade factoryFacade, int argCount, LLVMSymbolResolver symbolResolver, FunctionDefinition functionDefinition) {
+                    Map<InstructionBlock, List<Phi>> phis, SulongNodeFactory factoryFacade, int argCount, LLVMSymbolResolver symbolResolver, FunctionDefinition functionDefinition) {
         this.module = module;
         this.frame = frame;
         this.labels = labels;

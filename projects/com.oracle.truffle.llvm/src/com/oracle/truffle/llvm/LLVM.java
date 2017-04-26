@@ -47,8 +47,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
-import com.oracle.truffle.llvm.parser.facade.NodeFactoryFacade;
-import com.oracle.truffle.llvm.parser.facade.NodeFactoryFacadeProvider;
+import com.oracle.truffle.llvm.parser.SulongNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
@@ -63,23 +62,23 @@ public class LLVM {
         LLVMLanguage.provider = getProvider();
     }
 
-    private static NodeFactoryFacade getNodeFactoryFacade() {
-        ServiceLoader<NodeFactoryFacadeProvider> loader = ServiceLoader.load(NodeFactoryFacadeProvider.class);
+    private static SulongNodeFactory getNodeFactoryFacade() {
+        ServiceLoader<SulongNodeFactory> loader = ServiceLoader.load(SulongNodeFactory.class);
         if (!loader.iterator().hasNext()) {
-            throw new AssertionError("Could not find a " + NodeFactoryFacadeProvider.class.getSimpleName() + " for the creation of the Truffle nodes");
+            throw new AssertionError("Could not find a " + SulongNodeFactory.class.getSimpleName() + " for the creation of the Truffle nodes");
         }
-        NodeFactoryFacade facade = null;
+        SulongNodeFactory factory = null;
         String expectedConfigName = LLVMOptions.ENGINE.nodeConfiguration();
-        for (NodeFactoryFacadeProvider prov : loader) {
+        for (SulongNodeFactory prov : loader) {
             String configName = prov.getConfigurationName();
             if (configName != null && configName.equals(expectedConfigName)) {
-                facade = prov.getNodeFactoryFacade();
+                factory = prov;
             }
         }
-        if (facade == null) {
-            throw new AssertionError("Could not find a " + NodeFactoryFacadeProvider.class.getSimpleName() + " with the name " + expectedConfigName);
+        if (factory == null) {
+            throw new AssertionError("Could not find a " + SulongNodeFactory.class.getSimpleName() + " with the name " + expectedConfigName);
         }
-        return facade;
+        return factory;
     }
 
     private static LLVMLanguage.LLVMLanguageProvider getProvider() {
