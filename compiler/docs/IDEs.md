@@ -37,7 +37,7 @@ To make IntelliJ work the same way as Eclipse with respect to Problems View and 
 
 
 ### Eclipse
-This section describes how to set up Eclipse for Graal development. For convenience, `$GRAAL` denotes your local Graal repository (i.e., the directory containing `README.md`).
+This section describes how to set up Eclipse for Graal development. For convenience, `$GRAAL` denotes your local Graal repository.
 
 Eclipse can be downloaded [here](http://download.eclipse.org/eclipse/downloads/). The currently supported version for Graal development is 4.5.2.
 
