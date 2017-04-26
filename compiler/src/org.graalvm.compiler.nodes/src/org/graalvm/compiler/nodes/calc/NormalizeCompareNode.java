@@ -53,12 +53,12 @@ public final class NormalizeCompareNode extends BinaryNode implements Lowerable 
     public static final NodeClass<NormalizeCompareNode> TYPE = NodeClass.create(NormalizeCompareNode.class);
     protected final boolean isUnorderedLess;
 
-    public NormalizeCompareNode(ValueNode x, ValueNode y, boolean isUnorderedLess) {
-        super(TYPE, StampFactory.forKind(JavaKind.Int), x, y);
+    public NormalizeCompareNode(ValueNode x, ValueNode y, JavaKind kind, boolean isUnorderedLess) {
+        super(TYPE, StampFactory.forInteger(kind, -1, 1), x, y);
         this.isUnorderedLess = isUnorderedLess;
     }
 
-    public static ValueNode create(ValueNode x, ValueNode y, boolean isUnorderedLess, ConstantReflectionProvider constantReflection) {
+    public static ValueNode create(ValueNode x, ValueNode y, boolean isUnorderedLess, JavaKind kind, ConstantReflectionProvider constantReflection) {
         LogicNode result = CompareNode.tryConstantFold(Condition.EQ, x, y, constantReflection, false);
         if (result instanceof LogicConstantNode) {
             LogicConstantNode logicConstantNode = (LogicConstantNode) result;
@@ -66,16 +66,16 @@ public final class NormalizeCompareNode extends BinaryNode implements Lowerable 
             if (resultLT instanceof LogicConstantNode) {
                 LogicConstantNode logicConstantNodeLT = (LogicConstantNode) resultLT;
                 if (logicConstantNodeLT.getValue()) {
-                    return ConstantNode.forInt(-1);
+                    return ConstantNode.forIntegerKind(kind, -1);
                 } else if (logicConstantNode.getValue()) {
-                    return ConstantNode.forInt(0);
+                    return ConstantNode.forIntegerKind(kind, 0);
                 } else {
-                    return ConstantNode.forInt(1);
+                    return ConstantNode.forIntegerKind(kind, 1);
                 }
             }
         }
 
-        return new NormalizeCompareNode(x, y, isUnorderedLess);
+        return new NormalizeCompareNode(x, y, kind, isUnorderedLess);
     }
 
     @Override
@@ -101,8 +101,8 @@ public final class NormalizeCompareNode extends BinaryNode implements Lowerable 
             lessComp = graph().addOrUniqueWithInputs(IntegerLessThanNode.create(getX(), getY()));
         }
 
-        ConditionalNode equalValue = graph().unique(new ConditionalNode(equalComp, ConstantNode.forInt(0, graph()), ConstantNode.forInt(1, graph())));
-        ConditionalNode value = graph().unique(new ConditionalNode(lessComp, ConstantNode.forInt(-1, graph()), equalValue));
+        ConditionalNode equalValue = graph().unique(new ConditionalNode(equalComp, ConstantNode.forIntegerStamp(stamp(), 0, graph()), ConstantNode.forIntegerStamp(stamp(), 1, graph())));
+        ConditionalNode value = graph().unique(new ConditionalNode(lessComp, ConstantNode.forIntegerStamp(stamp(), -1, graph()), equalValue));
         replaceAtUsagesAndDelete(value);
     }
 

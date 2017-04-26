@@ -297,7 +297,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                  * since the two inputs get simplified into one.
                  */
                 phi.setValueAt(trueEnd, result);
-                removeThroughFalseBranch(tool);
+                removeThroughFalseBranch(tool, merge);
                 return true;
             }
         }
@@ -563,7 +563,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                      * Multiple phis but merging same values for true and false, so simply delete
                      * the path
                      */
-                    removeThroughFalseBranch(tool);
+                    removeThroughFalseBranch(tool, merge);
                     return true;
                 } else if (distinct == 1) {
                     ValueNode trueValue = singlePhi.valueAt(trueEnd);
@@ -571,7 +571,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     ValueNode conditional = canonicalizeConditionalCascade(trueValue, falseValue);
                     if (conditional != null) {
                         singlePhi.setValueAt(trueEnd, conditional);
-                        removeThroughFalseBranch(tool);
+                        removeThroughFalseBranch(tool, merge);
                         return true;
                     }
                 }
@@ -601,12 +601,23 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return false;
     }
 
-    protected void removeThroughFalseBranch(SimplifierTool tool) {
+    protected void removeThroughFalseBranch(SimplifierTool tool, AbstractMergeNode merge) {
         AbstractBeginNode trueBegin = trueSuccessor();
         graph().removeSplitPropagate(this, trueBegin);
         tool.addToWorkList(trueBegin);
         if (condition() != null) {
             GraphUtil.tryKillUnused(condition());
+        }
+        if (merge.isAlive() && merge.forwardEndCount() > 1) {
+            for (FixedNode end : merge.forwardEnds()) {
+                Node cur = end;
+                while (cur != null && cur.predecessor() instanceof BeginNode) {
+                    cur = cur.predecessor();
+                }
+                if (cur != null && cur.predecessor() instanceof IfNode) {
+                    tool.addToWorkList(cur.predecessor());
+                }
+            }
         }
     }
 
@@ -664,7 +675,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 if (lessThan != null) {
                     assert equals != null;
                     if ((lessThan.getX() == equals.getX() && lessThan.getY() == equals.getY()) || (lessThan.getX() == equals.getY() && lessThan.getY() == equals.getX())) {
-                        return graph().unique(new NormalizeCompareNode(lessThan.getX(), lessThan.getY(), false));
+                        return graph().unique(new NormalizeCompareNode(lessThan.getX(), lessThan.getY(), conditional.trueValue().stamp().getStackKind(), false));
                     }
                 }
             }
