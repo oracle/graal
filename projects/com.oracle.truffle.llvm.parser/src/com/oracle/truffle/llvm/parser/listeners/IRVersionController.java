@@ -37,9 +37,6 @@ import com.oracle.truffle.llvm.parser.listeners.constants.ConstantsVersion.Const
 import com.oracle.truffle.llvm.parser.listeners.function.Function;
 import com.oracle.truffle.llvm.parser.listeners.function.FunctionVersion.FunctionV32;
 import com.oracle.truffle.llvm.parser.listeners.function.FunctionVersion.FunctionV38;
-import com.oracle.truffle.llvm.parser.listeners.metadata.Metadata;
-import com.oracle.truffle.llvm.parser.listeners.metadata.MetadataVersion.MetadataV32;
-import com.oracle.truffle.llvm.parser.listeners.metadata.MetadataVersion.MetadataV38;
 import com.oracle.truffle.llvm.parser.listeners.module.Module;
 import com.oracle.truffle.llvm.parser.listeners.module.ModuleVersionHelper;
 import com.oracle.truffle.llvm.parser.listeners.module.ModuleVersionHelper.ModuleV32;
@@ -47,17 +44,10 @@ import com.oracle.truffle.llvm.parser.listeners.module.ModuleVersionHelper.Modul
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.generators.ConstantGenerator;
 import com.oracle.truffle.llvm.parser.model.generators.FunctionGenerator;
-import com.oracle.truffle.llvm.parser.model.generators.SymbolGenerator;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class IRVersionController {
-
-    @FunctionalInterface
-    private interface MetadataParser {
-
-        Metadata instantiate(Types types, List<Type> symbols, SymbolGenerator generator);
-    }
 
     @FunctionalInterface
     private interface ConstantsParser {
@@ -78,20 +68,18 @@ public final class IRVersionController {
     }
 
     private enum IRVersion {
-        DEFAULT(ModuleV32::new, FunctionV32::new, ConstantsV32::new, MetadataV32::new, "3.2", "3.3"),
-        LLVM_32(ModuleV32::new, FunctionV32::new, ConstantsV32::new, MetadataV32::new, "3.2", "3.3"),
-        LLVM_38(ModuleV38::new, FunctionV38::new, ConstantsV38::new, MetadataV38::new, "3.8", "3.9");
+        DEFAULT(ModuleV32::new, FunctionV32::new, ConstantsV32::new, "3.2", "3.3"),
+        LLVM_32(ModuleV32::new, FunctionV32::new, ConstantsV32::new, "3.2", "3.3"),
+        LLVM_38(ModuleV38::new, FunctionV38::new, ConstantsV38::new, "3.8", "3.9");
 
         private final String[] versionInformation;
         private final FunctionParser function;
         private final ConstantsParser constants;
-        private final MetadataParser metadata;
         private final ModuleParser module;
 
-        IRVersion(ModuleParser module, FunctionParser function, ConstantsParser constants, MetadataParser metadata, String... strings) {
+        IRVersion(ModuleParser module, FunctionParser function, ConstantsParser constants, String... strings) {
             this.function = function;
             this.constants = constants;
-            this.metadata = metadata;
             this.versionInformation = strings;
             this.module = module;
         }
@@ -129,10 +117,6 @@ public final class IRVersionController {
             }
         }
         return IRVersion.DEFAULT;
-    }
-
-    public Metadata createMetadata(Types types, List<Type> symbols, SymbolGenerator generator) {
-        return version.metadata.instantiate(types, symbols, generator);
     }
 
     public Constants createConstants(Types types, List<Type> symbols, ConstantGenerator generator) {

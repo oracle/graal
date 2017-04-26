@@ -96,4 +96,35 @@ public final class PointerType extends AggregateType {
     public String toString() {
         return String.format("%s*", pointeeType);
     }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((pointeeType == null) ? 0 : pointeeType.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        PointerType other = (PointerType) obj;
+        if (pointeeType == null) {
+            if (other.pointeeType != null) {
+                return false;
+            }
+        } else if (!pointeeType.equals(other.pointeeType)) {
+            return false;
+        }
+        return true;
+    }
+
 }

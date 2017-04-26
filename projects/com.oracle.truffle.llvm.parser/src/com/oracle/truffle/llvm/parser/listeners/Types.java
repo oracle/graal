@@ -157,7 +157,7 @@ public final class Types implements ParserListener, Iterable<Type> {
                 break;
 
             case X86_MMX:
-                type = MetaType.X86_MMX;
+                type = MetaType.X86MMX;
                 break;
 
             case STRUCT_ANON:
@@ -211,7 +211,7 @@ public final class Types implements ParserListener, Iterable<Type> {
         return table[(int) index];
     }
 
-    private static class UnresolvedPointeeType implements Type {
+    private static class UnresolvedPointeeType extends Type {
 
         private final int idx;
 
@@ -246,6 +246,33 @@ public final class Types implements ParserListener, Iterable<Type> {
             // This is a private type only required for resolving
             throw new IllegalStateException();
         }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + idx;
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            UnresolvedPointeeType other = (UnresolvedPointeeType) obj;
+            if (idx != other.idx) {
+                return false;
+            }
+            return true;
+        }
+
     }
 
     private static final class UnresolvedNamedPointeeType extends UnresolvedPointeeType {
@@ -262,7 +289,7 @@ public final class Types implements ParserListener, Iterable<Type> {
         }
     }
 
-    private static final class UnresolvedNamedType implements Type {
+    private static final class UnresolvedNamedType extends Type {
 
         private final String name;
 
@@ -296,6 +323,37 @@ public final class Types implements ParserListener, Iterable<Type> {
             // This is a private type only required for resolving
             throw new IllegalStateException();
         }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + ((name == null) ? 0 : name.hashCode());
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (!(obj instanceof UnresolvedNamedType)) {
+                return false;
+            }
+            UnresolvedNamedType other = (UnresolvedNamedType) obj;
+            if (name == null) {
+                if (other.name != null) {
+                    return false;
+                }
+            } else if (!name.equals(other.name)) {
+                return false;
+            }
+            return true;
+        }
+
     }
 
     @Override

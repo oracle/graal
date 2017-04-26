@@ -30,10 +30,8 @@
 package com.oracle.truffle.llvm.parser;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.parser.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.parser.listeners.IRVersionController;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
-import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 
 public final class BitcodeParserResult {
@@ -71,10 +69,6 @@ public final class BitcodeParserResult {
         final LLVMPhiManager phis = LLVMPhiManager.generate(model);
         final StackAllocation stackAllocation = StackAllocation.generate(model);
         final LLVMLabelList labels = LLVMLabelList.generate(model);
-
-        final TargetDataLayout layout = model.getTargetDataLayout();
-        final DataLayoutConverter.DataSpecConverterImpl targetDataLayout = DataLayoutConverter.getConverter(layout.getDataLayout());
-        LLVMMetadata.generate(model, targetDataLayout);
 
         return new BitcodeParserResult(model, phis, stackAllocation, labels);
     }

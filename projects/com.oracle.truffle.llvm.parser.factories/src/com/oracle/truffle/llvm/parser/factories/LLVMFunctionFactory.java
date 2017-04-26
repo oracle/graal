@@ -223,8 +223,8 @@ final class LLVMFunctionFactory {
         throw new AssertionError(returnType);
     }
 
-    static LLVMExpressionNode createFunctionArgNode(SulongNodeFactory facade, int i) {
-        int realIndex = facade.getArgStartIndex().get() + i;
+    static LLVMExpressionNode createFunctionArgNode(SulongNodeFactory nodeFactory, int i) {
+        int realIndex = nodeFactory.getArgStartIndex().get() + i;
         return LLVMArgNodeGen.create(realIndex);
     }
 

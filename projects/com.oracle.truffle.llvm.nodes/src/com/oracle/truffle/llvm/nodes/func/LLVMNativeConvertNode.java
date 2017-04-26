@@ -127,20 +127,6 @@ abstract class LLVMNativeConvertNode extends LLVMNode {
     @SuppressWarnings("unused")
     protected abstract static class FunctionToNative extends LLVMNativeConvertNode {
 
-        // not null pointer
-
-        @Specialization(limit = "10", guards = {"function.getFunctionIndex() == cachedFunction.getFunctionIndex()", "cachedFunction.getFunctionIndex() != 0", "cachedFunction.getCallTarget() == null"})
-        protected static TruffleObject doDirect(LLVMFunctionDescriptor function,
-                        @Cached("function") LLVMFunctionDescriptor cachedFunction,
-                        @Cached("resolveAsNative(cachedFunction)") TruffleObject cachedNative) {
-            return cachedNative;
-        }
-
-        @Specialization(replaces = "doDirect", guards = {"descriptor.getCallTarget() == null", "descriptor.getFunctionIndex() != 0"})
-        protected TruffleObject doIndirect(LLVMFunctionDescriptor descriptor) {
-            return resolveAsNative(descriptor);
-        }
-
         // null pointer
 
         @Specialization(guards = {"descriptor.getFunctionIndex() == 0"})
@@ -148,42 +134,44 @@ abstract class LLVMNativeConvertNode extends LLVMNode {
             return np;
         }
 
-        // not null pointer
-
-        @Specialization(limit = "10", guards = {"handle.getFunctionIndex() == cachedHandle.getFunctionIndex()", "cachedHandle.getFunctionIndex() != 0"})
-        protected static TruffleObject doDirectHandle(LLVMFunctionHandle handle,
-                        @Cached("handle") LLVMFunctionHandle cachedHandle,
-                        @Cached("resolveAsNative(doLookup(cachedHandle))") TruffleObject cachedNative) {
-            return cachedNative;
-        }
-
-        @Specialization(replaces = "doDirect", guards = "handle.getFunctionIndex() != 0")
-        protected TruffleObject doIndirectHandle(LLVMFunctionHandle handle) {
-            return resolveAsNative(doLookup(handle));
-        }
-
-        // null pointer
-
         @Specialization(guards = {"descriptor.getFunctionIndex() == 0"})
         protected TruffleObject doNull(LLVMFunctionHandle descriptor, @Cached("nullPointer()") TruffleObject np) {
             return np;
         }
 
-        @Specialization(limit = "10", guards = {"descriptor.getFunctionIndex() == cachedDescriptor.getFunctionIndex()", "descriptor.getCallTarget() != null",
-                        "cachedDescriptor.getFunctionIndex() != 0"})
-        protected static TruffleObject doCachedNative(LLVMFunctionDescriptor descriptor,
-                        @Cached("descriptor") LLVMFunctionDescriptor cachedDescriptor) {
-            return cachedDescriptor;
+        // not null pointer
+
+        @Specialization(limit = "10", guards = {"function.getFunctionIndex() == cachedFunction.getFunctionIndex()", "cachedFunction.getFunctionIndex() != 0", "cachedFunction.isNativeFunction()"})
+        protected static TruffleObject doDirectNative(LLVMFunctionDescriptor function,
+                        @Cached("function") LLVMFunctionDescriptor cachedFunction,
+                        @Cached("cachedFunction.getNativeFunction()") TruffleObject cachedNative) {
+            return cachedNative;
         }
 
-        @Specialization(replaces = "doCachedNative", guards = {"descriptor.getCallTarget() != null", "descriptor.getFunctionIndex() != 0"})
-        protected TruffleObject doCachedNative(LLVMFunctionDescriptor descriptor) {
+        @Specialization(replaces = "doDirectNative", guards = {"descriptor.isNativeFunction()", "descriptor.getFunctionIndex() != 0"})
+        protected TruffleObject doIndirectNative(LLVMFunctionDescriptor descriptor) {
+            return descriptor.getNativeFunction();
+        }
+
+        @Specialization(guards = {"function.getFunctionIndex() != 0", "!function.isNativeFunction()"})
+        protected static TruffleObject doDescriptor(LLVMFunctionDescriptor function) {
+            return function;
+        }
+
+        @Specialization(limit = "10", guards = {"handle.getFunctionIndex() == descriptor.getFunctionIndex()", "descriptor.getFunctionIndex() != 0", "!descriptor.isNativeFunction()"})
+        protected static TruffleObject doCachedHandle(LLVMFunctionHandle handle,
+                        @Cached("doLookup(handle)") LLVMFunctionDescriptor descriptor) {
             return descriptor;
-
         }
 
-        protected TruffleObject resolveAsNative(LLVMFunctionDescriptor descriptor) {
-            return getContext().resolveAsNativeFunction(descriptor);
+        @Specialization(replaces = "doCachedHandle", guards = {"handle.getFunctionIndex() != 0"})
+        protected TruffleObject doUncachedHandle(LLVMFunctionHandle handle) {
+            LLVMFunctionDescriptor descriptor = doLookup(handle);
+            if (descriptor.isNativeFunction()) {
+                return descriptor.getNativeFunction();
+            } else {
+                return descriptor;
+            }
         }
 
         protected LLVMFunctionDescriptor doLookup(LLVMFunctionHandle handle) {

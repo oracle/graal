@@ -38,6 +38,9 @@ abstract class SulongDebugOption {
     @Option(commandLineName = "Debug", help = "Turns debugging on/off. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.", name = "debug") //
     protected static final String DEBUG = String.valueOf(false);
 
+    @Option(commandLineName = "PrintMetadata", help = "Prints the parsed metadata. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.", name = "printMetadata") //
+    protected static final String PRINT_METADATA = String.valueOf(false);
+
     @Option(commandLineName = "Verbose", help = "Enables verbose printing of debugging information. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.", name = "verbose") //
     protected static final String VERBOSE = String.valueOf(false);
 

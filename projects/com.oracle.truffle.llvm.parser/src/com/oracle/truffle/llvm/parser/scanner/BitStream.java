@@ -37,7 +37,7 @@ import java.util.Base64;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 
-final class BitStream {
+public final class BitStream {
 
     private static final long BYTE_MASK = 0xffL;
     private final byte[] bitstream;
@@ -63,6 +63,18 @@ final class BitStream {
         return new BitStream(bytes);
     }
 
+    public static BitStream createFromBlob(long[] args, int blobStartIndex) {
+        final byte[] blob = new byte[(args.length - 2) * Long.BYTES];
+        int to = 0;
+        for (int from = blobStartIndex; from < args.length; from++) {
+            final long l = args[from];
+            for (int i = 0; i < Long.BYTES; i++) {
+                blob[to++] = (byte) ((l >> (Byte.SIZE * i)) & BYTE_MASK);
+            }
+        }
+        return new BitStream(blob);
+    }
+
     private static byte[] read(String filename) {
         try {
             return Files.readAllBytes(Paths.get(filename));
@@ -71,7 +83,7 @@ final class BitStream {
         }
     }
 
-    static long widthVBR(long value, long width) {
+    public static long widthVBR(long value, long width) {
         long total = 0;
         long v = value;
         do {
@@ -81,11 +93,17 @@ final class BitStream {
         return total;
     }
 
-    long read(long offset, long bits) {
-        return read(offset) & ((1L << bits) - 1L);
+    public long read(long offset, long bits) {
+        final long l = read(offset);
+        if (bits < Long.SIZE) {
+            // shifting 1L << 64 would cause an overflow
+            return l & ((1L << bits) - 1L);
+        } else {
+            return l;
+        }
     }
 
-    long readVBR(long offset, long width) {
+    public long readVBR(long offset, long width) {
         long value = 0;
         long shift = 0;
         long datum;

@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit;
 
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -38,7 +37,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class CountLeadingZeroesNode {
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    @GenerateNodeFactory
     public abstract static class CountLeadingZeroesI32Node extends LLVMExpressionNode {
 
         @Specialization
@@ -48,7 +46,6 @@ public abstract class CountLeadingZeroesNode {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    @GenerateNodeFactory
     public abstract static class CountLeadingZeroesI64Node extends LLVMExpressionNode {
 
         @Specialization

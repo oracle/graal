@@ -37,6 +37,7 @@ import com.oracle.truffle.llvm.parser.listeners.Identification;
 import com.oracle.truffle.llvm.parser.listeners.ParserListener;
 import com.oracle.truffle.llvm.parser.listeners.Types;
 import com.oracle.truffle.llvm.parser.listeners.ValueSymbolTable;
+import com.oracle.truffle.llvm.parser.listeners.metadata.Metadata;
 import com.oracle.truffle.llvm.parser.model.enums.Visibility;
 import com.oracle.truffle.llvm.parser.model.generators.FunctionGenerator;
 import com.oracle.truffle.llvm.parser.model.generators.ModuleGenerator;
@@ -155,7 +156,8 @@ public final class Module implements ParserListener {
                 return new ValueSymbolTable(generator);
 
             case METADATA:
-                return version.createMetadata(types, symbols, generator);
+            case METADATA_KIND:
+                return new Metadata(types, symbols, generator);
 
             default:
                 LLVMLogger.info("Entering Unknown Block inside Module: " + block);

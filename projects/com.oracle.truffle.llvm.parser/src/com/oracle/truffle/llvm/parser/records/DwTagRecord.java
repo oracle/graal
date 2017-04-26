@@ -111,10 +111,11 @@ public enum DwTagRecord {
     DW_TAG_RETURN_VARIABLE(0x102),
     DW_TAG_VECTOR_TYPE(0x103);
 
-    private static final long DW_TAG_DECODE_DWARF_CONSTANTS = 0x0000FFFF;
+    private static final long DWARF_CONSTANT_VALUE_MASK = 0x0000FFFF;
+    private static final long DWARF_CONSTANT_VERSION_MASK = 0xFFFF0000;
 
     public static long getDwarfConstant(long code) {
-        return code & DW_TAG_DECODE_DWARF_CONSTANTS;
+        return code & DWARF_CONSTANT_VALUE_MASK;
     }
 
     public static DwTagRecord decode(long code) {
@@ -125,6 +126,10 @@ public enum DwTagRecord {
             }
         }
         return DW_TAG_UNKNOWN;
+    }
+
+    public static boolean isDwarfDescriptor(long val) {
+        return (val & DWARF_CONSTANT_VERSION_MASK) != 0 && decode(val) != DW_TAG_UNKNOWN;
     }
 
     private final int code;

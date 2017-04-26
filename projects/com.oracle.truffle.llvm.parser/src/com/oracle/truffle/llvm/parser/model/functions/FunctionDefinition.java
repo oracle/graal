@@ -62,11 +62,13 @@ import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBlock;
+import com.oracle.truffle.llvm.parser.metadata.MetadataList;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 
 public final class FunctionDefinition implements Constant, FunctionGenerator, ValueSymbol {
+
+    private final MetadataList metadata;
 
     private final Symbols symbols = new Symbols();
 
@@ -76,22 +78,20 @@ public final class FunctionDefinition implements Constant, FunctionGenerator, Va
 
     private int currentBlock = 0;
 
-    private MetadataBlock metadata;
-
     private final Map<String, Type> namesToTypes;
 
     private final FunctionType type;
 
     private String name;
 
-    public FunctionDefinition(FunctionType type, String name, MetadataBlock metadata) {
+    public FunctionDefinition(FunctionType type, String name, MetadataList metadata) {
         this.type = type;
         this.metadata = metadata;
         namesToTypes = new HashMap<>();
         this.name = name;
     }
 
-    public FunctionDefinition(FunctionType type, MetadataBlock metadata) {
+    public FunctionDefinition(FunctionType type, MetadataList metadata) {
         this(type, LLVMIdentifier.UNKNOWN, metadata);
     }
 
@@ -124,9 +124,6 @@ public final class FunctionDefinition implements Constant, FunctionGenerator, Va
 
     @Override
     public void allocateBlocks(int count) {
-        // we don't want do add function specific metadata to the global scope
-        metadata = new MetadataBlock(metadata);
-
         blocks = new InstructionBlock[count];
         for (int i = 0; i < count; i++) {
             blocks[i] = new InstructionBlock(this, i);
@@ -208,6 +205,7 @@ public final class FunctionDefinition implements Constant, FunctionGenerator, Va
         return parameters;
     }
 
+    @Override
     public Symbols getSymbols() {
         CompilerAsserts.neverPartOfCompilation();
         return symbols;
@@ -299,7 +297,7 @@ public final class FunctionDefinition implements Constant, FunctionGenerator, Va
     }
 
     @Override
-    public MetadataBlock getMetadata() {
+    public MetadataList getMetadata() {
         CompilerAsserts.neverPartOfCompilation();
         return metadata;
     }

@@ -143,6 +143,10 @@ def compileOtherTests38():
     print("Compiling Other with clang -O0", end='')
     mx_tools.printProgress(mx_tools.multicompileFolder(_otherDir, _cacheDir, [mx_tools.Tool.CLANG_V38], ['-Iinclude', '-lm'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC))
 
+def compileOtherTests():
+    print("Compiling Other with clang -O0", end='')
+    mx_tools.printProgress(mx_tools.multicompileFolder(_otherDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude', '-lm'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC))
+
 def runArgsTests38(vmArgs):
     """runs the Sulong test suite"""
     compileSuite(['args'])

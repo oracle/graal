@@ -62,7 +62,7 @@ public class LLVM {
         LLVMLanguage.provider = getProvider();
     }
 
-    private static SulongNodeFactory getNodeFactoryFacade() {
+    private static SulongNodeFactory getNodeFactory() {
         ServiceLoader<SulongNodeFactory> loader = ServiceLoader.load(SulongNodeFactory.class);
         if (!loader.iterator().hasNext()) {
             throw new AssertionError("Could not find a " + SulongNodeFactory.class.getSimpleName() + " for the creation of the Truffle nodes");
@@ -233,7 +233,9 @@ public class LLVM {
     }
 
     private static LLVMParserResult parseBitcodeFile(Source source, LLVMLanguage language, LLVMContext context) {
-        return LLVMParserRuntime.parse(source, language, context, getNodeFactoryFacade());
+        SulongNodeFactory nodeFactory = getNodeFactory();
+        context.setNativeIntrinsicsFactory(nodeFactory.getNativeIntrinsicsFactory(language, context));
+        return LLVMParserRuntime.parse(source, language, context, nodeFactory);
     }
 
     public static int executeMain(File file, Object... args) {

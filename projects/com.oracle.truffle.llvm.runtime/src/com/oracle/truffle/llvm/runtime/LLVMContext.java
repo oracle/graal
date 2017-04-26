@@ -52,6 +52,8 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.MetaType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public class LLVMContext {
 
@@ -79,7 +81,8 @@ public class LLVMContext {
 
     private int currentFunctionIndex = 0;
     private final List<LLVMFunctionDescriptor> functionDescriptors = new ArrayList<>();
-    private final HashMap<String, LLVMFunctionDescriptor> functionIndex;
+    private final HashMap<String, LLVMFunctionDescriptor> llvmIRFunctions;
+    private NativeIntrinsicProvider nativeIntrinsicsFactory;
 
     private final LinkedList<LLVMAddress> caughtExceptionStack = new LinkedList<>();
     private final LinkedList<DestructorStackElement> destructorStack = new LinkedList<>();
@@ -97,6 +100,8 @@ public class LLVMContext {
 
     // #define SIG_ERR ((__sighandler_t) -1) /* Error return. */
     private final LLVMFunction sigErr;
+
+    private static final String ZERO_FUNCTION = "<zero function>";
 
     public static final class DestructorStackElement {
         private final LLVMFunctionDescriptor destructor;
@@ -119,7 +124,7 @@ public class LLVMContext {
     public LLVMContext(Env env) {
         this.nativeLookup = LLVMOptions.ENGINE.disableNativeInterface() ? null : new NativeLookup(env);
         this.nativeCallStatistics = LLVMOptions.ENGINE.traceNativeCalls() ? new HashMap<>() : null;
-        this.functionIndex = new HashMap<>();
+        this.llvmIRFunctions = new HashMap<>();
         this.nativeFunctions = new LLVMNativeFunctionsImpl(nativeLookup);
         this.sigDfl = new LLVMFunctionHandle(0);
         this.sigIgn = new LLVMFunctionHandle(1);
@@ -127,6 +132,19 @@ public class LLVMContext {
         this.toNative = new HashMap<>();
         this.toManaged = new HashMap<>();
         this.handlesLock = new Object();
+
+        assert currentFunctionIndex == 0;
+        LLVMFunctionDescriptor zeroFunction = LLVMFunctionDescriptor.create(this, ZERO_FUNCTION, new FunctionType(MetaType.UNKNOWN, new Type[0], false), currentFunctionIndex++);
+        this.llvmIRFunctions.put(ZERO_FUNCTION, zeroFunction);
+        this.functionDescriptors.add(zeroFunction);
+    }
+
+    public void setNativeIntrinsicsFactory(NativeIntrinsicProvider nativeIntrinsicsFactory) {
+        this.nativeIntrinsicsFactory = nativeIntrinsicsFactory;
+    }
+
+    public NativeIntrinsicProvider getNativeIntrinsicsProvider() {
+        return nativeIntrinsicsFactory;
     }
 
     public LLVMFunction getSigDfl() {
@@ -335,18 +353,6 @@ public class LLVMContext {
         haveLoadedDynamicBitcodeLibraries = true;
     }
 
-    public static String getNativeSignature(FunctionType type, int skipArguments) {
-        return NativeLookup.prepareSignature(type, skipArguments);
-    }
-
-    public TruffleObject resolveAsNativeFunction(LLVMFunctionDescriptor descriptor) {
-        return nativeLookup.resolveAsNative(descriptor);
-    }
-
-    public TruffleObject getNativeData(String name) {
-        return nativeLookup.getNativeDataObject(name);
-    }
-
     public LLVMFunctionDescriptor lookup(LLVMFunction handle) {
         return functionDescriptors.get(handle.getFunctionIndex());
     }
@@ -363,12 +369,12 @@ public class LLVMContext {
         LLVMFunctionDescriptor create(int index);
     }
 
-    public LLVMFunctionDescriptor addFunction(String name, FunctionFactory factory) {
-        LLVMFunctionDescriptor function = functionIndex.get(name);
+    public LLVMFunctionDescriptor lookupFunctionDescriptor(String name, FunctionFactory factory) {
+        LLVMFunctionDescriptor function = llvmIRFunctions.get(name);
         if (function == null) {
             function = factory.create(currentFunctionIndex++);
             functionDescriptors.add(function);
-            functionIndex.put(name, function);
+            llvmIRFunctions.put(name, function);
 
             assert function.getFunctionIndex() == currentFunctionIndex - 1;
             assert functionDescriptors.get(currentFunctionIndex - 1) == function;
@@ -379,14 +385,18 @@ public class LLVMContext {
 
     public LLVMFunctionDescriptor getDescriptorForName(String name) {
         CompilerAsserts.neverPartOfCompilation();
-        if (functionIndex.containsKey(name)) {
-            return functionDescriptors.get(functionIndex.get(name).getFunctionIndex());
+        if (llvmIRFunctions.containsKey(name)) {
+            return functionDescriptors.get(llvmIRFunctions.get(name).getFunctionIndex());
         }
         throw new IllegalStateException();
     }
 
     public NativeLookup getNativeLookup() {
         return nativeLookup;
+    }
+
+    public static String getNativeSignature(FunctionType type, int skipArguments) {
+        return NativeLookup.prepareSignature(type, skipArguments);
     }
 
 }

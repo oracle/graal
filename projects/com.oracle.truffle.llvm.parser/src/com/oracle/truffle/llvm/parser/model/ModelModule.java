@@ -59,7 +59,7 @@ import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBlock;
+import com.oracle.truffle.llvm.parser.metadata.MetadataList;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 public final class ModelModule implements ModuleGenerator {
@@ -74,7 +74,7 @@ public final class ModelModule implements ModuleGenerator {
 
     private final Symbols symbols = new Symbols();
 
-    private final MetadataBlock metadata = new MetadataBlock();
+    private final MetadataList metadata;
 
     private int currentFunction = -1;
 
@@ -94,6 +94,7 @@ public final class ModelModule implements ModuleGenerator {
     }
 
     public ModelModule() {
+        metadata = new MetadataList();
     }
 
     public void accept(ModelVisitor visitor) {
@@ -179,11 +180,11 @@ public final class ModelModule implements ModuleGenerator {
     @Override
     public void createFunction(FunctionType type, boolean isPrototype) {
         if (isPrototype) {
-            FunctionDeclaration function = new FunctionDeclaration(type);
+            final FunctionDeclaration function = new FunctionDeclaration(type);
             symbols.addSymbol(function);
             declares.add(function);
         } else {
-            FunctionDefinition method = new FunctionDefinition(type, metadata);
+            final FunctionDefinition method = new FunctionDefinition(type, metadata.instantiate());
             symbols.addSymbol(method);
             defines.add(method);
         }
@@ -237,7 +238,7 @@ public final class ModelModule implements ModuleGenerator {
     }
 
     @Override
-    public MetadataBlock getMetadata() {
+    public MetadataList getMetadata() {
         return metadata;
     }
 
@@ -253,6 +254,11 @@ public final class ModelModule implements ModuleGenerator {
     @Override
     public void nameFunction(int index, int offset, String name) {
         symbols.setSymbolName(index, name);
+    }
+
+    @Override
+    public Symbols getSymbols() {
+        return symbols;
     }
 
     @Override

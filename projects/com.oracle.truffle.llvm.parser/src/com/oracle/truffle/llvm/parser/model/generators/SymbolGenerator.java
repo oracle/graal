@@ -29,7 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.model.generators;
 
-import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBlock;
+import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
+import com.oracle.truffle.llvm.parser.metadata.MetadataList;
 
 public interface SymbolGenerator extends ConstantGenerator {
 
@@ -39,5 +40,7 @@ public interface SymbolGenerator extends ConstantGenerator {
 
     void nameFunction(int index, int offset, String name);
 
-    MetadataBlock getMetadata();
+    MetadataList getMetadata();
+
+    Symbols getSymbols();
 }

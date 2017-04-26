@@ -133,7 +133,7 @@ abstract class LLVMForeignCallNode extends LLVMNode {
     }
 
     protected CallTarget getCallTarget(LLVMFunctionDescriptor function) {
-        return function.getCallTarget();
+        return function.getLLVMIRFunction();
     }
 
     private static void checkArgLength(int minLength, int actualLength) {

@@ -45,6 +45,6 @@ public final class NullConstant extends AbstractConstant {
 
     @Override
     public String toString() {
-        return "null";
+        return Type.isIntegerType(getType()) || Type.isFloatingpointType(getType()) ? "0" : "null";
     }
 }
