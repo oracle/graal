@@ -46,7 +46,9 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.DataSection.Data;
 import org.graalvm.compiler.code.DataSection.RawData;
 import org.graalvm.compiler.code.DataSection.SerializableData;
+import org.graalvm.compiler.test.AddExports;
 
+@AddExports("jdk.internal.vm.ci/*")
 public class SimpleAssemblerTest extends AssemblerTest {
 
     @Before
