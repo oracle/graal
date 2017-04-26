@@ -550,7 +550,9 @@ public class PartialEvaluator {
 
     private static final class PerformanceInformationHandler {
 
-        private static boolean enabled = TruffleCompilerOptions.getValue(TraceTrufflePerformanceWarnings) || TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal);
+        private static boolean isEnabled() {
+            return TruffleCompilerOptions.getValue(TraceTrufflePerformanceWarnings) || TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal);
+        }
 
         private static void logPerformanceWarning(OptimizedCallTarget target, List<Node> locations, String details, Map<String, Object> properties) {
             logPerformanceWarningImpl(target, "perf warn", details, properties);
@@ -586,7 +588,7 @@ public class PartialEvaluator {
 
         @SuppressWarnings("try")
         static void reportPerformanceWarnings(OptimizedCallTarget target, StructuredGraph graph) {
-            if (!enabled) {
+            if (!isEnabled()) {
                 return;
             }
             ArrayList<ValueNode> warnings = new ArrayList<>();
@@ -626,7 +628,7 @@ public class PartialEvaluator {
         }
 
         static void reportDecisionIsNull(OptimizedCallTarget target, OptimizedDirectCallNode callNode) {
-            if (!enabled) {
+            if (!isEnabled()) {
                 return;
             }
             Map<String, Object> properties = new LinkedHashMap<>();
@@ -635,7 +637,7 @@ public class PartialEvaluator {
         }
 
         static void reportCallTargetChanged(OptimizedCallTarget target, OptimizedDirectCallNode callNode, TruffleInliningDecision decision) {
-            if (!enabled) {
+            if (!isEnabled()) {
                 return;
             }
             Map<String, Object> properties = new LinkedHashMap<>();
