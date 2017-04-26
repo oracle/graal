@@ -33,6 +33,7 @@ import java.util.function.Function;
 
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.OptimizedCompilationProfile;
 import org.graalvm.compiler.truffle.TraceCompilationProfile;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 
@@ -108,7 +109,15 @@ public final class PrintCallTargetProfiling extends AbstractDebugCompilationList
     private static int sumCalls(List<OptimizedCallTarget> targets, Function<TraceCompilationProfile, Integer> function) {
         int sum = 0;
         for (OptimizedCallTarget target : targets) {
-            sum += function.apply((TraceCompilationProfile) target.getCompilationProfile());
+            OptimizedCompilationProfile profile = target.getCompilationProfile();
+            /*
+             * Profiles created before the TruffleCallTargetProfiling has been turned on cannot be
+             * printed because they have the wrong profile class. It is OK to just ignore these call
+             * targets here.
+             */
+            if (profile instanceof TraceCompilationProfile) {
+                sum += function.apply((TraceCompilationProfile) profile);
+            }
         }
         return sum;
     }
