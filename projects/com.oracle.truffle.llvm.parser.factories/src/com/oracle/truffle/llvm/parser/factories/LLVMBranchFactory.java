@@ -37,7 +37,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 final class LLVMBranchFactory {
 
-    static LLVMControlFlowNode createIndirectBranch(LLVMExpressionNode value, int[] labelTargets, LLVMExpressionNode[] phiWrites) {
+    static LLVMControlFlowNode createIndirectBranch(LLVMExpressionNode value, int[] labelTargets, LLVMExpressionNode[][] phiWrites) {
         return new LLVMIndirectBranchNode(value, labelTargets, phiWrites);
     }
 

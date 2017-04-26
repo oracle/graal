@@ -109,21 +109,6 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         this.runtime = method.getRuntime();
     }
 
-    private LLVMExpressionNode[] getPhiWriteNodes() {
-        List<LLVMExpressionNode> nodes = new ArrayList<>();
-        List<Phi> phis = method.getPhiManager().get(block);
-        if (phis != null) {
-            for (Phi phi : phis) {
-                FrameSlot slot = method.getSlot(phi.getPhiValue().getName());
-                LLVMExpressionNode value = symbols.resolve(phi.getValue());
-                Type baseType = phi.getValue().getType();
-                LLVMExpressionNode phiWriteNode = nodeFactory.createFrameWrite(runtime, baseType, value, slot);
-                nodes.add(phiWriteNode);
-            }
-        }
-        return nodes.toArray(new LLVMExpressionNode[nodes.size()]);
-    }
-
     @Override
     public void visit(AllocateInstruction allocate) {
         final Type type = allocate.getPointeeType();
@@ -182,7 +167,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     @Override
     public void visit(BranchInstruction branch) {
         method.addTerminatingInstruction(nodeFactory.createUnconditionalBranch(runtime, method.labels().get(branch.getSuccessor().getName()),
-                        getPhiWriteNodes()), block.getBlockIndex(), block.getName());
+                        getPhiWriteNodes(branch.getSuccessors())[0]), block.getBlockIndex(), block.getName());
     }
 
     @Override
@@ -465,27 +450,8 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         int trueIndex = method.labels().get(branch.getTrueSuccessor().getName());
         int falseIndex = method.labels().get(branch.getFalseSuccessor().getName());
 
-        List<LLVMExpressionNode> trueConditionPhiWriteNodes = new ArrayList<>();
-        List<LLVMExpressionNode> falseConditionPhiWriteNodes = new ArrayList<>();
-
-        List<Phi> phis = method.getPhiManager().get(block);
-        if (phis != null) {
-            for (Phi phi : phis) {
-                FrameSlot slot = method.getSlot(phi.getPhiValue().getName());
-                LLVMExpressionNode value = symbols.resolve(phi.getValue());
-                Type baseType = phi.getValue().getType();
-                LLVMExpressionNode phiWriteNode = nodeFactory.createFrameWrite(runtime, baseType, value, slot);
-
-                if (branch.getTrueSuccessor() == phi.getBlock()) {
-                    trueConditionPhiWriteNodes.add(phiWriteNode);
-                } else {
-                    falseConditionPhiWriteNodes.add(phiWriteNode);
-                }
-            }
-        }
-        LLVMExpressionNode[] truePhiWriteNodes = trueConditionPhiWriteNodes.toArray(new LLVMExpressionNode[trueConditionPhiWriteNodes.size()]);
-        LLVMExpressionNode[] falsePhiWriteNodes = falseConditionPhiWriteNodes.toArray(new LLVMExpressionNode[falseConditionPhiWriteNodes.size()]);
-        LLVMControlFlowNode node = nodeFactory.createConditionalBranch(runtime, trueIndex, falseIndex, conditionNode, truePhiWriteNodes, falsePhiWriteNodes);
+        LLVMExpressionNode[][] phiWriteNodes = getPhiWriteNodes(branch.getSuccessors());
+        LLVMControlFlowNode node = nodeFactory.createConditionalBranch(runtime, trueIndex, falseIndex, conditionNode, phiWriteNodes[0], phiWriteNodes[1]);
 
         method.addTerminatingInstruction(node, block.getBlockIndex(), block.getName());
     }
@@ -546,11 +512,11 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             }
             LLVMExpressionNode value = symbols.resolve(branch.getAddress());
 
-            LLVMControlFlowNode node = nodeFactory.createIndirectBranch(runtime, value, labelTargets, getPhiWriteNodes());
+            LLVMControlFlowNode node = nodeFactory.createIndirectBranch(runtime, value, labelTargets, getPhiWriteNodes(branch.getSuccessors()));
             method.addTerminatingInstruction(node, block.getBlockIndex(), block.getName());
         } else {
             assert branch.getSuccessorCount() == 1;
-            LLVMControlFlowNode node = nodeFactory.createUnconditionalBranch(runtime, method.labels().get(branch.getSuccessor(0).getName()), getPhiWriteNodes());
+            LLVMControlFlowNode node = nodeFactory.createUnconditionalBranch(runtime, method.labels().get(branch.getSuccessor(0).getName()), getPhiWriteNodes(branch.getSuccessors())[0]);
             method.addTerminatingInstruction(node, block.getBlockIndex(), block.getName());
         }
     }
@@ -651,30 +617,95 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     @Override
     public void visit(SwitchInstruction zwitch) {
         LLVMExpressionNode cond = symbols.resolve(zwitch.getCondition());
-        int defaultLabel = method.labels().get(zwitch.getDefaultBlock().getName());
-        int[] otherLabels = new int[zwitch.getCaseCount()];
-        for (int i = 0; i < otherLabels.length; i++) {
-            otherLabels[i] = method.labels().get(zwitch.getCaseBlock(i).getName());
+        int[] successors = new int[zwitch.getCaseCount() + 1];
+        for (int i = 0; i < successors.length - 1; i++) {
+            successors[i] = method.labels().get(zwitch.getCaseBlock(i).getName());
         }
+        successors[successors.length - 1] = method.labels().get(zwitch.getDefaultBlock().getName());
+
+        Type llvmType = zwitch.getCondition().getType();
         LLVMExpressionNode[] cases = new LLVMExpressionNode[zwitch.getCaseCount()];
         for (int i = 0; i < cases.length; i++) {
             cases[i] = symbols.resolve(zwitch.getCaseValue(i));
         }
-        Type llvmType = zwitch.getCondition().getType();
 
-        LLVMControlFlowNode node = nodeFactory.createSwitch(runtime, cond, defaultLabel, otherLabels, cases, (PrimitiveType) llvmType, getPhiWriteNodes());
+        LLVMControlFlowNode node = nodeFactory.createSwitch(runtime, cond, successors, cases, (PrimitiveType) llvmType, getPhiWriteNodes(zwitch.getSuccessors()));
         method.addTerminatingInstruction(node, block.getBlockIndex(), block.getName());
+    }
+
+    private LLVMExpressionNode[][] getPhiWriteNodes(List<InstructionBlock> successors) {
+        List<Phi> phis = method.getPhiManager().get(block);
+        if (phis != null) {
+            ArrayList<Phi>[] phisPerSuccessor = collectPhis(successors, phis);
+            return convertToPhiWriteNodes(phisPerSuccessor);
+        }
+        return new LLVMExpressionNode[successors.size()][0];
+    }
+
+    private ArrayList<Phi>[] collectPhis(List<InstructionBlock> successors, List<Phi> phis) {
+        @SuppressWarnings("unchecked")
+        ArrayList<Phi>[] phisPerSuccessor = new ArrayList[successors.size()];
+        for (int i = 0; i < phisPerSuccessor.length; i++) {
+            phisPerSuccessor[i] = new ArrayList<>();
+        }
+
+        for (Phi phi : phis) {
+            assignPhiToSuccessor(successors, phi, phisPerSuccessor);
+        }
+        return phisPerSuccessor;
+    }
+
+    private static void assignPhiToSuccessor(List<InstructionBlock> successors, Phi phi, ArrayList<Phi>[] phisPerSuccessor) {
+        for (int i = 0; i < successors.size(); i++) {
+            if (successors.get(i) == phi.getBlock()) {
+                ArrayList<Phi> phis = phisPerSuccessor[i];
+                if (!hasMatchingPhi(phis, phi)) {
+                    phis.add(phi);
+                    return;
+                }
+            }
+        }
+        throw new RuntimeException("Could not find a matching successor for a phi.");
+    }
+
+    private static boolean hasMatchingPhi(ArrayList<Phi> possiblePhiList, Phi phi) {
+        for (int j = 0; j < possiblePhiList.size(); j++) {
+            if (possiblePhiList.get(j).getPhiValue() == phi.getPhiValue()) {
+                // this successor already has a phi that corresponds to the same phi symbol -> it
+                // can't be for that successor. this case happens when we have the same successor
+                // block multiple times in the list of the successors.
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private LLVMExpressionNode[][] convertToPhiWriteNodes(ArrayList<Phi>[] phisPerSuccessor) {
+        LLVMExpressionNode[][] result = new LLVMExpressionNode[phisPerSuccessor.length][];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = new LLVMExpressionNode[phisPerSuccessor[i].size()];
+            for (int j = 0; j < phisPerSuccessor[i].size(); j++) {
+                Phi phi = phisPerSuccessor[i].get(j);
+                FrameSlot slot = method.getSlot(phi.getPhiValue().getName());
+                LLVMExpressionNode value = symbols.resolve(phi.getValue());
+                Type baseType = phi.getValue().getType();
+                LLVMExpressionNode phiWriteNode = nodeFactory.createFrameWrite(runtime, baseType, value, slot);
+
+                result[i][j] = phiWriteNode;
+            }
+        }
+        return result;
     }
 
     @Override
     public void visit(SwitchOldInstruction zwitch) {
-        final LLVMExpressionNode cond = symbols.resolve(zwitch.getCondition());
+        LLVMExpressionNode cond = symbols.resolve(zwitch.getCondition());
 
-        final int defaultLabel = method.labels().get(zwitch.getDefaultBlock().getName());
-        final int[] otherLabels = new int[zwitch.getCaseCount()];
-        for (int i = 0; i < otherLabels.length; i++) {
-            otherLabels[i] = method.labels().get(zwitch.getCaseBlock(i).getName());
+        int[] successors = new int[zwitch.getCaseCount() + 1];
+        for (int i = 0; i < successors.length - 1; i++) {
+            successors[i] = method.labels().get(zwitch.getCaseBlock(i).getName());
         }
+        successors[successors.length - 1] = method.labels().get(zwitch.getDefaultBlock().getName());
 
         final PrimitiveType llvmType = (PrimitiveType) zwitch.getCondition().getType();
         final LLVMExpressionNode[] cases = new LLVMExpressionNode[zwitch.getCaseCount()];
@@ -696,7 +727,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             }
         }
 
-        LLVMControlFlowNode node = nodeFactory.createSwitch(runtime, cond, defaultLabel, otherLabels, cases, llvmType, getPhiWriteNodes());
+        LLVMControlFlowNode node = nodeFactory.createSwitch(runtime, cond, successors, cases, llvmType, getPhiWriteNodes(zwitch.getSuccessors()));
         method.addTerminatingInstruction(node, block.getBlockIndex(), block.getName());
     }
 
