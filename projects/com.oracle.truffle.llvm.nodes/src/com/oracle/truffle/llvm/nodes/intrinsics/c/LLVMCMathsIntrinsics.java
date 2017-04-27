@@ -42,6 +42,18 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMCMathsIntrinsics {
 
     @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMLog2 extends LLVMIntrinsic {
+
+        private static final double LOG_2 = Math.log(2);
+
+        @Specialization
+        public double executeIntrinsic(double value) {
+            return Math.log(value) / LOG_2;
+        }
+
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMSqrt extends LLVMIntrinsic {
 
         @Specialization
@@ -332,18 +344,6 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         public double executeIntrinsic(double value) {
             return Math.atan(value);
-        }
-
-    }
-
-    @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMLog2 extends LLVMIntrinsic {
-
-        private static final double LOG_2 = Math.log(2);
-
-        @Specialization
-        public double executeIntrinsic(double value) {
-            return Math.log(value) / LOG_2;
         }
 
     }

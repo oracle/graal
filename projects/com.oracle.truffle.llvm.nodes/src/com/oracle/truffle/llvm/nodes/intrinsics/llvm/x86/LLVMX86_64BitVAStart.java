@@ -168,7 +168,7 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
     private static Object[] getRealArguments(VirtualFrame frame) {
         Object[] arguments = frame.getArguments();
         Object[] newArguments = new Object[arguments.length - 1];
-        System.arraycopy(arguments, LLVMCallNode.ARG_START_INDEX, newArguments, 0, newArguments.length);
+        System.arraycopy(arguments, LLVMCallNode.USER_ARGUMENT_OFFSET, newArguments, 0, newArguments.length);
         return newArguments;
     }
 

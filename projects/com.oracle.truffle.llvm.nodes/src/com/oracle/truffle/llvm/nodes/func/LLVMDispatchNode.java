@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.nodes.func;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
@@ -66,7 +67,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     private String getSignature() {
         if (signature == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.signature = LLVMContext.getNativeSignature(type, LLVMCallNode.ARG_START_INDEX);
+            this.signature = LLVMContext.getNativeSignature(type, LLVMCallNode.USER_ARGUMENT_OFFSET);
         }
         return signature;
     }
@@ -96,7 +97,8 @@ public abstract class LLVMDispatchNode extends LLVMNode {
      */
 
     protected DirectCallNode getIntrinsificationCallNode(Intrinsic intrinsic) {
-        DirectCallNode directCallNode = DirectCallNode.create(intrinsic.getCallTarget(type));
+        RootCallTarget target = intrinsic.forceSplit() ? intrinsic.generateCallTarget(type) : intrinsic.cachedCallTarget(type);
+        DirectCallNode directCallNode = DirectCallNode.create(target);
         if (intrinsic.forceInline()) {
             directCallNode.forceInlining();
         }
@@ -113,7 +115,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     @Specialization(replaces = "doDirectIntrinsic", guards = "descriptor.isNativeIntrinsicFunction()")
     protected Object doIndirectIntrinsic(LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached("create()") IndirectCallNode callNode) {
-        return callNode.call(descriptor.getNativeIntrinsic().getCallTarget(type), arguments);
+        return callNode.call(descriptor.getNativeIntrinsic().cachedCallTarget(type), arguments);
     }
 
     /*

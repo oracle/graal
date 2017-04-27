@@ -38,4 +38,6 @@ public interface NativeIntrinsicProvider {
     RootCallTarget generateIntrinsic(String name, FunctionType type);
 
     boolean forceInline(String name);
+
+    boolean forceSplit(String name);
 }

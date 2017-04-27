@@ -35,7 +35,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
@@ -72,9 +71,9 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStackFrameNuller;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -225,24 +224,13 @@ public final class LLVMParserRuntime {
         return nodeFactory.createFrameNuller(this, identifier, type, slot);
     }
 
-    boolean needsStackPointerArgument() {
-        Optional<Boolean> hasStackPointerArgument = nodeFactory.hasStackPointerArgument(this);
-        return hasStackPointerArgument.isPresent() && hasStackPointerArgument.get();
-    }
-
     List<LLVMExpressionNode> createParameters(FrameDescriptor frame, FunctionDefinition method) {
         final List<FunctionParameter> parameters = method.getParameters();
         final List<LLVMExpressionNode> formalParamInits = new ArrayList<>();
-        if (needsStackPointerArgument()) {
-            final LLVMExpressionNode stackPointerNode = nodeFactory.createFunctionArgNode(0, new PointerType(MetaType.UNKNOWN));
-            formalParamInits.add(nodeFactory.createFrameWrite(this, new PointerType(MetaType.UNKNOWN), stackPointerNode, frame.findFrameSlot(LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID)));
-        }
+        final LLVMExpressionNode stackPointerNode = nodeFactory.createFunctionArgNode(0, new PointerType(MetaType.UNKNOWN));
+        formalParamInits.add(nodeFactory.createFrameWrite(this, new PointerType(MetaType.UNKNOWN), stackPointerNode, frame.findFrameSlot(LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID)));
 
-        final Optional<Integer> argStartIndex = nodeFactory.getArgStartIndex();
-        if (!argStartIndex.isPresent()) {
-            throw new IllegalStateException("Cannot find Argument Start Index!");
-        }
-        int argIndex = argStartIndex.get();
+        int argIndex = 1;
         if (method.getType().getReturnType() instanceof StructureType) {
             final LLVMExpressionNode functionReturnParameterNode = nodeFactory.createFunctionArgNode(argIndex++, method.getType().getReturnType());
             final FrameSlot returnSlot = frame.findOrAddFrameSlot(LLVMFrameIDs.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID);

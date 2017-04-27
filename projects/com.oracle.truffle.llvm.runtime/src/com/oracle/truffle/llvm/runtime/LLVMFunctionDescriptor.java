@@ -58,18 +58,30 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
         private final String name;
         private final Map<FunctionType, RootCallTarget> overloadingMap;
         private final NativeIntrinsicProvider provider;
+        private final boolean forceInline;
+        private final boolean forceSplit;
 
         public Intrinsic(NativeIntrinsicProvider provider, String name) {
             this.name = name;
             this.overloadingMap = new HashMap<>();
             this.provider = provider;
+            this.forceInline = provider.forceInline(name);
+            this.forceSplit = provider.forceSplit(name);
         }
 
         public boolean forceInline() {
-            return provider.forceInline(name);
+            return forceInline;
         }
 
-        public RootCallTarget getCallTarget(FunctionType type) {
+        public boolean forceSplit() {
+            return forceSplit;
+        }
+
+        public RootCallTarget generateCallTarget(FunctionType type) {
+            return generate(type);
+        }
+
+        public RootCallTarget cachedCallTarget(FunctionType type) {
             if (exists(type)) {
                 return get(type);
             } else {

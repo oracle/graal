@@ -67,7 +67,6 @@ import com.oracle.truffle.llvm.nodes.func.LLVMInvokeNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMLandingpadNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicExpressionNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
-import com.oracle.truffle.llvm.parser.SulongNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -223,9 +222,8 @@ final class LLVMFunctionFactory {
         throw new AssertionError(returnType);
     }
 
-    static LLVMExpressionNode createFunctionArgNode(SulongNodeFactory nodeFactory, int i) {
-        int realIndex = nodeFactory.getArgStartIndex().get() + i;
-        return LLVMArgNodeGen.create(realIndex);
+    static LLVMExpressionNode createFunctionArgNode(int i) {
+        return LLVMArgNodeGen.create(i);
     }
 
     static RootNode createFunctionSubstitutionRootNode(LLVMLanguage language, LLVMExpressionNode intrinsicNode) {
