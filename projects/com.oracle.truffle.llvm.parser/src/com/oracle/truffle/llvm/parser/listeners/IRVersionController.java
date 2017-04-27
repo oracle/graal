@@ -54,7 +54,7 @@ public final class IRVersionController {
     @FunctionalInterface
     private interface FunctionParser {
 
-        Function instantiate(IRVersionController version, Types types, List<Type> symbols, FunctionGenerator generator, int mode);
+        Function instantiate(Types types, List<Type> symbols, FunctionGenerator generator, int mode);
     }
 
     private enum IRVersion {
@@ -108,7 +108,7 @@ public final class IRVersionController {
     }
 
     public Function createFunction(Types types, List<Type> symbols, FunctionGenerator generator, int mode) {
-        return version.function.instantiate(this, types, symbols, generator, mode);
+        return version.function.instantiate(types, symbols, generator, mode);
     }
 
     public ModuleVersionHelper createModuleVersionHelper() {

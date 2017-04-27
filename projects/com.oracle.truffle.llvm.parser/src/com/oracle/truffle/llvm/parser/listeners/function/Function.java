@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.parser.listeners.function;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.llvm.parser.listeners.IRVersionController;
 import com.oracle.truffle.llvm.parser.listeners.ParserListener;
 import com.oracle.truffle.llvm.parser.listeners.Types;
 import com.oracle.truffle.llvm.parser.listeners.ValueSymbolTable;
@@ -59,8 +58,6 @@ public abstract class Function implements ParserListener {
 
     private static final int INSERT_VALUE_MAX_ARGS = 3;
 
-    private final IRVersionController version;
-
     private final FunctionGenerator generator;
 
     protected final Types types;
@@ -77,8 +74,7 @@ public abstract class Function implements ParserListener {
 
     private final List<Integer> implicitIndices = new ArrayList<>();
 
-    Function(IRVersionController version, Types types, List<Type> symbols, FunctionGenerator generator, int mode) {
-        this.version = version;
+    Function(Types types, List<Type> symbols, FunctionGenerator generator, int mode) {
         this.types = types;
         this.symbols = symbols;
         this.generator = generator;

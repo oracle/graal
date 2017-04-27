@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.parser.listeners.function;
 
 import java.util.List;
 
-import com.oracle.truffle.llvm.parser.listeners.IRVersionController;
 import com.oracle.truffle.llvm.parser.listeners.Types;
 import com.oracle.truffle.llvm.parser.model.generators.FunctionGenerator;
 import com.oracle.truffle.llvm.parser.records.Records;
@@ -43,8 +42,8 @@ import com.oracle.truffle.llvm.runtime.types.VoidType;
 public final class FunctionVersion {
 
     public static class FunctionV38 extends Function {
-        public FunctionV38(IRVersionController version, Types types, List<Type> symbols, FunctionGenerator generator, int mode) {
-            super(version, types, symbols, generator, mode);
+        public FunctionV38(Types types, List<Type> symbols, FunctionGenerator generator, int mode) {
+            super(types, symbols, generator, mode);
         }
 
         @Override
@@ -177,8 +176,8 @@ public final class FunctionVersion {
 
     public static class FunctionV32 extends Function {
 
-        public FunctionV32(IRVersionController version, Types types, List<Type> symbols, FunctionGenerator generator, int mode) {
-            super(version, types, symbols, generator, mode);
+        public FunctionV32(Types types, List<Type> symbols, FunctionGenerator generator, int mode) {
+            super(types, symbols, generator, mode);
         }
 
         @Override
