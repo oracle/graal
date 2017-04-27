@@ -407,7 +407,7 @@ public final class SourceSectionFilter {
         }
 
         private void verifyNotNull(Object[] values) {
-            if (values == null) {
+            if (values == null || values.length == 0) {
                 throw new IllegalArgumentException("Given arguments must not be null.");
             }
             for (int i = 0; i < values.length; i++) {
