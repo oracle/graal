@@ -22,8 +22,6 @@
  */
 package org.graalvm.compiler.truffle;
 
-import java.util.Map;
-
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.nodes.StructuredGraph;
 
