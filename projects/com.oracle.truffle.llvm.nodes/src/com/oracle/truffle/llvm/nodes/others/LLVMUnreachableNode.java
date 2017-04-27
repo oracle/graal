@@ -29,25 +29,24 @@
  */
 package com.oracle.truffle.llvm.nodes.others;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 
 public class LLVMUnreachableNode extends LLVMControlFlowNode {
 
     public static class LLVMUnreachableException extends ControlFlowException {
-
         private static final long serialVersionUID = 1L;
-
     }
 
     public LLVMUnreachableNode() {
-        super(new int[0]);
     }
 
     @Override
-    public int executeGetSuccessorIndex(VirtualFrame frame) {
-        throw new LLVMUnreachableException();
+    public int getSuccessorCount() {
+        return 0;
     }
 
+    public void execute() {
+        throw new LLVMUnreachableException();
+    }
 }

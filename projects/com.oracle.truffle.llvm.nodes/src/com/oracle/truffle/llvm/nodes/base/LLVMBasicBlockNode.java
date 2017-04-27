@@ -29,8 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.base;
 
-import java.util.Arrays;
-
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -55,13 +54,11 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
  */
 public class LLVMBasicBlockNode extends LLVMExpressionNode {
 
-    private static final String FORMAT_STRING = "basic block %s (#statements: %s, successors: %s)";
-    public static final int DEFAULT_SUCCESSOR = 0;
-
+    public static final int RETURN_FROM_FUNCTION = -1;
     private static final boolean TRACE = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.traceExecution());
 
     @Children private final LLVMExpressionNode[] statements;
-    @Child private LLVMControlFlowNode termInstruction;
+    @Child public LLVMControlFlowNode termInstruction;
 
     private final int blockId;
     private final String blockName;
@@ -70,13 +67,13 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
 
     @CompilationFinal private SourceSection sourceSection;
 
-    @CompilationFinal(dimensions = 1) private final long[] successorCount;
+    @CompilationFinal(dimensions = 1) private final long[] successorExecutionCount;
     @CompilationFinal private long totalExecutionCount = 0;
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
-        executeGetSuccessorIndex(frame);
-        return null;
+        CompilerAsserts.neverPartOfCompilation();
+        throw new UnsupportedOperationException("Must not be called.");
     }
 
     public LLVMBasicBlockNode(LLVMExpressionNode[] statements, LLVMControlFlowNode termInstruction, int blockId, String blockName) {
@@ -84,11 +81,11 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
         this.termInstruction = termInstruction;
         this.blockId = blockId;
         this.blockName = blockName;
-        successorCount = new long[termInstruction.getSuccessors().length];
+        successorExecutionCount = termInstruction.needsBranchProfiling() ? new long[termInstruction.getSuccessorCount()] : null;
     }
 
     @ExplodeLoop
-    public int executeGetSuccessorIndex(VirtualFrame frame) {
+    public void executeStatements(VirtualFrame frame) {
         for (LLVMExpressionNode statement : statements) {
             try {
                 if (TRACE) {
@@ -110,7 +107,6 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
                 }
             }
         }
-        return termInstruction.executeGetSuccessorIndex(frame);
     }
 
     @TruffleBoundary
@@ -119,16 +115,6 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
         String name = section == null ? "null" : section.getSource().getName();
         LLVMLogger.print(LLVMOptions.DEBUG.traceExecution()).accept(
                         String.format("[sulong] %s in %s", statement.getSourceDescription(), name));
-    }
-
-    /**
-     * Gets an array containing the potential successor basic blocks. During execution,
-     * {@link #executeGetSuccessorIndex(VirtualFrame)} method returns an index into this array.
-     *
-     * @return the successors
-     */
-    public int[] getSuccessors() {
-        return termInstruction.getSuccessors();
     }
 
     @Override
@@ -144,7 +130,8 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
 
     @Override
     public String toString() {
-        return String.format(FORMAT_STRING, blockId, statements.length, Arrays.toString(termInstruction.getSuccessors()));
+        CompilerAsserts.neverPartOfCompilation();
+        return String.format("basic block %s (#statements: %s, terminating instruction: %s)", blockId, statements.length, termInstruction);
     }
 
     public int getBlockId() {
@@ -162,8 +149,9 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
      * @return the probability between 0 and 1
      */
     public double getBranchProbability(int successorIndex) {
+        assert termInstruction.needsBranchProfiling();
         double successorBranchProbability;
-        long succCount = successorCount[successorIndex];
+        long succCount = successorExecutionCount[successorIndex];
         if (succCount == 0) {
             successorBranchProbability = 0;
         } else {
@@ -173,15 +161,17 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
     }
 
     public void increaseBranchProbability(int successorIndex) {
-        if (CompilerDirectives.inInterpreter()) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (termInstruction.needsBranchProfiling()) {
             incrementCountAtIndex(successorIndex);
         }
     }
 
     private void incrementCountAtIndex(int successorIndex) {
+        assert termInstruction.needsBranchProfiling();
         if (totalExecutionCount != Long.MAX_VALUE) {
             totalExecutionCount++;
-            successorCount[successorIndex]++;
+            successorExecutionCount[successorIndex]++;
         }
     }
 }
