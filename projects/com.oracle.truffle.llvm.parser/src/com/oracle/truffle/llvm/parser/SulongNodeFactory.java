@@ -144,10 +144,10 @@ public interface SulongNodeFactory {
      */
     LLVMControlFlowNode createUnreachableNode(LLVMParserRuntime runtime);
 
-    LLVMControlFlowNode createIndirectBranch(LLVMParserRuntime runtime, LLVMExpressionNode value, int[] labelTargets, LLVMExpressionNode[] phiWrites);
+    LLVMControlFlowNode createIndirectBranch(LLVMParserRuntime runtime, LLVMExpressionNode value, int[] labelTargets, LLVMExpressionNode[][] phiWrites);
 
-    LLVMControlFlowNode createSwitch(LLVMParserRuntime runtime, LLVMExpressionNode cond, int defaultLabel, int[] otherLabels, LLVMExpressionNode[] cases,
-                    PrimitiveType llvmType, LLVMExpressionNode[] phiWriteNodes);
+    LLVMControlFlowNode createSwitch(LLVMParserRuntime runtime, LLVMExpressionNode cond, int[] labels, LLVMExpressionNode[] cases,
+                    PrimitiveType llvmType, LLVMExpressionNode[][] phiWriteNodes);
 
     LLVMControlFlowNode createConditionalBranch(LLVMParserRuntime runtime, int trueIndex, int falseIndex, LLVMExpressionNode conditionNode, LLVMExpressionNode[] truePhiWriteNodes,
                     LLVMExpressionNode[] falsePhiWriteNodes);

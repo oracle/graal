@@ -117,7 +117,7 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                                 backEdgeCounter++;
                             }
                         }
-                        switchNode.writePhis(frame);
+                        switchNode.writePhis(frame, i);
                         nullDeadSlots(frame, basicBlockIndex, afterSlotNullerNodes);
                         basicBlockIndex = successors[i];
                         continue outer;
@@ -131,7 +131,7 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                         backEdgeCounter++;
                     }
                 }
-                switchNode.writePhis(frame);
+                switchNode.writePhis(frame, i);
                 nullDeadSlots(frame, basicBlockIndex, afterSlotNullerNodes);
                 basicBlockIndex = successors[i];
                 continue outer;
@@ -149,7 +149,7 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                                 backEdgeCounter++;
                             }
                         }
-                        indirectBranchNode.writePhis(frame);
+                        indirectBranchNode.writePhis(frame, i);
                         nullDeadSlots(frame, basicBlockIndex, afterSlotNullerNodes);
                         basicBlockIndex = successors[i];
                         continue outer;
@@ -164,7 +164,7 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                         backEdgeCounter++;
                     }
                 }
-                indirectBranchNode.writePhis(frame);
+                indirectBranchNode.writePhis(frame, i);
                 nullDeadSlots(frame, basicBlockIndex, afterSlotNullerNodes);
                 basicBlockIndex = successors[i];
                 continue outer;

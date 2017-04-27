@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.control;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -38,24 +37,17 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
 
-    @Children final LLVMExpressionNode[] phiWriteNodes;
+    @CompilationFinal(dimensions = 2) final LLVMExpressionNode[][] phiWriteNodes;
     @Child protected LLVMExpressionNode cond;
     @Children public final LLVMExpressionNode[] cases;
     @CompilationFinal(dimensions = 1) private final int[] successors;
 
-    public LLVMSwitchNode(int defaultLabel, int[] successors, LLVMExpressionNode[] phiWriteNodes, LLVMExpressionNode cond, LLVMExpressionNode[] cases) {
-        this.successors = computeSuccessors(successors, defaultLabel);
+    public LLVMSwitchNode(int[] successors, LLVMExpressionNode[][] phiWriteNodes, LLVMExpressionNode cond, LLVMExpressionNode[] cases) {
+        assert successors.length == cases.length + 1 : "the last entry of the successors array must be the default case";
+        this.successors = successors;
         this.phiWriteNodes = phiWriteNodes;
         this.cond = cond;
         this.cases = cases;
-    }
-
-    protected static int[] computeSuccessors(int[] successors, int defaultLabel) {
-        CompilerAsserts.neverPartOfCompilation();
-        int[] labels = new int[successors.length + 1];
-        System.arraycopy(successors, 0, labels, 0, successors.length);
-        labels[successors.length] = defaultLabel;
-        return labels;
     }
 
     @Override
@@ -66,9 +58,10 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
     public abstract Object executeCondition(VirtualFrame frame);
 
     @ExplodeLoop
-    public void writePhis(VirtualFrame frame) {
-        for (int i = 0; i < phiWriteNodes.length; i++) {
-            phiWriteNodes[i].executeGeneric(frame);
+    public void writePhis(VirtualFrame frame, int successorIndex) {
+        LLVMExpressionNode[] phis = phiWriteNodes[successorIndex];
+        for (int i = 0; i < phis.length; i++) {
+            phis[i].executeGeneric(frame);
         }
     }
 
@@ -77,8 +70,8 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
     }
 
     public static final class LLVMI8SwitchNode extends LLVMSwitchNode {
-        public LLVMI8SwitchNode(LLVMExpressionNode cond, LLVMExpressionNode[] cases, int[] successors, int defaultLabel, LLVMExpressionNode[] phiWriteNodes) {
-            super(defaultLabel, successors, phiWriteNodes, cond, cases);
+        public LLVMI8SwitchNode(LLVMExpressionNode cond, LLVMExpressionNode[] cases, int[] successors, LLVMExpressionNode[][] phiWriteNodes) {
+            super(successors, phiWriteNodes, cond, cases);
         }
 
         @Override
@@ -89,8 +82,8 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
     }
 
     public static final class LLVMI16SwitchNode extends LLVMSwitchNode {
-        public LLVMI16SwitchNode(LLVMExpressionNode cond, LLVMExpressionNode[] cases, int[] successors, int defaultLabel, LLVMExpressionNode[] phiWriteNodes) {
-            super(defaultLabel, successors, phiWriteNodes, cond, cases);
+        public LLVMI16SwitchNode(LLVMExpressionNode cond, LLVMExpressionNode[] cases, int[] successors, LLVMExpressionNode[][] phiWriteNodes) {
+            super(successors, phiWriteNodes, cond, cases);
         }
 
         @Override
@@ -101,8 +94,8 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
     }
 
     public static final class LLVMI32SwitchNode extends LLVMSwitchNode {
-        public LLVMI32SwitchNode(LLVMExpressionNode cond, LLVMExpressionNode[] cases, int[] successors, int defaultLabel, LLVMExpressionNode[] phiWriteNodes) {
-            super(defaultLabel, successors, phiWriteNodes, cond, cases);
+        public LLVMI32SwitchNode(LLVMExpressionNode cond, LLVMExpressionNode[] cases, int[] successors, LLVMExpressionNode[][] phiWriteNodes) {
+            super(successors, phiWriteNodes, cond, cases);
         }
 
         @Override
@@ -113,8 +106,8 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
     }
 
     public static final class LLVMI64SwitchNode extends LLVMSwitchNode {
-        public LLVMI64SwitchNode(LLVMExpressionNode cond, LLVMExpressionNode[] cases, int[] successors, int defaultLabel, LLVMExpressionNode[] phiWriteNodes) {
-            super(defaultLabel, successors, phiWriteNodes, cond, cases);
+        public LLVMI64SwitchNode(LLVMExpressionNode cond, LLVMExpressionNode[] cases, int[] successors, LLVMExpressionNode[][] phiWriteNodes) {
+            super(successors, phiWriteNodes, cond, cases);
         }
 
         @Override

@@ -275,14 +275,14 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
     }
 
     @Override
-    public LLVMControlFlowNode createIndirectBranch(LLVMParserRuntime runtime, LLVMExpressionNode value, int[] labelTargets, LLVMExpressionNode[] phiWrites) {
+    public LLVMControlFlowNode createIndirectBranch(LLVMParserRuntime runtime, LLVMExpressionNode value, int[] labelTargets, LLVMExpressionNode[][] phiWrites) {
         return LLVMBranchFactory.createIndirectBranch(value, labelTargets, phiWrites);
     }
 
     @Override
-    public LLVMControlFlowNode createSwitch(LLVMParserRuntime runtime, LLVMExpressionNode cond, int defaultLabel, int[] otherLabels, LLVMExpressionNode[] cases,
-                    PrimitiveType llvmType, LLVMExpressionNode[] phiWriteNodes) {
-        return LLVMSwitchFactory.createSwitch(cond, defaultLabel, otherLabels, cases, llvmType, phiWriteNodes);
+    public LLVMControlFlowNode createSwitch(LLVMParserRuntime runtime, LLVMExpressionNode cond, int[] successors, LLVMExpressionNode[] cases,
+                    PrimitiveType llvmType, LLVMExpressionNode[][] phiWriteNodes) {
+        return LLVMSwitchFactory.createSwitch(cond, successors, cases, llvmType, phiWriteNodes);
     }
 
     @Override
