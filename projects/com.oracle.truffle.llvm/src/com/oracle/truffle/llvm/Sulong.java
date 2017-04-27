@@ -40,7 +40,7 @@ import java.util.function.Consumer;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
@@ -49,17 +49,80 @@ import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.SulongNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
-/**
- * This is the main LLVM execution class.
- */
-public class LLVM {
+@TruffleLanguage.Registration(name = "Sulong", version = "0.01", mimeType = {Sulong.LLVM_BITCODE_MIME_TYPE, Sulong.LLVM_BITCODE_BASE64_MIME_TYPE,
+                Sulong.SULONG_LIBRARY_MIME_TYPE})
+public final class Sulong extends LLVMLanguage {
 
-    static {
-        LLVMLanguage.provider = getProvider();
+    public interface LLVMLanguageProvider {
+        LLVMContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env);
+
+        CallTarget parse(LLVMLanguage language, LLVMContext context, Source code, String... argumentNames) throws IOException;
+
+        void disposeContext(LLVMContext context);
+    }
+
+    public static final LLVMLanguageProvider provider = getProvider();
+
+    public static final String MAIN_ARGS_KEY = "Sulong Main Args";
+    public static final String LLVM_SOURCE_FILE_KEY = "Sulong Source File";
+    public static final String PARSE_ONLY_KEY = "Parse only";
+
+    private com.oracle.truffle.api.TruffleLanguage.Env environment;
+
+    @Override
+    protected LLVMContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
+        this.environment = env;
+        return provider.createContext(env);
+    }
+
+    @Override
+    public com.oracle.truffle.api.TruffleLanguage.Env getEnvironment() {
+        return environment;
+    }
+
+    @Override
+    protected void disposeContext(LLVMContext context) {
+        context.printNativeCallStatistic();
+        provider.disposeContext(context);
+    }
+
+    @Override
+    protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
+        Source source = request.getSource();
+        return provider.parse(this, findLLVMContext(), source, request.getArgumentNames().toArray(new String[request.getArgumentNames().size()]));
+    }
+
+    @Override
+    protected Object findExportedSymbol(LLVMContext context, String globalName, boolean onlyExplicit) {
+        String atname = "@" + globalName; // for interop
+        for (LLVMFunctionDescriptor descr : context.getFunctionDescriptors()) {
+            if (descr != null && descr.getName().equals(globalName)) {
+                return descr;
+            } else if (descr != null && descr.getName().equals(atname)) {
+                return descr;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    protected Object getLanguageGlobal(LLVMContext context) {
+        return context;
+    }
+
+    @Override
+    protected boolean isObjectOfLanguage(Object object) {
+        throw new AssertionError();
+    }
+
+    @Override
+    public LLVMContext findLLVMContext() {
+        return getContextReference().get();
     }
 
     private static SulongNodeFactory getNodeFactory() {
@@ -81,8 +144,8 @@ public class LLVM {
         return factory;
     }
 
-    private static LLVMLanguage.LLVMLanguageProvider getProvider() {
-        return new LLVMLanguage.LLVMLanguageProvider() {
+    private static Sulong.LLVMLanguageProvider getProvider() {
+        return new Sulong.LLVMLanguageProvider() {
 
             @Override
             public CallTarget parse(LLVMLanguage language, LLVMContext context, Source code, String... argumentNames) throws IOException {
@@ -95,11 +158,11 @@ public class LLVM {
 
             private CallTarget parse(LLVMLanguage language, LLVMContext context, Source code) throws IOException {
                 CallTarget mainFunction = null;
-                if (code.getMimeType().equals(LLVMLanguage.LLVM_BITCODE_MIME_TYPE) || code.getMimeType().equals(LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE)) {
+                if (code.getMimeType().equals(Sulong.LLVM_BITCODE_MIME_TYPE) || code.getMimeType().equals(Sulong.LLVM_BITCODE_BASE64_MIME_TYPE)) {
                     LLVMParserResult parserResult = parseBitcodeFile(code, language, context);
                     mainFunction = parserResult.getMainFunction();
                     handleParserResult(context, parserResult);
-                } else if (code.getMimeType().equals(LLVMLanguage.SULONG_LIBRARY_MIME_TYPE)) {
+                } else if (code.getMimeType().equals(Sulong.SULONG_LIBRARY_MIME_TYPE)) {
                     final SulongLibrary library = new SulongLibrary(new File(code.getPath()));
                     List<Source> sourceFiles = new ArrayList<>();
                     library.readContents(dependentLibrary -> {
@@ -111,7 +174,7 @@ public class LLVM {
                         String mimeType = source.getMimeType();
                         try {
                             LLVMParserResult parserResult;
-                            if (mimeType.equals(LLVMLanguage.LLVM_BITCODE_MIME_TYPE) || mimeType.equals(LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE)) {
+                            if (mimeType.equals(Sulong.LLVM_BITCODE_MIME_TYPE) || mimeType.equals(Sulong.LLVM_BITCODE_BASE64_MIME_TYPE)) {
                                 parserResult = parseBitcodeFile(source, language, context);
                             } else {
                                 throw new UnsupportedOperationException(mimeType);
@@ -191,15 +254,15 @@ public class LLVM {
             public LLVMContext createContext(Env env) {
                 LLVMContext context = new LLVMContext(env);
                 if (env != null) {
-                    Object mainArgs = env.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY);
+                    Object mainArgs = env.getConfig().get(Sulong.MAIN_ARGS_KEY);
                     if (mainArgs != null) {
                         context.setMainArguments((Object[]) mainArgs);
                     }
-                    Object sourceFile = env.getConfig().get(LLVMLanguage.LLVM_SOURCE_FILE_KEY);
+                    Object sourceFile = env.getConfig().get(Sulong.LLVM_SOURCE_FILE_KEY);
                     if (sourceFile != null) {
                         context.setMainSourceFile((Source) sourceFile);
                     }
-                    Object parseOnly = env.getConfig().get(LLVMLanguage.PARSE_ONLY_KEY);
+                    Object parseOnly = env.getConfig().get(Sulong.PARSE_ONLY_KEY);
                     if (parseOnly != null) {
                         context.setParseOnly((boolean) parseOnly);
                     }
@@ -251,8 +314,8 @@ public class LLVM {
 
     private static int evaluateFromSource(Source fileSource, Object... args) {
         Builder engineBuilder = PolyglotEngine.newBuilder();
-        engineBuilder.config(LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.MAIN_ARGS_KEY, args);
-        engineBuilder.config(LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_SOURCE_FILE_KEY, fileSource);
+        engineBuilder.config(Sulong.LLVM_BITCODE_MIME_TYPE, Sulong.MAIN_ARGS_KEY, args);
+        engineBuilder.config(Sulong.LLVM_BITCODE_MIME_TYPE, Sulong.LLVM_SOURCE_FILE_KEY, fileSource);
         PolyglotEngine vm = engineBuilder.build();
         try {
             Integer result = vm.eval(fileSource).as(Integer.class);

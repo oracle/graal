@@ -927,6 +927,12 @@ public final class LLVMInteropTest {
     }
 
     @Test
+    public void test073() {
+        Runner runner = new Runner("interop073");
+        Assert.assertEquals(42, runner.run());
+    }
+
+    @Test
     public void testStrlen() throws Exception {
         Runner runner = new Runner("strlen");
         try {

@@ -45,7 +45,7 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.Sulong;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 @RunWith(Parameterized.class)
@@ -73,7 +73,7 @@ public final class ParserTortureSuite {
 
             try {
                 Builder engineBuilder = PolyglotEngine.newBuilder();
-                engineBuilder.config(LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.PARSE_ONLY_KEY, true);
+                engineBuilder.config(Sulong.LLVM_BITCODE_MIME_TYPE, Sulong.PARSE_ONLY_KEY, true);
                 PolyglotEngine build = engineBuilder.build();
                 build.eval(Source.newBuilder(candidate.toFile()).build());
             } catch (Throwable e) {

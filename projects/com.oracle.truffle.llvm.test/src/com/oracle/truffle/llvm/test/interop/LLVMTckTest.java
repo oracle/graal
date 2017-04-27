@@ -40,7 +40,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.Sulong;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.tck.TruffleTCK;
 
@@ -52,7 +52,7 @@ public class LLVMTckTest extends TruffleTCK {
     @Test
     public void testVerifyPresence() {
         PolyglotEngine vm = PolyglotEngine.newBuilder().build();
-        assertTrue("Our language is present", vm.getLanguages().containsKey(LLVMLanguage.LLVM_BITCODE_MIME_TYPE));
+        assertTrue("Our language is present", vm.getLanguages().containsKey(Sulong.LLVM_BITCODE_MIME_TYPE));
         vm.dispose();
     }
 
@@ -70,7 +70,7 @@ public class LLVMTckTest extends TruffleTCK {
 
     @Override
     protected String mimeType() {
-        return LLVMLanguage.LLVM_BITCODE_MIME_TYPE;
+        return Sulong.LLVM_BITCODE_MIME_TYPE;
     }
 
     @Override

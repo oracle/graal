@@ -41,13 +41,13 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.oracle.truffle.llvm.LLVM;
+import com.oracle.truffle.llvm.Sulong;
 import com.oracle.truffle.llvm.pipe.CaptureOutput;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.test.options.SulongTestOptions;
 import com.oracle.truffle.llvm.test.util.ProcessUtil;
 import com.oracle.truffle.llvm.test.util.ProcessUtil.ProcessResult;
@@ -77,7 +77,7 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
             int sulongResult = -1;
             String sulongStdOut;
             try (CaptureOutput out = new CaptureOutput()) {
-                sulongResult = LLVM.executeMain(candidate.toAbsolutePath().toFile());
+                sulongResult = Sulong.executeMain(candidate.toAbsolutePath().toFile());
                 System.out.flush();
                 sulongStdOut = out.getResult();
             }

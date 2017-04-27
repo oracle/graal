@@ -41,7 +41,6 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 
 class SulongLibrary {
 
@@ -84,9 +83,9 @@ class SulongLibrary {
                             handleLibrary.accept(scanner.nextLine());
                         }
                     }
-                } else if (zipEntry.getName().endsWith("." + LLVMLanguage.LLVM_BITCODE_EXTENSION)) {
+                } else if (zipEntry.getName().endsWith("." + Sulong.LLVM_BITCODE_EXTENSION)) {
                     final String sourceCode = Base64.getEncoder().encodeToString(bytes);
-                    handleSource.accept(Source.newBuilder(sourceCode).name(file.getPath() + "@" + zipEntry.getName()).mimeType(LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE).build());
+                    handleSource.accept(Source.newBuilder(sourceCode).name(file.getPath() + "@" + zipEntry.getName()).mimeType(Sulong.LLVM_BITCODE_BASE64_MIME_TYPE).build());
                 }
 
                 zipEntry = zipStream.getNextEntry();

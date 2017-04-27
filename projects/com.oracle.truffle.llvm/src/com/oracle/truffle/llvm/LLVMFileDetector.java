@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -37,11 +37,11 @@ public class LLVMFileDetector extends FileTypeDetector {
 
     @Override
     public String probeContentType(Path path) throws IOException {
-        if (path.getFileName().toString().endsWith("." + LLVMLanguage.LLVM_BITCODE_EXTENSION)) {
-            return LLVMLanguage.LLVM_BITCODE_MIME_TYPE;
+        if (path.getFileName().toString().endsWith("." + Sulong.LLVM_BITCODE_EXTENSION)) {
+            return Sulong.LLVM_BITCODE_MIME_TYPE;
         }
-        if (path.getFileName().toString().endsWith("." + LLVMLanguage.SULONG_LIBRARY_EXTENSION)) {
-            return LLVMLanguage.SULONG_LIBRARY_MIME_TYPE;
+        if (path.getFileName().toString().endsWith("." + Sulong.SULONG_LIBRARY_EXTENSION)) {
+            return Sulong.SULONG_LIBRARY_MIME_TYPE;
         }
         return null;
     }

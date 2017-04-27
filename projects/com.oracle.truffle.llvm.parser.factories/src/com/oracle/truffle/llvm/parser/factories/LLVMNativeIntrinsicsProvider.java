@@ -81,7 +81,6 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleBinaryFactory
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleBinaryFactory.LLVMTruffleIsExecutableNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleBinaryFactory.LLVMTruffleIsNullNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleExecuteNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleGetArgNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleGetSizeNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleHandleToManagedNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleImportCachedNodeGen;
@@ -509,16 +508,6 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
                 return wrap(LLVMTruffleExecuteNodeGen.create(ToLLVMNode.createNode(boolean.class), argumentsArray(2, type.getArgumentTypes().length - 2),
                                 argumentsTypes(2, type.getArgumentTypes()),
                                 LLVMArgNodeGen.create(1)));
-            }
-        });
-
-        //
-
-        factories.put("@truffle_get_arg", new LLVMNativeIntrinsicFactory(true, true) {
-
-            @Override
-            protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleGetArgNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
