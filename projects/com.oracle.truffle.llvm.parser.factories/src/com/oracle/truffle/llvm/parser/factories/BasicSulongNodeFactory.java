@@ -55,6 +55,7 @@ import com.oracle.truffle.llvm.nodes.func.LLVMResumeNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMTypeIdForExceptionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFAbsNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMPowNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleGetArgNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI16NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI32NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI64NodeGen;
@@ -603,6 +604,10 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
             FunctionDeclaration declaration = (FunctionDeclaration) target;
             if (declaration.getName().startsWith("@llvm.")) {
                 return getLLVMBuiltin(declaration.getName(), args, stack, callerArgumentCount);
+            } else if (declaration.getName().equals("@truffle_get_arg")) {
+                // this function accesses the frame directly
+                // it must therefore not be hidden behind a call target
+                return LLVMTruffleGetArgNodeGen.create(args[1]);
             }
         }
         return null;
