@@ -20,18 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package org.graalvm.compiler.core.test;
 
-import static com.oracle.graal.graph.test.matchers.NodeIterableIsEmpty.isEmpty;
+import static org.graalvm.compiler.graph.test.matchers.NodeIterableIsEmpty.isEmpty;
 import static org.junit.Assert.assertThat;
 
+import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.java.NewArrayNode;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.junit.Test;
-
-import com.oracle.graal.graph.iterators.NodeIterable;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.java.NewArrayNode;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.tiers.PhaseContext;
 
 public class UnusedArray extends GraalCompilerTest {
     @SuppressWarnings("unused")
