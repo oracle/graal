@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.llvm.LLVM;
+import com.oracle.truffle.llvm.Sulong;
 import com.oracle.truffle.llvm.pipe.CaptureOutput;
 import com.oracle.truffle.llvm.test.util.ProcessUtil;
 import com.oracle.truffle.llvm.test.util.ProcessUtil.ProcessResult;
@@ -69,7 +69,7 @@ public abstract class BaseSingleTestHarness extends BaseTestHarness {
             int sulongResult = -1;
             String sulongStdOut;
             try (CaptureOutput out = new CaptureOutput()) {
-                sulongResult = LLVM.executeMain(candidate.toAbsolutePath().toFile(), getArguments(candidate.getParent()));
+                sulongResult = Sulong.executeMain(candidate.toAbsolutePath().toFile(), getArguments(candidate.getParent()));
                 System.out.flush();
                 sulongStdOut = out.getResult();
             }

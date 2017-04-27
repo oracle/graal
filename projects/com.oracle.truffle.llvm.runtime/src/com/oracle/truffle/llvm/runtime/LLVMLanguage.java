@@ -29,28 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.io.IOException;
-
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.source.Source;
 
-@TruffleLanguage.Registration(name = "Sulong", version = "0.01", mimeType = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE,
-                LLVMLanguage.SULONG_LIBRARY_MIME_TYPE})
-public final class LLVMLanguage extends TruffleLanguage<LLVMContext> {
-
-    /*
-     * The LLVM class has static initializers with side effects that we rely on, but we have no
-     * dependency on it here, and no way to statically reference it even.
-     */
-
-    static {
-        try {
-            Class.forName("com.oracle.truffle.llvm.LLVM", true, ClassLoader.getSystemClassLoader());
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
-        }
-    }
+public abstract class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public static final String LLVM_BITCODE_MIME_TYPE = "application/x-llvm-ir-bitcode";
     public static final String LLVM_BITCODE_EXTENSION = "bc";
@@ -65,73 +46,7 @@ public final class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     public static final String SULONG_LIBRARY_MIME_TYPE = "application/x-sulong-library";
     public static final String SULONG_LIBRARY_EXTENSION = "su";
 
-    public LLVMLanguage() {
+    public abstract LLVMContext findLLVMContext();
 
-    }
-
-    public interface LLVMLanguageProvider {
-        LLVMContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env);
-
-        CallTarget parse(LLVMLanguage language, LLVMContext context, Source code, String... argumentNames) throws IOException;
-
-        void disposeContext(LLVMContext context);
-    }
-
-    public static LLVMLanguageProvider provider;
-
-    public static final String MAIN_ARGS_KEY = "Sulong Main Args";
-    public static final String LLVM_SOURCE_FILE_KEY = "Sulong Source File";
-    public static final String PARSE_ONLY_KEY = "Parse only";
-
-    private com.oracle.truffle.api.TruffleLanguage.Env environment;
-
-    @Override
-    protected LLVMContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
-        this.environment = env;
-        return provider.createContext(env);
-    }
-
-    public com.oracle.truffle.api.TruffleLanguage.Env getEnvironment() {
-        return environment;
-    }
-
-    @Override
-    protected void disposeContext(LLVMContext context) {
-        context.printNativeCallStatistic();
-        provider.disposeContext(context);
-    }
-
-    @Override
-    protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
-        Source source = request.getSource();
-        return provider.parse(this, findLLVMContext(), source, request.getArgumentNames().toArray(new String[request.getArgumentNames().size()]));
-    }
-
-    @Override
-    protected Object findExportedSymbol(LLVMContext context, String globalName, boolean onlyExplicit) {
-        String atname = "@" + globalName; // for interop
-        for (LLVMFunctionDescriptor descr : context.getFunctionDescriptors()) {
-            if (descr != null && descr.getName().equals(globalName)) {
-                return descr;
-            } else if (descr != null && descr.getName().equals(atname)) {
-                return descr;
-            }
-        }
-        return null;
-    }
-
-    @Override
-    protected Object getLanguageGlobal(LLVMContext context) {
-        return context;
-    }
-
-    @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        throw new AssertionError();
-    }
-
-    public LLVMContext findLLVMContext() {
-        return getContextReference().get();
-    }
-
+    public abstract TruffleLanguage.Env getEnvironment();
 }

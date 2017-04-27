@@ -34,7 +34,7 @@ import java.nio.file.Path;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.llvm.LLVM;
+import com.oracle.truffle.llvm.Sulong;
 import com.oracle.truffle.llvm.pipe.CaptureOutput;
 
 public abstract class BaseSulongOnlyHarness {
@@ -44,7 +44,7 @@ public abstract class BaseSulongOnlyHarness {
         int sulongResult = -1;
         String sulongStdOut;
         try (CaptureOutput out = new CaptureOutput()) {
-            sulongResult = LLVM.executeMain(getPath().toAbsolutePath().toFile(), getConfiguration().args);
+            sulongResult = Sulong.executeMain(getPath().toAbsolutePath().toFile(), getConfiguration().args);
             System.out.flush();
             sulongStdOut = out.getResult();
         }

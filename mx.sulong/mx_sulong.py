@@ -352,7 +352,7 @@ def runLLVM(args=None, out=None):
             libNames.append(arg)
         else:
             sulongArgs.append(arg)
-    return mx.run_java(getCommonOptions(libNames) + vmArgs + getClasspathOptions() + ["com.oracle.truffle.llvm.LLVM"] + sulongArgs, out=out)
+    return mx.run_java(getCommonOptions(libNames) + vmArgs + getClasspathOptions() + ["com.oracle.truffle.llvm.Sulong"] + sulongArgs, out=out)
 
 def runTests(args=None):
     mx_testsuites.runSuite(args)
