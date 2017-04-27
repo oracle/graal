@@ -337,15 +337,4 @@ public abstract class LLVMCMathsIntrinsics {
         }
 
     }
-
-    @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMAtan extends LLVMIntrinsic {
-
-        @Specialization
-        public double executeIntrinsic(double value) {
-            return Math.atan(value);
-        }
-
-    }
-
 }
