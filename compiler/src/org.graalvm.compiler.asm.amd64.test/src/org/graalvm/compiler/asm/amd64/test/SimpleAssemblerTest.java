@@ -27,6 +27,16 @@ import static org.junit.Assume.assumeTrue;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+import org.graalvm.compiler.asm.amd64.AMD64Assembler;
+import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.asm.test.AssemblerTest;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.code.DataSection.Data;
+import org.graalvm.compiler.code.DataSection.RawData;
+import org.graalvm.compiler.code.DataSection.SerializableData;
+import org.junit.Before;
+import org.junit.Test;
+
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
@@ -36,19 +46,6 @@ import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
-import org.junit.Before;
-import org.junit.Test;
-
-import org.graalvm.compiler.asm.amd64.AMD64Assembler;
-import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
-import org.graalvm.compiler.asm.test.AssemblerTest;
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.code.DataSection.Data;
-import org.graalvm.compiler.code.DataSection.RawData;
-import org.graalvm.compiler.code.DataSection.SerializableData;
-import org.graalvm.compiler.test.AddExports;
-
-@AddExports("jdk.internal.vm.ci/*")
 public class SimpleAssemblerTest extends AssemblerTest {
 
     @Before

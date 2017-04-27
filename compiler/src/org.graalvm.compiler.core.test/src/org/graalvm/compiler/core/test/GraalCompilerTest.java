@@ -153,10 +153,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * <p>
  * These tests will be run by the {@code mx unittest} command.
  */
-@AddExports({"jdk.internal.vm.ci/*",
-                "jdk.internal.vm.compiler/*",
-                "java.base/jdk.internal.org.objectweb.asm",
-                "java.base/jdk.internal.org.objectweb.asm.tree"})
+@AddExports({"java.base/jdk.internal.org.objectweb.asm", "java.base/jdk.internal.org.objectweb.asm.tree"})
 public abstract class GraalCompilerTest extends GraalTest {
 
     /**

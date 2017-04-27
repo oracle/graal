@@ -24,12 +24,12 @@ package org.graalvm.compiler.truffle.test;
 
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleFunctionInlining;
 
-import org.junit.Assume;
-import org.junit.Test;
-
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
+import org.junit.Assume;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -39,7 +39,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.SlowPathException;
 
-@AddExports("jdk.internal.vm.ci/jdk.vm.ci.code")
 public class ControlFlowExceptionPartialEvaluationTest extends PartialEvaluationTest {
     public static Object constant42() {
         return 42;

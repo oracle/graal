@@ -24,10 +24,10 @@ package org.graalvm.compiler.truffle.test;
 
 import java.util.function.Supplier;
 
-import org.junit.Test;
-
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
+import org.junit.Test;
+
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -35,7 +35,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
-@AddExports("jdk.internal.vm.ci/jdk.vm.ci.code")
 public class PhiStampInferencePartialEvaluationTest extends PartialEvaluationTest {
 
     @Test

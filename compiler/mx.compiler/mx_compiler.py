@@ -591,6 +591,13 @@ def _unittest_config_participant(config):
             cp = [classpathEntry for classpathEntry in cp if classpathEntry not in redundantClasspathEntries]
             vmArgs[cpIndex] = os.pathsep.join(cp)
 
+            # JVMCI is dynamically exported to Graal when JVMCI is initialized. This is too late
+            # for the junit harness which uses reflection to find @Test methods. In addition, the
+            # tests widely use JVMCI classes so JVMCI needs to also export all its packages to
+            # ALL-UNNAMED.
+            jvmci = [m for m in jdk.get_modules() if m.name == 'jdk.internal.vm.ci'][0]
+            vmArgs.extend(['--add-exports=' + jvmci.name + '/' + p + '=jdk.internal.vm.compiler,ALL-UNNAMED' for p in jvmci.packages])
+
     if isJDK8:
         # Run the VM in a mode where application/test classes can
         # access JVMCI loaded classes.

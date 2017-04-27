@@ -42,7 +42,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Binding;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.serviceprovider.JDK9Method;
-import org.graalvm.compiler.test.AddExports;
 import org.graalvm.compiler.test.GraalTest;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.MapCursor;
@@ -61,7 +60,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * appropriately in Graal. This will be achieved by working through {@link #TO_BE_INVESTIGATED} and
  * either implementing the intrinsic or moving it to {@link #IGNORE} .
  */
-@AddExports("java.base/jdk.internal.module")
 public class CheckGraalIntrinsics extends GraalTest {
 
     public static boolean match(String type, Binding binding, VMIntrinsicMethod intrinsic) {
