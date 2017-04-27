@@ -53,8 +53,7 @@ public final class TraceCompilationCallTreeListener extends AbstractDebugCompila
     }
 
     @Override
-    public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result,
-                    Map<OptimizedCallTarget, Object> compilationMap) {
+    public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result) {
         log(0, "opt call tree", target.toString(), target.getDebugProperties(inliningDecision));
         logTruffleCallTree(target, inliningDecision);
     }

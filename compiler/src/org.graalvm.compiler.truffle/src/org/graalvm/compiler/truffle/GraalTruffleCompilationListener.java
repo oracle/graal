@@ -68,15 +68,15 @@ public interface GraalTruffleCompilationListener {
      */
     void notifyCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason);
 
-    void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t, Map<OptimizedCallTarget, Object> compilationMap);
+    void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t);
 
-    void notifyCompilationStarted(OptimizedCallTarget target, Map<OptimizedCallTarget, Object> compilationMap);
+    void notifyCompilationStarted(OptimizedCallTarget target);
 
-    void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, Map<OptimizedCallTarget, Object> compilationMap);
+    void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph);
 
-    void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph, Map<OptimizedCallTarget, Object> compilationMa);
+    void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph);
 
-    void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result, Map<OptimizedCallTarget, Object> compilationMap);
+    void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result);
 
     /**
      * Invoked if a compiled call target was invalidated.

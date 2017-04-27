@@ -47,7 +47,7 @@ public final class TraceInliningListener extends AbstractDebugCompilationListene
     }
 
     @Override
-    public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, Map<OptimizedCallTarget, Object> compilationMap) {
+    public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph) {
         if (inliningDecision == null) {
             return;
         }

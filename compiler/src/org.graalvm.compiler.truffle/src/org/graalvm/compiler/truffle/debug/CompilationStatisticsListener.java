@@ -142,7 +142,7 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
     }
 
     @Override
-    public synchronized void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t, Map<OptimizedCallTarget, Object> compilationMap) {
+    public synchronized void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t) {
         failures++;
     }
 
@@ -152,7 +152,7 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
     }
 
     @Override
-    public synchronized void notifyCompilationStarted(OptimizedCallTarget target, Map<OptimizedCallTarget, Object> compilationMap) {
+    public synchronized void notifyCompilationStarted(OptimizedCallTarget target) {
         compilations++;
         CompilationLocal local = new CompilationLocal();
         local.compilationStarted = System.nanoTime();
@@ -166,7 +166,7 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
     }
 
     @Override
-    public synchronized void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, Map<OptimizedCallTarget, Object> compilationMap) {
+    public synchronized void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph) {
         compilationLocal.get().truffleTierFinished = System.nanoTime();
         nodeStatistics.accept(nodeClasses(target, inliningDecision));
 
@@ -194,7 +194,7 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
     }
 
     @Override
-    public synchronized void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph, Map<OptimizedCallTarget, Object> compilationMap) {
+    public synchronized void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph) {
         compilationLocal.get().graalTierFinished = System.nanoTime();
         graalTierNodeCount.accept(graph.getNodeCount());
 
@@ -230,8 +230,7 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
     }
 
     @Override
-    public synchronized void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result,
-                    Map<OptimizedCallTarget, Object> compilationMap) {
+    public synchronized void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result) {
         success++;
         long compilationDone = System.nanoTime();
 
