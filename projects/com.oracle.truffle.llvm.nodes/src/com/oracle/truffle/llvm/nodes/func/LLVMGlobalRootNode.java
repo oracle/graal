@@ -86,6 +86,10 @@ public class LLVMGlobalRootNode extends RootNode {
         this.arguments = arguments;
     }
 
+    public FrameSlot getStackPointerSlot() {
+        return stackPointerSlot;
+    }
+
     @Override
     @ExplodeLoop
     public Object execute(VirtualFrame frame) {
@@ -96,9 +100,9 @@ public class LLVMGlobalRootNode extends RootNode {
                 assert LLVMSignal.getNumberOfRegisteredSignals() == 0;
 
                 frame.setObject(stackPointerSlot, stackPointer);
-                Object[] realArgs = new Object[arguments.length + LLVMCallNode.ARG_START_INDEX];
+                Object[] realArgs = new Object[arguments.length + LLVMCallNode.USER_ARGUMENT_OFFSET];
                 realArgs[0] = LLVMFrameUtil.getAddress(frame, stackPointerSlot);
-                System.arraycopy(arguments, 0, realArgs, LLVMCallNode.ARG_START_INDEX, arguments.length);
+                System.arraycopy(arguments, 0, realArgs, LLVMCallNode.USER_ARGUMENT_OFFSET, arguments.length);
                 result = executeIteration(i, realArgs);
 
                 getContext().awaitThreadTermination();
