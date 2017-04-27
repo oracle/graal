@@ -30,9 +30,9 @@ import org.graalvm.compiler.debug.DebugConfigScope;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.replacements.classfile.ClassfileBytecodeProvider;
@@ -244,9 +244,8 @@ public class DerivedOopTest extends ReplacementsTest implements Snippets {
     }
 
     @Override
-    protected Plugins getDefaultGraphBuilderPlugins() {
-        Plugins plugins = super.getDefaultGraphBuilderPlugins();
-        Registration r = new Registration(plugins.getInvocationPlugins(), DerivedOopTest.class);
+    protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
+        Registration r = new Registration(invocationPlugins, DerivedOopTest.class);
         ClassfileBytecodeProvider bytecodeProvider = getSystemClassLoaderBytecodeProvider();
 
         ResolvedJavaMethod intrinsic = getResolvedJavaMethod("getRawPointerIntrinsic");
@@ -256,8 +255,7 @@ public class DerivedOopTest extends ReplacementsTest implements Snippets {
                 return b.intrinsify(bytecodeProvider, targetMethod, intrinsic, receiver, new ValueNode[]{arg});
             }
         });
-
-        return plugins;
+        super.registerInvocationPlugins(invocationPlugins);
     }
 
     @Override

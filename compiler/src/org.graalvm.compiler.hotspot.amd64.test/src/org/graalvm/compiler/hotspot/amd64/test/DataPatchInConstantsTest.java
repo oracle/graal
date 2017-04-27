@@ -41,9 +41,9 @@ import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -140,9 +140,8 @@ public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
     }
 
     @Override
-    protected Plugins getDefaultGraphBuilderPlugins() {
-        Plugins plugins = super.getDefaultGraphBuilderPlugins();
-        Registration r = new Registration(plugins.getInvocationPlugins(), DataPatchInConstantsTest.class);
+    protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
+        Registration r = new Registration(invocationPlugins, DataPatchInConstantsTest.class);
 
         r.register1("loadThroughPatch", Object.class, new InvocationPlugin() {
             @Override
@@ -161,8 +160,7 @@ public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
                 return true;
             }
         });
-
-        return plugins;
+        super.registerInvocationPlugins(invocationPlugins);
     }
 
     @NodeInfo(cycles = CYCLES_2, size = SIZE_1)

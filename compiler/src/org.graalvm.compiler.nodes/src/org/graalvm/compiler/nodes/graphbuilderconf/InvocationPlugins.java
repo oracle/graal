@@ -653,6 +653,8 @@ public class InvocationPlugins {
                     return lcp.get(method);
                 }
                 if (testExtensions != null) {
+                    // Avoid the synchronization in the common case that there
+                    // are no test extensions.
                     synchronized (this) {
                         if (testExtensions != null) {
                             List<Binding> bindings = testExtensions.get(internalName);
@@ -721,7 +723,7 @@ public class InvocationPlugins {
      * after the compiler has been initialized.
      *
      * @param ignored if non-null, the bindings from {@code other} already in this object prior to
-     *            calling this method are added to this list. These bindings not added to this
+     *            calling this method are added to this list. These bindings are not added to this
      *            object.
      */
     public synchronized void addTestPlugins(InvocationPlugins other, List<Pair<String, Binding>> ignored) {
@@ -961,6 +963,8 @@ public class InvocationPlugins {
                 collectBindingsTo(res, type, lcp);
             }
             if (testExtensions != null) {
+                // Avoid the synchronization in the common case that there
+                // are no test extensions.
                 synchronized (this) {
                     if (testExtensions != null) {
                         MapCursor<String, List<Binding>> c = testExtensions.getEntries();

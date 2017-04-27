@@ -382,6 +382,15 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     @After
     public void afterTest() {
+        if (invocationPluginExtensions != null) {
+            synchronized (this) {
+                if (invocationPluginExtensions != null) {
+                    extendedInvocationPlugins.removeTestPlugins(invocationPluginExtensions);
+                    extendedInvocationPlugins = null;
+                    invocationPluginExtensions = null;
+                }
+            }
+        }
         if (debugScope != null) {
             debugScope.close();
         }
@@ -1213,17 +1222,16 @@ public abstract class GraalCompilerTest extends GraalTest {
         return backend.getSuites().getDefaultGraphBuilderSuite().copy();
     }
 
-    protected PhaseSuite<HighTierContext> getCustomGraphBuilderSuite(GraphBuilderConfiguration gbConf) {
-        PhaseSuite<HighTierContext> suite = getDefaultGraphBuilderSuite();
-        ListIterator<BasePhase<? super HighTierContext>> iterator = suite.findPhase(GraphBuilderPhase.class);
-        GraphBuilderConfiguration gbConfCopy = editGraphBuilderConfiguration(gbConf.copy());
-        iterator.remove();
-        iterator.add(new GraphBuilderPhase(gbConfCopy));
-        return suite;
-    }
-
-    protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
-        InvocationPlugins invocationPlugins = conf.getPlugins().getInvocationPlugins();
+    /**
+     * Registers extra invocation plugins for this test. The extra plugins are removed in the
+     * {@link #afterTest()} method.
+     *
+     * Subclasses overriding this method should always call the same method on the super class in
+     * case it wants to register plugins.
+     *
+     * @param invocationPlugins
+     */
+    protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
         invocationPlugins.register(new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -1245,7 +1253,41 @@ public abstract class GraalCompilerTest extends GraalTest {
                 return true;
             }
         }, GraalCompilerTest.class, "shouldBeOptimizedAway");
+    }
 
+    /**
+     * The {@link #testN(int, String, Object...)} method means multiple threads trying to initialize
+     * this field.
+     */
+    private volatile InvocationPlugins invocationPluginExtensions;
+
+    private InvocationPlugins extendedInvocationPlugins;
+
+    protected PhaseSuite<HighTierContext> getCustomGraphBuilderSuite(GraphBuilderConfiguration gbConf) {
+        PhaseSuite<HighTierContext> suite = getDefaultGraphBuilderSuite();
+        ListIterator<BasePhase<? super HighTierContext>> iterator = suite.findPhase(GraphBuilderPhase.class);
+        initializeInvocationPluginExtensions();
+        GraphBuilderConfiguration gbConfCopy = editGraphBuilderConfiguration(gbConf.copy());
+        iterator.remove();
+        iterator.add(new GraphBuilderPhase(gbConfCopy));
+        return suite;
+    }
+
+    private void initializeInvocationPluginExtensions() {
+        if (invocationPluginExtensions == null) {
+            synchronized (this) {
+                if (invocationPluginExtensions == null) {
+                    InvocationPlugins invocationPlugins = new InvocationPlugins();
+                    registerInvocationPlugins(invocationPlugins);
+                    extendedInvocationPlugins = getReplacements().getGraphBuilderPlugins().getInvocationPlugins();
+                    extendedInvocationPlugins.addTestPlugins(invocationPlugins, null);
+                    invocationPluginExtensions = invocationPlugins;
+                }
+            }
+        }
+    }
+
+    protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
         conf.getPlugins().prependInlineInvokePlugin(new InlineInvokePlugin() {
 
             @Override

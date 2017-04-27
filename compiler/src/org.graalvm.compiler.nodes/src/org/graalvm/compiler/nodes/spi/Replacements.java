@@ -26,6 +26,7 @@ import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.api.replacements.SnippetTemplateCache;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -37,6 +38,12 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public interface Replacements {
 
     OptionValues getOptions();
+
+    /**
+     * Gets the object managing the various graph builder plugins used by this object when parsing
+     * bytecode into a graph.
+     */
+    GraphBuilderConfiguration.Plugins getGraphBuilderPlugins();
 
     /**
      * Gets the snippet graph derived from a given method.
