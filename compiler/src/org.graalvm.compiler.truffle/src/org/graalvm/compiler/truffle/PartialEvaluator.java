@@ -550,11 +550,14 @@ public class PartialEvaluator {
 
     private static final class PerformanceInformationHandler {
 
+        private static boolean warningSeen = false;
+
         private static boolean isEnabled() {
             return TruffleCompilerOptions.getValue(TraceTrufflePerformanceWarnings) || TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal);
         }
 
         private static void logPerformanceWarning(OptimizedCallTarget target, List<Node> locations, String details, Map<String, Object> properties) {
+            warningSeen = true;
             logPerformanceWarningImpl(target, "perf warn", details, properties);
             logPerformanceStackTrace(locations);
         }
@@ -624,6 +627,11 @@ public class PartialEvaluator {
                 } catch (Throwable t) {
                     Debug.handle(t);
                 }
+            }
+
+            if (warningSeen && TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal)) {
+                warningSeen = false;
+                throw new AssertionError("Performance warning detected and is fatal.");
             }
         }
 
