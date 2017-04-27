@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -89,8 +90,8 @@ public class LLVMContext {
     private final HashMap<String, Integer> nativeCallStatistics;
 
     private final Object handlesLock;
-    private final Map<TruffleObject, LLVMAddress> toNative;
-    private final Map<LLVMAddress, TruffleObject> toManaged;
+    private final IdentityHashMap<TruffleObject, LLVMAddress> toNative;
+    private final HashMap<LLVMAddress, TruffleObject> toManaged;
 
     // #define SIG_DFL ((__sighandler_t) 0) /* Default action. */
     private final LLVMFunction sigDfl;
@@ -129,7 +130,7 @@ public class LLVMContext {
         this.sigDfl = new LLVMFunctionHandle(0);
         this.sigIgn = new LLVMFunctionHandle(1);
         this.sigErr = new LLVMFunctionHandle(-1);
-        this.toNative = new HashMap<>();
+        this.toNative = new IdentityHashMap<>();
         this.toManaged = new HashMap<>();
         this.handlesLock = new Object();
 
@@ -183,6 +184,7 @@ public class LLVMContext {
 
             toManaged.remove(address);
             toNative.remove(object);
+            LLVMMemory.free(address);
         }
     }
 

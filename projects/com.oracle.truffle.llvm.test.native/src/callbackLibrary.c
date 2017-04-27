@@ -54,3 +54,7 @@ int nullPointerFunctionTest(void (*foo)()) {
 		return 84;
 	}
 }
+
+int callbackPointerArgTest(int (*callback)(void *), void *arg) {
+    return callback(arg);
+}

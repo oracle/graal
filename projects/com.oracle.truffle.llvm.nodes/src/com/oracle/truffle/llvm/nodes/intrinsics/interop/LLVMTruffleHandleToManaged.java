@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -49,19 +48,13 @@ public abstract class LLVMTruffleHandleToManaged extends LLVMIntrinsic {
     private static final boolean TRACE = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.traceExecution());
 
     @Specialization
-    public TruffleObject executeIntrinsic(LLVMAddress handle, @Cached("getContext()") LLVMContext context) {
+    public TruffleObject executeIntrinsic(Object rawHandle, @Cached("getContext()") LLVMContext context, @Cached("getForceLLVMAddressNode()") LLVMForceLLVMAddressNode forceAddressNode) {
+        LLVMAddress handle = forceAddressNode.executeWithTarget(rawHandle);
         TruffleObject object = context.getManagedObjectForHandle(handle);
         if (TRACE) {
             trace(handle, object);
         }
         return object;
-
-    }
-
-    @Specialization(guards = "!isLLVMAddress(handle)")
-    public TruffleObject executeFail(Object handle) {
-        CompilerDirectives.transferToInterpreter();
-        throw new UnsupportedOperationException(handle + " not supported.");
     }
 
     @TruffleBoundary

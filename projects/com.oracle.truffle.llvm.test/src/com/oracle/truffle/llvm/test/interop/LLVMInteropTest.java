@@ -981,6 +981,19 @@ public final class LLVMInteropTest {
         }
     }
 
+    @Test
+    public void testHandleFromNativeCallback() throws Exception {
+        Runner runner = new Runner("handleFromNativeCallback");
+        try {
+            TruffleObject managed = JavaInterop.asTruffleObject(new ClassA());
+            Value testHandleFromNativeCallback = runner.findGlobalSymbol("testHandleFromNativeCallback");
+            Value ret = testHandleFromNativeCallback.execute(managed);
+            Assert.assertEquals(42, ret.get());
+        } finally {
+            runner.dispose();
+        }
+    }
+
     public static final class ClassA {
         public boolean valueBool = true;
         public byte valueB = 40;
