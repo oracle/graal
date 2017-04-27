@@ -24,6 +24,7 @@ package org.graalvm.compiler.phases.verify;
 
 import static org.graalvm.compiler.debug.Debug.BASIC_LEVEL;
 import static org.graalvm.compiler.debug.Debug.DETAILED_LEVEL;
+import static org.graalvm.compiler.debug.Debug.ENABLED_LEVEL;
 import static org.graalvm.compiler.debug.Debug.INFO_LEVEL;
 import static org.graalvm.compiler.debug.Debug.VERBOSE_LEVEL;
 import static org.graalvm.compiler.debug.Debug.VERY_DETAILED_LEVEL;
@@ -135,7 +136,7 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
         }
     }
 
-    private static final Set<Integer> DebugLevels = new HashSet<>(Arrays.asList(BASIC_LEVEL, INFO_LEVEL, VERBOSE_LEVEL, DETAILED_LEVEL, VERY_DETAILED_LEVEL));
+    private static final Set<Integer> DebugLevels = new HashSet<>(Arrays.asList(ENABLED_LEVEL, BASIC_LEVEL, INFO_LEVEL, VERBOSE_LEVEL, DETAILED_LEVEL, VERY_DETAILED_LEVEL));
 
     /**
      * The set of methods allowed to call a {@code Debug.dump(...)} method with the {@code level}
