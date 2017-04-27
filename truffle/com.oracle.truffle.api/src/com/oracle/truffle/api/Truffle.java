@@ -126,6 +126,16 @@ public class Truffle {
                 if (access != null) {
                     return access.getRuntime();
                 }
+
+                // before falling back to the standard runtime, let's briefly
+                // check consistency
+                if (System.getProperties().containsKey("jvmci.Compiler")) {
+                    // We assume that all JVMCI compiler are going to come with
+                    // a Truffle runtime.
+                    throw new InternalError(String.format("No runtime support for Truffle detected. " +
+                                    "The JVMCI Compiler '%s' might not be on the JVMCI classpath.",
+                                    System.getProperty("jvmci.Compiler")));
+                }
                 return new DefaultTruffleRuntime();
             }
         });
