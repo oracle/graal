@@ -225,7 +225,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             }
         } else {
             if (Debug.isDumpEnabled(Debug.INFO_LEVEL + 1)) {
-                Debug.dump(Debug.INFO_LEVEL + 1, graph, "After phase %s", getName());
+                Debug.dump(Debug.INFO_LEVEL + 1, graph, "After subphase %s", getName());
                 dumped = true;
             }
         }
