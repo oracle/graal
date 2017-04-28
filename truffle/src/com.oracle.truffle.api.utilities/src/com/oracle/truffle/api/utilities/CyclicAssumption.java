@@ -27,6 +27,7 @@ package com.oracle.truffle.api.utilities;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 
@@ -42,7 +43,7 @@ import com.oracle.truffle.api.Truffle;
 public class CyclicAssumption {
 
     private final String name;
-    private volatile Assumption assumption;
+    @CompilerDirectives.CompilationFinal private volatile Assumption assumption;
 
     private static final AtomicReferenceFieldUpdater<CyclicAssumption, Assumption> ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(CyclicAssumption.class, Assumption.class, "assumption");
 
