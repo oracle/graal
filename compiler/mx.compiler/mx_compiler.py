@@ -96,7 +96,8 @@ def _check_jvmci_version(jdk):
         mx.run([jdk.javac, '-d', binDir, javaSource])
     mx.run([jdk.java, '-cp', binDir, name])
 
-_check_jvmci_version(jdk)
+if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore': 
+    _check_jvmci_version(jdk)
 
 class JVMCIClasspathEntry(object):
     """
