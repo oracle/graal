@@ -74,8 +74,13 @@ public abstract class LLVMMemory {
         return LLVMAddress.fromLong(UNSAFE.allocateMemory(size));
     }
 
+    public static LLVMAddress reallocateMemory(LLVMAddress addr, long size) {
+        // a null pointer is a valid argument
+        return LLVMAddress.fromLong(UNSAFE.reallocateMemory(addr.getVal(), size));
+    }
+
     public static boolean getI1(LLVMAddress addr) {
-        return UNSAFE.getByte(LLVMMemory.extractAddr(addr)) == 0 ? false : true;
+        return UNSAFE.getByte(LLVMMemory.extractAddr(addr)) != 0;
     }
 
     public static byte getI8(LLVMAddress addr) {

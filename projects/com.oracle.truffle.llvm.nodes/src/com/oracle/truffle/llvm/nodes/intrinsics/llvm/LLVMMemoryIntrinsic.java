@@ -93,6 +93,30 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
         }
     }
 
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMRealloc extends LLVMMemoryIntrinsic {
+
+        @Specialization
+        public LLVMAddress executeVoid(LLVMAddress addr, int size) {
+            try {
+                return LLVMMemory.reallocateMemory(addr, size);
+            } catch (OutOfMemoryError e) {
+                CompilerDirectives.transferToInterpreter();
+                return LLVMAddress.nullPointer();
+            }
+        }
+
+        @Specialization
+        public LLVMAddress executeVoid(LLVMAddress addr, long size) {
+            try {
+                return LLVMMemory.reallocateMemory(addr, size);
+            } catch (OutOfMemoryError e) {
+                CompilerDirectives.transferToInterpreter();
+                return LLVMAddress.nullPointer();
+            }
+        }
+    }
+
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMFree extends LLVMMemoryIntrinsic {
 
@@ -101,7 +125,5 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
             LLVMMemory.free(address);
             return null;
         }
-
     }
-
 }
