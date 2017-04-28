@@ -22,19 +22,19 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
 import org.junit.Test;
 
-import org.graalvm.compiler.core.test.GraalCompilerTest;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
 import com.oracle.truffle.api.ExactMath;
 
 public class ExactMathTest extends GraalCompilerTest {
 
     @Override
-    protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
-        TruffleGraphBuilderPlugins.registerExactMathPlugins(conf.getPlugins().getInvocationPlugins());
-        return super.editGraphBuilderConfiguration(conf);
+    protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
+        TruffleGraphBuilderPlugins.registerExactMathPlugins(invocationPlugins);
+        super.registerInvocationPlugins(invocationPlugins);
     }
 
     @Test

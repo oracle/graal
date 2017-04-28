@@ -108,6 +108,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         this.graphBuilderPlugins = plugins;
     }
 
+    @Override
     public GraphBuilderConfiguration.Plugins getGraphBuilderPlugins() {
         return graphBuilderPlugins;
     }
