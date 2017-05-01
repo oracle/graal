@@ -106,6 +106,13 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
     }
 
     /**
+     * Gets the object used to access the bytecodes of the substitute method.
+     */
+    public BytecodeProvider getBytecodeProvider() {
+        return bytecodeProvider;
+    }
+
+    /**
      * Gets the reflection API version of the substitution method.
      */
     Method getJavaSubstitute() throws GraalError {

@@ -187,7 +187,7 @@ public class HotSpotGraphBuilderPlugins {
 
             @Override
             public void run() {
-                BytecodeProvider replacementBytecodeProvider = replacements.getReplacementBytecodeProvider();
+                BytecodeProvider replacementBytecodeProvider = replacements.getDefaultReplacementBytecodeProvider();
                 registerObjectPlugins(invocationPlugins, options, replacementBytecodeProvider);
                 registerClassPlugins(plugins, config, replacementBytecodeProvider);
                 registerSystemPlugins(invocationPlugins, foreignCalls);

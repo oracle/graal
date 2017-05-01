@@ -35,16 +35,17 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public abstract class SnippetsTest extends ReplacementsTest implements Snippets {
 
     protected final ReplacementsImpl installer;
+    protected final ClassfileBytecodeProvider bytecodeProvider;
 
     protected SnippetsTest() {
         ReplacementsImpl d = (ReplacementsImpl) getReplacements();
-        ClassfileBytecodeProvider bytecodeProvider = getSystemClassLoaderBytecodeProvider();
+        bytecodeProvider = getSystemClassLoaderBytecodeProvider();
         installer = new ReplacementsImpl(getInitialOptions(), d.providers, d.snippetReflection, bytecodeProvider, d.target);
         installer.setGraphBuilderPlugins(d.getGraphBuilderPlugins());
     }
 
     @Override
     protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions, CompilationIdentifier compilationId, OptionValues options) {
-        return installer.makeGraph(m, null, null);
+        return installer.makeGraph(bytecodeProvider, m, null, null);
     }
 }

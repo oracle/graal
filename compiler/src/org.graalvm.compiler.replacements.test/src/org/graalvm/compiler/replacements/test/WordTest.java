@@ -43,7 +43,7 @@ public class WordTest extends SnippetsTest {
     @Override
     protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions, CompilationIdentifier compilationId, OptionValues options) {
         // create a copy to assign a valid compilation id
-        return installer.makeGraph(m, null, null).copyWithIdentifier(compilationId);
+        return installer.makeGraph(bytecodeProvider, m, null, null).copyWithIdentifier(compilationId);
     }
 
     @Test
