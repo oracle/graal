@@ -623,7 +623,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         return new LLVMExpressionNode[successors.size()][0];
     }
 
-    private ArrayList<Phi>[] collectPhis(List<InstructionBlock> successors, List<Phi> phis) {
+    private static ArrayList<Phi>[] collectPhis(List<InstructionBlock> successors, List<Phi> phis) {
         @SuppressWarnings("unchecked")
         ArrayList<Phi>[] phisPerSuccessor = new ArrayList[successors.size()];
         for (int i = 0; i < phisPerSuccessor.length; i++) {
