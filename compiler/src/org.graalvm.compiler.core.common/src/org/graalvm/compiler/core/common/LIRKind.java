@@ -22,6 +22,8 @@
  */
 package org.graalvm.compiler.core.common;
 
+import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
+
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaKind;
@@ -459,13 +461,21 @@ public final class LIRKind extends ValueKind<LIRKind> {
         return true;
     }
 
-    public static boolean verifyMoveKinds(ValueKind<?> dst, ValueKind<?> src) {
+    public static boolean verifyMoveKinds(ValueKind<?> dst, ValueKind<?> src, RegisterAllocationConfig config) {
         if (src.equals(dst)) {
             return true;
         }
-        if (src.getPlatformKind().equals(dst.getPlatformKind())) {
-            return !isUnknownReference(src) || isUnknownReference(dst);
+        if (isUnknownReference(dst) || isValue(dst) && isValue(src)) {
+            PlatformKind srcPlatformKind = src.getPlatformKind();
+            PlatformKind dstPlatformKind = dst.getPlatformKind();
+            if (srcPlatformKind.equals(dstPlatformKind)) {
+                return true;
+            }
+            // if the register category matches it should be fine, although the kind is different
+            return config.getRegisterCategory(srcPlatformKind).equals(config.getRegisterCategory(dstPlatformKind));
         }
+        // reference information mismatch
         return false;
     }
+
 }
