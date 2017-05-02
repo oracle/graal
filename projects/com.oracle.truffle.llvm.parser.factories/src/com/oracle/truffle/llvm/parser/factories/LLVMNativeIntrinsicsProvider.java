@@ -149,7 +149,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
         return false;
     }
 
-    protected final Map<String, LLVMNativeIntrinsicFactory> factories = new HashMap<>();
+    private final Map<String, LLVMNativeIntrinsicFactory> factories = new HashMap<>();
     protected final LLVMLanguage language;
     protected final LLVMContext context;
 
@@ -181,8 +181,8 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
         return this;
     }
 
-    protected RootCallTarget wrap(LLVMExpressionNode node) {
-        return Truffle.getRuntime().createCallTarget(LLVMIntrinsicExpressionNodeGen.create(language, node));
+    protected RootCallTarget wrap(String functionName, LLVMExpressionNode node) {
+        return Truffle.getRuntime().createCallTarget(LLVMIntrinsicExpressionNodeGen.create(language, functionName, node));
     }
 
     protected LLVMExpressionNode[] argumentsArray(int startIndex, int arity) {
@@ -201,82 +201,143 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
         return args;
     }
 
-    protected void registerTruffleIntrinsics() {
-        LLVMNativeIntrinsicFactory truffleWrite = new LLVMNativeIntrinsicFactory(true, true) {
-            @Override
-            protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleWriteToNameNodeGen.create(type.getArgumentTypes()[2], LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
-            }
-        };
-        factories.put("@truffle_write", truffleWrite);
-        factories.put("@truffle_write_i", truffleWrite);
-        factories.put("@truffle_write_l", truffleWrite);
-        factories.put("@truffle_write_c", truffleWrite);
-        factories.put("@truffle_write_f", truffleWrite);
-        factories.put("@truffle_write_d", truffleWrite);
-        factories.put("@truffle_write_b", truffleWrite);
+    protected void register(final String name, final LLVMNativeIntrinsicFactory intrinsic) {
+        factories.put(name, intrinsic);
+    }
 
-        LLVMNativeIntrinsicFactory truffleWriteIdx = new LLVMNativeIntrinsicFactory(true, true) {
+    protected void registerTruffleIntrinsics() {
+        factories.put("@truffle_write", new LLVMNativeIntrinsicFactory(true, true) {
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleWriteToIndexNodeGen.create(type.getArgumentTypes()[2], LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
+                return wrap("@truffle_write", LLVMTruffleWriteToNameNodeGen.create(type.getArgumentTypes()[2], LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
             }
-        };
-        factories.put("@truffle_write_idx", truffleWriteIdx);
-        factories.put("@truffle_write_idx_i", truffleWriteIdx);
-        factories.put("@truffle_write_idx_l", truffleWriteIdx);
-        factories.put("@truffle_write_idx_c", truffleWriteIdx);
-        factories.put("@truffle_write_idx_f", truffleWriteIdx);
-        factories.put("@truffle_write_idx_d", truffleWriteIdx);
-        factories.put("@truffle_write_idx_b", truffleWriteIdx);
+        });
+        factories.put("@truffle_write_i", new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@truffle_write_i", LLVMTruffleWriteToNameNodeGen.create(type.getArgumentTypes()[2], LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
+            }
+        });
+        factories.put("@truffle_write_l", new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@truffle_write_l", LLVMTruffleWriteToNameNodeGen.create(type.getArgumentTypes()[2], LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
+            }
+        });
+        factories.put("@truffle_write_c", new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@truffle_write_c", LLVMTruffleWriteToNameNodeGen.create(type.getArgumentTypes()[2], LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
+            }
+        });
+        factories.put("@truffle_write_f", new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@truffle_write_f", LLVMTruffleWriteToNameNodeGen.create(type.getArgumentTypes()[2], LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
+            }
+        });
+        factories.put("@truffle_write_d", new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("truffle_write_d", LLVMTruffleWriteToNameNodeGen.create(type.getArgumentTypes()[2], LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
+            }
+        });
+        factories.put("@truffle_write_b", new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@truffle_write_b", LLVMTruffleWriteToNameNodeGen.create(type.getArgumentTypes()[2], LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
+            }
+        });
+        factories.put("@truffle_write_idx", new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@truffle_write_idx", LLVMTruffleWriteToIndexNodeGen.create(type.getArgumentTypes()[2], LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
+            }
+        });
+        factories.put("@truffle_write_idx_i", new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@truffle_write_idx_i", LLVMTruffleWriteToIndexNodeGen.create(type.getArgumentTypes()[2], LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
+            }
+        });
+        factories.put("@truffle_write_idx_l", new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@truffle_write_idx_l", LLVMTruffleWriteToIndexNodeGen.create(type.getArgumentTypes()[2], LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
+            }
+        });
+        factories.put("@truffle_write_idx_c", new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@truffle_write_idx_c", LLVMTruffleWriteToIndexNodeGen.create(type.getArgumentTypes()[2], LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
+            }
+        });
+        factories.put("@truffle_write_idx_f", new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@truffle_write_idx_f", LLVMTruffleWriteToIndexNodeGen.create(type.getArgumentTypes()[2], LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
+            }
+        });
+        factories.put("@truffle_write_idx_d", new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@truffle_write_idx_d", LLVMTruffleWriteToIndexNodeGen.create(type.getArgumentTypes()[2], LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
+            }
+        });
+        factories.put("@truffle_write_idx_b", new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@truffle_write_idx_b", LLVMTruffleWriteToIndexNodeGen.create(type.getArgumentTypes()[2], LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
+            }
+        });
 
         factories.put("@truffle_read", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleReadFromNameNodeGen.create(ToLLVMNode.createNode(TruffleObject.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@truffle_read", LLVMTruffleReadFromNameNodeGen.create(ToLLVMNode.createNode(TruffleObject.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
         factories.put("@truffle_read_i", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleReadFromNameNodeGen.create(ToLLVMNode.createNode(int.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@truffle_read_i", LLVMTruffleReadFromNameNodeGen.create(ToLLVMNode.createNode(int.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
         factories.put("@truffle_read_l", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleReadFromNameNodeGen.create(ToLLVMNode.createNode(long.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@truffle_read_l", LLVMTruffleReadFromNameNodeGen.create(ToLLVMNode.createNode(long.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
         factories.put("@truffle_read_c", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleReadFromNameNodeGen.create(ToLLVMNode.createNode(byte.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@truffle_read_c", LLVMTruffleReadFromNameNodeGen.create(ToLLVMNode.createNode(byte.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
         factories.put("@truffle_read_f", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleReadFromNameNodeGen.create(ToLLVMNode.createNode(float.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@truffle_read_f", LLVMTruffleReadFromNameNodeGen.create(ToLLVMNode.createNode(float.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
         factories.put("@truffle_read_d", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleReadFromNameNodeGen.create(ToLLVMNode.createNode(double.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@truffle_read_d", LLVMTruffleReadFromNameNodeGen.create(ToLLVMNode.createNode(double.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
         factories.put("@truffle_read_b", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleReadFromNameNodeGen.create(ToLLVMNode.createNode(boolean.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@truffle_read_b", LLVMTruffleReadFromNameNodeGen.create(ToLLVMNode.createNode(boolean.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
 
@@ -284,49 +345,49 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleReadFromIndexNodeGen.create(ToLLVMNode.createNode(TruffleObject.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@truffle_read_idx", LLVMTruffleReadFromIndexNodeGen.create(ToLLVMNode.createNode(TruffleObject.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
         factories.put("@truffle_read_idx_i", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleReadFromIndexNodeGen.create(ToLLVMNode.createNode(int.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@truffle_read_idx_i", LLVMTruffleReadFromIndexNodeGen.create(ToLLVMNode.createNode(int.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
         factories.put("@truffle_read_idx_l", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleReadFromIndexNodeGen.create(ToLLVMNode.createNode(long.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@truffle_read_idx_l", LLVMTruffleReadFromIndexNodeGen.create(ToLLVMNode.createNode(long.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
         factories.put("@truffle_read_idx_c", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleReadFromIndexNodeGen.create(ToLLVMNode.createNode(byte.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@truffle_read_idx_c", LLVMTruffleReadFromIndexNodeGen.create(ToLLVMNode.createNode(byte.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
         factories.put("@truffle_read_idx_f", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleReadFromIndexNodeGen.create(ToLLVMNode.createNode(float.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@truffle_read_idx_f", LLVMTruffleReadFromIndexNodeGen.create(ToLLVMNode.createNode(float.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
         factories.put("@truffle_read_idx_d", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleReadFromIndexNodeGen.create(ToLLVMNode.createNode(double.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@truffle_read_idx_d", LLVMTruffleReadFromIndexNodeGen.create(ToLLVMNode.createNode(double.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
         factories.put("@truffle_read_idx_b", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleReadFromIndexNodeGen.create(ToLLVMNode.createNode(boolean.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@truffle_read_idx_b", LLVMTruffleReadFromIndexNodeGen.create(ToLLVMNode.createNode(boolean.class), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
 
@@ -334,42 +395,42 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleUnboxNodeGen.create(ToLLVMNode.createNode(int.class), LLVMArgNodeGen.create(1)));
+                return wrap("@truffle_unbox_i", LLVMTruffleUnboxNodeGen.create(ToLLVMNode.createNode(int.class), LLVMArgNodeGen.create(1)));
             }
         });
         factories.put("@truffle_unbox_l", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleUnboxNodeGen.create(ToLLVMNode.createNode(long.class), LLVMArgNodeGen.create(1)));
+                return wrap("@truffle_unbox_l", LLVMTruffleUnboxNodeGen.create(ToLLVMNode.createNode(long.class), LLVMArgNodeGen.create(1)));
             }
         });
         factories.put("@truffle_unbox_c", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleUnboxNodeGen.create(ToLLVMNode.createNode(byte.class), LLVMArgNodeGen.create(1)));
+                return wrap("@truffle_unbox_c", LLVMTruffleUnboxNodeGen.create(ToLLVMNode.createNode(byte.class), LLVMArgNodeGen.create(1)));
             }
         });
         factories.put("@truffle_unbox_f", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleUnboxNodeGen.create(ToLLVMNode.createNode(float.class), LLVMArgNodeGen.create(1)));
+                return wrap("@truffle_unbox_f", LLVMTruffleUnboxNodeGen.create(ToLLVMNode.createNode(float.class), LLVMArgNodeGen.create(1)));
             }
         });
         factories.put("@truffle_unbox_d", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleUnboxNodeGen.create(ToLLVMNode.createNode(double.class), LLVMArgNodeGen.create(1)));
+                return wrap("@truffle_unbox_d", LLVMTruffleUnboxNodeGen.create(ToLLVMNode.createNode(double.class), LLVMArgNodeGen.create(1)));
             }
         });
         factories.put("@truffle_unbox_b", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleUnboxNodeGen.create(ToLLVMNode.createNode(boolean.class), LLVMArgNodeGen.create(1)));
+                return wrap("@truffle_unbox_b", LLVMTruffleUnboxNodeGen.create(ToLLVMNode.createNode(boolean.class), LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -379,7 +440,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleInvokeNodeGen.create(ToLLVMNode.createNode(TruffleObject.class), argumentsArray(3, type.getArgumentTypes().length - 3),
+                return wrap("@truffle_invoke", LLVMTruffleInvokeNodeGen.create(ToLLVMNode.createNode(TruffleObject.class), argumentsArray(3, type.getArgumentTypes().length - 3),
                                 argumentsTypes(3, type.getArgumentTypes()),
                                 LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
@@ -389,8 +450,9 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleInvokeNodeGen.create(ToLLVMNode.createNode(int.class), argumentsArray(3, type.getArgumentTypes().length - 3), argumentsTypes(3, type.getArgumentTypes()),
-                                LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@truffle_invoke_i",
+                                LLVMTruffleInvokeNodeGen.create(ToLLVMNode.createNode(int.class), argumentsArray(3, type.getArgumentTypes().length - 3), argumentsTypes(3, type.getArgumentTypes()),
+                                                LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
 
@@ -398,8 +460,9 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleInvokeNodeGen.create(ToLLVMNode.createNode(long.class), argumentsArray(3, type.getArgumentTypes().length - 3), argumentsTypes(3, type.getArgumentTypes()),
-                                LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@truffle_invoke_l",
+                                LLVMTruffleInvokeNodeGen.create(ToLLVMNode.createNode(long.class), argumentsArray(3, type.getArgumentTypes().length - 3), argumentsTypes(3, type.getArgumentTypes()),
+                                                LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
 
@@ -407,8 +470,9 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleInvokeNodeGen.create(ToLLVMNode.createNode(byte.class), argumentsArray(3, type.getArgumentTypes().length - 3), argumentsTypes(3, type.getArgumentTypes()),
-                                LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@truffle_invoke_c",
+                                LLVMTruffleInvokeNodeGen.create(ToLLVMNode.createNode(byte.class), argumentsArray(3, type.getArgumentTypes().length - 3), argumentsTypes(3, type.getArgumentTypes()),
+                                                LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
 
@@ -416,8 +480,9 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleInvokeNodeGen.create(ToLLVMNode.createNode(float.class), argumentsArray(3, type.getArgumentTypes().length - 3), argumentsTypes(3, type.getArgumentTypes()),
-                                LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@truffle_invoke_f",
+                                LLVMTruffleInvokeNodeGen.create(ToLLVMNode.createNode(float.class), argumentsArray(3, type.getArgumentTypes().length - 3), argumentsTypes(3, type.getArgumentTypes()),
+                                                LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
 
@@ -425,8 +490,9 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleInvokeNodeGen.create(ToLLVMNode.createNode(double.class), argumentsArray(3, type.getArgumentTypes().length - 3), argumentsTypes(3, type.getArgumentTypes()),
-                                LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@truffle_invoke_d",
+                                LLVMTruffleInvokeNodeGen.create(ToLLVMNode.createNode(double.class), argumentsArray(3, type.getArgumentTypes().length - 3), argumentsTypes(3, type.getArgumentTypes()),
+                                                LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
 
@@ -434,7 +500,8 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleInvokeNodeGen.create(ToLLVMNode.createNode(boolean.class), argumentsArray(3, type.getArgumentTypes().length - 3), argumentsTypes(3, type.getArgumentTypes()),
+                return wrap("@truffle_invoke_b", LLVMTruffleInvokeNodeGen.create(ToLLVMNode.createNode(boolean.class), argumentsArray(3, type.getArgumentTypes().length - 3),
+                                argumentsTypes(3, type.getArgumentTypes()),
                                 LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
@@ -445,7 +512,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleExecuteNodeGen.create(ToLLVMNode.createNode(TruffleObject.class), argumentsArray(2, type.getArgumentTypes().length - 2),
+                return wrap("@truffle_execute", LLVMTruffleExecuteNodeGen.create(ToLLVMNode.createNode(TruffleObject.class), argumentsArray(2, type.getArgumentTypes().length - 2),
                                 argumentsTypes(2, type.getArgumentTypes()),
                                 LLVMArgNodeGen.create(1)));
             }
@@ -455,7 +522,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleExecuteNodeGen.create(ToLLVMNode.createNode(int.class), argumentsArray(2, type.getArgumentTypes().length - 2),
+                return wrap("@truffle_execute_i", LLVMTruffleExecuteNodeGen.create(ToLLVMNode.createNode(int.class), argumentsArray(2, type.getArgumentTypes().length - 2),
                                 argumentsTypes(2, type.getArgumentTypes()),
                                 LLVMArgNodeGen.create(1)));
             }
@@ -465,7 +532,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleExecuteNodeGen.create(ToLLVMNode.createNode(long.class), argumentsArray(2, type.getArgumentTypes().length - 2),
+                return wrap("@truffle_execute_l", LLVMTruffleExecuteNodeGen.create(ToLLVMNode.createNode(long.class), argumentsArray(2, type.getArgumentTypes().length - 2),
                                 argumentsTypes(2, type.getArgumentTypes()),
                                 LLVMArgNodeGen.create(1)));
             }
@@ -475,7 +542,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleExecuteNodeGen.create(ToLLVMNode.createNode(byte.class), argumentsArray(2, type.getArgumentTypes().length - 2),
+                return wrap("@truffle_execute_c", LLVMTruffleExecuteNodeGen.create(ToLLVMNode.createNode(byte.class), argumentsArray(2, type.getArgumentTypes().length - 2),
                                 argumentsTypes(2, type.getArgumentTypes()),
                                 LLVMArgNodeGen.create(1)));
             }
@@ -485,7 +552,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleExecuteNodeGen.create(ToLLVMNode.createNode(float.class), argumentsArray(2, type.getArgumentTypes().length - 2),
+                return wrap("@truffle_execute_f", LLVMTruffleExecuteNodeGen.create(ToLLVMNode.createNode(float.class), argumentsArray(2, type.getArgumentTypes().length - 2),
                                 argumentsTypes(2, type.getArgumentTypes()),
                                 LLVMArgNodeGen.create(1)));
             }
@@ -495,7 +562,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleExecuteNodeGen.create(ToLLVMNode.createNode(double.class), argumentsArray(2, type.getArgumentTypes().length - 2),
+                return wrap("@truffle_execute_d", LLVMTruffleExecuteNodeGen.create(ToLLVMNode.createNode(double.class), argumentsArray(2, type.getArgumentTypes().length - 2),
                                 argumentsTypes(2, type.getArgumentTypes()),
                                 LLVMArgNodeGen.create(1)));
             }
@@ -505,7 +572,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleExecuteNodeGen.create(ToLLVMNode.createNode(boolean.class), argumentsArray(2, type.getArgumentTypes().length - 2),
+                return wrap("@truffle_execute_b", LLVMTruffleExecuteNodeGen.create(ToLLVMNode.createNode(boolean.class), argumentsArray(2, type.getArgumentTypes().length - 2),
                                 argumentsTypes(2, type.getArgumentTypes()),
                                 LLVMArgNodeGen.create(1)));
             }
@@ -517,7 +584,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleImportNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@truffle_import", LLVMTruffleImportNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -525,7 +592,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleImportCachedNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@truffle_import_cached", LLVMTruffleImportCachedNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -533,7 +600,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleAddressToFunctionNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@truffle_address_to_function", LLVMTruffleAddressToFunctionNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -541,7 +608,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleIsExecutableNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@truffle_is_executable", LLVMTruffleIsExecutableNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -549,7 +616,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleIsNullNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@truffle_is_null", LLVMTruffleIsNullNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -557,7 +624,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleHasSizeNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@truffle_has_size", LLVMTruffleHasSizeNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -565,7 +632,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleIsBoxedNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@truffle_is_boxed", LLVMTruffleIsBoxedNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -573,7 +640,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleGetSizeNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@truffle_get_size", LLVMTruffleGetSizeNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -581,7 +648,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleReadStringNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@truffle_read_string", LLVMTruffleReadStringNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -589,7 +656,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleReadNStringNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@truffle_read_n_string", LLVMTruffleReadNStringNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
 
@@ -597,7 +664,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleReadBytesNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@truffle_read_bytes", LLVMTruffleReadBytesNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -605,7 +672,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleReadNBytesNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@truffle_read_n_bytes", LLVMTruffleReadNBytesNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
 
@@ -613,7 +680,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleIsTruffleObjectNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@truffle_is_truffle_object", LLVMTruffleIsTruffleObjectNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -621,7 +688,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleManagedMallocNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@truffle_managed_malloc", LLVMTruffleManagedMallocNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -629,7 +696,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleManagedToHandleNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@truffle_handle_for_managed", LLVMTruffleManagedToHandleNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -637,7 +704,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleReleaseHandleNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@truffle_release_handle", LLVMTruffleReleaseHandleNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -645,7 +712,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTruffleHandleToManagedNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@truffle_managed_from_handle", LLVMTruffleHandleToManagedNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
     }
@@ -655,14 +722,14 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMAbortNodeGen.create());
+                return wrap("@_gfortran_abort", LLVMAbortNodeGen.create());
             }
         });
         factories.put("@abort", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMAbortNodeGen.create());
+                return wrap("@abort", LLVMAbortNodeGen.create());
             }
         });
 
@@ -670,21 +737,21 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMExitNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@exit", LLVMExitNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
         factories.put("@atexit", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMAtExitNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@atexit", LLVMAtExitNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
         factories.put("@signal", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMSignalNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@signal", LLVMSignalNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
     }
@@ -694,14 +761,14 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMStrlenNodeGen.create(context.getNativeLookup().getNativeFunction("@strlen"), LLVMArgNodeGen.create(1)));
+                return wrap("@strlen", LLVMStrlenNodeGen.create(context.getNativeLookup().getNativeFunction("@strlen"), LLVMArgNodeGen.create(1)));
             }
         });
         factories.put("@strcmp", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMStrCmpNodeGen.create(context.getNativeLookup().getNativeFunction("@strcmp"), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@strcmp", LLVMStrCmpNodeGen.create(context.getNativeLookup().getNativeFunction("@strcmp"), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
     }
@@ -711,91 +778,91 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMLog2NodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@log2", LLVMLog2NodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
         factories.put("@sqrt", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMSqrtNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@sqrt", LLVMSqrtNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
         factories.put("@log", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMLogNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@log", LLVMLogNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
         factories.put("@log10", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMLog10NodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@log10", LLVMLog10NodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
         factories.put("@rint", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMRintNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@rint", LLVMRintNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
         factories.put("@ceil", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMCeilNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@ceil", LLVMCeilNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
         factories.put("@floor", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMFloorNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@floor", LLVMFloorNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
         factories.put("@abs", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMAbsNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@abs", LLVMAbsNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
         factories.put("@labs", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMLAbsNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@labs", LLVMLAbsNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
         factories.put("@fabs", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMFAbsNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@fabs", LLVMFAbsNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
         factories.put("@pow", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMPowNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(1)));
+                return wrap("@pow", LLVMPowNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(1)));
             }
         });
         factories.put("@exp", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMExpNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@exp", LLVMExpNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
         factories.put("@toupper", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMToUpperNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@toupper", LLVMToUpperNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -803,7 +870,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMSinNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@sin", LLVMSinNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -811,7 +878,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMSinNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@sinf", LLVMSinNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -819,7 +886,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMCosNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@cos", LLVMCosNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -827,7 +894,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMCosNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@cosf", LLVMCosNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -835,7 +902,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTanNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@tan", LLVMTanNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -843,7 +910,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTanNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@tanf", LLVMTanNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -851,7 +918,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMATan2NodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@atan2", LLVMATan2NodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
 
@@ -859,7 +926,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMATan2NodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@atan2f", LLVMATan2NodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
 
@@ -867,7 +934,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMASinNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@asin", LLVMASinNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -875,7 +942,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMASinNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@asinf", LLVMASinNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -883,7 +950,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMACosNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@acos", LLVMACosNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -891,7 +958,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMACosNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@acosf", LLVMACosNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -899,7 +966,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMATanNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@atan", LLVMATanNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -907,7 +974,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMATanNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@atanf", LLVMATanNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -915,7 +982,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMSinhNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@sinh", LLVMSinhNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -923,7 +990,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMSinhNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@sinhf", LLVMSinhNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -931,7 +998,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMCoshNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@cosh", LLVMCoshNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -939,7 +1006,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMCoshNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@coshf", LLVMCoshNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -947,7 +1014,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTanhNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@tanh", LLVMTanhNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
 
@@ -955,7 +1022,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMTanhNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@tanhf", LLVMTanhNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
     }
@@ -965,21 +1032,21 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMMallocNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@malloc", LLVMMallocNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
         factories.put("@calloc", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMCallocNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@calloc", LLVMCallocNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
         factories.put("@free", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(LLVMFreeNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@free", LLVMFreeNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
     }
@@ -989,49 +1056,49 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(new LLVMThrowExceptionNode(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
+                return wrap("@__cxa_throw", new LLVMThrowExceptionNode(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
             }
         });
         factories.put("@__cxa_rethrow", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(new LLVMRethrowNode());
+                return wrap("@__cxa_rethrow", new LLVMRethrowNode());
             }
         });
         factories.put("@__cxa_begin_catch", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(new LLVMBeginCatchNode(LLVMArgNodeGen.create(1)));
+                return wrap("@__cxa_begin_catch", new LLVMBeginCatchNode(LLVMArgNodeGen.create(1)));
             }
         });
         factories.put("@__cxa_end_catch", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(new LLVMEndCatchNode(LLVMArgNodeGen.create(0)));
+                return wrap("@__cxa_end_catch", new LLVMEndCatchNode(LLVMArgNodeGen.create(0)));
             }
         });
         factories.put("@__cxa_free_exception", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(new LLVMFreeExceptionNode(LLVMArgNodeGen.create(1)));
+                return wrap("@__cxa_free_exception", new LLVMFreeExceptionNode(LLVMArgNodeGen.create(1)));
             }
         });
         factories.put("@__cxa_atexit", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(new LLVMAtExitNode(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
+                return wrap("@__cxa_atexit", new LLVMAtExitNode(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
             }
         });
         factories.put("@__cxa_call_unexpected", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(new LLVMExpressionNode() {
+                return wrap("@__cxa_call_unexpected", new LLVMExpressionNode() {
                     @Override
                     public Object executeGeneric(VirtualFrame frame) {
                         throw new LLVMExitException(134);
@@ -1045,19 +1112,19 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
         factories.put("@__divdc3", new LLVMNativeIntrinsicFactory(true, false) {
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(new LLVMComplexDiv(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3), LLVMArgNodeGen.create(4), LLVMArgNodeGen.create(5)));
+                return wrap("@__divdc3", new LLVMComplexDiv(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3), LLVMArgNodeGen.create(4), LLVMArgNodeGen.create(5)));
             }
         });
         factories.put("@__muldc3", new LLVMNativeIntrinsicFactory(true, false) {
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(new LLVMComplexMul(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3), LLVMArgNodeGen.create(4), LLVMArgNodeGen.create(5)));
+                return wrap("@__muldc3", new LLVMComplexMul(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3), LLVMArgNodeGen.create(4), LLVMArgNodeGen.create(5)));
             }
         });
         factories.put("@__divsc3", new LLVMNativeIntrinsicFactory(true, false) {
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap(new LLVMComplexDivSC(LLVMArgNodeGen.create(0), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3), LLVMArgNodeGen.create(4)));
+                return wrap("@__divsc3", new LLVMComplexDivSC(LLVMArgNodeGen.create(0), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3), LLVMArgNodeGen.create(4)));
             }
         });
     }
