@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.types;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
@@ -134,43 +135,11 @@ public final class StructureType extends AggregateType {
 
     @Override
     public String toString() {
-        if (name.equals(LLVMIdentifier.UNKNOWN)) {
-            return toDeclarationString();
-        } else {
-            return name;
-        }
-    }
-
-    private String toDeclarationString() {
-        StringBuilder str = new StringBuilder();
-        if (isPacked) {
-            str.append("<{ ");
-        } else {
-            str.append("{ ");
-        }
-
-        for (int i = 0; i < types.length; i++) {
-            Type type = types[i];
-            if (i > 0) {
-                str.append(", ");
-            }
-            if (type instanceof PointerType && ((PointerType) type).getPointeeType() == this) {
-                str.append("%").append(getName()).append("*");
-            } else {
-                str.append(type);
-            }
-        }
-
-        if (isPacked) {
-            str.append(" }>");
-        } else {
-            str.append(" }");
-        }
-
-        return str.toString();
+        return name;
     }
 
     @Override
+    @TruffleBoundary
     public int hashCode() {
         final int prime = 31;
         int result = 1;
@@ -181,6 +150,7 @@ public final class StructureType extends AggregateType {
     }
 
     @Override
+    @TruffleBoundary
     public boolean equals(Object obj) {
         if (this == obj) {
             return true;
