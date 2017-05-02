@@ -33,40 +33,6 @@ import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class ArrayType extends AggregateType {
 
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ((elementType == null) ? 0 : elementType.hashCode());
-        result = prime * result + length;
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        ArrayType other = (ArrayType) obj;
-        if (elementType == null) {
-            if (other.elementType != null) {
-                return false;
-            }
-        } else if (!elementType.equals(other.elementType)) {
-            return false;
-        }
-        if (length != other.length) {
-            return false;
-        }
-        return true;
-    }
-
     private static final int NO_LENGTH = -1;
 
     private final Type elementType;
@@ -130,6 +96,40 @@ public final class ArrayType extends AggregateType {
     @Override
     public String toString() {
         return String.format("[%d x %s]", getNumberOfElements(), getElementType());
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((elementType == null) ? 0 : elementType.hashCode());
+        result = prime * result + length;
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        ArrayType other = (ArrayType) obj;
+        if (elementType == null) {
+            if (other.elementType != null) {
+                return false;
+            }
+        } else if (!elementType.equals(other.elementType)) {
+            return false;
+        }
+        if (length != other.length) {
+            return false;
+        }
+        return true;
     }
 
 }
