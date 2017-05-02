@@ -428,6 +428,7 @@ import jdk.vm.ci.meta.RawConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.TriState;
 
 /**
@@ -1375,7 +1376,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
     @Override
     public void handleReplacedInvoke(CallTargetNode callTarget, JavaKind resultType) {
-        createNonInlinedInvoke(callTarget, resultType, null);
+        createNonInlinedInvoke(bci(), callTarget, resultType, null);
     }
 
     private Invoke appendInvoke(InvokeKind initialInvokeKind, ResolvedJavaMethod initialTargetMethod, ValueNode[] args) {
@@ -1441,23 +1442,74 @@ public class BytecodeParser implements GraphBuilderContext {
             currentInvokeKind = null;
         }
 
+        int bci = bci();
+        boolean partialIntrinsicExit = false;
+        if (intrinsicContext != null && intrinsicContext.isCallToOriginal(targetMethod)) {
+            partialIntrinsicExit = true;
+            ResolvedJavaMethod originalMethod = intrinsicContext.getOriginalMethod();
+            if (originalMethod.isStatic()) {
+                invokeKind = InvokeKind.Static;
+            } else {
+                // The original call to the intrinsic must have been devirtualized
+                // otherwise we wouldn't be here.
+                invokeKind = InvokeKind.Special;
+            }
+            Signature sig = originalMethod.getSignature();
+            returnType = sig.getReturnType(method.getDeclaringClass());
+            resultType = sig.getReturnKind();
+            bci = intrinsicContext.bci();
+            assert checkPartialIntrinsicExit(args);
+            targetMethod = originalMethod;
+        }
         JavaTypeProfile profile = null;
         if (invokeKind.isIndirect() && profilingInfo != null && this.optimisticOpts.useTypeCheckHints(getOptions())) {
             profile = profilingInfo.getTypeProfile(bci());
         }
-        return createNonInlinedInvoke(args, targetMethod, invokeKind, resultType, returnType, inlineInfo, profile);
+        Invoke invoke = createNonInlinedInvoke(args, bci, targetMethod, invokeKind, resultType, returnType, inlineInfo, profile);
+        if (partialIntrinsicExit) {
+            // This invoke must never be later inlined as it might select the intrinsic graph.
+            // Until there is a mechanism to guarantee that any late inlining will not select
+            // the intrinsic graph, prevent this invoke from being inlined.
+            invoke.setUseForInlining(false);
+        }
+        return invoke;
     }
 
-    protected Invoke createNonInlinedInvoke(ValueNode[] args, ResolvedJavaMethod targetMethod, InvokeKind invokeKind,
-                    JavaKind resultType, JavaType returnType, InlineInfo inlineInfo, JavaTypeProfile profile) {
+    /**
+     * A partial intrinsic exits by (effectively) calling the intrinsified method. This call must
+     * use exactly the arguments to the call being intrinsified.
+     *
+     * @param args arguments of recursive call to intrinsified method
+     */
+    private boolean checkPartialIntrinsicExit(ValueNode[] args) {
+        if (intrinsicContext.getArgs() != null) {
+            assert intrinsicContext.bci() >= 0;
+            ValueNode[] icArgs = intrinsicContext.getArgs();
+            for (int i = 0; i < icArgs.length; i++) {
+                ValueNode arg = GraphUtil.unproxify(args[i]);
+                ValueNode icArg = GraphUtil.unproxify(icArgs[i]);
+                assert arg == icArg : String.format("argument %d of call denoting partial intrinsic exit should be %s, not %s", i, icArg, arg);
+            }
+        } else {
+            for (int i = 0; i < args.length; i++) {
+                ValueNode arg = GraphUtil.unproxify(args[i]);
+                assert arg instanceof ParameterNode && ((ParameterNode) arg).index() == i : String.format("argument %d of call denoting partial intrinsic exit should be a %s with index %d, not %s", i,
+                                ParameterNode.class.getSimpleName(), i, arg);
+            }
+        }
+        return true;
+    }
+
+    protected Invoke createNonInlinedInvoke(ValueNode[] invokeArgs, int invokeBci, ResolvedJavaMethod targetMethod,
+                    InvokeKind invokeKind, JavaKind resultType, JavaType returnType, InlineInfo inlineInfo, JavaTypeProfile profile) {
 
         StampPair returnStamp = graphBuilderConfig.getPlugins().getOverridingStamp(this, returnType, false);
         if (returnStamp == null) {
             returnStamp = StampFactory.forDeclaredType(graph.getAssumptions(), returnType, false);
         }
 
-        MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, targetMethod, args, returnStamp, profile));
-        Invoke invoke = createNonInlinedInvoke(callTarget, resultType, inlineInfo);
+        MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, targetMethod, invokeArgs, returnStamp, profile));
+        Invoke invoke = createNonInlinedInvoke(invokeBci, callTarget, resultType, inlineInfo);
 
         for (InlineInvokePlugin plugin : graphBuilderConfig.getPlugins().getInlineInvokePlugins()) {
             plugin.notifyNotInlined(this, targetMethod, invoke);
@@ -1466,11 +1518,11 @@ public class BytecodeParser implements GraphBuilderContext {
         return invoke;
     }
 
-    protected Invoke createNonInlinedInvoke(CallTargetNode callTarget, JavaKind resultType, InlineInfo inlineInfo) {
+    protected Invoke createNonInlinedInvoke(int invokeBci, CallTargetNode callTarget, JavaKind resultType, InlineInfo inlineInfo) {
         if (omitInvokeExceptionEdge(callTarget, inlineInfo)) {
-            return createInvoke(callTarget, resultType);
+            return createInvoke(invokeBci, callTarget, resultType);
         } else {
-            Invoke invoke = createInvokeWithException(callTarget, resultType);
+            Invoke invoke = createInvokeWithException(invokeBci, callTarget, resultType);
             AbstractBeginNode beginNode = graph.add(KillingBeginNode.create(LocationIdentity.any()));
             invoke.setNext(beginNode);
             lastInstr = beginNode;
@@ -1679,15 +1731,15 @@ public class BytecodeParser implements GraphBuilderContext {
 
     /**
      * Performs any action required after execution of an invocation plugin. This includes
-     * {@linkplain InvocationPluginAssertions#check(boolean) checking} invocation plugin invariants
-     * as well as weaving the {@code else} branch of the code woven by {@link #guardIntrinsic} if
+     * {@linkplain InvocationPluginAssertions#check checking} invocation plugin invariants as well
+     * as weaving the {@code else} branch of the code woven by {@link #guardIntrinsic} if
      * {@code guard != null}.
      */
-    protected void afterInvocationPluginExecution(boolean pluginResult, InvocationPluginAssertions assertions, IntrinsicGuard intrinsicGuard,
+    protected void afterInvocationPluginExecution(boolean pluginHandledInvoke, InvocationPluginAssertions assertions, IntrinsicGuard intrinsicGuard,
                     InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType, JavaType returnType) {
-        assert assertions.check(pluginResult);
+        assert assertions.check(pluginHandledInvoke);
         if (intrinsicGuard != null) {
-            if (pluginResult) {
+            if (pluginHandledInvoke) {
                 if (intrinsicGuard.nonIntrinsicBranch != null) {
                     // Intrinsic emitted: emit a virtual call to the target method and
                     // merge it with the intrinsic branch
@@ -1702,7 +1754,7 @@ public class BytecodeParser implements GraphBuilderContext {
                     }
 
                     lastInstr = intrinsicGuard.nonIntrinsicBranch;
-                    createNonInlinedInvoke(args, targetMethod, invokeKind, resultType, returnType, null, intrinsicGuard.profile);
+                    createNonInlinedInvoke(args, bci(), targetMethod, invokeKind, resultType, returnType, null, intrinsicGuard.profile);
 
                     EndNode nonIntrinsicEnd = append(new EndNode());
                     AbstractMergeNode mergeNode = graph.add(new MergeNode());
@@ -1865,22 +1917,14 @@ public class BytecodeParser implements GraphBuilderContext {
                 printInlining(targetMethod, inlinedMethod, true, "compilation root (bytecode parsing)");
                 return true;
             } else {
-                // Otherwise inline the original method. Any frame state created
-                // during the inlining will exclude frame(s) in the
-                // intrinsic method (see HIRFrameStateBuilder.create(int bci)).
-                if (intrinsic.getOriginalMethod().isNative()) {
-                    printInlining(targetMethod, inlinedMethod, false, "native method (bytecode parsing)");
-                    return false;
-                }
-                printInlining(targetMethod, inlinedMethod, true, "inline intrinsic (bytecode parsing)");
-                parseAndInlineCallee(intrinsic.getOriginalMethod(), args, null);
-                return true;
+                printInlining(targetMethod, inlinedMethod, true, "partial intrinsic (bytecode parsing)");
+                return false;
             }
         } else {
             boolean isIntrinsic = intrinsicBytecodeProvider != null;
             if (intrinsic == null && isIntrinsic) {
                 assert !inlinedMethod.equals(targetMethod);
-                intrinsic = new IntrinsicContext(targetMethod, inlinedMethod, intrinsicBytecodeProvider, INLINE_DURING_PARSING);
+                intrinsic = new IntrinsicContext(targetMethod, inlinedMethod, intrinsicBytecodeProvider, INLINE_DURING_PARSING, args, bci());
             }
             if (inlinedMethod.hasBytecodes()) {
                 for (InlineInvokePlugin plugin : graphBuilderConfig.getPlugins().getInlineInvokePlugins()) {
@@ -2004,14 +2048,15 @@ public class BytecodeParser implements GraphBuilderContext {
         return new MethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, profile);
     }
 
-    protected InvokeNode createInvoke(CallTargetNode callTarget, JavaKind resultType) {
-        InvokeNode invoke = append(new InvokeNode(callTarget, bci()));
+    protected InvokeNode createInvoke(int invokeBci, CallTargetNode callTarget, JavaKind resultType) {
+        InvokeNode invoke = append(new InvokeNode(callTarget, invokeBci));
         frameState.pushReturn(resultType, invoke);
         invoke.setStateAfter(createFrameState(stream.nextBCI(), invoke));
         return invoke;
     }
 
-    protected InvokeWithExceptionNode createInvokeWithException(CallTargetNode callTarget, JavaKind resultType) {
+    protected InvokeWithExceptionNode createInvokeWithException(int invokeBci, CallTargetNode callTarget, JavaKind resultType) {
+        assert bci() == invokeBci;
         if (currentBlock != null && stream.nextBCI() > currentBlock.endBci) {
             /*
              * Clear non-live locals early so that the exception handler entry gets the cleared
