@@ -69,7 +69,11 @@ import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LL
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMSqrtNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMTanNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMTanhNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMToUpperNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCTypeIntrinsicsFactory.LLVMIsalphaNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCTypeIntrinsicsFactory.LLVMIsspaceNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCTypeIntrinsicsFactory.LLVMIsupperNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCTypeIntrinsicsFactory.LLVMToUpperNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCTypeIntrinsicsFactory.LLVMTolowerNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMExitNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMSignalNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMTruffleOnlyIntrinsicsFactory.LLVMStrCmpNodeGen;
@@ -858,13 +862,6 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
                 return wrap("@exp", LLVMExpNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
-        factories.put("@toupper", new LLVMNativeIntrinsicFactory(true, false) {
-
-            @Override
-            protected RootCallTarget generate(FunctionType type) {
-                return wrap("@toupper", LLVMToUpperNodeGen.create(LLVMArgNodeGen.create(1)));
-            }
-        });
 
         factories.put("@sin", new LLVMNativeIntrinsicFactory(true, false) {
 
@@ -1023,6 +1020,44 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
             @Override
             protected RootCallTarget generate(FunctionType type) {
                 return wrap("@tanhf", LLVMTanhNodeGen.create(LLVMArgNodeGen.create(1)));
+            }
+        });
+    }
+
+    protected void registerCTypeIntrinsics() {
+        factories.put("@isalpha", new LLVMNativeIntrinsicFactory(true, false) {
+
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@isalpha", LLVMIsalphaNodeGen.create(LLVMArgNodeGen.create(1)));
+            }
+        });
+        factories.put("@tolower", new LLVMNativeIntrinsicFactory(true, false) {
+
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@tolower", LLVMTolowerNodeGen.create(LLVMArgNodeGen.create(1)));
+            }
+        });
+        factories.put("@toupper", new LLVMNativeIntrinsicFactory(true, false) {
+
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@toupper", LLVMToUpperNodeGen.create(LLVMArgNodeGen.create(1)));
+            }
+        });
+        factories.put("@isspace", new LLVMNativeIntrinsicFactory(true, false) {
+
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@isspace", LLVMIsspaceNodeGen.create(LLVMArgNodeGen.create(1)));
+            }
+        });
+        factories.put("@isupper", new LLVMNativeIntrinsicFactory(true, false) {
+
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@isupper", LLVMIsupperNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
     }
