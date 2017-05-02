@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -46,14 +48,14 @@ public abstract class LLVMMemSet extends LLVMExpressionNode {
         @SuppressWarnings("unused")
         @Specialization
         public Object executeVoid(LLVMAddress address, byte value, long length, int align, boolean isVolatile) {
-            LLVMMemory.memset(address, length, value);
+            memset(address, value, length);
             return null;
         }
 
         @SuppressWarnings("unused")
         @Specialization
         public Object executeVoid(LLVMGlobalVariable address, byte value, long length, int align, boolean isVolatile) {
-            LLVMMemory.memset(address.getNativeLocation(), length, value);
+            memset(address.getNativeLocation(), value, length);
             return null;
         }
     }
@@ -65,16 +67,50 @@ public abstract class LLVMMemSet extends LLVMExpressionNode {
         @SuppressWarnings("unused")
         @Specialization
         public Object executeVoid(LLVMAddress address, byte value, int length, int align, boolean isVolatile) {
-            LLVMMemory.memset(address, length, value);
+            memset(address, value, length);
             return null;
         }
 
         @SuppressWarnings("unused")
         @Specialization
         public Object executeVoid(LLVMGlobalVariable address, byte value, int length, int align, boolean isVolatile) {
-            LLVMMemory.memset(address.getNativeLocation(), length, value);
+            memset(address.getNativeLocation(), value, length);
             return null;
         }
+    }
+
+    protected static final long MAX_JAVA_LEN = 256;
+
+    @CompilationFinal private boolean inJava = true;
+
+    protected void memset(LLVMAddress address, byte value, long length) {
+        if (inJava) {
+            if (length <= MAX_JAVA_LEN) {
+                long current = address.getVal();
+                long end = current + length;
+                if (end - current >= 8) {
+                    long v16 = ((long) value) << 8 | ((long) value & 0xFF);
+                    long v32 = v16 << 16 | v16;
+                    long v64 = v32 << 32 | v32;
+
+                    do {
+                        LLVMMemory.putI64(LLVMAddress.fromLong(current), v64);
+                        current += 8;
+                    } while (end - current >= 8);
+                }
+
+                while (current < end) {
+                    LLVMMemory.putI8(LLVMAddress.fromLong(current), value);
+                    current++;
+                }
+                return;
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                inJava = false;
+            }
+        }
+
+        LLVMMemory.memset(address, length, value);
     }
 
 }
