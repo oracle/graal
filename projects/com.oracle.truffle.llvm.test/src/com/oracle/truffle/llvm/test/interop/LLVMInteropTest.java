@@ -1000,6 +1000,17 @@ public final class LLVMInteropTest {
         }
     }
 
+    @Test
+    public void testPointerThroughNativeCallback() throws Exception {
+        Runner runner = new Runner("pointerThroughNativeCallback");
+        try {
+            int result = runner.run();
+            Assert.assertEquals(42, result);
+        } finally {
+            runner.dispose();
+        }
+    }
+
     public static final class ClassA {
         public boolean valueBool = true;
         public byte valueB = 40;

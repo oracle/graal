@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.interop;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
@@ -670,12 +671,34 @@ public abstract class ToLLVMNode extends Node {
             return shared.getDescriptor();
         }
 
-        protected boolean notLLVM(TruffleObject value) {
-            return LLVMExpressionNode.notLLVM(value);
+        protected static Class<? extends TruffleObject> getNativePointerClass() {
+            CompilerAsserts.neverPartOfCompilation();
+            try {
+                return Class.forName("com.oracle.truffle.nfi.NativePointer").asSubclass(TruffleObject.class);
+            } catch (ClassNotFoundException ex) {
+                throw new RuntimeException(ex);
+            }
         }
 
-        @Specialization(guards = "notLLVM(obj)")
-        public TruffleObject fromTruffleObject(TruffleObject obj) {
+        protected static boolean notLLVM(TruffleObject value, Class<? extends TruffleObject> nativePointer) {
+            return LLVMExpressionNode.notLLVM(value) && !nativePointer.isInstance(value);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "nativePointer.isInstance(obj)")
+        public LLVMAddress fromNativePointer(TruffleObject obj, @Cached("getNativePointerClass()") Class<? extends TruffleObject> nativePointer) {
+            try {
+                long raw = (Long) ForeignAccess.sendUnbox(unbox, obj);
+                return LLVMAddress.fromLong(raw);
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new RuntimeException(ex);
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "notLLVM(obj, nativePointer)")
+        public TruffleObject fromTruffleObject(TruffleObject obj, @Cached("getNativePointerClass()") Class<? extends TruffleObject> nativePointer) {
             return obj;
         }
     }
