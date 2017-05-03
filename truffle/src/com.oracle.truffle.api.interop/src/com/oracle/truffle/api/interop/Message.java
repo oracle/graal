@@ -424,9 +424,48 @@ public abstract class Message {
     public static final Message IS_BOXED = IsBoxed.INSTANCE;
 
     /**
+     * Message to retrieve flags about a particular key (a property name). The returned value is an
+     * integer containing bit flags. See {@link KeyInfo} for possible flags. This message also
+     * allows a fast check of existence of a property among {@link #KEYS}, the returned value is
+     * <code>0</code> iff the key does not exist. The
+     * {@link Factory#accessMessage(com.oracle.truffle.api.interop.Message) target} created for this
+     * message accepts (in addition to a
+     * {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame) receiver}) a single
+     * {@link ForeignAccess#getArguments(com.oracle.truffle.api.frame.Frame) argument} identifying a
+     * property to get the info of - e.g. either {@link String} or a {@link Number} - if test of an
+     * array at a particular index is requested.
+     * <p>
+     * The default implementation requests {@link #KEYS} and test if they contain the requested key.
+     * If they do, a default bit mask <code>0b111</code> is returned.
+     * <p>
+     * The code that wants to send this message should use:
+     *
+     * <pre>
+     * {@link ForeignAccess}.{@link ForeignAccess#sendKeyInfo(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object) sendKeyInfo}(
+     *   {@link Message#KEY_INFO}.{@link Message#createNode() createNode()},  receiver, nameOfTheField
+     * );
+     * </pre>
+     *
+     * Where <code>receiver</code> is the {@link TruffleObject foreign object} to access and
+     * <code>nameOfTheField</code> is the name (or index) of its field.
+     * <p>
+     * To achieve good performance it is essential to cache/keep reference to the
+     * {@link Message#createNode() created node}.
+     *
+     * @since 0.26
+     */
+    public static final Message KEY_INFO = KeyInfoMsg.INSTANCE;
+
+    /**
      * Obtains list of property names. Checks the properties of a {@link TruffleObject foreign
      * objects} and obtains list of its property names. Those names can then be used in
      * {@link #READ} and {@link #WRITE} messages to obtain/assign real values.
+     * <p>
+     * Since version 0.26 the {@link Factory#accessMessage(com.oracle.truffle.api.interop.Message)
+     * target} created for this message accepts a boolean argument specifying whether internal keys
+     * should be included. Internal keys are extra property keys that are a part of the object, but
+     * are not provided among ordinary keys. They may even not correspond to anything what is an
+     * explicit part of the guest language representation.
      * <p>
      * The return value from using this message is another {@link TruffleObject} that responds to
      * {@link #HAS_SIZE} message and its indexes 0 to {@link #GET_SIZE} - 1 contain {@link String}
@@ -509,6 +548,9 @@ public abstract class Message {
         if (Message.KEYS == message) {
             return "KEYS"; // NOI18N
         }
+        if (Message.KEY_INFO == message) {
+            return "KEY_INFO"; // NOI18N
+        }
         if (message instanceof Execute) {
             return ((Execute) message).name();
         }
@@ -545,6 +587,8 @@ public abstract class Message {
                 return Message.IS_EXECUTABLE;
             case "KEYS":
                 return Message.KEYS;
+            case "KEY_INFO":
+                return Message.KEY_INFO;
             case "EXECUTE":
                 return Message.createExecute(0);
             case "NEW":

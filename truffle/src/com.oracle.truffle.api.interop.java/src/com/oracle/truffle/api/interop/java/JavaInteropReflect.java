@@ -315,6 +315,10 @@ final class JavaInteropReflect {
                 return ForeignAccess.send(messageNode, obj);
             }
 
+            if (message == Message.KEY_INFO) {
+                return ForeignAccess.sendKeyInfo(messageNode, obj, name);
+            }
+
             if (message == Message.READ) {
                 return ForeignAccess.sendRead(messageNode, obj, name);
             }

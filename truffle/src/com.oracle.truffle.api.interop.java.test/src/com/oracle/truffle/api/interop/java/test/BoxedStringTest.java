@@ -38,7 +38,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public class BoxedStringTest implements TruffleObject, ForeignAccess.Factory18 {
+public class BoxedStringTest implements TruffleObject, ForeignAccess.Factory26 {
     public interface ExactMatchInterop {
         String stringValue();
 
@@ -142,6 +142,12 @@ public class BoxedStringTest implements TruffleObject, ForeignAccess.Factory18 {
         return null;
     }
 
+    @Override
+    public CallTarget accessKeyInfo() {
+        return null;
+    }
+
+    @Override
     public CallTarget accessKeys() {
         return null;
     }
