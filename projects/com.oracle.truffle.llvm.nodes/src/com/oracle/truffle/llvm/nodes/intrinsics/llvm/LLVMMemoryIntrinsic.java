@@ -69,10 +69,11 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
         @Specialization
         public LLVMAddress executeVoid(int n, int size) {
             try {
-                LLVMAddress address = LLVMMemory.allocateMemory(n * size);
+                long length = Math.multiplyExact(n, size);
+                LLVMAddress address = LLVMMemory.allocateMemory(length);
                 LLVMMemory.memset(address, n * size, (byte) 0);
                 return address;
-            } catch (OutOfMemoryError e) {
+            } catch (OutOfMemoryError | ArithmeticException e) {
                 CompilerDirectives.transferToInterpreter();
                 return LLVMAddress.nullPointer();
             }
@@ -81,10 +82,11 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
         @Specialization
         public LLVMAddress executeVoid(long n, long size) {
             try {
-                LLVMAddress address = LLVMMemory.allocateMemory(n * size);
+                long length = Math.multiplyExact(n, size);
+                LLVMAddress address = LLVMMemory.allocateMemory(length);
                 LLVMMemory.memset(address, n * size, (byte) 0);
                 return address;
-            } catch (OutOfMemoryError e) {
+            } catch (OutOfMemoryError | ArithmeticException e) {
                 CompilerDirectives.transferToInterpreter();
                 return LLVMAddress.nullPointer();
             }
