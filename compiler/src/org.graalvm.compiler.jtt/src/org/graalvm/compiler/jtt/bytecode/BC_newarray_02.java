@@ -20,11 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.jtt.bytecode;
+package org.graalvm.compiler.jtt.bytecode;
 
+import org.graalvm.compiler.jtt.JTTTest;
 import org.junit.Test;
-
-import com.oracle.graal.jtt.JTTTest;
 
 public class BC_newarray_02 extends JTTTest {
     public static byte[] test(int l) {
