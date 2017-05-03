@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.c;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
@@ -97,18 +98,38 @@ public final class LLVMTruffleOnlyIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMStrlen extends LLVMTruffleOnlyI64Intrinsic {
 
+        protected static final long MAX_JAVA_LEN = 512;
+
         public LLVMStrlen(TruffleObject nativeSymbol) {
             super(nativeSymbol, "(POINTER):SINT64", 1);
         }
 
         @Specialization
         public long executeIntrinsic(LLVMAddress string) {
-            return callNative(string.getVal());
+            return strlen(string.getVal());
         }
 
         @Specialization
         public long executeIntrinsic(LLVMGlobalVariable string) {
-            return callNative(string.getNativeLocation().getVal());
+            return strlen(string.getNativeLocation().getVal());
+        }
+
+        @CompilationFinal private boolean inJava = true;
+
+        protected long strlen(long value) {
+            if (inJava) {
+                long s;
+                for (s = value; LLVMMemory.getI8(LLVMAddress.fromLong(s)) != 0; s++) {
+                }
+                long result = s - value;
+                if (result > MAX_JAVA_LEN) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    inJava = false;
+                }
+                return result;
+            } else {
+                return callNative(value);
+            }
         }
 
         @Child private Node foreignHasSize = Message.HAS_SIZE.createNode();
@@ -125,6 +146,7 @@ public final class LLVMTruffleOnlyIntrinsics {
                     long size = (long) toLLVM.executeWithTarget(strlen);
                     return size;
                 } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreter();
                     throw new AssertionError(e);
                 }
             } else {

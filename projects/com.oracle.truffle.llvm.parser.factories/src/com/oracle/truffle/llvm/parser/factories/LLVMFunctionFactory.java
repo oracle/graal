@@ -65,7 +65,6 @@ import com.oracle.truffle.llvm.nodes.func.LLVMCallUnboxNodeFactory.LLVMVarBitCal
 import com.oracle.truffle.llvm.nodes.func.LLVMCallUnboxNodeFactory.LLVMVectorCallUnboxNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMInvokeNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMLandingpadNode;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicExpressionNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
@@ -224,10 +223,6 @@ final class LLVMFunctionFactory {
 
     static LLVMExpressionNode createFunctionArgNode(int i) {
         return LLVMArgNodeGen.create(i);
-    }
-
-    static RootNode createFunctionSubstitutionRootNode(LLVMLanguage language, LLVMExpressionNode intrinsicNode) {
-        return LLVMIntrinsicExpressionNodeGen.create(language, intrinsicNode);
     }
 
     public static LLVMExpressionNode createLandingpad(LLVMExpressionNode allocateLandingPadValue, FrameSlot exceptionSlot,

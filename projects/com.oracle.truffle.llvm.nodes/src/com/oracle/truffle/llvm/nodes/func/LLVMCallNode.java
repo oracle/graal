@@ -29,8 +29,12 @@
  */
 package com.oracle.truffle.llvm.nodes.func;
 
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.llvm.nodes.func.LLVMCallNodeFactory.ArgumentNodeGen;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
@@ -40,12 +44,17 @@ public final class LLVMCallNode extends LLVMExpressionNode {
 
     @Child private LLVMExpressionNode functionNode;
     @Children private final LLVMExpressionNode[] argumentNodes;
+    @Children private final ArgumentNode[] prepareArgumentNodes;
     @Child private LLVMLookupDispatchNode dispatchNode;
 
     public LLVMCallNode(FunctionType functionType, LLVMExpressionNode functionNode, LLVMExpressionNode[] argumentNodes) {
         this.functionNode = functionNode;
         this.argumentNodes = argumentNodes;
         this.dispatchNode = LLVMLookupDispatchNodeGen.create(functionType);
+        this.prepareArgumentNodes = new ArgumentNode[argumentNodes.length];
+        for (int i = 0; i < argumentNodes.length; i++) {
+            this.prepareArgumentNodes[i] = ArgumentNodeGen.create(null);
+        }
     }
 
     @ExplodeLoop
@@ -54,9 +63,29 @@ public final class LLVMCallNode extends LLVMExpressionNode {
         Object function = functionNode.executeGeneric(frame);
         Object[] argValues = new Object[argumentNodes.length];
         for (int i = 0; i < argumentNodes.length; i++) {
-            argValues[i] = argumentNodes[i].executeGeneric(frame);
+            argValues[i] = prepareArgumentNodes[i].executeWithTarget(argumentNodes[i].executeGeneric(frame));
         }
         return dispatchNode.executeDispatch(frame, function, argValues);
+    }
+
+    @NodeChild
+    protected abstract static class ArgumentNode extends LLVMExpressionNode {
+
+        protected abstract Object executeWithTarget(Object value);
+
+        @Specialization
+        LLVMAddress doAddress(LLVMAddress address) {
+            return address.copy();
+        }
+
+        protected static boolean notAddress(Object value) {
+            return !(value instanceof LLVMAddress);
+        }
+
+        @Specialization(guards = "notAddress(value)")
+        Object doOther(Object value) {
+            return value;
+        }
     }
 
 }

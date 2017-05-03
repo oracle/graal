@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -43,12 +44,22 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
 
         @Specialization
         public LLVMAddress executeVoid(int size) {
-            return LLVMMemory.allocateMemory(size);
+            try {
+                return LLVMMemory.allocateMemory(size);
+            } catch (OutOfMemoryError e) {
+                CompilerDirectives.transferToInterpreter();
+                return LLVMAddress.nullPointer();
+            }
         }
 
         @Specialization
         public LLVMAddress executeVoid(long size) {
-            return LLVMMemory.allocateMemory(size);
+            try {
+                return LLVMMemory.allocateMemory(size);
+            } catch (OutOfMemoryError e) {
+                CompilerDirectives.transferToInterpreter();
+                return LLVMAddress.nullPointer();
+            }
         }
     }
 
@@ -57,16 +68,26 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
 
         @Specialization
         public LLVMAddress executeVoid(int n, int size) {
-            LLVMAddress address = LLVMMemory.allocateMemory(n * size);
-            LLVMMemory.memset(address, n * size, (byte) 0);
-            return address;
+            try {
+                LLVMAddress address = LLVMMemory.allocateMemory(n * size);
+                LLVMMemory.memset(address, n * size, (byte) 0);
+                return address;
+            } catch (OutOfMemoryError e) {
+                CompilerDirectives.transferToInterpreter();
+                return LLVMAddress.nullPointer();
+            }
         }
 
         @Specialization
         public LLVMAddress executeVoid(long n, long size) {
-            LLVMAddress address = LLVMMemory.allocateMemory(n * size);
-            LLVMMemory.memset(address, n * size, (byte) 0);
-            return address;
+            try {
+                LLVMAddress address = LLVMMemory.allocateMemory(n * size);
+                LLVMMemory.memset(address, n * size, (byte) 0);
+                return address;
+            } catch (OutOfMemoryError e) {
+                CompilerDirectives.transferToInterpreter();
+                return LLVMAddress.nullPointer();
+            }
         }
     }
 
