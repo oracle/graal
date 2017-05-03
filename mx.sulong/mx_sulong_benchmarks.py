@@ -194,7 +194,7 @@ class SulongVm(GuestVm):
             '-Dgraal.TruffleInliningMaxCallerSize=10000',
             '-Dgraal.TruffleCompilationExceptionsAreFatal=true',
         ]
-        sulongCmdLine = suTruffleOptions + [mx_sulong.getSearchPathOption()] + mx_sulong.getBitcodeLibrariesOption() + mx_sulong.getClasspathOptions() + ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.LLVM"] + ['bench.bc']
+        sulongCmdLine = suTruffleOptions + [mx_sulong.getSearchPathOption()] + mx_sulong.getBitcodeLibrariesOption() + mx_sulong.getClasspathOptions() + ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.Sulong"] + ['bench.bc']
         result = self.host_vm().run(cwd, sulongCmdLine + args)
 
         # reset current Directory
