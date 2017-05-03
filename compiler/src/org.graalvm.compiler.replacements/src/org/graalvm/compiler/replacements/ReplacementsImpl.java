@@ -75,6 +75,7 @@ import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.compiler.word.WordOperationPlugin;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.Equivalence;
 

@@ -32,8 +32,8 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
+import org.graalvm.api.word.LocationIdentity;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
