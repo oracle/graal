@@ -27,12 +27,11 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
-import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.replacements.classfile.ClassfileBytecodeProvider;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public abstract class SnippetsTest extends ReplacementsTest implements Snippets {
+public abstract class SnippetsTest extends ReplacementsTest {
 
     protected final ReplacementsImpl installer;
     protected final ClassfileBytecodeProvider bytecodeProvider;

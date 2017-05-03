@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.replacements.amd64;
 
-import static org.graalvm.compiler.core.common.util.Util.Java8OrEarlier;
 import static org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation.POW;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;
@@ -30,6 +29,7 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG10;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
+import static org.graalvm.compiler.serviceprovider.JDK9Method.Java8OrEarlier;
 
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.LocationIdentity;

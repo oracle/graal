@@ -22,10 +22,6 @@
  */
 package org.graalvm.compiler.lir.jtt;
 
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Test;
-
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.debug.GraalError;
@@ -33,6 +29,9 @@ import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

@@ -37,7 +37,6 @@ import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.object.LayoutFactory;
 
-@AddExports("jdk.internal.vm.ci/jdk.vm.ci.services")
 public class TruffleRuntimeTest {
 
     @Test

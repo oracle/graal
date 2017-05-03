@@ -38,7 +38,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Binding;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.runtime.RuntimeProvider;
-import org.graalvm.compiler.test.AddExports;
 import org.graalvm.util.EconomicMap;
 import org.junit.Test;
 
@@ -50,7 +49,6 @@ import jdk.vm.ci.runtime.JVMCI;
 /**
  * Exercise the compilation of intrinsic method substitutions.
  */
-@AddExports("java.base/jdk.internal.module")
 public class TestIntrinsicCompiles extends GraalCompilerTest {
 
     @Test

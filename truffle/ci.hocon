@@ -24,8 +24,6 @@ builds += [
     name: "gate-truffle-javadoc"
   },
   ${linux-amd64} ${java8} ${truffleCommon} {run : [["sh", ".travis.sigtest.sh"]], targets : [gate], name: "gate-truffle-sigtest"},
-  ${linux-amd64} ${java9} ${truffleCommon} {run : [["mx", "-v", "testgraal"]], targets : [gate], name: "gate-truffle-testgraal9"},
-  ${linux-amd64} ${java8} ${truffleCommon} {run : [["mx", "-v", "testgraal"]], targets : [gate], name: "gate-truffle-testgraal8"},
   ${linux-amd64} ${linux-deploy} ${maven-deploy-dry-run} ${truffleCommon} {name: "gate-truffle-maven-dry-run"}
   ${linux-amd64} ${linux-deploy} ${deploy-binaries} ${truffleCommon} {name : "postmerge-truffle-deploy-binaries-linux-amd64"}
   ${darwin-amd64} ${darwin-deploy} ${deploy-binaries} ${truffleCommon} {name : "postmerge-truffle-deploy-binaries-darwin-amd64"}

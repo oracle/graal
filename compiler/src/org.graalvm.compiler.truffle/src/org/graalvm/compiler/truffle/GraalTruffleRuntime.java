@@ -22,7 +22,7 @@
  */
 package org.graalvm.compiler.truffle;
 
-import static org.graalvm.compiler.core.common.util.Util.Java8OrEarlier;
+import static org.graalvm.compiler.serviceprovider.JDK9Method.Java8OrEarlier;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationRepeats;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompileOnly;
