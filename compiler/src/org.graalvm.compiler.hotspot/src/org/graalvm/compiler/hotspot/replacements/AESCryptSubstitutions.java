@@ -59,7 +59,12 @@ public class AESCryptSubstitutions {
     static final long kOffset;
     static final long lastKeyOffset;
     static final Class<?> AESCryptClass;
-    static final int AES_BLOCK_SIZE_IN_BYTES;
+
+    /**
+     * The AES block size is a constant 128 bits as defined by the
+     * <a href="http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf">standard<a/>.
+     */
+    static final int AES_BLOCK_SIZE_IN_BYTES = 16;
 
     static {
         try {
@@ -70,9 +75,6 @@ public class AESCryptSubstitutions {
             AESCryptClass = Class.forName("com.sun.crypto.provider.AESCrypt", true, cl);
             kOffset = UnsafeAccess.UNSAFE.objectFieldOffset(AESCryptClass.getDeclaredField("K"));
             lastKeyOffset = UnsafeAccess.UNSAFE.objectFieldOffset(AESCryptClass.getDeclaredField("lastKey"));
-            // Thankfully the AES block size is a constant (128 bits) and so we don't need to
-            // reflect on com.sun.crypto.provider.AESConstants.AES_BLOCK_SIZE.
-            AES_BLOCK_SIZE_IN_BYTES = 16;
         } catch (Exception ex) {
             throw new GraalError(ex);
         }
