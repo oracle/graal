@@ -26,8 +26,9 @@
 
 import argparse
 import re
+import os
 from os.path import join, exists
-from tempfile import mkdtemp
+from tempfile import mkdtemp, mkstemp
 from shutil import rmtree
 
 import mx
@@ -151,11 +152,20 @@ mx_benchmark.add_java_vm(JvmciJdkVm('client', 'default', ['-server', '-XX:-Enabl
 mx_benchmark.add_java_vm(JvmciJdkVm('client', 'hosted', ['-server', '-XX:+EnableJVMCI', '-XX:TieredStopAtLevel=1']), suite=_suite, priority=1)
 
 class DebugValueBenchmarkMixin(object):
-    debug_values_file = 'debug-values.csv'
+
+    def before(self, bmSuiteArgs):
+        fd, self._debug_values_file = mkstemp(prefix='debug-values.', suffix='.csv', dir='.')
+        # we don't need the file descriptor
+        os.close(fd)
+        super(DebugValueBenchmarkMixin, self).before(bmSuiteArgs)
+
+    def after(self, bmSuiteArgs):
+        os.remove(self._debug_values_file)
+        super(DebugValueBenchmarkMixin, self).after(bmSuiteArgs)
 
     def vmArgs(self, bmSuiteArgs):
         vmArgs = ['-Dgraal.DebugValueHumanReadable=false', '-Dgraal.DebugValueSummary=Name',
-                  '-Dgraal.DebugValueFile=' + DebugValueBenchmarkMixin.debug_values_file] +\
+                  '-Dgraal.DebugValueFile=' + self.get_csv_filename()] +\
                   super(DebugValueBenchmarkMixin, self).vmArgs(bmSuiteArgs)
         return vmArgs
 
@@ -170,14 +180,14 @@ class DebugValueBenchmarkMixin(object):
         filtered_args = [x for x in args if not x.startswith("-Dgraal.DebugValue")]
         return super(DebugValueBenchmarkMixin, self).shorten_vm_flags(filtered_args)
 
-    def get_csv_filename(self, benchmarks, bmSuiteArgs):
-        return DebugValueBenchmarkMixin.debug_values_file
+    def get_csv_filename(self):
+        return self._debug_values_file
 
 
 class DebugValueRule(mx_benchmark.CSVFixedFileRule):
-    def __init__(self, benchmark, bench_suite, metric_name, filter_fn, vm_flags, metric_unit=("<unit>", str)):
+    def __init__(self, debug_value_file, benchmark, bench_suite, metric_name, filter_fn, vm_flags, metric_unit=("<unit>", str)):
         super(DebugValueRule, self).__init__(
-            filename=DebugValueBenchmarkMixin.debug_values_file,
+            filename=debug_value_file,
             colnames=['scope', 'name', 'value', 'unit'],
             replacement={
                 "benchmark": benchmark,
@@ -245,6 +255,7 @@ class TimingBenchmarkMixin(DebugValueBenchmarkMixin):
     def rules(self, out, benchmarks, bmSuiteArgs):
         return [
                    DebugValueRule(
+                       debug_value_file=self.get_csv_filename(),
                        benchmark=self.getBechmarkName(),
                        bench_suite=self.benchSuiteName(),
                        metric_name="compile-time",
@@ -284,6 +295,7 @@ class CounterBenchmarkMixin(DebugValueBenchmarkMixin):
     def rules(self, out, benchmarks, bmSuiteArgs):
         return [
             DebugValueRule(
+                debug_value_file=self.get_csv_filename(),
                 benchmark=self.getBechmarkName(),
                 bench_suite=self.benchSuiteName(),
                 metric_name="count",
