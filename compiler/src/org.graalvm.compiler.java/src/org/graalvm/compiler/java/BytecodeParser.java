@@ -1897,7 +1897,6 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private boolean inline(ResolvedJavaMethod targetMethod, ResolvedJavaMethod inlinedMethod, BytecodeProvider intrinsicBytecodeProvider, ValueNode[] args) {
-        traceInlining(targetMethod, inlinedMethod);
         IntrinsicContext intrinsic = this.intrinsicContext;
 
         if (intrinsic == null && !graphBuilderConfig.insertFullInfopoints() &&
@@ -1917,8 +1916,21 @@ public class BytecodeParser implements GraphBuilderContext {
                 printInlining(targetMethod, inlinedMethod, true, "compilation root (bytecode parsing)");
                 return true;
             } else {
-                printInlining(targetMethod, inlinedMethod, true, "partial intrinsic (bytecode parsing)");
-                return false;
+                if (intrinsic.getOriginalMethod().isNative()) {
+                    printInlining(targetMethod, inlinedMethod, false, "native method (bytecode parsing)");
+                    return false;
+                }
+                if (inlinePartialIntrinsicExit()) {
+                    // Otherwise inline the original method. Any frame state created
+                    // during the inlining will exclude frame(s) in the
+                    // intrinsic method (see HIRFrameStateBuilder.create(int bci)).
+                    printInlining(targetMethod, inlinedMethod, true, "partial intrinsic exit (bytecode parsing)");
+                    parseAndInlineCallee(intrinsic.getOriginalMethod(), args, null);
+                    return true;
+                } else {
+                    printInlining(targetMethod, inlinedMethod, false, "partial intrinsic exit (bytecode parsing)");
+                    return false;
+                }
             }
         } else {
             boolean isIntrinsic = intrinsicBytecodeProvider != null;
@@ -1943,17 +1955,24 @@ public class BytecodeParser implements GraphBuilderContext {
         return true;
     }
 
-    private void traceInlining(ResolvedJavaMethod targetMethod, ResolvedJavaMethod inlinedMethod) {
-        if (TraceInlineDuringParsing.getValue(options) || TraceParserPlugins.getValue(options)) {
-            if (targetMethod.equals(inlinedMethod)) {
-                traceWithContext("inlining call to %s", inlinedMethod.format("%h.%n(%p)"));
-            } else {
-                traceWithContext("inlining call to %s as intrinsic for %s", inlinedMethod.format("%h.%n(%p)"), targetMethod.format("%h.%n(%p)"));
-            }
-        }
+    /**
+     * Determines if a partial intrinsic exit (i.e., a call to the original method within an
+     * intrinsic) should be inlined.
+     */
+    protected boolean inlinePartialIntrinsicExit() {
+        return true;
     }
 
     private void printInlining(ResolvedJavaMethod targetMethod, ResolvedJavaMethod inlinedMethod, boolean success, String msg) {
+        if (success) {
+            if (TraceInlineDuringParsing.getValue(options) || TraceParserPlugins.getValue(options)) {
+                if (targetMethod.equals(inlinedMethod)) {
+                    traceWithContext("inlining call to %s", inlinedMethod.format("%h.%n(%p)"));
+                } else {
+                    traceWithContext("inlining call to %s as intrinsic for %s", inlinedMethod.format("%h.%n(%p)"), targetMethod.format("%h.%n(%p)"));
+                }
+            }
+        }
         if (HotSpotPrintInlining.getValue(options)) {
             if (targetMethod.equals(inlinedMethod)) {
                 Util.printInlining(inlinedMethod, bci(), getDepth(), success, "%s", msg);
@@ -1979,8 +1998,12 @@ public class BytecodeParser implements GraphBuilderContext {
 
     protected void traceWithContext(String format, Object... args) {
         StackTraceElement where = code.asStackTraceElement(bci());
-        TTY.println(format("%s%s (%s:%d) %s", nSpaces(getDepth()), method.isConstructor() ? method.format("%h.%n") : method.getName(), where.getFileName(), where.getLineNumber(),
-                        format(format, args)));
+        String s = format("%s%s (%s:%d) %s", nSpaces(getDepth()), method.isConstructor() ? method.format("%h.%n") : method.getName(), where.getFileName(), where.getLineNumber(),
+                        format(format, args));
+        if (s.equals("decrypt (CipherBlockChainingSubstitutions.java:117) inlining call to CipherBlockChainingSubstitutions.decrypt(Object, byte[], int, int, byte[], int)")) {
+            System.console();
+        }
+        TTY.println(s);
     }
 
     protected BytecodeParserError asParserError(Throwable e) {
