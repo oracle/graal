@@ -566,7 +566,8 @@ public class PartialEvaluator {
         if (!TruffleCompilerOptions.getValue(TruffleInlineAcrossTruffleBoundary)) {
             // Do not inline across Truffle boundaries.
             for (MethodCallTargetNode mct : graph.getNodes(MethodCallTargetNode.TYPE)) {
-                if (mct.targetMethod().getAnnotation(TruffleBoundary.class) != null) {
+                TruffleBoundary annotation = mct.targetMethod().getAnnotation(TruffleBoundary.class);
+                if (annotation != null && !annotation.allowInlining()) {
                     mct.invoke().setUseForInlining(false);
                 }
             }
