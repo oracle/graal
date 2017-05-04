@@ -308,6 +308,9 @@ class CounterBenchmarkMixin(DebugValueBenchmarkMixin):
 
 class DaCapoTimingBenchmarkMixin(TimingBenchmarkMixin, CounterBenchmarkMixin):
 
+    def host_vm_config_name(self, host_vm, vm):
+        return super(DaCapoTimingBenchmarkMixin, self).host_vm_config_name(host_vm, vm) + "-timing"
+
     def postprocessRunArgs(self, benchname, runArgs):
         self.currentBenchname = benchname
         return super(DaCapoTimingBenchmarkMixin, self).postprocessRunArgs(benchname, runArgs)
@@ -457,6 +460,9 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchma
     def subgroup(self):
         return "graal-compiler"
 
+    def benchSuiteName(self):
+        self.name()
+
     def before(self, bmSuiteArgs):
         parser = mx_benchmark.parsers["dacapo_benchmark_suite"].parser
         bmArgs, _ = parser.parse_known_args(bmSuiteArgs)
@@ -568,6 +574,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchma
             if next((p for p in partialResults if p["metric.iteration"] == i), None) is None:
                 datapoint = {
                     "benchmark": benchmarks[0],
+                    "bench-suite": self.benchSuiteName(),
                     "vm": "jvmci",
                     "config.name": "default",
                     "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
@@ -582,6 +589,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchma
                 partialResults.append(datapoint)
         datapoint = {
             "benchmark": benchmarks[0],
+            "bench-suite": self.benchSuiteName(),
             "vm": "jvmci",
             "config.name": "default",
             "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
@@ -629,6 +637,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchma
             r"===== " + re.escape(self.daCapoSuiteTitle()) + " (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
             {
               "benchmark": ("<benchmark>", str),
+              "bench-suite": self.benchSuiteName(),
               "vm": "jvmci",
               "config.name": "default",
               "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
@@ -645,6 +654,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchma
             r"===== " + re.escape(self.daCapoSuiteTitle()) + " (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
             {
               "benchmark": ("<benchmark>", str),
+              "bench-suite": self.benchSuiteName(),
               "vm": "jvmci",
               "config.name": "default",
               "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
@@ -661,6 +671,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchma
             r"===== " + re.escape(self.daCapoSuiteTitle()) + " (?P<benchmark>[a-zA-Z0-9_]+) completed warmup [0-9]+ in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
             {
               "benchmark": ("<benchmark>", str),
+              "bench-suite": self.benchSuiteName(),
               "vm": "jvmci",
               "config.name": "default",
               "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
