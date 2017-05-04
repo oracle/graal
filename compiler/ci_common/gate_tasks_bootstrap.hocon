@@ -8,12 +8,12 @@ builds += [
   ${gateBootstrap8}            ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-8-linux-amd64"}
   ${gateBootstrap8FullVerify}  ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrapfullverify-8-linux-amd64"}
   ${gateBootstrap9}            ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-9-linux-amd64"}
-#GR-3741  ${gateBootstrap9EA}          ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-9EA-linux-amd64"}
+  ${gateBootstrap9EA}          ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-9EA-linux-amd64"}
 
   # Solaris SPARC
   ${gateBootstrap8}            ${gateSolarisSPARCBootstrap} {name: "gate-compiler-bootstrap-8-solaris-sparcv9",               timelimit: "1:00:00"}
   ${gateBootstrap9}            ${gateSolarisSPARCBootstrap} {name: "gate-compiler-bootstrap-9-solaris-sparcv9",               timelimit: "1:00:00"}
-#GR-3741  ${gateBootstrap9EA}          ${gateSolarisSPARCBootstrap} {name: "gate-compiler-bootstrap-9EA-solaris-sparcv9",             timelimit: "1:00:00"}
+  ${gateBootstrap9EA}          ${gateSolarisSPARCBootstrap} {name: "gate-compiler-bootstrap-9EA-solaris-sparcv9",             timelimit: "1:00:00"}
 
   # Linux AMD64 TraceRA
   ${gateBootstrap8FullVerify}  ${gateLinuxAMD64TraceRABootstrap} {name: "gate-compiler-bootstrapfullverify-8-linux-amd64-tracera"}
