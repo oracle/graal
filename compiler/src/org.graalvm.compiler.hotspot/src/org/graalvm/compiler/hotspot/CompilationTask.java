@@ -40,7 +40,11 @@ import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintCFGFileNa
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintGraphFileName;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -149,6 +153,9 @@ public class CompilationTask {
                 compilationEvent.begin();
                 result = compiler.compile(method, entryBCI, useProfilingInfo, compilationId, options);
             } catch (Throwable e) {
+                if (retryCause != null) {
+                    log("Exception during retry", e);
+                }
                 throw Debug.handle(e);
             } finally {
                 // End the compilation event.
@@ -192,8 +199,8 @@ public class CompilationTask {
             }
 
             if (!Debug.isEnabled()) {
-                TTY.printf("Error while processing %s.%nRe-run with -D%s%s=true to capture graph dumps upon a compilation failure.%n", CompilationTask.this,
-                                HotSpotGraalOptionValues.GRAAL_OPTION_PROPERTY_PREFIX, ForceDebugEnable.getName());
+                TTY.printf("Error while processing %s due to %s.%nRe-run with -D%s%s=true to capture graph dumps upon a compilation failure.%n", CompilationTask.this,
+                                t, HotSpotGraalOptionValues.GRAAL_OPTION_PROPERTY_PREFIX, ForceDebugEnable.getName());
                 return false;
             }
 
@@ -215,7 +222,9 @@ public class CompilationTask {
                 return false;
             }
 
-            TTY.println("Retrying " + CompilationTask.this);
+            TTY.println("Retrying " + CompilationTask.this + " due to " + t);
+            retryLogPath = new File(dumpPath, "retry.log").getPath();
+            log("Exception causing retry", t);
             retryDumpHandlers = new ArrayList<>();
             retryOptions = new OptionValues(options,
                             PrintCFGFileName, methodFQN,
@@ -228,6 +237,30 @@ public class CompilationTask {
 
         private Collection<DebugDumpHandler> retryDumpHandlers;
         private OptionValues retryOptions;
+        private String retryLogPath;
+
+        /**
+         * Prints a message to a retry log file.
+         *
+         * @param message the message to print
+         * @param t if non-{@code null}, the stack trace for this exception is written to the retry
+         *            log after {@code message}
+         */
+        private void log(String message, Throwable t) {
+            if (retryLogPath != null) {
+                try (PrintStream retryLog = new PrintStream(new FileOutputStream(retryLogPath), true)) {
+                    StringBuilder buf = new StringBuilder(Thread.currentThread() + ": " + message);
+                    if (t != null) {
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                        t.printStackTrace(new PrintStream(baos));
+                        buf.append(System.lineSeparator()).append(baos.toString());
+                    }
+                    retryLog.println(buf);
+                } catch (FileNotFoundException e) {
+                    TTY.println("Warning: could not open retry log file " + retryLogPath + " [" + e + "]");
+                }
+            }
+        }
 
         @Override
         public Collection<DebugDumpHandler> dumpHandlers() {
