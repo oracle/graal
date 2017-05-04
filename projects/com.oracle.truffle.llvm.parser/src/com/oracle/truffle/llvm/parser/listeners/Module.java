@@ -27,18 +27,11 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.listeners.module;
+package com.oracle.truffle.llvm.parser.listeners;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.llvm.parser.listeners.IRVersionController;
-import com.oracle.truffle.llvm.parser.listeners.Identification;
-import com.oracle.truffle.llvm.parser.listeners.ParserListener;
-import com.oracle.truffle.llvm.parser.listeners.Types;
-import com.oracle.truffle.llvm.parser.listeners.ValueSymbolTable;
-import com.oracle.truffle.llvm.parser.listeners.constants.Constants;
-import com.oracle.truffle.llvm.parser.listeners.metadata.Metadata;
 import com.oracle.truffle.llvm.parser.model.enums.Visibility;
 import com.oracle.truffle.llvm.parser.model.generators.FunctionGenerator;
 import com.oracle.truffle.llvm.parser.model.generators.ModuleGenerator;
@@ -50,13 +43,12 @@ import com.oracle.truffle.llvm.parser.records.Records;
 import com.oracle.truffle.llvm.parser.scanner.Block;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class Module implements ParserListener {
 
-    protected final ModuleGenerator generator;
-
-    private final IRVersionController version;
+    private final ModuleGenerator generator;
 
     private int mode = 1;
 
@@ -68,57 +60,84 @@ public final class Module implements ParserListener {
 
     protected final List<Type> symbols = new ArrayList<>();
 
-    public Module(IRVersionController version, ModuleGenerator generator) {
-        this.version = version;
+    public Module(ModuleGenerator generator) {
         this.generator = generator;
         types = new Types(generator);
     }
 
-    private void createFunction(long[] args) {
-        // this allows us to switch module version at runtime
-        FunctionType type = version.createModuleVersionHelper().getFunctionType(this, args[0]);
-        boolean isPrototype = args[2] != 0;
+    private static final int FUNCTION_TYPE = 0;
+    private static final int FUNCTION_ISPROTOTYPE = 2;
 
-        generator.createFunction(type, isPrototype);
-        symbols.add(type);
+    private void createFunction(long[] args) {
+        Type type = types.get(args[FUNCTION_TYPE]);
+        if (type instanceof PointerType) {
+            type = ((PointerType) type).getPointeeType();
+        }
+
+        final FunctionType functionType = (FunctionType) type;
+        final boolean isPrototype = args[FUNCTION_ISPROTOTYPE] != 0;
+
+        generator.createFunction(functionType, isPrototype);
+        symbols.add(functionType);
         if (!isPrototype) {
-            functions.add(type);
+            functions.add(functionType);
         }
     }
 
+    private static final int GLOBALVAR_TYPE = 0;
+    private static final int GLOBALVAR_FLAGS = 1;
+    private static final long GLOBALVAR_EXPLICICTTYPE_MASK = 0x2;
+    private static final long GLOBALVAR_ISCONSTANT_MASK = 0x1;
+    private static final int GLOBALVAR_INTITIALIZER = 2;
+    private static final int GLOBALVAR_LINKAGE = 3;
+    private static final int GLOBALVAR_ALIGN = 4;
+    private static final int GLOBALVAR_VISIBILITY = 6;
+
     private void createGlobalVariable(long[] args) {
-        // this allows us to switch module version at runtime
-        Type type = version.createModuleVersionHelper().getGlobalType(this, args[0]);
-        boolean isConstant = (args[1] & 1) == 1;
-        int initialiser = (int) args[2];
-        long linkage = args[3];
-        int align = (int) args[4];
+        final long typeField = args[GLOBALVAR_TYPE];
+        final long flagField = args[GLOBALVAR_FLAGS];
+
+        Type type = types.get(typeField);
+        if ((flagField & GLOBALVAR_EXPLICICTTYPE_MASK) != 0) {
+            type = new PointerType(type);
+        }
+
+        final boolean isConstant = (flagField & GLOBALVAR_ISCONSTANT_MASK) != 0;
+        final int initialiser = (int) args[GLOBALVAR_INTITIALIZER];
+        final long linkage = args[GLOBALVAR_LINKAGE];
+        final int align = (int) args[GLOBALVAR_ALIGN];
 
         long visibility = Visibility.DEFAULT.getEncodedValue();
-        if (args.length >= 7) {
-            visibility = args[6];
+        if (GLOBALVAR_VISIBILITY < args.length) {
+            visibility = args[GLOBALVAR_VISIBILITY];
         }
 
         generator.createGlobal(type, isConstant, initialiser, align, linkage, visibility);
         symbols.add(type);
     }
 
+    private static final int GLOBALALIAS_TYPE = 0;
+    private static final int GLOBALALIAS_NEW_VALUE = 2;
+    private static final int GLOBALALIAS_NEW_LINKAGE = 3;
+
     private void createGlobalAliasNew(long[] args) {
-        // this allows us to switch module version at runtime
-        Type type = version.createModuleVersionHelper().getGlobalType(this, args[0]);
+        final Type type = new PointerType(types.get(args[GLOBALALIAS_TYPE]));
+
         // idx = 1 is address space information
-        int value = (int) args[2];
-        long linkage = args[3];
+        final int value = (int) args[GLOBALALIAS_NEW_VALUE];
+        final long linkage = args[GLOBALALIAS_NEW_LINKAGE];
 
         generator.createAlias(type, value, linkage, Visibility.DEFAULT.ordinal());
         symbols.add(type);
     }
 
+    private static final int GLOBALALIAS_OLD_VALUE = 1;
+    private static final int GLOBALALIAS_OLD_LINKAGE = 2;
+
     private void createGlobalAliasOld(long[] args) {
-        // this allows us to switch module version at runtime
-        Type type = version.createModuleVersionHelper().getGlobalType(this, args[0]);
-        int value = (int) args[1];
-        long linkage = args[2];
+        final Type type = types.get(args[GLOBALALIAS_TYPE]);
+        int value = (int) args[GLOBALALIAS_OLD_VALUE];
+        long linkage = args[GLOBALALIAS_OLD_LINKAGE];
 
         generator.createAlias(type, value, linkage, Visibility.DEFAULT.ordinal());
         symbols.add(type);
@@ -145,10 +164,8 @@ public final class Module implements ParserListener {
                     sym.add(arg);
                 }
 
-                return version.createFunction(types, sym, gen, mode);
+                return new Function(types, sym, gen, mode);
             }
-            case IDENTIFICATION:
-                return new Identification(version);
 
             case TYPE:
                 return types;

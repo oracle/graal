@@ -37,7 +37,7 @@ public final class ValueSymbolTable implements ParserListener {
 
     private final SymbolGenerator generator;
 
-    public ValueSymbolTable(SymbolGenerator generator) {
+    ValueSymbolTable(SymbolGenerator generator) {
         this.generator = generator;
     }
 

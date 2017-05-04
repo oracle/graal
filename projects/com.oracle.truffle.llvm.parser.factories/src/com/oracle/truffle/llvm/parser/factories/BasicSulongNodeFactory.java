@@ -77,6 +77,8 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMReturnAddressNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMStackRestoreNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMStackSaveNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMTrapNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMCopySignFactory.LLVMCopySignDoubleFactory;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMCopySignFactory.LLVMCopySignFloatFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMUAddWithOverflowFactory.LLVMUAddWithOverflowI32NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountLeadingZeroesNodeFactory.CountLeadingZeroesI32NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountLeadingZeroesNodeFactory.CountLeadingZeroesI64NodeGen;
@@ -729,6 +731,11 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
             case "@llvm.objectsize.i64.p0i8":
             case "@llvm.objectsize.i64":
                 return LLVMI64ObjectSizeNodeGen.create(args[1], args[2]);
+            case "@llvm.copysign.f32":
+                return LLVMCopySignFloatFactory.create(args[0], args[1]);
+            case "@llvm.copysign.f64":
+                return LLVMCopySignDoubleFactory.create(args[0], args[1]);
+
             default:
                 throw new IllegalStateException("Missing LLVM builtin: " + name);
         }

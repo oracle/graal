@@ -32,8 +32,6 @@ package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.llvm.parser.model.enums.Linkage;
-import com.oracle.truffle.llvm.parser.model.enums.Visibility;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
@@ -42,18 +40,12 @@ import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 public final class CallInstruction extends ValueInstruction implements Call {
 
-    private final Linkage linkage;
-
-    private final Visibility visibility;
-
     private Symbol target;
 
     private final List<Symbol> arguments = new ArrayList<>();
 
-    private CallInstruction(Type type, Linkage linkage, Visibility visibility) {
+    private CallInstruction(Type type) {
         super(type);
-        this.linkage = linkage;
-        this.visibility = visibility;
     }
 
     @Override
@@ -77,16 +69,6 @@ public final class CallInstruction extends ValueInstruction implements Call {
     }
 
     @Override
-    public Linkage getLinkage() {
-        return linkage;
-    }
-
-    @Override
-    public Visibility getVisibility() {
-        return visibility;
-    }
-
-    @Override
     public void replace(Symbol original, Symbol replacement) {
         if (target == original) {
             target = replacement;
@@ -98,8 +80,8 @@ public final class CallInstruction extends ValueInstruction implements Call {
         }
     }
 
-    public static CallInstruction fromSymbols(Symbols symbols, Type type, int targetIndex, int[] arguments, long visibility, long linkage) {
-        final CallInstruction inst = new CallInstruction(type, Linkage.decode(linkage), Visibility.decode(visibility));
+    public static CallInstruction fromSymbols(Symbols symbols, Type type, int targetIndex, int[] arguments) {
+        final CallInstruction inst = new CallInstruction(type);
         inst.target = symbols.getSymbol(targetIndex, inst);
         for (int argument : arguments) {
             inst.arguments.add(symbols.getSymbol(argument, inst));

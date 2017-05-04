@@ -34,8 +34,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
-import com.oracle.truffle.llvm.parser.model.enums.Linkage;
-import com.oracle.truffle.llvm.parser.model.enums.Visibility;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.MetadataConstant;
@@ -46,10 +44,6 @@ import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 public final class VoidInvokeInstruction extends VoidInstruction implements Invoke {
 
-    private final Linkage linkage;
-
-    private final Visibility visibility;
-
     private Symbol target;
 
     private final List<Symbol> arguments;
@@ -58,12 +52,10 @@ public final class VoidInvokeInstruction extends VoidInstruction implements Invo
 
     private final InstructionBlock unwindSuccessor;
 
-    private VoidInvokeInstruction(Linkage linkage, Visibility visibility, InstructionBlock normalSuccessor, InstructionBlock unwindSuccessor) {
+    private VoidInvokeInstruction(InstructionBlock normalSuccessor, InstructionBlock unwindSuccessor) {
         this.normalSuccessor = normalSuccessor;
         this.unwindSuccessor = unwindSuccessor;
         arguments = new ArrayList<>();
-        this.linkage = linkage;
-        this.visibility = visibility;
     }
 
     @Override
@@ -87,16 +79,6 @@ public final class VoidInvokeInstruction extends VoidInstruction implements Invo
     }
 
     @Override
-    public Linkage getLinkage() {
-        return linkage;
-    }
-
-    @Override
-    public Visibility getVisibility() {
-        return visibility;
-    }
-
-    @Override
     public void replace(Symbol original, Symbol replacement) {
         if (target == original) {
             target = replacement;
@@ -108,9 +90,9 @@ public final class VoidInvokeInstruction extends VoidInstruction implements Invo
         }
     }
 
-    public static VoidInvokeInstruction fromSymbols(Symbols symbols, int targetIndex, int[] arguments, long visibility, long linkage, InstructionBlock normalSuccessor,
+    public static VoidInvokeInstruction fromSymbols(Symbols symbols, int targetIndex, int[] arguments, InstructionBlock normalSuccessor,
                     InstructionBlock unwindSuccessor) {
-        final VoidInvokeInstruction inst = new VoidInvokeInstruction(Linkage.decode(linkage), Visibility.decode(visibility), normalSuccessor, unwindSuccessor);
+        final VoidInvokeInstruction inst = new VoidInvokeInstruction(normalSuccessor, unwindSuccessor);
         inst.target = symbols.getSymbol(targetIndex, inst);
         if (inst.target instanceof FunctionDefinition) {
             Type[] types = ((FunctionDefinition) (inst.target)).getType().getArgumentTypes();

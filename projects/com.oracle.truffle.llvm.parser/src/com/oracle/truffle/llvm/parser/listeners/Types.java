@@ -66,7 +66,7 @@ public final class Types implements ParserListener, Iterable<Type> {
 
     private int size = 0;
 
-    public Types(ModuleGenerator generator) {
+    Types(ModuleGenerator generator) {
         this.generator = generator;
     }
 

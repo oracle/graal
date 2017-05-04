@@ -27,13 +27,11 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.listeners.constants;
+package com.oracle.truffle.llvm.parser.listeners;
 
 import java.math.BigInteger;
 import java.util.List;
 
-import com.oracle.truffle.llvm.parser.listeners.ParserListener;
-import com.oracle.truffle.llvm.parser.listeners.Types;
 import com.oracle.truffle.llvm.parser.model.generators.ConstantGenerator;
 import com.oracle.truffle.llvm.parser.records.ConstantsRecord;
 import com.oracle.truffle.llvm.parser.records.Records;
@@ -51,7 +49,7 @@ public final class Constants implements ParserListener {
 
     private Type type;
 
-    public Constants(Types types, List<Type> symbols, ConstantGenerator generator) {
+    Constants(Types types, List<Type> symbols, ConstantGenerator generator) {
         this.types = types;
         this.symbols = symbols;
         this.generator = generator;

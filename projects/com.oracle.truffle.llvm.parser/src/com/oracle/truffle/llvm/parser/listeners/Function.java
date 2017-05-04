@@ -27,16 +27,11 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.listeners.function;
+package com.oracle.truffle.llvm.parser.listeners;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.llvm.parser.listeners.ParserListener;
-import com.oracle.truffle.llvm.parser.listeners.Types;
-import com.oracle.truffle.llvm.parser.listeners.ValueSymbolTable;
-import com.oracle.truffle.llvm.parser.listeners.constants.Constants;
-import com.oracle.truffle.llvm.parser.listeners.metadata.Metadata;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.generators.FunctionGenerator;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
@@ -46,15 +41,17 @@ import com.oracle.truffle.llvm.parser.scanner.Block;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
+import com.oracle.truffle.llvm.parser.metadata.MDLocation;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
-import com.oracle.truffle.llvm.parser.metadata.MDLocation;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
 
-public abstract class Function implements ParserListener {
+public final class Function implements ParserListener {
 
     private static final int INSERT_VALUE_MAX_ARGS = 3;
 
@@ -105,22 +102,6 @@ public abstract class Function implements ParserListener {
     public void exit() {
         generator.exitFunction();
     }
-
-    protected abstract void createAllocation(long[] args);
-
-    protected abstract void createAtomicLoad(long[] args);
-
-    protected abstract void createCall(long[] args);
-
-    protected abstract void createInvoke(long[] args);
-
-    protected abstract void createLandingpad(long[] args);
-
-    protected abstract void createResume(long[] args);
-
-    protected abstract void createLoad(long[] args);
-
-    protected abstract void createSwitch(long[] args);
 
     @Override
     public void record(long id, long[] args) {
@@ -196,7 +177,7 @@ public abstract class Function implements ParserListener {
                 break;
 
             case ALLOCA:
-                createAllocation(args);
+                createAlloca(args);
                 break;
 
             case LOAD:
@@ -232,7 +213,7 @@ public abstract class Function implements ParserListener {
                 break;
 
             case CALL:
-                createCall(args);
+                createFunctionCall(args);
                 break;
 
             case INVOKE:
@@ -256,7 +237,7 @@ public abstract class Function implements ParserListener {
                 break;
 
             case LOADATOMIC:
-                createAtomicLoad(args);
+                createLoadAtomic(args);
                 break;
 
             case STOREATOMIC:
@@ -271,6 +252,248 @@ public abstract class Function implements ParserListener {
             default:
                 throw new UnsupportedOperationException("Unsupported Record: " + record);
         }
+    }
+
+    private static final int INVOKE_HASEXPLICITFUNCTIONTYPE_SHIFT = 13;
+
+    private void createInvoke(long[] args) {
+        int i = 0;
+
+        i++; // parameter attributes
+        final long ccInfo = args[i++];
+
+        final int normalSuccessorBlock = (int) (args[i++]);
+        final int unwindSuccessorBlock = (int) (args[i++]);
+
+        FunctionType functionType = null;
+        if (((ccInfo >> INVOKE_HASEXPLICITFUNCTIONTYPE_SHIFT) & 1) != 0) {
+            functionType = (FunctionType) types.get(args[i++]);
+        }
+
+        final int target = getIndex(args[i++]);
+        final Type calleeType;
+        if (target <= symbols.size()) {
+            calleeType = symbols.get(target);
+        } else {
+            calleeType = types.get(args[i++]);
+        }
+
+        if (functionType == null) {
+            if (calleeType instanceof PointerType) {
+                functionType = (FunctionType) ((PointerType) calleeType).getPointeeType();
+            } else {
+                throw new AssertionError("Cannot find Type of invoked function!");
+            }
+        }
+
+        final int[] arguments = new int[args.length - i];
+        for (int j = 0; i < args.length; i++, j++) {
+            arguments[j] = getIndex(args[i]);
+        }
+        final Type returnType = functionType.getReturnType();
+        instructionBlock.createInvoke(returnType, target, arguments, normalSuccessorBlock, unwindSuccessorBlock);
+        if (!(returnType instanceof VoidType)) {
+            symbols.add(returnType);
+        }
+        isLastBlockTerminated = true;
+    }
+
+    private void createResume(long[] args) {
+        int i = 0;
+        final int val = getIndex(args[i++]);
+        final Type type;
+        if (val < symbols.size()) {
+            type = symbols.get(val);
+        } else {
+            type = types.get(args[i]);
+        }
+        instructionBlock.createResume(type);
+        isLastBlockTerminated = true;
+    }
+
+    private void createLandingpad(long[] args) {
+        int i = 0;
+        final Type type = types.get(args[i++]);
+        final boolean isCleanup = args[i++] != 0;
+        final int numClauses = (int) args[i++];
+        long[] clauseKinds = new long[numClauses]; // catch = 0, filter = 1
+        long[] clauseTypes = new long[numClauses];
+        for (int j = 0; j < numClauses; j++) {
+            clauseKinds[j] = args[i++];
+            clauseTypes[j] = getIndex(args[i++]);
+        }
+        symbols.add(type);
+        instructionBlock.createLandingpad(type, isCleanup, clauseKinds, clauseTypes);
+    }
+
+    private static final int CALL_HAS_FMF_SHIFT = 17;
+    private static final int CALL_HAS_EXPLICITTYPE_SHIFT = 15;
+
+    private void createFunctionCall(long[] args) {
+        int i = 1;
+        final long ccinfo = args[i++];
+
+        FunctionType functionType = null;
+        int callee = -1;
+        Type calleeType = null;
+
+        if (((ccinfo >> CALL_HAS_FMF_SHIFT) & 1) != 0) {
+            i++; // fast math flags
+        }
+
+        if (((ccinfo >> CALL_HAS_EXPLICITTYPE_SHIFT) & 1) != 0) {
+            functionType = (FunctionType) types.get(args[i++]);
+        }
+
+        callee = getIndex(args[i++]);
+        if (callee >= symbols.size()) {
+            calleeType = types.get(args[i++]);
+        } else {
+            calleeType = symbols.get(callee);
+        }
+
+        if (functionType == null) {
+            if (calleeType instanceof FunctionType) {
+                functionType = (FunctionType) calleeType;
+            } else {
+                functionType = (FunctionType) ((PointerType) calleeType).getPointeeType();
+            }
+        }
+
+        final int[] arguments = new int[args.length - i];
+        for (int j = 0; i < args.length; i++, j++) {
+            arguments[j] = getIndex(args[i]);
+        }
+
+        final Type returnType = functionType.getReturnType();
+        instructionBlock.createCall(returnType, callee, arguments);
+
+        if (returnType != VoidType.INSTANCE) {
+            symbols.add(returnType);
+        }
+
+    }
+
+    private static final long SWITCH_CASERANGE_SHIFT = 16;
+    private static final long SWITCH_CASERANGE_FLAG = 0x4B5;
+
+    private void createSwitch(long[] args) {
+        int i = 0;
+
+        if ((args[0] >> SWITCH_CASERANGE_SHIFT) == SWITCH_CASERANGE_FLAG) {
+            i++; // indicator
+            i++; // type
+            final int cond = getIndex(args[i++]);
+            final int defaultBlock = (int) args[i++];
+
+            final int count = (int) args[i++];
+            final long[] caseConstants = new long[count];
+            final int[] caseBlocks = new int[count];
+            for (int j = 0; j < count; j++) {
+                i += 2;
+                caseConstants[j] = Records.toSignedValue(args[i++]);
+                caseBlocks[j] = (int) args[i++];
+            }
+
+            instructionBlock.createSwitchOld(cond, defaultBlock, caseConstants, caseBlocks);
+
+        } else {
+            i++; // type
+
+            final int cond = getIndex(args[i++]);
+            final int defaultBlock = (int) args[i++];
+            final int count = (args.length - i) >> 1;
+            final int[] caseValues = new int[count];
+            final int[] caseBlocks = new int[count];
+            for (int j = 0; j < count; j++) {
+                caseValues[j] = getIndexAbsolute(args[i++]);
+                caseBlocks[j] = (int) args[i++];
+            }
+
+            instructionBlock.createSwitch(cond, defaultBlock, caseValues, caseBlocks);
+        }
+
+        isLastBlockTerminated = true;
+    }
+
+    private static final long ALLOCA_INMASK = 1L << 5;
+    private static final long ALLOCA_EXPLICITTYPEMASK = 1L << 6;
+    private static final long ALLOCA_SWIFTERRORMASK = 1L << 7;
+    private static final long ALLOCA_FLAGSMASK = ALLOCA_INMASK | ALLOCA_EXPLICITTYPEMASK | ALLOCA_SWIFTERRORMASK;
+
+    private void createAlloca(long[] args) {
+        int i = 0;
+        final long typeRecord = args[i++];
+        i++; // type of count
+        final int count = getIndexAbsolute(args[i++]);
+        final long alignRecord = args[i];
+
+        final int align = getAlign(alignRecord & ~ALLOCA_FLAGSMASK);
+
+        Type type = types.get(typeRecord);
+        if ((alignRecord & ALLOCA_EXPLICITTYPEMASK) != 0L) {
+            type = new PointerType(type);
+        } else if (!(type instanceof PointerType)) {
+            throw new AssertionError("Alloca must have PointerType!");
+        }
+        instructionBlock.createAllocation(type, count, align);
+        symbols.add(type);
+    }
+
+    private static final int LOAD_ARGS_EXPECTED_AFTER_TYPE = 3;
+
+    private void createLoad(long[] args) {
+        int i = 0;
+        final int src = getIndex(args[i++]);
+
+        final Type srcType;
+        if (src >= symbols.size()) {
+            srcType = types.get(args[i++]);
+        } else {
+            srcType = symbols.get(src);
+        }
+
+        final Type opType;
+        if (i + LOAD_ARGS_EXPECTED_AFTER_TYPE == args.length) {
+            opType = types.get(args[i++]);
+        } else {
+            opType = ((PointerType) srcType).getPointeeType();
+        }
+
+        final int align = getAlign(args[i++]);
+        final boolean isVolatile = args[i] != 0;
+
+        instructionBlock.createLoad(opType, src, align, isVolatile);
+        symbols.add(opType);
+    }
+
+    private static final int LOADATOMIC_ARGS_EXPECTED_AFTER_TYPE = 5;
+
+    private void createLoadAtomic(long[] args) {
+        int i = 0;
+        final int src = getIndex(args[i++]);
+
+        final Type srcType;
+        if (src >= symbols.size()) {
+            srcType = types.get(args[i++]);
+        } else {
+            srcType = symbols.get(src);
+        }
+
+        final Type opType;
+        if (i + LOADATOMIC_ARGS_EXPECTED_AFTER_TYPE == args.length) {
+            opType = types.get(args[i++]);
+        } else {
+            opType = ((PointerType) srcType).getPointeeType();
+        }
+
+        final int align = getAlign(args[i++]);
+        final boolean isVolatile = args[i++] != 0;
+        final long atomicOrdering = args[i++];
+        final long synchronizationScope = args[i];
+
+        instructionBlock.createAtomicLoad(opType, src, align, isVolatile, atomicOrdering, synchronizationScope);
+        symbols.add(opType);
     }
 
     private void createCompareExchange(long[] args, FunctionRecord record) {
@@ -632,7 +855,7 @@ public abstract class Function implements ParserListener {
         isLastBlockTerminated = true;
     }
 
-    protected int getAlign(long argument) {
+    private static int getAlign(long argument) {
         return (int) argument & (Long.SIZE - 1);
     }
 
