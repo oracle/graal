@@ -27,13 +27,11 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.listeners.metadata;
+package com.oracle.truffle.llvm.parser.listeners;
 
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.truffle.llvm.parser.listeners.ParserListener;
-import com.oracle.truffle.llvm.parser.listeners.Types;
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDBasicType;
@@ -116,7 +114,7 @@ public final class Metadata implements ParserListener {
 
     protected final MetadataList metadata;
 
-    public Metadata(Types types, List<Type> symbols, SymbolGenerator generator) {
+    Metadata(Types types, List<Type> symbols, SymbolGenerator generator) {
         this.types = types;
         this.symbols = symbols;
         this.generator = generator;

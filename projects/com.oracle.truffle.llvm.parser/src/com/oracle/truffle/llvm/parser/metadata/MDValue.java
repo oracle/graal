@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.listeners.metadata.Metadata;
+import com.oracle.truffle.llvm.parser.listeners.Metadata;
 
 public final class MDValue implements MDBaseNode {
 

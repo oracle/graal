@@ -122,11 +122,11 @@ public final class InstructionBlock implements ValueSymbol {
         addInstruction(ConditionalBranchInstruction.fromSymbols(function.getSymbols(), condition, function.getBlock(blockTrue), function.getBlock(blockFalse)));
     }
 
-    public void createCall(Type type, int target, int[] arguments, long visibility, long linkage) {
+    public void createCall(Type type, int target, int[] arguments) {
         if (type == VoidType.INSTANCE) {
-            addInstruction(VoidCallInstruction.fromSymbols(function.getSymbols(), target, arguments, visibility, linkage));
+            addInstruction(VoidCallInstruction.fromSymbols(function.getSymbols(), target, arguments));
         } else {
-            addInstruction(CallInstruction.fromSymbols(function.getSymbols(), type, target, arguments, visibility, linkage));
+            addInstruction(CallInstruction.fromSymbols(function.getSymbols(), type, target, arguments));
         }
     }
 
@@ -134,13 +134,11 @@ public final class InstructionBlock implements ValueSymbol {
         addInstruction(CompareExchangeInstruction.fromSymbols(function.getSymbols(), type, ptr, cmp, replace, isVolatile, successOrdering, synchronizationScope, failureOrdering, isWeak));
     }
 
-    public void createInvoke(Type type, int target, int[] arguments, long visibility, long linkage, int regularSuccessorBlock, int unwindSuccessorBlock) {
+    public void createInvoke(Type type, int target, int[] arguments, int regularSuccessorBlock, int unwindSuccessorBlock) {
         if (type instanceof VoidType) {
-            addInstruction(VoidInvokeInstruction.fromSymbols(function.getSymbols(), target, arguments, visibility, linkage, function.getBlock(regularSuccessorBlock),
-                            function.getBlock(unwindSuccessorBlock)));
+            addInstruction(VoidInvokeInstruction.fromSymbols(function.getSymbols(), target, arguments, function.getBlock(regularSuccessorBlock), function.getBlock(unwindSuccessorBlock)));
         } else {
-            addInstruction(InvokeInstruction.fromSymbols(function.getSymbols(), type, target, arguments, visibility, linkage, function.getBlock(regularSuccessorBlock),
-                            function.getBlock(unwindSuccessorBlock)));
+            addInstruction(InvokeInstruction.fromSymbols(function.getSymbols(), type, target, arguments, function.getBlock(regularSuccessorBlock), function.getBlock(unwindSuccessorBlock)));
         }
     }
 

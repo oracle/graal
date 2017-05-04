@@ -34,8 +34,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
-import com.oracle.truffle.llvm.parser.model.enums.Linkage;
-import com.oracle.truffle.llvm.parser.model.enums.Visibility;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
@@ -43,10 +41,6 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 public final class InvokeInstruction extends ValueInstruction implements Invoke {
-
-    private final Linkage linkage;
-
-    private final Visibility visibility;
 
     private Symbol target;
 
@@ -56,10 +50,8 @@ public final class InvokeInstruction extends ValueInstruction implements Invoke 
 
     private final InstructionBlock unwindSuccessor;
 
-    private InvokeInstruction(Type type, Linkage linkage, Visibility visibility, InstructionBlock normalSuccessor, InstructionBlock unwindSuccessor) {
+    private InvokeInstruction(Type type, InstructionBlock normalSuccessor, InstructionBlock unwindSuccessor) {
         super(type);
-        this.linkage = linkage;
-        this.visibility = visibility;
         this.normalSuccessor = normalSuccessor;
         this.unwindSuccessor = unwindSuccessor;
     }
@@ -85,16 +77,6 @@ public final class InvokeInstruction extends ValueInstruction implements Invoke 
     }
 
     @Override
-    public Linkage getLinkage() {
-        return linkage;
-    }
-
-    @Override
-    public Visibility getVisibility() {
-        return visibility;
-    }
-
-    @Override
     public void replace(Symbol original, Symbol replacement) {
         if (target == original) {
             target = replacement;
@@ -106,9 +88,9 @@ public final class InvokeInstruction extends ValueInstruction implements Invoke 
         }
     }
 
-    public static InvokeInstruction fromSymbols(Symbols symbols, Type type, int targetIndex, int[] arguments, long visibility, long linkage, InstructionBlock normalSuccessor,
+    public static InvokeInstruction fromSymbols(Symbols symbols, Type type, int targetIndex, int[] arguments, InstructionBlock normalSuccessor,
                     InstructionBlock unwindSuccessor) {
-        final InvokeInstruction inst = new InvokeInstruction(type, Linkage.decode(linkage), Visibility.decode(visibility), normalSuccessor, unwindSuccessor);
+        final InvokeInstruction inst = new InvokeInstruction(type, normalSuccessor, unwindSuccessor);
         inst.target = symbols.getSymbol(targetIndex, inst);
         for (int argument : arguments) {
             inst.arguments.add(symbols.getSymbol(argument, inst));

@@ -77,10 +77,10 @@ def run(vmArgs, unittest, versionFolder, extraOption=None):
         return mx_unittest.unittest(command)
 
 def run32(vmArgs, unittest, extraOption=None):
-    run(vmArgs + ['-Dsulong.LLVM=3.2'], unittest, 'v32', extraOption)
+    run(vmArgs, unittest, 'v32', extraOption)
 
 def run38(vmArgs, unittest, extraOption=None):
-    run(vmArgs + ['-Dsulong.LLVM=3.8'], unittest, 'v38', extraOption)
+    run(vmArgs, unittest, 'v38', extraOption)
 
 def runSulongSuite(vmArgs):
     """runs the Sulong test suite"""

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,43 +27,33 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.listeners.module;
+package com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith;
 
-import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.PointerType;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.api.dsl.GenerateNodeFactory;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public abstract class ModuleVersionHelper {
+public abstract class LLVMCopySign {
 
-    public abstract Type getGlobalType(Module m, long typeIndex);
+    @NodeChildren({@NodeChild(value = "magnitude", type = LLVMExpressionNode.class), @NodeChild(value = "sign", type = LLVMExpressionNode.class)})
+    @GenerateNodeFactory
+    public abstract static class LLVMCopySignFloat extends LLVMExpressionNode {
 
-    public abstract FunctionType getFunctionType(Module m, long typeIndex);
-
-    public static final class ModuleV32 extends ModuleVersionHelper {
-
-        @Override
-        public Type getGlobalType(Module m, long typeIndex) {
-            return m.types.get(typeIndex);
+        @Specialization
+        public float executeFloat(float magnitude, float sign) {
+            return Math.copySign(magnitude, sign);
         }
-
-        @Override
-        public FunctionType getFunctionType(Module m, long typeIndex) {
-            return (FunctionType) ((PointerType) m.types.get(typeIndex)).getPointeeType();
-        }
-
     }
 
-    public static final class ModuleV38 extends ModuleVersionHelper {
+    @NodeChildren({@NodeChild(value = "magnitude", type = LLVMExpressionNode.class), @NodeChild(value = "sign", type = LLVMExpressionNode.class)})
+    @GenerateNodeFactory
+    public abstract static class LLVMCopySignDouble extends LLVMExpressionNode {
 
-        @Override
-        public Type getGlobalType(Module m, long typeIndex) {
-            return new PointerType(m.types.get(typeIndex));
+        @Specialization
+        public double executeDouble(double magnitude, double sign) {
+            return Math.copySign(magnitude, sign);
         }
-
-        @Override
-        public FunctionType getFunctionType(Module m, long typeIndex) {
-            return (FunctionType) m.types.get(typeIndex);
-        }
-
     }
 }

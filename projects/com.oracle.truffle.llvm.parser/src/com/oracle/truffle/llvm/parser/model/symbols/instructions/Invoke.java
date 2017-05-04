@@ -30,8 +30,6 @@
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
-import com.oracle.truffle.llvm.parser.model.enums.Linkage;
-import com.oracle.truffle.llvm.parser.model.enums.Visibility;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 interface Invoke extends TerminatingInstruction {
@@ -41,10 +39,6 @@ interface Invoke extends TerminatingInstruction {
     int getArgumentCount();
 
     Symbol getCallTarget();
-
-    Linkage getLinkage();
-
-    Visibility getVisibility();
 
     InstructionBlock normalSuccessor();
 

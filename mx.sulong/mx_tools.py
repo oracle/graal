@@ -131,11 +131,11 @@ class ClangV38Compiler(Tool):
 
     def run(self, inputFile, outputFile, flags):
         tool = self.getTool(inputFile)
-        return self.runTool([mx_sulong.findLLVMProgram(tool, ['3.8', '3.9']), '-c', '-emit-llvm', '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
+        return self.runTool([mx_sulong.findLLVMProgram(tool, ['3.8', '3.9', '4.0']), '-c', '-emit-llvm', '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
 
     def compileReferenceFile(self, inputFile, outputFile, flags):
         tool = self.getTool(inputFile)
-        return self.runTool([mx_sulong.findLLVMProgram(tool, ['3.8', '3.9']), '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
+        return self.runTool([mx_sulong.findLLVMProgram(tool, ['3.8', '3.9', '4.0']), '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
 
 class GCCCompiler(Tool):
     def __init__(self, name=None, supportedLanguages=None):
@@ -197,7 +197,7 @@ class OptV38(Tool):
         self.passes = passes
 
     def run(self, inputFile, outputFile, flags):
-        return mx.run([mx_sulong.findLLVMProgram('opt', ['3.8', '3.9']), '-o', outputFile] + self.passes + [inputFile])
+        return mx.run([mx_sulong.findLLVMProgram('opt', ['3.8', '3.9', '4.0']), '-o', outputFile] + self.passes + [inputFile])
 
 Tool.CLANG = ClangCompiler()
 Tool.CLANG_C = ClangCompiler('clangc', [ProgrammingLanguage.C])

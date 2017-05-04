@@ -39,7 +39,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.parser.listeners.IRVersionController;
+import com.oracle.truffle.llvm.parser.listeners.Module;
 import com.oracle.truffle.llvm.parser.listeners.ParserListener;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
@@ -80,10 +80,10 @@ public final class LLVMScanner {
         this.offset = 0;
     }
 
-    public static ModelModule parse(IRVersionController version, Source source) {
+    public static ModelModule parse(Source source) {
         final BitStream bitstream = BitStream.create(source);
         final ModelModule model = new ModelModule();
-        final LLVMScanner scanner = new LLVMScanner(bitstream, version.createModule(model));
+        final LLVMScanner scanner = new LLVMScanner(bitstream, new Module(model));
 
         final StreamInformation bcStreamInfo = StreamInformation.getStreamInformation(bitstream, scanner);
         scanner.setOffset(bcStreamInfo.getOffset());

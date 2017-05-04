@@ -27,19 +27,17 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.listeners.constants;
+package com.oracle.truffle.llvm.parser.listeners;
 
 import java.math.BigInteger;
 import java.util.List;
 
-import com.oracle.truffle.llvm.parser.listeners.ParserListener;
-import com.oracle.truffle.llvm.parser.listeners.Types;
 import com.oracle.truffle.llvm.parser.model.generators.ConstantGenerator;
 import com.oracle.truffle.llvm.parser.records.ConstantsRecord;
 import com.oracle.truffle.llvm.parser.records.Records;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public abstract class Constants implements ParserListener {
+public final class Constants implements ParserListener {
 
     private static final BigInteger WIDE_INTEGER_MASK = BigInteger.ONE.shiftLeft(Long.SIZE).subtract(BigInteger.ONE);
 
@@ -47,9 +45,9 @@ public abstract class Constants implements ParserListener {
 
     private final List<Type> symbols;
 
-    protected final ConstantGenerator generator;
+    private final ConstantGenerator generator;
 
-    protected Type type;
+    private Type type;
 
     Constants(Types types, List<Type> symbols, ConstantGenerator generator) {
         this.types = types;
@@ -130,13 +128,6 @@ public abstract class Constants implements ParserListener {
                 generator.createCompareExpression(type, opcode, lhs, rhs);
                 break;
             }
-            case CE_GEP:
-                createGetElementPointerExpression(args, false);
-                break;
-
-            case CE_INBOUNDS_GEP:
-                createGetElementPointerExpression(args, true);
-                break;
 
             case BLOCKADDRESS:
                 generator.createBlockAddress(type, (int) args[1], (int) args[2]);
@@ -150,11 +141,41 @@ public abstract class Constants implements ParserListener {
                 generator.createInlineASM(type, args);
                 break;
 
+            case CE_GEP:
+            case CE_INBOUNDS_GEP:
+            case CE_GEP_WITH_INRANGE_INDEX:
+                createGetElementPointerExpression(args, record);
+                break;
+
             default:
                 throw new UnsupportedOperationException("Unsupported Constant Record: " + record);
         }
         symbols.add(type);
     }
 
-    protected abstract void createGetElementPointerExpression(long[] args, boolean isInbounds);
+    private void createGetElementPointerExpression(long[] args, ConstantsRecord record) {
+        int i = 0;
+        if (record == ConstantsRecord.CE_GEP_WITH_INRANGE_INDEX || args.length % 2 != 0) {
+            i++; // type of pointee
+        }
+
+        boolean isInbounds;
+        if (record == ConstantsRecord.CE_GEP_WITH_INRANGE_INDEX) {
+            final long op = args[i++];
+            isInbounds = (op & 0x1) != 0;
+        } else {
+            isInbounds = record == ConstantsRecord.CE_INBOUNDS_GEP;
+        }
+
+        i++; // type of pointer
+        int pointer = (int) args[i++];
+
+        final int[] indices = new int[(args.length - i) >> 1];
+        for (int j = 0; j < indices.length; j++) {
+            i++; // index type
+            indices[j] = (int) args[i++];
+        }
+
+        generator.createGetElementPointerExpression(type, pointer, indices, isInbounds);
+    }
 }

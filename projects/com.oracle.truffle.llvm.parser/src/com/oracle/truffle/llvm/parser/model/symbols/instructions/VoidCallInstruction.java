@@ -32,8 +32,6 @@ package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.llvm.parser.model.enums.Linkage;
-import com.oracle.truffle.llvm.parser.model.enums.Visibility;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
@@ -45,18 +43,12 @@ import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 public final class VoidCallInstruction extends VoidInstruction implements Call {
 
-    private final Linkage linkage;
-
-    private final Visibility visibility;
-
     private Symbol target;
 
     private final List<Symbol> arguments;
 
-    private VoidCallInstruction(Linkage linkage, Visibility visibility) {
+    private VoidCallInstruction() {
         arguments = new ArrayList<>();
-        this.linkage = linkage;
-        this.visibility = visibility;
     }
 
     @Override
@@ -80,16 +72,6 @@ public final class VoidCallInstruction extends VoidInstruction implements Call {
     }
 
     @Override
-    public Linkage getLinkage() {
-        return linkage;
-    }
-
-    @Override
-    public Visibility getVisibility() {
-        return visibility;
-    }
-
-    @Override
     public void replace(Symbol original, Symbol replacement) {
         if (target == original) {
             target = replacement;
@@ -101,8 +83,8 @@ public final class VoidCallInstruction extends VoidInstruction implements Call {
         }
     }
 
-    public static VoidCallInstruction fromSymbols(Symbols symbols, int targetIndex, int[] arguments, long visibility, long linkage) {
-        final VoidCallInstruction inst = new VoidCallInstruction(Linkage.decode(linkage), Visibility.decode(visibility));
+    public static VoidCallInstruction fromSymbols(Symbols symbols, int targetIndex, int[] arguments) {
+        final VoidCallInstruction inst = new VoidCallInstruction();
         inst.target = symbols.getSymbol(targetIndex, inst);
         final Type[] argTypes;
         if (inst.target instanceof FunctionDefinition) {
