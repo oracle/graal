@@ -67,7 +67,7 @@ public abstract class LLVMAtExit extends LLVMIntrinsic {
         LLVMFunctionDescriptor desc = context.lookup(func);
         LLVMExpressionNode functionNode = LLVMFunctionLiteralNodeGen.create(desc);
 
-        LLVMCallNode callNode = new LLVMCallNode(new FunctionType(VoidType.INSTANCE, argsTypes, false), functionNode, args);
+        LLVMCallNode callNode = new LLVMCallNode(new FunctionType(VoidType.INSTANCE, argsTypes, false), functionNode, args, null);
 
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(
                         new LLVMFunctionStartNode(null, getRootNode().getLanguage(LLVMLanguage.class), callNode,

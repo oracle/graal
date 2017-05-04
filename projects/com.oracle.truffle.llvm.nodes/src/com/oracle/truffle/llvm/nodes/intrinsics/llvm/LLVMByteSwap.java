@@ -35,8 +35,8 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMByteSwap {
 
-    @NodeChild
-    public abstract static class LLVMByteSwapI16 extends LLVMExpressionNode {
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMByteSwapI16 extends LLVMBuiltin {
 
         @Specialization
         public short executeI16(short value) {
@@ -45,8 +45,8 @@ public abstract class LLVMByteSwap {
 
     }
 
-    @NodeChild
-    public abstract static class LLVMByteSwapI32 extends LLVMExpressionNode {
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMByteSwapI32 extends LLVMBuiltin {
 
         @Specialization
         public int executeI32(int value) {
@@ -54,8 +54,8 @@ public abstract class LLVMByteSwap {
         }
     }
 
-    @NodeChild
-    public abstract static class LLVMByteSwapI64 extends LLVMExpressionNode {
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMByteSwapI64 extends LLVMBuiltin {
 
         @Specialization
         public long executeI64(long value) {

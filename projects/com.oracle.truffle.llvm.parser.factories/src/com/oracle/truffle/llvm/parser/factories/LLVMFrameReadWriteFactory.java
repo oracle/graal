@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.factories;
 
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVM80BitFloatReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMAddressReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMDoubleReadNodeGen;
@@ -128,41 +129,41 @@ final class LLVMFrameReadWriteFactory {
         throw new AssertionError(llvmType + " for " + frameSlot.getIdentifier());
     }
 
-    static LLVMExpressionNode createFrameWrite(Type llvmType, LLVMExpressionNode result, FrameSlot slot) {
+    static LLVMExpressionNode createFrameWrite(Type llvmType, LLVMExpressionNode result, FrameSlot slot, SourceSection source) {
         if (llvmType instanceof VectorType) {
-            return LLVMWriteVectorNodeGen.create(result, slot);
+            return LLVMWriteVectorNodeGen.create(source, result, slot);
         } else if (llvmType instanceof PrimitiveType) {
-            return handlePrimitive(llvmType, result, slot);
+            return handlePrimitive(llvmType, result, slot, source);
         } else if (llvmType instanceof VariableBitWidthType) {
-            return LLVMWriteIVarBitNodeGen.create(result, slot);
+            return LLVMWriteIVarBitNodeGen.create(result, slot, source);
         } else if (Type.isFunctionOrFunctionPointer(llvmType)) {
-            return LLVMWriteFunctionNodeGen.create(result, slot);
+            return LLVMWriteFunctionNodeGen.create(result, slot, source);
         } else if (llvmType instanceof PointerType) {
-            return LLVMWriteAddressNodeGen.create(result, slot);
+            return LLVMWriteAddressNodeGen.create(result, slot, source);
         } else if (llvmType instanceof StructureType || llvmType instanceof ArrayType) {
-            return LLVMWriteAddressNodeGen.create(result, slot);
+            return LLVMWriteAddressNodeGen.create(result, slot, source);
         }
         throw new AssertionError(llvmType);
     }
 
-    private static LLVMExpressionNode handlePrimitive(Type llvmType, LLVMExpressionNode result, FrameSlot slot) throws AssertionError {
+    private static LLVMExpressionNode handlePrimitive(Type llvmType, LLVMExpressionNode result, FrameSlot slot, SourceSection source) throws AssertionError {
         switch (((PrimitiveType) llvmType).getPrimitiveKind()) {
             case I1:
-                return LLVMWriteI1NodeGen.create(result, slot);
+                return LLVMWriteI1NodeGen.create(result, slot, source);
             case I8:
-                return LLVMWriteI8NodeGen.create(result, slot);
+                return LLVMWriteI8NodeGen.create(result, slot, source);
             case I16:
-                return LLVMWriteI16NodeGen.create(result, slot);
+                return LLVMWriteI16NodeGen.create(result, slot, source);
             case I32:
-                return LLVMWriteI32NodeGen.create(result, slot);
+                return LLVMWriteI32NodeGen.create(result, slot, source);
             case I64:
-                return LLVMWriteI64NodeGen.create(result, slot);
+                return LLVMWriteI64NodeGen.create(result, slot, source);
             case FLOAT:
-                return LLVMWriteFloatNodeGen.create(result, slot);
+                return LLVMWriteFloatNodeGen.create(result, slot, source);
             case DOUBLE:
-                return LLVMWriteDoubleNodeGen.create(result, slot);
+                return LLVMWriteDoubleNodeGen.create(result, slot, source);
             case X86_FP80:
-                return LLVMWrite80BitFloatingNodeGen.create(result, slot);
+                return LLVMWrite80BitFloatingNodeGen.create(result, slot, source);
             default:
                 throw new AssertionError(llvmType);
         }

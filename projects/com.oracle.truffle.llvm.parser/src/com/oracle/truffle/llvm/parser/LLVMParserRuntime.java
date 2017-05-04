@@ -59,6 +59,7 @@ import com.oracle.truffle.llvm.parser.model.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.ArrayConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.StructureConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
@@ -228,19 +229,19 @@ public final class LLVMParserRuntime {
         final List<FunctionParameter> parameters = method.getParameters();
         final List<LLVMExpressionNode> formalParamInits = new ArrayList<>();
         final LLVMExpressionNode stackPointerNode = nodeFactory.createFunctionArgNode(0, new PointerType(MetaType.UNKNOWN));
-        formalParamInits.add(nodeFactory.createFrameWrite(this, new PointerType(MetaType.UNKNOWN), stackPointerNode, frame.findFrameSlot(LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID)));
+        formalParamInits.add(nodeFactory.createFrameWrite(this, new PointerType(MetaType.UNKNOWN), stackPointerNode, frame.findFrameSlot(LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID), null));
 
         int argIndex = 1;
         if (method.getType().getReturnType() instanceof StructureType) {
             final LLVMExpressionNode functionReturnParameterNode = nodeFactory.createFunctionArgNode(argIndex++, method.getType().getReturnType());
             final FrameSlot returnSlot = frame.findOrAddFrameSlot(LLVMFrameIDs.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID);
-            final LLVMExpressionNode returnValue = nodeFactory.createFrameWrite(this, method.getType().getReturnType(), functionReturnParameterNode, returnSlot);
+            final LLVMExpressionNode returnValue = nodeFactory.createFrameWrite(this, method.getType().getReturnType(), functionReturnParameterNode, returnSlot, null);
             formalParamInits.add(returnValue);
         }
         for (final FunctionParameter parameter : parameters) {
             final LLVMExpressionNode parameterNode = nodeFactory.createFunctionArgNode(argIndex++, parameter.getType());
             final FrameSlot slot = frame.findFrameSlot(parameter.getName());
-            formalParamInits.add(nodeFactory.createFrameWrite(this, parameter.getType(), parameterNode, slot));
+            formalParamInits.add(nodeFactory.createFrameWrite(this, parameter.getType(), parameterNode, slot, null));
         }
         return formalParamInits;
     }
@@ -260,10 +261,10 @@ public final class LLVMParserRuntime {
             if (size != 0) {
                 final LLVMExpressionNode store;
                 if (type instanceof ArrayType || type instanceof StructureType) {
-                    store = nodeFactory.createStore(this, globalVarAddress, constant, type);
+                    store = nodeFactory.createStore(this, globalVarAddress, constant, type, null);
                 } else {
                     final Type t = global.getValue().getType();
-                    store = nodeFactory.createStore(this, globalVarAddress, constant, t);
+                    store = nodeFactory.createStore(this, globalVarAddress, constant, t, null);
                 }
                 return store;
             }
@@ -353,7 +354,7 @@ public final class LLVMParserRuntime {
             final LLVMExpressionNode functionLoadTarget = nodeFactory.createTypedElementPointer(this, loadedStruct, oneLiteralNode, indexedTypeLength, functionType);
             final LLVMExpressionNode loadedFunction = nodeFactory.createLoad(this, functionType, functionLoadTarget);
             final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{nodeFactory.createFrameRead(this, new PointerType(null), getStackPointerSlot())};
-            final LLVMExpressionNode functionCall = nodeFactory.createFunctionCall(this, loadedFunction, argNodes, functionType);
+            final LLVMExpressionNode functionCall = nodeFactory.createFunctionCall(this, loadedFunction, argNodes, functionType, null);
 
             final StructureConstant structorDefinition = (StructureConstant) arrayConstant.getElement(i);
             final Symbol prioritySymbol = structorDefinition.getElement(0);
@@ -527,5 +528,9 @@ public final class LLVMParserRuntime {
 
     SourceSection getSourceSection(FunctionDefinition function) {
         return sourceSectionGenerator.getOrDefault(function, source);
+    }
+
+    SourceSection getSourceSection(Instruction instruction) {
+        return sourceSectionGenerator.getOrDefault(instruction);
     }
 }

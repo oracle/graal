@@ -36,6 +36,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
@@ -56,7 +57,9 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
 @NodeField(name = "retSlot", type = FrameSlot.class)
 public abstract class LLVMRetNode extends LLVMControlFlowNode {
-    public LLVMRetNode() {
+
+    public LLVMRetNode(SourceSection sourceSection) {
+        super(sourceSection);
     }
 
     @Override
@@ -75,6 +78,10 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMI1RetNode extends LLVMRetNode {
 
+        public LLVMI1RetNode(SourceSection sourceSection) {
+            super(sourceSection);
+        }
+
         @Specialization
         public Object execute(VirtualFrame frame, boolean retResult) {
             frame.setBoolean(getRetSlot(), retResult);
@@ -85,6 +92,10 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMI8RetNode extends LLVMRetNode {
+
+        public LLVMI8RetNode(SourceSection sourceSection) {
+            super(sourceSection);
+        }
 
         @Specialization
         public Object execute(VirtualFrame frame, byte retResult) {
@@ -97,6 +108,10 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMI16RetNode extends LLVMRetNode {
 
+        public LLVMI16RetNode(SourceSection sourceSection) {
+            super(sourceSection);
+        }
+
         @Specialization
         public Object execute(VirtualFrame frame, short retResult) {
             frame.setInt(getRetSlot(), retResult);
@@ -107,6 +122,10 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMI32RetNode extends LLVMRetNode {
+
+        public LLVMI32RetNode(SourceSection sourceSection) {
+            super(sourceSection);
+        }
 
         @Specialization
         public Object execute(VirtualFrame frame, int retResult) {
@@ -119,6 +138,10 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMI64RetNode extends LLVMRetNode {
 
+        public LLVMI64RetNode(SourceSection sourceSection) {
+            super(sourceSection);
+        }
+
         @Specialization
         public Object execute(VirtualFrame frame, long retResult) {
             frame.setLong(getRetSlot(), retResult);
@@ -129,6 +152,10 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMIVarBitRetNode extends LLVMRetNode {
+
+        public LLVMIVarBitRetNode(SourceSection sourceSection) {
+            super(sourceSection);
+        }
 
         @Specialization
         public Object execute(VirtualFrame frame, LLVMIVarBit retResult) {
@@ -141,6 +168,10 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMFloatRetNode extends LLVMRetNode {
 
+        public LLVMFloatRetNode(SourceSection sourceSection) {
+            super(sourceSection);
+        }
+
         @Specialization
         public Object execute(VirtualFrame frame, float retResult) {
             frame.setFloat(getRetSlot(), retResult);
@@ -151,6 +182,10 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMDoubleRetNode extends LLVMRetNode {
+
+        public LLVMDoubleRetNode(SourceSection sourceSection) {
+            super(sourceSection);
+        }
 
         @Specialization
         public Object execute(VirtualFrame frame, double retResult) {
@@ -163,6 +198,10 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVM80BitFloatRetNode extends LLVMRetNode {
 
+        public LLVM80BitFloatRetNode(SourceSection sourceSection) {
+            super(sourceSection);
+        }
+
         @Specialization
         public Object execute(VirtualFrame frame, LLVM80BitFloat retResult) {
             frame.setObject(getRetSlot(), retResult);
@@ -174,6 +213,10 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMAddressRetNode extends LLVMRetNode {
 
+        public LLVMAddressRetNode(SourceSection sourceSection) {
+            super(sourceSection);
+        }
+
         @Specialization
         public Object execute(VirtualFrame frame, Object retResult) {
             frame.setObject(getRetSlot(), retResult);
@@ -184,6 +227,10 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMFunctionRetNode extends LLVMRetNode {
+
+        public LLVMFunctionRetNode(SourceSection sourceSection) {
+            super(sourceSection);
+        }
 
         @Specialization
         public Object execute(VirtualFrame frame, LLVMFunctionHandle retResult) {
@@ -201,6 +248,10 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMVectorRetNode extends LLVMRetNode {
+
+        public LLVMVectorRetNode(SourceSection sourceSection) {
+            super(sourceSection);
+        }
 
         @Specialization
         public Object execute(VirtualFrame frame, LLVMDoubleVector retResult) {
@@ -254,7 +305,8 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
 
         public abstract int getStructSize();
 
-        protected LLVMStructRetNode(LLVMNativeFunctions heapFunctions) {
+        public LLVMStructRetNode(LLVMNativeFunctions heapFunctions, SourceSection sourceSection) {
+            super(sourceSection);
             memCopy = heapFunctions.createMemCopyNode();
         }
 
@@ -275,6 +327,11 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
     }
 
     public abstract static class LLVMVoidReturnNode extends LLVMRetNode {
+
+        public LLVMVoidReturnNode(SourceSection sourceSection) {
+            super(sourceSection);
+        }
+
         @Specialization
         public Object execute() {
             return null;

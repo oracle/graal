@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -39,7 +40,8 @@ public class LLVMBrUnconditionalNode extends LLVMControlFlowNode {
     @Children private final LLVMExpressionNode[] phiWrites;
     private final int successor;
 
-    public LLVMBrUnconditionalNode(int successor, LLVMExpressionNode[] phiWrites) {
+    public LLVMBrUnconditionalNode(int successor, LLVMExpressionNode[] phiWrites, SourceSection sourceSection) {
+        super(sourceSection);
         this.successor = successor;
         this.phiWrites = phiWrites;
     }

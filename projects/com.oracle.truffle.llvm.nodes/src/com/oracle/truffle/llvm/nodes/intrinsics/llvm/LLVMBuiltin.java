@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,26 +27,16 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.api;
+package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
+import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public abstract class LLVMControlFlowNode extends LLVMNode {
-
-    private final SourceSection sourceSection;
-
-    public LLVMControlFlowNode(SourceSection sourceSection) {
-        this.sourceSection = sourceSection;
-    }
-
-    public abstract int getSuccessorCount();
-
-    public boolean needsBranchProfiling() {
-        return getSuccessorCount() > 1;
-    }
+@NodeField(name = "sourceSection", type = SourceSection.class)
+public abstract class LLVMBuiltin extends LLVMExpressionNode {
 
     @Override
-    public SourceSection getSourceSection() {
-        return sourceSection;
-    }
+    public abstract SourceSection getSourceSection();
+
 }

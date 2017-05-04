@@ -35,7 +35,7 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild(type = LLVMExpressionNode.class, value = "val")
-public abstract class LLVMReturnAddress extends LLVMExpressionNode {
+public abstract class LLVMReturnAddress extends LLVMBuiltin {
 
     @Specialization
     public LLVMAddress executePointee(@SuppressWarnings("unused") int frameLevel) {

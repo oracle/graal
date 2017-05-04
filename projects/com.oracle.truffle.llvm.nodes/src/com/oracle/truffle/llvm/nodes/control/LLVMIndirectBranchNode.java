@@ -34,6 +34,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -43,7 +44,8 @@ public class LLVMIndirectBranchNode extends LLVMControlFlowNode {
     @CompilationFinal(dimensions = 2) private final LLVMExpressionNode[][] phiWriteNodes;
     @CompilationFinal(dimensions = 1) private final int[] successors;
 
-    public LLVMIndirectBranchNode(LLVMExpressionNode address, int[] indices, LLVMExpressionNode[][] phiWriteNodes) {
+    public LLVMIndirectBranchNode(LLVMExpressionNode address, int[] indices, LLVMExpressionNode[][] phiWriteNodes, SourceSection sourceSection) {
+        super(sourceSection);
         assert indices.length > 1;
         this.successors = indices;
         this.address = address;

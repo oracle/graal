@@ -40,7 +40,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeFields({@NodeField(type = FrameSlot.class, name = "stackPointerSlot")})
-public abstract class LLVMStackRestore extends LLVMExpressionNode {
+public abstract class LLVMStackRestore extends LLVMBuiltin {
 
     abstract FrameSlot getStackPointerSlot();
 

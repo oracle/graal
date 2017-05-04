@@ -31,7 +31,9 @@ package com.oracle.truffle.llvm.nodes.intrinsics.c;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -122,6 +124,7 @@ public abstract class LLVMCMathsIntrinsics {
 
     }
 
+    @NodeField(name = "sourceSection", type = SourceSection.class)
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMFAbs extends LLVMIntrinsic {
 
@@ -129,6 +132,9 @@ public abstract class LLVMCMathsIntrinsics {
         public double executeIntrinsic(double value) {
             return Math.abs(value);
         }
+
+        @Override
+        public abstract SourceSection getSourceSection();
 
     }
 
@@ -142,6 +148,7 @@ public abstract class LLVMCMathsIntrinsics {
 
     }
 
+    @NodeField(name = "sourceSection", type = SourceSection.class)
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMPow extends LLVMIntrinsic {
 
@@ -164,6 +171,10 @@ public abstract class LLVMCMathsIntrinsics {
         public float executeDouble(float val, int pow) {
             return (float) Math.pow(val, pow);
         }
+
+        @Override
+        public abstract SourceSection getSourceSection();
+
     }
 
     @NodeChild(type = LLVMExpressionNode.class)

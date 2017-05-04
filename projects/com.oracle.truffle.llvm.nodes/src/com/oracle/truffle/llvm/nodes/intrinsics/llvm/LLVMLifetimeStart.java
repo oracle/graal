@@ -35,7 +35,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "size"), @NodeChild(type = LLVMExpressionNode.class, value = "expected")})
-public abstract class LLVMLifetimeStart extends LLVMExpressionNode {
+public abstract class LLVMLifetimeStart extends LLVMBuiltin {
 
     @Specialization
     public Object executeI1(@SuppressWarnings("unused") long size, @SuppressWarnings("unused") Object ptr) {
