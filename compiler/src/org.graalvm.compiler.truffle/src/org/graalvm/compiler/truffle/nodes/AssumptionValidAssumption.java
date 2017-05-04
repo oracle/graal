@@ -22,20 +22,21 @@
  */
 package org.graalvm.compiler.truffle.nodes;
 
+
 import org.graalvm.compiler.truffle.OptimizedAssumption;
 
 import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.JavaConstant;
 
 public final class AssumptionValidAssumption extends Assumptions.Assumption {
 
-    private final OptimizedAssumption assumption;
+    private final JavaConstant assumption;
 
-    public AssumptionValidAssumption(OptimizedAssumption assumption) {
+    public AssumptionValidAssumption(JavaConstant assumption) {
         this.assumption = assumption;
-        assert assumption != null;
     }
 
-    public OptimizedAssumption getAssumption() {
+    public JavaConstant getAssumption() {
         return assumption;
     }
 
@@ -48,7 +49,7 @@ public final class AssumptionValidAssumption extends Assumptions.Assumption {
     public boolean equals(Object obj) {
         if (obj instanceof AssumptionValidAssumption) {
             AssumptionValidAssumption other = (AssumptionValidAssumption) obj;
-            return this.assumption == other.assumption;
+            return this.assumption.equals(other.assumption);
         }
         return false;
     }

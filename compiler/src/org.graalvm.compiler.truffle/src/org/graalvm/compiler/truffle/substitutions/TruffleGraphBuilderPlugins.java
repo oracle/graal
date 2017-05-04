@@ -393,7 +393,7 @@ public class TruffleGraphBuilderPlugins {
         });
     }
 
-    public static void registerOptimizedCallTargetPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, boolean canDelayIntrinsification) {
+    public static void registerOptimizedCallTargetPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification) {
         Registration r = new Registration(plugins, OptimizedCallTarget.class);
         r.register2("createFrame", FrameDescriptor.class, Object[].class, new InvocationPlugin() {
             @Override
@@ -401,14 +401,13 @@ public class TruffleGraphBuilderPlugins {
                 if (canDelayIntrinsification) {
                     return false;
                 }
-                if (!descriptor.isConstant()) {
+                if (!descriptor.isJavaConstant()) {
                     throw b.bailout("Parameter 'descriptor' is not a compile-time constant");
                 }
-                FrameDescriptor constantDescriptor = snippetReflection.asObject(FrameDescriptor.class, descriptor.asJavaConstant());
 
                 ValueNode nonNullArguments = b.add(PiNode.create(args, StampFactory.objectNonNull(StampTool.typeReferenceOrNull(args))));
                 Class<?> frameClass = TruffleCompilerOptions.getValue(TruffleUseFrameWithoutBoxing) ? FrameWithoutBoxing.class : FrameWithBoxing.class;
-                NewFrameNode newFrame = new NewFrameNode(b.getMetaAccess(), snippetReflection, b.getGraph(), b.getMetaAccess().lookupJavaType(frameClass), constantDescriptor, descriptor,
+                NewFrameNode newFrame = new NewFrameNode(new KnownTruffleFields(b.getMetaAccess()), b.getMetaAccess(), b.getGraph(), b.getMetaAccess().lookupJavaType(frameClass), descriptor,
                                 nonNullArguments);
                 b.addPush(JavaKind.Object, newFrame);
                 return true;
