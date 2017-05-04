@@ -32,18 +32,15 @@ Once you have installed (or built) a JVMCI-enabled JDK, ensure `JAVA_HOME` is po
 Graal also depends on Truffle which needs to be cloned along with Graal.
 
 ```
-git clone https://github.com/graalvm/graal-core.git
-cd graal-core
+git clone https://github.com/graalvm/graal.git
+cd graal/compiler
 mx
 ```
 
-The `mx` command ensures a Truffle version in sync with Graal is cloned as a sibling of the `graal-core` directory.
-Changing to the `graal-core` directory informs mx that the focus of development (called the _primary suite_) is Graal.
+Changing to the `graal/compiler` directory informs mx that the focus of development (called the _primary suite_) is Graal.
 All subsequent mx commands should be executed from this directory.
 
-After pulling subsequent Graal changes, the `mx sforceimports` command should be run to bring the Truffle dependency up to date.
-
-Here's the recipe for building and running Graal (If on Windows, replace mx with mx.cmd):
+Here's the recipe for building and running Graal (if on Windows, replace mx with mx.cmd):
 
 ```
 mx build
