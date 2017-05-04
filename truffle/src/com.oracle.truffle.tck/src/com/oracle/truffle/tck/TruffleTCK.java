@@ -421,11 +421,11 @@ public abstract class TruffleTCK {
      * properties named "ro", "wo", "rw", "invocable" and "intern". The "ro" property should be
      * read-only (readable and not writable), the "wo" property should be write-only (writable and
      * not readable), "rw" property readable and writable, "invocable" property should return an
-     * "invoked" String on {@link Message#createInvoke(int) invoke message} and the "ii" property
-     * should be internal. The object should support {@link Message#KEYS KEYS message} as well and
-     * it should provide the "ii" property iff it gets a boolean true as an argument. When the
-     * language does not support some attribute, it can return <code>0</code> as the key info
-     * instead.
+     * "invoked" String on {@link Message#createInvoke(int) invoke message} and the "intern"
+     * property should be internal. The object should support {@link Message#KEYS KEYS message} as
+     * well and it should provide the "intern" property iff it gets a boolean true as an argument.
+     * When the language does not support some attribute, it can skip the appropriate property (that
+     * should result in returning <code>0</code> as the key info of such skipped property).
      *
      * @since 0.26
      */

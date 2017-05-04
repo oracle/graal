@@ -209,7 +209,7 @@ public final class ForeignAccessFactoryGenerator {
     private void appendFactoryAccessKeyInfo(Writer w) throws IOException {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessKeyInfo() {").append("\n");
-        appendOptionalDefaultHandlerBody(w, Message.KEY_INFO, "0b111");
+        appendOptionalHandlerBody(w, Message.KEY_INFO);
         w.append("    }").append("\n");
     }
 

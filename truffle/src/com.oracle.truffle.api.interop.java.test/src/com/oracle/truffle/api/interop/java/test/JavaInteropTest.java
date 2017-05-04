@@ -528,6 +528,21 @@ public class JavaInteropTest {
     }
 
     @Test
+    public void keyInfoDefaults() {
+        TruffleObject noKeys = new NoKeysObject();
+        int keyInfo = JavaInterop.getKeyInfo(noKeys, "p1");
+        assertEquals(0, keyInfo);
+
+        TruffleObject nkio = new NoKeyInfoObject();
+        keyInfo = JavaInterop.getKeyInfo(nkio, "p1");
+        assertEquals(0b111, keyInfo);
+        keyInfo = JavaInterop.getKeyInfo(nkio, "p6");
+        assertEquals(0b111, keyInfo);
+        keyInfo = JavaInterop.getKeyInfo(nkio, "p7");
+        assertEquals(0, keyInfo);
+    }
+
+    @Test
     public void keyInfo() {
         TruffleObject ipobj = new InternalPropertiesObject(-1, -1, 0, 0);
         int keyInfo = JavaInterop.getKeyInfo(ipobj, "p1");
@@ -616,6 +631,27 @@ public class JavaInteropTest {
         assertFalse(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p6")));
     }
 
+    @Test
+    public void keyInfoJavaObject() {
+        TruffleObject d = JavaInterop.asTruffleObject(new TestJavaObject());
+        int keyInfo = JavaInterop.getKeyInfo(d, "nnoonnee");
+        assertFalse(KeyInfo.isExisting(keyInfo));
+        keyInfo = JavaInterop.getKeyInfo(d, "aField");
+        assertTrue(KeyInfo.isExisting(keyInfo));
+        assertTrue(KeyInfo.isReadable(keyInfo));
+        assertTrue(KeyInfo.isWritable(keyInfo));
+        assertFalse(KeyInfo.isInvocable(keyInfo));
+        keyInfo = JavaInterop.getKeyInfo(d, "toString");
+        assertTrue(KeyInfo.isExisting(keyInfo));
+        assertTrue(KeyInfo.isReadable(keyInfo));
+        assertTrue(KeyInfo.isWritable(keyInfo));
+        assertTrue(KeyInfo.isInvocable(keyInfo));
+    }
+
+    static final class TestJavaObject {
+        public int aField = 10;
+    }
+
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static void checkInternalKeys(Map map, String nonInternalKeys) {
         Map mapWithInternalKeys = JavaInterop.getMapView(map, true);
@@ -675,6 +711,48 @@ public class JavaInteropTest {
             }
         }
     } // end of TemporaryRoot
+
+    static final class NoKeysObject implements TruffleObject {
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return NoKeysObjectMessageResolutionForeign.ACCESS;
+        }
+
+        public static boolean isInstance(TruffleObject obj) {
+            return obj instanceof NoKeysObject;
+        }
+
+        @MessageResolution(receiverType = NoKeysObject.class)
+        static final class NoKeysObjectMessageResolution {
+            // no messages defined, defaults only
+        }
+    }
+
+    static final class NoKeyInfoObject implements TruffleObject {
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return NoKeyInfoObjectMessageResolutionForeign.ACCESS;
+        }
+
+        public static boolean isInstance(TruffleObject obj) {
+            return obj instanceof NoKeyInfoObject;
+        }
+
+        @MessageResolution(receiverType = NoKeyInfoObject.class)
+        static final class NoKeyInfoObjectMessageResolution {
+            // KEYS defined only, using default KEY_INFO
+            @Resolve(message = "KEYS")
+            public abstract static class PropertiesKeysOnlyNode extends Node {
+
+                public Object access(NoKeyInfoObject receiver) {
+                    assert receiver != null;
+                    return JavaInterop.asTruffleObject(new String[]{"p1", "p2", "p3", "p4", "p5", "p6"});
+                }
+            }
+        }
+    }
 
     static final class InternalPropertiesObject implements TruffleObject {
 
