@@ -4,7 +4,7 @@ builds += [
   # Darwin AMD64
 # ${gateTest8}                 ${gateDarwinAMD64}  {name: "gate-compiler-test-8-darwin-amd64"}
   ${gateTest9}                 ${gateDarwinAMD64}  {name: "gate-compiler-test-9-darwin-amd64"}
-#GR-3741  ${gateTest9EA}               ${gateDarwinAMD64}  {name: "gate-compiler-test-9EA-darwin-amd64"}
+  ${gateTest9EA}               ${gateDarwinAMD64}  {name: "gate-compiler-test-9EA-darwin-amd64"}
 # ${gateTest8Debug}            ${gateDarwinAMD64}  {name: "gate-compiler-test-8-darwin-amd64-fastdebug"}
 # ${gateTestBenchmark8}        ${gateDarwinAMD64}  {name: "gate-compiler-benchmarktest-8-darwin-amd64"}
 # ${gateTestBenchmark8Debug}   ${gateDarwinAMD64}  {name: "gate-compiler-benchmarktest-8-darwin-amd64-fastdebug"}
@@ -12,7 +12,7 @@ builds += [
   # Linux AMD64
   ${gateTest8}                 ${gateLinuxAMD64}   {name: "gate-compiler-test-8-linux-amd64"}
   ${gateTest9}                 ${gateLinuxAMD64}   {name: "gate-compiler-test-9-linux-amd64"}
-#GR-3741  ${gateTest9EA}               ${gateLinuxAMD64}   {name: "gate-compiler-test-9EA-linux-amd64"}
+  ${gateTest9EA}               ${gateLinuxAMD64}   {name: "gate-compiler-test-9EA-linux-amd64"}
   ${gateTestCTW8}              ${gateLinuxAMD64}   {name: "gate-compiler-ctw-8-linux-amd64"}
   ${gateTestCTW9}              ${gateLinuxAMD64}   {name: "gate-compiler-ctw-9-linux-amd64"}
 # ${gateTest8Debug}            ${gateLinuxAMD64}   {name: "gate-compiler-test-8-linux-amd64-fastdebug"}
