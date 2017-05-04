@@ -149,6 +149,11 @@ public abstract class LLVMMemory {
         UNSAFE.putByte(extractAddr(addr), value);
     }
 
+    public static void putI8(long ptr, byte value) {
+        assert ptr != 0;
+        UNSAFE.putByte(ptr, value);
+    }
+
     public static void putI16(LLVMAddress addr, short value) {
         UNSAFE.putShort(extractAddr(addr), value);
     }
@@ -159,6 +164,11 @@ public abstract class LLVMMemory {
 
     public static void putI64(LLVMAddress addr, long value) {
         UNSAFE.putLong(extractAddr(addr), value);
+    }
+
+    public static void putI64(long ptr, long value) {
+        assert ptr != 0;
+        UNSAFE.putLong(ptr, value);
     }
 
     public static void putIVarBit(LLVMAddress addr, LLVMIVarBit value) {

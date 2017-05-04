@@ -94,14 +94,14 @@ public abstract class LLVMMemSet extends LLVMBuiltin {
                     long v64 = v32 << 32 | v32;
 
                     for (int i = 0; i < i64ValuesToWrite; i++) {
-                        LLVMMemory.putI64(LLVMAddress.fromLong(current), v64);
+                        LLVMMemory.putI64(current, v64);
                         current += 8;
                     }
                 }
 
                 long i8ValuesToWrite = length & 0x07;
                 for (int i = 0; i < i8ValuesToWrite; i++) {
-                    LLVMMemory.putI8(LLVMAddress.fromLong(current), value);
+                    LLVMMemory.putI8(current, value);
                     current++;
                 }
                 return;
