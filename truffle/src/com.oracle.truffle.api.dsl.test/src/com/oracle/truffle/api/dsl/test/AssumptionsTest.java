@@ -499,7 +499,7 @@ public class AssumptionsTest {
     static class AssumptionArraysAreCompilationFinalCached extends ValueNode {
 
         @Specialization(guards = "value == cachedValue", assumptions = "createAssumptions()")
-        static int do1(int value, @Cached("value") int cachedValue) {
+        static int do1(int value, @SuppressWarnings("unused") @Cached("value") int cachedValue) {
             return value;
         }
 
