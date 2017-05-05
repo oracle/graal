@@ -26,8 +26,9 @@
 
 import argparse
 import re
+import os
 from os.path import join, exists
-from tempfile import mkdtemp
+from tempfile import mkdtemp, mkstemp
 from shutil import rmtree
 
 import mx
@@ -150,9 +151,65 @@ build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', 
 mx_benchmark.add_java_vm(JvmciJdkVm('client', 'default', ['-server', '-XX:-EnableJVMCI', '-XX:TieredStopAtLevel=1']), suite=_suite, priority=1)
 mx_benchmark.add_java_vm(JvmciJdkVm('client', 'hosted', ['-server', '-XX:+EnableJVMCI', '-XX:TieredStopAtLevel=1']), suite=_suite, priority=1)
 
+class DebugValueBenchmarkMixin(object):
 
-class TimingBenchmarkMixin(object):
-    debug_values_file = 'debug-values.csv'
+    def before(self, bmSuiteArgs):
+        fd, self._debug_values_file = mkstemp(prefix='debug-values.', suffix='.csv', dir='.')
+        # we don't need the file descriptor
+        os.close(fd)
+        super(DebugValueBenchmarkMixin, self).before(bmSuiteArgs)
+
+    def after(self, bmSuiteArgs):
+        os.remove(self._debug_values_file)
+        super(DebugValueBenchmarkMixin, self).after(bmSuiteArgs)
+
+    def vmArgs(self, bmSuiteArgs):
+        vmArgs = ['-Dgraal.DebugValueHumanReadable=false', '-Dgraal.DebugValueSummary=Name',
+                  '-Dgraal.DebugValueFile=' + self.get_csv_filename()] +\
+                  super(DebugValueBenchmarkMixin, self).vmArgs(bmSuiteArgs)
+        return vmArgs
+
+    def getBechmarkName(self):
+        raise NotImplementedError()
+
+    def benchSuiteName(self):
+        raise NotImplementedError()
+
+    def shorten_vm_flags(self, args):
+        # no need for debug value flags
+        filtered_args = [x for x in args if not x.startswith("-Dgraal.DebugValue")]
+        return super(DebugValueBenchmarkMixin, self).shorten_vm_flags(filtered_args)
+
+    def get_csv_filename(self):
+        return self._debug_values_file
+
+
+class DebugValueRule(mx_benchmark.CSVFixedFileRule):
+    def __init__(self, debug_value_file, benchmark, bench_suite, metric_name, filter_fn, vm_flags, metric_unit=("<unit>", str)):
+        super(DebugValueRule, self).__init__(
+            filename=debug_value_file,
+            colnames=['scope', 'name', 'value', 'unit'],
+            replacement={
+                "benchmark": benchmark,
+                "bench-suite": bench_suite,
+                "vm": "jvmci",
+                "config.name": "default",
+                "config.vm-flags": vm_flags,
+                "metric.object": ("<name>", str),
+                "metric.name": metric_name,
+                "metric.value": ("<value>", int),
+                "metric.unit": metric_unit,
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": 0
+            },
+            filter_fn=filter_fn,
+            delimiter=';', quotechar='"', escapechar='\\'
+        ),
+
+
+class TimingBenchmarkMixin(DebugValueBenchmarkMixin):
     timers = [
         "BackEnd",
         "FrontEnd",
@@ -174,62 +231,85 @@ class TimingBenchmarkMixin(object):
         return ["-Dgraaldebug.timer.{0}=true".format(timer) for timer in TimingBenchmarkMixin.timers]
 
     def vmArgs(self, bmSuiteArgs):
-        vmArgs = TimingBenchmarkMixin.timerArgs() + ['-Dgraal.DebugValueHumanReadable=false', '-Dgraal.DebugValueSummary=Name',
-                  '-Dgraal.DebugValueFile=' + TimingBenchmarkMixin.debug_values_file] + super(TimingBenchmarkMixin, self).vmArgs(bmSuiteArgs)
+        vmArgs = TimingBenchmarkMixin.timerArgs() + super(TimingBenchmarkMixin, self).vmArgs(bmSuiteArgs)
         return vmArgs
-
-    def getBechmarkName(self):
-        raise NotImplementedError()
-
-    def benchSuiteName(self):
-        raise NotImplementedError()
 
     def name(self):
         return self.benchSuiteName() + "-timing"
 
-    def filterResult(self, r):
+    @staticmethod
+    def filterResult(r):
         m = TimingBenchmarkMixin.name_re.match(r['name'])
         if m:
-            r['name'] = m.groupdict()['name']
-            return r
+            name = m.groupdict()['name']
+            if name in TimingBenchmarkMixin.timers:
+                r['name'] = name
+                return r
         return None
 
-    def get_csv_filename(self, benchmarks, bmSuiteArgs):
-        return TimingBenchmarkMixin.debug_values_file
-
-    @staticmethod
-    def shorten_vm_flags(args):
-        # not need fo timer names
+    def shorten_vm_flags(self, args):
+        # no need for timer names
         filtered_args = [x for x in args if not x.startswith("-Dgraaldebug.timer")]
-        return mx_benchmark.Rule.crop_back("...")(' '.join(filtered_args))
+        return super(TimingBenchmarkMixin, self).shorten_vm_flags(filtered_args)
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         return [
-          mx_benchmark.CSVFixedFileRule(
-            filename=self.get_csv_filename(benchmarks, bmSuiteArgs),
-            colnames=['scope', 'name', 'value', 'unit'],
-            replacement={
-              "benchmark": self.getBechmarkName(),
-              "bench-suite": self.benchSuiteName(),
-              "vm": "jvmci",
-              "config.name": "default",
-              "config.vm-flags": TimingBenchmarkMixin.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
-              "metric.object": ("<name>", str),
-              "metric.name": ("compile-time", str),
-              "metric.value": ("<value>", int),
-              "metric.unit": ("<unit>", str),
-              "metric.type": "numeric",
-              "metric.score-function": "id",
-              "metric.better": "lower",
-              "metric.iteration": 0
-            },
-            filter_fn=self.filterResult,
-            delimiter=';', quotechar='"', escapechar='\\'
-          ),
-        ]
+                   DebugValueRule(
+                       debug_value_file=self.get_csv_filename(),
+                       benchmark=self.getBechmarkName(),
+                       bench_suite=self.benchSuiteName(),
+                       metric_name="compile-time",
+                       vm_flags=self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
+                       filter_fn=TimingBenchmarkMixin.filterResult,
+                   ),
+               ] + super(TimingBenchmarkMixin, self).rules(out, benchmarks, bmSuiteArgs)
 
 
-class DaCapoTimingBenchmarkMixin(TimingBenchmarkMixin):
+class CounterBenchmarkMixin(DebugValueBenchmarkMixin):
+    counters = [
+        "BytecodesParsed",
+        "CompiledBytecodes",
+        "CompiledAndInstalledBytecodes",
+        "FinalNodeCount",
+        "GeneratedLIRInstructions",
+        "InstalledCodeSize",
+    ]
+
+    @staticmethod
+    def counterArgs():
+        return ["-Dgraaldebug.counter.{0}=true".format(timer) for timer in CounterBenchmarkMixin.counters]
+
+    def vmArgs(self, bmSuiteArgs):
+        vmArgs = CounterBenchmarkMixin.counterArgs() + super(CounterBenchmarkMixin, self).vmArgs(bmSuiteArgs)
+        return vmArgs
+
+    @staticmethod
+    def filterResult(r):
+        return r if r['name'] in CounterBenchmarkMixin.counters else None
+
+    def shorten_vm_flags(self, args):
+        # not need for timer names
+        filtered_args = [x for x in args if not x.startswith("-Dgraaldebug.counter")]
+        return super(CounterBenchmarkMixin, self).shorten_vm_flags(filtered_args)
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return [
+            DebugValueRule(
+                debug_value_file=self.get_csv_filename(),
+                benchmark=self.getBechmarkName(),
+                bench_suite=self.benchSuiteName(),
+                metric_name="count",
+                metric_unit="#",
+                vm_flags=self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
+                filter_fn=CounterBenchmarkMixin.filterResult,
+            ),
+        ] + super(CounterBenchmarkMixin, self).rules(out, benchmarks, bmSuiteArgs)
+
+
+class DaCapoTimingBenchmarkMixin(TimingBenchmarkMixin, CounterBenchmarkMixin):
+
+    def host_vm_config_name(self, host_vm, vm):
+        return super(DaCapoTimingBenchmarkMixin, self).host_vm_config_name(host_vm, vm) + "-timing"
 
     def postprocessRunArgs(self, benchname, runArgs):
         self.currentBenchname = benchname
@@ -237,6 +317,14 @@ class DaCapoTimingBenchmarkMixin(TimingBenchmarkMixin):
 
     def getBechmarkName(self):
         return self.currentBenchname
+
+    def removeWarmup(self, results):
+        # we do not want warmup results for timing benchmarks
+        return [result for result in results if result["metric.name"] != "warmup"]
+
+    def run(self, benchmarks, bmSuiteArgs):
+        results = super(DaCapoTimingBenchmarkMixin, self).run(benchmarks, bmSuiteArgs)
+        return self.removeWarmup(results)
 
 
 class MoveProfilingBenchmarkMixin(object):
@@ -372,6 +460,9 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchma
     def subgroup(self):
         return "graal-compiler"
 
+    def benchSuiteName(self):
+        self.name()
+
     def before(self, bmSuiteArgs):
         parser = mx_benchmark.parsers["dacapo_benchmark_suite"].parser
         bmArgs, _ = parser.parse_known_args(bmSuiteArgs)
@@ -483,8 +574,10 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchma
             if next((p for p in partialResults if p["metric.iteration"] == i), None) is None:
                 datapoint = {
                     "benchmark": benchmarks[0],
+                    "bench-suite": self.benchSuiteName(),
                     "vm": "jvmci",
                     "config.name": "default",
+                    "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
                     "metric.name": "warmup",
                     "metric.value": -1,
                     "metric.unit": "ms",
@@ -496,8 +589,10 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchma
                 partialResults.append(datapoint)
         datapoint = {
             "benchmark": benchmarks[0],
+            "bench-suite": self.benchSuiteName(),
             "vm": "jvmci",
             "config.name": "default",
+            "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
             "metric.name": "time",
             "metric.value": -1,
             "metric.unit": "ms",
@@ -529,6 +624,9 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchma
                 re.MULTILINE)
         ]
 
+    def shorten_vm_flags(self, args):
+        return mx_benchmark.Rule.crop_back("...")(' '.join(args))
+
     def rules(self, out, benchmarks, bmSuiteArgs):
         runArgs = self.postprocessRunArgs(benchmarks[0], self.runArgs(bmSuiteArgs))
         if runArgs is None:
@@ -539,8 +637,10 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchma
             r"===== " + re.escape(self.daCapoSuiteTitle()) + " (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
             {
               "benchmark": ("<benchmark>", str),
+              "bench-suite": self.benchSuiteName(),
               "vm": "jvmci",
               "config.name": "default",
+              "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
               "metric.name": "final-time",
               "metric.value": ("<time>", int),
               "metric.unit": "ms",
@@ -554,8 +654,10 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchma
             r"===== " + re.escape(self.daCapoSuiteTitle()) + " (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
             {
               "benchmark": ("<benchmark>", str),
+              "bench-suite": self.benchSuiteName(),
               "vm": "jvmci",
               "config.name": "default",
+              "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
               "metric.name": "warmup",
               "metric.value": ("<time>", int),
               "metric.unit": "ms",
@@ -569,8 +671,10 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchma
             r"===== " + re.escape(self.daCapoSuiteTitle()) + " (?P<benchmark>[a-zA-Z0-9_]+) completed warmup [0-9]+ in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
             {
               "benchmark": ("<benchmark>", str),
+              "bench-suite": self.benchSuiteName(),
               "vm": "jvmci",
               "config.name": "default",
+              "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
               "metric.name": "warmup",
               "metric.value": ("<time>", int),
               "metric.unit": "ms",

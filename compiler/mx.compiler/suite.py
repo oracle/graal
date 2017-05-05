@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.86.0",
+  "mxversion" : "5.93.0",
   "name" : "compiler",
 
   "imports" : {
