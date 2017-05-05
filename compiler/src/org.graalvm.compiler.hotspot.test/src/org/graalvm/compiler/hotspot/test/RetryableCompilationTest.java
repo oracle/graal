@@ -31,29 +31,40 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import org.graalvm.compiler.core.test.GraalCompilerTest;
-import org.graalvm.compiler.hotspot.CompilationTask;
 import org.junit.Assert;
 import org.junit.Test;
 
 /**
- * Tests {@link CompilationTask} support for dumping graphs and other info useful for debugging a
- * compiler crash.
+ * Tests support for dumping graphs and other info useful for debugging a compiler crash.
  */
 public class RetryableCompilationTest extends GraalCompilerTest {
-    @Test
-    public void test() throws IOException {
-        List<String> args = withoutDebuggerArguments(getVMCommandLine());
 
-        args.add("-XX:+BootstrapJVMCI");
-        args.add("-XX:+UseJVMCICompiler");
-        args.add("-Dgraal.CrashAt=Object.*,String.*");
-        args.add("-version");
+    /**
+     * Tests compilation requested by the VM.
+     */
+    @Test
+    public void testVMCompilation() throws IOException {
+        testHelper("-XX:+BootstrapJVMCI", "-XX:+UseJVMCICompiler", "-Dgraal.CrashAt=Object.*,String.*", "-version");
+    }
+
+    /**
+     * Tests compilation requested by Truffle.
+     */
+    @Test
+    public void testTruffleCompilation() throws IOException {
+        testHelper("-Dgraal.CrashAt=root test1", "org.graalvm.compiler.truffle.test.SLTruffleGraalTestSuite", "test");
+    }
+
+    private static void testHelper(String... subprocessArgs) throws IOException {
+        List<String> args = withoutDebuggerArguments(getVMCommandLine());
+        args.addAll(Arrays.asList(subprocessArgs));
 
         ProcessBuilder processBuilder = new ProcessBuilder(args);
         processBuilder.redirectErrorStream(true);

@@ -192,9 +192,15 @@ public class PartialEvaluator {
 
         String name = callTarget.toString();
         OptionValues options = TruffleCompilerOptions.getOptions();
-        final StructuredGraph graph = new StructuredGraph.Builder(options, allowAssumptions).name(name).method(rootMethod).speculationLog(callTarget.getSpeculationLog()).compilationId(
-                        compilationId).cancellable(task).build();
-        assert graph != null : "no graph for root method";
+        // @formatter:off
+        final StructuredGraph graph = new StructuredGraph.Builder(options, allowAssumptions).
+                        name(name).
+                        method(rootMethod).
+                        speculationLog(callTarget.getSpeculationLog()).
+                        compilationId(compilationId).
+                        cancellable(task).
+                        build();
+        // @formatter:on
 
         try (Scope s = Debug.scope("CreateGraph", graph); Indent indent = Debug.logAndIndent("createGraph %s", graph)) {
 
