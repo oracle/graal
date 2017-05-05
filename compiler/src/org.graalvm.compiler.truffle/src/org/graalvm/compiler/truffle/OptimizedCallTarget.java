@@ -172,7 +172,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     @Override
     public final Object call(Object... args) {
-        getCompilationProfile().profileIndirectCall();
+        getCompilationProfile().profileDirectCall(args);
         return doInvoke(args);
     }
 
