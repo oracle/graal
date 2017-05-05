@@ -753,9 +753,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         }
 
         @Override
-        public void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t, Map<OptimizedCallTarget, Object> compilationMap) {
+        public void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
-                l.notifyCompilationFailed(target, graph, t, compilationMap);
+                l.notifyCompilationFailed(target, graph, t);
             }
         }
 
@@ -767,9 +767,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         }
 
         @Override
-        public void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph, Map<OptimizedCallTarget, Object> compilationMap) {
+        public void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
-                l.notifyCompilationGraalTierFinished(target, graph, compilationMap);
+                l.notifyCompilationGraalTierFinished(target, graph);
             }
         }
 
@@ -781,24 +781,23 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         }
 
         @Override
-        public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result,
-                        Map<OptimizedCallTarget, Object> compilationMap) {
+        public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
-                l.notifyCompilationSuccess(target, inliningDecision, graph, result, compilationMap);
+                l.notifyCompilationSuccess(target, inliningDecision, graph, result);
             }
         }
 
         @Override
-        public void notifyCompilationStarted(OptimizedCallTarget target, Map<OptimizedCallTarget, Object> compilationMap) {
+        public void notifyCompilationStarted(OptimizedCallTarget target) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
-                l.notifyCompilationStarted(target, compilationMap);
+                l.notifyCompilationStarted(target);
             }
         }
 
         @Override
-        public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, Map<OptimizedCallTarget, Object> compilationMap) {
+        public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph) {
             for (GraalTruffleCompilationListener l : compilationListeners) {
-                l.notifyCompilationTruffleTierFinished(target, inliningDecision, graph, compilationMap);
+                l.notifyCompilationTruffleTierFinished(target, inliningDecision, graph);
             }
         }
 

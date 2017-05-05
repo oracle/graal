@@ -68,7 +68,7 @@ final class GraalTestTVMCI extends TVMCI.Test<GraalTestTVMCI.TestCallTarget> {
         ResolvedJavaMethod rootMethod = compiler.getPartialEvaluator().rootForCallTarget(callTarget.optimizedCallTarget);
         CompilationIdentifier compilationId = truffleRuntime.getCompilationIdentifier(callTarget.optimizedCallTarget, rootMethod, compiler.backend);
         StructuredGraph graph = partialEval(callTarget.optimizedCallTarget, AllowAssumptions.YES, compilationId);
-        truffleRuntime.getTruffleCompiler().compileMethodHelper(graph, callTarget.testName, null, callTarget.optimizedCallTarget, asCompilationRequest(compilationId), null);
+        truffleRuntime.getTruffleCompiler().compileMethodHelper(graph, callTarget.testName, null, callTarget.optimizedCallTarget, asCompilationRequest(compilationId));
     }
 
     @SuppressWarnings("try")
