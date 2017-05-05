@@ -526,12 +526,16 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     @SuppressWarnings("try")
     private void doCompile0(OptimizedCallTarget optimizedCallTarget, CancellableCompileTask task) {
         try (Scope s = Debug.scope("Truffle", new TruffleDebugJavaMethod(optimizedCallTarget))) {
-            getTruffleCompiler().compileMethod(optimizedCallTarget, this, task);
+            compileMethod(optimizedCallTarget, task);
         } catch (Throwable e) {
             optimizedCallTarget.notifyCompilationFailed(e);
         } finally {
             optimizedCallTarget.resetCompilationTask();
         }
+    }
+
+    protected void compileMethod(OptimizedCallTarget optimizedCallTarget, CancellableCompileTask task) {
+        getTruffleCompiler().compileMethod(optimizedCallTarget, this, task);
     }
 
     /**
