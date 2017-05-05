@@ -30,6 +30,7 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInlineA
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBoundaries;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBranches;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleIterativePartialEscape;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TrufflePerformanceWarningsAreFatal;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -495,9 +496,7 @@ public class PartialEvaluator {
 
         graph.maybeCompress();
 
-        if (TruffleCompilerOptions.getValue(TraceTrufflePerformanceWarnings)) {
-            reportPerformanceWarnings(callTarget, graph);
-        }
+        PerformanceInformationHandler.reportPerformanceWarnings(callTarget, graph);
     }
 
     protected void applyInstrumentationPhases(StructuredGraph graph, HighTierContext tierContext) {
@@ -506,44 +505,6 @@ public class PartialEvaluator {
         }
         if (TruffleCompilerOptions.TruffleInstrumentBoundaries.getValue(graph.getOptions())) {
             new InstrumentTruffleBoundariesPhase(graph.getOptions(), snippetReflection, instrumentation).apply(graph, tierContext);
-        }
-    }
-
-    @SuppressWarnings("try")
-    private static void reportPerformanceWarnings(OptimizedCallTarget target, StructuredGraph graph) {
-        ArrayList<ValueNode> warnings = new ArrayList<>();
-        for (MethodCallTargetNode call : graph.getNodes(MethodCallTargetNode.TYPE)) {
-            if (call.targetMethod().isNative()) {
-                continue; // native methods cannot be inlined
-            }
-            if (call.targetMethod().getAnnotation(TruffleBoundary.class) == null && call.targetMethod().getAnnotation(TruffleCallBoundary.class) == null) {
-                logPerformanceWarning(target, Arrays.asList(call), String.format("not inlined %s call to %s (%s)", call.invokeKind(), call.targetMethod(), call), null);
-                warnings.add(call);
-            }
-        }
-
-        EconomicMap<String, ArrayList<ValueNode>> groupedByType = EconomicMap.create(Equivalence.DEFAULT);
-        for (InstanceOfNode instanceOf : graph.getNodes().filter(InstanceOfNode.class)) {
-            if (!instanceOf.type().isExact()) {
-                warnings.add(instanceOf);
-                String name = instanceOf.type().getType().getName();
-                if (!groupedByType.containsKey(name)) {
-                    groupedByType.put(name, new ArrayList<>());
-                }
-                groupedByType.get(name).add(instanceOf);
-            }
-        }
-        MapCursor<String, ArrayList<ValueNode>> entry = groupedByType.getEntries();
-        while (entry.advance()) {
-            logPerformanceInfo(target, entry.getValue(), String.format("non-leaf type check: %s", entry.getKey()), Collections.singletonMap("Nodes", entry.getValue()));
-        }
-
-        if (Debug.isEnabled() && !warnings.isEmpty()) {
-            try (Scope s = Debug.scope("TrufflePerformanceWarnings", graph)) {
-                Debug.dump(Debug.BASIC_LEVEL, graph, "performance warnings %s", warnings);
-            } catch (Throwable t) {
-                Debug.handle(t);
-            }
         }
     }
 
@@ -578,55 +539,120 @@ public class PartialEvaluator {
         OptimizedCallTarget target = callNode.getCallTarget();
         TruffleInliningDecision decision = inlining.findByCall(callNode);
         if (decision == null) {
-            if (TruffleCompilerOptions.getValue(TraceTrufflePerformanceWarnings)) {
-                Map<String, Object> properties = new LinkedHashMap<>();
-                properties.put("callNode", callNode);
-                logPerformanceWarning(target, null, "A direct call within the Truffle AST is not reachable anymore. Call node could not be inlined.", properties);
-            }
+            PerformanceInformationHandler.reportDecisionIsNull(target, callNode);
         }
 
         if (decision != null && decision.getTarget() != decision.getProfile().getCallNode().getCurrentCallTarget()) {
-            if (TruffleCompilerOptions.getValue(TraceTrufflePerformanceWarnings)) {
-                Map<String, Object> properties = new LinkedHashMap<>();
-                properties.put("originalTarget", decision.getTarget());
-                properties.put("callNode", callNode);
-                logPerformanceWarning(target, null, "CallTarget changed during compilation. Call node could not be inlined.", properties);
-            }
+            PerformanceInformationHandler.reportCallTargetChanged(target, callNode, decision);
             return null;
         }
         return decision;
     }
 
-    private static void logPerformanceWarning(OptimizedCallTarget target, List<Node> locations, String details, Map<String, Object> properties) {
-        logPerformanceWarningImpl(target, "perf warn", details, properties);
-        logPerformanceStackTrace(locations);
-    }
+    private static final class PerformanceInformationHandler {
 
-    private static void logPerformanceInfo(OptimizedCallTarget target, List<? extends Node> locations, String details, Map<String, Object> properties) {
-        logPerformanceWarningImpl(target, "perf info", details, properties);
-        logPerformanceStackTrace(locations);
-    }
+        private static boolean warningSeen = false;
 
-    private static void logPerformanceStackTrace(List<? extends Node> locations) {
-        if (locations == null || locations.isEmpty()) {
-            return;
+        private static boolean isEnabled() {
+            return TruffleCompilerOptions.getValue(TraceTrufflePerformanceWarnings) || TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal);
         }
-        for (Node location : locations) {
-            StackTraceElement[] stackTrace = GraphUtil.approxSourceStackTraceElement(location);
-            if (stackTrace == null) {
-                GraalTruffleRuntime.getRuntime().log(String.format("No stack trace available for %s.", location));
-            } else {
-                GraalTruffleRuntime.getRuntime().log(String.format("Approximated stack trace for %s:", location));
-                SourceStackTraceBailoutException exception = SourceStackTraceBailoutException.create(null, "", stackTrace);
-                StringWriter sw = new StringWriter();
-                exception.printStackTrace(new PrintWriter(sw));
-                GraalTruffleRuntime.getRuntime().log(sw.toString());
+
+        private static void logPerformanceWarning(OptimizedCallTarget target, List<Node> locations, String details, Map<String, Object> properties) {
+            warningSeen = true;
+            logPerformanceWarningImpl(target, "perf warn", details, properties);
+            logPerformanceStackTrace(locations);
+        }
+
+        private static void logPerformanceInfo(OptimizedCallTarget target, List<? extends Node> locations, String details, Map<String, Object> properties) {
+            logPerformanceWarningImpl(target, "perf info", details, properties);
+            logPerformanceStackTrace(locations);
+        }
+
+        private static void logPerformanceWarningImpl(OptimizedCallTarget target, String msg, String details, Map<String, Object> properties) {
+            AbstractDebugCompilationListener.log(0, msg, String.format("%-60s|%s", target, details), properties);
+        }
+
+        private static void logPerformanceStackTrace(List<? extends Node> locations) {
+            if (locations == null || locations.isEmpty()) {
+                return;
+            }
+            for (Node location : locations) {
+                StackTraceElement[] stackTrace = GraphUtil.approxSourceStackTraceElement(location);
+                if (stackTrace == null) {
+                    GraalTruffleRuntime.getRuntime().log(String.format("No stack trace available for %s.", location));
+                } else {
+                    GraalTruffleRuntime.getRuntime().log(String.format("Approximated stack trace for %s:", location));
+                    SourceStackTraceBailoutException exception = SourceStackTraceBailoutException.create(null, "", stackTrace);
+                    StringWriter sw = new StringWriter();
+                    exception.printStackTrace(new PrintWriter(sw));
+                    GraalTruffleRuntime.getRuntime().log(sw.toString());
+                }
             }
         }
 
-    }
+        @SuppressWarnings("try")
+        static void reportPerformanceWarnings(OptimizedCallTarget target, StructuredGraph graph) {
+            if (!isEnabled()) {
+                return;
+            }
+            ArrayList<ValueNode> warnings = new ArrayList<>();
+            for (MethodCallTargetNode call : graph.getNodes(MethodCallTargetNode.TYPE)) {
+                if (call.targetMethod().isNative()) {
+                    continue; // native methods cannot be inlined
+                }
+                if (call.targetMethod().getAnnotation(TruffleBoundary.class) == null && call.targetMethod().getAnnotation(TruffleCallBoundary.class) == null) {
+                    logPerformanceWarning(target, Arrays.asList(call), String.format("not inlined %s call to %s (%s)", call.invokeKind(), call.targetMethod(), call), null);
+                    warnings.add(call);
+                }
+            }
 
-    private static void logPerformanceWarningImpl(OptimizedCallTarget target, String msg, String details, Map<String, Object> properties) {
-        AbstractDebugCompilationListener.log(0, msg, String.format("%-60s|%s", target, details), properties);
+            EconomicMap<String, ArrayList<ValueNode>> groupedByType = EconomicMap.create(Equivalence.DEFAULT);
+            for (InstanceOfNode instanceOf : graph.getNodes().filter(InstanceOfNode.class)) {
+                if (!instanceOf.type().isExact()) {
+                    warnings.add(instanceOf);
+                    String name = instanceOf.type().getType().getName();
+                    if (!groupedByType.containsKey(name)) {
+                        groupedByType.put(name, new ArrayList<>());
+                    }
+                    groupedByType.get(name).add(instanceOf);
+                }
+            }
+            MapCursor<String, ArrayList<ValueNode>> entry = groupedByType.getEntries();
+            while (entry.advance()) {
+                logPerformanceInfo(target, entry.getValue(), String.format("non-leaf type check: %s", entry.getKey()), Collections.singletonMap("Nodes", entry.getValue()));
+            }
+
+            if (Debug.isEnabled() && !warnings.isEmpty()) {
+                try (Scope s = Debug.scope("TrufflePerformanceWarnings", graph)) {
+                    Debug.dump(Debug.BASIC_LEVEL, graph, "performance warnings %s", warnings);
+                } catch (Throwable t) {
+                    Debug.handle(t);
+                }
+            }
+
+            if (warningSeen && TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal)) {
+                warningSeen = false;
+                throw new AssertionError("Performance warning detected and is fatal.");
+            }
+        }
+
+        static void reportDecisionIsNull(OptimizedCallTarget target, OptimizedDirectCallNode callNode) {
+            if (!isEnabled()) {
+                return;
+            }
+            Map<String, Object> properties = new LinkedHashMap<>();
+            properties.put("callNode", callNode);
+            logPerformanceWarning(target, null, "A direct call within the Truffle AST is not reachable anymore. Call node could not be inlined.", properties);
+        }
+
+        static void reportCallTargetChanged(OptimizedCallTarget target, OptimizedDirectCallNode callNode, TruffleInliningDecision decision) {
+            if (!isEnabled()) {
+                return;
+            }
+            Map<String, Object> properties = new LinkedHashMap<>();
+            properties.put("originalTarget", decision.getTarget());
+            properties.put("callNode", callNode);
+            logPerformanceWarning(target, null, "CallTarget changed during compilation. Call node could not be inlined.", properties);
+        }
     }
 }
