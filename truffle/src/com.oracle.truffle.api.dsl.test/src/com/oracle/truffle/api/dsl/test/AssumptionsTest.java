@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionArrayTestFactory;
+import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionArraysAreCompilationFinalCachedFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionArraysAreCompilationFinalFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionInvalidateTest1NodeGen;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionInvalidateTest2NodeGen;
@@ -488,6 +489,32 @@ public class AssumptionsTest {
                     SecurityException {
         AssumptionArraysAreCompilationFinal node = TestHelper.createNode(AssumptionArraysAreCompilationFinalFactory.getInstance(), false);
         Field field = node.getClass().getDeclaredField("do1_assumption0_");
+        field.setAccessible(true);
+        assertEquals(Assumption[].class, field.getType());
+        CompilationFinal compilationFinal = field.getAnnotation(CompilationFinal.class);
+        assertEquals(1, compilationFinal.dimensions());
+    }
+
+    @NodeChild
+    static class AssumptionArraysAreCompilationFinalCached extends ValueNode {
+
+        @Specialization(guards = "value == cachedValue", assumptions = "createAssumptions()")
+        static int do1(int value, @Cached("value") int cachedValue) {
+            return value;
+        }
+
+        Assumption[] createAssumptions() {
+            return new Assumption[]{Truffle.getRuntime().createAssumption()};
+        }
+    }
+
+    @Test
+    public void testAssumptionArraysAreCompilationFinalCached() throws NoSuchFieldException,
+                    SecurityException, IllegalArgumentException {
+        AssumptionArraysAreCompilationFinalCached node = TestHelper.createNode(AssumptionArraysAreCompilationFinalCachedFactory.getInstance(), false);
+        Field doCachedField = node.getClass().getDeclaredField("do1_cache");
+        doCachedField.setAccessible(true);
+        Field field = doCachedField.getType().getDeclaredField("assumption0_");
         field.setAccessible(true);
         assertEquals(Assumption[].class, field.getType());
         CompilationFinal compilationFinal = field.getAnnotation(CompilationFinal.class);
