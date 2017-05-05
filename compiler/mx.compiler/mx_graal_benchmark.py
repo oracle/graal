@@ -461,7 +461,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchma
         return "graal-compiler"
 
     def benchSuiteName(self):
-        self.name()
+        return self.name()
 
     def before(self, bmSuiteArgs):
         parser = mx_benchmark.parsers["dacapo_benchmark_suite"].parser
