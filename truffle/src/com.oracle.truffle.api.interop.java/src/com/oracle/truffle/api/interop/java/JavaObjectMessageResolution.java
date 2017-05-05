@@ -234,4 +234,29 @@ class JavaObjectMessageResolution {
 
     }
 
+    @Resolve(message = "KEY_INFO")
+    abstract static class PropertyInfoNode extends Node {
+
+        @TruffleBoundary
+        public Object access(JavaObject receiver, String name) {
+            if (receiver.obj instanceof Map) {
+                Map<?, ?> map = (Map<?, ?>) receiver.obj;
+                if (map.containsKey(name)) {
+                    return 0b111;
+                } else {
+                    return 0;
+                }
+            }
+            if (TruffleOptions.AOT) {
+                return 0;
+            }
+            if (JavaInteropReflect.isField(receiver, name)) {
+                return 0b111;
+            }
+            if (JavaInteropReflect.isMethod(receiver, name)) {
+                return 0b1111;
+            }
+            return 0;
+        }
+    }
 }

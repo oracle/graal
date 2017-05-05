@@ -83,6 +83,36 @@ final class JavaInteropReflect {
         return JavaInterop.asTruffleObject(val);
     }
 
+    static boolean isField(JavaObject object, String name) {
+        Object obj = object.obj;
+        final boolean onlyStatic = obj == null;
+        try {
+            final Field field = object.clazz.getField(name);
+            final boolean isStatic = (field.getModifiers() & Modifier.STATIC) != 0;
+            if (onlyStatic != isStatic) {
+                return false;
+            }
+            return true;
+        } catch (NoSuchFieldException | SecurityException ex) {
+            return false;
+        }
+    }
+
+    static boolean isMethod(JavaObject object, String name) {
+        Object obj = object.obj;
+        final boolean onlyStatic = obj == null;
+        for (Method m : object.clazz.getMethods()) {
+            final boolean isStatic = (m.getModifiers() & Modifier.STATIC) != 0;
+            if (onlyStatic != isStatic) {
+                continue;
+            }
+            if (m.getName().equals(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @CompilerDirectives.TruffleBoundary
     static Method findMethod(JavaObject object, String name, Object[] args) {
         for (Method m : object.clazz.getMethods()) {
