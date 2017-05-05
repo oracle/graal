@@ -246,7 +246,7 @@ public @interface Cached {
      * elements as final but not the elements of any nested arrays.
      *
      * If not specified and the cached value type is an array type then this will cause a warning
-     * and in later releases and error.
+     * and in later releases an error.
      *
      * @since 0.26
      * @see CompilationFinal#dimensions()
