@@ -143,7 +143,7 @@ public class OptimizedCompilationProfile {
         }
     }
 
-    void profileIndirectCall() {
+    void profileCall() {
         Assumption argumentTypesAssumption = profiledArgumentTypesAssumption;
         if (argumentTypesAssumption != null && argumentTypesAssumption.isValid()) {
             // Argument profiling is not possible for targets of indirect calls.
