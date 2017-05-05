@@ -36,6 +36,7 @@ public class DuplicatedResolveClass {
     @MessageResolution(receiverType = ValidTruffleObject12.class)
     public static class TruffleObjectMR1 {
         @Resolve(message = "READ")
+        @ExpectError("Message resolution class with same name already exists")
         public abstract static class ReadNodeDuplicated extends Node {
 
             protected Object access(VirtualFrame frame, ValidTruffleObject1 receiver, Object name) {
