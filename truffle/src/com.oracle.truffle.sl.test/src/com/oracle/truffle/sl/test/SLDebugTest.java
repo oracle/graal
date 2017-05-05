@@ -139,7 +139,7 @@ public class SLDebugTest {
         checkDebugValues("arguments", arguments, expectedArgs);
     }
 
-    private void checkDebugValues(String msg, Iterable<DebugValue> values, String... expected) {
+    private static void checkDebugValues(String msg, Iterable<DebugValue> values, String... expected) {
         Map<String, DebugValue> valMap = new HashMap<>();
         for (DebugValue value : values) {
             valMap.put(value.getName(), value);
