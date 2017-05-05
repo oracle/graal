@@ -62,17 +62,17 @@ public class DebugValueTest extends AbstractDebugTest {
 
             expectSuspended((SuspendedEvent event) -> {
                 DebugStackFrame frame = event.getTopStackFrame();
-                DebugValue value42 = frame.getValue("a");
+                DebugValue value42 = frame.getScope().getDeclaredValue("a");
 
                 assertEquals("a", value42.getName());
                 assertFalse(value42.isArray());
                 assertNull(value42.getArray());
                 assertNull(value42.getProperties());
                 assertEquals("Integer", value42.getMetaObject().as(String.class));
-                assertEquals("Infinity", frame.getValue("inf").getMetaObject().as(String.class));
+                assertEquals("Infinity", frame.getScope().getDeclaredValue("inf").getMetaObject().as(String.class));
                 SourceSection integerSS = value42.getSourceLocation();
                 assertEquals("source integer", integerSS.getCode());
-                SourceSection infinitySS = frame.getValue("inf").getSourceLocation();
+                SourceSection infinitySS = frame.getScope().getDeclaredValue("inf").getSourceLocation();
                 assertEquals("source infinity", infinitySS.getCode());
             });
 
@@ -101,7 +101,7 @@ public class DebugValueTest extends AbstractDebugTest {
         boolean[] suspended = new boolean[]{false};
         DebuggerSession session = debugger.startSession((SuspendedEvent event) -> {
             assertFalse(suspended[0]);
-            DebugValue value = event.getTopStackFrame().getValue("a");
+            DebugValue value = event.getTopStackFrame().getScope().getDeclaredValue("a");
             assertNotNull(value);
             DebugValue attributesTOValue = value.getProperties().iterator().next();
             assertEquals("property", attributesTOValue.getName());
@@ -124,7 +124,7 @@ public class DebugValueTest extends AbstractDebugTest {
         final ModifiableAttributesTruffleObject mao = new ModifiableAttributesTruffleObject();
         session = debugger.startSession((SuspendedEvent event) -> {
             assertFalse(suspended[0]);
-            DebugValue value = event.getTopStackFrame().getValue("a");
+            DebugValue value = event.getTopStackFrame().getScope().getDeclaredValue("a");
             assertNotNull(value);
             DebugValue attributesTOValue = value.getProperties().iterator().next();
             assertEquals("property", attributesTOValue.getName());

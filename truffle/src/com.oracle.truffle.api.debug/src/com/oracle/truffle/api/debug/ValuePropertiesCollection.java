@@ -40,14 +40,18 @@ final class ValuePropertiesCollection extends AbstractCollection<DebugValue> {
     private final Debugger debugger;
     private final RootNode sourceRoot;
     private final TruffleObject object;
+    private final Map<Object, Object> map;
     private final Set<Map.Entry<Object, Object>> entrySet;
+    private final DebugScope scope;
 
     ValuePropertiesCollection(Debugger debugger, RootNode sourceRoot, TruffleObject object,
-                    Set<Map.Entry<Object, Object>> entrySet) {
+                    Map<Object, Object> map, Set<Map.Entry<Object, Object>> entrySet, DebugScope scope) {
         this.debugger = debugger;
         this.sourceRoot = sourceRoot;
         this.object = object;
+        this.map = map;
         this.entrySet = entrySet;
+        this.scope = scope;
     }
 
     @Override
@@ -58,6 +62,14 @@ final class ValuePropertiesCollection extends AbstractCollection<DebugValue> {
     @Override
     public int size() {
         return entrySet.size();
+    }
+
+    DebugValue get(String name) {
+        Object value = map.get(name);
+        if (value == null) {
+            return null;
+        }
+        return new DebugValue.PropertyNamedValue(debugger, sourceRoot, object, map, name, scope);
     }
 
     private final class PropertiesIterator implements Iterator<DebugValue> {
@@ -77,7 +89,7 @@ final class ValuePropertiesCollection extends AbstractCollection<DebugValue> {
 
         @Override
         public DebugValue next() {
-            return new DebugValue.PropertyValue(debugger, sourceRoot, object, entries.next());
+            return new DebugValue.PropertyValue(debugger, sourceRoot, object, entries.next(), scope);
         }
 
         @Override
