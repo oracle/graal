@@ -34,7 +34,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
@@ -177,13 +176,11 @@ abstract class PolyglotRootNode extends RootNode {
 
     }
 
-    private static final class ForeignExecuteRootNode extends PolyglotRootNode {
+    static final class ForeignExecuteRootNode extends PolyglotRootNode {
         @Child private ConvertNode returnConvertNode;
         @Child private Node executeNode;
 
         private final Class<? extends TruffleObject> receiverType;
-
-        @CompilationFinal private int argumentCount = -1;
 
         ForeignExecuteRootNode(PolyglotEngine engine, Class<? extends TruffleObject> receiverType) {
             super(engine);
@@ -198,10 +195,9 @@ abstract class PolyglotRootNode extends RootNode {
             final Object[] args = (Object[]) callArgs[1];
             unwrapArgs(engine, args);
             try {
-                if (executeNode == null || argumentCount != args.length) {
+                if (executeNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    executeNode = insert(Message.createExecute(args.length).createNode());
-                    argumentCount = args.length;
+                    executeNode = insert(Message.createExecute(0).createNode());
                 }
                 Object tmp = ForeignAccess.sendExecute(executeNode, function, args);
                 if (tmp == null) {
@@ -210,16 +206,11 @@ abstract class PolyglotRootNode extends RootNode {
                 Object result = returnConvertNode.convert(tmp);
                 // TODO we must check here that the language returns a valid value.
                 return result;
-            } catch (ArityException e) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                executeNode = insert(Message.createExecute(args.length).createNode());
-                return executeImpl(frame);
             } catch (InteropException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw e.raise();
             }
         }
-
     }
 
     static final class EvalRootNode extends PolyglotRootNode {
