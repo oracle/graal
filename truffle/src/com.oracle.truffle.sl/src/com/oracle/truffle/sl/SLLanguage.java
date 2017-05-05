@@ -46,12 +46,16 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebuggerTags;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.metadata.ScopeProvider;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLEvalRootNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
+import com.oracle.truffle.sl.nodes.local.SLLexicalScope;
 import com.oracle.truffle.sl.parser.Parser;
 import com.oracle.truffle.sl.runtime.SLBigNumber;
 import com.oracle.truffle.sl.runtime.SLContext;
@@ -60,7 +64,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
 
 @TruffleLanguage.Registration(name = "SL", version = "0.12", mimeType = SLLanguage.MIME_TYPE)
 @ProvidedTags({StandardTags.CallTag.class, StandardTags.StatementTag.class, StandardTags.RootTag.class, DebuggerTags.AlwaysHalt.class})
-public final class SLLanguage extends TruffleLanguage<SLContext> {
+public final class SLLanguage extends TruffleLanguage<SLContext> implements ScopeProvider<SLContext> {
     public static volatile int counter;
 
     public static final String MIME_TYPE = "application/x-sl";
@@ -184,6 +188,11 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             return f.getCallTarget().getRootNode().getSourceSection();
         }
         return null;
+    }
+
+    @Override
+    public AbstractScope findScope(SLContext context, Node node, Frame frame) {
+        return SLLexicalScope.createScope(node);
     }
 
 }

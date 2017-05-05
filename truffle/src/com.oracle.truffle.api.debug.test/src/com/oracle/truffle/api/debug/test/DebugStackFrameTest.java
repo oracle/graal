@@ -63,7 +63,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
                 // assert changes to the current frame
                 DebugStackFrame frame = stackFrames.next();
                 assertDynamicFrame(frame);
-                DebugValue aValue = frame.getValue("a");
+                DebugValue aValue = frame.getScope().getDeclaredValue("a");
                 String aStringValue = aValue.as(String.class);
 
                 // assert changes to a parent frame
@@ -71,41 +71,41 @@ public class DebugStackFrameTest extends AbstractDebugTest {
                 assertDynamicFrame(frame);
 
                 // assign from one stack frame to another one
-                frame.getValue("a").set(aValue);
-                assertEquals(aStringValue, frame.getValue("a").as(String.class));
+                frame.getScope().getDeclaredValue("a").set(aValue);
+                assertEquals(aStringValue, frame.getScope().getDeclaredValue("a").as(String.class));
             });
         }
     }
 
     private static void assertDynamicFrame(DebugStackFrame frame) {
-        assertEquals("42", frame.getValue("a").as(String.class));
-        assertEquals("43", frame.getValue("b").as(String.class));
-        assertEquals("44", frame.getValue("c").as(String.class));
+        assertEquals("42", frame.getScope().getDeclaredValue("a").as(String.class));
+        assertEquals("43", frame.getScope().getDeclaredValue("b").as(String.class));
+        assertEquals("44", frame.getScope().getDeclaredValue("c").as(String.class));
 
         // dynamic value should now be accessible
-        DebugValue dStackValue = frame.getValue("d");
+        DebugValue dStackValue = frame.getScope().getDeclaredValue("d");
         assertNull(dStackValue);
 
         // should change the dynamic value
         assertEquals("45", frame.eval("VARIABLE(d, 45)").as(String.class));
-        dStackValue = frame.getValue("d");
+        dStackValue = frame.getScope().getDeclaredValue("d");
         assertEquals("45", dStackValue.as(String.class));
-        assertEquals("45", frame.getValue("d").as(String.class));
+        assertEquals("45", frame.getScope().getDeclaredValue("d").as(String.class));
 
         // change an existing value
         assertEquals("45", frame.eval("VARIABLE(c, 45)").as(String.class));
-        assertEquals("45", frame.getValue("c").as(String.class));
+        assertEquals("45", frame.getScope().getDeclaredValue("c").as(String.class));
 
         // set an existing value using a constant expression
-        DebugValue bValue = frame.getValue("b");
-        frame.getValue("b").set(frame.eval("CONSTANT(46)"));
-        assertEquals("46", frame.getValue("b").as(String.class));
+        DebugValue bValue = frame.getScope().getDeclaredValue("b");
+        frame.getScope().getDeclaredValue("b").set(frame.eval("CONSTANT(46)"));
+        assertEquals("46", frame.getScope().getDeclaredValue("b").as(String.class));
         assertEquals("46", bValue.as(String.class));
 
         // set an existing value using a constant expression with side effect
-        frame.getValue("b").set(frame.eval("VARIABLE(a, 47)"));
-        assertEquals("47", frame.getValue("b").as(String.class));
-        assertEquals("47", frame.getValue("a").as(String.class));
+        frame.getScope().getDeclaredValue("b").set(frame.eval("VARIABLE(a, 47)"));
+        assertEquals("47", frame.getScope().getDeclaredValue("b").as(String.class));
+        assertEquals("47", frame.getScope().getDeclaredValue("a").as(String.class));
     }
 
     @Test
@@ -139,8 +139,8 @@ public class DebugStackFrameTest extends AbstractDebugTest {
 
                 // values for verifying state checks
                 data.frameIterator2 = event.getStackFrames().iterator();
-                data.stackValueWithGetValue = data.frame.getValue("a");
-                data.stackValueWithIterator = data.frame.iterator().next();
+                data.stackValueWithGetValue = data.frame.getScope().getDeclaredValue("a");
+                data.stackValueWithIterator = data.frame.getScope().getDeclaredValues().iterator().next();
 
                 // should dynamically create a local variable
                 data.heapValue = data.frame.eval("VARIABLE(d, 45)");
@@ -234,7 +234,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
         }
 
         try {
-            frame.getValue("d");
+            frame.getScope().getDeclaredValue("d");
             fail();
         } catch (IllegalStateException s) {
         }
@@ -246,7 +246,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
         }
 
         try {
-            frame.iterator();
+            frame.getScope().getDeclaredValues().iterator();
             fail();
         } catch (IllegalStateException s) {
         }

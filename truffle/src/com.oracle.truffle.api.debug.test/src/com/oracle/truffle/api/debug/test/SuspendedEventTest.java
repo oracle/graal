@@ -221,8 +221,8 @@ public class SuspendedEventTest extends AbstractDebugTest {
                     run(() -> frame.isInternal());
                     run(() -> frame.toString());
 
-                    runExpectIllegalState(() -> frame.getValue(""));
-                    runExpectIllegalState(() -> frame.iterator());
+                    runExpectIllegalState(() -> frame.getScope().getDeclaredValue(""));
+                    runExpectIllegalState(() -> frame.getScope().getDeclaredValues().iterator());
                     runExpectIllegalState(() -> frame.eval(""));
                 }
 
