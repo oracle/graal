@@ -45,6 +45,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
@@ -67,6 +68,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.dsl.processor.CompileErrorException;
 import com.oracle.truffle.dsl.processor.Log;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
@@ -1285,10 +1287,16 @@ public class NodeParser extends AbstractParser<NodeData> {
                 }
 
                 if (!cacheExpression.hasErrors()) {
-                    if (parameterType.getKind() == TypeKind.ARRAY) {
-                        Cached cached = cacheExpression.getParameter().getVariableElement().getAnnotation(Cached.class);
-                        if (cached.dimensions() == -1) {
+                    Cached cached = cacheExpression.getParameter().getVariableElement().getAnnotation(Cached.class);
+                    cacheExpression.setDimensions(cached.dimensions());
+                    if (parameterType.getKind() == TypeKind.ARRAY &&
+                                    !ElementUtils.isSubtype(((ArrayType) parameterType).getComponentType(), context.getType(NodeInterface.class))) {
+                        if (cacheExpression.getDimensions() == -1) {
                             cacheExpression.addWarning("The cached dimensions attribute must be specified for array types.");
+                        }
+                    } else {
+                        if (cacheExpression.getDimensions() != -1) {
+                            cacheExpression.addError("The dimensions attribute has no affect for the type %s.", ElementUtils.getSimpleName(parameterType));
                         }
                     }
                 }

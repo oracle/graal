@@ -45,7 +45,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionArrayTestFactory;
-import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionArraysAreCompilationFinalFactory.AssumptionArraysAreCompilationFinalNodeGen;
+import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionArraysAreCompilationFinalFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionInvalidateTest1NodeGen;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionInvalidateTest2NodeGen;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionInvalidateTest3NodeGen;
@@ -484,8 +484,10 @@ public class AssumptionsTest {
     }
 
     @Test
-    public void testAssumptionArraysAreCompilationFinal() throws NoSuchFieldException, SecurityException {
-        Field field = AssumptionArraysAreCompilationFinalNodeGen.class.getDeclaredField("do1_assumption0_");
+    public void testAssumptionArraysAreCompilationFinal() throws NoSuchFieldException,
+                    SecurityException {
+        AssumptionArraysAreCompilationFinal node = TestHelper.createNode(AssumptionArraysAreCompilationFinalFactory.getInstance(), false);
+        Field field = node.getClass().getDeclaredField("do1_assumption0_");
         field.setAccessible(true);
         assertEquals(Assumption[].class, field.getType());
         CompilationFinal compilationFinal = field.getAnnotation(CompilationFinal.class);

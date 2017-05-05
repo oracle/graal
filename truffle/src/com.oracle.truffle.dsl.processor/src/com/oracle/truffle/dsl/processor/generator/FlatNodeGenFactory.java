@@ -70,6 +70,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
 import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
@@ -485,9 +486,9 @@ public class FlatNodeGenFactory {
                 TypeMirror type = parameter.getType();
                 Modifier visibility = useSpecializationClass ? null : Modifier.PRIVATE;
                 CodeVariableElement cachedField;
-                if (ElementUtils.isAssignable(type, context.getType(Node.class))) {
+                if (ElementUtils.isAssignable(type, context.getType(NodeInterface.class))) {
                     cachedField = createNodeField(visibility, type, fieldName, Child.class);
-                } else if (ElementUtils.isAssignable(type, context.getType(Node[].class))) {
+                } else if (type.getKind() == TypeKind.ARRAY && ElementUtils.isAssignable(((ArrayType) type).getComponentType(), context.getType(NodeInterface.class))) {
                     cachedField = createNodeField(visibility, type, fieldName, Children.class, Modifier.FINAL);
                 } else {
                     if (useSpecializationClass) {
@@ -586,9 +587,9 @@ public class FlatNodeGenFactory {
         if (useSpecializationClass) {
             for (CacheExpression cache : specialization.getCaches()) {
                 TypeMirror type = cache.getParameter().getType();
-                if (ElementUtils.isAssignable(type, context.getType(Node.class))) {
+                if (ElementUtils.isAssignable(type, context.getType(NodeInterface.class))) {
                     return true;
-                } else if (ElementUtils.isAssignable(type, context.getType(Node[].class))) {
+                } else if (type.getKind() == TypeKind.ARRAY && ElementUtils.isAssignable(((ArrayType) type).getComponentType(), context.getType(NodeInterface.class))) {
                     return true;
                 }
             }
