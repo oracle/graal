@@ -520,7 +520,7 @@ public class CachedTest {
     }
 
     @NodeChild
-    static abstract class ChildrenAdoption1 extends ValueNode {
+    abstract static class ChildrenAdoption1 extends ValueNode {
 
         abstract NodeInterface[] execute(Object value);
 
@@ -532,7 +532,7 @@ public class CachedTest {
     }
 
     @NodeChild
-    static abstract class ChildrenAdoption2 extends ValueNode {
+    abstract static class ChildrenAdoption2 extends ValueNode {
 
         abstract NodeInterface execute(Object value);
 
@@ -544,7 +544,7 @@ public class CachedTest {
     }
 
     @NodeChild
-    static abstract class ChildrenAdoption3 extends ValueNode {
+    abstract static class ChildrenAdoption3 extends ValueNode {
 
         abstract Node[] execute(Object value);
 
@@ -556,7 +556,7 @@ public class CachedTest {
     }
 
     @NodeChild
-    static abstract class ChildrenAdoption4 extends ValueNode {
+    abstract static class ChildrenAdoption4 extends ValueNode {
 
         abstract Node execute(Object value);
 
