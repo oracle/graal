@@ -405,11 +405,8 @@ public class TruffleGraphBuilderPlugins {
                     throw b.bailout("Parameter 'descriptor' is not a compile-time constant");
                 }
 
-                ValueNode nonNullArguments = b.add(PiNode.create(args, StampFactory.objectNonNull(StampTool.typeReferenceOrNull(args))));
-                Class<?> frameClass = TruffleCompilerOptions.getValue(TruffleUseFrameWithoutBoxing) ? FrameWithoutBoxing.class : FrameWithBoxing.class;
-                NewFrameNode newFrame = new NewFrameNode(new KnownTruffleFields(b.getMetaAccess()), b.getMetaAccess(), b.getGraph(), b.getMetaAccess().lookupJavaType(frameClass), descriptor,
-                                nonNullArguments);
-                b.addPush(JavaKind.Object, newFrame);
+                final ValueNode nonNullArguments = b.add(PiNode.create(args, StampFactory.objectNonNull(StampTool.typeReferenceOrNull(args))));
+                b.addPush(JavaKind.Object, newFrameNode(b, descriptor, nonNullArguments));
                 return true;
             }
             private NewFrameNode newFrameNode(GraphBuilderContext b, ValueNode descriptor, ValueNode nonNullArguments) {
