@@ -23,8 +23,6 @@
 package org.graalvm.compiler.truffle.nodes;
 
 
-import org.graalvm.compiler.truffle.OptimizedAssumption;
-
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
 
