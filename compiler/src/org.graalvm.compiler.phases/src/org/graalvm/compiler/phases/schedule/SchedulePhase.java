@@ -37,6 +37,8 @@ import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Graph.NodeEvent;
 import org.graalvm.compiler.graph.Graph.NodeEventListener;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
@@ -961,7 +963,12 @@ public final class SchedulePhase extends Phase {
                 MicroBlock inputBlock = nodeToBlock.get(input);
                 if (inputBlock == null) {
                     earliestBlock = null;
-                    stack.push(input);
+                    try {
+                        stack.push(input);
+                    } catch (OutOfMemoryError e) {
+                        TTY.println(current.inputs().count());
+                        throw (GraalError) new GraalError("Stack size is %d", stack.size()).initCause(e);
+                    }
                 } else if (earliestBlock != null && inputBlock.getId() >= earliestBlock.getId()) {
                     earliestBlock = inputBlock;
                 }

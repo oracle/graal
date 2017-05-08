@@ -40,6 +40,7 @@ import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
 import org.graalvm.compiler.debug.Fingerprint;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.internal.method.MethodMetricsImpl;
 import org.graalvm.compiler.debug.internal.method.MethodMetricsInlineeScopeInfo;
 import org.graalvm.compiler.graph.GraalGraphError;
@@ -468,6 +469,9 @@ public class InliningUtil extends ValueMergeUtil {
                 returnNode.replaceAndDelete(n);
             } else {
                 AbstractMergeNode merge = graph.add(new MergeNode());
+                if (stateAfter.getId() == 187) {
+                    TTY.println("found");
+                }
                 merge.setStateAfter(stateAfter);
                 returnValue = mergeReturns(merge, returnNodes);
                 invokeNode.replaceAtUsages(returnValue);

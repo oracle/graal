@@ -1972,7 +1972,7 @@ public class BytecodeParser implements GraphBuilderContext {
      * intrinsic) should be inlined.
      */
     protected boolean inlinePartialIntrinsicExit() {
-        return true;
+        return false;
     }
 
     private void printInlining(ResolvedJavaMethod targetMethod, ResolvedJavaMethod inlinedMethod, boolean success, String msg) {
