@@ -153,7 +153,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
         return false;
     }
 
-    private final Map<String, LLVMNativeIntrinsicFactory> factories = new HashMap<>();
+    protected final Map<String, LLVMNativeIntrinsicFactory> factories = new HashMap<>();
     protected final LLVMLanguage language;
     protected final LLVMContext context;
 
