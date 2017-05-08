@@ -710,9 +710,9 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
             case "@llvm.objectsize.i64":
                 return LLVMI64ObjectSizeNodeGen.create(args[1], args[2], sourceSection);
             case "@llvm.copysign.f32":
-                return LLVMCopySignFloatFactory.create(args[0], args[1]);
+                return LLVMCopySignFloatFactory.create(args[0], args[1], sourceSection);
             case "@llvm.copysign.f64":
-                return LLVMCopySignDoubleFactory.create(args[0], args[1]);
+                return LLVMCopySignDoubleFactory.create(args[0], args[1], sourceSection);
 
             default:
                 throw new IllegalStateException("Missing LLVM builtin: " + name);

@@ -32,14 +32,20 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMCopySign {
 
+    @NodeField(name = "sourceSection", type = SourceSection.class)
     @NodeChildren({@NodeChild(value = "magnitude", type = LLVMExpressionNode.class), @NodeChild(value = "sign", type = LLVMExpressionNode.class)})
     @GenerateNodeFactory
     public abstract static class LLVMCopySignFloat extends LLVMExpressionNode {
+
+        @Override
+        public abstract SourceSection getSourceSection();
 
         @Specialization
         public float executeFloat(float magnitude, float sign) {
@@ -47,9 +53,13 @@ public abstract class LLVMCopySign {
         }
     }
 
+    @NodeField(name = "sourceSection", type = SourceSection.class)
     @NodeChildren({@NodeChild(value = "magnitude", type = LLVMExpressionNode.class), @NodeChild(value = "sign", type = LLVMExpressionNode.class)})
     @GenerateNodeFactory
     public abstract static class LLVMCopySignDouble extends LLVMExpressionNode {
+
+        @Override
+        public abstract SourceSection getSourceSection();
 
         @Specialization
         public double executeDouble(double magnitude, double sign) {
