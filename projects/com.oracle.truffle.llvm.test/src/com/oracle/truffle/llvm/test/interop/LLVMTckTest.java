@@ -369,6 +369,10 @@ public class LLVMTckTest extends TruffleTCK {
     }
 
     @Override
+    public void testObjectWithKeyInfoAttributes() throws Exception {
+    }
+
+    @Override
     protected String invalidCode() {
         return null;
     }
