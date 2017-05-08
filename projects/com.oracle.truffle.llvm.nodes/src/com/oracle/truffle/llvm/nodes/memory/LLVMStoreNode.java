@@ -134,7 +134,7 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         public Object execute(LLVMBoxedPrimitive address, boolean value) {
             if (address.getValue() instanceof Long) {
-                LLVMMemory.putI1(LLVMAddress.fromLong((long) address.getValue()), value);
+                LLVMMemory.putI1((long) address.getValue(), value);
                 return null;
             } else {
                 CompilerDirectives.transferToInterpreter();
@@ -178,7 +178,7 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         public Object execute(LLVMBoxedPrimitive address, byte value) {
             if (address.getValue() instanceof Long) {
-                LLVMMemory.putI8(LLVMAddress.fromLong((long) address.getValue()), value);
+                LLVMMemory.putI8((long) address.getValue(), value);
                 return null;
             } else {
                 CompilerDirectives.transferToInterpreter();
@@ -221,7 +221,7 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         public Object execute(LLVMBoxedPrimitive address, short value) {
             if (address.getValue() instanceof Long) {
-                LLVMMemory.putI16(LLVMAddress.fromLong((long) address.getValue()), value);
+                LLVMMemory.putI16((long) address.getValue(), value);
                 return null;
             } else {
                 CompilerDirectives.transferToInterpreter();
@@ -265,7 +265,7 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         public Object execute(LLVMBoxedPrimitive address, int value) {
             if (address.getValue() instanceof Long) {
-                LLVMMemory.putI32(LLVMAddress.fromLong((long) address.getValue()), value);
+                LLVMMemory.putI32((long) address.getValue(), value);
                 return null;
             } else {
                 CompilerDirectives.transferToInterpreter();
@@ -309,7 +309,7 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         public Object execute(LLVMBoxedPrimitive address, long value) {
             if (address.getValue() instanceof Long) {
-                LLVMMemory.putI64(LLVMAddress.fromLong((long) address.getValue()), value);
+                LLVMMemory.putI64((long) address.getValue(), value);
                 return null;
             } else {
                 CompilerDirectives.transferToInterpreter();
@@ -374,7 +374,7 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         public Object execute(LLVMBoxedPrimitive address, float value) {
             if (address.getValue() instanceof Long) {
-                LLVMMemory.putFloat(LLVMAddress.fromLong((long) address.getValue()), value);
+                LLVMMemory.putFloat((long) address.getValue(), value);
                 return null;
             } else {
                 CompilerDirectives.transferToInterpreter();
@@ -418,7 +418,7 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         public Object execute(LLVMBoxedPrimitive address, double value) {
             if (address.getValue() instanceof Long) {
-                LLVMMemory.putDouble(LLVMAddress.fromLong((long) address.getValue()), value);
+                LLVMMemory.putDouble((long) address.getValue(), value);
                 return null;
             } else {
                 CompilerDirectives.transferToInterpreter();
@@ -471,7 +471,7 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         public Object execute(LLVMBoxedPrimitive address, LLVMAddress value) {
             if (address.getValue() instanceof Long) {
-                LLVMMemory.putAddress(LLVMAddress.fromLong((long) address.getValue()), value);
+                LLVMMemory.putAddress((long) address.getValue(), value);
                 return null;
             } else {
                 CompilerDirectives.transferToInterpreter();
@@ -718,11 +718,11 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMAddress writeI8(VirtualFrame frame, LLVMAddress addr) {
-            LLVMAddress currentAddress = addr;
+            long currentPtr = addr.getVal();
             for (int i = 0; i < values.length; i++) {
                 boolean currentValue = values[i].executeI1(frame);
-                LLVMMemory.putI1(currentAddress, currentValue);
-                currentAddress = currentAddress.increment(stride);
+                LLVMMemory.putI1(currentPtr, currentValue);
+                currentPtr += stride;
             }
             return addr;
         }
@@ -748,11 +748,11 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMAddress writeI8(VirtualFrame frame, LLVMAddress addr) {
-            LLVMAddress currentAddress = addr;
+            long currentPtr = addr.getVal();
             for (int i = 0; i < values.length; i++) {
                 byte currentValue = values[i].executeI8(frame);
-                LLVMMemory.putI8(currentAddress, currentValue);
-                currentAddress = currentAddress.increment(stride);
+                LLVMMemory.putI8(currentPtr, currentValue);
+                currentPtr += stride;
             }
             return addr;
         }
@@ -778,11 +778,11 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMAddress writeI8(VirtualFrame frame, LLVMAddress addr) {
-            LLVMAddress currentAddress = addr;
+            long currentPtr = addr.getVal();
             for (int i = 0; i < values.length; i++) {
                 short currentValue = values[i].executeI16(frame);
-                LLVMMemory.putI16(currentAddress, currentValue);
-                currentAddress = currentAddress.increment(stride);
+                LLVMMemory.putI16(currentPtr, currentValue);
+                currentPtr += stride;
             }
             return addr;
         }
@@ -808,11 +808,11 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMAddress writeI32(VirtualFrame frame, LLVMAddress addr) {
-            LLVMAddress currentAddress = addr;
+            long currentPtr = addr.getVal();
             for (int i = 0; i < values.length; i++) {
                 int currentValue = values[i].executeI32(frame);
-                LLVMMemory.putI32(currentAddress, currentValue);
-                currentAddress = currentAddress.increment(stride);
+                LLVMMemory.putI32(currentPtr, currentValue);
+                currentPtr += stride;
             }
             return addr;
         }
@@ -838,11 +838,11 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMAddress writeI64(VirtualFrame frame, LLVMAddress addr) {
-            LLVMAddress currentAddress = addr;
+            long currentPtr = addr.getVal();
             for (int i = 0; i < values.length; i++) {
                 long currentValue = values[i].executeI64(frame);
-                LLVMMemory.putI64(currentAddress, currentValue);
-                currentAddress = currentAddress.increment(stride);
+                LLVMMemory.putI64(currentPtr, currentValue);
+                currentPtr += stride;
             }
             return addr;
         }
@@ -868,11 +868,11 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMAddress writeI64(VirtualFrame frame, LLVMAddress addr) {
-            LLVMAddress currentAddress = addr;
+            long currentPtr = addr.getVal();
             for (int i = 0; i < values.length; i++) {
                 float currentValue = values[i].executeFloat(frame);
-                LLVMMemory.putFloat(currentAddress, currentValue);
-                currentAddress = currentAddress.increment(stride);
+                LLVMMemory.putFloat(currentPtr, currentValue);
+                currentPtr += stride;
             }
             return addr;
         }
@@ -898,11 +898,11 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMAddress writeDouble(VirtualFrame frame, LLVMAddress addr) {
-            LLVMAddress currentAddress = addr;
+            long currentPtr = addr.getVal();
             for (int i = 0; i < values.length; i++) {
                 double currentValue = values[i].executeDouble(frame);
-                LLVMMemory.putDouble(currentAddress, currentValue);
-                currentAddress = currentAddress.increment(stride);
+                LLVMMemory.putDouble(currentPtr, currentValue);
+                currentPtr += stride;
             }
             return addr;
         }
@@ -928,12 +928,12 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMAddress write80BitFloat(VirtualFrame frame, LLVMAddress addr) {
-            LLVMAddress currentAddress = addr;
+            long currentPtr = addr.getVal();
             for (int i = 0; i < values.length; i++) {
                 try {
                     LLVM80BitFloat currentValue = values[i].executeLLVM80BitFloat(frame);
-                    LLVMMemory.put80BitFloat(currentAddress, currentValue);
-                    currentAddress = currentAddress.increment(stride);
+                    LLVMMemory.put80BitFloat(currentPtr, currentValue);
+                    currentPtr += stride;
                 } catch (UnexpectedResultException e) {
                     CompilerDirectives.transferToInterpreter();
                     throw new IllegalStateException(e);
@@ -969,11 +969,11 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMAddress writeDouble(VirtualFrame frame, LLVMAddress addr) {
-            LLVMAddress currentAddress = addr;
+            long currentPtr = addr.getVal();
             for (int i = 0; i < values.length; i++) {
                 LLVMAddress currentValue = toLLVM[i].executeWithTarget(values[i].executeGeneric(frame));
-                LLVMMemory.putAddress(currentAddress, currentValue);
-                currentAddress = currentAddress.increment(stride);
+                LLVMMemory.putAddress(currentPtr, currentValue);
+                currentPtr += stride;
             }
             return addr;
         }
@@ -999,12 +999,12 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMAddress writeDouble(VirtualFrame frame, LLVMAddress addr) {
-            LLVMAddress currentAddress = addr;
+            long currentPtr = addr.getVal();
             for (int i = 0; i < values.length; i++) {
                 try {
                     LLVMFunctionDescriptor currentValue = (LLVMFunctionDescriptor) values[i].executeTruffleObject(frame);
-                    LLVMHeap.putFunctionIndex(currentAddress, currentValue.getFunctionIndex());
-                    currentAddress = currentAddress.increment(stride);
+                    LLVMHeap.putFunctionIndex(currentPtr, currentValue.getFunctionIndex());
+                    currentPtr += stride;
                 } catch (UnexpectedResultException e) {
                     CompilerDirectives.transferToInterpreter();
                     throw new IllegalStateException(e);
@@ -1037,12 +1037,12 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMAddress writeDouble(VirtualFrame frame, LLVMAddress addr) {
-            LLVMAddress currentAddress = addr;
+            long currentPtr = addr.getVal();
             for (int i = 0; i < values.length; i++) {
                 try {
                     LLVMAddress currentValue = values[i].executeLLVMAddress(frame);
-                    memCopy.execute(currentAddress, currentValue, stride);
-                    currentAddress = currentAddress.increment(stride);
+                    memCopy.execute(LLVMAddress.fromLong(currentPtr), currentValue, stride);
+                    currentPtr += stride;
                 } catch (UnexpectedResultException e) {
                     CompilerDirectives.transferToInterpreter();
                     throw new IllegalStateException(e);

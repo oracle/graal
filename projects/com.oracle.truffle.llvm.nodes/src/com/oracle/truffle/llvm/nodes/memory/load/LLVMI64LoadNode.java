@@ -85,7 +85,7 @@ public abstract class LLVMI64LoadNode extends LLVMExpressionNode {
     @Specialization
     public long executeLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
         if (addr.getValue() instanceof Long) {
-            return LLVMMemory.getI64(LLVMAddress.fromLong((long) addr.getValue()));
+            return LLVMMemory.getI64((long) addr.getValue());
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalAccessError("Cannot access address: " + addr.getValue());

@@ -88,19 +88,19 @@ public abstract class LLVMMemSet extends LLVMBuiltin {
             if (length <= MAX_JAVA_LEN) {
                 long current = address.getVal();
                 long i64ValuesToWrite = length >> 3;
-                if (i64ValuesToWrite > 0) {
+                if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, i64ValuesToWrite > 0)) {
                     long v16 = ((long) value) << 8 | ((long) value & 0xFF);
                     long v32 = v16 << 16 | v16;
                     long v64 = v32 << 32 | v32;
 
-                    for (int i = 0; i < i64ValuesToWrite; i++) {
+                    for (int i = 0; CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, i < i64ValuesToWrite); i++) {
                         LLVMMemory.putI64(current, v64);
                         current += 8;
                     }
                 }
 
                 long i8ValuesToWrite = length & 0x07;
-                for (int i = 0; i < i8ValuesToWrite; i++) {
+                for (int i = 0; CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, i < i8ValuesToWrite); i++) {
                     LLVMMemory.putI8(current, value);
                     current++;
                 }

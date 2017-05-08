@@ -70,9 +70,9 @@ public abstract class LLVMX86_64BitVACopy extends LLVMBuiltin {
          * *overflow_arg_area; void *reg_save_area; } va_list[1];
          */
         LLVMMemory.putI32(dest, LLVMMemory.getI32(source));
-        LLVMMemory.putI32(dest.increment(X86_64BitVarArgs.FP_OFFSET), LLVMMemory.getI32(source.increment(X86_64BitVarArgs.FP_OFFSET)));
-        LLVMMemory.putI64(dest.increment(X86_64BitVarArgs.OVERFLOW_ARG_AREA), LLVMMemory.getI64(source.increment(X86_64BitVarArgs.OVERFLOW_ARG_AREA)));
-        LLVMMemory.putI64(dest.increment(X86_64BitVarArgs.REG_SAVE_AREA), LLVMMemory.getI64(source.increment(X86_64BitVarArgs.REG_SAVE_AREA)));
+        LLVMMemory.putI32(dest.getVal() + X86_64BitVarArgs.FP_OFFSET, LLVMMemory.getI32(source.getVal() + X86_64BitVarArgs.FP_OFFSET));
+        LLVMMemory.putI64(dest.getVal() + X86_64BitVarArgs.OVERFLOW_ARG_AREA, LLVMMemory.getI64(source.getVal() + X86_64BitVarArgs.OVERFLOW_ARG_AREA));
+        LLVMMemory.putI64(dest.getVal() + X86_64BitVarArgs.REG_SAVE_AREA, LLVMMemory.getI64(source.getVal() + X86_64BitVarArgs.REG_SAVE_AREA));
         return null;
     }
 

@@ -49,12 +49,12 @@ public abstract class LLVMTruffleReadNString extends LLVMIntrinsic {
 
     @TruffleBoundary
     private static Object getString(LLVMAddress value, int n) {
-        LLVMAddress adr = value;
+        long ptr = value.getVal();
         int count = n < 0 ? 0 : n;
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < count; i++) {
-            sb.append((char) Byte.toUnsignedInt(LLVMMemory.getI8(adr)));
-            adr = adr.increment(Byte.BYTES);
+            sb.append((char) Byte.toUnsignedInt(LLVMMemory.getI8(ptr)));
+            ptr += Byte.BYTES;
         }
         return sb.toString();
     }

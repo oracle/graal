@@ -81,7 +81,7 @@ public abstract class LLVMI16LoadNode extends LLVMExpressionNode {
     @Specialization
     public short executeLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
         if (addr.getValue() instanceof Long) {
-            return LLVMMemory.getI16(LLVMAddress.fromLong((long) addr.getValue()));
+            return LLVMMemory.getI16((long) addr.getValue());
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalAccessError("Cannot access address: " + addr.getValue());

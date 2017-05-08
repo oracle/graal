@@ -134,21 +134,22 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
         }
 
         private static Object doPrimitiveRead(int cachedIndex, LLVMAddress address, PrimitiveType primitiveType) {
+            long ptr = address.getVal();
             switch (primitiveType.getPrimitiveKind()) {
                 case I1:
-                    return LLVMMemory.getI1(address.increment(cachedIndex * I1_SIZE));
+                    return LLVMMemory.getI1(ptr + cachedIndex * I1_SIZE);
                 case I8:
-                    return LLVMMemory.getI8(address.increment(cachedIndex * I8_SIZE));
+                    return LLVMMemory.getI8(ptr + cachedIndex * I8_SIZE);
                 case I16:
-                    return LLVMMemory.getI16(address.increment(cachedIndex * I16_SIZE));
+                    return LLVMMemory.getI16(ptr + cachedIndex * I16_SIZE);
                 case I32:
-                    return LLVMMemory.getI32(address.increment(cachedIndex * I32_SIZE));
+                    return LLVMMemory.getI32(ptr + cachedIndex * I32_SIZE);
                 case I64:
-                    return LLVMMemory.getI64(address.increment(cachedIndex * I64_SIZE));
+                    return LLVMMemory.getI64(ptr + cachedIndex * I64_SIZE);
                 case FLOAT:
-                    return LLVMMemory.getFloat(address.increment(cachedIndex * FLOAT_SIZE));
+                    return LLVMMemory.getFloat(ptr + cachedIndex * FLOAT_SIZE);
                 case DOUBLE:
-                    return LLVMMemory.getDouble(address.increment(cachedIndex * DOUBLE_SIZE));
+                    return LLVMMemory.getDouble(ptr + cachedIndex * DOUBLE_SIZE);
                 default:
                     CompilerDirectives.transferToInterpreter();
                     throw new UnsupportedOperationException();
@@ -234,27 +235,28 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
         }
 
         private static void doPrimitiveWrite(int index, Object v, LLVMAddress address, PrimitiveType primitiveType) {
+            long ptr = address.getVal();
             switch (primitiveType.getPrimitiveKind()) {
                 case I1:
-                    LLVMMemory.putI1(address.increment(index * I1_SIZE), (boolean) v);
+                    LLVMMemory.putI1(ptr + index * I1_SIZE, (boolean) v);
                     break;
                 case I8:
-                    LLVMMemory.putI8(address.increment(index * I8_SIZE), (byte) v);
+                    LLVMMemory.putI8(ptr + index * I8_SIZE, (byte) v);
                     break;
                 case I16:
-                    LLVMMemory.putI16(address.increment(index * I16_SIZE), (short) v);
+                    LLVMMemory.putI16(ptr + index * I16_SIZE, (short) v);
                     break;
                 case I32:
-                    LLVMMemory.putI32(address.increment(index * I32_SIZE), (int) v);
+                    LLVMMemory.putI32(ptr + index * I32_SIZE, (int) v);
                     break;
                 case I64:
-                    LLVMMemory.putI64(address.increment(index * I64_SIZE), (long) v);
+                    LLVMMemory.putI64(ptr + index * I64_SIZE, (long) v);
                     break;
                 case FLOAT:
-                    LLVMMemory.putFloat(address.increment(index * FLOAT_SIZE), (float) v);
+                    LLVMMemory.putFloat(ptr + index * FLOAT_SIZE, (float) v);
                     break;
                 case DOUBLE:
-                    LLVMMemory.putDouble(address.increment(index * DOUBLE_SIZE), (double) v);
+                    LLVMMemory.putDouble(ptr + index * DOUBLE_SIZE, (double) v);
                     break;
                 default:
                     CompilerDirectives.transferToInterpreter();

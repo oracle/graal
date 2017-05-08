@@ -67,7 +67,7 @@ public final class LLVMComplexDivSC extends LLVMExpressionNode {
 
             LLVMAddress allocatedMemory = alloc.executeLLVMAddress(frame);
             LLVMMemory.putFloat(allocatedMemory, zReal);
-            LLVMMemory.putFloat(allocatedMemory.increment(LLVMExpressionNode.FLOAT_SIZE_IN_BYTES), zImag);
+            LLVMMemory.putFloat(allocatedMemory.getVal() + LLVMExpressionNode.FLOAT_SIZE_IN_BYTES, zImag);
             return LLVMFloatVector.readVectorFromMemory(allocatedMemory, 2);
         } catch (UnexpectedResultException e) {
             CompilerDirectives.transferToInterpreter();

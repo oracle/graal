@@ -133,7 +133,7 @@ public abstract class LLVMStackFrameNuller extends LLVMNode {
 
         @Override
         public void nullify(VirtualFrame frame, FrameSlot slot) {
-            frame.setObject(slot, LLVMAddress.fromLong(0));
+            frame.setObject(slot, LLVMAddress.nullPointer());
         }
 
     }

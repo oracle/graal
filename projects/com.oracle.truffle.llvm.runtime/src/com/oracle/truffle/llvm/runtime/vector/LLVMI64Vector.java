@@ -47,19 +47,19 @@ public final class LLVMI64Vector {
 
     public static LLVMI64Vector readVectorFromMemory(LLVMAddress address, int size) {
         long[] vector = new long[size];
-        LLVMAddress currentTarget = address;
+        long currentPtr = address.getVal();
         for (int i = 0; i < size; i++) {
-            vector[i] = LLVMMemory.getI64(currentTarget);
-            currentTarget = currentTarget.increment(I64_SIZE);
+            vector[i] = LLVMMemory.getI64(currentPtr);
+            currentPtr += I64_SIZE;
         }
         return create(vector);
     }
 
     public static void writeVectorToMemory(LLVMAddress address, LLVMI64Vector vector) {
-        LLVMAddress currentTarget = address;
+        long currentPtr = address.getVal();
         for (int i = 0; i < vector.getLength(); i++) {
-            LLVMMemory.putI64(currentTarget, vector.getValue(i));
-            currentTarget = currentTarget.increment(I64_SIZE);
+            LLVMMemory.putI64(currentPtr, vector.getValue(i));
+            currentPtr += I64_SIZE;
         }
     }
 

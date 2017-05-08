@@ -84,7 +84,7 @@ public abstract class LLVMDoubleLoadNode extends LLVMExpressionNode {
     @Specialization
     public double executeLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
         if (addr.getValue() instanceof Long) {
-            return LLVMMemory.getDouble(LLVMAddress.fromLong((long) addr.getValue()));
+            return LLVMMemory.getDouble((long) addr.getValue());
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalAccessError("Cannot access address: " + addr.getValue());

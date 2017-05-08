@@ -119,7 +119,7 @@ public final class LLVMTruffleOnlyIntrinsics {
         protected long strlen(long value) {
             if (inJava) {
                 long s;
-                for (s = value; LLVMMemory.getI8(LLVMAddress.fromLong(s)) != 0; s++) {
+                for (s = value; CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, LLVMMemory.getI8(s) != 0); s++) {
                 }
                 long result = s - value;
                 if (result > MAX_JAVA_LEN) {
@@ -258,8 +258,9 @@ public final class LLVMTruffleOnlyIntrinsics {
 
         private static int compare(LLVMAddress str1, char[] arr) {
             int i;
+            long ptr = str1.getVal();
             for (i = 0; true; i++) {
-                char c1 = (char) LLVMMemory.getI8(str1.increment(i));
+                char c1 = (char) LLVMMemory.getI8(ptr + i);
                 if (c1 == '\0') {
                     break;
                 }

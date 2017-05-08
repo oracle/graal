@@ -84,7 +84,7 @@ public abstract class LLVMFloatLoadNode extends LLVMExpressionNode {
     @Specialization
     public float executeLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
         if (addr.getValue() instanceof Long) {
-            return LLVMMemory.getFloat(LLVMAddress.fromLong((long) addr.getValue()));
+            return LLVMMemory.getFloat((long) addr.getValue());
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalAccessError("Cannot access address: " + addr.getValue());

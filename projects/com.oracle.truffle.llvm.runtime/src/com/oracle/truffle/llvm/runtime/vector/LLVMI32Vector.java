@@ -47,19 +47,19 @@ public final class LLVMI32Vector {
 
     public static LLVMI32Vector readVectorFromMemory(LLVMAddress address, int size) {
         int[] vector = new int[size];
-        LLVMAddress currentTarget = address;
+        long currentPtr = address.getVal();
         for (int i = 0; i < size; i++) {
-            vector[i] = LLVMMemory.getI32(currentTarget);
-            currentTarget = currentTarget.increment(I32_SIZE);
+            vector[i] = LLVMMemory.getI32(currentPtr);
+            currentPtr += I32_SIZE;
         }
         return create(vector);
     }
 
     public static void writeVectorToMemory(LLVMAddress address, LLVMI32Vector vector) {
-        LLVMAddress currentTarget = address;
+        long currentPtr = address.getVal();
         for (int i = 0; i < vector.getLength(); i++) {
-            LLVMMemory.putI32(currentTarget, vector.getValue(i));
-            currentTarget = currentTarget.increment(I32_SIZE);
+            LLVMMemory.putI32(currentPtr, vector.getValue(i));
+            currentPtr += I32_SIZE;
         }
     }
 

@@ -50,7 +50,7 @@ public class LLVMUAddWithOverflow {
             int result = left + right;
             boolean overflow = (((left ^ result) & (right ^ result)) < 0);
             LLVMMemory.putI32(addr, result);
-            LLVMMemory.putI32(addr.increment(OVERFLOW_FIELD_OFFSET), overflow ? 1 : 0);
+            LLVMMemory.putI32(addr.getVal() + OVERFLOW_FIELD_OFFSET, overflow ? 1 : 0);
             return addr;
         }
     }

@@ -38,11 +38,11 @@ public final class LLVMTruffleIntrinsicUtil {
     @TruffleBoundary
     public static String readString(LLVMAddress value) {
         byte c;
-        LLVMAddress adr = value;
+        long ptr = value.getVal();
         StringBuilder sb = new StringBuilder();
-        while ((c = LLVMMemory.getI8(adr)) != 0) {
+        while ((c = LLVMMemory.getI8(ptr)) != 0) {
             sb.append((char) Byte.toUnsignedInt(c));
-            adr = adr.increment(Byte.BYTES);
+            ptr += Byte.BYTES;
         }
         return sb.toString();
     }
