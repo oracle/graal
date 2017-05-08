@@ -60,6 +60,7 @@ import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
+import com.oracle.truffle.llvm.runtime.SulongRuntimeException;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 
@@ -113,6 +114,10 @@ public class LLVMGlobalRootNode extends RootNode {
             getContext().awaitThreadTermination();
             assert LLVMSignal.getNumberOfRegisteredSignals() == 0;
             return e.getReturnCode();
+        } catch (SulongRuntimeException e) {
+            System.err.println();
+            e.getCStackTrace().printCStackTrace();
+            throw e;
         } finally {
             runDestructors();
             // if not done already, we want at least call a shutdown command
