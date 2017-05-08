@@ -24,6 +24,8 @@ package org.graalvm.compiler.lir.jtt;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugConfigScope;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstructionClass;
@@ -75,12 +77,15 @@ public class SPARCBranchBailoutTest extends LIRTest {
         return GraalDirectives.opaque(res);
     }
 
+    @SuppressWarnings("try")
     @Test
     public void testBailoutOnBranchOverflow() throws Throwable {
         Assume.assumeTrue(getBackend().getTarget().arch instanceof SPARC);
         ResolvedJavaMethod m = getResolvedJavaMethod("testBranch");
         try {
-            compile(m, null);
+            try (DebugConfigScope s = Debug.setConfig(Debug.silentConfig())) {
+                compile(m, null);
+            }
         } catch (GraalError e) {
             Assert.assertEquals(PermanentBailoutException.class, e.getCause().getClass());
         }
