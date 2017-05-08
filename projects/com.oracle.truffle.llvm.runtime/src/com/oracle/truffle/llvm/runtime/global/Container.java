@@ -722,7 +722,7 @@ abstract class Container {
         @Override
         void putAddress(LLVMGlobalVariable global, LLVMAddress value) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            GenericManagedContainer newContainer = new GenericManagedContainer(type, allocator, value);
+            GenericLLVMAddressContainer newContainer = new GenericLLVMAddressContainer(type, allocator, value);
             global.setContainer(newContainer);
         }
 
