@@ -65,8 +65,6 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
 
     private final BranchProfile controlFlowExceptionProfile = BranchProfile.create();
 
-    @CompilationFinal private SourceSection sourceSection;
-
     @CompilationFinal(dimensions = 1) private final long[] successorExecutionCount;
     @CompilationFinal private long totalExecutionCount = 0;
 
