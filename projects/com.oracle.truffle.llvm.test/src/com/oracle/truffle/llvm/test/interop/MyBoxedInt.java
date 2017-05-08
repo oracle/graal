@@ -42,7 +42,7 @@ public final class MyBoxedInt implements TruffleObject {
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return ForeignAccess.create(MyBoxedInt.class, new ForeignAccess.Factory18() {
+        return ForeignAccess.create(MyBoxedInt.class, new ForeignAccess.Factory26() {
 
             @Override
             public CallTarget accessWrite() {
@@ -118,6 +118,11 @@ public final class MyBoxedInt implements TruffleObject {
 
             @Override
             public CallTarget accessExecute(int argumentsLength) {
+                return null;
+            }
+
+            @Override
+            public CallTarget accessKeyInfo() {
                 return null;
             }
         });
