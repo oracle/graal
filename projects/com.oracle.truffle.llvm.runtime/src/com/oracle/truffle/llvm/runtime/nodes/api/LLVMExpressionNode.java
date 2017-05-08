@@ -192,7 +192,7 @@ public abstract class LLVMExpressionNode extends LLVMNode {
     }
 
     public String getSourceDescription() {
-        return null;
+        return getRootNode().getName();
     }
 
     public static boolean notLLVM(TruffleObject object) {
