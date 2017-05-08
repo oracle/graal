@@ -20,23 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.word;
+package org.graalvm.api.word;
 
-public interface ComparableWord extends WordBase {
+public interface WordBase {
 
-    /**
-     * Compares this word with the specified value.
-     *
-     * @param val value to which this word is to be compared.
-     * @return {@code this == val}
-     */
-    boolean equal(ComparableWord val);
-
-    /**
-     * Compares this word with the specified value.
-     *
-     * @param val value to which this word is to be compared.
-     * @return {@code this != val}
-     */
-    boolean notEqual(ComparableWord val);
+    long rawValue();
 }
