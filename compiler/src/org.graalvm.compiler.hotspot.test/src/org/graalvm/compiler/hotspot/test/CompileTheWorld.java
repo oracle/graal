@@ -86,6 +86,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.serviceprovider.JDK9Method;
 import org.graalvm.util.EconomicMap;
+import org.graalvm.util.UnmodifiableEconomicMap;
 
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
@@ -183,7 +184,7 @@ public final class CompileTheWorld {
     private ThreadPoolExecutor threadPool;
 
     private OptionValues currentOptions;
-    private final EconomicMap<OptionKey<?>, Object> compilationOptions;
+    private final UnmodifiableEconomicMap<OptionKey<?>, Object> compilationOptions;
 
     /**
      * Creates a compile-the-world instance.
@@ -204,21 +205,22 @@ public final class CompileTheWorld {
         this.methodFilters = methodFilters == null || methodFilters.isEmpty() ? null : MethodFilter.parse(methodFilters);
         this.excludeMethodFilters = excludeMethodFilters == null || excludeMethodFilters.isEmpty() ? null : MethodFilter.parse(excludeMethodFilters);
         this.verbose = verbose;
-        EconomicMap<OptionKey<?>, Object> compilationOptionsCopy = EconomicMap.create(compilationOptions);
         this.currentOptions = initialOptions;
 
+        // Copy the initial options and add in any extra options
+        EconomicMap<OptionKey<?>, Object> compilationOptionsCopy = EconomicMap.create(initialOptions.getMap());
+        compilationOptionsCopy.putAll(compilationOptions);
+
         // We don't want the VM to exit when a method fails to compile...
-        ExitVMOnException.update(compilationOptionsCopy, false);
+        ExitVMOnException.putIfAbsent(compilationOptionsCopy, false);
 
         // ...but we want to see exceptions.
-        PrintBailout.update(compilationOptionsCopy, true);
-        PrintStackTraceOnException.update(compilationOptionsCopy, true);
+        PrintBailout.putIfAbsent(compilationOptionsCopy, true);
+        PrintStackTraceOnException.putIfAbsent(compilationOptionsCopy, true);
 
         // By default only report statistics for the CTW threads themselves
-        if (!GraalDebugConfig.Options.DebugValueThreadFilter.hasBeenSet(initialOptions)) {
-            GraalDebugConfig.Options.DebugValueThreadFilter.update(compilationOptionsCopy, "^CompileTheWorld");
-        }
-        this.compilationOptions = EconomicMap.create(compilationOptionsCopy);
+        GraalDebugConfig.Options.DebugValueThreadFilter.putIfAbsent(compilationOptionsCopy, "^CompileTheWorld");
+        this.compilationOptions = compilationOptionsCopy;
     }
 
     public CompileTheWorld(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalCompiler compiler, OptionValues options) {
@@ -508,7 +510,7 @@ public final class CompileTheWorld {
         }
 
         OptionValues savedOptions = currentOptions;
-        currentOptions = new OptionValues(savedOptions, compilationOptions);
+        currentOptions = new OptionValues(compilationOptions);
         threadPool = new ThreadPoolExecutor(threadCount, threadCount, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(),
                         new CompilerThreadFactory("CompileTheWorld", new DebugConfigAccess() {
                             @Override
@@ -682,7 +684,7 @@ public final class CompileTheWorld {
             public void run() {
                 waitToRun();
                 OptionValues savedOptions = currentOptions;
-                currentOptions = new OptionValues(savedOptions, compilationOptions);
+                currentOptions = new OptionValues(compilationOptions);
                 try {
                     compileMethod(method, classFileCounter);
                 } finally {
