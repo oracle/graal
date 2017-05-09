@@ -24,15 +24,20 @@ package org.graalvm.compiler.replacements.test;
 
 import java.util.function.Function;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugConfigScope;
+import org.graalvm.compiler.graph.GraalGraphError;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -48,6 +53,24 @@ public class ReplacementsParseTest extends ReplacementsTest {
             return "THROW_EXCEPTION_MARKER";
         }
     };
+
+    static int copyFirstBody(byte[] left, byte[] right, boolean left2right) {
+        if (left2right) {
+            byte e = left[0];
+            right[0] = e;
+            return e;
+        } else {
+            byte e = right[0];
+            left[0] = e;
+            return e;
+        }
+    }
+
+    static int copyFirstL2RBody(byte[] left, byte[] right) {
+        byte e = left[0];
+        right[0] = e;
+        return e;
+    }
 
     static class TestObject {
         static double next(double v) {
@@ -92,6 +115,20 @@ public class ReplacementsParseTest extends ReplacementsTest {
 
         static String identity(String s) {
             return s;
+        }
+
+        /**
+         * @see TestObjectSubstitutions#copyFirst(byte[], byte[], boolean)
+         */
+        static int copyFirst(byte[] left, byte[] right, boolean left2right) {
+            return copyFirstBody(left, right, left2right);
+        }
+
+        /**
+         * @see TestObjectSubstitutions#copyFirstL2R(byte[], byte[])
+         */
+        static int copyFirstL2R(byte[] left, byte[] right) {
+            return copyFirstL2RBody(left, right);
         }
     }
 
@@ -146,6 +183,25 @@ public class ReplacementsParseTest extends ReplacementsTest {
         private static native String asNonNullStringIntrinsic(Object object, @ConstantNodeParameter Class<?> toType, @ConstantNodeParameter boolean exactType, @ConstantNodeParameter boolean nonNull);
 
         /**
+         * An valid intrinsic as the frame state associated with the merge should prevent the frame
+         * states associated with the array stores from being associated with subsequent
+         * deoptimizing nodes.
+         */
+        @MethodSubstitution
+        static int copyFirst(byte[] left, byte[] right, boolean left2right) {
+            return copyFirstBody(left, right, left2right);
+        }
+
+        /**
+         * An invalid intrinsic as the frame state associated with the array assignment can leak out
+         * to subsequent deoptimizing nodes.
+         */
+        @MethodSubstitution
+        static int copyFirstL2R(byte[] left, byte[] right) {
+            return copyFirstL2RBody(left, right);
+        }
+
+        /**
          * Tests that non-capturing lambdas are folded away.
          */
         @MethodSubstitution
@@ -166,6 +222,8 @@ public class ReplacementsParseTest extends ReplacementsTest {
         r.registerMethodSubstitution(TestObjectSubstitutions.class, "nextAfter", double.class, double.class);
         r.registerMethodSubstitution(TestObjectSubstitutions.class, "stringize", Object.class);
         r.registerMethodSubstitution(TestObjectSubstitutions.class, "stringizeId", Receiver.class);
+        r.registerMethodSubstitution(TestObjectSubstitutions.class, "copyFirst", byte[].class, byte[].class, boolean.class);
+        r.registerMethodSubstitution(TestObjectSubstitutions.class, "copyFirstL2R", byte[].class, byte[].class);
 
         if (replacementBytecodeProvider.supportsInvokedynamic()) {
             r.registerMethodSubstitution(TestObjectSubstitutions.class, "identity", String.class);
@@ -262,5 +320,45 @@ public class ReplacementsParseTest extends ReplacementsTest {
 
     public static String callLambda(String value) {
         return TestObject.identity(value);
+    }
+
+    public static int callCopyFirst(byte[] in, byte[] out, boolean left2right) {
+        int res = TestObject.copyFirst(in, out, left2right);
+        if (res == 17) {
+            // A node after the intrinsic that needs a frame state.
+            GraalDirectives.deoptimize();
+        }
+        return res;
+    }
+
+    public static int callCopyFirstL2R(byte[] in, byte[] out) {
+        int res = TestObject.copyFirstL2R(in, out);
+        if (res == 17) {
+            // A node after the intrinsic that needs a frame state.
+            GraalDirectives.deoptimize();
+        }
+        return res;
+    }
+
+    @Test
+    public void testCallCopyFirst() {
+        byte[] in = {0, 1, 2, 3, 4};
+        byte[] out = new byte[in.length];
+        test("callCopyFirst", in, out, true);
+        test("callCopyFirst", in, out, false);
+    }
+
+    @SuppressWarnings("try")
+    @Test
+    public void testCallCopyFirstL2R() {
+        byte[] in = {0, 1, 2, 3, 4};
+        byte[] out = new byte[in.length];
+        try {
+            try (DebugConfigScope s = Debug.setConfig(Debug.silentConfig())) {
+                test("callCopyFirstL2R", in, out);
+            }
+        } catch (GraalGraphError e) {
+            Assert.assertTrue(e.getMessage().startsWith("Invalid frame state"));
+        }
     }
 }

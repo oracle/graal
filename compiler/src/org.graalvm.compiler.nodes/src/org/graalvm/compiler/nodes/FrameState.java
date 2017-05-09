@@ -96,7 +96,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
     /**
      * @see BytecodeFrame#rethrowException
      */
-    protected boolean rethrowException;
+    protected final boolean rethrowException;
 
     protected final boolean duringCall;
 
