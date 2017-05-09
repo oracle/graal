@@ -193,28 +193,28 @@ public class SLDebugTest {
                 checkArgs(event.getTopStackFrame(), "n", "2");
                 assertEquals("1", event.getReturnValue().as(String.class));
                 assertTrue(event.getBreakpoints().isEmpty());
-                event.prepareStepOut();
+                event.prepareStepOut(1);
             });
 
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, "fac", 8, false, "fac(n - 1)", "n", "3");
                 assertEquals("2", event.getReturnValue().as(String.class));
                 assertTrue(event.getBreakpoints().isEmpty());
-                event.prepareStepOut();
+                event.prepareStepOut(1);
             });
 
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, "fac", 8, false, "fac(n - 1)", "n", "4");
                 assertEquals("6", event.getReturnValue().as(String.class));
                 assertTrue(event.getBreakpoints().isEmpty());
-                event.prepareStepOut();
+                event.prepareStepOut(1);
             });
 
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, "fac", 8, false, "fac(n - 1)", "n", "5");
                 assertEquals("24", event.getReturnValue().as(String.class));
                 assertTrue(event.getBreakpoints().isEmpty());
-                event.prepareStepOut();
+                event.prepareStepOut(1);
             });
 
             expectSuspended((SuspendedEvent event) -> {
@@ -222,7 +222,7 @@ public class SLDebugTest {
                 checkArgs(event.getTopStackFrame());
                 assertEquals("120", event.getReturnValue().as(String.class));
                 assertTrue(event.getBreakpoints().isEmpty());
-                event.prepareStepOut();
+                event.prepareStepOut(1);
             });
 
             assertEquals("120", expectDone());

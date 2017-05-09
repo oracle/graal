@@ -371,7 +371,7 @@ public class SLDebugDirectTest {
 
     private void stepOut() {
         run.addLast(() -> {
-            suspendedEvent.prepareStepOut();
+            suspendedEvent.prepareStepOut(1);
         });
     }
 
