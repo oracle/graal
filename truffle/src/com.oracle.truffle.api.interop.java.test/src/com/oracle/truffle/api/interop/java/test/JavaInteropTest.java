@@ -45,6 +45,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.KeyInfo;
@@ -53,6 +54,8 @@ import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.interop.java.MethodMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -93,6 +96,13 @@ public class JavaInteropTest {
     }
 
     @Test
+    public void conversionToClassYieldsTheClass() {
+        TruffleObject expected = JavaInterop.asTruffleObject(Data.class);
+        TruffleObject computed = JavaInterop.toJavaClass(obj);
+        assertEquals("Both class objects are the same", expected, computed);
+    }
+
+    @Test
     public void doubleWrap() {
         data.x = 32;
         data.y = 10.1;
@@ -127,6 +137,14 @@ public class JavaInteropTest {
         assertTrue("Contains arr " + list, list.contains("arr"));
         assertTrue("Contains value " + list, list.contains("value"));
         assertTrue("Contains map " + list, list.contains("map"));
+
+        assertFalse("No object fields " + list, list.contains("notifyAll"));
+        assertFalse("No object fields " + list, list.contains("notify"));
+        assertFalse("No object fields " + list, list.contains("wait"));
+        assertFalse("No object fields " + list, list.contains("hashCode"));
+        assertFalse("No object fields " + list, list.contains("equals"));
+        assertFalse("No object fields " + list, list.contains("toString"));
+        assertFalse("No object fields " + list, list.contains("getClass"));
     }
 
     @Test
@@ -147,12 +165,54 @@ public class JavaInteropTest {
 
     @Test
     public void readUnknownField() throws Exception {
+        assertNoRead("unknown");
+    }
+
+    private void assertNoRead(final String name) throws UnsupportedMessageException {
         try {
-            ForeignAccess.sendRead(Message.READ.createNode(), obj, "unknown");
-            fail("Exception thrown when reading unknown field");
+            ForeignAccess.sendRead(Message.READ.createNode(), obj, name);
+            fail("Exception thrown when reading " + name + " field");
         } catch (UnknownIdentifierException ex) {
-            assertEquals("unknown", ex.getUnknownIdentifier());
+            assertEquals(name, ex.getUnknownIdentifier());
         }
+    }
+
+    private void assertNoInvoke(final String name) throws UnsupportedMessageException {
+        for (int arity = 0;; arity++) {
+            try {
+                ForeignAccess.sendInvoke(Message.createInvoke(arity).createNode(), obj, name);
+                fail("Exception thrown when reading " + name + " field");
+            } catch (UnknownIdentifierException ex) {
+                assertEquals(name, ex.getUnknownIdentifier());
+                break;
+            } catch (UnsupportedTypeException ex) {
+                fail("Types are OK");
+            } catch (ArityException ex) {
+                assertEquals(arity, ex.getExpectedArity());
+            }
+        }
+    }
+
+    @Test
+    public void readJavaLangObjectFields() throws Exception {
+        assertNoRead("notify");
+        assertNoRead("notifyAll");
+        assertNoRead("wait");
+        assertNoRead("hashCode");
+        assertNoRead("equals");
+        assertNoRead("toString");
+        assertNoRead("getClass");
+    }
+
+    @Test
+    public void invokeJavaLangObjectFields() throws Exception {
+        assertNoInvoke("notify");
+        assertNoInvoke("notifyAll");
+        assertNoInvoke("wait");
+        assertNoInvoke("hashCode");
+        assertNoInvoke("equals");
+        assertNoInvoke("toString");
+        assertNoInvoke("getClass");
     }
 
     static CallTarget sendKeys() {
