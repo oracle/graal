@@ -32,106 +32,99 @@ package com.oracle.truffle.llvm.nodes.others;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public abstract class LLVMSelectNode {
+@NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+public abstract class LLVMSelectNode extends LLVMExpressionNode {
+    protected final ConditionProfile conditionProfile = ConditionProfile.createCountingProfile();
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMI1SelectNode extends LLVMExpressionNode {
+    public abstract static class LLVMI1SelectNode extends LLVMSelectNode {
 
         @Specialization
         public boolean execute(boolean cond, boolean trueBranch, boolean elseBranch) {
-            return cond ? trueBranch : elseBranch;
+            return conditionProfile.profile(cond) ? trueBranch : elseBranch;
         }
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMI8SelectNode extends LLVMExpressionNode {
+    public abstract static class LLVMI8SelectNode extends LLVMSelectNode {
 
         @Specialization
         public byte execute(boolean cond, byte trueBranch, byte elseBranch) {
-            return cond ? trueBranch : elseBranch;
+            return conditionProfile.profile(cond) ? trueBranch : elseBranch;
         }
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMI16SelectNode extends LLVMExpressionNode {
+    public abstract static class LLVMI16SelectNode extends LLVMSelectNode {
 
         @Specialization
         public short execute(boolean cond, short trueBranch, short elseBranch) {
-            return cond ? trueBranch : elseBranch;
+            return conditionProfile.profile(cond) ? trueBranch : elseBranch;
         }
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMI32SelectNode extends LLVMExpressionNode {
+    public abstract static class LLVMI32SelectNode extends LLVMSelectNode {
 
         @Specialization
         public int execute(boolean cond, int trueBranch, int elseBranch) {
-            return cond ? trueBranch : elseBranch;
+            return conditionProfile.profile(cond) ? trueBranch : elseBranch;
         }
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMI64SelectNode extends LLVMExpressionNode {
+    public abstract static class LLVMI64SelectNode extends LLVMSelectNode {
 
         @Specialization
         public long execute(boolean cond, long trueBranch, long elseBranch) {
-            return cond ? trueBranch : elseBranch;
+            return conditionProfile.profile(cond) ? trueBranch : elseBranch;
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMFloatSelectNode extends LLVMExpressionNode {
+    public abstract static class LLVMFloatSelectNode extends LLVMSelectNode {
 
         @Specialization
         public float execute(boolean cond, float trueBranch, float elseBranch) {
-            return cond ? trueBranch : elseBranch;
+            return conditionProfile.profile(cond) ? trueBranch : elseBranch;
         }
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMDoubleSelectNode extends LLVMExpressionNode {
+    public abstract static class LLVMDoubleSelectNode extends LLVMSelectNode {
 
         @Specialization
         public double execute(boolean cond, double trueBranch, double elseBranch) {
-            return cond ? trueBranch : elseBranch;
+            return conditionProfile.profile(cond) ? trueBranch : elseBranch;
         }
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVM80BitFloatSelectNode extends LLVMExpressionNode {
+    public abstract static class LLVM80BitFloatSelectNode extends LLVMSelectNode {
 
         @Specialization
         public LLVM80BitFloat execute(boolean cond, LLVM80BitFloat trueBranch, LLVM80BitFloat elseBranch) {
-            return cond ? trueBranch : elseBranch;
+            return conditionProfile.profile(cond) ? trueBranch : elseBranch;
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMAddressSelectNode extends LLVMExpressionNode {
+    public abstract static class LLVMAddressSelectNode extends LLVMSelectNode {
 
         @Specialization
         public Object execute(boolean cond, Object trueBranch, Object elseBranch) {
-            return cond ? trueBranch : elseBranch;
+            return conditionProfile.profile(cond) ? trueBranch : elseBranch;
         }
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMFunctionSelectNode extends LLVMExpressionNode {
+    public abstract static class LLVMFunctionSelectNode extends LLVMSelectNode {
 
         @Specialization
         public LLVMFunctionDescriptor execute(boolean cond, LLVMFunctionDescriptor trueBranch, LLVMFunctionDescriptor elseBranch) {
-            return cond ? trueBranch : elseBranch;
+            return conditionProfile.profile(cond) ? trueBranch : elseBranch;
         }
 
     }

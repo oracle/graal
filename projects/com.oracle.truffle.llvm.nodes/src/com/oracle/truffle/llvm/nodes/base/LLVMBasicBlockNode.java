@@ -179,6 +179,7 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
         } else {
             successorBranchProbability = (double) succCount / totalExecutionCount;
         }
+        assert !Double.isNaN(successorBranchProbability) && successorBranchProbability >= 0 && successorBranchProbability <= 1;
         return successorBranchProbability;
     }
 
