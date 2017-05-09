@@ -123,7 +123,7 @@ public class DoubleHaltTest extends AbstractDebugTest {
                              * currently stepping out or not. thats why step out does not step out
                              * here.
                              */
-                            e.prepareStepOut();
+                            e.prepareStepOut(1);
                             break;
                         case 1:
                             e.prepareStepInto(1);
