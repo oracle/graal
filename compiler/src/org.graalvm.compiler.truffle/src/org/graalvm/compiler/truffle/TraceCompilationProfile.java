@@ -35,9 +35,9 @@ public class TraceCompilationProfile extends OptimizedCompilationProfile {
     }
 
     @Override
-    public void profileCall() {
+    public void profileIndirectCall() {
         indirectCallCount++;
-        super.profileCall();
+        super.profileIndirectCall();
     }
 
     @Override
