@@ -1149,6 +1149,13 @@ public abstract class Word extends WordFactory implements Signed, Unsigned, Poin
         return logicCompareAndSwapObject(signed(offset), expectedValue, newValue, locationIdentity);
     }
 
+    /**
+     * This is deprecated because of the easy to mistype name collision between {@link #equals} and
+     * the other equals routines like {@link #equal(Word)}. In general you should never be
+     * statically calling this method for Word types.
+     */
+    @SuppressWarnings("deprecation")
+    @Deprecated
     @Override
     public final boolean equals(Object obj) {
         throw GraalError.shouldNotReachHere("equals must not be called on words");
