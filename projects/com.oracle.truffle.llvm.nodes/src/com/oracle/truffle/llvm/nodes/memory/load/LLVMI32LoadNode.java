@@ -84,7 +84,7 @@ public abstract class LLVMI32LoadNode extends LLVMExpressionNode {
     @Specialization
     public int executeLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
         if (addr.getValue() instanceof Long) {
-            return LLVMMemory.getI32(LLVMAddress.fromLong((long) addr.getValue()));
+            return LLVMMemory.getI32((long) addr.getValue());
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalAccessError("Cannot access address: " + addr.getValue());

@@ -35,11 +35,11 @@ public final class LLVMHeap extends LLVMMemory {
 
     public static LLVMAddress allocateCString(String string) {
         LLVMAddress baseAddress = LLVMMemory.allocateMemory(string.length() + 1);
-        LLVMAddress currentAddress = baseAddress;
+        long currentAddress = baseAddress.getVal();
         for (int i = 0; i < string.length(); i++) {
             byte c = (byte) string.charAt(i);
             LLVMMemory.putI8(currentAddress, c);
-            currentAddress = currentAddress.increment(1);
+            currentAddress++;
         }
         LLVMMemory.putI8(currentAddress, (byte) 0);
         return baseAddress;
@@ -50,6 +50,11 @@ public final class LLVMHeap extends LLVMMemory {
 
     public static void putFunctionIndex(LLVMAddress address, int functionIndex) {
         UNSAFE.putInt(LLVMMemory.extractAddr(address), functionIndex);
+    }
+
+    public static void putFunctionIndex(long ptr, int functionIndex) {
+        assert ptr != 0;
+        UNSAFE.putInt(ptr, functionIndex);
     }
 
     public static int getFunctionIndex(LLVMAddress addr) {

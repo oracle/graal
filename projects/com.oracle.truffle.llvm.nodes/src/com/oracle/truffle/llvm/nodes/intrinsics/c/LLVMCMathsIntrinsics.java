@@ -29,30 +29,21 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.c;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 /**
  * Implements the C functions from math.h.
  */
 public abstract class LLVMCMathsIntrinsics {
-
-    @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMLog2 extends LLVMIntrinsic {
-
-        private static final double LOG_2 = Math.log(2);
-
-        @Specialization
-        public double executeIntrinsic(double value) {
-            return Math.log(value) / LOG_2;
-        }
-
-    }
 
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMSqrt extends LLVMIntrinsic {
@@ -70,6 +61,18 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         public double executeIntrinsic(double value) {
             return Math.log(value);
+        }
+
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMLog2 extends LLVMIntrinsic {
+
+        private static final double LOG_2 = Math.log(2);
+
+        @Specialization
+        public double executeIntrinsic(double value) {
+            return Math.log(value) / LOG_2;
         }
 
     }
@@ -144,6 +147,53 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         public double executeIntrinsic(double value) {
             return Math.exp(value);
+        }
+
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMExp2 extends LLVMIntrinsic {
+
+        @Specialization
+        public double executeIntrinsic(double value) {
+            return Math.pow(2, value);
+        }
+
+    }
+
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMLdexp extends LLVMIntrinsic {
+
+        @Specialization
+        public double executeIntrinsic(double value, int exp) {
+            return value * Math.pow(2, exp);
+        }
+
+    }
+
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMModf extends LLVMIntrinsic {
+
+        @Specialization
+        public double executeIntrinsic(double value, LLVMAddress integralAddr) {
+            double fractional = Math.IEEEremainder(value, 1);
+            double integral = value - fractional;
+            LLVMMemory.putDouble(integralAddr, integral);
+            return fractional;
+        }
+
+    }
+
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMFmod extends LLVMIntrinsic {
+
+        @Specialization
+        public double executeIntrinsic(double numer, double denom) {
+            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, denom == 0)) {
+                return 0;
+            } else {
+                return Math.IEEEremainder(numer, denom);
+            }
         }
 
     }

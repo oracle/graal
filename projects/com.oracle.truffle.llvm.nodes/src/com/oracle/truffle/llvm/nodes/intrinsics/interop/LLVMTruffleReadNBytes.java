@@ -45,13 +45,12 @@ public abstract class LLVMTruffleReadNBytes extends LLVMIntrinsic {
     @Specialization
     public Object executeIntrinsic(LLVMAddress value, int n) {
         LLVMPerformance.warn(this);
-        LLVMAddress adr = value;
         int count = n < 0 ? 0 : n;
         byte[] bytes = new byte[count];
-        adr = value;
+        long ptr = value.getVal();
         for (int i = 0; i < count; i++) {
-            bytes[i] = LLVMMemory.getI8(adr);
-            adr = adr.increment(Byte.BYTES);
+            bytes[i] = LLVMMemory.getI8(ptr);
+            ptr += Byte.BYTES;
         }
         return JavaInterop.asTruffleObject(bytes);
     }

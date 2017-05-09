@@ -207,33 +207,6 @@ public abstract class LLVMNativeFunctions {
         public abstract void execute(LLVMAddress target, LLVMAddress source, long length);
     }
 
-    public abstract static class MemSetNode extends HeapFunctionNode {
-
-        protected MemSetNode(TruffleObject function, int argCount) {
-            super(function, argCount);
-        }
-
-        public abstract void execute(LLVMAddress target, int value, long length);
-    }
-
-    public abstract static class FreeNode extends HeapFunctionNode {
-
-        protected FreeNode(TruffleObject function, int argCount) {
-            super(function, argCount);
-        }
-
-        public abstract void execute(LLVMAddress addr);
-    }
-
-    public abstract static class MallocNode extends HeapFunctionNode {
-
-        protected MallocNode(TruffleObject function, int argCount) {
-            super(function, argCount);
-        }
-
-        public abstract LLVMAddress execute(long size);
-    }
-
     public abstract static class NullPointerNode extends HeapFunctionNode {
 
         protected NullPointerNode(TruffleObject function, int argCount) {

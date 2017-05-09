@@ -82,9 +82,9 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
             LLVMMemory.putI8(allocation, value);
             if (value == comparisonValue) {
                 LLVMMemory.putI8(address, newValue);
-                LLVMMemory.putI1(allocation.increment(secondValueOffset), true);
+                LLVMMemory.putI1(allocation.getVal() + secondValueOffset, true);
             } else {
-                LLVMMemory.putI1(allocation.increment(secondValueOffset), false);
+                LLVMMemory.putI1(allocation.getVal() + secondValueOffset, false);
             }
             return allocation;
         }
@@ -96,9 +96,9 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
             LLVMMemory.putI16(allocation, value);
             if (value == comparisonValue) {
                 LLVMMemory.putI16(address, newValue);
-                LLVMMemory.putI1(allocation.increment(secondValueOffset), true);
+                LLVMMemory.putI1(allocation.getVal() + secondValueOffset, true);
             } else {
-                LLVMMemory.putI1(allocation.increment(secondValueOffset), false);
+                LLVMMemory.putI1(allocation.getVal() + secondValueOffset, false);
             }
             return allocation;
         }
@@ -110,9 +110,9 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
             LLVMMemory.putI32(allocation, value);
             if (value == comparisonValue) {
                 LLVMMemory.putI32(address, newValue);
-                LLVMMemory.putI1(allocation.increment(secondValueOffset), true);
+                LLVMMemory.putI1(allocation.getVal() + secondValueOffset, true);
             } else {
-                LLVMMemory.putI1(allocation.increment(secondValueOffset), false);
+                LLVMMemory.putI1(allocation.getVal() + secondValueOffset, false);
             }
             return allocation;
         }
@@ -124,9 +124,9 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
             LLVMMemory.putI64(allocation, value);
             if (value == comparisonValue) {
                 LLVMMemory.putI64(address, newValue);
-                LLVMMemory.putI1(allocation.increment(secondValueOffset), true);
+                LLVMMemory.putI1(allocation.getVal() + secondValueOffset, true);
             } else {
-                LLVMMemory.putI1(allocation.increment(secondValueOffset), false);
+                LLVMMemory.putI1(allocation.getVal() + secondValueOffset, false);
             }
             return allocation;
         }
@@ -138,9 +138,9 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
             LLVMMemory.putAddress(allocation, value);
             if (value.getVal() == comparisonValue.getVal()) {
                 LLVMMemory.putAddress(address, newValue);
-                LLVMMemory.putI1(allocation.increment(secondValueOffset), true);
+                LLVMMemory.putI1(allocation.getVal() + secondValueOffset, true);
             } else {
-                LLVMMemory.putI1(allocation.increment(secondValueOffset), false);
+                LLVMMemory.putI1(allocation.getVal() + secondValueOffset, false);
             }
             return allocation;
         }

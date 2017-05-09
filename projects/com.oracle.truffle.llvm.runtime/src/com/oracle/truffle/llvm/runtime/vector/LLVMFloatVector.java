@@ -51,19 +51,19 @@ public final class LLVMFloatVector {
 
     public static LLVMFloatVector readVectorFromMemory(LLVMAddress address, int size) {
         float[] vector = new float[size];
-        LLVMAddress currentTarget = address;
+        long currentPtr = address.getVal();
         for (int i = 0; i < size; i++) {
-            vector[i] = LLVMMemory.getFloat(currentTarget);
-            currentTarget = currentTarget.increment(FLOAT_SIZE);
+            vector[i] = LLVMMemory.getFloat(currentPtr);
+            currentPtr += FLOAT_SIZE;
         }
         return create(vector);
     }
 
     public static void writeVectorToMemory(LLVMAddress address, LLVMFloatVector vector) {
-        LLVMAddress currentTarget = address;
+        long currentPtr = address.getVal();
         for (int i = 0; i < vector.getLength(); i++) {
-            LLVMMemory.putFloat(currentTarget, vector.getValue(i));
-            currentTarget = currentTarget.increment(FLOAT_SIZE);
+            LLVMMemory.putFloat(currentPtr, vector.getValue(i));
+            currentPtr += FLOAT_SIZE;
         }
     }
 

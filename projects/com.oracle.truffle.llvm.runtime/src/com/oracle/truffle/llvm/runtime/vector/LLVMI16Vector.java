@@ -53,19 +53,19 @@ public final class LLVMI16Vector {
 
     public static LLVMI16Vector readVectorFromMemory(LLVMAddress address, int size) {
         short[] vector = new short[size];
-        LLVMAddress currentTarget = address;
+        long currentPtr = address.getVal();
         for (int i = 0; i < size; i++) {
-            vector[i] = LLVMMemory.getI16(currentTarget);
-            currentTarget = currentTarget.increment(I16_SIZE);
+            vector[i] = LLVMMemory.getI16(currentPtr);
+            currentPtr += I16_SIZE;
         }
         return create(vector);
     }
 
     public static void writeVectorToMemory(LLVMAddress address, LLVMI16Vector vector) {
-        LLVMAddress currentTarget = address;
+        long currentPtr = address.getVal();
         for (int i = 0; i < vector.getLength(); i++) {
-            LLVMMemory.putI16(currentTarget, vector.getValue(i));
-            currentTarget = currentTarget.increment(I16_SIZE);
+            LLVMMemory.putI16(currentPtr, vector.getValue(i));
+            currentPtr += I16_SIZE;
         }
     }
 

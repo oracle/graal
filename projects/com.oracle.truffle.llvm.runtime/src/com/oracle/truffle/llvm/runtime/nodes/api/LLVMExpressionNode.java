@@ -233,7 +233,7 @@ public abstract class LLVMExpressionNode extends LLVMNode {
         LLVMAddress nativeToAddress(TruffleObject pointer) {
             try {
                 if (ForeignAccess.sendIsNull(isNull, pointer)) {
-                    return LLVMAddress.fromLong(0);
+                    return LLVMAddress.nullPointer();
                 } else if (ForeignAccess.sendIsBoxed(isBoxed, pointer)) {
                     return LLVMAddress.fromLong((long) ForeignAccess.sendUnbox(unbox, pointer));
                 } else {

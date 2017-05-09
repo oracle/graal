@@ -124,7 +124,7 @@ public abstract class LLVMDirectLoadNode {
         @Specialization
         public Object executeLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
             if (addr.getValue() instanceof Long) {
-                return LLVMMemory.getAddress(LLVMAddress.fromLong((long) addr.getValue()));
+                return LLVMMemory.getAddress((long) addr.getValue());
             } else {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalAccessError("Cannot access memory with address: " + addr.getValue());

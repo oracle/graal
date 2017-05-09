@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.memory;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -91,25 +90,6 @@ public final class LLVMStack extends LLVMMemory {
 
     public static final int NO_ALIGNMENT_REQUIREMENTS = 1;
 
-    @ValueType
-    public static final class AllocationResult {
-        private final LLVMAddress stackPointer;
-        private final LLVMAddress allocatedMemory;
-
-        private AllocationResult(LLVMAddress stackPointer, LLVMAddress allocatedMemory) {
-            this.stackPointer = stackPointer;
-            this.allocatedMemory = allocatedMemory;
-        }
-
-        public LLVMAddress getStackPointer() {
-            return stackPointer;
-        }
-
-        public LLVMAddress getAllocatedMemory() {
-            return allocatedMemory;
-        }
-    }
-
     /**
      * Allocates stack memory and associates it with a type.
      *
@@ -118,20 +98,19 @@ public final class LLVMStack extends LLVMMemory {
      * @param type the type of the object for which memory is to be allocated
      * @return the allocated memory, satisfying the alignment requirements
      */
-    public AllocationResult allocateMemory(final LLVMAddress stackPointer, final long size, final int alignment, final Type type) {
+    public LLVMAddress allocateMemory(final LLVMAddress stackPointer, final long size, final int alignment, final Type type) {
         assert size >= 0;
-        assert alignment != 0 && powerOfTo(alignment);
+        assert alignment != 0 && powerOfTwo(alignment);
         final long alignedAllocation = (stackPointer.getVal() - size) & -alignment;
         LLVMAddress newStackPointer = LLVMAddress.fromLong(alignedAllocation);
-        if (newStackPointer.getVal() < lowerBounds) {
+        if (newStackPointer.unsignedLessThan(lowerBounds)) {
             CompilerDirectives.transferToInterpreter();
             throw new StackOverflowError("stack overflow");
         }
-        final LLVMAddress allocatedMemory = LLVMAddress.fromLong(alignedAllocation);
-        return new AllocationResult(newStackPointer, allocatedMemory);
+        return LLVMAddress.fromLong(alignedAllocation);
     }
 
-    private static boolean powerOfTo(int value) {
+    private static boolean powerOfTwo(int value) {
         return (value & -value) == value;
     }
 

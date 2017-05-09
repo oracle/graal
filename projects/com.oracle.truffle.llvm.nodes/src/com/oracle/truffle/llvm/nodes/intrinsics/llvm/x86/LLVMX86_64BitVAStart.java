@@ -111,7 +111,7 @@ public final class LLVMX86_64BitVAStart extends LLVMExpressionNode {
         // Allocate worst amount of memory - saves a few ifs
         LLVMAddress structAddress = targetToAddress.executeWithTarget(target.executeGeneric(frame));
         LLVMAddress regSaveArea = LLVMFrameUtil.allocateMemory(getStack(), frame, stackpointer, X86_64BitVarArgs.GP_LIMIT + X86_64BitVarArgs.FP_LIMIT, 8, new PointerType(null));
-        LLVMMemory.putAddress(structAddress.increment(X86_64BitVarArgs.REG_SAVE_AREA), regSaveArea);
+        LLVMMemory.putAddress(structAddress.getVal() + X86_64BitVarArgs.REG_SAVE_AREA, regSaveArea);
 
         int varArgsStartIndex = numberOfExplicitArguments;
         Object[] realArguments = getRealArguments(frame);
@@ -122,10 +122,10 @@ public final class LLVMX86_64BitVAStart extends LLVMExpressionNode {
 
         // Allocate worst amount of memory - saves a few ifs
         LLVMAddress overflowArgArea = LLVMFrameUtil.allocateMemory(getStack(), frame, stackpointer, numberOfVarArgs * 16, 8, new PointerType(null));
-        LLVMMemory.putAddress(structAddress.increment(X86_64BitVarArgs.OVERFLOW_ARG_AREA), overflowArgArea);
+        LLVMMemory.putAddress(structAddress.getVal() + X86_64BitVarArgs.OVERFLOW_ARG_AREA, overflowArgArea);
 
-        LLVMMemory.putI32(structAddress.increment(X86_64BitVarArgs.GP_OFFSET), 0);
-        LLVMMemory.putI32(structAddress.increment(X86_64BitVarArgs.FP_OFFSET), X86_64BitVarArgs.GP_LIMIT);
+        LLVMMemory.putI32(structAddress.getVal() + X86_64BitVarArgs.GP_OFFSET, 0);
+        LLVMMemory.putI32(structAddress.getVal() + X86_64BitVarArgs.FP_OFFSET, X86_64BitVarArgs.GP_LIMIT);
 
         if (nrVarArgs > 0) {
             int gpOffset = 0;
@@ -138,25 +138,25 @@ public final class LLVMX86_64BitVAStart extends LLVMExpressionNode {
                 VarArgArea area = getVarArgArea(types[i]);
                 if (area == VarArgArea.GP_AREA) {
                     if (gpOffset < X86_64BitVarArgs.GP_LIMIT) {
-                        storeArgument(types[i], regSaveArea.increment(gpOffset), object);
+                        storeArgument(types[i], regSaveArea.getVal() + gpOffset, object);
                         gpOffset += X86_64BitVarArgs.GP_STEP;
                     } else {
-                        storeArgument(types[i], overflowArgArea.increment(overflowOffset), object);
+                        storeArgument(types[i], overflowArgArea.getVal() + overflowOffset, object);
                         overflowOffset += X86_64BitVarArgs.STACK_STEP;
                     }
                 } else if (area == VarArgArea.FP_AREA) {
                     if (fpOffset < X86_64BitVarArgs.FP_LIMIT) {
-                        storeArgument(types[i], regSaveArea.increment(fpOffset), object);
+                        storeArgument(types[i], regSaveArea.getVal() + fpOffset, object);
                         fpOffset += X86_64BitVarArgs.FP_STEP;
                     } else {
-                        storeArgument(types[i], overflowArgArea.increment(overflowOffset), object);
+                        storeArgument(types[i], overflowArgArea.getVal() + overflowOffset, object);
                         overflowOffset += X86_64BitVarArgs.STACK_STEP;
                     }
                 } else if (area == VarArgArea.OVERFLOW_AREA) {
                     if (types[i] != PrimitiveType.X86_FP80) {
                         throw new AssertionError();
                     }
-                    storeArgument(types[i], overflowArgArea.increment(overflowOffset), object);
+                    storeArgument(types[i], overflowArgArea.getVal() + overflowOffset, object);
                     overflowOffset += LONG_DOUBLE_SIZE;
                 } else {
                     CompilerDirectives.transferToInterpreter();
@@ -272,43 +272,43 @@ public final class LLVMX86_64BitVAStart extends LLVMExpressionNode {
         return type;
     }
 
-    private static void storeArgument(Type type, LLVMAddress currentAddress, Object object) {
+    private static void storeArgument(Type type, long currentPtr, Object object) {
         if (type instanceof PrimitiveType) {
-            doPrimitiveWrite(type, currentAddress, object);
+            doPrimitiveWrite(type, currentPtr, object);
         } else if (type instanceof PointerType && object instanceof LLVMAddress) {
-            LLVMMemory.putAddress(currentAddress, (LLVMAddress) object);
+            LLVMMemory.putAddress(currentPtr, (LLVMAddress) object);
         } else if (type instanceof PointerType && object instanceof LLVMGlobalVariable) {
-            LLVMMemory.putAddress(currentAddress, ((LLVMGlobalVariable) object).getNativeLocation());
+            LLVMMemory.putAddress(currentPtr, ((LLVMGlobalVariable) object).getNativeLocation());
         } else {
             throw new AssertionError(type);
         }
     }
 
-    private static void doPrimitiveWrite(Type type, LLVMAddress currentAddress, Object object) throws AssertionError {
+    private static void doPrimitiveWrite(Type type, long currentPtr, Object object) throws AssertionError {
         switch (((PrimitiveType) type).getPrimitiveKind()) {
             case I1:
-                LLVMMemory.putI1(currentAddress, (boolean) object);
+                LLVMMemory.putI1(currentPtr, (boolean) object);
                 break;
             case I8:
-                LLVMMemory.putI8(currentAddress, (byte) object);
+                LLVMMemory.putI8(currentPtr, (byte) object);
                 break;
             case I16:
-                LLVMMemory.putI16(currentAddress, (short) object);
+                LLVMMemory.putI16(currentPtr, (short) object);
                 break;
             case I32:
-                LLVMMemory.putI32(currentAddress, (int) object);
+                LLVMMemory.putI32(currentPtr, (int) object);
                 break;
             case I64:
-                LLVMMemory.putI64(currentAddress, (long) object);
+                LLVMMemory.putI64(currentPtr, (long) object);
                 break;
             case FLOAT:
-                LLVMMemory.putFloat(currentAddress, (float) object);
+                LLVMMemory.putFloat(currentPtr, (float) object);
                 break;
             case DOUBLE:
-                LLVMMemory.putDouble(currentAddress, (double) object);
+                LLVMMemory.putDouble(currentPtr, (double) object);
                 break;
             case X86_FP80:
-                LLVMMemory.put80BitFloat(currentAddress, (LLVM80BitFloat) object);
+                LLVMMemory.put80BitFloat(currentPtr, (LLVM80BitFloat) object);
                 break;
             default:
                 throw new AssertionError(type);

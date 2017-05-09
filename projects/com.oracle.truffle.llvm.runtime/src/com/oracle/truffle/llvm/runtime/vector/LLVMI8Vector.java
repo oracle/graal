@@ -51,19 +51,19 @@ public final class LLVMI8Vector {
 
     public static LLVMI8Vector readVectorFromMemory(LLVMAddress address, int size) {
         byte[] vector = new byte[size];
-        LLVMAddress currentTarget = address;
+        long currentPtr = address.getVal();
         for (int i = 0; i < size; i++) {
-            vector[i] = LLVMMemory.getI8(currentTarget);
-            currentTarget = currentTarget.increment(I8_SIZE);
+            vector[i] = LLVMMemory.getI8(currentPtr);
+            currentPtr += I8_SIZE;
         }
         return create(vector);
     }
 
     public static void writeVectorToMemory(LLVMAddress address, LLVMI8Vector vector) {
-        LLVMAddress currentTarget = address;
+        long currentPtr = address.getVal();
         for (int i = 0; i < vector.getLength(); i++) {
-            LLVMMemory.putI8(currentTarget, vector.getValue(i));
-            currentTarget = currentTarget.increment(I8_SIZE);
+            LLVMMemory.putI8(currentPtr, vector.getValue(i));
+            currentPtr += I8_SIZE;
         }
     }
 

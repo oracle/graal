@@ -166,10 +166,6 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
 
         abstract boolean compare(LLVMAddress val1, LLVMAddress val2);
 
-        boolean compare(long val1, long val2) {
-            return compare(LLVMAddress.fromLong(val1), LLVMAddress.fromLong(val2));
-        }
-
     }
 
     private final AddressCompare op;
@@ -207,7 +203,7 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
         @Specialization(guards = "notLLVM(address)")
         protected LLVMAddress doTruffleObject(TruffleObject address) {
             if (ForeignAccess.sendIsNull(isNull, address)) {
-                return LLVMAddress.fromLong(0);
+                return LLVMAddress.nullPointer();
             } else {
                 return LLVMAddress.fromLong(address.hashCode());
             }

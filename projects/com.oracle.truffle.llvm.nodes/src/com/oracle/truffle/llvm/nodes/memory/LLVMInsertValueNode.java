@@ -86,9 +86,8 @@ public abstract class LLVMInsertValueNode extends LLVMExpressionNode {
         @Override
         public LLVMAddress executeLLVMAddress(VirtualFrame frame) {
             LLVMAddress targetAggr = super.executeLLVMAddress(frame);
-            LLVMAddress insertPosition = targetAggr.increment(offset);
             float value = element.executeFloat(frame);
-            LLVMMemory.putFloat(insertPosition, value);
+            LLVMMemory.putFloat(targetAggr.getVal() + offset, value);
             return targetAggr;
         }
     }
@@ -106,9 +105,8 @@ public abstract class LLVMInsertValueNode extends LLVMExpressionNode {
         @Override
         public LLVMAddress executeLLVMAddress(VirtualFrame frame) {
             LLVMAddress targetAggr = super.executeLLVMAddress(frame);
-            LLVMAddress insertPosition = targetAggr.increment(offset);
             double value = element.executeDouble(frame);
-            LLVMMemory.putDouble(insertPosition, value);
+            LLVMMemory.putDouble(targetAggr.getVal() + offset, value);
             return targetAggr;
         }
     }
@@ -126,9 +124,8 @@ public abstract class LLVMInsertValueNode extends LLVMExpressionNode {
         @Override
         public LLVMAddress executeLLVMAddress(VirtualFrame frame) {
             LLVMAddress targetAggr = super.executeLLVMAddress(frame);
-            LLVMAddress insertPosition = targetAggr.increment(offset);
             int value = element.executeI32(frame);
-            LLVMMemory.putI32(insertPosition, value);
+            LLVMMemory.putI32(targetAggr.getVal() + offset, value);
             return targetAggr;
         }
     }
@@ -147,9 +144,8 @@ public abstract class LLVMInsertValueNode extends LLVMExpressionNode {
         public LLVMAddress executeLLVMAddress(VirtualFrame frame) {
             try {
                 LLVMAddress targetAggr = super.executeLLVMAddress(frame);
-                LLVMAddress insertPosition = targetAggr.increment(offset);
                 LLVMAddress value = element.executeLLVMAddress(frame);
-                LLVMMemory.putAddress(insertPosition, value);
+                LLVMMemory.putAddress(targetAggr.getVal() + offset, value);
                 return targetAggr;
             } catch (UnexpectedResultException e) {
                 CompilerDirectives.transferToInterpreter();

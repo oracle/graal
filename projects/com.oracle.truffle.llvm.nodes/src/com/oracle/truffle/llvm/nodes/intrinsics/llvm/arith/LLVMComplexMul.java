@@ -69,7 +69,7 @@ public final class LLVMComplexMul extends LLVMExpressionNode {
 
             LLVMAddress allocatedMemory = alloc.executeLLVMAddress(frame);
             LLVMMemory.putDouble(allocatedMemory, zReal);
-            LLVMMemory.putDouble(allocatedMemory.increment(LLVMExpressionNode.DOUBLE_SIZE_IN_BYTES), zImag);
+            LLVMMemory.putDouble(allocatedMemory.getVal() + LLVMExpressionNode.DOUBLE_SIZE_IN_BYTES, zImag);
 
             return allocatedMemory;
         } catch (UnexpectedResultException e) {

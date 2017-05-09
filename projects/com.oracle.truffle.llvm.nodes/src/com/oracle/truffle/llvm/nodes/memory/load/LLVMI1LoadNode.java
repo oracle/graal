@@ -82,7 +82,7 @@ public abstract class LLVMI1LoadNode extends LLVMExpressionNode {
     @Specialization
     public boolean executeLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
         if (addr.getValue() instanceof Long) {
-            return LLVMMemory.getI1(LLVMAddress.fromLong((long) addr.getValue()));
+            return LLVMMemory.getI1((long) addr.getValue());
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalAccessError("Cannot access address: " + addr.getValue());
