@@ -73,7 +73,11 @@ public final class LLVMAddress {
     }
 
     public boolean unsignedLessThan(LLVMAddress val2) {
-        return Long.compareUnsigned(val, val2.val) < 0;
+        return unsignedLessThan(val2.val);
+    }
+
+    public boolean unsignedLessThan(long val2) {
+        return Long.compareUnsigned(val, val2) < 0;
     }
 
     public boolean unsignedGreaterEquals(LLVMAddress val2) {
