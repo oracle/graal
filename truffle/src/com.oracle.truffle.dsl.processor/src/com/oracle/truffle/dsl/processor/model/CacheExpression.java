@@ -34,11 +34,20 @@ public final class CacheExpression extends MessageContainer {
     private final DSLExpression expression;
     private final Parameter sourceParameter;
     private final AnnotationMirror sourceAnnotationMirror;
+    private int dimensions = -1;
 
     public CacheExpression(Parameter sourceParameter, AnnotationMirror sourceAnnotationMirror, DSLExpression expression) {
         this.sourceParameter = sourceParameter;
         this.expression = expression;
         this.sourceAnnotationMirror = sourceAnnotationMirror;
+    }
+
+    public void setDimensions(int dimensions) {
+        this.dimensions = dimensions;
+    }
+
+    public int getDimensions() {
+        return dimensions;
     }
 
     public Parameter getParameter() {
