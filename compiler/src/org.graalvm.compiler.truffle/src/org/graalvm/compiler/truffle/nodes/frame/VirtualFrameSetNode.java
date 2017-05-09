@@ -33,6 +33,7 @@ import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.truffle.FrameWithoutBoxing;
+
 import com.oracle.truffle.api.frame.FrameSlot;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
