@@ -41,6 +41,8 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
+import com.oracle.truffle.llvm.runtime.SulongRuntimeException;
+import com.oracle.truffle.llvm.runtime.SulongStackTrace;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
@@ -65,8 +67,6 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
 
     private final BranchProfile controlFlowExceptionProfile = BranchProfile.create();
 
-    @CompilationFinal private SourceSection sourceSection;
-
     @CompilationFinal(dimensions = 1) private final long[] successorExecutionCount;
     @CompilationFinal private long totalExecutionCount = 0;
 
@@ -86,7 +86,8 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
 
     @ExplodeLoop
     public void executeStatements(VirtualFrame frame) {
-        for (LLVMExpressionNode statement : statements) {
+        for (int i = 0; i < statements.length; i++) {
+            LLVMExpressionNode statement = statements[i];
             try {
                 if (TRACE) {
                     trace(statement);
@@ -95,16 +96,50 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
             } catch (ControlFlowException e) {
                 controlFlowExceptionProfile.enter();
                 throw e;
+            } catch (SulongRuntimeException e) {
+                CompilerDirectives.transferToInterpreter();
+                SourceSection s = getLastAvailableSourceSection(i);
+                SulongStackTrace stackTrace = e.getCStackTrace();
+                LLVMFunctionStartNode functionStartNode = NodeUtil.findParent(this, LLVMFunctionStartNode.class);
+                if (s == null) {
+                    stackTrace.addStackTraceElement(functionStartNode.getName(), blockName());
+                } else {
+                    stackTrace.addStackTraceElement(functionStartNode.getName(), blockName(), s.getStartLine());
+                }
+                throw e;
             } catch (Throwable t) {
                 CompilerDirectives.transferToInterpreter();
-                SourceSection exceptionSourceSection = statement.getEncapsulatingSourceSection();
-                if (exceptionSourceSection == null) {
-                    throw t;
+                SourceSection s = getLastAvailableSourceSection(i);
+                SulongStackTrace stackTrace = new SulongStackTrace();
+                LLVMFunctionStartNode functionStartNode = NodeUtil.findParent(this, LLVMFunctionStartNode.class);
+                if (s == null) {
+                    stackTrace.addStackTraceElement(functionStartNode.getName(), blockName());
                 } else {
-                    throw new RuntimeException("LLVM error in " + statement.getSourceDescription(), t);
+                    stackTrace.addStackTraceElement(functionStartNode.getName(), blockName(), s.getStartLine());
                 }
+                throw new SulongRuntimeException(t, stackTrace);
             }
         }
+    }
+
+    private SourceSection getLastAvailableSourceSection(int i) {
+        CompilerAsserts.neverPartOfCompilation();
+        SourceSection s = null;
+        for (int j = i; j >= 0; j--) {
+            s = statements[j].getSourceSection();
+            if (s != null) {
+                break;
+            }
+        }
+        return s;
+    }
+
+    public int getBlockId() {
+        return blockId;
+    }
+
+    public String getBlockName() {
+        return blockName;
     }
 
     @TruffleBoundary
@@ -116,25 +151,17 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
     public String getSourceDescription() {
         LLVMFunctionStartNode functionStartNode = NodeUtil.findParent(this, LLVMFunctionStartNode.class);
         assert functionStartNode != null : getParent().getClass();
-        if (blockId == 0) {
-            return String.format("first basic block in %s", functionStartNode.getName());
-        } else {
-            return String.format("basic block %s in %s", blockName, functionStartNode.getName());
-        }
+        return String.format("Function: %s - Block: %s", functionStartNode.getName(), blockName());
+    }
+
+    private String blockName() {
+        return String.format("id: %d name: %s", blockId, blockName == null ? "N/A" : blockName);
     }
 
     @Override
     public String toString() {
         CompilerAsserts.neverPartOfCompilation();
         return String.format("basic block %s (#statements: %s, terminating instruction: %s)", blockId, statements.length, termInstruction);
-    }
-
-    public int getBlockId() {
-        return blockId;
-    }
-
-    public String getBlockName() {
-        return blockName;
     }
 
     /**

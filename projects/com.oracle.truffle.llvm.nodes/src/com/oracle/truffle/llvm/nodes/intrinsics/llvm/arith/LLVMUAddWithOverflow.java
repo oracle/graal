@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -40,7 +41,7 @@ public class LLVMUAddWithOverflow {
 
     @NodeChildren({@NodeChild(value = "left", type = LLVMExpressionNode.class), @NodeChild(value = "right", type = LLVMExpressionNode.class),
                     @NodeChild(value = "target", type = LLVMExpressionNode.class)})
-    public abstract static class LLVMUAddWithOverflowI32 extends LLVMExpressionNode {
+    public abstract static class LLVMUAddWithOverflowI32 extends LLVMBuiltin {
 
         private static final int OVERFLOW_FIELD_OFFSET = 4;
 

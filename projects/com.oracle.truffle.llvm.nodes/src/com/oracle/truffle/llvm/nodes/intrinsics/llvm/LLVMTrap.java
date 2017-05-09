@@ -31,9 +31,8 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public abstract class LLVMTrap extends LLVMExpressionNode {
+public abstract class LLVMTrap extends LLVMBuiltin {
 
     // see
     // http://stackoverflow.com/questions/2862731/when-assert-fails-what-is-the-program-exit-code

@@ -30,14 +30,18 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public class LLVMX86_64BitVAEnd extends LLVMExpressionNode {
+public final class LLVMX86_64BitVAEnd extends LLVMExpressionNode {
+
+    final SourceSection sourceSection;
 
     @Child private LLVMExpressionNode target;
 
-    public LLVMX86_64BitVAEnd(LLVMExpressionNode target) {
+    public LLVMX86_64BitVAEnd(LLVMExpressionNode target, SourceSection sourceSection) {
         this.target = target;
+        this.sourceSection = sourceSection;
     }
 
     @Override
@@ -46,4 +50,8 @@ public class LLVMX86_64BitVAEnd extends LLVMExpressionNode {
         return null;
     }
 
+    @Override
+    public SourceSection getSourceSection() {
+        return sourceSection;
+    }
 }

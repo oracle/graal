@@ -50,6 +50,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
+import com.oracle.truffle.llvm.runtime.SulongRuntimeException;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 @SuppressWarnings({"static-method"})
@@ -777,7 +778,7 @@ public final class LLVMInteropTest {
         Assert.assertEquals(0, runner.run());
     }
 
-    @Test(expected = UnsupportedOperationException.class)
+    @Test(expected = SulongRuntimeException.class)
     public void test065() {
         Runner runner = new Runner("interop065");
         Object a = new Object();
@@ -786,7 +787,7 @@ public final class LLVMInteropTest {
         Assert.assertEquals(0, runner.run());
     }
 
-    @Test(expected = UnsupportedOperationException.class)
+    @Test(expected = SulongRuntimeException.class)
     public void test066() {
         Runner runner = new Runner("interop066");
         Object a = new Object();

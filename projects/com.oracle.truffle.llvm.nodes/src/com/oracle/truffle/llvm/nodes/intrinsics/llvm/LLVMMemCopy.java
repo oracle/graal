@@ -43,7 +43,7 @@ public abstract class LLVMMemCopy {
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "destination"), @NodeChild(type = LLVMExpressionNode.class, value = "source"),
                     @NodeChild(type = LLVMExpressionNode.class, value = "length"),
                     @NodeChild(type = LLVMExpressionNode.class, value = "align"), @NodeChild(type = LLVMExpressionNode.class, value = "isVolatile")})
-    public abstract static class LLVMMemI32Copy extends LLVMExpressionNode {
+    public abstract static class LLVMMemI32Copy extends LLVMBuiltin {
 
         @Child private MemCopyNode memCopy;
 
@@ -88,7 +88,7 @@ public abstract class LLVMMemCopy {
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "destination"), @NodeChild(type = LLVMExpressionNode.class, value = "source"),
                     @NodeChild(type = LLVMExpressionNode.class, value = "length"),
                     @NodeChild(type = LLVMExpressionNode.class, value = "align"), @NodeChild(type = LLVMExpressionNode.class, value = "isVolatile")})
-    public abstract static class LLVMMemI64Copy extends LLVMExpressionNode {
+    public abstract static class LLVMMemI64Copy extends LLVMBuiltin {
 
         @Child private MemCopyNode memCopy;
 

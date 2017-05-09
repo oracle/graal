@@ -191,7 +191,7 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
 
                 LLVMExpressionNode functionNode = LLVMFunctionLiteralNodeGen.create(context.lookup(function));
 
-                LLVMCallNode callNode = new LLVMCallNode(new FunctionType(VoidType.INSTANCE, argsTypes, false), functionNode, args);
+                LLVMCallNode callNode = new LLVMCallNode(new FunctionType(VoidType.INSTANCE, argsTypes, false), functionNode, args, null);
 
                 callTarget = Truffle.getRuntime().createCallTarget(
                                 new LLVMFunctionStartNode(null, language, callNode,

@@ -153,7 +153,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
         return false;
     }
 
-    private final Map<String, LLVMNativeIntrinsicFactory> factories = new HashMap<>();
+    protected final Map<String, LLVMNativeIntrinsicFactory> factories = new HashMap<>();
     protected final LLVMLanguage language;
     protected final LLVMContext context;
 
@@ -845,14 +845,14 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap("@fabs", LLVMFAbsNodeGen.create(LLVMArgNodeGen.create(1)));
+                return wrap("@fabs", LLVMFAbsNodeGen.create(LLVMArgNodeGen.create(1), null));
             }
         });
         factories.put("@pow", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap("@pow", LLVMPowNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(1)));
+                return wrap("@pow", LLVMPowNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(1), null));
             }
         });
         factories.put("@exp", new LLVMNativeIntrinsicFactory(true, false) {

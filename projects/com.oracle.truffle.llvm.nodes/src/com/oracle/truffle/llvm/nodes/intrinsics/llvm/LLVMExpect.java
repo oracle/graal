@@ -37,7 +37,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMExpect {
 
     @NodeChild(type = LLVMExpressionNode.class, value = "val")
-    public abstract static class LLVMExpectI1 extends LLVMExpressionNode {
+    public abstract static class LLVMExpectI1 extends LLVMBuiltin {
 
         private final ConditionProfile expectProfile = getExpectConditionProfile();
 
@@ -59,7 +59,7 @@ public abstract class LLVMExpect {
     }
 
     @NodeChild(type = LLVMExpressionNode.class, value = "val")
-    public abstract static class LLVMExpectI32 extends LLVMExpressionNode {
+    public abstract static class LLVMExpectI32 extends LLVMBuiltin {
 
         private final ConditionProfile expectProfile = getExpectConditionProfile();
 
@@ -81,7 +81,7 @@ public abstract class LLVMExpect {
     }
 
     @NodeChild(type = LLVMExpressionNode.class, value = "val")
-    public abstract static class LLVMExpectI64 extends LLVMExpressionNode {
+    public abstract static class LLVMExpectI64 extends LLVMBuiltin {
 
         private final ConditionProfile expectProfile = getExpectConditionProfile();
 

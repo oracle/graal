@@ -35,7 +35,7 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMStackSave extends LLVMExpressionNode {
+public abstract class LLVMStackSave extends LLVMBuiltin {
 
     @Specialization
     public LLVMAddress executePointee(LLVMAddress stackPointer) {

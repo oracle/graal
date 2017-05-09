@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.vars;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -47,11 +46,17 @@ import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeField(name = "slot", type = FrameSlot.class)
+@NodeField(name = "source", type = SourceSection.class)
 public abstract class LLVMWriteNode extends LLVMExpressionNode {
 
-    @CompilationFinal private SourceSection sourceSection;
-
     protected abstract FrameSlot getSlot();
+
+    protected abstract SourceSection getSource();
+
+    @Override
+    public SourceSection getSourceSection() {
+        return getSource();
+    }
 
     @Override
     public String getSourceDescription() {

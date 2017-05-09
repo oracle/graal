@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.others;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
@@ -39,7 +40,22 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
-    public static class LLVMI1UnsupportedInlineAssemblerNode extends LLVMExpressionNode {
+    private final SourceSection sourceSection;
+
+    public LLVMUnsupportedInlineAssemblerNode(SourceSection sourceSection) {
+        this.sourceSection = sourceSection;
+    }
+
+    @Override
+    public SourceSection getSourceSection() {
+        return sourceSection;
+    }
+
+    public static class LLVMI1UnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
+
+        public LLVMI1UnsupportedInlineAssemblerNode(SourceSection sourceSection) {
+            super(sourceSection);
+        }
 
         @Override
         public boolean executeI1(VirtualFrame frame) {
@@ -53,7 +69,11 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
     }
 
-    public static class LLVMI8UnsupportedInlineAssemblerNode extends LLVMExpressionNode {
+    public static class LLVMI8UnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
+
+        public LLVMI8UnsupportedInlineAssemblerNode(SourceSection sourceSection) {
+            super(sourceSection);
+        }
 
         @Override
         public byte executeI8(VirtualFrame frame) {
@@ -66,7 +86,11 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
         }
     }
 
-    public static class LLVMI16UnsupportedInlineAssemblerNode extends LLVMExpressionNode {
+    public static class LLVMI16UnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
+
+        public LLVMI16UnsupportedInlineAssemblerNode(SourceSection sourceSection) {
+            super(sourceSection);
+        }
 
         @Override
         public short executeI16(VirtualFrame frame) {
@@ -79,7 +103,11 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
         }
     }
 
-    public static class LLVMI32UnsupportedInlineAssemblerNode extends LLVMExpressionNode {
+    public static class LLVMI32UnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
+
+        public LLVMI32UnsupportedInlineAssemblerNode(SourceSection sourceSection) {
+            super(sourceSection);
+        }
 
         @Override
         public int executeI32(VirtualFrame frame) {
@@ -92,7 +120,11 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
         }
     }
 
-    public static class LLVMI64UnsupportedInlineAssemblerNode extends LLVMExpressionNode {
+    public static class LLVMI64UnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
+
+        public LLVMI64UnsupportedInlineAssemblerNode(SourceSection sourceSection) {
+            super(sourceSection);
+        }
 
         @Override
         public long executeI64(VirtualFrame frame) {
@@ -105,7 +137,11 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
         }
     }
 
-    public static class LLVMFloatUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
+    public static class LLVMFloatUnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
+
+        public LLVMFloatUnsupportedInlineAssemblerNode(SourceSection sourceSection) {
+            super(sourceSection);
+        }
 
         @Override
         public float executeFloat(VirtualFrame frame) {
@@ -118,7 +154,11 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
         }
     }
 
-    public static class LLVMDoubleUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
+    public static class LLVMDoubleUnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
+
+        public LLVMDoubleUnsupportedInlineAssemblerNode(SourceSection sourceSection) {
+            super(sourceSection);
+        }
 
         @Override
         public double executeDouble(VirtualFrame frame) {
@@ -131,7 +171,11 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
         }
     }
 
-    public static class LLVM80BitFloatUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
+    public static class LLVM80BitFloatUnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
+
+        public LLVM80BitFloatUnsupportedInlineAssemblerNode(SourceSection sourceSection) {
+            super(sourceSection);
+        }
 
         @Override
         public LLVM80BitFloat executeLLVM80BitFloat(VirtualFrame frame) {
@@ -144,7 +188,11 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
         }
     }
 
-    public static class LLVMAddressUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
+    public static class LLVMAddressUnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
+
+        public LLVMAddressUnsupportedInlineAssemblerNode(SourceSection sourceSection) {
+            super(sourceSection);
+        }
 
         @Override
         public LLVMAddress executeLLVMAddress(VirtualFrame frame) {
@@ -158,7 +206,11 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
     }
 
-    public static class LLVMFunctionUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
+    public static class LLVMFunctionUnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
+
+        public LLVMFunctionUnsupportedInlineAssemblerNode(SourceSection sourceSection) {
+            super(sourceSection);
+        }
 
         @Override
         public LLVMFunctionDescriptor executeLLVMFunctionDescriptor(VirtualFrame frame) {

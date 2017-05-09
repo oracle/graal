@@ -34,6 +34,7 @@ import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
@@ -47,7 +48,13 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 @NodeField(name = "slot", type = FrameSlot.class)
 public abstract class LLVMWriteVectorNode extends LLVMExpressionNode {
 
+    public LLVMWriteVectorNode(SourceSection sourceSection) {
+        this.sourceSection = sourceSection;
+    }
+
     protected abstract FrameSlot getSlot();
+
+    private final SourceSection sourceSection;
 
     @Specialization
     protected Object writeVector(VirtualFrame frame, LLVMDoubleVector value) {
@@ -91,4 +98,8 @@ public abstract class LLVMWriteVectorNode extends LLVMExpressionNode {
         return null;
     }
 
+    @Override
+    public SourceSection getSourceSection() {
+        return sourceSection;
+    }
 }

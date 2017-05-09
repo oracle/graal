@@ -43,7 +43,7 @@ public abstract class LLVMMemMove {
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "dest"), @NodeChild(type = LLVMExpressionNode.class, value = "src"),
                     @NodeChild(type = LLVMExpressionNode.class, value = "length"),
                     @NodeChild(type = LLVMExpressionNode.class, value = "align"), @NodeChild(type = LLVMExpressionNode.class, value = "isVolatile")})
-    public abstract static class LLVMMemMoveI64 extends LLVMExpressionNode {
+    public abstract static class LLVMMemMoveI64 extends LLVMBuiltin {
 
         @Child private MemCopyNode memMove;
 

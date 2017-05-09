@@ -31,13 +31,19 @@ package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+@NodeField(name = "sourceSection", type = SourceSection.class)
 public abstract class LLVMTruffleGetArg extends LLVMIntrinsic {
+
+    @Override
+    public abstract SourceSection getSourceSection();
 
     @Specialization
     public Object doIntrinsic(VirtualFrame frame, int index) {

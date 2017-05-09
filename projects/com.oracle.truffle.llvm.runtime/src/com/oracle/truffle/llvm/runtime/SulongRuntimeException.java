@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,26 +27,25 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.api;
+package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.source.SourceSection;
+public final class SulongRuntimeException extends RuntimeException {
 
-public abstract class LLVMControlFlowNode extends LLVMNode {
+    private static final long serialVersionUID = 8152326202993926377L;
 
-    private final SourceSection sourceSection;
+    private final SulongStackTrace cStackTrace;
 
-    public LLVMControlFlowNode(SourceSection sourceSection) {
-        this.sourceSection = sourceSection;
+    public SulongRuntimeException(Throwable interpreterException, SulongStackTrace cStackTrace) {
+        super(interpreterException);
+        this.cStackTrace = cStackTrace;
     }
 
-    public abstract int getSuccessorCount();
-
-    public boolean needsBranchProfiling() {
-        return getSuccessorCount() > 1;
+    public SulongStackTrace getCStackTrace() {
+        return cStackTrace;
     }
 
     @Override
-    public SourceSection getSourceSection() {
-        return sourceSection;
+    public String getMessage() {
+        return cStackTrace.toString();
     }
 }

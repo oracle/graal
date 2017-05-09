@@ -45,6 +45,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -76,9 +77,12 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
     @Child protected LLVMDataEscapeNode dataEscape;
     protected final Type valueType;
 
-    public LLVMStoreNode(Type valueType) {
+    private final SourceSection sourceSection;
+
+    public LLVMStoreNode(Type valueType, SourceSection sourceSection) {
         this.valueType = valueType;
         this.dataEscape = LLVMDataEscapeNodeGen.create(valueType);
+        this.sourceSection = sourceSection;
     }
 
     protected void doForeignAccess(LLVMTruffleObject addr, int stride, Object value, LLVMContext context) {
@@ -97,11 +101,16 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         }
     }
 
+    @Override
+    public SourceSection getSourceSection() {
+        return sourceSection;
+    }
+
     @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMI1StoreNode extends LLVMStoreNode {
 
-        public LLVMI1StoreNode() {
-            super(PrimitiveType.I1);
+        public LLVMI1StoreNode(SourceSection source) {
+            super(PrimitiveType.I1, source);
         }
 
         @Specialization
@@ -144,8 +153,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
     @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMI8StoreNode extends LLVMStoreNode {
 
-        public LLVMI8StoreNode() {
-            super(PrimitiveType.I8);
+        public LLVMI8StoreNode(SourceSection source) {
+            super(PrimitiveType.I8, source);
         }
 
         @Specialization
@@ -187,8 +196,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
     @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMI16StoreNode extends LLVMStoreNode {
 
-        public LLVMI16StoreNode() {
-            super(PrimitiveType.I16);
+        public LLVMI16StoreNode(SourceSection source) {
+            super(PrimitiveType.I16, source);
         }
 
         @Specialization
@@ -231,8 +240,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
     @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMI32StoreNode extends LLVMStoreNode {
 
-        public LLVMI32StoreNode() {
-            super(PrimitiveType.I32);
+        public LLVMI32StoreNode(SourceSection source) {
+            super(PrimitiveType.I32, source);
         }
 
         @Specialization
@@ -275,8 +284,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
     @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMI64StoreNode extends LLVMStoreNode {
 
-        public LLVMI64StoreNode() {
-            super(PrimitiveType.I64);
+        public LLVMI64StoreNode(SourceSection source) {
+            super(PrimitiveType.I64, source);
         }
 
         @Specialization
@@ -319,8 +328,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
     @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMIVarBitStoreNode extends LLVMStoreNode {
 
-        public LLVMIVarBitStoreNode(VariableBitWidthType type) {
-            super(type);
+        public LLVMIVarBitStoreNode(VariableBitWidthType type, SourceSection source) {
+            super(type, source);
         }
 
         @Specialization
@@ -340,8 +349,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
     @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMFloatStoreNode extends LLVMStoreNode {
 
-        public LLVMFloatStoreNode() {
-            super(PrimitiveType.FLOAT);
+        public LLVMFloatStoreNode(SourceSection source) {
+            super(PrimitiveType.FLOAT, source);
         }
 
         @Specialization
@@ -384,8 +393,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
     @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMDoubleStoreNode extends LLVMStoreNode {
 
-        public LLVMDoubleStoreNode() {
-            super(PrimitiveType.DOUBLE);
+        public LLVMDoubleStoreNode(SourceSection source) {
+            super(PrimitiveType.DOUBLE, source);
         }
 
         @Specialization
@@ -428,8 +437,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
     @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVM80BitFloatStoreNode extends LLVMStoreNode {
 
-        public LLVM80BitFloatStoreNode() {
-            super(PrimitiveType.X86_FP80);
+        public LLVM80BitFloatStoreNode(SourceSection source) {
+            super(PrimitiveType.X86_FP80, source);
         }
 
         @Specialization
@@ -449,8 +458,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
     @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMAddressStoreNode extends LLVMStoreNode {
 
-        public LLVMAddressStoreNode(Type type) {
-            super(type);
+        public LLVMAddressStoreNode(Type type, SourceSection source) {
+            super(type, source);
         }
 
         @Specialization
@@ -567,8 +576,11 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
         protected final LLVMGlobalVariable descriptor;
 
-        public LLVMGlobalVariableStoreNode(LLVMGlobalVariable descriptor) {
+        private final SourceSection source;
+
+        public LLVMGlobalVariableStoreNode(LLVMGlobalVariable descriptor, SourceSection source) {
             this.descriptor = descriptor;
+            this.source = source;
         }
 
         @Specialization
@@ -620,13 +632,18 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
             descriptor.putTruffleObject(value);
             return null;
         }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return source;
+        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMFunctionStoreNode extends LLVMStoreNode {
 
-        public LLVMFunctionStoreNode(Type type) {
-            super(type);
+        public LLVMFunctionStoreNode(Type type, SourceSection source) {
+            super(type, source);
         }
 
         @Specialization
@@ -651,8 +668,8 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
         public abstract int getStructSize();
 
-        protected LLVMStructStoreNode(LLVMNativeFunctions heapFunctions, Type type) {
-            super(type);
+        protected LLVMStructStoreNode(LLVMNativeFunctions heapFunctions, Type type, SourceSection source) {
+            super(type, source);
             memCopy = heapFunctions.createMemCopyNode();
         }
 

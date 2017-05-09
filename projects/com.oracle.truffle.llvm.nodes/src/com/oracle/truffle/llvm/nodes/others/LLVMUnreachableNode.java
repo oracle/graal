@@ -39,6 +39,7 @@ public class LLVMUnreachableNode extends LLVMControlFlowNode {
     }
 
     public LLVMUnreachableNode() {
+        super(null);
     }
 
     @Override

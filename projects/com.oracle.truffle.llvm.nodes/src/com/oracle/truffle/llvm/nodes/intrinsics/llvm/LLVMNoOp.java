@@ -30,9 +30,8 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public abstract class LLVMNoOp extends LLVMExpressionNode {
+public abstract class LLVMNoOp extends LLVMBuiltin {
 
     @Specialization
     public Object executeVoid() {
