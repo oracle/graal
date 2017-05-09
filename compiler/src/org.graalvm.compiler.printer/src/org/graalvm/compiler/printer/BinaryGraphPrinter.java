@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.GraalDebugConfig.Options;
@@ -324,7 +325,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
                 writeByte(POOL_CLASS);
             } else if (object instanceof NodeClass) {
                 writeByte(POOL_NODE_CLASS);
-            } else if (object instanceof ResolvedJavaMethod) {
+            } else if (object instanceof ResolvedJavaMethod || object instanceof Bytecode) {
                 writeByte(POOL_METHOD);
             } else if (object instanceof ResolvedJavaField) {
                 writeByte(POOL_FIELD);
@@ -378,9 +379,14 @@ public class BinaryGraphPrinter implements GraphPrinter {
             writeString(nodeClass.getNameTemplate());
             writeEdgesInfo(nodeClass, Inputs);
             writeEdgesInfo(nodeClass, Successors);
-        } else if (object instanceof ResolvedJavaMethod) {
+        } else if (object instanceof ResolvedJavaMethod || object instanceof Bytecode) {
             writeByte(POOL_METHOD);
-            ResolvedJavaMethod method = ((ResolvedJavaMethod) object);
+            ResolvedJavaMethod method;
+            if (object instanceof Bytecode) {
+                method = ((Bytecode) object).getMethod();
+            } else {
+                method = ((ResolvedJavaMethod) object);
+            }
             writePoolObject(method.getDeclaringClass());
             writePoolObject(method.getName());
             writePoolObject(method.getSignature());
