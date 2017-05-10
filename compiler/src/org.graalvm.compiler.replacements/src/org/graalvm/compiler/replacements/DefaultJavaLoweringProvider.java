@@ -762,9 +762,29 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             allocations[objIndex] = anchor;
             graph.addBeforeFixed(commit, anchor);
         }
+        /*
+         * Note that the FrameState that is assigned to these MonitorEnterNodes isn't the correct
+         * state. It will be the state from before the allocation occurred instead of a valid state
+         * after the locking is performed. In practice this should be fine since these are newly
+         * allocated objects. The bytecodes themselves permit allocating an object, doing a
+         * monitorenter and then dropping all references to the object which would produce the same
+         * state, though that would normally produce an IllegalMonitorStateException. In HotSpot
+         * some form of fast path locking should always occur so the FrameState should never
+         * actually be used.
+         */
         ArrayList<MonitorEnterNode> enters = null;
         for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
-            for (MonitorIdNode monitorId : commit.getLocks(objIndex)) {
+            List<MonitorIdNode> locks = commit.getLocks(objIndex);
+            if (locks.size() > 1) {
+                // Ensure that the lock operations are performed in lock depth order
+                ArrayList<MonitorIdNode> newList = new ArrayList<>(locks);
+                newList.sort((a, b) -> Integer.compare(a.getLockDepth(), b.getLockDepth()));
+                locks = newList;
+            }
+            int lastDepth = -1;
+            for (MonitorIdNode monitorId : locks) {
+                assert lastDepth < monitorId.getLockDepth();
+                lastDepth = monitorId.getLockDepth();
                 MonitorEnterNode enter = graph.add(new MonitorEnterNode(allocations[objIndex], monitorId));
                 graph.addBeforeFixed(commit, enter);
                 if (enters == null) {
