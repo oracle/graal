@@ -78,7 +78,6 @@ import org.graalvm.compiler.truffle.debug.TraceCompilationPolymorphismListener;
 import org.graalvm.compiler.truffle.debug.TraceInliningListener;
 import org.graalvm.compiler.truffle.debug.TraceSplittingListener;
 import org.graalvm.compiler.truffle.phases.InstrumentPhase;
-import org.graalvm.compiler.truffle.substitutions.KnownTruffleFields;
 import org.graalvm.util.CollectionsUtil;
 
 import com.oracle.truffle.api.Assumption;
