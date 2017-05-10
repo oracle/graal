@@ -45,6 +45,23 @@ class NativeStringMessageResolution {
         }
     }
 
+    @Resolve(message = "IS_POINTER")
+    abstract static class IsPointerNativeStringNode extends Node {
+
+        @SuppressWarnings("unused")
+        public boolean access(NativeString receiver) {
+            return true;
+        }
+    }
+
+    @Resolve(message = "AS_POINTER")
+    abstract static class AsPointerNativeStringNode extends Node {
+
+        public long access(NativeString receiver) {
+            return receiver.nativePointer;
+        }
+    }
+
     @Resolve(message = "IS_BOXED")
     abstract static class IsBoxedNativeStringNode extends Node {
 
