@@ -29,89 +29,44 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMProfiledMemSet;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
+@NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class),
+                @NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMMemSet extends LLVMBuiltin {
+    private final LLVMProfiledMemSet profiledMemSet = new LLVMProfiledMemSet();
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class),
-                    @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMMemSetI64 extends LLVMMemSet {
-
-        @SuppressWarnings("unused")
-        @Specialization
-        public Object executeVoid(LLVMAddress address, byte value, long length, int align, boolean isVolatile) {
-            memset(address, value, length);
-            return null;
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization
-        public Object executeVoid(LLVMGlobalVariable address, byte value, long length, int align, boolean isVolatile) {
-            memset(address.getNativeLocation(), value, length);
-            return null;
-        }
+    @SuppressWarnings("unused")
+    @Specialization
+    public Object execute(LLVMAddress address, byte value, int length, int align, boolean isVolatile) {
+        profiledMemSet.memset(address, value, length);
+        return address;
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class),
-                    @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMMemSetI32 extends LLVMMemSet {
-
-        @SuppressWarnings("unused")
-        @Specialization
-        public Object executeVoid(LLVMAddress address, byte value, int length, int align, boolean isVolatile) {
-            memset(address, value, length);
-            return null;
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization
-        public Object executeVoid(LLVMGlobalVariable address, byte value, int length, int align, boolean isVolatile) {
-            memset(address.getNativeLocation(), value, length);
-            return null;
-        }
+    @SuppressWarnings("unused")
+    @Specialization
+    public Object execute(LLVMGlobalVariable address, byte value, int length, int align, boolean isVolatile) {
+        profiledMemSet.memset(address.getNativeLocation(), value, length);
+        return address;
     }
 
-    protected static final long MAX_JAVA_LEN = 256;
-
-    @CompilationFinal private boolean inJava = true;
-
-    protected void memset(LLVMAddress address, byte value, long length) {
-        if (inJava) {
-            if (length <= MAX_JAVA_LEN) {
-                long current = address.getVal();
-                long i64ValuesToWrite = length >> 3;
-                if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, i64ValuesToWrite > 0)) {
-                    long v16 = ((long) value) << 8 | ((long) value & 0xFF);
-                    long v32 = v16 << 16 | v16;
-                    long v64 = v32 << 32 | v32;
-
-                    for (int i = 0; CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, i < i64ValuesToWrite); i++) {
-                        LLVMMemory.putI64(current, v64);
-                        current += 8;
-                    }
-                }
-
-                long i8ValuesToWrite = length & 0x07;
-                for (int i = 0; CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, i < i8ValuesToWrite); i++) {
-                    LLVMMemory.putI8(current, value);
-                    current++;
-                }
-                return;
-            } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                inJava = false;
-            }
-        }
-
-        LLVMMemory.memset(address, length, value);
+    @SuppressWarnings("unused")
+    @Specialization
+    public Object execute(LLVMAddress address, byte value, long length, int align, boolean isVolatile) {
+        profiledMemSet.memset(address, value, length);
+        return address;
     }
 
+    @SuppressWarnings("unused")
+    @Specialization
+    public Object execute(LLVMGlobalVariable address, byte value, long length, int align, boolean isVolatile) {
+        profiledMemSet.memset(address.getNativeLocation(), value, length);
+        return address;
+    }
 }

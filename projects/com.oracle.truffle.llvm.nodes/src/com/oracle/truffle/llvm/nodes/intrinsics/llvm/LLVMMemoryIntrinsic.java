@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMProfiledMemSet;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
@@ -65,13 +66,14 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMCalloc extends LLVMMemoryIntrinsic {
+        private final LLVMProfiledMemSet profiledMemSet = new LLVMProfiledMemSet();
 
         @Specialization
         public LLVMAddress executeVoid(int n, int size) {
             try {
                 long length = Math.multiplyExact(n, size);
                 LLVMAddress address = LLVMMemory.allocateMemory(length);
-                LLVMMemory.memset(address, n * size, (byte) 0);
+                profiledMemSet.memset(address, (byte) 0, length);
                 return address;
             } catch (OutOfMemoryError | ArithmeticException e) {
                 CompilerDirectives.transferToInterpreter();
@@ -84,7 +86,7 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
             try {
                 long length = Math.multiplyExact(n, size);
                 LLVMAddress address = LLVMMemory.allocateMemory(length);
-                LLVMMemory.memset(address, n * size, (byte) 0);
+                profiledMemSet.memset(address, (byte) 0, length);
                 return address;
             } catch (OutOfMemoryError | ArithmeticException e) {
                 CompilerDirectives.transferToInterpreter();
