@@ -57,6 +57,22 @@ abstract class LLVMNativeConvertNode extends LLVMNode {
 
     public abstract Object executeConvert(VirtualFrame frame, Object arg);
 
+    protected static boolean checkIsPointer(Node isPointer, TruffleObject object) {
+        return ForeignAccess.sendIsPointer(isPointer, object);
+    }
+
+    protected static Node createIsPointer() {
+        return Message.IS_POINTER.createNode();
+    }
+
+    protected static Node createAsPointer() {
+        return Message.AS_POINTER.createNode();
+    }
+
+    protected static Node createToNative() {
+        return Message.TO_NATIVE.createNode();
+    }
+
     static LLVMNativeConvertNode createToNative(Type argType) {
         if (Type.isFunctionOrFunctionPointer(argType)) {
             return FunctionToNativeNodeGen.create();
@@ -85,17 +101,51 @@ abstract class LLVMNativeConvertNode extends LLVMNode {
             return address.getNativeLocation().getVal();
         }
 
-        @Specialization
-        long llvmTruffleObjectToNative(LLVMTruffleObject truffleObject) {
-            return truffleObject.getOffset() + addressToNative(truffleObject.getObject());
+        @SuppressWarnings("unused")
+        @Specialization(guards = "checkIsPointer(isPointer, truffleObject.getObject())")
+        long llvmTruffleObjectToNative(LLVMTruffleObject truffleObject, @Cached("createIsPointer()") Node isPointer, @Cached("createAsPointer()") Node asPointer) {
+            try {
+                return truffleObject.getOffset() + ForeignAccess.sendAsPointer(asPointer, truffleObject.getObject());
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                UnsupportedTypeException.raise(new Object[]{truffleObject});
+                return 0;
+            }
         }
 
-        @Child private Node unbox = Message.UNBOX.createNode();
-
-        @Specialization
-        long addressToNative(TruffleObject address) {
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!checkIsPointer(isPointer, truffleObject.getObject())")
+        long llvmTruffleObjectToNative2(LLVMTruffleObject truffleObject, @Cached("createIsPointer()") Node isPointer, @Cached("createToNative()") Node toNative,
+                        @Cached("createAsPointer()") Node asPointer) {
             try {
-                return (long) ForeignAccess.sendUnbox(unbox, address);
+                TruffleObject n = (TruffleObject) ForeignAccess.sendToNative(toNative, truffleObject.getObject());
+                return truffleObject.getOffset() + ForeignAccess.sendAsPointer(asPointer, n);
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                UnsupportedTypeException.raise(new Object[]{truffleObject});
+                return 0;
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "checkIsPointer(isPointer, address)")
+        long addressToNative(TruffleObject address, @Cached("createIsPointer()") Node isPointer, @Cached("createAsPointer()") Node asPointer) {
+            try {
+                return ForeignAccess.sendAsPointer(asPointer, address);
+            } catch (UnsupportedMessageException | ClassCastException e) {
+                CompilerDirectives.transferToInterpreter();
+                UnsupportedTypeException.raise(new Object[]{address});
+                return 0;
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"!checkIsPointer(isPointer, address)"})
+        long addressToNative(TruffleObject address, @Cached("createIsPointer()") Node isPointer, @Cached("createToNative()") Node toNative,
+                        @Cached("createAsPointer()") Node asPointer) {
+            try {
+                TruffleObject n = (TruffleObject) ForeignAccess.sendToNative(toNative, address);
+                return ForeignAccess.sendAsPointer(asPointer, n);
             } catch (UnsupportedMessageException | ClassCastException e) {
                 CompilerDirectives.transferToInterpreter();
                 UnsupportedTypeException.raise(new Object[]{address});
@@ -111,15 +161,29 @@ abstract class LLVMNativeConvertNode extends LLVMNode {
             return LLVMAddress.fromLong(pointer);
         }
 
-        @Child private Node unbox = Message.UNBOX.createNode();
-
-        @Specialization
-        LLVMAddress nativeToAddress(TruffleObject pointer) {
+        @SuppressWarnings("unused")
+        @Specialization(guards = "checkIsPointer(isPointer, address)")
+        LLVMAddress addressToNative(TruffleObject address, @Cached("createIsPointer()") Node isPointer, @Cached("createAsPointer()") Node asPointer) {
             try {
-                return LLVMAddress.fromLong((long) ForeignAccess.sendUnbox(unbox, pointer));
-            } catch (UnsupportedMessageException e) {
+                return LLVMAddress.fromLong(ForeignAccess.sendAsPointer(asPointer, address));
+            } catch (UnsupportedMessageException | ClassCastException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
+                UnsupportedTypeException.raise(new Object[]{address});
+                return LLVMAddress.nullPointer();
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"!checkIsPointer(isPointer, address)"})
+        LLVMAddress addressToNative(TruffleObject address, @Cached("createIsPointer()") Node isPointer, @Cached("createToNative()") Node toNative,
+                        @Cached("createAsPointer()") Node asPointer) {
+            try {
+                TruffleObject n = (TruffleObject) ForeignAccess.sendToNative(toNative, address);
+                return LLVMAddress.fromLong(ForeignAccess.sendAsPointer(asPointer, n));
+            } catch (UnsupportedMessageException | ClassCastException e) {
+                CompilerDirectives.transferToInterpreter();
+                UnsupportedTypeException.raise(new Object[]{address});
+                return LLVMAddress.nullPointer();
             }
         }
     }

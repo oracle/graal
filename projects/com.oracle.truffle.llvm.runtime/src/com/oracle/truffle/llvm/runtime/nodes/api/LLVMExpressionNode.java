@@ -225,20 +225,21 @@ public abstract class LLVMExpressionNode extends LLVMNode {
             }
         }
 
-        @Child private Node unbox = Message.UNBOX.createNode();
-        @Child private Node isBoxed = Message.IS_BOXED.createNode();
+        @Child private Node isPointer = Message.IS_POINTER.createNode();
+        @Child private Node asPointer = Message.AS_POINTER.createNode();
         @Child private Node isNull = Message.IS_NULL.createNode();
+        @Child private Node toNative = Message.TO_NATIVE.createNode();
 
         @Specialization(guards = "notLLVM(pointer)")
         LLVMAddress nativeToAddress(TruffleObject pointer) {
             try {
                 if (ForeignAccess.sendIsNull(isNull, pointer)) {
                     return LLVMAddress.nullPointer();
-                } else if (ForeignAccess.sendIsBoxed(isBoxed, pointer)) {
-                    return LLVMAddress.fromLong((long) ForeignAccess.sendUnbox(unbox, pointer));
+                } else if (ForeignAccess.sendIsPointer(isPointer, pointer)) {
+                    return LLVMAddress.fromLong(ForeignAccess.sendAsPointer(asPointer, pointer));
                 } else {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new IllegalStateException("Cannot convert " + pointer + " to LLVMAddress");
+                    TruffleObject n = (TruffleObject) ForeignAccess.sendToNative(toNative, pointer);
+                    return LLVMAddress.fromLong(ForeignAccess.sendAsPointer(asPointer, n));
                 }
             } catch (UnsupportedMessageException | ClassCastException e) {
                 CompilerDirectives.transferToInterpreter();
