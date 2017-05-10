@@ -26,7 +26,7 @@
 
 import os
 from os.path import join, exists, getmtime
-from argparse import ArgumentParser
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import re
 import zipfile
 import subprocess
@@ -228,13 +228,33 @@ def _nodeCostDump(args, extraVMarguments=None):
     else:
         print out.data
 
+def _ctw_jvmci_export_args():
+    """
+    Gets the VM args needed to export JVMCI API required by CTW. 
+    """
+    if isJDK8:
+        return ['-XX:-UseJVMCIClassLoader']
+    else:
+        return ['--add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot=ALL-UNNAMED',
+                '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
+                '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
+                '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED']
+
+def _ctw_system_properties_suffix():
+    out = mx.OutputCapture()
+    out.data = 'System properties for CTW:\n\n'
+    args = ['-XX:+EnableJVMCI'] + _ctw_jvmci_export_args() 
+    args.extend(['-cp', mx.classpath('org.graalvm.compiler.hotspot.test', jdk=jdk),
+            '-DCompileTheWorld.Help=true', 'org.graalvm.compiler.hotspot.test.CompileTheWorld'])
+    run_vm(args, out=out)
+    return out.data
 
 def ctw(args, extraVMarguments=None):
     """run CompileTheWorld"""
 
     defaultCtwopts = 'Inline=false'
 
-    parser = ArgumentParser(prog='mx ctw')
+    parser = ArgumentParser(prog='mx ctw', formatter_class=RawDescriptionHelpFormatter, epilog=_ctw_system_properties_suffix())
     parser.add_argument('--ctwopts', action='store', help='space separated JVMCI options used for CTW compilations (default: --ctwopts="' + defaultCtwopts + '")', default=defaultCtwopts, metavar='<options>')
     parser.add_argument('--cp', '--jar', action='store', help='jar or class path denoting classes to compile', metavar='<path>')
     if not isJDK8:
@@ -271,7 +291,8 @@ def ctw(args, extraVMarguments=None):
         else:
             if cp is not None:
                 vmargs.append('-DCompileTheWorld.Classpath=' + cp)
-            vmargs.extend(['-XX:-UseJVMCIClassLoader', '-cp', mx.classpath('org.graalvm.compiler.hotspot.test', jdk=jdk), 'org.graalvm.compiler.hotspot.test.CompileTheWorld'])
+            vmargs.extend(_ctw_jvmci_export_args() + ['-cp', mx.classpath('org.graalvm.compiler.hotspot.test', jdk=jdk)])
+            mainClassAndArgs = ['org.graalvm.compiler.hotspot.test.CompileTheWorld']
     else:
         if _is_jvmci_enabled(vmargs):
             # To be able to load all classes in the JRT with Class.forName,
@@ -284,17 +305,12 @@ def ctw(args, extraVMarguments=None):
                 vmargs.append('-DCompileTheWorld.limitmods=' + args.limitmods)
             if cp is not None:
                 vmargs.append('-DCompileTheWorld.Classpath=' + cp)
-            vmargs.append('--add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot=ALL-UNNAMED')
-            vmargs.append('--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED')
-            vmargs.append('--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED')
-            vmargs.append('--add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED')
-            vmargs.extend(['-cp', mx.classpath('org.graalvm.compiler.hotspot.test', jdk=jdk)])
+            vmargs.extend(_ctw_jvmci_export_args() + ['-cp', mx.classpath('org.graalvm.compiler.hotspot.test', jdk=jdk)])
             mainClassAndArgs = ['org.graalvm.compiler.hotspot.test.CompileTheWorld']
         else:
             vmargs.append('-XX:+CompileTheWorld')
 
     run_vm(vmargs + _remove_empty_entries(extraVMarguments) + mainClassAndArgs)
-
 
 def verify_jvmci_ci_versions(args):
     """
