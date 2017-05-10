@@ -467,6 +467,43 @@ public final class JavaInterop {
         return tmap.cloneInternal(includeInternal);
     }
 
+    /**
+     * A message to find out Java class for {@link TruffleObject}s wrapping plain
+     * {@link #asTruffleObject(java.lang.Object) Java objects}. The receiver of the message shall be
+     * an object created via {@link #asTruffleObject(java.lang.Object) asTruffleObject(original)}
+     * method and it is supposed to return the same object as
+     * {@link #asTruffleObject(java.lang.Object) asTruffleObject(original.getClass())}.
+     * <p>
+     * not yet public
+     */
+    static final Message CLASS_MESSAGE = ClassMessage.INSTANCE;
+
+    /**
+     * Finds a Java class representation for the provided object. If the object was created via
+     * {@link #asTruffleObject(java.lang.Object) asTruffleObject(original)} call, then it is
+     * unwrapped and the result is equal to {@link #asTruffleObject(java.lang.Object)
+     * asTruffleObject(original.getClass())}.
+     * <p>
+     * This method works only on objects that wrap plain Java objects.
+     *
+     * @param obj object expected to be created by {@link #asTruffleObject(java.lang.Object)} or
+     *            similar methods
+     * @return object representing {@link #asTruffleObject(java.lang.Object) wrapper} around
+     *         original Java object's {@link Object#getClass() type} if any. Otherwise
+     *         <code>null</code>
+     * @since 0.26
+     */
+    public static TruffleObject toJavaClass(TruffleObject obj) {
+        CompilerAsserts.neverPartOfCompilation();
+        try {
+            return (TruffleObject) ForeignAccess.send(CLASS_MESSAGE.createNode(), obj);
+        } catch (UnsupportedMessageException ex) {
+            return null;
+        } catch (InteropException ex) {
+            throw ex.raise();
+        }
+    }
+
     private static <T> Method functionalInterfaceMethod(Class<T> functionalType) {
         if (!functionalType.isInterface()) {
             return null;

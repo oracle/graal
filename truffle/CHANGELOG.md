@@ -18,6 +18,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added [Cached.dimensions()](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/dsl/Cached.html) to specify compilation finalness of cached arrays.
 * [SuspendedEvent.prepareStepOut](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/debug/SuspendedEvent.html#prepareStepOut-int-) has a `stepCount` argument for consistency with other prepare methods. The no-argument method is deprecated.
 * Multiple calls to `SuspendedEvent.prepare*()` methods accumulate the requests to create a composed action. This allows creation of debugging meta-actions.
+* [JavaInterop.toJavaClass](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/interop/java/JavaInterop.html#toJavaClass) can find proper Java class for a wrapped object
 
 ## Version 0.25
 3-Apr-2017
