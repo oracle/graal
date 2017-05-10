@@ -1,4 +1,4 @@
-java8: {name: labsjdk, version: "8u121-jvmci-0.24", platformspecific: true}
+java8: {name: labsjdk, version: "8u121-jvmci-0.26", platformspecific: true}
 eclipse: {name: eclipse, version: "4.5.2", platformspecific: true}
 dragonegg: {name: dragonegg, version: "3.2", platformspecific: true}
 
