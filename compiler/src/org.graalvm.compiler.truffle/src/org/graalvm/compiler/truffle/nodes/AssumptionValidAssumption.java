@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.truffle.nodes;
 
-
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
 
