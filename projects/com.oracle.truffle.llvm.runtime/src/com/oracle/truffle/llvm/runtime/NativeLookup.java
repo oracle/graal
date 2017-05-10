@@ -223,7 +223,7 @@ public final class NativeLookup {
         }
     }
 
-    TruffleObject getNativeFunction(String name, String signature) {
+    public TruffleObject getNativeFunction(String name, String signature) {
         CompilerAsserts.neverPartOfCompilation();
         TruffleObject nativeSymbol = getNativeFunction(name);
         if (nativeSymbol != null) {

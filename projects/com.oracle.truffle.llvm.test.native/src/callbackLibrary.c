@@ -28,6 +28,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdlib.h>
+#include <stdio.h>
 
 struct container {
   int (*callback)(int p1, int p2);
@@ -46,6 +47,11 @@ int call_callback(void *container, int p2) {
   return c->callback(c->p1, p2);
 }
 
+int call_callback2(void *container) {
+  struct container *c = (struct container *) container;
+  return c->callback(20, 22);
+}
+
 
 int nullPointerFunctionTest(void (*foo)()) {
 	if (foo == 0) {
@@ -58,3 +64,4 @@ int nullPointerFunctionTest(void (*foo)()) {
 int callbackPointerArgTest(int (*callback)(void *), void *arg) {
     return callback(arg);
 }
+

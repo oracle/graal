@@ -53,12 +53,12 @@ public abstract class LLVMToI32Node extends LLVMExpressionNode {
 
     @Specialization
     public int executeI32(LLVMFunctionDescriptor from) {
-        return from.getFunctionIndex();
+        return (int) from.getFunctionIndex();
     }
 
     @Specialization
     public int executeI32(LLVMFunctionHandle from) {
-        return from.getFunctionIndex();
+        return (int) from.getFunctionIndex();
     }
 
     @Specialization

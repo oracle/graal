@@ -113,7 +113,7 @@ abstract class LLVMForeignCallNode extends LLVMNode {
     @SuppressWarnings("unused")
     @Specialization(guards = {"function.getFunctionIndex() == functionIndex", "cachedLength == arguments.length"})
     public Object callDirect(LLVMFunctionDescriptor function, Object[] arguments,
-                    @Cached("function.getFunctionIndex()") int functionIndex,
+                    @Cached("function.getFunctionIndex()") long functionIndex,
                     @Cached("create(getCallTarget(function))") DirectCallNode callNode,
                     @Cached("createFastPackArguments(function, arguments.length)") PackForeignArgumentsNode packNode,
                     @Cached("arguments.length") int cachedLength,

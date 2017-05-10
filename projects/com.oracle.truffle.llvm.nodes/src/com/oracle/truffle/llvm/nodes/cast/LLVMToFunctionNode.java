@@ -46,21 +46,21 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
 public abstract class LLVMToFunctionNode extends LLVMExpressionNode {
 
-    @Child private ToLLVMNode toInt = ToLLVMNode.createNode(int.class);
+    @Child private ToLLVMNode toLong = ToLLVMNode.createNode(long.class);
 
     @Specialization
     public LLVMFunction executeLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
-        return new LLVMFunctionHandle((int) toInt.executeWithTarget(from.getValue()));
+        return new LLVMFunctionHandle((long) toLong.executeWithTarget(from.getValue()));
     }
 
     @Specialization
     public LLVMFunction executeI64(long from) {
-        return new LLVMFunctionHandle((int) from);
+        return new LLVMFunctionHandle(from);
     }
 
     @Specialization
     public LLVMFunction executeI64(LLVMAddress from) {
-        return new LLVMFunctionHandle((int) from.getVal());
+        return new LLVMFunctionHandle(from.getVal());
     }
 
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();

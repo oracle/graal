@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -356,7 +357,12 @@ public class LLVMContext {
     }
 
     public LLVMFunctionDescriptor lookup(LLVMFunction handle) {
-        return functionDescriptors.get(handle.getFunctionIndex());
+        if (handle.getFunctionIndex() < Integer.MAX_VALUE) {
+            return functionDescriptors.get((int) handle.getFunctionIndex());
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError("Probably not a valid Sulong function index: " + handle.getFunctionIndex());
+        }
     }
 
     public List<LLVMFunctionDescriptor> getFunctionDescriptors() {
@@ -388,7 +394,12 @@ public class LLVMContext {
     public LLVMFunctionDescriptor getDescriptorForName(String name) {
         CompilerAsserts.neverPartOfCompilation();
         if (llvmIRFunctions.containsKey(name)) {
-            return functionDescriptors.get(llvmIRFunctions.get(name).getFunctionIndex());
+            if (llvmIRFunctions.get(name).getFunctionIndex() < Integer.MAX_VALUE) {
+                return functionDescriptors.get((int) llvmIRFunctions.get(name).getFunctionIndex());
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError("Probably not a valid Sulong function index: " + llvmIRFunctions.get(name).getFunctionIndex());
+            }
         }
         throw new IllegalStateException();
     }

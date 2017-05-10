@@ -34,14 +34,14 @@ import com.oracle.truffle.api.CompilerDirectives.ValueType;
 @ValueType
 public final class LLVMFunctionHandle implements LLVMFunction {
 
-    private final int functionIndex;
+    private final long functionIndex;
 
-    public LLVMFunctionHandle(int functionIndex) {
+    public LLVMFunctionHandle(long functionIndex) {
         this.functionIndex = functionIndex;
     }
 
     @Override
-    public int getFunctionIndex() {
+    public long getFunctionIndex() {
         return functionIndex;
     }
 }

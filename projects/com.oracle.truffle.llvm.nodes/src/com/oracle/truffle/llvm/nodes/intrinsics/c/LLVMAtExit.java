@@ -57,7 +57,7 @@ public abstract class LLVMAtExit extends LLVMIntrinsic {
 
     @Specialization
     @TruffleBoundary
-    public int doInt(LLVMFunction func) {
+    public long doInt(LLVMFunction func) {
         CompilerDirectives.transferToInterpreter();
         LLVMContext context = getContext();
 

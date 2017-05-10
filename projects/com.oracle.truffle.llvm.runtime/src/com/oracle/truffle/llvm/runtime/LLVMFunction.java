@@ -31,6 +31,6 @@ package com.oracle.truffle.llvm.runtime;
 
 public interface LLVMFunction {
 
-    int getFunctionIndex();
+    long getFunctionIndex();
 
 }

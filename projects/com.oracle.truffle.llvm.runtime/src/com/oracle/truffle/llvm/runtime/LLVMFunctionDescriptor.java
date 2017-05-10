@@ -48,7 +48,7 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
 
     private final String functionName;
     private final FunctionType type;
-    private final int functionId;
+    private final long functionId;
     private final LLVMContext context;
 
     @CompilationFinal private Function function;
@@ -185,7 +185,7 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
         return function;
     }
 
-    private LLVMFunctionDescriptor(LLVMContext context, String name, FunctionType type, int functionId) {
+    private LLVMFunctionDescriptor(LLVMContext context, String name, FunctionType type, long functionId) {
         CompilerAsserts.neverPartOfCompilation();
         this.context = context;
         this.functionName = name;
@@ -195,7 +195,7 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
         this.function = new UnresolvedFunction();
     }
 
-    public static LLVMFunctionDescriptor create(LLVMContext context, String name, FunctionType type, int functionId) {
+    public static LLVMFunctionDescriptor create(LLVMContext context, String name, FunctionType type, long functionId) {
         LLVMFunctionDescriptor func = new LLVMFunctionDescriptor(context, name, type, functionId);
         return func;
     }
@@ -258,7 +258,7 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
      * @return the function's index
      */
     @Override
-    public int getFunctionIndex() {
+    public long getFunctionIndex() {
         return functionId;
     }
 
@@ -277,12 +277,12 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
 
     @Override
     public int compareTo(LLVMFunctionDescriptor o) {
-        return Integer.compare(functionId, o.getFunctionIndex());
+        return Long.compare(functionId, o.getFunctionIndex());
     }
 
     @Override
     public int hashCode() {
-        return functionId;
+        return (int) functionId;
     }
 
     @Override
