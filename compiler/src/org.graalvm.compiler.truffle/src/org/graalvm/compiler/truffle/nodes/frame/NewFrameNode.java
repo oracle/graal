@@ -137,23 +137,21 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         final JavaConstant defaultValue = constantReflection.readFieldValue(knownFields.fieldFrameDescriptorDefaultValue, frameDescriptor);
         this.frameDefaultValue = ConstantNode.forConstant(defaultValue, metaAccess, graph);
 
-        {
-            final JavaConstant slots = constantReflection.readFieldValue(knownFields.fieldFrameDescriptorSlots, frameDescriptor);
-            final JavaConstant slotsElementData = constantReflection.readFieldValue(knownFields.fieldArrayListElementData, slots);
-            final int length = constantReflection.readArrayLength(slotsElementData);
-            final byte[] slotsData = new byte[length];
-            int count = 0;
-            for (int i = 0; i < length; i++) {
-                final JavaConstant slot = constantReflection.readArrayElement(slotsElementData, i);
-                if (slot.isNonNull()) {
-                    final JavaConstant slotKind = constantReflection.readFieldValue(knownFields.fieldFrameSlotKind, slot);
-                    final JavaConstant slotKindTag = constantReflection.readFieldValue(knownFields.fieldFrameSlotKindTag, slotKind);
-                    slotsData[count++] = (byte) slotKindTag.asInt();
-                }
+        final JavaConstant slots = constantReflection.readFieldValue(knownFields.fieldFrameDescriptorSlots, frameDescriptor);
+        final JavaConstant slotsElementData = constantReflection.readFieldValue(knownFields.fieldArrayListElementData, slots);
+        final int length = constantReflection.readArrayLength(slotsElementData);
+        final byte[] slotsData = new byte[length];
+        int count = 0;
+        for (int i = 0; i < length; i++) {
+            final JavaConstant slot = constantReflection.readArrayElement(slotsElementData, i);
+            if (slot.isNonNull()) {
+                final JavaConstant slotKind = constantReflection.readFieldValue(knownFields.fieldFrameSlotKind, slot);
+                final JavaConstant slotKindTag = constantReflection.readFieldValue(knownFields.fieldFrameSlotKindTag, slotKind);
+                slotsData[count++] = (byte) slotKindTag.asInt();
             }
-            this.frameSlots = slotsData;
-            this.frameSlotsUsed = count;
         }
+        this.frameSlots = slotsData;
+        this.frameSlotsUsed = count;
 
         ResolvedJavaField[] frameFields = frameType.getInstanceFields(true);
 
