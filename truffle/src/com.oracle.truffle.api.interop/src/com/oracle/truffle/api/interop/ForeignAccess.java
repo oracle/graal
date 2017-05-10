@@ -687,7 +687,8 @@ public final class ForeignAccess {
             CompilerDirectives.transferToInterpreter();
             try {
                 TruffleObject keys = sendKeys(Message.KEYS.createNode(), receiver, true);
-                int size = (Integer) sendGetSize(Message.GET_SIZE.createNode(), keys);
+                Number sizeNumber = (Number) sendGetSize(Message.GET_SIZE.createNode(), keys);
+                int size = sizeNumber.intValue();
                 Node readNode = Message.READ.createNode();
                 for (int i = 0; i < size; i++) {
                     Object key = sendRead(readNode, keys, i);
@@ -697,6 +698,22 @@ public final class ForeignAccess {
                     }
                 }
             } catch (UnsupportedMessageException | UnknownIdentifierException uex) {
+            }
+            try {
+                boolean hasSize = sendHasSize(Message.HAS_SIZE.createNode(), receiver);
+                if (hasSize && identifier instanceof Number) {
+                    int id = ((Number) identifier).intValue();
+                    if (id < 0 || id != ((Number) identifier).doubleValue()) {
+                        // identifier is some wild double number
+                        return 0;
+                    }
+                    Number sizeNumber = (Number) sendGetSize(Message.GET_SIZE.createNode(), receiver);
+                    int size = sizeNumber.intValue();
+                    if (id < size) {
+                        return 0b111;
+                    }
+                }
+            } catch (UnsupportedMessageException uex) {
             }
             return 0;
         } catch (InteropException e) {
