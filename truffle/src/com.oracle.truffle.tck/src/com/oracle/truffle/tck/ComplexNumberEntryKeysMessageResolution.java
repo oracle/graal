@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,44 +24,45 @@
  */
 package com.oracle.truffle.tck;
 
-import com.oracle.truffle.api.interop.KeyInfo;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 
-@MessageResolution(receiverType = StructuredDataEntry.class)
-class StructuredDataEntryMessageResolution {
+@MessageResolution(receiverType = ComplexNumberEntryKeys.class)
+class ComplexNumberEntryKeysMessageResolution {
 
-    @Resolve(message = "KEYS")
-    abstract static class StructuredDataEntryKeysNode extends Node {
+    @Resolve(message = "HAS_SIZE")
+    abstract static class VarNamesHasSizeNode extends Node {
 
-        public Object access(StructuredDataEntry data) {
-            return JavaInterop.asTruffleObject(data.getSchema().getNames());
+        @SuppressWarnings("unused")
+        public Object access(ComplexNumberEntryKeys varNames) {
+            return true;
         }
     }
 
-    @Resolve(message = "KEY_INFO")
-    abstract static class StructuredDataEntryKeyInfoNode extends Node {
+    @Resolve(message = "GET_SIZE")
+    abstract static class VarNamesGetSizeNode extends Node {
 
-        private static final int readable = KeyInfo.newBuilder().setReadable(true).build();
-
-        public Object access(StructuredDataEntry data, Object identifier) {
-            if (data.getSchema().getNames().contains(identifier)) {
-                return readable;
-            } else {
-                return 0;
-            }
+        @SuppressWarnings("unused")
+        public Object access(ComplexNumberEntryKeys varNames) {
+            return 2;
         }
     }
 
     @Resolve(message = "READ")
-    abstract static class StructuredDataEntryReadNode extends Node {
+    abstract static class VarNamesReadNode extends Node {
 
-        public Object access(StructuredDataEntry data, String name) {
-            return data.getSchema().get(data.getBuffer(), data.getIndex(), name);
+        @SuppressWarnings("unused")
+        public Object access(ComplexNumberEntryKeys varNames, int index) {
+            if (index == 0) {
+                return ComplexNumber.REAL_IDENTIFIER;
+            } else if (index == 1) {
+                return ComplexNumber.IMAGINARY_IDENTIFIER;
+            }
+            CompilerDirectives.transferToInterpreter();
+            throw new IndexOutOfBoundsException("Index " + index + " out of bounds (idx 0 = real; idx 1 = imag");
         }
-
     }
 
 }

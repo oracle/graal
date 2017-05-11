@@ -645,6 +645,33 @@ public class JavaInteropTest {
         assertFalse(KeyInfo.isInvocable(keyInfo));
         keyInfo = JavaInterop.getKeyInfo(ipobj, "p7");
         assertEquals(0, keyInfo);
+
+        TruffleObject aobj = new ArrayTruffleObject(100);
+        testArrayObject(aobj, 100);
+        aobj = JavaInterop.asTruffleObject(new String[]{"A", "B", "C", "D"});
+        testArrayObject(aobj, 4);
+    }
+
+    private static void testArrayObject(TruffleObject array, int length) {
+        int keyInfo;
+        for (int i = 0; i < length; i++) {
+            keyInfo = JavaInterop.getKeyInfo(array, i);
+            assertTrue(KeyInfo.isReadable(keyInfo));
+            assertTrue(KeyInfo.isWritable(keyInfo));
+            assertFalse(KeyInfo.isInvocable(keyInfo));
+            assertFalse(KeyInfo.isInternal(keyInfo));
+            keyInfo = JavaInterop.getKeyInfo(array, (long) i);
+            assertTrue(KeyInfo.isReadable(keyInfo));
+            keyInfo = JavaInterop.getKeyInfo(array, (double) i);
+            assertTrue(KeyInfo.isReadable(keyInfo));
+        }
+        assertEquals(0, JavaInterop.getKeyInfo(array, length));
+        assertEquals(0, JavaInterop.getKeyInfo(array, 1.12));
+        assertEquals(0, JavaInterop.getKeyInfo(array, -1));
+        assertEquals(0, JavaInterop.getKeyInfo(array, 10L * length));
+        assertEquals(0, JavaInterop.getKeyInfo(array, Double.NEGATIVE_INFINITY));
+        assertEquals(0, JavaInterop.getKeyInfo(array, Double.NaN));
+        assertEquals(0, JavaInterop.getKeyInfo(array, Double.POSITIVE_INFINITY));
     }
 
     @Test
@@ -809,6 +836,56 @@ public class JavaInteropTest {
                 public Object access(NoKeyInfoObject receiver) {
                     assert receiver != null;
                     return JavaInterop.asTruffleObject(new String[]{"p1", "p2", "p3", "p4", "p5", "p6"});
+                }
+            }
+        }
+    }
+
+    static final class ArrayTruffleObject implements TruffleObject {
+
+        private final int size;
+
+        ArrayTruffleObject(int size) {
+            this.size = size;
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return ArrayTruffleObjectMessageResolutionForeign.ACCESS;
+        }
+
+        public static boolean isInstance(TruffleObject obj) {
+            return obj instanceof ArrayTruffleObject;
+        }
+
+        @MessageResolution(receiverType = ArrayTruffleObject.class)
+        static final class ArrayTruffleObjectMessageResolution {
+
+            @Resolve(message = "HAS_SIZE")
+            public abstract static class ArrayHasSizeNode extends Node {
+
+                public Object access(ArrayTruffleObject receiver) {
+                    assert receiver != null;
+                    return true;
+                }
+            }
+
+            @Resolve(message = "GET_SIZE")
+            public abstract static class ArrayGetSizeNode extends Node {
+
+                public Object access(ArrayTruffleObject receiver) {
+                    return receiver.size;
+                }
+            }
+
+            @Resolve(message = "READ")
+            public abstract static class ArrayReadSizeNode extends Node {
+
+                public Object access(ArrayTruffleObject receiver, int index) {
+                    if (index < 0 || index >= receiver.size) {
+                        throw new ArrayIndexOutOfBoundsException(index);
+                    }
+                    return receiver.size - index;
                 }
             }
         }
