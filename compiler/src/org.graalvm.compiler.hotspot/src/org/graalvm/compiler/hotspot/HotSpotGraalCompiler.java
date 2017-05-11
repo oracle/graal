@@ -100,7 +100,8 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         if (graalRuntime.isShutdown()) {
             return HotSpotCompilationRequestResult.failure(String.format("Shutdown entered"), false);
         }
-        OptionValues options = graalRuntime.getOptions();
+        OptionValues options = graalRuntime.getOptions(request.getMethod());
+
         if (graalRuntime.isBootstrapping()) {
             if (GraalDebugConfig.Options.BootstrapInitializeOnly.getValue(options)) {
                 return HotSpotCompilationRequestResult.failure(String.format("Skip compilation because %s is enabled", GraalDebugConfig.Options.BootstrapInitializeOnly.getName()), true);

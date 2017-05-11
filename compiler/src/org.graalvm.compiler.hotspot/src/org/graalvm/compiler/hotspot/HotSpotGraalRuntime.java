@@ -80,6 +80,7 @@ import jdk.vm.ci.common.InitTimer;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCIBackend;
 
 //JaCoCo Exclude
@@ -110,6 +111,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     private final GraalHotSpotVMConfig config;
 
     private final OptionValues options;
+    private final HotSpotGraalMBean mBean;
 
     /**
      * @param compilerConfigurationFactory factory for the compiler configuration
@@ -126,6 +128,8 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         } else {
             options = initialOptions;
         }
+
+        this.mBean = HotSpotGraalMBean.create();
 
         snippetCounterGroups = GraalOptions.SnippetCounters.getValue(options) ? new ArrayList<>() : null;
         CompilerConfiguration compilerConfiguration = compilerConfigurationFactory.createCompilerConfiguration();
@@ -245,7 +249,12 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
     @Override
     public OptionValues getOptions() {
-        return options;
+        return mBean == null ? options : mBean.optionsFor(options, null);
+    }
+
+    @Override
+    public OptionValues getOptions(ResolvedJavaMethod forMethod) {
+        return mBean == null ? options : mBean.optionsFor(options, forMethod);
     }
 
     @Override
