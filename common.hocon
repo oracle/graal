@@ -15,7 +15,7 @@ mx : {}
 common : ${mx} {
   timelimit : "30:00"
   catch_files : [
-    "Graal diagnostic output saved in (?P<filename>.+\\.zip)"
+    "Graal diagnostic output saved in (?P<filename>.+\.zip)"
   ]
 }
 
