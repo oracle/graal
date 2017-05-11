@@ -248,6 +248,11 @@ public class LazyInitializationTest {
             return true;
         }
 
+        if (cls.getName().equals("org.graalvm.compiler.hotspot.HotSpotGraalMBean")) {
+            // MBean is OK and fast
+            return true;
+        }
+
         if (hotSpotVMEventListener != null && hotSpotVMEventListener.isAssignableFrom(cls)) {
             // HotSpotVMEventListeners need to be loaded on JVMCI startup.
             return true;
