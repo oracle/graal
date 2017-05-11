@@ -56,11 +56,11 @@ public class HotSpotGraalMBeanTest {
         HotSpotGraalMBean bean = HotSpotGraalMBean.create();
         assertNotNull("Bean created", bean);
 
-        assertNull("It is not registered yet", bean.ensureRegistered());
+        assertNull("It is not registered yet", bean.ensureRegistered(true));
 
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
 
-        assertNotNull("Now the bean thinks it is registered", name = bean.ensureRegistered());
+        assertNotNull("Now the bean thinks it is registered", name = bean.ensureRegistered(true));
 
         assertNotNull("And the bean is found", server.getObjectInstance(name));
     }
@@ -79,7 +79,7 @@ public class HotSpotGraalMBeanTest {
         assertNotNull("Server is started", ManagementFactory.getPlatformMBeanServer());
 
         HotSpotGraalMBean realBean = HotSpotGraalMBean.create();
-        assertNotNull("Bean is registered", name = realBean.ensureRegistered());
+        assertNotNull("Bean is registered", name = realBean.ensureRegistered(false));
 
         ObjectInstance bean = ManagementFactory.getPlatformMBeanServer().getObjectInstance(name);
         assertNotNull("Bean is registered", bean);

@@ -78,7 +78,7 @@ public final class HotSpotGraalMBean implements DynamicMBean {
                 return true;
             }
         } else {
-            return true;
+            return false;
         }
     }
 
@@ -88,12 +88,12 @@ public final class HotSpotGraalMBean implements DynamicMBean {
         return mbean;
     }
 
-    public ObjectName ensureRegistered() {
+    public ObjectName ensureRegistered(boolean check) {
         for (int cnt = 0;; cnt++) {
             if (registered != null) {
                 return registered;
             }
-            if (!isMXServerOn()) {
+            if (check && !isMXServerOn()) {
                 return null;
             }
             try {
@@ -113,7 +113,7 @@ public final class HotSpotGraalMBean implements DynamicMBean {
 
     @SuppressWarnings("unused")
     OptionValues optionsFor(OptionValues values, ResolvedJavaMethod forMethod) {
-        ensureRegistered();
+        ensureRegistered(true);
         if (changes.isEmpty()) {
             return values;
         }
