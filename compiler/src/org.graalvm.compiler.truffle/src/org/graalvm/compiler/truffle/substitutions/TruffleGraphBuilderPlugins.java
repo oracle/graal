@@ -405,7 +405,7 @@ public class TruffleGraphBuilderPlugins {
 
                 final ValueNode nonNullArguments = b.add(PiNode.create(args, StampFactory.objectNonNull(StampTool.typeReferenceOrNull(args))));
                 final NewFrameNode node = new NewFrameNode(knownTruffleFields, b.getMetaAccess(), b.getConstantReflection(), b.getGraph(),
-                        knownTruffleFields.classFrameClass, descriptor, nonNullArguments);
+                                knownTruffleFields.classFrameClass, descriptor, nonNullArguments);
                 b.addPush(JavaKind.Object, node);
                 return true;
             }
