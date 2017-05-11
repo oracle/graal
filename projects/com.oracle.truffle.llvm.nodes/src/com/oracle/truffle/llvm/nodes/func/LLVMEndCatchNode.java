@@ -131,7 +131,7 @@ public final class LLVMEndCatchNode extends LLVMExpressionNode {
             getDecHandlerCount().dec(ptr);
             LLVMAddress destructorAddress = getGetDestructor().get(ptr);
             if (getGetHandlerCount().get(ptr) <= 0 && destructorAddress.getVal() != 0) {
-                LLVMFunctionHandle destructor = new LLVMFunctionHandle(destructorAddress.getVal());
+                LLVMFunctionHandle destructor = LLVMFunctionHandle.createHandle(destructorAddress.getVal());
                 dispatch.executeDispatch(frame, destructor, new Object[]{stackPointer.executeLLVMAddress(frame), getGetThrownObject().getThrownObject(ptr)});
             }
             return null;

@@ -78,7 +78,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
      * Function is defined in the user program (available as LLVM IR)
      */
 
-    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"function.getFunctionIndex() == cachedFunction.getFunctionIndex()", "cachedFunction.isLLVMIRFunction()"})
+    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"function.getFunctionPointer() == cachedFunction.getFunctionPointer()", "cachedFunction.isLLVMIRFunction()"})
     protected static Object doDirect(LLVMFunctionDescriptor function, Object[] arguments,
                     @Cached("function") LLVMFunctionDescriptor cachedFunction,
                     @Cached("create(cachedFunction.getLLVMIRFunction())") DirectCallNode callNode) {
@@ -105,7 +105,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return directCallNode;
     }
 
-    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"function.getFunctionIndex() == cachedFunction.getFunctionIndex()", "cachedFunction.isNativeIntrinsicFunction()"})
+    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"function.getFunctionPointer() == cachedFunction.getFunctionPointer()", "cachedFunction.isNativeIntrinsicFunction()"})
     protected Object doDirectIntrinsic(LLVMFunctionDescriptor function, Object[] arguments,
                     @Cached("function") LLVMFunctionDescriptor cachedFunction,
                     @Cached("getIntrinsificationCallNode(cachedFunction.getNativeIntrinsic())") DirectCallNode callNode) {
@@ -123,7 +123,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
      * available. We do a native call.
      */
 
-    @Specialization(limit = "10", guards = {"descriptor.getFunctionIndex() == cachedDescriptor.getFunctionIndex()", "descriptor.isNativeFunction()"})
+    @Specialization(limit = "10", guards = {"descriptor.getFunctionPointer() == cachedDescriptor.getFunctionPointer()", "descriptor.isNativeFunction()"})
     protected Object doCachedNative(VirtualFrame frame, LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached("descriptor") LLVMFunctionDescriptor cachedDescriptor,
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,

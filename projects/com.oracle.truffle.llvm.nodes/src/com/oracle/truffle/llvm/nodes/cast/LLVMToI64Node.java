@@ -54,12 +54,12 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
 
     @Specialization
     public long executeI64(LLVMFunctionDescriptor from) {
-        return from.getFunctionIndex();
+        return from.getFunctionPointer();
     }
 
     @Specialization
     public long executeI64(LLVMFunctionHandle from) {
-        return from.getFunctionIndex();
+        return from.getFunctionPointer();
     }
 
     @Specialization

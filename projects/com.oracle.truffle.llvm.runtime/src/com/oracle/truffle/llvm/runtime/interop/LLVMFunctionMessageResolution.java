@@ -43,7 +43,7 @@ public class LLVMFunctionMessageResolution {
     public abstract static class ForeignIsNullNode extends Node {
 
         protected Object access(@SuppressWarnings("unused") VirtualFrame frame, LLVMFunctionDescriptor object) {
-            return object.getFunctionIndex() == 0;
+            return object.isNullFunction();
         }
 
     }

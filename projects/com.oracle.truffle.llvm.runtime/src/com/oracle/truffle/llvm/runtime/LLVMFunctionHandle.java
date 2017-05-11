@@ -36,12 +36,37 @@ public final class LLVMFunctionHandle implements LLVMFunction {
 
     private final long functionIndex;
 
-    public LLVMFunctionHandle(long functionIndex) {
+    private LLVMFunctionHandle(long functionIndex) {
         this.functionIndex = functionIndex;
     }
 
+    public static LLVMFunctionHandle createHandle(long value) {
+        return new LLVMFunctionHandle(value);
+    }
+
     @Override
-    public long getFunctionIndex() {
+    public long getFunctionPointer() {
         return functionIndex;
+    }
+
+    public boolean isSulong() {
+        return LLVMFunction.isSulongFunctionPointer(functionIndex);
+    }
+
+    public boolean isExternNative() {
+        return LLVMFunction.isExternNativeFunctionPointer(functionIndex);
+    }
+
+    public int getSulongFunctionIndex() {
+        return LLVMFunction.getSulongFunctionIndex(functionIndex);
+    }
+
+    @Override
+    public boolean isNullFunction() {
+        if (LLVMFunction.isSulongFunctionPointer(functionIndex)) {
+            return LLVMFunction.getSulongFunctionIndex(functionIndex) == 0;
+        } else {
+            return functionIndex == 0;
+        }
     }
 }

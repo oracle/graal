@@ -31,6 +31,30 @@ package com.oracle.truffle.llvm.runtime;
 
 public interface LLVMFunction {
 
-    long getFunctionIndex();
+    long SULONG_FUNCTION_POINTER_TAG = 0xDEAD_FACE_0000_0000L;
+    long UPPER_MASK = 0xFFFF_FFFF_0000_0000L;
+    long LOWER_MASK = 0x0000_0000_FFFF_FFFFL;
+
+    static long tagSulongFunctionPointer(long sulongPointer) {
+        assert (sulongPointer & UPPER_MASK) == 0;
+        return sulongPointer | SULONG_FUNCTION_POINTER_TAG;
+    }
+
+    static int getSulongFunctionIndex(long sulongPointer) {
+        assert isSulongFunctionPointer(sulongPointer);
+        return (int) (sulongPointer & LOWER_MASK);
+    }
+
+    static boolean isSulongFunctionPointer(long functionPointer) {
+        return (functionPointer & UPPER_MASK) == SULONG_FUNCTION_POINTER_TAG;
+    }
+
+    static boolean isExternNativeFunctionPointer(long functionPointer) {
+        return !isSulongFunctionPointer(functionPointer);
+    }
+
+    long getFunctionPointer();
+
+    boolean isNullFunction();
 
 }

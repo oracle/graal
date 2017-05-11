@@ -211,7 +211,7 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
 
         @Specialization
         protected LLVMAddress doLLVMFunction(LLVMFunction address) {
-            return LLVMAddress.fromLong(address.getFunctionIndex());
+            return LLVMAddress.fromLong(address.getFunctionPointer());
         }
 
         @Child private ToLLVMNode toLLVM = ToLLVMNode.createNode(long.class);

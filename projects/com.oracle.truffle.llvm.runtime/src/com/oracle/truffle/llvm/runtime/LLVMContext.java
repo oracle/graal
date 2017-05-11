@@ -42,7 +42,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -128,15 +127,15 @@ public class LLVMContext {
         this.nativeCallStatistics = LLVMOptions.ENGINE.traceNativeCalls() ? new HashMap<>() : null;
         this.llvmIRFunctions = new HashMap<>();
         this.nativeFunctions = new LLVMNativeFunctionsImpl(nativeLookup);
-        this.sigDfl = new LLVMFunctionHandle(0);
-        this.sigIgn = new LLVMFunctionHandle(1);
-        this.sigErr = new LLVMFunctionHandle(-1);
+        this.sigDfl = LLVMFunctionHandle.createHandle(0);
+        this.sigIgn = LLVMFunctionHandle.createHandle(1);
+        this.sigErr = LLVMFunctionHandle.createHandle((-1) & LLVMFunction.LOWER_MASK);
         this.toNative = new IdentityHashMap<>();
         this.toManaged = new HashMap<>();
         this.handlesLock = new Object();
 
         assert currentFunctionIndex == 0;
-        LLVMFunctionDescriptor zeroFunction = LLVMFunctionDescriptor.create(this, ZERO_FUNCTION, new FunctionType(MetaType.UNKNOWN, new Type[0], false), currentFunctionIndex++);
+        LLVMFunctionDescriptor zeroFunction = LLVMFunctionDescriptor.createDescriptor(this, ZERO_FUNCTION, new FunctionType(MetaType.UNKNOWN, new Type[0], false), currentFunctionIndex++);
         this.llvmIRFunctions.put(ZERO_FUNCTION, zeroFunction);
         this.functionDescriptors.add(zeroFunction);
     }
@@ -356,13 +355,9 @@ public class LLVMContext {
         haveLoadedDynamicBitcodeLibraries = true;
     }
 
-    public LLVMFunctionDescriptor lookup(LLVMFunction handle) {
-        if (handle.getFunctionIndex() < Integer.MAX_VALUE) {
-            return functionDescriptors.get((int) handle.getFunctionIndex());
-        } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError("Probably not a valid Sulong function index: " + handle.getFunctionIndex());
-        }
+    public LLVMFunctionDescriptor lookup(LLVMFunctionHandle handle) {
+        assert handle.isSulong();
+        return functionDescriptors.get(handle.getSulongFunctionIndex());
     }
 
     public List<LLVMFunctionDescriptor> getFunctionDescriptors() {
@@ -384,7 +379,7 @@ public class LLVMContext {
             functionDescriptors.add(function);
             llvmIRFunctions.put(name, function);
 
-            assert function.getFunctionIndex() == currentFunctionIndex - 1;
+            assert LLVMFunction.getSulongFunctionIndex(function.getFunctionPointer()) == currentFunctionIndex - 1;
             assert functionDescriptors.get(currentFunctionIndex - 1) == function;
         }
         return function;
@@ -394,12 +389,7 @@ public class LLVMContext {
     public LLVMFunctionDescriptor getDescriptorForName(String name) {
         CompilerAsserts.neverPartOfCompilation();
         if (llvmIRFunctions.containsKey(name)) {
-            if (llvmIRFunctions.get(name).getFunctionIndex() < Integer.MAX_VALUE) {
-                return functionDescriptors.get((int) llvmIRFunctions.get(name).getFunctionIndex());
-            } else {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError("Probably not a valid Sulong function index: " + llvmIRFunctions.get(name).getFunctionIndex());
-            }
+            return functionDescriptors.get(LLVMFunction.getSulongFunctionIndex(llvmIRFunctions.get(name).getFunctionPointer()));
         }
         throw new IllegalStateException();
     }

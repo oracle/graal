@@ -111,9 +111,9 @@ abstract class LLVMForeignCallNode extends LLVMNode {
     public abstract Object executeCall(VirtualFrame frame, LLVMFunction function, Object[] arguments);
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"function.getFunctionIndex() == functionIndex", "cachedLength == arguments.length"})
+    @Specialization(guards = {"function.getFunctionPointer() == functionIndex", "cachedLength == arguments.length"})
     public Object callDirect(LLVMFunctionDescriptor function, Object[] arguments,
-                    @Cached("function.getFunctionIndex()") long functionIndex,
+                    @Cached("function.getFunctionPointer()") long functionIndex,
                     @Cached("create(getCallTarget(function))") DirectCallNode callNode,
                     @Cached("createFastPackArguments(function, arguments.length)") PackForeignArgumentsNode packNode,
                     @Cached("arguments.length") int cachedLength,

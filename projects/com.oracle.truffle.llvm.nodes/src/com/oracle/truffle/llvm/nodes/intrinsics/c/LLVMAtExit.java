@@ -29,8 +29,8 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.c;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -42,8 +42,8 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.nodes.literals.LLVMFunctionLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMAddressLiteralNode;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStackFrameNuller;
@@ -57,7 +57,7 @@ public abstract class LLVMAtExit extends LLVMIntrinsic {
 
     @Specialization
     @TruffleBoundary
-    public long doInt(LLVMFunction func) {
+    public long doInt(LLVMFunctionHandle func) {
         CompilerDirectives.transferToInterpreter();
         LLVMContext context = getContext();
 
@@ -79,7 +79,7 @@ public abstract class LLVMAtExit extends LLVMIntrinsic {
 
         context.registerAtExitFunction(callTarget);
 
-        return func.getFunctionIndex();
+        return func.getFunctionPointer();
     }
 
 }

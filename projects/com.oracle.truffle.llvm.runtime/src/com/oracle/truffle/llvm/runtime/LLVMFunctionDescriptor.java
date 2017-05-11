@@ -187,6 +187,7 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
 
     private LLVMFunctionDescriptor(LLVMContext context, String name, FunctionType type, long functionId) {
         CompilerAsserts.neverPartOfCompilation();
+        assert LLVMFunction.isSulongFunctionPointer(functionId);
         this.context = context;
         this.functionName = name;
         this.type = type;
@@ -195,8 +196,9 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
         this.function = new UnresolvedFunction();
     }
 
-    public static LLVMFunctionDescriptor create(LLVMContext context, String name, FunctionType type, long functionId) {
-        LLVMFunctionDescriptor func = new LLVMFunctionDescriptor(context, name, type, functionId);
+    public static LLVMFunctionDescriptor createDescriptor(LLVMContext context, String name, FunctionType type, long functionId) {
+        assert (functionId & LLVMFunction.UPPER_MASK) == 0;
+        LLVMFunctionDescriptor func = new LLVMFunctionDescriptor(context, name, type, LLVMFunction.tagSulongFunctionPointer(functionId));
         return func;
     }
 
@@ -258,12 +260,13 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
      * @return the function's index
      */
     @Override
-    public long getFunctionIndex() {
+    public long getFunctionPointer() {
         return functionId;
     }
 
+    @Override
     public boolean isNullFunction() {
-        return functionId == 0;
+        return LLVMFunction.getSulongFunctionIndex(functionId) == 0;
     }
 
     @Override
@@ -277,7 +280,7 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
 
     @Override
     public int compareTo(LLVMFunctionDescriptor o) {
-        return Long.compare(functionId, o.getFunctionIndex());
+        return Long.compare(functionId, o.getFunctionPointer());
     }
 
     @Override
@@ -291,7 +294,7 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
             return false;
         } else {
             LLVMFunctionDescriptor other = (LLVMFunctionDescriptor) obj;
-            return getFunctionIndex() == other.getFunctionIndex();
+            return getFunctionPointer() == other.getFunctionPointer();
         }
     }
 

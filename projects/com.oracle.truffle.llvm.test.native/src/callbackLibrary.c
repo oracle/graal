@@ -35,11 +35,39 @@ struct container {
   int p1;
 };
 
+void printPointerToArray(int **a) {
+  
+  fprintf(stderr, "Native: a = %p\n", a);
+  fprintf(stderr, "Native: *a = %p\n", *a);
+
+  fprintf(stderr, "Native: *a[0] = %i\n", (*a)[0]);
+  fprintf(stderr, "Native: *a[1] = %i\n", (*a)[1]);
+  fprintf(stderr, "Native: *a[2] = %i\n", (*a)[2]);
+}
+
+void printArray(int *a) {
+  
+  fprintf(stderr, "Native: a = %p\n", a);
+
+  fprintf(stderr, "Native: a[0] = %i\n", a[0]);
+  fprintf(stderr, "Native: a[1] = %i\n", a[1]);
+  fprintf(stderr, "Native: a[2] = %i\n", a[2]);
+}
+
 void *create_container(int (*callback)(int p1, int p2), int p1) {
   struct container *c = malloc(sizeof(struct container));
   c->callback = callback;
   c->p1 = p1;
   return c;
+}
+
+int add(int a, int b) {
+  return a + b;
+}
+
+void store_native_function(void *container) {
+  struct container *c = (struct container *) container;
+  c->callback = add;
 }
 
 int call_callback(void *container, int p2) {

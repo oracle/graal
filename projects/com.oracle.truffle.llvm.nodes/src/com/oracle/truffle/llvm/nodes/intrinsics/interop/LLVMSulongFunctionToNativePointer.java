@@ -44,6 +44,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -58,7 +59,7 @@ public abstract class LLVMSulongFunctionToNativePointer extends LLVMIntrinsic {
 
     @TruffleBoundary
     protected LLVMFunctionDescriptor lookupFunction(LLVMAddress function) {
-        return getContext().lookup(new LLVMFunctionHandle(function.getVal()));
+        return getContext().lookup(LLVMFunctionHandle.createHandle(function.getVal()));
     }
 
     @TruffleBoundary
@@ -66,11 +67,15 @@ public abstract class LLVMSulongFunctionToNativePointer extends LLVMIntrinsic {
         return getContext().getNativeLookup().getNativeFunction("@identity", String.format("(%s):POINTER", readString(signature)));
     }
 
+    protected boolean isSulong(LLVMAddress address) {
+        return LLVMFunction.isSulongFunctionPointer(address.getVal());
+    }
+
     @Child private Node execute = Message.createExecute(1).createNode();
     @Child private Node asPointer = Message.AS_POINTER.createNode();
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"pointer.getVal() == cachedPointer.getVal()",
+    @Specialization(guards = {"isSulong(pointer)", "pointer.getVal() == cachedPointer.getVal()",
                     "signature.getVal() == cachedSignature.getVal()"})
     LLVMAddress bothCached(LLVMAddress pointer, LLVMAddress signature,
                     @Cached("pointer") LLVMAddress cachedPointer,
@@ -88,7 +93,7 @@ public abstract class LLVMSulongFunctionToNativePointer extends LLVMIntrinsic {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"signature.getVal() == cachedSignature.getVal()"})
+    @Specialization(guards = {"isSulong(pointer)", "signature.getVal() == cachedSignature.getVal()"})
     LLVMAddress signatureCached(LLVMAddress pointer, LLVMAddress signature,
                     @Cached("signature") LLVMAddress cachedSignature,
                     @Cached("identityFunction(signature)") TruffleObject identity) {
@@ -103,7 +108,7 @@ public abstract class LLVMSulongFunctionToNativePointer extends LLVMIntrinsic {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"handle.getFunctionIndex() == cachedHandle.getFunctionIndex()",
+    @Specialization(guards = {"handle.isSulong()", "handle.getFunctionPointer() == cachedHandle.getFunctionPointer()",
                     "signature.getVal() == cachedSignature.getVal()"})
     LLVMAddress bothCached(LLVMFunctionHandle handle, LLVMAddress signature,
                     @Cached("handle") LLVMFunctionHandle cachedHandle,
@@ -121,7 +126,7 @@ public abstract class LLVMSulongFunctionToNativePointer extends LLVMIntrinsic {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"signature.getVal() == cachedSignature.getVal()"})
+    @Specialization(guards = {"handle.isSulong()", "signature.getVal() == cachedSignature.getVal()"})
     LLVMAddress signatureCached(LLVMFunctionHandle handle, LLVMAddress signature,
                     @Cached("signature") LLVMAddress cachedSignature,
                     @Cached("identityFunction(signature)") TruffleObject identity) {
@@ -135,7 +140,7 @@ public abstract class LLVMSulongFunctionToNativePointer extends LLVMIntrinsic {
         }
     }
 
-    @Specialization
+    @Specialization(guards = "handle.isSulong()")
     LLVMAddress generic(LLVMFunctionHandle handle, LLVMAddress signature) {
         try {
             TruffleObject nativePointer = (TruffleObject) ForeignAccess.sendExecute(execute,
@@ -145,6 +150,18 @@ public abstract class LLVMSulongFunctionToNativePointer extends LLVMIntrinsic {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);
         }
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = "handle.isExternNative()")
+    LLVMAddress extern(LLVMFunctionHandle handle, LLVMAddress signature) {
+        return LLVMAddress.fromLong(handle.getFunctionPointer());
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = "!isSulong(address)")
+    LLVMAddress extern(LLVMAddress address, LLVMAddress signature) {
+        return address;
     }
 
     @SuppressWarnings("unused")

@@ -53,6 +53,8 @@ import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMAddressL
 import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMI32LiteralNode;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMThread;
@@ -189,7 +191,8 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
                 Type argType1 = PrimitiveType.I32;
                 Type[] argsTypes = {argType0, argType1};
 
-                LLVMExpressionNode functionNode = LLVMFunctionLiteralNodeGen.create(context.lookup(function));
+                LLVMExpressionNode functionNode = LLVMFunctionLiteralNodeGen.create(
+                                (function instanceof LLVMFunctionHandle ? context.lookup((LLVMFunctionHandle) function) : (LLVMFunctionDescriptor) function));
 
                 LLVMCallNode callNode = new LLVMCallNode(new FunctionType(VoidType.INSTANCE, argsTypes, false), functionNode, args, null);
 

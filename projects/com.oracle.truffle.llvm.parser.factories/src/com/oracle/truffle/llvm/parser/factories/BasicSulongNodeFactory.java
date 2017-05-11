@@ -118,6 +118,7 @@ import com.oracle.truffle.llvm.parser.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
@@ -403,7 +404,8 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
                     SourceSection sourceSection) {
         Parser asmParser = new Parser(asmExpression, asmFlags, args, argTypes, retType);
         LLVMInlineAssemblyRootNode assemblyRoot = asmParser.Parse();
-        LLVMFunctionDescriptor asm = LLVMFunctionDescriptor.create(runtime.getContext(), "<asm>", new FunctionType(MetaType.UNKNOWN, new Type[0], false), -1);
+        LLVMFunctionDescriptor asm = LLVMFunctionDescriptor.createDescriptor(runtime.getContext(), "<asm>", new FunctionType(MetaType.UNKNOWN, new Type[0], false),
+                        (-1) & LLVMFunctionHandle.LOWER_MASK);
         asm.declareInSulong(Truffle.getRuntime().createCallTarget(assemblyRoot));
         LLVMFunctionLiteralNode asmFunction = LLVMFunctionLiteralNodeGen.create(asm);
 
@@ -538,7 +540,7 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
 
     @Override
     public LLVMFunctionDescriptor createFunctionDescriptor(LLVMContext context, String name, FunctionType type, int functionIndex) {
-        return LLVMFunctionDescriptor.create(context, name, type, functionIndex);
+        return LLVMFunctionDescriptor.createDescriptor(context, name, type, functionIndex);
     }
 
     @Override

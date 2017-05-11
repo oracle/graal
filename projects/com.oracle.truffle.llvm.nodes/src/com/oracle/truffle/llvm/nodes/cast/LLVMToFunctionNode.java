@@ -50,17 +50,17 @@ public abstract class LLVMToFunctionNode extends LLVMExpressionNode {
 
     @Specialization
     public LLVMFunction executeLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
-        return new LLVMFunctionHandle((long) toLong.executeWithTarget(from.getValue()));
+        return LLVMFunctionHandle.createHandle((long) toLong.executeWithTarget(from.getValue()));
     }
 
     @Specialization
     public LLVMFunction executeI64(long from) {
-        return new LLVMFunctionHandle(from);
+        return LLVMFunctionHandle.createHandle(from);
     }
 
     @Specialization
     public LLVMFunction executeI64(LLVMAddress from) {
-        return new LLVMFunctionHandle(from.getVal());
+        return LLVMFunctionHandle.createHandle(from.getVal());
     }
 
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
@@ -69,7 +69,7 @@ public abstract class LLVMToFunctionNode extends LLVMExpressionNode {
     @Specialization(guards = "notLLVM(from)")
     public Object executeTruffleObject(TruffleObject from) {
         if (ForeignAccess.sendIsNull(isNull, from)) {
-            return new LLVMFunctionHandle(0);
+            return LLVMFunctionHandle.createHandle(0);
         } else if (ForeignAccess.sendIsExecutable(isExecutable, from)) {
             return from;
         }
