@@ -83,8 +83,8 @@ public final class HotSpotGraalMBean implements DynamicMBean {
     }
 
     public static HotSpotGraalMBean create() {
-        OptionValues values = HotSpotGraalOptionValues.HOTSPOT_OPTIONS;
-        HotSpotGraalMBean mbean = new HotSpotGraalMBean(values);
+        OptionValues options = HotSpotGraalOptionValues.HOTSPOT_OPTIONS;
+        HotSpotGraalMBean mbean = new HotSpotGraalMBean(options);
         return mbean;
     }
 
