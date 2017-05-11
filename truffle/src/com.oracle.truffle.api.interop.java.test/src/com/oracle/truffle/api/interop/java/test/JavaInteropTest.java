@@ -647,24 +647,31 @@ public class JavaInteropTest {
         assertEquals(0, keyInfo);
 
         TruffleObject aobj = new ArrayTruffleObject(100);
-        for (int i = 0; i < 100; i += 10) {
-            keyInfo = JavaInterop.getKeyInfo(aobj, i);
+        testArrayObject(aobj, 100);
+        aobj = JavaInterop.asTruffleObject(new String[]{"A", "B", "C", "D"});
+        testArrayObject(aobj, 4);
+    }
+
+    private static void testArrayObject(TruffleObject array, int length) {
+        int keyInfo;
+        for (int i = 0; i < length; i++) {
+            keyInfo = JavaInterop.getKeyInfo(array, i);
             assertTrue(KeyInfo.isReadable(keyInfo));
             assertTrue(KeyInfo.isWritable(keyInfo));
             assertFalse(KeyInfo.isInvocable(keyInfo));
             assertFalse(KeyInfo.isInternal(keyInfo));
-            keyInfo = JavaInterop.getKeyInfo(aobj, (long) i);
+            keyInfo = JavaInterop.getKeyInfo(array, (long) i);
             assertTrue(KeyInfo.isReadable(keyInfo));
-            keyInfo = JavaInterop.getKeyInfo(aobj, (double) i);
+            keyInfo = JavaInterop.getKeyInfo(array, (double) i);
             assertTrue(KeyInfo.isReadable(keyInfo));
         }
-        assertEquals(0, JavaInterop.getKeyInfo(aobj, 100));
-        assertEquals(0, JavaInterop.getKeyInfo(aobj, 1.12));
-        assertEquals(0, JavaInterop.getKeyInfo(aobj, -1));
-        assertEquals(0, JavaInterop.getKeyInfo(aobj, 1000));
-        assertEquals(0, JavaInterop.getKeyInfo(aobj, Double.NEGATIVE_INFINITY));
-        assertEquals(0, JavaInterop.getKeyInfo(aobj, Double.NaN));
-        assertEquals(0, JavaInterop.getKeyInfo(aobj, Double.POSITIVE_INFINITY));
+        assertEquals(0, JavaInterop.getKeyInfo(array, length));
+        assertEquals(0, JavaInterop.getKeyInfo(array, 1.12));
+        assertEquals(0, JavaInterop.getKeyInfo(array, -1));
+        assertEquals(0, JavaInterop.getKeyInfo(array, 10L * length));
+        assertEquals(0, JavaInterop.getKeyInfo(array, Double.NEGATIVE_INFINITY));
+        assertEquals(0, JavaInterop.getKeyInfo(array, Double.NaN));
+        assertEquals(0, JavaInterop.getKeyInfo(array, Double.POSITIVE_INFINITY));
     }
 
     @Test

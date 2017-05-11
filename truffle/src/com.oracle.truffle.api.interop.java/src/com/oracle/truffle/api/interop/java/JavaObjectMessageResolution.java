@@ -238,6 +238,28 @@ class JavaObjectMessageResolution {
     abstract static class PropertyInfoNode extends Node {
 
         @TruffleBoundary
+        public Object access(JavaObject receiver, Number index) {
+            int i = index.intValue();
+            if (i != index.doubleValue()) {
+                // No non-integer indexes
+                return 0;
+            }
+            if (i < 0) {
+                return 0;
+            }
+            Object obj = receiver.obj;
+            try {
+                int length = Array.getLength(obj);
+                if (i >= length) {
+                    return 0;
+                }
+                return 0b111;
+            } catch (IllegalArgumentException notAnArr) {
+                return 0;
+            }
+        }
+
+        @TruffleBoundary
         public Object access(JavaObject receiver, String name) {
             if (receiver.obj instanceof Map) {
                 Map<?, ?> map = (Map<?, ?>) receiver.obj;
