@@ -32,7 +32,6 @@ import re
 
 import mx
 
-from mx_graaltest import testgraal
 from mx_unittest import unittest
 from mx_sigtest import sigtest
 from mx_jackpot import jackpot
@@ -171,7 +170,6 @@ mx_gate.add_gate_runner(_suite, _truffle_gate_runner)
 mx.update_commands(_suite, {
     'javadoc' : [javadoc, '[SL args|@VM options]'],
     'sl' : [sl, '[SL args|@VM options]'],
-    'testgraal' : [testgraal, ''],
 })
 
 """

@@ -22,16 +22,11 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.core.common.util.Util.JAVA_SPECIFICATION_VERSION;
-import static org.graalvm.compiler.test.SubprocessUtil.formatExecutedCommand;
 import static org.graalvm.compiler.test.SubprocessUtil.getVMCommandLine;
 import static org.graalvm.compiler.test.SubprocessUtil.withoutDebuggerArguments;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -39,7 +34,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.core.CompilerThreadFactory;
-import org.graalvm.compiler.core.common.util.ModuleAPI;
 import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.nodes.Cancellable;
@@ -49,8 +43,10 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionValuesAccess;
 import org.graalvm.compiler.options.OptionsParser;
+import org.graalvm.compiler.serviceprovider.JDK9Method;
+import org.graalvm.compiler.test.SubprocessUtil;
+import org.graalvm.compiler.test.SubprocessUtil.Subprocess;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Test;
 
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
@@ -86,7 +82,41 @@ public class LazyInitializationTest {
 
     @Test
     public void testSLTck() throws IOException, InterruptedException {
-        spawnUnitTests("com.oracle.truffle.sl.test.SLFactorialTest");
+        List<String> vmArgs = withoutDebuggerArguments(getVMCommandLine());
+        vmArgs.add(Java8OrEarlier ? "-XX:+TraceClassLoading" : "-Xlog:class+init=info");
+        vmArgs.add("-dsa");
+        vmArgs.add("-da");
+        vmArgs.add("-XX:-UseJVMCICompiler");
+        Subprocess proc = SubprocessUtil.java(vmArgs, "com.oracle.mxtool.junit.MxJUnitWrapper", "com.oracle.truffle.sl.test.SLFactorialTest");
+        int exitCode = proc.exitCode;
+        if (exitCode != 0) {
+            Assert.fail(String.format("non-zero exit code %d for command:%n%s", exitCode, proc));
+        }
+
+        ArrayList<String> loadedGraalClassNames = new ArrayList<>();
+        int testCount = 0;
+        for (String line : proc.output) {
+            String loadedClass = extractClass(line);
+            if (loadedClass != null) {
+                if (isGraalClass(loadedClass)) {
+                    loadedGraalClassNames.add(loadedClass);
+                }
+            } else if (line.startsWith("OK (")) {
+                Assert.assertTrue(testCount == 0);
+                int start = "OK (".length();
+                int end = line.indexOf(' ', start);
+                testCount = Integer.parseInt(line.substring(start, end));
+            }
+        }
+        if (testCount == 0) {
+            Assert.fail(String.format("no tests found in output of command:%n%s", testCount, proc));
+        }
+
+        try {
+            checkAllowedGraalClasses(loadedGraalClassNames);
+        } catch (AssertionError e) {
+            throw new AssertionError(String.format("Failure for command:%n%s", proc), e);
+        }
     }
 
     private static final Pattern CLASS_INIT_LOG_PATTERN = Pattern.compile("\\[info\\]\\[class,init\\] \\d+ Initializing '([^']+)'");
@@ -110,63 +140,6 @@ public class LazyInitializationTest {
             }
         }
         return null;
-    }
-
-    /**
-     * Spawn a new VM, execute unit tests, and check which classes are loaded.
-     */
-    private void spawnUnitTests(String... tests) throws IOException, InterruptedException {
-        List<String> args = withoutDebuggerArguments(getVMCommandLine());
-
-        boolean usesJvmciCompiler = args.contains("-jvmci") || args.contains("-XX:+UseJVMCICompiler");
-        Assume.assumeFalse("This test can only run if JVMCI is not one of the default compilers", usesJvmciCompiler);
-
-        args.add(Java8OrEarlier ? "-XX:+TraceClassLoading" : "-Xlog:class+init=info");
-        args.add("-dsa");
-        args.add("-da");
-        args.add("com.oracle.mxtool.junit.MxJUnitWrapper");
-        args.addAll(Arrays.asList(tests));
-
-        ArrayList<String> loadedGraalClassNames = new ArrayList<>();
-
-        ProcessBuilder processBuilder = new ProcessBuilder(args);
-        processBuilder.redirectErrorStream(true);
-
-        Process process = processBuilder.start();
-        int testCount = 0;
-        BufferedReader stdout = new BufferedReader(new InputStreamReader(process.getInputStream()));
-        List<String> outputLines = new ArrayList<>();
-        String line;
-        while ((line = stdout.readLine()) != null) {
-            outputLines.add(line);
-            String loadedClass = extractClass(line);
-            if (loadedClass != null) {
-                if (isGraalClass(loadedClass)) {
-                    loadedGraalClassNames.add(loadedClass);
-                }
-            } else if (line.startsWith("OK (")) {
-                Assert.assertTrue(testCount == 0);
-                int start = "OK (".length();
-                int end = line.indexOf(' ', start);
-                testCount = Integer.parseInt(line.substring(start, end));
-            }
-        }
-
-        String dashes = "-------------------------------------------------------";
-
-        int exitCode = process.waitFor();
-        if (exitCode != 0) {
-            Assert.fail(String.format("non-zero exit code %d for command:%n%s", exitCode, formatExecutedCommand(args, outputLines, dashes, dashes)));
-        }
-        if (testCount == 0) {
-            Assert.fail(String.format("no tests found in output of command:%n%s", testCount, formatExecutedCommand(args, outputLines, dashes, dashes)));
-        }
-
-        try {
-            checkAllowedGraalClasses(loadedGraalClassNames);
-        } catch (AssertionError e) {
-            throw new AssertionError(String.format("Failure for command:%n%s", formatExecutedCommand(args, outputLines, dashes, dashes)), e);
-        }
     }
 
     private static boolean isGraalClass(String className) {
@@ -241,7 +214,7 @@ public class LazyInitializationTest {
             return true;
         }
 
-        if (JAVA_SPECIFICATION_VERSION >= 9 && cls.equals(ModuleAPI.class)) {
+        if (JDK9Method.JAVA_SPECIFICATION_VERSION >= 9 && cls.equals(JDK9Method.class)) {
             // Graal initialization needs access to Module API on JDK 9.
             return true;
         }

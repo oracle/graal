@@ -37,10 +37,10 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
+import org.graalvm.api.word.LocationIdentity;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
@@ -49,6 +49,7 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -761,18 +762,33 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             allocations[objIndex] = anchor;
             graph.addBeforeFixed(commit, anchor);
         }
+        ArrayList<MonitorEnterNode> enters = null;
         for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
             for (MonitorIdNode monitorId : commit.getLocks(objIndex)) {
                 MonitorEnterNode enter = graph.add(new MonitorEnterNode(allocations[objIndex], monitorId));
                 graph.addBeforeFixed(commit, enter);
-                enter.lower(tool);
+                if (enters == null) {
+                    enters = new ArrayList<>();
+                }
+                enters.add(enter);
             }
         }
         for (Node usage : commit.usages().snapshot()) {
-            AllocatedObjectNode addObject = (AllocatedObjectNode) usage;
-            int index = commit.getVirtualObjects().indexOf(addObject.getVirtualObject());
-            addObject.replaceAtUsagesAndDelete(allocations[index]);
+            if (usage instanceof AllocatedObjectNode) {
+                AllocatedObjectNode addObject = (AllocatedObjectNode) usage;
+                int index = commit.getVirtualObjects().indexOf(addObject.getVirtualObject());
+                addObject.replaceAtUsagesAndDelete(allocations[index]);
+            } else {
+                assert enters != null;
+                commit.replaceAtUsages(InputType.Memory, enters.get(enters.size() - 1));
+            }
         }
+        if (enters != null) {
+            for (MonitorEnterNode enter : enters) {
+                enter.lower(tool);
+            }
+        }
+        assert commit.hasNoUsages();
         insertAllocationBarrier(commit, graph);
     }
 

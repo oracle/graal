@@ -85,17 +85,17 @@ import com.oracle.truffle.api.source.SourceSection;
  * </p>
  * <h4>Next debugging action</h4>
  * <p>
- * Clients use the following methods to request the debugging action that will take effect when the
- * event's thread resumes guest language execution.
+ * Clients use the following methods to request the debugging action(s) that will take effect when
+ * the event's thread resumes guest language execution. All prepare requests accumulate until
+ * resumed.
  * <ul>
  * <li>{@link #prepareStepInto(int)}</li>
- * <li>{@link #prepareStepOut()}</li>
+ * <li>{@link #prepareStepOut(int)}</li>
  * <li>{@link #prepareStepOver(int)}</li>
  * <li>{@link #prepareKill()}</li>
  * <li>{@link #prepareContinue()}</li>
  * </ul>
- * If no debugging action is requested then {@link #prepareContinue() continue} is assumed. A
- * request for more than one action throws an {@link IllegalStateException}.
+ * If no debugging action is requested then {@link #prepareContinue() continue} is assumed.
  * </p>
  *
  * @since 0.9
@@ -166,9 +166,19 @@ public final class SuspendedEvent {
         return strategy;
     }
 
-    private void setNextStrategy(SteppingStrategy nextStrategy) {
+    private synchronized void setNextStrategy(SteppingStrategy nextStrategy) {
         verifyValidState(true);
-        this.nextStrategy = nextStrategy;
+        if (this.nextStrategy == null) {
+            this.nextStrategy = nextStrategy;
+        } else if (this.nextStrategy.isKill()) {
+            throw new IllegalStateException("Calls to prepareKill() cannot be followed by any other preparation call.");
+        } else if (this.nextStrategy.isDone()) {
+            throw new IllegalStateException("Calls to prepareContinue() cannot be followed by any other preparation call.");
+        } else if (this.nextStrategy.isComposable()) {
+            this.nextStrategy.add(nextStrategy);
+        } else {
+            this.nextStrategy = SteppingStrategy.createComposed(this.nextStrategy, nextStrategy);
+        }
     }
 
     /**
@@ -334,8 +344,11 @@ public final class SuspendedEvent {
      * <li>execution completes.</li>
      * </ul>
      * <p>
-     * This method is thread-safe.
+     * This method is thread-safe and the prepared Continue mode is appended to any other previously
+     * prepared modes. No further modes can be prepared after continue.
      *
+     * @throws IllegalStateException when {@link #prepareContinue() continue} or
+     *             {@link #prepareKill() kill} is prepared already.
      * @since 0.9
      */
     public void prepareContinue() {
@@ -359,8 +372,7 @@ public final class SuspendedEvent {
      * <li>program execution resumes and then halts, at which time the mode reverts to
      * {@linkplain #prepareContinue() Continue}, <strong>or</strong></li>
      * <li>execution completes, at which time the mode reverts to {@linkplain #prepareContinue()
-     * Continue}, <strong>or</strong></li>
-     * <li>another mode is chosen.</li>
+     * Continue}.</li>
      * </ol>
      * </li>
      * <li>A breakpoint set at a location where execution would halt is treated specially to avoid a
@@ -375,17 +387,22 @@ public final class SuspendedEvent {
      * </ul>
      * </ul>
      * <p>
-     * This method is thread-safe.
+     * This method is thread-safe and the prepared StepInto mode is appended to any other previously
+     * prepared modes.
      *
      * @param stepCount the number of times to perform StepInto before halting
+     * @return this event instance for an easy concatenation of method calls
      * @throws IllegalArgumentException if {@code stepCount <= 0}
+     * @throws IllegalStateException when {@link #prepareContinue() continue} or
+     *             {@link #prepareKill() kill} is prepared already.
      * @since 0.9
      */
-    public void prepareStepInto(int stepCount) {
+    public SuspendedEvent prepareStepInto(int stepCount) {
         if (stepCount <= 0) {
             throw new IllegalArgumentException("stepCount must be > 0");
         }
         setNextStrategy(SteppingStrategy.createStepInto(stepCount));
+        return this;
     }
 
     /**
@@ -405,8 +422,7 @@ public final class SuspendedEvent {
      * <li>program execution resumes and then halts, at which time the mode reverts to
      * {@linkplain #prepareContinue() Continue}, <strong>or</strong></li>
      * <li>execution completes, at which time the mode reverts to {@linkplain #prepareContinue()
-     * Continue}, <strong>or</strong></li>
-     * <li>another mode is chosen.</li>
+     * Continue}.</li>
      * </ol>
      * </li>
      * </ul>
@@ -414,9 +430,51 @@ public final class SuspendedEvent {
      * This method is thread-safe.
      *
      * @since 0.9
+     * @deprecated Use {@link #prepareStepOut(int)} instead.
      */
+    @Deprecated
     public void prepareStepOut() {
-        setNextStrategy(SteppingStrategy.createStepOut());
+        prepareStepOut(1);
+    }
+
+    /**
+     * Prepare to execute in <strong>StepOut</strong> mode when guest language program execution
+     * resumes. In this mode:
+     * <ul>
+     * <li>Execution, when resumed, continues until either:
+     * <ol>
+     * <li>execution arrives at the <em>nth</em> enclosing call site on the stack (specified by
+     * {@code stepCount}), <strong>or</strong></li>
+     * <li>execution arrives at a {@link Breakpoint}, <strong>or</strong></li>
+     * <li>execution completes.</li>
+     * </ol>
+     * </li>
+     * <li>The mode persists only until either:
+     * <ol>
+     * <li>program execution resumes and then halts, at which time the mode reverts to
+     * {@linkplain #prepareContinue() Continue}, <strong>or</strong></li>
+     * <li>execution completes, at which time the mode reverts to {@linkplain #prepareContinue()
+     * Continue}.</li>
+     * </ol>
+     * </li>
+     * </ul>
+     * <p>
+     * This method is thread-safe and the prepared StepOut mode is appended to any other previously
+     * prepared modes.
+     *
+     * @param stepCount the number of times to perform StepOver before halting
+     * @return this event instance for an easy concatenation of method calls
+     * @throws IllegalArgumentException if {@code stepCount <= 0}
+     * @throws IllegalStateException when {@link #prepareContinue() continue} or
+     *             {@link #prepareKill() kill} is prepared already.
+     * @since 0.26
+     */
+    public SuspendedEvent prepareStepOut(int stepCount) {
+        if (stepCount <= 0) {
+            throw new IllegalArgumentException("stepCount must be > 0");
+        }
+        setNextStrategy(SteppingStrategy.createStepOut(stepCount));
+        return this;
     }
 
     /**
@@ -437,8 +495,7 @@ public final class SuspendedEvent {
      * <li>program execution resumes and then halts, at which time the mode reverts to
      * {@linkplain #prepareContinue() Continue}, <strong>or</strong></li>
      * <li>execution completes, at which time the mode reverts to {@linkplain #prepareContinue()
-     * Continue}, <strong>or</strong></li>
-     * <li>another mode is chosen.</li>
+     * Continue}.</li>
      * </ol>
      * </li>
      * <li>A breakpoint set at a location where execution would halt is treated specially to avoid a
@@ -452,17 +509,22 @@ public final class SuspendedEvent {
      * mode is set.</li>
      * </ul>
      * <p>
-     * This method is thread-safe.
+     * This method is thread-safe and the prepared StepOver mode is appended to any other previously
+     * prepared modes.
      *
      * @param stepCount the number of times to perform StepOver before halting
+     * @return this event instance for an easy concatenation of method calls
      * @throws IllegalArgumentException if {@code stepCount <= 0}
+     * @throws IllegalStateException when {@link #prepareContinue() continue} or
+     *             {@link #prepareKill() kill} is prepared already.
      * @since 0.9
      */
-    public void prepareStepOver(int stepCount) {
+    public SuspendedEvent prepareStepOver(int stepCount) {
         if (stepCount <= 0) {
             throw new IllegalArgumentException("stepCount must be > 0");
         }
         setNextStrategy(SteppingStrategy.createStepOver(stepCount));
+        return this;
     }
 
     /**
@@ -472,8 +534,11 @@ public final class SuspendedEvent {
      * {@link com.oracle.truffle.tck.ExecWithTimeOut#tckSnippets}
      *
      * <p>
-     * This method is thread-safe.
+     * This method is thread-safe and the prepared termination is appended to any other previously
+     * prepared modes. No further modes can be prepared after kill.
      *
+     * @throws IllegalStateException when {@link #prepareContinue() continue} or
+     *             {@link #prepareKill() kill} is prepared already.
      * @since 0.12
      */
     public void prepareKill() {

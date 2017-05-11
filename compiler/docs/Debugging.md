@@ -6,7 +6,7 @@ This pages covers the various mechanisms currently available for debugging Graal
 All the parts of Graal written in Java can be debugged with a standard Java debugger.
 While debugging with Eclipse is described here, it should not be too hard to adapt these instructions for another debugger.
 
-The `mx eclipseinit` command not only creates Eclipse project configurations but also creates an Eclipse launch configuration (in `mx.graal-core/eclipse-launches/graal-core-attach-localhost-8000.launch`) that can be used to debug all Graal code running in the VM.
+The `mx eclipseinit` command not only creates Eclipse project configurations but also creates an Eclipse launch configuration (in `mx.compiler/eclipse-launches/compiler-attach-localhost-8000.launch`) that can be used to debug all Graal code running in the VM.
 This launch configuration requires you to start the VM with the `-d` global option which puts the VM into a state waiting for a remote debugger to attach to port `8000`:
 
 ```
@@ -24,7 +24,7 @@ Listening for transport dt_socket at address: 8000
 Once you see the message above, you then run the Eclipse launch configuration:
 
 1. From the main menu bar, select **Run > Debug Configurations...** to open the Debug Configurations dialogue.
-2. In the tree of configurations, select the **Remote Java Application > graal-core-attach-localhost-8000** entry.
+2. In the tree of configurations, select the **Remote Java Application > compiler-attach-localhost-8000** entry.
 3. Click the **Debug** button to start debugging.
 
 At this point you can set breakpoints and perform all other normal Java debugging actions.
@@ -278,8 +278,8 @@ To see the compiler data structures used while compiling `Node.updateUsages`, us
 ```
 mx vm -XX:+UseJVMCICompiler -XX:+BootstrapJVMCI -XX:-TieredCompilation -Dgraal.Dump= -Dgraal.MethodFilter=Node.updateUsages -version
 Bootstrapping JVMCI....Connected to the IGV on 127.0.0.1:4445
-CFGPrinter: Output to file /Users/dsimon/graal/graal-core/compilations-1456505279711_1.cfg
-CFGPrinter: Dumping method HotSpotMethod<Node.updateUsages(Node, Node)> to /Users/dsimon/graal/graal-core/compilations-1456505279711_1.cfg
+CFGPrinter: Output to file /Users/dsimon/graal/graal/compiler/compilations-1456505279711_1.cfg
+CFGPrinter: Dumping method HotSpotMethod<Node.updateUsages(Node, Node)> to /Users/dsimon/graal/graal/compiler/compilations-1456505279711_1.cfg
 ............................... in 18636 ms (compiled 3589 methods)
 java version "1.8.0_65"
 Java(TM) SE Runtime Environment (build 1.8.0_65-b17)
@@ -291,7 +291,7 @@ As you become familiar with the scope names used in Graal, you can refine the `-
 ```
 mx vm -Dgraal.Dump=CodeGen,CodeInstall -Dgraal.MethodFilter=NodeClass.get -version
 ```
-You'll notice that no output is sent to the IGV by this command.
+You will notice that no output is sent to the IGV by this command.
 
 Alternatively, you can see the machine code using [HotSpot's PrintAssembly support](https://wiki.openjdk.java.net/display/HotSpot/PrintAssembly):
 ```

@@ -45,19 +45,19 @@ public abstract class AbstractDebugCompilationListener implements GraalTruffleCo
     }
 
     @Override
-    public void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t, Map<OptimizedCallTarget, Object> compilationMap) {
+    public void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t) {
     }
 
     @Override
-    public void notifyCompilationStarted(OptimizedCallTarget target, Map<OptimizedCallTarget, Object> compilationMap) {
+    public void notifyCompilationStarted(OptimizedCallTarget target) {
     }
 
     @Override
-    public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, Map<OptimizedCallTarget, Object> compilationMap) {
+    public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph) {
     }
 
     @Override
-    public void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph, Map<OptimizedCallTarget, Object> compilationMap) {
+    public void notifyCompilationGraalTierFinished(OptimizedCallTarget target, StructuredGraph graph) {
     }
 
     @Override
@@ -65,8 +65,7 @@ public abstract class AbstractDebugCompilationListener implements GraalTruffleCo
     }
 
     @Override
-    public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result,
-                    Map<OptimizedCallTarget, Object> compilationMap) {
+    public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result) {
     }
 
     @Override

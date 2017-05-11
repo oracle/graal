@@ -56,6 +56,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.Debugger;
@@ -64,7 +65,7 @@ import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.ForeignAccess.Factory;
-import com.oracle.truffle.api.interop.ForeignAccess.Factory18;
+import com.oracle.truffle.api.interop.ForeignAccess.Factory26;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
@@ -302,7 +303,12 @@ public class SLDebugDirectTest {
             int line = suspendedEvent.getSourceSection().getStartLine();
             Assert.assertTrue("Unexpected line: " + line, 5 <= line && line <= 6);
             final DebugStackFrame frame = suspendedEvent.getTopStackFrame();
-            DebugValue slot = frame.getValue("executing");
+            DebugScope scope = frame.getScope();
+            DebugValue slot = scope.getDeclaredValue("executing");
+            if (slot == null) {
+                slot = scope.getParent().getDeclaredValue("executing");
+            }
+            Assert.assertNotNull(slot);
             Assert.assertNotNull("Value is null", slot.toString());
             suspendedEvent.prepareContinue();
             nh.pauseDone();
@@ -365,7 +371,7 @@ public class SLDebugDirectTest {
 
     private void stepOut() {
         run.addLast(() -> {
-            suspendedEvent.prepareStepOut();
+            suspendedEvent.prepareStepOut(1);
         });
     }
 
@@ -396,13 +402,17 @@ public class SLDebugDirectTest {
             for (int i = 0; i < expectedFrame.length; i = i + 2) {
                 final String expectedIdentifier = (String) expectedFrame[i];
                 final Object expectedValue = expectedFrame[i + 1];
-                final DebugValue slot = frame.getValue(expectedIdentifier);
+                DebugScope scope = frame.getScope();
+                DebugValue slot = scope.getDeclaredValue(expectedIdentifier);
+                while (slot == null && (scope = scope.getParent()) != null) {
+                    slot = scope.getDeclaredValue(expectedIdentifier);
+                }
                 if (expectedValue != UNASSIGNED) {
-                    Assert.assertNotNull(slot);
+                    Assert.assertNotNull(expectedIdentifier, slot);
                     final String slotValue = slot.as(String.class);
                     Assert.assertEquals(expectedValue, slotValue);
                 } else {
-                    Assert.assertNull(slot);
+                    Assert.assertNull(expectedIdentifier, slot);
                 }
             }
             run.removeFirst().run();
@@ -462,7 +472,7 @@ public class SLDebugDirectTest {
 
     }
 
-    private static class ExecNotifyHandlerForeign implements Factory18, Factory {
+    private static class ExecNotifyHandlerForeign implements Factory26, Factory {
 
         private final ExecNotifyHandler nh;
 
@@ -533,6 +543,11 @@ public class SLDebugDirectTest {
         @Override
         public boolean canHandle(TruffleObject to) {
             return (to instanceof ExecNotifyHandler);
+        }
+
+        @Override
+        public CallTarget accessKeyInfo() {
+            return null;
         }
 
         @Override

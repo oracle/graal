@@ -52,7 +52,6 @@ import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.GraalCompiler.Request;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.util.ModuleAPI;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
@@ -72,6 +71,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.BreakpointNode;
+import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
@@ -112,6 +112,7 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.test.AddExports;
 import org.graalvm.compiler.test.GraalTest;
+import org.graalvm.compiler.test.JLModule;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -133,7 +134,6 @@ import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
-import jdk.vm.ci.services.Services;
 
 /**
  * Base class for Graal compiler unit tests.
@@ -154,12 +154,7 @@ import jdk.vm.ci.services.Services;
  * <p>
  * These tests will be run by the {@code mx unittest} command.
  */
-@AddExports({"jdk.internal.vm.ci/jdk.vm.ci.meta",
-                "jdk.internal.vm.ci/jdk.vm.ci.services",
-                "jdk.internal.vm.ci/jdk.vm.ci.code",
-                "jdk.internal.vm.ci/jdk.vm.ci.services",
-                "java.base/jdk.internal.org.objectweb.asm",
-                "java.base/jdk.internal.org.objectweb.asm.tree"})
+@AddExports({"java.base/jdk.internal.org.objectweb.asm", "java.base/jdk.internal.org.objectweb.asm.tree"})
 public abstract class GraalCompilerTest extends GraalTest {
 
     /**
@@ -180,18 +175,13 @@ public abstract class GraalCompilerTest extends GraalTest {
     public static final Class<?> JAVA_BASE = Class.class;
 
     /**
-     * Representative class for the {@code jdk.vm.ci} module.
-     */
-    public static final Class<?> JDK_VM_CI = Services.class;
-
-    /**
      * Exports the package named {@code packageName} declared in {@code moduleMember}'s module to
      * this object's module. This must be called before accessing packages that are no longer public
      * as of JDK 9.
      */
     protected final void exportPackage(Class<?> moduleMember, String packageName) {
         if (!Java8OrEarlier) {
-            ModuleAPI.exportPackageTo(moduleMember, packageName, getClass());
+            JLModule.exportPackageTo(moduleMember, packageName, getClass());
         }
     }
 
@@ -1200,14 +1190,31 @@ public abstract class GraalCompilerTest extends GraalTest {
     private StructuredGraph parse1(ResolvedJavaMethod javaMethod, PhaseSuite<HighTierContext> graphBuilderSuite, AllowAssumptions allowAssumptions, CompilationIdentifier compilationId,
                     OptionValues options) {
         assert javaMethod.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + javaMethod;
-        StructuredGraph graph = new StructuredGraph.Builder(options, allowAssumptions).method(javaMethod).speculationLog(getSpeculationLog()).useProfilingInfo(true).compilationId(
-                        compilationId).build();
+        // @formatter:off
+        StructuredGraph graph = new StructuredGraph.Builder(options, allowAssumptions).
+                        method(javaMethod).
+                        speculationLog(getSpeculationLog()).
+                        useProfilingInfo(true).
+                        compilationId(compilationId).
+                        cancellable(getCancellable(javaMethod)).
+                        build();
+        // @formatter:on
         try (Scope ds = Debug.scope("Parsing", javaMethod, graph)) {
             graphBuilderSuite.apply(graph, getDefaultHighTierContext());
             return graph;
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
+    }
+
+    /**
+     * Gets the cancellable that should be associated with a graph being created by any of the
+     * {@code parse...()} methods.
+     *
+     * @param method the method being parsed into a graph
+     */
+    protected Cancellable getCancellable(ResolvedJavaMethod method) {
+        return null;
     }
 
     protected Plugins getDefaultGraphBuilderPlugins() {

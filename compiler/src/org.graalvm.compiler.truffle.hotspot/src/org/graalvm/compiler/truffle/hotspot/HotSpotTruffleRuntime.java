@@ -44,18 +44,19 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompilationRequestIdentifier;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.Debug;
-import org.graalvm.compiler.debug.DebugConfig;
 import org.graalvm.compiler.debug.Debug.Scope;
-import org.graalvm.compiler.debug.internal.DebugScope;
+import org.graalvm.compiler.debug.DebugConfig;
 import org.graalvm.compiler.debug.DebugEnvironment;
 import org.graalvm.compiler.debug.GraalDebugConfig;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.internal.DebugScope;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotCompilationIdentifier;
 import org.graalvm.compiler.hotspot.HotSpotCompiledCodeBuilder;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import org.graalvm.compiler.hotspot.HotSpotRetryableCompilation;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
@@ -76,6 +77,7 @@ import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.truffle.CancellableCompileTask;
 import org.graalvm.compiler.truffle.DefaultTruffleCompiler;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
@@ -190,6 +192,24 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
+    protected void compileMethod(OptimizedCallTarget optimizedCallTarget, CancellableCompileTask task) {
+        HotSpotGraalRuntimeProvider runtime = (HotSpotGraalRuntimeProvider) getRequiredGraalCapability(RuntimeProvider.class);
+        HotSpotRetryableCompilation<Void> compilation = new HotSpotRetryableCompilation<Void>(runtime, getOptions()) {
+            @Override
+            protected Void run(Throwable failure) {
+                HotSpotTruffleRuntime.super.compileMethod(optimizedCallTarget, task);
+                return null;
+            }
+
+            @Override
+            public String toString() {
+                return optimizedCallTarget.toString();
+            }
+        };
+        compilation.execute();
+    }
+
+    @Override
     protected OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode) {
         /* No HotSpot-specific subclass is currently necessary for call targets. */
         return new OptimizedCallTarget(source, rootNode);
@@ -218,7 +238,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
             if (method.getAnnotation(TruffleCallBoundary.class) != null) {
                 HotSpotCompilationIdentifier compilationId = (HotSpotCompilationIdentifier) getHotSpotBackend().getCompilationIdentifier(method);
-                CompilationResult compResult = compileMethod(method, compilationId);
+                CompilationResult compResult = compileTruffleCallBoundaryMethod(method, compilationId);
                 CodeCacheProvider codeCache = providers.getCodeCache();
                 try (Scope s = Debug.scope("CodeInstall", codeCache, method, compResult)) {
                     CompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(codeCache, method, compilationId.getRequest(), compResult);
@@ -247,7 +267,10 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         return CompilationResultBuilderFactory.Default;
     }
 
-    private CompilationResult compileMethod(ResolvedJavaMethod javaMethod, CompilationIdentifier compilationId) {
+    /**
+     * Compiles a method annotated by {@link TruffleCallBoundary}.
+     */
+    private CompilationResult compileTruffleCallBoundaryMethod(ResolvedJavaMethod javaMethod, CompilationIdentifier compilationId) {
         HotSpotProviders providers = getHotSpotProviders();
         SuitesProvider suitesProvider = providers.getSuites();
         OptionValues options = getOptions();

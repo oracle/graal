@@ -243,6 +243,11 @@ public final class CompilerDirectives {
          * Determines whether this method throws a {@link ControlFlowException}.
          */
         boolean throwsControlFlowException() default false;
+
+        /**
+         * Considers this Truffle boundary invoke as an inlining candidate.
+         */
+        boolean allowInlining() default false;
     }
 
     /**

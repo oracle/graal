@@ -33,6 +33,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -44,11 +45,17 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.interop.java.MethodMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -89,6 +96,13 @@ public class JavaInteropTest {
     }
 
     @Test
+    public void conversionToClassYieldsTheClass() {
+        TruffleObject expected = JavaInterop.asTruffleObject(Data.class);
+        TruffleObject computed = JavaInterop.toJavaClass(obj);
+        assertEquals("Both class objects are the same", expected, computed);
+    }
+
+    @Test
     public void doubleWrap() {
         data.x = 32;
         data.y = 10.1;
@@ -123,6 +137,14 @@ public class JavaInteropTest {
         assertTrue("Contains arr " + list, list.contains("arr"));
         assertTrue("Contains value " + list, list.contains("value"));
         assertTrue("Contains map " + list, list.contains("map"));
+
+        assertFalse("No object fields " + list, list.contains("notifyAll"));
+        assertFalse("No object fields " + list, list.contains("notify"));
+        assertFalse("No object fields " + list, list.contains("wait"));
+        assertFalse("No object fields " + list, list.contains("hashCode"));
+        assertFalse("No object fields " + list, list.contains("equals"));
+        assertFalse("No object fields " + list, list.contains("toString"));
+        assertFalse("No object fields " + list, list.contains("getClass"));
     }
 
     @Test
@@ -143,12 +165,54 @@ public class JavaInteropTest {
 
     @Test
     public void readUnknownField() throws Exception {
+        assertNoRead("unknown");
+    }
+
+    private void assertNoRead(final String name) throws UnsupportedMessageException {
         try {
-            ForeignAccess.sendRead(Message.READ.createNode(), obj, "unknown");
-            fail("Exception thrown when reading unknown field");
+            ForeignAccess.sendRead(Message.READ.createNode(), obj, name);
+            fail("Exception thrown when reading " + name + " field");
         } catch (UnknownIdentifierException ex) {
-            assertEquals("unknown", ex.getUnknownIdentifier());
+            assertEquals(name, ex.getUnknownIdentifier());
         }
+    }
+
+    private void assertNoInvoke(final String name) throws UnsupportedMessageException {
+        for (int arity = 0;; arity++) {
+            try {
+                ForeignAccess.sendInvoke(Message.createInvoke(arity).createNode(), obj, name);
+                fail("Exception thrown when reading " + name + " field");
+            } catch (UnknownIdentifierException ex) {
+                assertEquals(name, ex.getUnknownIdentifier());
+                break;
+            } catch (UnsupportedTypeException ex) {
+                fail("Types are OK");
+            } catch (ArityException ex) {
+                assertEquals(arity, ex.getExpectedArity());
+            }
+        }
+    }
+
+    @Test
+    public void readJavaLangObjectFields() throws Exception {
+        assertNoRead("notify");
+        assertNoRead("notifyAll");
+        assertNoRead("wait");
+        assertNoRead("hashCode");
+        assertNoRead("equals");
+        assertNoRead("toString");
+        assertNoRead("getClass");
+    }
+
+    @Test
+    public void invokeJavaLangObjectFields() throws Exception {
+        assertNoInvoke("notify");
+        assertNoInvoke("notifyAll");
+        assertNoInvoke("wait");
+        assertNoInvoke("hashCode");
+        assertNoInvoke("equals");
+        assertNoInvoke("toString");
+        assertNoInvoke("getClass");
     }
 
     static CallTarget sendKeys() {
@@ -523,6 +587,140 @@ public class JavaInteropTest {
         assertEquals(false, JavaInterop.unbox(JavaInterop.asTruffleObject(false)));
     }
 
+    @Test
+    public void keyInfoDefaults() {
+        TruffleObject noKeys = new NoKeysObject();
+        int keyInfo = JavaInterop.getKeyInfo(noKeys, "p1");
+        assertEquals(0, keyInfo);
+
+        TruffleObject nkio = new NoKeyInfoObject();
+        keyInfo = JavaInterop.getKeyInfo(nkio, "p1");
+        assertEquals(0b111, keyInfo);
+        keyInfo = JavaInterop.getKeyInfo(nkio, "p6");
+        assertEquals(0b111, keyInfo);
+        keyInfo = JavaInterop.getKeyInfo(nkio, "p7");
+        assertEquals(0, keyInfo);
+    }
+
+    @Test
+    public void keyInfo() {
+        TruffleObject ipobj = new InternalPropertiesObject(-1, -1, 0, 0);
+        int keyInfo = JavaInterop.getKeyInfo(ipobj, "p1");
+        assertTrue(KeyInfo.isReadable(keyInfo));
+        assertTrue(KeyInfo.isWritable(keyInfo));
+        assertFalse(KeyInfo.isInvocable(keyInfo));
+        assertFalse(KeyInfo.isInternal(keyInfo));
+        keyInfo = JavaInterop.getKeyInfo(ipobj, "p6");
+        assertTrue(KeyInfo.isReadable(keyInfo));
+        assertTrue(KeyInfo.isWritable(keyInfo));
+        assertFalse(KeyInfo.isInvocable(keyInfo));
+        assertFalse(KeyInfo.isInternal(keyInfo));
+        keyInfo = JavaInterop.getKeyInfo(ipobj, "p7");
+        assertEquals(0, keyInfo);
+
+        ipobj = new InternalPropertiesObject(0b0100010, 0b0100100, 0b0011000, 0);
+        keyInfo = JavaInterop.getKeyInfo(ipobj, "p1");
+        assertTrue(KeyInfo.isReadable(keyInfo));
+        assertFalse(KeyInfo.isWritable(keyInfo));
+        assertFalse(KeyInfo.isInvocable(keyInfo));
+        keyInfo = JavaInterop.getKeyInfo(ipobj, "p2");
+        assertFalse(KeyInfo.isReadable(keyInfo));
+        assertTrue(KeyInfo.isWritable(keyInfo));
+        assertFalse(KeyInfo.isInvocable(keyInfo));
+        keyInfo = JavaInterop.getKeyInfo(ipobj, "p3");
+        assertFalse(KeyInfo.isReadable(keyInfo));
+        assertFalse(KeyInfo.isWritable(keyInfo));
+        assertTrue(KeyInfo.isInvocable(keyInfo));
+        keyInfo = JavaInterop.getKeyInfo(ipobj, "p4");
+        assertFalse(KeyInfo.isReadable(keyInfo));
+        assertFalse(KeyInfo.isWritable(keyInfo));
+        assertTrue(KeyInfo.isInvocable(keyInfo));
+        keyInfo = JavaInterop.getKeyInfo(ipobj, "p5");
+        assertTrue(KeyInfo.isReadable(keyInfo));
+        assertTrue(KeyInfo.isWritable(keyInfo));
+        assertFalse(KeyInfo.isInvocable(keyInfo));
+        keyInfo = JavaInterop.getKeyInfo(ipobj, "p6");
+        assertFalse(KeyInfo.isReadable(keyInfo));
+        assertFalse(KeyInfo.isWritable(keyInfo));
+        assertFalse(KeyInfo.isInvocable(keyInfo));
+        keyInfo = JavaInterop.getKeyInfo(ipobj, "p7");
+        assertEquals(0, keyInfo);
+    }
+
+    @Test
+    @SuppressWarnings("rawtypes")
+    public void internalKeys() {
+        // All non-internal
+        InternalPropertiesObject ipobj = new InternalPropertiesObject(0);
+        Map map = JavaInterop.asJavaObject(Map.class, ipobj);
+        checkInternalKeys(map, "[p1, p2, p3, p4, p5, p6]");
+        assertFalse(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p1")));
+        assertFalse(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p6")));
+        // All internal
+        ipobj = new InternalPropertiesObject(-1);
+        map = JavaInterop.asJavaObject(Map.class, ipobj);
+        checkInternalKeys(map, "[]");
+        assertTrue(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p1")));
+        assertTrue(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p6")));
+        // Combinations:
+        ipobj = new InternalPropertiesObject(0b1101000);
+        map = JavaInterop.asJavaObject(Map.class, ipobj);
+        checkInternalKeys(map, "[p1, p2, p4]");
+        assertFalse(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p1")));
+        assertFalse(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p2")));
+        assertTrue(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p3")));
+        assertFalse(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p4")));
+        assertTrue(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p5")));
+        assertTrue(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p6")));
+        ipobj = new InternalPropertiesObject(0b1001110);
+        map = JavaInterop.asJavaObject(Map.class, ipobj);
+        checkInternalKeys(map, "[p4, p5]");
+        assertTrue(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p1")));
+        assertTrue(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p3")));
+        assertFalse(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p4")));
+        assertFalse(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p5")));
+        assertTrue(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p6")));
+        ipobj = new InternalPropertiesObject(0b0101010);
+        map = JavaInterop.asJavaObject(Map.class, ipobj);
+        checkInternalKeys(map, "[p2, p4, p6]");
+        assertTrue(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p1")));
+        assertFalse(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p2")));
+        assertTrue(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p3")));
+        assertFalse(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p4")));
+        assertTrue(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p5")));
+        assertFalse(KeyInfo.isInternal(JavaInterop.getKeyInfo(ipobj, "p6")));
+    }
+
+    @Test
+    public void keyInfoJavaObject() {
+        TruffleObject d = JavaInterop.asTruffleObject(new TestJavaObject());
+        int keyInfo = JavaInterop.getKeyInfo(d, "nnoonnee");
+        assertFalse(KeyInfo.isExisting(keyInfo));
+        keyInfo = JavaInterop.getKeyInfo(d, "aField");
+        assertTrue(KeyInfo.isExisting(keyInfo));
+        assertTrue(KeyInfo.isReadable(keyInfo));
+        assertTrue(KeyInfo.isWritable(keyInfo));
+        assertFalse(KeyInfo.isInvocable(keyInfo));
+        keyInfo = JavaInterop.getKeyInfo(d, "toString");
+        assertTrue(KeyInfo.isExisting(keyInfo));
+        assertTrue(KeyInfo.isReadable(keyInfo));
+        assertTrue(KeyInfo.isWritable(keyInfo));
+        assertTrue(KeyInfo.isInvocable(keyInfo));
+    }
+
+    static final class TestJavaObject {
+        public int aField = 10;
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static void checkInternalKeys(Map map, String nonInternalKeys) {
+        Map mapWithInternalKeys = JavaInterop.getMapView(map, true);
+        Map mapWithoutInternalKeys = JavaInterop.getMapView(map, false);
+        assertEquals(nonInternalKeys, map.keySet().toString());
+        assertEquals(nonInternalKeys, mapWithoutInternalKeys.keySet().toString());
+        assertEquals("[p1, p2, p3, p4, p5, p6]", mapWithInternalKeys.keySet().toString());
+    }
+
     public interface XYPlus {
         List<String> arr();
 
@@ -574,4 +772,118 @@ public class JavaInteropTest {
         }
     } // end of TemporaryRoot
 
+    static final class NoKeysObject implements TruffleObject {
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return NoKeysObjectMessageResolutionForeign.ACCESS;
+        }
+
+        public static boolean isInstance(TruffleObject obj) {
+            return obj instanceof NoKeysObject;
+        }
+
+        @MessageResolution(receiverType = NoKeysObject.class)
+        static final class NoKeysObjectMessageResolution {
+            // no messages defined, defaults only
+        }
+    }
+
+    static final class NoKeyInfoObject implements TruffleObject {
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return NoKeyInfoObjectMessageResolutionForeign.ACCESS;
+        }
+
+        public static boolean isInstance(TruffleObject obj) {
+            return obj instanceof NoKeyInfoObject;
+        }
+
+        @MessageResolution(receiverType = NoKeyInfoObject.class)
+        static final class NoKeyInfoObjectMessageResolution {
+            // KEYS defined only, using default KEY_INFO
+            @Resolve(message = "KEYS")
+            public abstract static class PropertiesKeysOnlyNode extends Node {
+
+                public Object access(NoKeyInfoObject receiver) {
+                    assert receiver != null;
+                    return JavaInterop.asTruffleObject(new String[]{"p1", "p2", "p3", "p4", "p5", "p6"});
+                }
+            }
+        }
+    }
+
+    static final class InternalPropertiesObject implements TruffleObject {
+
+        private final int rBits;    // readable
+        private final int wBits;    // writable
+        private final int iBits;    // invocable
+        private final int nBits;    // internal
+
+        /**
+         * @param iBits bits at property number indexes, where '1' means internal, '0' means
+         *            non-internal.
+         */
+        InternalPropertiesObject(int iBits) {
+            this(-1, -1, -1, iBits);
+        }
+
+        InternalPropertiesObject(int rBits, int wBits, int iBits, int nBits) {
+            this.rBits = rBits;
+            this.wBits = wBits;
+            this.iBits = iBits;
+            this.nBits = nBits;
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return PropertiesVisibilityObjectMessageResolutionForeign.ACCESS;
+        }
+
+        public static boolean isInstance(TruffleObject obj) {
+            return obj instanceof InternalPropertiesObject;
+        }
+
+        @MessageResolution(receiverType = InternalPropertiesObject.class)
+        static final class PropertiesVisibilityObjectMessageResolution {
+            @Resolve(message = "KEYS")
+            public abstract static class PropertiesKeysNode extends Node {
+
+                public Object access(InternalPropertiesObject receiver, boolean includeInternal) {
+                    assert receiver != null;
+                    if (includeInternal) {
+                        return JavaInterop.asTruffleObject(new String[]{"p1", "p2", "p3", "p4", "p5", "p6"});
+                    } else {
+                        List<String> propertyNames = new ArrayList<>();
+                        for (int i = 1; i <= 6; i++) {
+                            if ((receiver.nBits & (1 << i)) == 0) {
+                                propertyNames.add("p" + i);
+                            }
+                        }
+                        return JavaInterop.asTruffleObject(propertyNames.toArray());
+                    }
+                }
+            }
+
+            @Resolve(message = "KEY_INFO")
+            public abstract static class IsReadableNode extends Node {
+
+                public int access(InternalPropertiesObject receiver, String propertyName) {
+                    if (propertyName.length() != 2 || propertyName.charAt(0) != 'p' || !Character.isDigit(propertyName.charAt(1))) {
+                        return 0;
+                    }
+                    int d = Character.digit(propertyName.charAt(1), 10);
+                    if (d > 6) {
+                        return 0;
+                    }
+                    boolean readable = (receiver.rBits & (1 << d)) > 0;
+                    boolean writable = (receiver.wBits & (1 << d)) > 0;
+                    boolean invocable = (receiver.iBits & (1 << d)) > 0;
+                    boolean internal = (receiver.nBits & (1 << d)) > 0;
+                    return KeyInfo.newBuilder().setReadable(readable).setWritable(writable).setInvocable(invocable).setInternal(internal).build();
+                }
+            }
+        }
+    }
 }

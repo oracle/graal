@@ -26,7 +26,9 @@ package com.oracle.truffle.api.interop.java;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Map;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -34,6 +36,7 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -419,6 +422,85 @@ public final class JavaInterop {
             return ToPrimitiveNode.temporary().unbox(foreignObject);
         } catch (InteropException iex) {
             return null;
+        }
+    }
+
+    /**
+     * Get information about an object property.
+     *
+     * @param foreignObject object coming from a {@link TruffleObject Truffle language}
+     * @param propertyName name of a property or index of an array
+     * @return an integer representing {@link KeyInfo} bit flags.
+     * @see Message#KEY_INFO
+     * @see KeyInfo
+     * @since 0.26
+     */
+    public static int getKeyInfo(TruffleObject foreignObject, Object propertyName) {
+        CompilerAsserts.neverPartOfCompilation();
+        int infoBits = ForeignAccess.sendKeyInfo(Message.KEY_INFO.createNode(), foreignObject, propertyName);
+        return infoBits;
+    }
+
+    /**
+     * Get a view of map created by
+     * {@link #asJavaObject(java.lang.Class, com.oracle.truffle.api.interop.TruffleObject)} with
+     * <code>{@link java.util.Map}.class</code> as an argument. The view includes or excludes
+     * {@link KeyInfo#isInternal(int) internal} elements based on <code>includeInternal</code>
+     * parameter.
+     * 
+     * @param map a map obtained by
+     *            {@link #asJavaObject(java.lang.Class, com.oracle.truffle.api.interop.TruffleObject)}
+     * @param includeInternal <code>true</code> to include internal elements in the map,
+     *            <code>false</code> to exclude them.
+     * @return a view of the original map with a possibly changed set of elements depending on the
+     *         <code>includeInternal</code> argument.
+     * @throws IllegalArgumentException when the Map was not created by
+     *             {@link #asJavaObject(java.lang.Class, com.oracle.truffle.api.interop.TruffleObject)}
+     *             .
+     * @since 0.26
+     */
+    public static <K, V> Map<K, V> getMapView(Map<K, V> map, boolean includeInternal) throws IllegalArgumentException {
+        if (!(map instanceof TruffleMap)) {
+            throw new IllegalArgumentException(map.getClass().getCanonicalName());
+        }
+        TruffleMap<K, V> tmap = (TruffleMap<K, V>) map;
+        return tmap.cloneInternal(includeInternal);
+    }
+
+    /**
+     * A message to find out Java class for {@link TruffleObject}s wrapping plain
+     * {@link #asTruffleObject(java.lang.Object) Java objects}. The receiver of the message shall be
+     * an object created via {@link #asTruffleObject(java.lang.Object) asTruffleObject(original)}
+     * method and it is supposed to return the same object as
+     * {@link #asTruffleObject(java.lang.Object) asTruffleObject(original.getClass())}.
+     * <p>
+     * not yet public
+     */
+    static final Message CLASS_MESSAGE = ClassMessage.INSTANCE;
+
+    /**
+     * Finds a Java class representation for the provided object. If the object was created via
+     * {@link #asTruffleObject(java.lang.Object) asTruffleObject(original)} call, then it is
+     * unwrapped and the result is equal to {@link #asTruffleObject(java.lang.Object)
+     * asTruffleObject(original.getClass())}.
+     * <p>
+     * This method works only on objects that wrap plain Java objects.
+     *
+     * @param obj object expected to be created by {@link #asTruffleObject(java.lang.Object)} or
+     *            similar methods
+     * @return object representing {@link #asTruffleObject(java.lang.Object) wrapper} around
+     *         original Java object's {@link Object#getClass() type} if any. Otherwise
+     *         <code>null</code>
+     * @since 0.26
+     */
+    public static TruffleObject toJavaClass(TruffleObject obj) {
+        CompilerAsserts.neverPartOfCompilation();
+        try {
+            return (TruffleObject) ForeignAccess.send(CLASS_MESSAGE.createNode(), obj);
+        } catch (UnsupportedMessageException ex) {
+            return null;
+        } catch (InteropException ex) {
+            throw ex.raise();
         }
     }
 

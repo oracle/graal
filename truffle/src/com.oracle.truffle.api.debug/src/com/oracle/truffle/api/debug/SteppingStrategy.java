@@ -41,12 +41,13 @@ abstract class SteppingStrategy {
      * Indicates that a stepping strategy was consumed by an suspended event.
      */
     private boolean consumed;
+    private SteppingStrategy next;
 
-    public void consume() {
+    void consume() {
         consumed = true;
     }
 
-    public boolean isConsumed() {
+    boolean isConsumed() {
         return consumed;
     }
 
@@ -54,36 +55,49 @@ abstract class SteppingStrategy {
 
     abstract void initialize();
 
-    public boolean isDone() {
+    boolean isDone() {
         return false;
     }
 
-    public boolean isKill() {
+    boolean isKill() {
         return false;
     }
 
-    public static SteppingStrategy createKill() {
+    boolean isComposable() {
+        return false;
+    }
+
+    @SuppressWarnings("unused")
+    void add(SteppingStrategy nextStrategy) {
+        throw new UnsupportedOperationException("Not composable.");
+    }
+
+    static SteppingStrategy createKill() {
         return new Kill();
     }
 
-    public static SteppingStrategy createAlwaysHalt() {
+    static SteppingStrategy createAlwaysHalt() {
         return new AlwaysHalt();
     }
 
-    public static SteppingStrategy createContinue() {
+    static SteppingStrategy createContinue() {
         return new Continue();
     }
 
-    public static SteppingStrategy createStepInto(int stepCount) {
+    static SteppingStrategy createStepInto(int stepCount) {
         return new StepInto(stepCount);
     }
 
-    public static SteppingStrategy createStepOut() {
-        return new StepOut();
+    static SteppingStrategy createStepOut(int stepCount) {
+        return new StepOut(stepCount);
     }
 
-    public static SteppingStrategy createStepOver(int stepCount) {
+    static SteppingStrategy createStepOver(int stepCount) {
         return new StepOver(stepCount);
+    }
+
+    static SteppingStrategy createComposed(SteppingStrategy strategy1, SteppingStrategy strategy2) {
+        return new ComposedStrategy(strategy1, strategy2);
     }
 
     // TODO (mlvdv) wish there were fast-path access to stack depth
@@ -263,11 +277,6 @@ abstract class SteppingStrategy {
         private int unfinishedStepCount;
         private int startStackDepth;
 
-        StepOut() {
-            this(1);
-        }
-
-        // TODO (mlvdv) not yet fully supported
         StepOut(int stepCount) {
             this.unfinishedStepCount = stepCount;
         }
@@ -348,4 +357,89 @@ abstract class SteppingStrategy {
 
     }
 
+    static final class ComposedStrategy extends SteppingStrategy {
+
+        private final SteppingStrategy first;
+        private SteppingStrategy last;
+        private SteppingStrategy current;
+
+        private ComposedStrategy(SteppingStrategy strategy1, SteppingStrategy strategy2) {
+            strategy1.next = strategy2;
+            first = strategy1;
+            current = first;
+            last = strategy2;
+        }
+
+        @Override
+        void initialize() {
+            assert current == first;
+            current.initialize();
+        }
+
+        @Override
+        boolean step(DebuggerSession steppingSession, EventContext context, SteppingLocation location) {
+            boolean hit = current.step(steppingSession, context, location);
+            if (hit) {
+                if (current == last) {
+                    return true;
+                } else {
+                    current = current.next;
+                    current.initialize();
+                }
+            }
+            return false;
+        }
+
+        @Override
+        void consume() {
+            assert current == last;
+            last.consume();
+        }
+
+        @Override
+        boolean isConsumed() {
+            assert current == last;
+            return last.isConsumed();
+        }
+
+        @Override
+        boolean isDone() {
+            if (current == last) {
+                return last.isDone();
+            }
+            return false;
+        }
+
+        @Override
+        boolean isKill() {
+            if (current == last) {
+                return last.isKill();
+            }
+            return false;
+        }
+
+        @Override
+        boolean isComposable() {
+            return true;
+        }
+
+        @Override
+        synchronized void add(SteppingStrategy nextStrategy) {
+            last.next = nextStrategy;
+            last = nextStrategy;
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder all = new StringBuilder();
+            for (SteppingStrategy s = first; s.next != null; s = s.next) {
+                if (all.length() > 0) {
+                    all.append(", ");
+                }
+                all.append(s.toString());
+            }
+
+            return "COMPOSED(" + all + ")";
+        }
+    }
 }

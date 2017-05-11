@@ -105,9 +105,9 @@ meth public java.lang.Throwable getBreakpointConditionException(com.oracle.truff
 meth public java.util.List<com.oracle.truffle.api.debug.Breakpoint> getBreakpoints()
 meth public void prepareContinue()
 meth public void prepareKill()
-meth public void prepareStepInto(int)
+meth public com.oracle.truffle.api.debug.SuspendedEvent prepareStepInto(int)
 meth public void prepareStepOut()
-meth public void prepareStepOver(int)
+meth public com.oracle.truffle.api.debug.SuspendedEvent prepareStepOver(int)
 supr java.lang.Object
 hfds breakpoints,cachedFrames,conditionFailures,context,disposed,location,materializedFrame,nextStrategy,returnValue,session,sourceSection,thread
 hcls DebugStackFrameIterable
