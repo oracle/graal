@@ -88,7 +88,7 @@ public class GraphKit implements GraphBuilderTool {
 
     private final List<Structure> structures;
 
-    abstract static class Structure {
+    protected abstract static class Structure {
     }
 
     public GraphKit(StructuredGraph graph, Providers providers, WordTypes wordTypes, GraphBuilderConfiguration.Plugins graphBuilderPlugins) {
