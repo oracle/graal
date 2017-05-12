@@ -29,10 +29,16 @@
  */
 package com.oracle.truffle.llvm.nodes.cast;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
@@ -85,9 +91,33 @@ public abstract class LLVMToAddressNode extends LLVMExpressionNode {
         return LLVMAddress.fromLong((long) toLong.executeWithTarget(from.getValue()));
     }
 
-    @Specialization(guards = "notLLVM(from)")
-    public LLVMTruffleObject executeTruffleObject(TruffleObject from) {
-        return new LLVMTruffleObject(from, getType());
+    protected static boolean checkIsPointer(Node isPointer, TruffleObject object) {
+        return ForeignAccess.sendIsPointer(isPointer, object);
     }
 
+    protected static Node createIsPointer() {
+        return Message.IS_POINTER.createNode();
+    }
+
+    protected static Node createAsPointer() {
+        return Message.AS_POINTER.createNode();
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"checkIsPointer(isPointer, obj)", "notLLVM(obj)"})
+    public LLVMAddress fromNativePointer(TruffleObject obj, @Cached("createIsPointer()") Node isPointer, @Cached("createAsPointer()") Node asPointer) {
+        try {
+            long raw = ForeignAccess.sendAsPointer(asPointer, obj);
+            return LLVMAddress.fromLong(raw);
+        } catch (UnsupportedMessageException ex) {
+            CompilerDirectives.transferToInterpreter();
+            throw new RuntimeException(ex);
+        }
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"!checkIsPointer(isPointer, from)", "notLLVM(from)"})
+    public LLVMTruffleObject executeTruffleObject(TruffleObject from, @Cached("createIsPointer()") Node isPointer) {
+        return new LLVMTruffleObject(from, getType());
+    }
 }

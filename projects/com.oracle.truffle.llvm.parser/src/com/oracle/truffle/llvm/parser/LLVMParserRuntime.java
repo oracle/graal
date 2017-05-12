@@ -484,7 +484,7 @@ public final class LLVMParserRuntime {
     public long getNativeHandle(String name) {
         CompilerAsserts.neverPartOfCompilation();
         try {
-            return (long) ForeignAccess.sendUnbox(Message.UNBOX.createNode(), context.getNativeLookup().getNativeDataObject(name));
+            return ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), context.getNativeLookup().getNativeDataObject(name));
         } catch (UnsupportedMessageException e) {
             throw new IllegalStateException(e);
         }

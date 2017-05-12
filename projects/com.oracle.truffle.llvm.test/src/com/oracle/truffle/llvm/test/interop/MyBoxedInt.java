@@ -125,6 +125,21 @@ public final class MyBoxedInt implements TruffleObject {
             public CallTarget accessKeyInfo() {
                 return null;
             }
+
+            @Override
+            public CallTarget accessIsPointer() {
+                return null;
+            }
+
+            @Override
+            public CallTarget accessAsPointer() {
+                return null;
+            }
+
+            @Override
+            public CallTarget accessToNative() {
+                return null;
+            }
         });
     }
 

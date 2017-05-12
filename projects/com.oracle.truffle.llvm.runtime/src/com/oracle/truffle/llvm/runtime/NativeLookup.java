@@ -175,7 +175,7 @@ public final class NativeLookup {
         try {
             TruffleObject symbol = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(),
                             libraryHandle, name);
-            if (symbol != null && 0 != (long) ForeignAccess.sendUnbox(Message.UNBOX.createNode(), symbol)) {
+            if (symbol != null && 0 != ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), symbol)) {
                 return symbol;
             } else {
                 return null;

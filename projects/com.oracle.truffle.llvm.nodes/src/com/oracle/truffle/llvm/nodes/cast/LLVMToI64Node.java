@@ -74,23 +74,26 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
 
     @Child private Node isNull = Message.IS_NULL.createNode();
     @Child private Node isBoxed = Message.IS_BOXED.createNode();
+    @Child private Node asPointer = Message.AS_POINTER.createNode();
+    @Child private Node toNative = Message.TO_NATIVE.createNode();
     @Child private Node unbox = Message.UNBOX.createNode();
     @Child private ToLLVMNode convert = ToLLVMNode.createNode(long.class);
 
     @Specialization(guards = "notLLVM(from)")
     public long executeTruffleObject(TruffleObject from) {
-        if (ForeignAccess.sendIsNull(isNull, from)) {
-            return 0;
-        } else if (ForeignAccess.sendIsBoxed(isBoxed, from)) {
-            try {
+        try {
+            if (ForeignAccess.sendIsNull(isNull, from)) {
+                return 0;
+            } else if (ForeignAccess.sendIsBoxed(isBoxed, from)) {
                 return (long) convert.executeWithTarget(ForeignAccess.sendUnbox(unbox, from));
-            } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
+            } else {
+                TruffleObject n = (TruffleObject) ForeignAccess.sendToNative(toNative, from);
+                return ForeignAccess.sendAsPointer(asPointer, n);
             }
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException(e);
         }
-        CompilerDirectives.transferToInterpreter();
-        throw new IllegalStateException("Not convertable");
     }
 
     @Specialization

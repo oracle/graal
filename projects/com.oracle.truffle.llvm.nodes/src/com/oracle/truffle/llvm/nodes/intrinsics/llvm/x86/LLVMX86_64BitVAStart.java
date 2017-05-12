@@ -61,8 +61,11 @@ public final class LLVMX86_64BitVAStart extends LLVMExpressionNode {
     private final SourceSection sourceSection;
     @Child private LLVMExpressionNode target;
     @Child private LLVMForceLLVMAddressNode targetToAddress;
-    @Child private Node isBoxedNode = Message.IS_BOXED.createNode();
-    @Child private Node unboxNode = Message.UNBOX.createNode();
+    @Child private Node isPointer = Message.IS_POINTER.createNode();
+    @Child private Node asPointer = Message.AS_POINTER.createNode();
+    @Child private Node toNative = Message.TO_NATIVE.createNode();
+    @Child private Node isBoxed = Message.IS_BOXED.createNode();
+    @Child private Node unbox = Message.UNBOX.createNode();
 
     @CompilationFinal private LLVMStack stack;
 
@@ -115,7 +118,7 @@ public final class LLVMX86_64BitVAStart extends LLVMExpressionNode {
 
         int varArgsStartIndex = numberOfExplicitArguments;
         Object[] realArguments = getRealArguments(frame);
-        unboxArguments(realArguments);
+        unboxArguments(realArguments, varArgsStartIndex);
         int argumentsLength = realArguments.length;
         int nrVarArgs = argumentsLength - varArgsStartIndex;
         int numberOfVarArgs = argumentsLength - varArgsStartIndex;
@@ -180,19 +183,25 @@ public final class LLVMX86_64BitVAStart extends LLVMExpressionNode {
         return newArguments;
     }
 
-    private void unboxArguments(Object[] arguments) {
-        for (int n = 0; n < arguments.length; n++) {
-            Object argument = arguments[n];
+    private void unboxArguments(Object[] arguments, int varArgsStartIndex) {
+        try {
+            for (int n = varArgsStartIndex; n < arguments.length; n++) {
+                Object argument = arguments[n];
 
-            if (argument instanceof LLVMBoxedPrimitive) {
-                arguments[n] = ((LLVMBoxedPrimitive) argument).getValue();
-            } else if (argument instanceof TruffleObject && notLLVM((TruffleObject) argument) && ForeignAccess.sendIsBoxed(isBoxedNode, (TruffleObject) argument)) {
-                try {
-                    arguments[n] = ForeignAccess.sendUnbox(unboxNode, (TruffleObject) argument);
-                } catch (UnsupportedMessageException e) {
-                    throw new AssertionError(e);
+                if (argument instanceof LLVMBoxedPrimitive) {
+                    arguments[n] = ((LLVMBoxedPrimitive) argument).getValue();
+                } else if (argument instanceof TruffleObject && notLLVM((TruffleObject) argument) && ForeignAccess.sendIsPointer(isPointer, (TruffleObject) argument)) {
+                    arguments[n] = ForeignAccess.sendAsPointer(asPointer, (TruffleObject) argument);
+                } else if (argument instanceof TruffleObject && notLLVM((TruffleObject) argument) && ForeignAccess.sendIsBoxed(isBoxed, (TruffleObject) argument)) {
+                    arguments[n] = ForeignAccess.sendUnbox(unbox, (TruffleObject) argument);
+                } else if (argument instanceof TruffleObject && notLLVM((TruffleObject) argument)) {
+                    TruffleObject nativeObject = (TruffleObject) ForeignAccess.sendToNative(toNative, (TruffleObject) argument);
+                    arguments[n] = ForeignAccess.sendAsPointer(asPointer, nativeObject);
                 }
             }
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError(e);
         }
     }
 
