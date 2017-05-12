@@ -62,12 +62,6 @@ public final class GenericGenerator extends MessageGenerator {
     }
 
     @Override
-    void appendImports(Writer w) throws IOException {
-        super.appendImports(w);
-        w.append("import java.util.List;").append("\n");
-    }
-
-    @Override
     void appendRootNode(Writer w) throws IOException {
         w.append("    private static final class ").append(executeRootNode).append(" extends RootNode {\n");
         w.append("        protected ").append(executeRootNode).append("() {\n");
@@ -80,8 +74,12 @@ public final class GenericGenerator extends MessageGenerator {
         w.append("        public Object execute(VirtualFrame frame) {\n");
         w.append("            try {\n");
         w.append("              Object receiver = ForeignAccess.getReceiver(frame);\n");
-        w.append("              List<Object> arguments = ForeignAccess.getArguments(frame);\n");
+        boolean listGenerated = false;
         for (int i = 0; i < getParameterCount() - 1; i++) {
+            if (!listGenerated) {
+                w.append("              java.util.List<Object> arguments = ForeignAccess.getArguments(frame);\n");
+                listGenerated = true;
+            }
             String index = String.valueOf(i);
             w.append("              Object arg").append(index).append(" = arguments.get(").append(index).append(");\n");
         }

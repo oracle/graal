@@ -219,6 +219,9 @@ public class TruffleCompilerOptions {
     @Option(help = "Treat compilation exceptions as fatal exceptions that will exit the application", type = OptionType.Debug)
     public static final OptionKey<Boolean> TruffleCompilationExceptionsAreFatal = new OptionKey<>(false);
 
+    @Option(help = "Treat performance warnings as fatal occurrences that will exit the applications", type = OptionType.Debug)
+    public static final OptionKey<Boolean> TrufflePerformanceWarningsAreFatal = new OptionKey<>(false);
+
     @Option(help = "Prints the exception stack trace for compilation exceptions", type = OptionType.Debug)
     public static final OptionKey<Boolean> TruffleCompilationExceptionsArePrinted = new OptionKey<>(true);
 

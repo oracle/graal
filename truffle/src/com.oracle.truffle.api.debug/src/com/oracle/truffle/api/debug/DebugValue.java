@@ -29,9 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -111,7 +109,9 @@ public abstract class DebugValue {
      * @deprecated Use {@link #isWritable()}
      */
     @Deprecated
-    public abstract boolean isWriteable();
+    public final boolean isWriteable() {
+        return isWritable();
+    }
 
     /**
      * Returns <code>true</code> if this value can be written to, else <code>false</code>.
@@ -122,6 +122,39 @@ public abstract class DebugValue {
     public abstract boolean isWritable();
 
     /**
+     * Returns <code>true</code> if this value represents an internal implementation detail,
+     * <code>false</code> otherwise. Internal values should be hidden during normal guest language
+     * debugging.
+     * <p>
+     * Language implementations sometimes create internal helper variables that do not correspond to
+     * anything explicitly written by a programmer. Language implementors mark these variables as
+     * <em>internal</em>.
+     * </p>
+     * <p>
+     * Clients of the debugging API should assume that displaying <em>internal</em> values is
+     * unlikely to help programmers debug guest language programs and might possibly create
+     * confusion. However, clients may choose to display all values, for example in a special mode
+     * to support development of programming language implementations.
+     * </p>
+     *
+     * @since 0.26
+     */
+    public abstract boolean isInternal();
+
+    /**
+     * Get the scope where this value is declared in. It returns a non-null value for local
+     * variables declared on a stack. It's <code>null<code> for object properties and other heap
+     * values.
+     *
+     * @return the scope, or <code>null</code> when this value does not belong into any scope.
+     *
+     * @since 0.26
+     */
+    public DebugScope getScope() {
+        return null;
+    }
+
+    /**
      * Provides properties representing an internal structure of this value. The returned collection
      * is not thread-safe. If the value is not {@link #isReadable() readable} then an
      * {@link IllegalStateException} is thrown.
@@ -130,32 +163,24 @@ public abstract class DebugValue {
      *         any concept of properties.
      * @since 0.19
      */
-    @SuppressWarnings("unchecked")
     public final Collection<DebugValue> getProperties() {
         if (!isReadable()) {
             throw new IllegalStateException("Value is not readable");
         }
         Object value = get();
-        Collection<DebugValue> properties = null;
+        return getProperties(value, getDebugger(), getSourceRoot(), null);
+    }
+
+    static ValuePropertiesCollection getProperties(Object value, Debugger debugger, RootNode root, DebugScope scope) {
+        ValuePropertiesCollection properties = null;
         if (value instanceof TruffleObject) {
-            Map<Object, Object> map = JavaInterop.asJavaObject(Map.class, (TruffleObject) value);
+            TruffleObject object = (TruffleObject) value;
+            Map<Object, Object> map = ObjectStructures.asMap(debugger.getMessageNodes(), object);
             if (map != null) {
-                try {
-                    properties = new ValuePropertiesCollection(getDebugger(), getSourceRoot(), map.entrySet());
-                } catch (Exception ex) {
-                    if (isUnsupportedException(ex)) {
-                        // Not supported, no properties
-                    } else {
-                        throw ex;
-                    }
-                }
+                properties = new ValuePropertiesCollection(debugger, root, object, map, map.entrySet(), scope);
             }
         }
         return properties;
-    }
-
-    private static boolean isUnsupportedException(Throwable ex) {
-        return ex instanceof InteropException || ex.getCause() != null && isUnsupportedException(ex.getCause());
     }
 
     /*
@@ -173,7 +198,7 @@ public abstract class DebugValue {
         Object value = get();
         if (value instanceof TruffleObject) {
             TruffleObject to = (TruffleObject) value;
-            return JavaInterop.isArray(to);
+            return ObjectStructures.isArray(getDebugger().getMessageNodes(), to);
         } else {
             return false;
         }
@@ -187,14 +212,13 @@ public abstract class DebugValue {
      *         array.
      * @since 0.19
      */
-    @SuppressWarnings("unchecked")
     public final List<DebugValue> getArray() {
         List<DebugValue> arrayList = null;
         Object value = get();
         if (value instanceof TruffleObject) {
             TruffleObject to = (TruffleObject) value;
-            if (JavaInterop.isArray(to)) {
-                List<Object> array = JavaInterop.asJavaObject(List.class, (TruffleObject) value);
+            List<Object> array = ObjectStructures.asList(getDebugger().getMessageNodes(), to);
+            if (array != null) {
                 arrayList = new ValueInteropList(getDebugger(), getSourceRoot(), array);
             }
         }
@@ -257,17 +281,6 @@ public abstract class DebugValue {
         return "DebugValue(name=" + getName() + ", value = " + as(String.class) + ")";
     }
 
-    /*
-     * TODO future API: public abstract Value getType(); For this we would need to have an interop
-     * message to receive the type object.
-     */
-
-    /*
-     * TODO future API: public abstract boolean isInternal(); For this we need a notion of internal
-     * on FrameSlot.
-     */
-
-    @SuppressWarnings("deprecation")
     static class HeapValue extends DebugValue {
 
         // identifies the debugger and engine
@@ -322,12 +335,12 @@ public abstract class DebugValue {
         }
 
         @Override
-        public boolean isWriteable() {
+        public boolean isWritable() {
             return false;
         }
 
         @Override
-        public boolean isWritable() {
+        public boolean isInternal() {
             return false;
         }
 
@@ -345,20 +358,26 @@ public abstract class DebugValue {
 
     static final class PropertyValue extends HeapValue {
 
+        private final int keyInfo;
         private final Map.Entry<Object, Object> property;
+        private final DebugScope scope;
 
-        PropertyValue(Debugger debugger, RootNode root, Map.Entry<Object, Object> property) {
+        PropertyValue(Debugger debugger, RootNode root, TruffleObject object, Map.Entry<Object, Object> property, DebugScope scope) {
             super(debugger, root, null);
+            this.keyInfo = JavaInterop.getKeyInfo(object, property.getKey());
             this.property = property;
+            this.scope = scope;
         }
 
         @Override
         Object get() {
+            checkValid();
             return property.getValue();
         }
 
         @Override
         public String getName() {
+            checkValid();
             String name;
             RootNode sourceRoot = getSourceRoot();
             Object propertyKey = property.getKey();
@@ -375,97 +394,104 @@ public abstract class DebugValue {
         }
 
         @Override
-        public boolean isWriteable() {
-            return true; // Suppose that yes...
-        }
-
-        @Override
-        public void set(DebugValue value) {
-            property.setValue(value.get());
-        }
-
-    }
-
-    @SuppressWarnings("deprecation")
-    static final class StackValue extends DebugValue {
-
-        protected final DebugStackFrame origin;
-        private final FrameSlot slot;
-
-        StackValue(DebugStackFrame frame, FrameSlot slot) {
-            this.origin = frame;
-            this.slot = slot;
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        public <T> T as(Class<T> clazz) {
-            origin.verifyValidState(false);
-            if (!isReadable()) {
-                throw new IllegalStateException("Value is not readable");
-            }
-            if (clazz == String.class) {
-                RootNode root = origin.findCurrentRoot();
-                Object value = get();
-                String stringValue;
-                if (root == null) {
-                    stringValue = value.toString();
-                } else {
-                    stringValue = origin.event.getSession().getDebugger().getEnv().toString(root, get());
-                }
-                return (T) stringValue;
-            }
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        Object get() {
-            origin.verifyValidState(false);
-            return origin.findTruffleFrame().getValue(slot);
-        }
-
-        @Override
-        public void set(DebugValue value) {
-            origin.verifyValidState(false);
-            if (value.getLanguageInfo() != getLanguageInfo()) {
-                throw new IllegalStateException(String.format("Languages of set values do not match %s != %s.", value.getLanguageInfo(), getLanguageInfo()));
-            }
-            MaterializedFrame frame = origin.findTruffleFrame();
-            frame.setObject(slot, value.get());
-        }
-
-        @Override
-        public String getName() {
-            origin.verifyValidState(false);
-            return slot.getIdentifier().toString();
-        }
-
-        @Override
         public boolean isReadable() {
-            origin.verifyValidState(false);
-            return true;
-        }
-
-        @Override
-        public boolean isWriteable() {
-            origin.verifyValidState(false);
-            return true;
+            checkValid();
+            return KeyInfo.isReadable(keyInfo);
         }
 
         @Override
         public boolean isWritable() {
-            origin.verifyValidState(false);
-            return true;
+            checkValid();
+            return KeyInfo.isWritable(keyInfo);
         }
 
         @Override
-        Debugger getDebugger() {
-            return origin.event.getSession().getDebugger();
+        public boolean isInternal() {
+            checkValid();
+            return KeyInfo.isInternal(keyInfo);
         }
 
         @Override
-        RootNode getSourceRoot() {
-            return origin.findCurrentRoot();
+        public DebugScope getScope() {
+            checkValid();
+            return scope;
+        }
+
+        @Override
+        public void set(DebugValue value) {
+            checkValid();
+            property.setValue(value.get());
+        }
+
+        private void checkValid() {
+            if (scope != null) {
+                scope.verifyValidState();
+            }
+        }
+    }
+
+    static final class PropertyNamedValue extends HeapValue {
+
+        private final int keyInfo;
+        private final Map<Object, Object> map;
+        private final String name;
+        private final DebugScope scope;
+
+        PropertyNamedValue(Debugger debugger, RootNode root, TruffleObject object,
+                        Map<Object, Object> map, String name, DebugScope scope) {
+            super(debugger, root, null);
+            this.keyInfo = JavaInterop.getKeyInfo(object, name);
+            this.map = map;
+            this.name = name;
+            this.scope = scope;
+        }
+
+        @Override
+        public String getName() {
+            checkValid();
+            return name;
+        }
+
+        @Override
+        Object get() {
+            checkValid();
+            return map.get(name);
+        }
+
+        @Override
+        public DebugScope getScope() {
+            checkValid();
+            return scope;
+        }
+
+        @Override
+        public boolean isReadable() {
+            checkValid();
+            return KeyInfo.isReadable(keyInfo);
+        }
+
+        @Override
+        public boolean isWritable() {
+            checkValid();
+            return KeyInfo.isWritable(keyInfo);
+        }
+
+        @Override
+        public boolean isInternal() {
+            checkValid();
+            return KeyInfo.isInternal(keyInfo);
+        }
+
+        @Override
+        public void set(DebugValue value) {
+            checkValid();
+            map.put(name, value.get());
+        }
+
+        private void checkValid() {
+            if (scope != null) {
+                scope.verifyValidState();
+            }
         }
 
     }

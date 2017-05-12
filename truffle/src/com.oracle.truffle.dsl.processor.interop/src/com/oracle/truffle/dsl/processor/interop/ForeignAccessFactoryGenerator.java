@@ -77,7 +77,7 @@ public final class ForeignAccessFactoryGenerator {
         Utils.appendFactoryGeneratedFor(w, "", receiverTypeClass, ElementUtils.getQualifiedName(element));
         Utils.appendVisibilityModifier(w, element);
         w.append("final class ").append(simpleClassName);
-        w.append(" implements Factory18, Factory {\n");
+        w.append(" implements Factory26, Factory {\n");
 
         appendSingletonAndGetter(w);
         appendPrivateConstructor(w);
@@ -94,6 +94,7 @@ public final class ForeignAccessFactoryGenerator {
         appendFactoryAccessExecute(w);
         appendFactoryAccessInvoke(w);
         appendFactoryAccessNew(w);
+        appendFactoryAccessKeyInfo(w);
         appendFactoryAccessKeys(w);
         appendFactoryAccessMessage(w);
 
@@ -106,7 +107,7 @@ public final class ForeignAccessFactoryGenerator {
     }
 
     private void appendImports(Writer w) throws IOException {
-        w.append("import com.oracle.truffle.api.interop.ForeignAccess.Factory18;").append("\n");
+        w.append("import com.oracle.truffle.api.interop.ForeignAccess.Factory26;").append("\n");
         w.append("import com.oracle.truffle.api.interop.ForeignAccess.Factory;").append("\n");
         w.append("import com.oracle.truffle.api.interop.Message;").append("\n");
         w.append("import com.oracle.truffle.api.interop.ForeignAccess;").append("\n");
@@ -119,6 +120,7 @@ public final class ForeignAccessFactoryGenerator {
         if (!(messageHandlers.containsKey(Message.IS_BOXED) &&
                         messageHandlers.containsKey(Message.IS_NULL) &&
                         messageHandlers.containsKey(Message.IS_EXECUTABLE) &&
+                        messageHandlers.containsKey(Message.KEY_INFO) &&
                         messageHandlers.containsKey(Message.HAS_SIZE))) {
             w.append("import com.oracle.truffle.api.nodes.RootNode;").append("\n");
         }
@@ -186,8 +188,12 @@ public final class ForeignAccessFactoryGenerator {
     }
 
     private void appendOptionalDefaultHandlerBody(Writer w, Message message) throws IOException {
+        appendOptionalDefaultHandlerBody(w, message, "false");
+    }
+
+    private void appendOptionalDefaultHandlerBody(Writer w, Message message, String defaultValue) throws IOException {
         if (!messageHandlers.containsKey(message)) {
-            w.append("      return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));").append("\n");
+            w.append("      return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(" + defaultValue + "));").append("\n");
         } else {
             w.append("      return Truffle.getRuntime().createCallTarget(").append(messageHandlers.get(message)).append(");").append("\n");
         }
@@ -197,6 +203,13 @@ public final class ForeignAccessFactoryGenerator {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessGetSize() {").append("\n");
         appendOptionalHandlerBody(w, Message.GET_SIZE);
+        w.append("    }").append("\n");
+    }
+
+    private void appendFactoryAccessKeyInfo(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
+        w.append("    public CallTarget accessKeyInfo() {").append("\n");
+        appendOptionalHandlerBody(w, Message.KEY_INFO);
         w.append("    }").append("\n");
     }
 
@@ -263,7 +276,7 @@ public final class ForeignAccessFactoryGenerator {
         for (Object m : messageHandlers.keySet()) {
             if (!InteropDSLProcessor.KNOWN_MESSAGES.contains(m)) {
                 String msg = m instanceof Message ? Message.toString((Message) m) : (String) m;
-                w.append("      if (unknown instanceof ").append(msg).append(") {").append("\n");
+                w.append("      if (unknown != null && unknown.getClass().getName().equals(\"").append(msg).append("\")) {").append("\n");
                 w.append("        return Truffle.getRuntime().createCallTarget(").append(messageHandlers.get(m)).append(");").append("\n");
                 w.append("      }").append("\n");
             }

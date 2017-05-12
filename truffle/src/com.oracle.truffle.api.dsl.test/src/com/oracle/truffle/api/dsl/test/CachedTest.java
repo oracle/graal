@@ -24,13 +24,17 @@ package com.oracle.truffle.api.dsl.test;
 
 import static com.oracle.truffle.api.dsl.test.TestHelper.assertionsEnabled;
 import static com.oracle.truffle.api.dsl.test.TestHelper.createCallTarget;
+import static com.oracle.truffle.api.dsl.test.TestHelper.createNode;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
+
+import java.lang.reflect.Field;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
@@ -40,7 +44,13 @@ import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.BoundCacheFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.BoundCacheOverflowFactory;
+import com.oracle.truffle.api.dsl.test.CachedTestFactory.CacheDimensions1Factory;
+import com.oracle.truffle.api.dsl.test.CachedTestFactory.CacheDimensions2Factory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.CacheNodeWithReplaceFactory;
+import com.oracle.truffle.api.dsl.test.CachedTestFactory.ChildrenAdoption1Factory;
+import com.oracle.truffle.api.dsl.test.CachedTestFactory.ChildrenAdoption2Factory;
+import com.oracle.truffle.api.dsl.test.CachedTestFactory.ChildrenAdoption3Factory;
+import com.oracle.truffle.api.dsl.test.CachedTestFactory.ChildrenAdoption4Factory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestBoundCacheOverflowContainsFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheFieldFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheMethodFactory;
@@ -52,10 +62,10 @@ import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestGuardWithCachedAndD
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestGuardWithJustCachedParameterFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestMultipleCachesFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.UnboundCacheFactory;
-import com.oracle.truffle.api.dsl.test.ImplicitCastTest.ImplicitCast0Types;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.dsl.test.examples.ExampleTypes;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeInterface;
 
 @SuppressWarnings("unused")
 public class CachedTest {
@@ -467,6 +477,171 @@ public class CachedTest {
         assertEquals(0, root.execute(0));
         assertEquals(2, root.execute(1));
         assertEquals(4, root.execute(2));
+    }
+
+    @NodeChild
+    static class CacheDimensions1 extends ValueNode {
+
+        @Specialization(guards = "value == cachedValue")
+        static int[] do1(int[] value, //
+                        @Cached(value = "value", dimensions = 1) int[] cachedValue) {
+            return cachedValue;
+        }
+
+    }
+
+    @Test
+    public void testCacheDimension1() throws NoSuchFieldException, SecurityException {
+        CacheDimensions1 node = TestHelper.createNode(CacheDimensions1Factory.getInstance(), false);
+        Field field = node.getClass().getDeclaredField("do1_cache");
+        field.setAccessible(true);
+        Field cachedField = field.getType().getDeclaredField("cachedValue_");
+        cachedField.setAccessible(true);
+        assertEquals(1, cachedField.getAnnotation(CompilationFinal.class).dimensions());
+    }
+
+    @NodeChild
+    static class CacheDimensions2 extends ValueNode {
+
+        @Specialization
+        static int[] do1(int[] value, //
+                        @Cached(value = "value", dimensions = 1) int[] cachedValue) {
+            return cachedValue;
+        }
+
+    }
+
+    @Test
+    public void testCacheDimension2() throws NoSuchFieldException, SecurityException {
+        CacheDimensions2 node = TestHelper.createNode(CacheDimensions2Factory.getInstance(), false);
+        Field cachedField = node.getClass().getDeclaredField("do1_cachedValue_");
+        cachedField.setAccessible(true);
+        assertEquals(1, cachedField.getAnnotation(CompilationFinal.class).dimensions());
+    }
+
+    @NodeChild
+    abstract static class ChildrenAdoption1 extends ValueNode {
+
+        abstract NodeInterface[] execute(Object value);
+
+        @Specialization(guards = "value == cachedValue")
+        static NodeInterface[] do1(NodeInterface[] value, @Cached("value") NodeInterface[] cachedValue) {
+            return cachedValue;
+        }
+
+    }
+
+    @NodeChild
+    abstract static class ChildrenAdoption2 extends ValueNode {
+
+        abstract NodeInterface execute(Object value);
+
+        @Specialization(guards = "value == cachedValue")
+        static NodeInterface do1(NodeInterface value, @Cached("value") NodeInterface cachedValue) {
+            return cachedValue;
+        }
+
+    }
+
+    @NodeChild
+    abstract static class ChildrenAdoption3 extends ValueNode {
+
+        abstract Node[] execute(Object value);
+
+        @Specialization(guards = "value == cachedValue")
+        static Node[] do1(Node[] value, @Cached("value") Node[] cachedValue) {
+            return cachedValue;
+        }
+
+    }
+
+    @NodeChild
+    abstract static class ChildrenAdoption4 extends ValueNode {
+
+        abstract Node execute(Object value);
+
+        @Specialization(guards = "value == cachedValue")
+        static Node do1(Node value, @Cached("value") Node cachedValue) {
+            return cachedValue;
+        }
+
+    }
+
+    @Test
+    public void testChildrenAdoption1() {
+        ChildrenAdoption1 root = createNode(ChildrenAdoption1Factory.getInstance(), false);
+        Node[] children = new Node[]{new ValueNode()};
+        root.execute(children);
+        Assert.assertTrue(hasParent(root, children[0].getParent()));
+    }
+
+    @Test
+    public void testChildrenAdoption2() {
+        ChildrenAdoption2 root = createNode(ChildrenAdoption2Factory.getInstance(), false);
+        Node child = new ValueNode();
+        root.execute(child);
+        root.adoptChildren();
+        Assert.assertTrue(hasParent(root, child.getParent()));
+    }
+
+    @Test
+    public void testChildrenAdoption3() {
+        ChildrenAdoption3 root = createNode(ChildrenAdoption3Factory.getInstance(), false);
+        Node[] children = new Node[]{new ValueNode()};
+        root.execute(children);
+        Assert.assertTrue(hasParent(root, children[0].getParent()));
+    }
+
+    @Test
+    public void testChildrenAdoption4() {
+        ChildrenAdoption4 root = createNode(ChildrenAdoption4Factory.getInstance(), false);
+        Node child = new ValueNode();
+        root.execute(child);
+        Assert.assertTrue(hasParent(root, child.getParent()));
+    }
+
+    private static boolean hasParent(Node parent, Node node) {
+        Node current = node != null ? node.getParent() : null;
+        while (current != null) {
+            if (current == parent) {
+                return true;
+            }
+            current = current.getParent();
+        }
+        return false;
+    }
+
+    @NodeChild
+    static class CacheDimensionsError1 extends ValueNode {
+
+        @Specialization(guards = "value == cachedValue")
+        static int[] do1(int[] value, //
+                        @ExpectError("The cached dimensions attribute must be specified for array types.") @Cached("value") int[] cachedValue) {
+            return cachedValue;
+        }
+
+    }
+
+    @NodeChild
+    static class CacheDimensionsError2 extends ValueNode {
+
+        @Specialization(guards = "value == cachedValue")
+        static Node[] do1(Node[] value, //
+                        @ExpectError("The dimensions attribute has no affect for the type Node[].") @Cached(value = "value", dimensions = 1) Node[] cachedValue) {
+            return cachedValue;
+        }
+
+    }
+
+    @NodeChild
+    static class CacheDimensionsError3 extends ValueNode {
+
+        @Specialization(guards = "value == cachedValue")
+        static NodeInterface[] do1(NodeInterface[] value, //
+                        @ExpectError("The dimensions attribute has no affect for the type NodeInterface[].") @Cached(value = "value", dimensions = 1) NodeInterface[] cachedValue) {
+            return cachedValue;
+        }
+
     }
 
     @NodeChild

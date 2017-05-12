@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.debug;
 
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.util.AbstractCollection;
 import java.util.Iterator;
@@ -38,17 +39,24 @@ final class ValuePropertiesCollection extends AbstractCollection<DebugValue> {
 
     private final Debugger debugger;
     private final RootNode sourceRoot;
+    private final TruffleObject object;
+    private final Map<Object, Object> map;
     private final Set<Map.Entry<Object, Object>> entrySet;
+    private final DebugScope scope;
 
-    ValuePropertiesCollection(Debugger debugger, RootNode sourceRoot, Set<Map.Entry<Object, Object>> entrySet) {
+    ValuePropertiesCollection(Debugger debugger, RootNode sourceRoot, TruffleObject object,
+                    Map<Object, Object> map, Set<Map.Entry<Object, Object>> entrySet, DebugScope scope) {
         this.debugger = debugger;
         this.sourceRoot = sourceRoot;
+        this.object = object;
+        this.map = map;
         this.entrySet = entrySet;
+        this.scope = scope;
     }
 
     @Override
     public Iterator<DebugValue> iterator() {
-        return new PropertiesIterator(entrySet.iterator());
+        return new PropertiesIterator(object, entrySet.iterator());
     }
 
     @Override
@@ -56,11 +64,21 @@ final class ValuePropertiesCollection extends AbstractCollection<DebugValue> {
         return entrySet.size();
     }
 
+    DebugValue get(String name) {
+        Object value = map.get(name);
+        if (value == null) {
+            return null;
+        }
+        return new DebugValue.PropertyNamedValue(debugger, sourceRoot, object, map, name, scope);
+    }
+
     private final class PropertiesIterator implements Iterator<DebugValue> {
 
+        private final TruffleObject object;
         private final Iterator<Map.Entry<Object, Object>> entries;
 
-        PropertiesIterator(Iterator<Map.Entry<Object, Object>> entries) {
+        PropertiesIterator(TruffleObject object, Iterator<Map.Entry<Object, Object>> entries) {
+            this.object = object;
             this.entries = entries;
         }
 
@@ -71,7 +89,7 @@ final class ValuePropertiesCollection extends AbstractCollection<DebugValue> {
 
         @Override
         public DebugValue next() {
-            return new DebugValue.PropertyValue(debugger, sourceRoot, entries.next());
+            return new DebugValue.PropertyValue(debugger, sourceRoot, object, entries.next(), scope);
         }
 
         @Override

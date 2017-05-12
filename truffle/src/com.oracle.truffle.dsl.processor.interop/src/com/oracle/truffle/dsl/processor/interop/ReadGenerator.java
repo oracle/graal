@@ -40,18 +40,20 @@ public final class ReadGenerator extends MessageGenerator {
 
     private static final int NUMBER_OF_READ = 2; // TruffleObject receiver,
                                                  // Object identifier
-    private static final String TARGETABLE_READ_NODE = "TargetableReadNode";
-    private static final String READ_ROOT_NODE = "ReadRootNode";
+    private final String targetablePropReadNode;
+    private final String propReadRootNode;
 
     public ReadGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
                     ForeignAccessFactoryGenerator containingForeignAccessFactory) {
         super(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
+        this.targetablePropReadNode = (new StringBuilder(messageName)).replace(0, 1, messageName.substring(0, 1).toUpperCase()).append("Node").insert(0, "Targetable").toString();
+        this.propReadRootNode = (new StringBuilder(messageName)).replace(0, 1, messageName.substring(0, 1).toUpperCase()).append("RootNode").toString();
     }
 
     @Override
     void appendRootNode(Writer w) throws IOException {
-        w.append("    private static final class ").append(READ_ROOT_NODE).append(" extends RootNode {\n");
-        w.append("        protected ").append(READ_ROOT_NODE).append("() {\n");
+        w.append("    private static final class ").append(propReadRootNode).append(" extends RootNode {\n");
+        w.append("        protected ").append(propReadRootNode).append("() {\n");
         w.append("            super(null);\n");
         w.append("        }\n");
         w.append("\n");
@@ -78,12 +80,12 @@ public final class ReadGenerator extends MessageGenerator {
 
     @Override
     String getTargetableNodeName() {
-        return TARGETABLE_READ_NODE;
+        return targetablePropReadNode;
     }
 
     @Override
     String getRootNodeName() {
-        return READ_ROOT_NODE;
+        return propReadRootNode;
     }
 
     @Override

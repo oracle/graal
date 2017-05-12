@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>mx.graal-core</name>
+	<name>mx.compiler</name>
 	<comment></comment>
 	<projects>
 		<project>mx</project>

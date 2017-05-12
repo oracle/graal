@@ -61,9 +61,6 @@ import com.oracle.truffle.sl.nodes.interop.SLTypeToForeignNodeGen;
 /**
  * The class containing all message resolution implementations of an SL object.
  */
-/**
- * The class containing all message resolution implementations of an SL object.
- */
 @MessageResolution(receiverType = SLObjectType.class)
 public class SLObjectMessageResolution {
     /*
@@ -127,6 +124,21 @@ public class SLObjectMessageResolution {
                 return toForeign.executeConvert(result);
             } else {
                 throw UnknownIdentifierException.raise(name);
+            }
+        }
+    }
+
+    @Resolve(message = "KEY_INFO")
+    public abstract static class SLForeignPropertyInfoNode extends Node {
+
+        public int access(DynamicObject receiver, Object name) {
+            Object property = receiver.get(name);
+            if (property == null) {
+                return 0;
+            } else if (property instanceof SLFunction) {
+                return 0b1111;
+            } else {
+                return 0b0111;
             }
         }
     }

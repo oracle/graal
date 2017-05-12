@@ -25,28 +25,29 @@
 package com.oracle.truffle.api.debug;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.debug.DebugValue.HeapValue;
-import com.oracle.truffle.api.debug.DebugValue.StackValue;
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.metadata.Scope;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Represents a frame in the guest language stack. A guest language stack frame consists of a
- * {@link #getName() name}, the current {@link #getSourceSection() source location} and a set of
- * iterable {@link #iterator() local variables}. Furthermore it allows the {@link #eval(String)
- * evaluate} guest language expressions in the lexical context of a particular frame.
+ * {@link #getName() name}, the current {@link #getSourceSection() source location} and
+ * {@link #getScope() scopes} containing local variables and arguments. Furthermore it allows to
+ * {@link #eval(String) evaluate} guest language expressions in the lexical context of a particular
+ * frame.
  * <p>
  * Debug stack frames are only valid as long as {@link SuspendedEvent suspended events} are valid.
  * Suspended events are valid as long while the originating {@link SuspendedCallback} is still
@@ -150,15 +151,6 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
     public SourceSection getSourceSection() {
         verifyValidState(true);
         EventContext context = getContext();
-        if (context == null) {
-            // there is a race condition here if the event
-            // got disposed between the parent verifyValidState and getContext.
-            // if the context is null we assume the event got disposed so we re-check
-            // the disposed flag. return null should therefore not be reachable.
-            verifyValidState(true);
-            assert false : "should not be reachable";
-            return null;
-        }
         if (currentFrame == null) {
             return context.getInstrumentedSourceSection();
         } else {
@@ -171,32 +163,67 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
     }
 
     /**
+     * Get the current inner-most scope. The scope remain valid as long as the current stack frame
+     * remains valid.
+     * <p>
+     * This method is not thread-safe and will throw an {@link IllegalStateException} if called on
+     * another thread than it was created with.
+     *
+     * @since 0.26
+     */
+    public DebugScope getScope() {
+        verifyValidState(false);
+        EventContext context = getContext();
+        RootNode root = findCurrentRoot();
+        if (root == null) {
+            return null;
+        }
+        Node node;
+        if (currentFrame == null) {
+            node = context.getInstrumentedNode();
+        } else {
+            node = currentFrame.getCallNode();
+        }
+        Debugger debugger = event.getSession().getDebugger();
+        MaterializedFrame frame = findTruffleFrame();
+        Iterable<Scope> scopes = Scope.findScopes(debugger.getEnv(), node, frame);
+        Iterator<Scope> it = scopes.iterator();
+        if (!it.hasNext()) {
+            return null;
+        }
+        return new DebugScope(it.next(), it, event, frame, root);
+    }
+
+    /**
      * Lookup a stack value with a given name. If no value is available in the current stack frame
      * with that name <code>null</code> is returned. Stack values are only accessible as as long as
      * the {@link DebugStackFrame debug stack frame} is valid. Debug stack frames are only valid as
      * long as the source {@link SuspendedEvent suspended event} is valid.
      * <p>
-     * This method is thread-safe.
+     * This method is not thread-safe and will throw an {@link IllegalStateException} if called on
+     * another thread than it was created with.
      *
      * @param name the name of the local variable to query.
      * @return the value from the stack
      * @since 0.17
+     * @deprecated Use {@link #getScope()} and {@link DebugScope#getDeclaredValue(java.lang.String)}
+     *             .
      */
+    @Deprecated
     public DebugValue getValue(String name) {
-        verifyValidState(false);
-        RootNode root = findCurrentRoot();
-        if (root == null) {
-            return null;
+        DebugScope scope = getScope();
+        while (scope != null) {
+            DebugValue value = scope.getDeclaredValue(name);
+            if (value != null) {
+                return value;
+            }
+            // Search for the value up to the function root, to be compatible.
+            if (scope.isFunctionScope()) {
+                break;
+            }
+            scope = scope.getParent();
         }
-        FrameSlot slot = root.getFrameDescriptor().findFrameSlot(name);
-        if (slot == null) {
-            return null;
-        }
-        MaterializedFrame frame = findTruffleFrame();
-        if (frame.getValue(slot) == null) {
-            return null;
-        }
-        return new StackValue(this, slot);
+        return null;
     }
 
     DebugValue wrapHeapValue(Object result) {
@@ -236,50 +263,66 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
      * another thread than it was created with.
      *
      * @since 0.17
+     * @deprecated Use {@link #getScope()} and {@link DebugScope#getDeclaredValues()}.
      */
+    @Deprecated
     public Iterator<DebugValue> iterator() {
-        verifyValidState(false);
-        RootNode root = findCurrentRoot();
-        if (root == null) {
-            return Collections.<DebugValue> emptyList().iterator();
-        }
-
-        final FrameDescriptor descriptor = root.getFrameDescriptor();
+        DebugScope cscope = getScope();
+        // Merge non-masked variables from all scopes:
         return new Iterator<DebugValue>() {
+            private DebugScope scope = cscope;
+            private Iterator<DebugValue> variables;
+            private DebugValue nextVar;
+            private Set<String> names = new HashSet<>();
 
-            private final Iterator<? extends FrameSlot> slots = descriptor.getSlots().iterator();
-
-            private StackValue nextValue;
-
+            @Override
             public boolean hasNext() {
-                if (nextValue == null) {
-                    nextValue = getNext();
+                if (nextVar != null) {
+                    return true;
                 }
-                return nextValue != null;
-            }
-
-            private StackValue getNext() {
-                while (slots.hasNext()) {
-                    FrameSlot slot = slots.next();
-                    StackValue value = new StackValue(DebugStackFrame.this, slot);
-                    if (value.get() != null) {
-                        return value;
+                for (;;) {
+                    if (variables == null && scope != null) {
+                        variables = scope.getDeclaredValues().iterator();
+                        if (!variables.hasNext()) {
+                            variables = null;
+                        }
+                        if (scope.isFunctionScope()) {
+                            // Stop at the function, do not go to closures, to be compatible.
+                            scope = null;
+                        } else {
+                            scope = scope.getParent();
+                        }
+                        if (variables == null) {
+                            continue;
+                        }
+                    }
+                    if (variables != null && variables.hasNext()) {
+                        nextVar = variables.next();
+                        String name = nextVar.getName();
+                        if (!names.contains(name)) {
+                            names.add(name);
+                            return true;
+                        }
+                    } else {
+                        variables = null;
+                        if (scope == null) {
+                            return false;
+                        }
                     }
                 }
-                return null;
             }
 
-            public StackValue next() {
-                StackValue next = nextValue;
-                if (next == null) {
-                    return getNext();
+            @Override
+            public DebugValue next() {
+                if (nextVar == null) {
+                    hasNext();
                 }
-                nextValue = null;
-                return next;
-            }
-
-            public void remove() {
-                throw new UnsupportedOperationException();
+                DebugValue var = nextVar;
+                if (var == null) {
+                    throw new NoSuchElementException();
+                }
+                nextVar = null;
+                return var;
             }
         };
     }
@@ -293,11 +336,7 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
     }
 
     private EventContext getContext() {
-        return event.getContext();
-    }
-
-    RootNode findCurrentRoot() {
-        EventContext context = getContext();
+        EventContext context = event.getContext();
         if (context == null) {
             // there is a race condition here if the event
             // got disposed between the parent verifyValidState and getContext.
@@ -305,11 +344,19 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
             // the disposed flag. return null should therefore not be reachable.
             verifyValidState(true);
             assert false : "should not be reachable";
-            return null;
         }
+        return context;
+    }
+
+    RootNode findCurrentRoot() {
+        EventContext context = getContext();
         if (currentFrame == null) {
             return context.getInstrumentedNode().getRootNode();
         } else {
+            Node callNode = currentFrame.getCallNode();
+            if (callNode != null) {
+                return callNode.getRootNode();
+            }
             CallTarget target = currentFrame.getCallTarget();
             if (target instanceof RootCallTarget) {
                 return ((RootCallTarget) target).getRootNode();

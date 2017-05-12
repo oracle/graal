@@ -65,7 +65,7 @@ final class JavaInteropReflect {
             final Field field = object.clazz.getField(name);
             final boolean isStatic = (field.getModifiers() & Modifier.STATIC) != 0;
             if (onlyStatic != isStatic) {
-                throw new NoSuchFieldException();
+                throw UnknownIdentifierException.raise(name);
             }
             val = field.get(obj);
         } catch (NoSuchFieldException ex) {
@@ -74,7 +74,7 @@ final class JavaInteropReflect {
                 if (onlyStatic != isStatic) {
                     continue;
                 }
-                if (m.getName().equals(name)) {
+                if (m.getName().equals(name) && m.getDeclaringClass() != Object.class) {
                     return new JavaFunctionObject(m, obj);
                 }
             }
@@ -83,10 +83,40 @@ final class JavaInteropReflect {
         return JavaInterop.asTruffleObject(val);
     }
 
+    static boolean isField(JavaObject object, String name) {
+        Object obj = object.obj;
+        final boolean onlyStatic = obj == null;
+        try {
+            final Field field = object.clazz.getField(name);
+            final boolean isStatic = (field.getModifiers() & Modifier.STATIC) != 0;
+            if (onlyStatic != isStatic) {
+                return false;
+            }
+            return true;
+        } catch (NoSuchFieldException | SecurityException ex) {
+            return false;
+        }
+    }
+
+    static boolean isMethod(JavaObject object, String name) {
+        Object obj = object.obj;
+        final boolean onlyStatic = obj == null;
+        for (Method m : object.clazz.getMethods()) {
+            final boolean isStatic = (m.getModifiers() & Modifier.STATIC) != 0;
+            if (onlyStatic != isStatic) {
+                continue;
+            }
+            if (m.getName().equals(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @CompilerDirectives.TruffleBoundary
     static Method findMethod(JavaObject object, String name, Object[] args) {
         for (Method m : object.clazz.getMethods()) {
-            if (m.getName().equals(name)) {
+            if (m.getName().equals(name) && m.getDeclaringClass() != Object.class) {
                 if (m.getParameterTypes().length == args.length || m.isVarArgs()) {
                     return m;
                 }
@@ -313,6 +343,10 @@ final class JavaInteropReflect {
             }
             if (message == Message.HAS_SIZE || message == Message.IS_BOXED || message == Message.IS_EXECUTABLE || message == Message.IS_NULL || message == Message.GET_SIZE) {
                 return ForeignAccess.send(messageNode, obj);
+            }
+
+            if (message == Message.KEY_INFO) {
+                return ForeignAccess.sendKeyInfo(messageNode, obj, name);
             }
 
             if (message == Message.READ) {

@@ -75,6 +75,10 @@ final class Schema {
         throw new IllegalStateException();
     }
 
+    List<String> getNames() {
+        return names;
+    }
+
     private int getRowSize() {
         assert rowBased;
         int rowSize = 0;

@@ -580,6 +580,9 @@ public final class DebuggerSession implements Closeable {
                 trace("ignored suspended reason: strategy(%s) from source:%s context:%s location:%s", s, source, source.getContext(), source.getSteppingLocation());
             }
         }
+        if (s.isKill()) {   // ComposedStrategy can become kill
+            throw new KillException();
+        }
     }
 
     private void doSuspend(DebuggerNode source, MaterializedFrame frame, Object returnValue, List<Breakpoint> breaks, Map<Breakpoint, Throwable> conditionFailures) {

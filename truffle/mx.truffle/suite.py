@@ -112,6 +112,7 @@ suite = {
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java
       ],
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTEROP_INTERNAL"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.8",
       "workingSets" : "API,Truffle",
@@ -262,7 +263,7 @@ suite = {
     "com.oracle.truffle.api.debug" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.api.vm"],
+      "dependencies" : ["com.oracle.truffle.api.vm", "com.oracle.truffle.api.metadata"],
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java
       ],
@@ -283,6 +284,7 @@ suite = {
         "mx:JUNIT"
       ],
       "checkstyle" : "com.oracle.truffle.api",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTEROP_INTERNAL"],
       "javaCompliance" : "1.8",
       "workingSets" : "API,Truffle",
     },
@@ -383,6 +385,37 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.8",
       "workingSets" : "API,Truffle",
+    },
+
+    "com.oracle.truffle.api.metadata" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api.interop",
+        "com.oracle.truffle.api.instrumentation"
+      ],
+      "exports" : [
+        "<package-info>", # exports all packages containing package-info.java
+      ],
+      "checkstyle" : "com.oracle.truffle.api",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTEROP_INTERNAL"],
+      "javaCompliance" : "1.8",
+      "workingSets" : "API,Truffle",
+    },
+
+    "com.oracle.truffle.api.metadata.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api.metadata",
+        "com.oracle.truffle.api.interop.java",
+        "com.oracle.truffle.api.instrumentation.test",
+        "mx:JUNIT"
+      ],
+      "checkstyle" : "com.oracle.truffle.api",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTEROP_INTERNAL"],
+      "javaCompliance" : "1.8",
+      "workingSets" : "Truffle,Tools",
     },
 
     "com.oracle.truffle.object" : {
@@ -607,6 +640,7 @@ suite = {
         "com.oracle.truffle.api.interop.java",
         "com.oracle.truffle.api.dsl",
         "com.oracle.truffle.api.profiles",
+        "com.oracle.truffle.api.metadata",
         "com.oracle.truffle.api.debug",
         "com.oracle.truffle.api.utilities",
         "com.oracle.truffle.api.vm",
@@ -751,6 +785,7 @@ suite = {
          "com.oracle.truffle.api.benchmark",
          "com.oracle.truffle.api.dsl.test",
          "com.oracle.truffle.api.instrumentation.test",
+         "com.oracle.truffle.api.metadata.test",
          "com.oracle.truffle.api.debug.test",
          "com.oracle.truffle.api.interop.java.test",
          "com.oracle.truffle.api.object.dsl.test",

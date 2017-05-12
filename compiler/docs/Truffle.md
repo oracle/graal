@@ -95,8 +95,8 @@ Execution profile (sorted by hotness)
 =====================================
   1: ***************************************
   2: ***************************************
-  0: 
-  3: 
+  0:
+  3:
 
 com.oracle.truffle.sl.nodes.access.SLPropertyCacheNode.namesEqual(SLPropertyCacheNode.java:109) [bci: 120]
 com.oracle.truffle.sl.nodes.access.SLReadPropertyCacheNodeGen.executeRead(SLReadPropertyCacheNodeGen.java:76) [bci: 88]

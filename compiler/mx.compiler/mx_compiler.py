@@ -26,7 +26,7 @@
 
 import os
 from os.path import join, exists, getmtime
-from argparse import ArgumentParser
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import re
 import zipfile
 import subprocess
@@ -228,13 +228,33 @@ def _nodeCostDump(args, extraVMarguments=None):
     else:
         print out.data
 
+def _ctw_jvmci_export_args():
+    """
+    Gets the VM args needed to export JVMCI API required by CTW. 
+    """
+    if isJDK8:
+        return ['-XX:-UseJVMCIClassLoader']
+    else:
+        return ['--add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot=ALL-UNNAMED',
+                '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
+                '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
+                '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED']
+
+def _ctw_system_properties_suffix():
+    out = mx.OutputCapture()
+    out.data = 'System properties for CTW:\n\n'
+    args = ['-XX:+EnableJVMCI'] + _ctw_jvmci_export_args() 
+    args.extend(['-cp', mx.classpath('org.graalvm.compiler.hotspot.test', jdk=jdk),
+            '-DCompileTheWorld.Help=true', 'org.graalvm.compiler.hotspot.test.CompileTheWorld'])
+    run_vm(args, out=out)
+    return out.data
 
 def ctw(args, extraVMarguments=None):
     """run CompileTheWorld"""
 
     defaultCtwopts = 'Inline=false'
 
-    parser = ArgumentParser(prog='mx ctw')
+    parser = ArgumentParser(prog='mx ctw', formatter_class=RawDescriptionHelpFormatter, epilog=_ctw_system_properties_suffix())
     parser.add_argument('--ctwopts', action='store', help='space separated JVMCI options used for CTW compilations (default: --ctwopts="' + defaultCtwopts + '")', default=defaultCtwopts, metavar='<options>')
     parser.add_argument('--cp', '--jar', action='store', help='jar or class path denoting classes to compile', metavar='<path>')
     if not isJDK8:
@@ -271,7 +291,8 @@ def ctw(args, extraVMarguments=None):
         else:
             if cp is not None:
                 vmargs.append('-DCompileTheWorld.Classpath=' + cp)
-            vmargs.extend(['-XX:-UseJVMCIClassLoader', '-cp', mx.classpath('org.graalvm.compiler.hotspot.test', jdk=jdk), 'org.graalvm.compiler.hotspot.test.CompileTheWorld'])
+            vmargs.extend(_ctw_jvmci_export_args() + ['-cp', mx.classpath('org.graalvm.compiler.hotspot.test', jdk=jdk)])
+            mainClassAndArgs = ['org.graalvm.compiler.hotspot.test.CompileTheWorld']
     else:
         if _is_jvmci_enabled(vmargs):
             # To be able to load all classes in the JRT with Class.forName,
@@ -284,15 +305,12 @@ def ctw(args, extraVMarguments=None):
                 vmargs.append('-DCompileTheWorld.limitmods=' + args.limitmods)
             if cp is not None:
                 vmargs.append('-DCompileTheWorld.Classpath=' + cp)
-            # Need export below since jdk.vm.ci.services is not exported in all JDK 9 EA releases.
-            vmargs.append('--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED')
-            vmargs.extend(['-cp', mx.classpath('org.graalvm.compiler.hotspot.test', jdk=jdk)])
+            vmargs.extend(_ctw_jvmci_export_args() + ['-cp', mx.classpath('org.graalvm.compiler.hotspot.test', jdk=jdk)])
             mainClassAndArgs = ['org.graalvm.compiler.hotspot.test.CompileTheWorld']
         else:
             vmargs.append('-XX:+CompileTheWorld')
 
     run_vm(vmargs + _remove_empty_entries(extraVMarguments) + mainClassAndArgs)
-
 
 def verify_jvmci_ci_versions(args):
     """
@@ -497,7 +515,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
 
     # ensure -Xbatch still works
     with Task('DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test) as t:
-        if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xbatch'])
+        if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xbatch', '-Dgraal.ForceDebugEnable=true'])
 
     # ensure benchmark counters still work
     with Task('DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test) as t:
@@ -589,6 +607,13 @@ def _unittest_config_participant(config):
             cp = [classpathEntry for classpathEntry in cp if classpathEntry not in redundantClasspathEntries]
             vmArgs[cpIndex] = os.pathsep.join(cp)
 
+            # JVMCI is dynamically exported to Graal when JVMCI is initialized. This is too late
+            # for the junit harness which uses reflection to find @Test methods. In addition, the
+            # tests widely use JVMCI classes so JVMCI needs to also export all its packages to
+            # ALL-UNNAMED.
+            jvmci = [m for m in jdk.get_modules() if m.name == 'jdk.internal.vm.ci'][0]
+            vmArgs.extend(['--add-exports=' + jvmci.name + '/' + p + '=jdk.internal.vm.compiler,ALL-UNNAMED' for p in jvmci.packages])
+
     if isJDK8:
         # Run the VM in a mode where application/test classes can
         # access JVMCI loaded classes.
@@ -608,28 +633,6 @@ def _uniqify(alist):
     """
     seen = set()
     return [e for e in alist if e not in seen and seen.add(e) is None]
-
-def _extract_added_exports(args, addedExports):
-    """
-    Extracts ``--add-exports`` entries from `args` and updates `addedExports` based on their values.
-
-    :param list args: command line arguments
-    :param dict addedExports: map from a module/package specifier to the set of modules it must be exported to
-    :return: the value of `args` minus all valid ``--add-exports`` entries
-    """
-    res = []
-    for arg in args:
-        if arg.startswith('--add-exports='):
-            parts = arg[len('--add-exports='):].split('=', 1)
-            if len(parts) == 2:
-                export, targets = parts
-                addedExports.setdefault(export, set()).update(targets.split(','))
-            else:
-                # Invalid format - let the VM deal with it
-                res.append(arg)
-        else:
-            res.append(arg)
-    return res
 
 def _parseVmArgs(args, addDefaultArgs=True):
     args = mx.expand_project_in_args(args, insitu=False)
@@ -668,19 +671,6 @@ def _parseVmArgs(args, addDefaultArgs=True):
             _addToModulepath(deployedModule.modulepath)
             _addToModulepath([deployedModule])
 
-        # Update added exports to include concealed JDK packages required by Graal
-        addedExports = {}
-        args = _extract_added_exports(args, addedExports)
-        for deployedModule in deployedModules:
-            for concealingModule, packages in deployedModule.concealedRequires.iteritems():
-                # No need to explicitly export JVMCI - it's exported via reflection
-                if concealingModule != 'jdk.internal.vm.ci':
-                    for package in packages:
-                        addedExports.setdefault(concealingModule + '/' + package, set()).add(deployedModule.name)
-
-        for export, targets in addedExports.iteritems():
-            argsPrefix.append('--add-exports=' + export + '=' + ','.join(sorted(targets)))
-
         # Extend or set --module-path argument
         mpUpdated = False
         for mpIndex in range(len(args)):
@@ -700,11 +690,6 @@ def _parseVmArgs(args, addDefaultArgs=True):
 
         if graalUpgrademodulepath:
             argsPrefix.append('--upgrade-module-path=' + os.pathsep.join([m.jarpath for m in graalUpgrademodulepath]))
-            for m in graalUpgrademodulepath:
-                # The upgraded module may not be upgradeable by default. In this case, supplying
-                # a non-existent jar file as a patch for the module makes it upgradeable (i.e.,
-                # disables the hash based checking of the module's contents).
-                argsPrefix.append('--patch-module=' + m.name + '=.jar')
 
     if '-version' in args:
         ignoredArgs = args[args.index('-version') + 1:]

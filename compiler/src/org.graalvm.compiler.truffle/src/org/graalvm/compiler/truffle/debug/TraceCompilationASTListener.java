@@ -25,7 +25,6 @@ package org.graalvm.compiler.truffle.debug;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleCompilationAST;
 
 import java.util.List;
-import java.util.Map;
 
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -47,8 +46,7 @@ public final class TraceCompilationASTListener extends AbstractDebugCompilationL
     }
 
     @Override
-    public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result,
-                    Map<OptimizedCallTarget, Object> compilationMap) {
+    public void notifyCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph, CompilationResult result) {
         log(0, "opt AST", target.toString(), target.getDebugProperties(inliningDecision));
         printCompactTree(target, inliningDecision);
     }

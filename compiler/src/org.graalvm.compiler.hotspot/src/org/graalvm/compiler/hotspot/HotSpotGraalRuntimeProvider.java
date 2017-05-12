@@ -85,7 +85,7 @@ public interface HotSpotGraalRuntimeProvider extends GraalRuntime, RuntimeProvid
      * diagnostics are about to be generated.
      *
      * @return the directory into which diagnostics can be written or {@code null} if the directory
-     *         does not exist and could not be created
+     *         does not exist and could not be created or has already been deleted
      */
     String getOutputDirectory();
 }

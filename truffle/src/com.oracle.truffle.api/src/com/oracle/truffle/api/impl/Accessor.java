@@ -322,6 +322,8 @@ public abstract class Accessor {
             JAVAINTEROP = this.javaInteropSupport();
         } else if (this.getClass().getSimpleName().endsWith("InteropAccessor")) {
             INTEROP = this.interopSupport();
+        } else if (this.getClass().getSimpleName().endsWith("ScopeAccessor")) {
+            // O.K.
         } else {
             if (SPI != null) {
                 throw new IllegalStateException();

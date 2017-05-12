@@ -24,12 +24,36 @@
  */
 package com.oracle.truffle.tck;
 
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 
 @MessageResolution(receiverType = StructuredDataEntry.class)
 class StructuredDataEntryMessageResolution {
+
+    @Resolve(message = "KEYS")
+    abstract static class StructuredDataEntryKeysNode extends Node {
+
+        public Object access(StructuredDataEntry data) {
+            return JavaInterop.asTruffleObject(data.getSchema().getNames());
+        }
+    }
+
+    @Resolve(message = "KEY_INFO")
+    abstract static class StructuredDataEntryKeyInfoNode extends Node {
+
+        private static final int readable = KeyInfo.newBuilder().setReadable(true).build();
+
+        public Object access(StructuredDataEntry data, Object identifier) {
+            if (data.getSchema().getNames().contains(identifier)) {
+                return readable;
+            } else {
+                return 0;
+            }
+        }
+    }
 
     @Resolve(message = "READ")
     abstract static class StructuredDataEntryReadNode extends Node {

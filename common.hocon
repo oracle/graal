@@ -1,12 +1,12 @@
 # overlay version
-overlay = 8da6cb776d4aff883b9cbe6c645dbcd7623a387f
+overlay = b49a7fe745d35fb278f1e85e08d2f46629dd6525
 
 jdk-downloads: {
   java7 : {name : oraclejdk, version : "7",    platformspecific: true}
-  java8 : {name : labsjdk, version : "8u121-jvmci-0.25", platformspecific: true}
-  java9 : {name : labsjdk, version : "9-20170301-144518", platformspecific: true}
-  java9EA : {name : labsjdk, version : "9-ea+161", platformspecific: true}
-  java8Debug : {name : labsjdk, version : "8u121-jvmci-0.25-fastdebug", platformspecific: true}
+  java8 : {name : labsjdk, version : "8u121-jvmci-0.26", platformspecific: true}
+  java9 : {name : labsjdk, version : "9-20170429-102349", platformspecific: true}
+  java9EA : {name : labsjdk, version : "9-ea+168", platformspecific: true}
+  java8Debug : {name : labsjdk, version : "8u121-jvmci-0.26-fastdebug", platformspecific: true}
 }
 
 # Overlay placeholder for pinning mx to a specific revision
@@ -15,7 +15,7 @@ mx : {}
 common : ${mx} {
   timelimit : "30:00"
   catch_files : [
-    "Graal diagnostic output saved in (?P<filename>.+\\.zip)"
+    "Graal diagnostic output saved in (?P<filename>.+\.zip)"
   ]
 }
 

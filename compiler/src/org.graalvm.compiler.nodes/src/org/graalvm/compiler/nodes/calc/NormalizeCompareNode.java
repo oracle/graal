@@ -25,9 +25,9 @@ package org.graalvm.compiler.nodes.calc;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import org.graalvm.compiler.core.common.calc.Condition;
-import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
@@ -36,8 +36,6 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
@@ -48,7 +46,7 @@ import jdk.vm.ci.meta.JavaKind;
  * true.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_2, size = SIZE_2)
-public final class NormalizeCompareNode extends BinaryNode implements Lowerable {
+public final class NormalizeCompareNode extends BinaryNode implements IterableNodeType {
 
     public static final NodeClass<NormalizeCompareNode> TYPE = NodeClass.create(NormalizeCompareNode.class);
     protected final boolean isUnorderedLess;
@@ -59,7 +57,16 @@ public final class NormalizeCompareNode extends BinaryNode implements Lowerable 
     }
 
     public static ValueNode create(ValueNode x, ValueNode y, boolean isUnorderedLess, JavaKind kind, ConstantReflectionProvider constantReflection) {
-        LogicNode result = CompareNode.tryConstantFold(Condition.EQ, x, y, constantReflection, false);
+        ValueNode result = tryConstantFold(x, y, isUnorderedLess, kind, constantReflection);
+        if (result != null) {
+            return result;
+        }
+
+        return new NormalizeCompareNode(x, y, kind, isUnorderedLess);
+    }
+
+    protected static ValueNode tryConstantFold(ValueNode x, ValueNode y, boolean isUnorderedLess, JavaKind kind, ConstantReflectionProvider constantReflection) {
+        LogicNode result = CompareNode.tryConstantFold(Condition.EQ, x, y, null, false);
         if (result instanceof LogicConstantNode) {
             LogicConstantNode logicConstantNode = (LogicConstantNode) result;
             LogicNode resultLT = CompareNode.tryConstantFold(Condition.LT, x, y, constantReflection, isUnorderedLess);
@@ -74,13 +81,15 @@ public final class NormalizeCompareNode extends BinaryNode implements Lowerable 
                 }
             }
         }
-
-        return new NormalizeCompareNode(x, y, kind, isUnorderedLess);
+        return null;
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        // nothing to do
+        ValueNode result = tryConstantFold(x, y, isUnorderedLess, stamp().getStackKind(), tool.getConstantReflection());
+        if (result != null) {
+            return result;
+        }
         return this;
     }
 
@@ -90,24 +99,11 @@ public final class NormalizeCompareNode extends BinaryNode implements Lowerable 
     }
 
     @Override
-    public void lower(LoweringTool tool) {
-        LogicNode equalComp;
-        LogicNode lessComp;
-        if (getX().stamp() instanceof FloatStamp) {
-            equalComp = graph().addOrUniqueWithInputs(FloatEqualsNode.create(getX(), getY()));
-            lessComp = graph().addOrUniqueWithInputs(FloatLessThanNode.create(getX(), getY(), isUnorderedLess));
-        } else {
-            equalComp = graph().addOrUniqueWithInputs(IntegerEqualsNode.create(getX(), getY()));
-            lessComp = graph().addOrUniqueWithInputs(IntegerLessThanNode.create(getX(), getY()));
-        }
-
-        ConditionalNode equalValue = graph().unique(new ConditionalNode(equalComp, ConstantNode.forIntegerStamp(stamp(), 0, graph()), ConstantNode.forIntegerStamp(stamp(), 1, graph())));
-        ConditionalNode value = graph().unique(new ConditionalNode(lessComp, ConstantNode.forIntegerStamp(stamp(), -1, graph()), equalValue));
-        replaceAtUsagesAndDelete(value);
-    }
-
-    @Override
     public Stamp foldStamp(Stamp stampX, Stamp stampY) {
         return stamp();
+    }
+
+    public boolean isUnorderedLess() {
+        return isUnorderedLess;
     }
 }
