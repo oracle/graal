@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -68,8 +69,9 @@ public abstract class Accessor {
 
         public abstract TruffleLanguage<?> getLanguageSpi(LanguageInfo languageInfo);
 
-        public abstract LanguageInfo createLanguageInfo(Object vm, TruffleLanguage<?> language, String name, String version, Set<String> mimeTypes);
+        public abstract void setLanguageSpi(LanguageInfo languageInfo, TruffleLanguage<?> spi);
 
+        public abstract LanguageInfo createLanguage(Object vmObject, String name, String version, Set<String> mimeTypes);
     }
 
     public abstract static class DumpSupport {
@@ -134,12 +136,19 @@ public abstract class Accessor {
 
         public abstract boolean isDisposed(Object vmInstance);
 
+        public abstract Map<String, LanguageInfo> getLanguages(Object vmInstance);
+
+        public abstract Map<String, InstrumentInfo> getInstruments(Object vmInstance);
+
+        public abstract <T> T lookup(InstrumentInfo info, Class<T> serviceClass);
+
+        public abstract <S> S lookup(LanguageInfo language, Class<S> type);
+
     }
 
     public abstract static class LanguageSupport {
 
-        public abstract LanguageInfo initializeLanguage(Object vmObject, TruffleLanguage<?> language, boolean legacyLanguage, String name,
-                        String version, Set<String> mimeTypes);
+        public abstract void initializeLanguage(LanguageInfo language, TruffleLanguage<?> impl, boolean legacyLanguage);
 
         public abstract Env createEnv(Object vmObject, LanguageInfo info, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config);
 
@@ -169,7 +178,12 @@ public abstract class Accessor {
 
         public abstract Object getContext(Env env);
 
-        public abstract <S> S lookup(LanguageInfo language, Class<S> type);
+        public abstract InstrumentInfo createInstrument(Object vmObject, String id, String name, String version);
+
+        public abstract Object getVMObject(InstrumentInfo info);
+
+        public abstract <S> S lookup(LanguageInfo languageEnsureInitialized, Class<S> type);
+
     }
 
     public abstract static class InstrumentSupport {
@@ -194,6 +208,7 @@ public abstract class Accessor {
             }
             return new DispatchOutputStream(out);
         }
+
     }
 
     protected abstract static class Frames {

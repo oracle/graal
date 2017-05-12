@@ -45,6 +45,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Instrumentable;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTest.ReturnLanguageEnv;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.BlockNode;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.DefineNode;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.ExpressionNode;
@@ -133,6 +134,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
     @Override
     protected Context createContext(TruffleLanguage.Env env) {
+        Object envReturner = env.getConfig().get(ReturnLanguageEnv.KEY);
+        if (envReturner != null) {
+            ((ReturnLanguageEnv) envReturner).env = env;
+        }
         Object[] sharedContext = (Object[]) env.getConfig().get("context");
         if (sharedContext == null || sharedContext[0] == null) {
             Context c = new Context(env.out(), env.err());

@@ -3,6 +3,7 @@
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
 ## Version 0.26
+18-May-2017
 
 * Language can provide additional services and instruments can [look them up](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html#lookup).
 * Renamed `DebugValue.isWriteable` to [DebugValue.isWritable](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/debug/DebugValue.html#isWritable--) to fix spelling.
@@ -19,6 +20,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * [SuspendedEvent.prepareStepOut](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/debug/SuspendedEvent.html#prepareStepOut-int-) has a `stepCount` argument for consistency with other prepare methods. The no-argument method is deprecated.
 * Multiple calls to `SuspendedEvent.prepare*()` methods accumulate the requests to create a composed action. This allows creation of debugging meta-actions.
 * [JavaInterop.toJavaClass](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/interop/java/JavaInterop.html#toJavaClass) can find proper Java class for a wrapped object
+* Added environment methods TruffleLanguage.Env.getLanguages(), TruffleLanguage.Env.getInstruments(), TruffleInstrument.Env.getLanguages(), TruffleInstrument.Env.getInstruments() that allows languages or instruments to inspect some basic information about other installed languages or instruments.
+* Added lookup methods TruffleLanguage.Env.lookup(LanguageInfo, Class), TruffleLanguage.Env.lookup(InstrumentInfo, Class), TruffleInstrument.Env.lookup(LanguageInfo, Class) and TruffleInstrument.Env.lookup(InstrumentInfo, Class) that allows the exchange of services between instruments and languages.
 
 ## Version 0.25
 3-Apr-2017

@@ -22,71 +22,67 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.nodes;
-
-import java.util.Set;
-
-import com.oracle.truffle.api.TruffleLanguage;
+package com.oracle.truffle.api;
 
 /**
- * Represents public information about a language.
+ * Represents public information about an instrument.
  *
- * @since 0.25
+ * @since 0.26
  */
-public final class LanguageInfo {
+public final class InstrumentInfo {
 
+    private final Object vmObject;
+    private final String id;
     private final String name;
     private final String version;
-    private final Set<String> mimeTypes;
-    private final Object engineObject;
-    volatile TruffleLanguage<?> spi;
 
-    LanguageInfo(Object engineObject, String name, String version, Set<String> mimeTypes) {
-        this.engineObject = engineObject;
+    InstrumentInfo(Object vmObject, String id, String name, String version) {
+        this.vmObject = vmObject;
+        this.id = id;
         this.name = name;
         this.version = version;
-        this.mimeTypes = mimeTypes;
     }
 
     /**
-     * Returns the unique name of the language. This name is equivalent to the name returned by
-     * {@link com.oracle.truffle.api.vm.PolyglotEngine.Language#getName()}.
+     * Gets the id clients can use to acquire this instrument.
      *
-     * @since 0.25
+     * @return this instrument's unique id
+     * @since 0.26
+     */
+    public String getId() {
+        return id;
+    }
+
+    /**
+     * Gets a human readable name of this instrument.
+     *
+     * @return this instrument's user-friendly name
+     * @since 0.26
      */
     public String getName() {
         return name;
     }
 
     /**
-     * Returns the version of the language. This version is equivalent to the name returned by
-     * {@link com.oracle.truffle.api.vm.PolyglotEngine.Language#getVersion()}.
+     * Gets the version of this instrument.
      *
-     * @since 0.25
+     * @return this instrument's version
+     * @since 0.26
      */
     public String getVersion() {
         return version;
     }
 
+    Object getVmObject() {
+        return vmObject;
+    }
+
     /**
-     * Returns the MIME types supported by this language. This set is equivalent to the set returned
-     * by {@link com.oracle.truffle.api.vm.PolyglotEngine.Language#getMimeTypes()}.
-     *
-     * @since 0.25
+     * @since 0.26
      */
-    public Set<String> getMimeTypes() {
-        return mimeTypes;
+    @Override
+    public String toString() {
+        return "InstrumentInfo [id=" + id + ", name=" + name + ", version=" + version + "]";
     }
 
-    Object getEngineObject() {
-        return engineObject;
-    }
-
-    void setSpi(TruffleLanguage<?> spi) {
-        this.spi = spi;
-    }
-
-    TruffleLanguage<?> getSpi() {
-        return spi;
-    }
 }
