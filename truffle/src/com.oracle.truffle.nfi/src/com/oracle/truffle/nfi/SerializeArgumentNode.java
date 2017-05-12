@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -42,6 +43,18 @@ abstract class SerializeArgumentNode extends Node {
 
     protected static Node createIsNull() {
         return Message.IS_NULL.createNode();
+    }
+
+    protected static Node createIsPointer() {
+        return Message.IS_POINTER.createNode();
+    }
+
+    protected static Node createAsPointer() {
+        return Message.AS_POINTER.createNode();
+    }
+
+    protected static boolean checkIsPointer(Node isPointer, TruffleObject object) {
+        return ForeignAccess.sendIsPointer(isPointer, object);
     }
 
     protected static boolean checkNull(Node isNull, TruffleObject object) {
@@ -79,6 +92,23 @@ abstract class SerializeArgumentNode extends Node {
                 Object unboxed = ForeignAccess.sendUnbox(unbox, arg);
                 serialize.execute(buffer, unboxed);
             } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw UnsupportedTypeException.raise(ex, new Object[]{arg});
+            }
+            return null;
+        }
+
+        @Specialization(guards = {"!isSpecialized(arg)", "checkIsPointer(isPointer, arg)"})
+        @SuppressWarnings("unused")
+        protected Object serializePointer(NativeArgumentBuffer buffer, TruffleObject arg,
+                        @Cached("createIsPointer()") Node isPointer,
+                        @Cached("createAsPointer()") Node asPointer,
+                        @Cached("argType.createSerializeArgumentNode()") SerializeArgumentNode serialize) {
+            try {
+                long pointer = ForeignAccess.sendAsPointer(asPointer, arg);
+                serialize.execute(buffer, new NativePointer(pointer));
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
                 throw UnsupportedTypeException.raise(ex, new Object[]{arg});
             }
             return null;
@@ -232,6 +262,7 @@ abstract class SerializeArgumentNode extends Node {
         @Fallback
         @SuppressWarnings("unused")
         protected Object error(NativeArgumentBuffer buffer, Object object) {
+            CompilerDirectives.transferToInterpreter();
             throw UnsupportedTypeException.raise(new Object[]{object});
         }
 

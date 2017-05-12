@@ -24,13 +24,14 @@
  */
 package com.oracle.truffle.api.interop;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.ForeignAccess.Factory;
 import com.oracle.truffle.api.nodes.Node;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Inter-operability is based on sending messages. Standard messages are defined as as constants
@@ -476,6 +477,74 @@ public abstract class Message {
     public static final Message KEYS = Keys.INSTANCE;
 
     /**
+     * Check for a value being a native pointer. Can the {@link TruffleObject foreign object} be
+     * converted to a 64bit pointer value? The way to check whether an object is a pointer is:
+     *
+     * <pre>
+     * {@link Boolean} isPointer = ({@link Boolean}) {@link ForeignAccess}.sendIsPointer(
+     *   {@link Message#IS_POINTER}.{@link Message#createNode()},  objectToCheck
+     * );
+     * </pre>
+     *
+     * Calling {@link Factory#accessMessage(com.oracle.truffle.api.interop.Message) the target}
+     * created for this message should yield value of {@link Boolean}. If the object responds with
+     * {@link Boolean#TRUE}, the object can be accessed by {@link #AS_POINTER} message.
+     *
+     * @since 0.26 or earlier
+     */
+    public static final Message IS_POINTER = IsPointer.INSTANCE;
+
+    /**
+     * Converts {@link TruffleObject truffle value} to a raw 64bit pointer value. Before sending the
+     * {@link #AS_POINTER} message, it is desirable to send the {@link #IS_POINTER} one and verify
+     * that the object can really be unwrapped to a raw pointer value.
+     * <p>
+     * If the object does not support the {@link #AS_POINTER} message, an
+     * {@link UnsupportedMessageException} has to be thrown.
+     * <p>
+     * To unwrap a pointer value, use:
+     *
+     * <pre>
+     * {@link ForeignAccess}.{@link ForeignAccess#sendAsPointer(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject) sendAsPointer}(
+     *   {@link Message#AS_POINTER}.{@link Message#createNode()},  objectAsPointer
+     * );
+     * </pre>
+     *
+     * The returned value is a {@link Long} value.
+     * <p>
+     * To achieve good performance it is essential to cache/keep reference to the
+     * {@link Message#createNode() created node}.
+     *
+     * @since 0.26 or earlier
+     */
+    public static final Message AS_POINTER = AsPointer.INSTANCE;
+
+    /**
+     * Transforms a {@link TruffleObject truffle value} a new {@link TruffleObject truffle native
+     * value} that represents a raw native pointer. This resulting {@link TruffleObject truffle
+     * native value} returns true for {@link #IS_POINTER} and can be unwrapped using the
+     * {@link #AS_POINTER} message.
+     * <p>
+     * If the object does not support the {@link #TO_NATIVE} message, an
+     * {@link UnsupportedMessageException} has to be thrown.
+     * <p>
+     * To transform an object to a native value, use:
+     *
+     * <pre>
+     * {@link ForeignAccess}.{@link ForeignAccess#sendToNative(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject) sendToNative}(
+     *   {@link Message#TO_NATIVE}.{@link Message#createNode()},  objectToNative
+     * );
+     * </pre>
+     *
+     * <p>
+     * To achieve good performance it is essential to cache/keep reference to the
+     * {@link Message#createNode() created node}.
+     *
+     * @since 0.26 or earlier
+     */
+    public static final Message TO_NATIVE = ToNative.INSTANCE;
+
+    /**
      * Compares types of two messages. Messages are encouraged to implement this method. All
      * standard ones ({@link #IS_NULL}, {@link #READ}, etc.) do so. Messages obtained via the same
      * {@link #createExecute(int) method} are equal, messages obtained by different methods or
@@ -551,6 +620,15 @@ public abstract class Message {
         if (Message.KEY_INFO == message) {
             return "KEY_INFO"; // NOI18N
         }
+        if (Message.IS_POINTER == message) {
+            return "IS_POINTER"; // NOI18N
+        }
+        if (Message.AS_POINTER == message) {
+            return "AS_POINTER"; // NOI18N
+        }
+        if (Message.TO_NATIVE == message) {
+            return "TO_NATIVE"; // NOI18N
+        }
         if (message instanceof Execute) {
             return ((Execute) message).name();
         }
@@ -589,6 +667,12 @@ public abstract class Message {
                 return Message.KEYS;
             case "KEY_INFO":
                 return Message.KEY_INFO;
+            case "IS_POINTER":
+                return Message.IS_POINTER;
+            case "AS_POINTER":
+                return Message.AS_POINTER;
+            case "TO_NATIVE":
+                return Message.TO_NATIVE;
             case "EXECUTE":
                 return Message.createExecute(0);
             case "NEW":

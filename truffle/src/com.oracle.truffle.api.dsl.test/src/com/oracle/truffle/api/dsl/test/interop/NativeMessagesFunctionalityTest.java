@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,26 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.nfi;
+package com.oracle.truffle.api.dsl.test.interop;
+
+import static org.junit.Assert.fail;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.Message;
 
-class NativePointer implements TruffleObject {
+@SuppressWarnings("static-method")
+public final class NativeMessagesFunctionalityTest {
 
-    final long nativePointer;
+    @Test
+    public void test() throws Exception {
+        ManagedTestObject m = new ManagedTestObject();
+        NativeTestObject n = (NativeTestObject) ForeignAccess.sendToNative(Message.TO_NATIVE.createNode(), m);
+        if (ForeignAccess.sendIsPointer(Message.IS_POINTER.createNode(), n)) {
+            long p = ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), n);
+            Assert.assertEquals(m.hashCode(), p);
+        } else {
+            fail();
+        }
 
-    NativePointer(long nativePointer) {
-        this.nativePointer = nativePointer;
-    }
-
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return NativePointerMessageResolutionForeign.ACCESS;
-    }
-
-    @Override
-    public String toString() {
-        return String.valueOf(nativePointer);
     }
 }

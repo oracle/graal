@@ -555,6 +555,21 @@ public class SLDebugDirectTest {
             return null;
         }
 
+        @Override
+        public CallTarget accessIsPointer() {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
+        @Override
+        public CallTarget accessAsPointer() {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
+        @Override
+        public CallTarget accessToNative() {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
     }
 
     private static class ExecNotifyReadNode extends RootNode {

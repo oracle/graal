@@ -122,4 +122,19 @@ final class BoxedValue implements TruffleObject, ForeignAccess.Factory26 {
         return null;
     }
 
+    @Override
+    public CallTarget accessIsPointer() {
+        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(Boolean.FALSE));
+    }
+
+    @Override
+    public CallTarget accessAsPointer() {
+        return null;
+    }
+
+    @Override
+    public CallTarget accessToNative() {
+        return null;
+    }
+
 }

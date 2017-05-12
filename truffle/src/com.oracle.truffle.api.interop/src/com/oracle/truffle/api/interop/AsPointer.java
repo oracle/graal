@@ -22,26 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.nfi;
+package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
-
-class NativePointer implements TruffleObject {
-
-    final long nativePointer;
-
-    NativePointer(long nativePointer) {
-        this.nativePointer = nativePointer;
-    }
+final class AsPointer extends UnaryMessage {
+    public static final int HASH = 423532;
+    static final Message INSTANCE = new AsPointer();
 
     @Override
-    public ForeignAccess getForeignAccess() {
-        return NativePointerMessageResolutionForeign.ACCESS;
-    }
-
-    @Override
-    public String toString() {
-        return String.valueOf(nativePointer);
+    public int hashCode() {
+        return HASH;
     }
 }

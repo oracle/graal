@@ -134,5 +134,17 @@ public class ForeignAccessToStringTest {
         public boolean canHandle(TruffleObject obj) {
             return true;
         }
+
+        public CallTarget accessIsPointer() {
+            return null;
+        }
+
+        public CallTarget accessAsPointer() {
+            return null;
+        }
+
+        public CallTarget accessToNative() {
+            return null;
+        }
     }
 }
