@@ -41,7 +41,56 @@ public abstract class LLVMI1VectorArithmeticNode extends LLVMExpressionNode {
     public abstract static class LLVMI1VectorAddNode extends LLVMI1VectorArithmeticNode {
         @Specialization
         protected LLVMI1Vector executeI1Vector(LLVMI1Vector left, LLVMI1Vector right) {
-            return left.xor(right);
+            return left.add(right);
+        }
+    }
+
+    public abstract static class LLVMI1VectorMulNode extends LLVMI1VectorArithmeticNode {
+
+        @Specialization
+        public LLVMI1Vector executeI1Vector(LLVMI1Vector left, LLVMI1Vector right) {
+            return left.mul(right);
+        }
+
+    }
+
+    public abstract static class LLVMI1VectorSubNode extends LLVMI1VectorArithmeticNode {
+
+        @Specialization
+        protected LLVMI1Vector executeI1Vector(LLVMI1Vector left, LLVMI1Vector right) {
+            return left.sub(right);
+        }
+    }
+
+    public abstract static class LLVMI1VectorDivNode extends LLVMI1VectorArithmeticNode {
+
+        @Specialization
+        protected LLVMI1Vector executeI1Vector(LLVMI1Vector left, LLVMI1Vector right) {
+            return left.div(right);
+        }
+    }
+
+    public abstract static class LLVMI1VectorUDivNode extends LLVMI1VectorArithmeticNode {
+
+        @Specialization
+        protected LLVMI1Vector executeI1Vector(LLVMI1Vector left, LLVMI1Vector right) {
+            return left.divUnsigned(right);
+        }
+    }
+
+    public abstract static class LLVMI1VectorRemNode extends LLVMI1VectorArithmeticNode {
+
+        @Specialization
+        protected LLVMI1Vector executeI1Vector(LLVMI1Vector left, LLVMI1Vector right) {
+            return left.rem(right);
+        }
+    }
+
+    public abstract static class LLVMI1VectorURemNode extends LLVMI1VectorArithmeticNode {
+
+        @Specialization
+        protected LLVMI1Vector executeI1Vector(LLVMI1Vector left, LLVMI1Vector right) {
+            return left.remUnsigned(right);
         }
     }
 }

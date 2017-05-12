@@ -69,7 +69,10 @@ import com.oracle.truffle.llvm.nodes.op.logical.vector.LLVMI16VectorLogicalNodeF
 import com.oracle.truffle.llvm.nodes.op.logical.vector.LLVMI16VectorLogicalNodeFactory.LLVMI16VectorShlNodeGen;
 import com.oracle.truffle.llvm.nodes.op.logical.vector.LLVMI16VectorLogicalNodeFactory.LLVMI16VectorXorNodeGen;
 import com.oracle.truffle.llvm.nodes.op.logical.vector.LLVMI1VectorLogicalNodeFactory.LLVMI1VectorAndNodeGen;
+import com.oracle.truffle.llvm.nodes.op.logical.vector.LLVMI1VectorLogicalNodeFactory.LLVMI1VectorAshrNodeGen;
+import com.oracle.truffle.llvm.nodes.op.logical.vector.LLVMI1VectorLogicalNodeFactory.LLVMI1VectorLshrNodeGen;
 import com.oracle.truffle.llvm.nodes.op.logical.vector.LLVMI1VectorLogicalNodeFactory.LLVMI1VectorOrNodeGen;
+import com.oracle.truffle.llvm.nodes.op.logical.vector.LLVMI1VectorLogicalNodeFactory.LLVMI1VectorShlNodeGen;
 import com.oracle.truffle.llvm.nodes.op.logical.vector.LLVMI1VectorLogicalNodeFactory.LLVMI1VectorXorNodeGen;
 import com.oracle.truffle.llvm.nodes.op.logical.vector.LLVMI32VectorLogicalNodeFactory.LLVMI32VectorAndNodeGen;
 import com.oracle.truffle.llvm.nodes.op.logical.vector.LLVMI32VectorLogicalNodeFactory.LLVMI32VectorAshrNodeGen;
@@ -169,6 +172,12 @@ final class LLVMLogicalFactory {
 
     private static LLVMExpressionNode visitLogicalI1VectorInstruction(LLVMLogicalInstructionKind type, LLVMExpressionNode left, LLVMExpressionNode right) {
         switch (type) {
+            case SHIFT_LEFT:
+                return LLVMI1VectorShlNodeGen.create(left, right);
+            case LOGICAL_SHIFT_RIGHT:
+                return LLVMI1VectorLshrNodeGen.create(left, right);
+            case ARITHMETIC_SHIFT_RIGHT:
+                return LLVMI1VectorAshrNodeGen.create(left, right);
             case AND:
                 return LLVMI1VectorAndNodeGen.create(left, right);
             case OR:

@@ -52,6 +52,27 @@ public abstract class LLVMI1VectorLogicalNode extends LLVMExpressionNode {
         }
     }
 
+    public abstract static class LLVMI1VectorShlNode extends LLVMI1VectorLogicalNode {
+        @Specialization
+        protected LLVMI1Vector executeI1Vector(LLVMI1Vector left, LLVMI1Vector right) {
+            return left.leftShift(right);
+        }
+    }
+
+    public abstract static class LLVMI1VectorLshrNode extends LLVMI1VectorLogicalNode {
+        @Specialization
+        protected LLVMI1Vector executeI1Vector(LLVMI1Vector left, LLVMI1Vector right) {
+            return left.logicalRightShift(right);
+        }
+    }
+
+    public abstract static class LLVMI1VectorAshrNode extends LLVMI1VectorLogicalNode {
+        @Specialization
+        protected LLVMI1Vector executeI1Vector(LLVMI1Vector left, LLVMI1Vector right) {
+            return left.arithmeticRightShift(right);
+        }
+    }
+
     public abstract static class LLVMI1VectorXorNode extends LLVMI1VectorLogicalNode {
         @Specialization
         protected LLVMI1Vector executeI1Vector(LLVMI1Vector left, LLVMI1Vector right) {
