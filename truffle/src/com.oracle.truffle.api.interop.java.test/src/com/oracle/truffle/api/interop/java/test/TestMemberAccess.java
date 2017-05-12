@@ -535,7 +535,7 @@ public class TestMemberAccess {
             return String.class.getName();
         }
 
-        public String classAsArg(Class c) {
+        public String classAsArg(Class<?> c) {
             return c.getName();
         }
 
