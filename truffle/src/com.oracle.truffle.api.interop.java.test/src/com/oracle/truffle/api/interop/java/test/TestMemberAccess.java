@@ -188,23 +188,87 @@ public class TestMemberAccess {
     }
 
     @Test
-    public void testOverloaded() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
+    public void testOverloaded1() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals("boolean", getValueFromMember("isOverloaded", true));
-        assertEquals(Boolean.class.getName(), getValueFromMember("isOverloaded", Boolean.TRUE));
-        assertEquals("byte", getValueFromMember("isOverloaded", Byte.MAX_VALUE));
+    }
+
+    @Test
+    public void testOverloaded2() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
+        assertEquals(Boolean.class.getName(), getValueFromMember(TestClass2.class, "isOverloaded", Boolean.TRUE));
+    }
+
+    @Test
+    public void testOverloaded3() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
+        assertEquals("byte", getValueFromMember(TestClass2.class, "isOverloaded", Byte.MAX_VALUE));
+    }
+
+    @Test
+    public void testOverloaded4() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals(Byte.class.getName(), getValueFromMember("isOverloaded", new Byte(Byte.MAX_VALUE)));
+    }
+
+    @Test
+    public void testOverloaded5() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals("char", getValueFromMember("isOverloaded", 'a'));
-        assertEquals(Character.class.getName(), getValueFromMember("isOverloaded", new Character('a')));
-        assertEquals("float", getValueFromMember("isOverloaded", Float.MAX_VALUE));
+    }
+
+    @Test
+    public void testOverloaded6() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
+        assertEquals(Character.class.getName(), getValueFromMember(TestClass2.class, "isOverloaded", new Character('a')));
+    }
+
+    @Test
+    public void testOverloaded7() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
+        assertEquals("float", getValueFromMember(TestClass2.class, "isOverloaded", Float.MAX_VALUE));
+    }
+
+    @Test
+    public void testOverloaded8() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals(Float.class.getName(), getValueFromMember("isOverloaded", new Float(Float.MAX_VALUE)));
-        assertEquals("double", getValueFromMember("isOverloaded", Double.MAX_VALUE));
+    }
+
+    @Test
+    public void testOverloaded9() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
+        assertEquals("double", getValueFromMember(TestClass2.class, "isOverloaded", Double.MAX_VALUE));
+    }
+
+    @Test
+    public void testOverloaded10() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals(Double.class.getName(), getValueFromMember("isOverloaded", new Double(Double.MAX_VALUE)));
+    }
+
+    @Test
+    public void testOverloaded11() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals("int", getValueFromMember("isOverloaded", Integer.MAX_VALUE));
-        assertEquals(Integer.class.getName(), getValueFromMember("isOverloaded", new Integer(Integer.MAX_VALUE)));
+    }
+
+    @Test
+    public void testOverloaded12() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
+        assertEquals(Integer.class.getName(), getValueFromMember(TestClass2.class, "isOverloaded", new Integer(Integer.MAX_VALUE)));
+    }
+
+    @Test
+    public void testOverloaded13() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals("long", getValueFromMember("isOverloaded", Long.MAX_VALUE));
-        assertEquals(Long.class.getName(), getValueFromMember("isOverloaded", new Long(Long.MAX_VALUE)));
-        assertEquals("short", getValueFromMember("isOverloaded", Short.MAX_VALUE));
+    }
+
+    @Test
+    public void testOverloaded14() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
+        assertEquals(Long.class.getName(), getValueFromMember(TestClass2.class, "isOverloaded", new Long(Long.MAX_VALUE)));
+    }
+
+    @Test
+    public void testOverloaded15() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
+        assertEquals("short", getValueFromMember(TestClass2.class, "isOverloaded", Short.MAX_VALUE));
+    }
+
+    @Test
+    public void testOverloaded16() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals(Short.class.getName(), getValueFromMember("isOverloaded", new Short(Short.MAX_VALUE)));
+    }
+
+    @Test
+    public void testOverloaded17() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals(String.class.getName(), getValueFromMember("isOverloaded", "testString"));
     }
 
@@ -233,7 +297,11 @@ public class TestMemberAccess {
     }
 
     private Object getValueFromMember(String name, Object... parameters) throws ClassNotFoundException, UnsupportedTypeException, InteropException {
-        TruffleObject clazz = JavaInterop.asTruffleObject(Class.forName(TEST_CLASS));
+        return getValueFromMember(Class.forName(TEST_CLASS), name, parameters);
+    }
+
+    private Object getValueFromMember(Class<?> javaClazz, String name, Object... parameters) throws ClassNotFoundException, UnsupportedTypeException, InteropException {
+        TruffleObject clazz = JavaInterop.asTruffleObject(javaClazz);
         Object o = ForeignAccess.sendNew(CREATE_NEW_NODE, clazz);
         try {
             o = ForeignAccess.sendRead(READ_NODE, (TruffleObject) o, name);
@@ -535,14 +603,6 @@ public class TestMemberAccess {
             return "boolean";
         }
 
-        public String isOverloaded(Boolean b) {
-            return Boolean.class.getName();
-        }
-
-        public String isOverloaded(byte b) {
-            return "byte";
-        }
-
         public String isOverloaded(Byte b) {
             return Byte.class.getName();
         }
@@ -551,44 +611,12 @@ public class TestMemberAccess {
             return "char";
         }
 
-        public String isOverloaded(Character c) {
-            return Character.class.getName();
-        }
-
-        public String isOverloaded(double l) {
-            return "double";
-        }
-
         public String isOverloaded(Double l) {
             return Double.class.getName();
         }
 
         public String isOverloaded(Float f) {
             return Float.class.getName();
-        }
-
-        public String isOverloaded(float f) {
-            return "float";
-        }
-
-        public String isOverloaded(int c) {
-            return "int";
-        }
-
-        public String isOverloaded(Integer c) {
-            return Integer.class.getName();
-        }
-
-        public String isOverloaded(long l) {
-            return "long";
-        }
-
-        public String isOverloaded(Long l) {
-            return Long.class.getName();
-        }
-
-        public String isOverloaded(short c) {
-            return "short";
         }
 
         public String isOverloaded(Short c) {
@@ -603,5 +631,47 @@ public class TestMemberAccess {
             return c.getName();
         }
 
+    }
+
+    public static final class TestClass2 {
+        public String isOverloaded(Integer c) {
+            return Integer.class.getName();
+        }
+
+        public String isOverloaded(long l) {
+            return "long";
+        }
+
+        public String isOverloaded(Character c) {
+            return Character.class.getName();
+        }
+
+        public String isOverloaded(double l) {
+            return "double";
+        }
+
+        public String isOverloaded(Boolean b) {
+            return Boolean.class.getName();
+        }
+
+        public String isOverloaded(byte b) {
+            return "byte";
+        }
+
+        public String isOverloaded(float f) {
+            return "float";
+        }
+
+        public String isOverloaded(int c) {
+            return "int";
+        }
+
+        public String isOverloaded(Long l) {
+            return Long.class.getName();
+        }
+
+        public String isOverloaded(short c) {
+            return "short";
+        }
     }
 }
