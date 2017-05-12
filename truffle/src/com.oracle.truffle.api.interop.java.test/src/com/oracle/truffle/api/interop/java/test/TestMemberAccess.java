@@ -45,6 +45,7 @@ import static org.junit.Assert.fail;
 import org.junit.Test;
 
 // Checkstyle: stop line length check
+@SuppressWarnings("all")
 public class TestMemberAccess {
 
     private final String TEST_CLASS = TestClass.class.getName();
@@ -118,9 +119,11 @@ public class TestMemberAccess {
 
     @Test
     public void testNullParameter() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
-        Object o = getValueFromMember("isNull", new Object[]{JavaInterop.asTruffleObject(null)});
-        assertEquals(Long.class.getName(), o);
-        fail("there are two isNull methods - isNull(String) and isNull(Long), but how to differ between calling isNull((String) null) or isNull((Long)null)");
+        Object s = getValueFromMember("isNull__Ljava_lang_String_2Ljava_lang_String_2", JavaInterop.asTruffleObject(null));
+        assertEquals("String parameter method executed", String.class.getName(), s);
+        Object l = getValueFromMember("isNull__Ljava_lang_String_2Ljava_lang_Long_2", JavaInterop.asTruffleObject(null));
+        assertEquals("Long parameter method executed", Long.class.getName(), l);
+
     }
 
     @Test
