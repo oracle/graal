@@ -1,7 +1,7 @@
 suite = {
   "mxversion" : "5.70.0",
   "name" : "sdk",
-  "url" : "https://github.com/graalvm/graal", 
+  "url" : "https://github.com/graalvm/graal",
   "developer" : {
     "name" : "Graal developers",
     "email" : "graal-dev@openjdk.java.net",
@@ -19,22 +19,17 @@ suite = {
       "licenses" : ["GPLv2-CPE", "UPL"]
     },
   },
-  "versionConflictResolution" : "ignore",
   "defaultLicense" : "GPLv2-CPE",
-  "imports": {
-    },
-    "libraries" : {
-    },
-    "projects" : {
-      "org.graalvm.polyglot" : {
+  "imports": {},
+  "libraries" : {},
+  "projects" : {
+    "org.graalvm.polyglot" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : [
-      ],
-      "uses" : [
-      ],
+      "dependencies" : [],
+      "uses" : [],
       "exports" : [
-        "<package-info>", # exports all packages containing package-info.java
+        "<package-info>",  # exports all packages containing package-info.java
       ],
       "checkstyle" : "org.graalvm.polyglot",
       "javaCompliance" : "1.8",
@@ -47,15 +42,14 @@ suite = {
       "url" : "http://opensource.org/licenses/UPL",
     }
   },
-     # ------------- Distributions -------------
-    "distributions" : {
-      "GRAAL_SDK" : {
+    # ------------- Distributions -------------
+  "distributions" : {
+    "GRAAL_SDK" : {
       "subDir" : "src",
       "dependencies" : [
         "org.graalvm.polyglot",
       ],
-      "distDependencies" : [
-      ],
+      "distDependencies" : [],
     },
   },
 }
