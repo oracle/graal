@@ -217,7 +217,7 @@ class JavaObjectMessageResolution {
     @Resolve(message = "KEYS")
     abstract static class PropertiesNode extends Node {
         @TruffleBoundary
-        public Object access(JavaObject receiver) {
+        public Object access(JavaObject receiver, boolean includeInternal) {
             String[] fields;
             if (receiver.obj instanceof Map) {
                 Map<?, ?> map = (Map<?, ?>) receiver.obj;
@@ -227,7 +227,7 @@ class JavaObjectMessageResolution {
                     fields[i++] = Objects.toString(key, null);
                 }
             } else {
-                fields = TruffleOptions.AOT ? new String[0] : JavaInteropReflect.findUniquePublicMemberNames(receiver.clazz, receiver.obj != null);
+                fields = TruffleOptions.AOT ? new String[0] : JavaInteropReflect.findUniquePublicMemberNames(receiver.clazz, receiver.obj != null, includeInternal);
             }
             return JavaInterop.asTruffleObject(fields);
         }
@@ -255,6 +255,11 @@ class JavaObjectMessageResolution {
             }
             if (JavaInteropReflect.isMethod(receiver, name)) {
                 return 0b1111;
+            }
+            if (name.contains("__")) {
+                if (JavaInteropReflect.isJNIMethod(receiver, name)) {
+                    return 0b11111;
+                }
             }
             return 0;
         }

@@ -27,6 +27,7 @@ package com.oracle.truffle.api.interop.java.test;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -39,7 +40,11 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import org.junit.Test;
@@ -57,6 +62,8 @@ public class TestMemberAccess {
     private final Node IS_NULL_NODE = Message.IS_NULL.createNode();
     private final Node IS_EXEC_NODE = Message.IS_EXECUTABLE.createNode();
     private final Node READ_NODE = Message.READ.createNode();
+    private final Node KEYS_NODE = Message.KEYS.createNode();
+    private final Node KEY_INFO_NODE = Message.KEY_INFO.createNode();
 
     @Test
     public void testFields() throws IllegalArgumentException, IllegalAccessException, ClassNotFoundException, UnsupportedTypeException, ArityException, UnsupportedMessageException, InteropException {
@@ -124,6 +131,60 @@ public class TestMemberAccess {
         Object l = getValueFromMember("isNull__Ljava_lang_String_2Ljava_lang_Long_2", JavaInterop.asTruffleObject(null));
         assertEquals("Long parameter method executed", Long.class.getName(), l);
 
+    }
+
+    @Test
+    public void testKeysAndInternalKeys() throws Exception {
+        TruffleObject testClass = JavaInterop.asTruffleObject(TestClass.class);
+        assertKeys(testClass);
+    }
+
+    @Test
+    public void testKeysAndInternalKeysOnInstance() throws Exception {
+        TruffleObject instance = JavaInterop.asTruffleObject(new TestClass());
+        assertKeys(instance);
+    }
+
+    private void assertKeys(TruffleObject obj) throws UnsupportedMessageException {
+        List<?> keys = JavaInterop.asJavaObject(List.class, ForeignAccess.sendKeys(KEYS_NODE, obj));
+        Set<String> foundKeys = new HashSet<>();
+        for (Object key : keys) {
+            assertTrue("Is string" + key, key instanceof String);
+            String keyName = (String) key;
+            assertEquals("No __ in " + keyName, -1, keyName.indexOf("__"));
+            int info = ForeignAccess.sendKeyInfo(KEY_INFO_NODE, obj, keyName);
+            if (!KeyInfo.isInvocable(info)) {
+                continue;
+            }
+            foundKeys.add(keyName);
+        }
+
+        int count = foundKeys.size();
+
+        Set<String> foundInternalKeys = new HashSet<>();
+        List<?> internalKeys = JavaInterop.asJavaObject(List.class, ForeignAccess.sendKeys(KEYS_NODE, obj, true));
+        for (Object key : internalKeys) {
+            assertTrue("Is string" + key, key instanceof String);
+            String keyName = (String) key;
+            int info = ForeignAccess.sendKeyInfo(KEY_INFO_NODE, obj, keyName);
+
+            if (!keyName.contains("__")) {
+                if (!KeyInfo.isInvocable(info)) {
+                    continue;
+                }
+                assertFalse("Not internal: " + keyName, KeyInfo.isInternal(info));
+                boolean found = foundKeys.remove(keyName);
+                assertTrue("Non-internal key has been listed before: " + keyName, found);
+            } else {
+                assertTrue("Internal: " + keyName, KeyInfo.isInternal(info));
+                foundInternalKeys.add(keyName);
+            }
+            assertTrue("Is invocable " + keyName, KeyInfo.isInvocable(info));
+        }
+
+        assertTrue("All normal keys listed in internal mode too: " + foundKeys, foundKeys.isEmpty());
+
+        assertTrue("More than " + count + " real internals: " + foundInternalKeys, foundInternalKeys.size() >= count);
     }
 
     @Test

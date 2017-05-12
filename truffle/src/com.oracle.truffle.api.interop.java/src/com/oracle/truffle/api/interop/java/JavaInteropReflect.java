@@ -128,6 +128,21 @@ final class JavaInteropReflect {
         return false;
     }
 
+    static boolean isJNIMethod(JavaObject object, String name) {
+        Object obj = object.obj;
+        final boolean onlyStatic = obj == null;
+        for (Method m : object.clazz.getMethods()) {
+            final boolean isStatic = (m.getModifiers() & Modifier.STATIC) != 0;
+            if (onlyStatic != isStatic) {
+                continue;
+            }
+            if (jniName(m).equals(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @CompilerDirectives.TruffleBoundary
     static Method findMethod(JavaObject object, String name, Object[] args) {
         for (Method m : object.clazz.getMethods()) {
@@ -201,7 +216,7 @@ final class JavaInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static String[] findUniquePublicMemberNames(Class<?> c, boolean onlyInstance) throws SecurityException {
+    static String[] findUniquePublicMemberNames(Class<?> c, boolean onlyInstance, boolean includeInternal) throws SecurityException {
         Class<?> clazz = c;
         while ((clazz.getModifiers() & Modifier.PUBLIC) == 0) {
             clazz = clazz.getSuperclass();
@@ -223,6 +238,9 @@ final class JavaInteropReflect {
                 continue;
             }
             names.add(method.getName());
+            if (includeInternal) {
+                names.add(jniName(method));
+            }
         }
         return names.toArray(new String[0]);
     }
