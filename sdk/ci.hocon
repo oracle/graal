@@ -13,8 +13,8 @@ sdkGate : ${sdkCommon} ${eclipse} {
 }
 
 builds += [
-  ${linux-amd64}     ${java8} ${sdkGate} ${jdt}, name: "linux-gate-sdk-8"},
-  ${linux-amd64}     ${java9} ${sdkGate}       , name: "linux-gate-sdk-9"},
-  ${solaris-sparcv9} ${java8} ${sdkGate}       , name: "solaris-gate-sdk-8"},
-  ${darwin-amd64}    ${java8} ${sdkGate}       , name: "darwin-gate-sdk-8"},
+  ${linux-amd64}     ${java8} ${sdkGate} ${jdt} { name: "linux-gate-sdk-8" },
+  ${linux-amd64}     ${java9} ${sdkGate}        { name: "linux-gate-sdk-9" },
+  ${solaris-sparcv9} ${java8} ${sdkGate}        { name: "solaris-gate-sdk-8" },
+  ${darwin-amd64}    ${java8} ${sdkGate}        { name: "darwin-gate-sdk-8" },
 ]
