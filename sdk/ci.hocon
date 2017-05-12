@@ -5,16 +5,16 @@ sdkCommon: {
   timelimit : "30:00"
 }
 
-sdkGate : ${sdkCommon} ${eclipse} {
+sdkGate : ${sdkCommon} {
   targets : [ gate ],
   run : [
-    ["mx", "--strict-compliance", "gate", "--strict-mode"]
+    ["mx", "gate"]
   ]
 }
 
 builds += [
-  ${linux-amd64}     ${java8} ${sdkGate} ${jdt} { name: "gate-sdk-linux-8" },
-  ${linux-amd64}     ${java9} ${sdkGate}        { name: "gate-sdk-linux-9" },
-  ${solaris-sparcv9} ${java8} ${sdkGate}        { name: "gate-sdk-solaris-8" },
-  ${darwin-amd64}    ${java8} ${sdkGate}        { name: "gate-sdk-darwin-8" },
+  ${linux-amd64}     ${java8} ${sdkGate} ${eclipse} ${jdt} { name: "gate-sdk-linux-8"   },
+  ${linux-amd64}     ${java9} ${sdkGate} ${eclipse}        { name: "gate-sdk-linux-9"   },
+  ${solaris-sparcv9} ${java8} ${sdkGate}                   { name: "gate-sdk-solaris-8" },
+  ${darwin-amd64}    ${java8} ${sdkGate}                   { name: "gate-sdk-darwin-8"  },
 ]
