@@ -121,7 +121,7 @@ public final class Scope {
      * {@link #findScopes(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env, com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.Frame)}
      * . In general, there can be different variables returned when different {@link Frame}
      * instances are provided.
-     * 
+     *
      * @param frame The current frame, or <code>null</code> for lexical access when the program is
      *            not running, or is not suspended at the scope's location. The variables might not
      *            be readable/writable with the <code>null</code> frame.

@@ -25,7 +25,12 @@
 package com.oracle.truffle.api.instrumentation.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -34,13 +39,14 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.io.Reader;
 import java.nio.CharBuffer;
+import java.util.Map;
 import java.util.Set;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -61,12 +67,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotRuntime;
-import java.util.Map;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import com.oracle.truffle.api.vm.PolyglotRuntime.Instrument;
 
 public class InstrumentationTest extends AbstractInstrumentationTest {
 
@@ -121,7 +122,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
         @Override
         public void run() {
-            LanguageInfo info = obtainInstrumentationLanguage();
+            LanguageInfo info = env.getLanguages().get(InstrumentationTestLanguage.MIME_TYPE);
             SpecialService ss = env.lookup(info, SpecialService.class);
             assertNotNull("Service found", ss);
             assertEquals("The right extension", ss.fileExtension(), InstrumentationTestLanguage.FILENAME_EXTENSION);
@@ -130,18 +131,6 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             assertNull("Can't query language", env.lookup(info, TruffleLanguage.class));
         }
 
-        private LanguageInfo obtainInstrumentationLanguage() {
-            Source src = Source.newBuilder("").mimeType(InstrumentationTestLanguage.MIME_TYPE).name("getroot").build();
-            CallTarget target;
-            try {
-                target = env.parse(src);
-            } catch (Exception ex) {
-                throw new AssertionError(ex.getMessage(), ex);
-            }
-            assertTrue("Root node target", target instanceof RootCallTarget);
-            RootCallTarget rootTarget = (RootCallTarget) target;
-            return rootTarget.getRootNode().getLanguageInfo();
-        }
     }
 
     @Test
@@ -1141,6 +1130,134 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         @Override
         protected void onDispose(Env env) {
             onDisposeCalls++;
+        }
+
+    }
+
+    @Test
+    public void testAccessInstruments() {
+        Instrument instrument = engine.getRuntime().getInstruments().get("testAccessInstruments");
+        TestAccessInstruments access = instrument.lookup(TestAccessInstruments.class);
+
+        InstrumentInfo info = access.env.getInstruments().get("testAccessInstruments");
+        assertNotNull(info);
+        assertEquals("testAccessInstruments", info.getId());
+        assertEquals("name", info.getName());
+        assertEquals("version", info.getVersion());
+
+        try {
+            access.env.lookup(info, TestAccessInstruments.class);
+            fail();
+        } catch (IllegalArgumentException e) {
+            // expected
+        }
+
+        TestAccessInstrumentsOther.initializedCount = 0;
+
+        InstrumentInfo other = access.env.getInstruments().get("testAccessInstrumentsOther");
+        assertNotNull(other);
+        assertEquals("testAccessInstrumentsOther", other.getId());
+        assertEquals("otherName", other.getName());
+        assertEquals("otherVersion", other.getVersion());
+
+        assertEquals(0, TestAccessInstrumentsOther.initializedCount);
+
+        // invalid service, should not trigger onCreate
+        assertNull(access.env.lookup(other, Object.class));
+        assertEquals(0, TestAccessInstrumentsOther.initializedCount);
+
+        // valide service, should trigger onCreate
+        assertNotNull(access.env.lookup(other, TestAccessInstrumentsOther.class));
+        assertEquals(1, TestAccessInstrumentsOther.initializedCount);
+    }
+
+    @Test
+    public void testAccessLanguages() {
+        Instrument instrument = engine.getRuntime().getInstruments().get("testAccessInstruments");
+        TestAccessInstruments access = instrument.lookup(TestAccessInstruments.class);
+
+        LanguageInfo info = access.env.getLanguages().get(InstrumentationTestLanguage.MIME_TYPE);
+        assertNotNull(info);
+        assertTrue(info.getMimeTypes().contains(InstrumentationTestLanguage.MIME_TYPE));
+        assertEquals("InstrumentTestLang", info.getName());
+        assertEquals("2.0", info.getVersion());
+
+        assertNotNull(access.env.lookup(info, SpecialService.class));
+        assertEquals(InstrumentationTestLanguage.FILENAME_EXTENSION, access.env.lookup(info, SpecialService.class).fileExtension());
+    }
+
+    @Registration(id = "testAccessInstruments", name = "name", version = "version", services = TestAccessInstruments.class)
+    @SuppressWarnings("hiding")
+    public static class TestAccessInstruments extends TruffleInstrument {
+
+        Env env;
+
+        @Override
+        protected void onCreate(final Env env) {
+            this.env = env;
+            env.registerService(this);
+        }
+
+        @Override
+        protected void onDispose(Env env) {
+        }
+
+    }
+
+    @Registration(id = "testAccessInstrumentsOther", name = "otherName", version = "otherVersion", services = TestAccessInstrumentsOther.class)
+    public static class TestAccessInstrumentsOther extends TruffleInstrument {
+
+        static int initializedCount = 0;
+
+        @Override
+        protected void onCreate(final Env env) {
+            env.registerService(this);
+            initializedCount++;
+        }
+
+        @Override
+        protected void onDispose(Env env) {
+        }
+
+    }
+
+    public class ReturnLanguageEnv {
+
+        public static final String KEY = "envReturner";
+
+        public TruffleLanguage.Env env;
+
+    }
+
+    @Test
+    public void testAccessInstrumentFromLanguage() {
+        ReturnLanguageEnv envReturner = new ReturnLanguageEnv();
+        PolyglotEngine e = PolyglotEngine.newBuilder().setErr(err).config(InstrumentationTestLanguage.MIME_TYPE, ReturnLanguageEnv.KEY, envReturner).build();
+        e.eval(Source.newBuilder("").mimeType(InstrumentationTestLanguage.MIME_TYPE).name("").build());
+        assertNotNull(envReturner.env);
+
+        TruffleLanguage.Env env = envReturner.env;
+        LanguageInfo langInfo = env.getLanguages().get(InstrumentationTestLanguage.MIME_TYPE);
+        assertNotNull(langInfo);
+        assertTrue(langInfo.getMimeTypes().contains(InstrumentationTestLanguage.MIME_TYPE));
+        assertEquals("InstrumentTestLang", langInfo.getName());
+        assertEquals("2.0", langInfo.getVersion());
+
+        InstrumentInfo instrInfo = env.getInstruments().get("testAccessInstruments");
+        assertNotNull(instrInfo);
+        assertEquals("testAccessInstruments", instrInfo.getId());
+        assertEquals("name", instrInfo.getName());
+        assertEquals("version", instrInfo.getVersion());
+
+        assertNotNull(env.lookup(instrInfo, TestAccessInstruments.class));
+        assertNull(env.lookup(instrInfo, SpecialService.class));
+
+        try {
+            // cannot load services from current languages to avoid cycles.
+            env.lookup(langInfo, SpecialService.class);
+            fail();
+        } catch (Exception e1) {
+            // expected
         }
 
     }

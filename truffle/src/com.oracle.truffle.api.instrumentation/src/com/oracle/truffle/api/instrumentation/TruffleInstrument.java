@@ -33,8 +33,10 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AccessorInstrumentHandler;
@@ -142,9 +144,10 @@ public abstract class TruffleInstrument {
      *
      * @since 0.12
      */
+    @SuppressWarnings("static-method")
     public static final class Env {
 
-        private final Object vm;
+        private final Object vmObject; // PolyglotRuntime.Instrument
         private final Instrumenter instrumenter;
         private final InputStream in;
         private final OutputStream err;
@@ -152,7 +155,7 @@ public abstract class TruffleInstrument {
         private List<Object> services;
 
         Env(Object vm, Instrumenter instrumenter, OutputStream out, OutputStream err, InputStream in) {
-            this.vm = vm;
+            this.vmObject = vm;
             this.instrumenter = instrumenter;
             this.in = in;
             this.err = err;
@@ -237,9 +240,49 @@ public abstract class TruffleInstrument {
          * @return the registered service or <code>null</code> if none is found
          * @since 0.26
          */
-        @SuppressWarnings("static-method")
         public <S> S lookup(LanguageInfo language, Class<S> type) {
-            return AccessorInstrumentHandler.langAccess().lookup(language, type);
+            return AccessorInstrumentHandler.engineAccess().lookup(language, type);
+        }
+
+        /**
+         * Returns an additional service provided by this instrument, specified by type. If an
+         * instrument is not enabled, it will be enabled automatically by requesting a supported
+         * service. If the instrument does not provide a service for a given type it will not be
+         * enabled automatically. An {@link IllegalArgumentException} is thrown if a service is
+         * looked up from the current instrument.
+         *
+         * @param <S> the requested type
+         * @param instrument identification of the instrument to query
+         * @param type the class of the requested type
+         * @return the registered service or <code>null</code> if none is found
+         * @since 0.26
+         */
+        public <S> S lookup(InstrumentInfo instrument, Class<S> type) {
+            Object vm = AccessorInstrumentHandler.langAccess().getVMObject(instrument);
+            if (vm == this.vmObject) {
+                throw new IllegalArgumentException("Not allowed to lookup services from the currrent instrument.");
+            }
+            return AccessorInstrumentHandler.engineAccess().lookup(instrument, type);
+        }
+
+        /**
+         * Returns a map mime-type to language identifier of all languages that are installed in the
+         * environment.
+         *
+         * @since 0.26
+         */
+        public Map<String, LanguageInfo> getLanguages() {
+            return AccessorInstrumentHandler.engineAccess().getLanguages(vmObject);
+        }
+
+        /**
+         * Returns a map mime-type to instrument identifier of all instruments that are installed in
+         * the environment.
+         *
+         * @since 0.26
+         */
+        public Map<String, InstrumentInfo> getInstruments() {
+            return AccessorInstrumentHandler.engineAccess().getInstruments(vmObject);
         }
 
         Object[] onCreate(TruffleInstrument instrument) {
@@ -267,7 +310,7 @@ public abstract class TruffleInstrument {
          * @since 0.12
          */
         public CallTarget parse(Source source, String... argumentNames) throws IOException {
-            TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(vm, source.getMimeType());
+            TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(vmObject, source.getMimeType());
             return AccessorInstrumentHandler.langAccess().parse(env, source, null, argumentNames);
         }
 
@@ -283,7 +326,6 @@ public abstract class TruffleInstrument {
          * @return <code>true</code> if engine root else <code>false</code>
          * @since 0.17
          */
-        @SuppressWarnings("static-method")
         public boolean isEngineRoot(RootNode root) {
             return AccessorInstrumentHandler.engineAccess().isEvalRoot(root);
         }
@@ -298,7 +340,6 @@ public abstract class TruffleInstrument {
          * @return a human readable string representation of the value.
          * @since 0.17
          */
-        @SuppressWarnings("static-method")
         public String toString(Node node, Object value) {
             final TruffleLanguage.Env env = getLangEnv(node);
             return AccessorInstrumentHandler.langAccess().toStringIfVisible(env, value, false);
@@ -315,7 +356,6 @@ public abstract class TruffleInstrument {
          * @return the meta-object, or <code>null</code>
          * @since 0.22
          */
-        @SuppressWarnings("static-method")
         public Object findMetaObject(Node node, Object value) {
             final TruffleLanguage.Env env = getLangEnv(node);
             return AccessorInstrumentHandler.langAccess().findMetaObject(env, value);
@@ -329,7 +369,6 @@ public abstract class TruffleInstrument {
          * @return a source location of the object, or <code>null</code>
          * @since 0.22
          */
-        @SuppressWarnings("static-method")
         public SourceSection findSourceLocation(Node node, Object value) {
             final TruffleLanguage.Env env = getLangEnv(node);
             return AccessorInstrumentHandler.langAccess().findSourceLocation(env, value);
