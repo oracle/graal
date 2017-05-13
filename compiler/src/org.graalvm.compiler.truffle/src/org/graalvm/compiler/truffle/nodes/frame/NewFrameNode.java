@@ -103,7 +103,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         }
     }
 
-        public NewFrameNode(KnownTruffleFields knownFields, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, StructuredGraph graph, ResolvedJavaType frameType,
+    public NewFrameNode(KnownTruffleFields knownFields, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, StructuredGraph graph, ResolvedJavaType frameType,
                     ValueNode frameDescriptorNode, ValueNode arguments) {
         super(TYPE, StampFactory.objectNonNull(TypeReference.createExactTrusted(frameType)));
 
@@ -145,15 +145,6 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
             if (slot.isNonNull()) {
                 final JavaConstant slotKind = constantReflection.readFieldValue(knownFields.fieldFrameSlotKind, slot);
                 final JavaConstant slotKindTag = constantReflection.readFieldValue(knownFields.fieldFrameSlotKindTag, slotKind);
-
-                final int tag = slotKindTag.asInt();
-                if (tag != FrameSlotKind.Boolean.ordinal() && tag != FrameSlotKind.Byte.ordinal() &&
-                        tag != FrameSlotKind.Int.ordinal() && tag != FrameSlotKind.Double.ordinal() &&
-                        tag != FrameSlotKind.Float.ordinal() && tag != FrameSlotKind.Long.ordinal() &&
-                        tag != FrameSlotKind.Object.ordinal() && tag != FrameSlotKind.Illegal.ordinal()) {
-                    throw new IllegalStateException("!!! Unexpected frame slot kind, tag: " + tag);
-                }
-
                 slotsData[count++] = (byte) slotKindTag.asInt();
             }
         }
