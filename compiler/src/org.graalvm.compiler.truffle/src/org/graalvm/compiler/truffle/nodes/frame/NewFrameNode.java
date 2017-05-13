@@ -29,8 +29,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.truffle.api.frame.FrameDescriptor;
-
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.IterableNodeType;
