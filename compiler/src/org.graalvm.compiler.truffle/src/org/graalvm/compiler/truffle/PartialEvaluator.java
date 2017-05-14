@@ -133,7 +133,7 @@ public class PartialEvaluator {
     private final GraphBuilderConfiguration configForParsing;
     private final InvocationPlugins decodingInvocationPlugins;
     private final NodePlugin[] nodePlugins;
-    public final KnownTruffleFields knownTruffleFields;
+    private final KnownTruffleFields knownTruffleFields;
 
     public PartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, SnippetReflectionProvider snippetReflection, Architecture architecture,
                     InstrumentPhase.Instrumentation instrumentation) {
