@@ -25,7 +25,6 @@ package org.graalvm.compiler.nodes.graphbuilderconf;
 import static jdk.vm.ci.code.BytecodeFrame.AFTER_BCI;
 import static jdk.vm.ci.code.BytecodeFrame.BEFORE_BCI;
 import static jdk.vm.ci.code.BytecodeFrame.INVALID_FRAMESTATE_BCI;
-import static jdk.vm.ci.code.BytecodeFrame.UNKNOWN_BCI;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
 
@@ -36,9 +35,7 @@ import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
 
-import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -99,41 +96,12 @@ public class IntrinsicContext {
 
     final CompilationContext compilationContext;
 
-    private final ValueNode[] args;
-
-    /**
-     * Gets the arguments to the intrinsic invocation (if available).
-     *
-     * @return {@code null} if the arguments to the intrinsic invocation are not available
-     */
-    public ValueNode[] getArgs() {
-        return args;
-    }
-
-    /**
-     * Gets the bytecode index of the intrinsic invocation (if available).
-     *
-     * @return {@value BytecodeFrame#UNKNOWN_BCI} if the bytecode index of the intrinsic invocation
-     *         is not available
-     */
-    public int bci() {
-        return bci;
-    }
-
-    private final int bci;
-
     public IntrinsicContext(ResolvedJavaMethod method, ResolvedJavaMethod intrinsic, BytecodeProvider bytecodeProvider, CompilationContext compilationContext) {
-        this(method, intrinsic, bytecodeProvider, compilationContext, null, UNKNOWN_BCI);
-    }
-
-    public IntrinsicContext(ResolvedJavaMethod method, ResolvedJavaMethod intrinsic, BytecodeProvider bytecodeProvider, CompilationContext compilationContext, ValueNode[] args, int bci) {
         this.method = method;
         this.intrinsic = intrinsic;
         this.bytecodeProvider = bytecodeProvider;
         assert bytecodeProvider != null;
         this.compilationContext = compilationContext;
-        this.args = args;
-        this.bci = bci;
         assert !isCompilationRoot() || method.hasBytecodes() : "Cannot root compile intrinsic for native or abstract method " + method.format("%H.%n(%p)");
     }
 

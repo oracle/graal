@@ -22,6 +22,8 @@
  */
 package org.graalvm.compiler.replacements.test;
 
+import static org.graalvm.compiler.java.BytecodeParserOptions.InlinePartialIntrinsicExitDuringParsing;
+
 import java.util.function.Function;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
@@ -34,18 +36,30 @@ import org.graalvm.compiler.graph.GraalGraphError;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import org.graalvm.compiler.options.OptionValues;
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Tests for expected behavior when parsing snippets and intrinsics.
  */
 public class ReplacementsParseTest extends ReplacementsTest {
+
+    private static final String IN_COMPILED_HANDLER_MARKER = "*** in compiled handler ***";
+
+    @SuppressWarnings("serial")
+    static class CustomError extends Error {
+        CustomError(String message) {
+            super(message);
+        }
+    }
 
     static final Object THROW_EXCEPTION_MARKER = new Object() {
         @Override
@@ -99,7 +113,7 @@ public class ReplacementsParseTest extends ReplacementsTest {
             String res = String.valueOf(id);
             if (res.equals(THROW_EXCEPTION_MARKER.toString())) {
                 // Tests exception throwing from partial intrinsification
-                throw new RuntimeException("ex: " + id);
+                throw new CustomError("ex: " + id);
             }
             return res;
         }
@@ -108,7 +122,7 @@ public class ReplacementsParseTest extends ReplacementsTest {
             String res = String.valueOf(obj);
             if (res.equals(THROW_EXCEPTION_MARKER.toString())) {
                 // Tests exception throwing from partial intrinsification
-                throw new RuntimeException("ex: " + obj);
+                throw new CustomError("ex: " + obj);
             }
             return res;
         }
@@ -277,31 +291,100 @@ public class ReplacementsParseTest extends ReplacementsTest {
         }
     }
 
+    private void testWithDifferentReturnValues(OptionValues options, String standardReturnValue, String compiledReturnValue, String name, Object... args) {
+        ResolvedJavaMethod method = getResolvedJavaMethod(name);
+        Object receiver = null;
+
+        Result expect = executeExpected(method, receiver, args);
+        Assert.assertEquals(standardReturnValue, expect.returnValue);
+        expect = new Result(compiledReturnValue, null);
+        testAgainstExpected(options, method, expect, receiver, args);
+    }
+
+    @Override
+    protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean forceCompile, boolean installAsDefault, OptionValues options) {
+        return super.getCode(installedCodeOwner, graph, forceCompileOverride, installAsDefault, options);
+    }
+
+    boolean forceCompileOverride;
+
     @Test
     public void testCallStringize() {
         test("callStringize", "a string");
-        test("callStringize", THROW_EXCEPTION_MARKER);
         test("callStringize", Boolean.TRUE);
+        // Unset 'exception seen' bit if testCallStringizeWithoutInlinePartialIntrinsicExit
+        // is executed before this test
+        getResolvedJavaMethod("callStringize").reprofile();
+        forceCompileOverride = true;
+        String standardReturnValue = new CustomError("ex: " + THROW_EXCEPTION_MARKER).toString();
+        String compiledReturnValue = new CustomError("ex: " + THROW_EXCEPTION_MARKER) + IN_COMPILED_HANDLER_MARKER;
+        testWithDifferentReturnValues(getInitialOptions(), standardReturnValue, compiledReturnValue, "callStringize", THROW_EXCEPTION_MARKER);
+    }
+
+    @Test
+    public void testCallStringizeWithoutInlinePartialIntrinsicExit() {
+        OptionValues options = new OptionValues(getInitialOptions(), InlinePartialIntrinsicExitDuringParsing, false);
+        test(options, "callStringize", "a string");
+        test(options, "callStringize", Boolean.TRUE);
+        String standardReturnValue = new CustomError("ex: " + THROW_EXCEPTION_MARKER).toString();
+        String compiledReturnValue = new CustomError("ex: " + THROW_EXCEPTION_MARKER) + IN_COMPILED_HANDLER_MARKER;
+        for (int i = 0; i < 1000; i++) {
+            // Ensures 'exception seen' bit is set for call to stringize
+            callStringize(THROW_EXCEPTION_MARKER);
+        }
+        forceCompileOverride = true;
+        testWithDifferentReturnValues(options, standardReturnValue, compiledReturnValue, "callStringize", THROW_EXCEPTION_MARKER);
     }
 
     @Test
     public void testCallStringizeId() {
         test("callStringizeId", new TestObject("a string"));
-        test("callStringizeId", new TestObject(THROW_EXCEPTION_MARKER));
         test("callStringizeId", new TestObject(Boolean.TRUE));
+        // Unset 'exception seen' bit if testCallStringizeIdWithoutInlinePartialIntrinsicExit
+        // is executed before this test
+        getResolvedJavaMethod("callStringize").reprofile();
+        forceCompileOverride = true;
+        String standardReturnValue = new CustomError("ex: " + THROW_EXCEPTION_MARKER).toString();
+        String compiledReturnValue = new CustomError("ex: " + THROW_EXCEPTION_MARKER) + IN_COMPILED_HANDLER_MARKER;
+        testWithDifferentReturnValues(getInitialOptions(), standardReturnValue, compiledReturnValue, "callStringizeId", new TestObject(THROW_EXCEPTION_MARKER));
+    }
+
+    @Test
+    public void testCallStringizeIdWithoutInlinePartialIntrinsicExit() {
+        OptionValues options = new OptionValues(getInitialOptions(), InlinePartialIntrinsicExitDuringParsing, false);
+        test(options, "callStringizeId", new TestObject("a string"));
+        test(options, "callStringizeId", new TestObject(Boolean.TRUE));
+        TestObject exceptionTestObject = new TestObject(THROW_EXCEPTION_MARKER);
+        for (int i = 0; i < 1000; i++) {
+            // Ensures 'exception seen' bit is set for call to stringizeId
+            callStringizeId(exceptionTestObject);
+        }
+        String standardReturnValue = new CustomError("ex: " + THROW_EXCEPTION_MARKER).toString();
+        String compiledReturnValue = new CustomError("ex: " + THROW_EXCEPTION_MARKER) + IN_COMPILED_HANDLER_MARKER;
+        forceCompileOverride = true;
+        testWithDifferentReturnValues(options, standardReturnValue, compiledReturnValue, "callStringizeId", exceptionTestObject);
     }
 
     public static Object callStringize(Object obj) {
-        return TestObject.stringize(obj);
+        try {
+            return TestObject.stringize(obj);
+        } catch (CustomError e) {
+            if (GraalDirectives.inCompiledCode()) {
+                return e + IN_COMPILED_HANDLER_MARKER;
+            }
+            return e.toString();
+        }
     }
 
     public static Object callStringizeId(TestObject testObj) {
-        return indirect(testObj);
-    }
-
-    @BytecodeParserNeverInline
-    private static String indirect(TestObject testObj) {
-        return testObj.stringizeId();
+        try {
+            return testObj.stringizeId();
+        } catch (CustomError e) {
+            if (GraalDirectives.inCompiledCode()) {
+                return e + IN_COMPILED_HANDLER_MARKER;
+            }
+            return e.toString();
+        }
     }
 
     @Test
@@ -358,7 +441,7 @@ public class ReplacementsParseTest extends ReplacementsTest {
                 test("callCopyFirstL2R", in, out);
             }
         } catch (GraalGraphError e) {
-            Assert.assertTrue(e.getMessage().startsWith("Invalid frame state"));
+            assertTrue(e.getMessage().startsWith("Invalid frame state"));
         }
     }
 }
