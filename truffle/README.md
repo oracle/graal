@@ -49,8 +49,7 @@ SimpleLanguage is well documented and designed to demonstrate most of the Truffl
 Important links to resources that are available:
   - [Truffle javadoc overview](http://graalvm.github.io/truffle/javadoc/)
   - [SimpleLanguage example](https://github.com/graalvm/simplelanguage)
-  - [Tutorials and publications on Truffle](https://github.com/graalvm/truffle/blob/master/docs/Publications.md)
-  - [Tutorials and publications on Graal](https://github.com/graalvm/graal-core/blob/master/docs/Publications.md)
+  - [Tutorials and publications on Truffle and Graal](../docs/Publications.md)
   - [Graal VM download](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index-2301583.html) on the Oracle Technology Network
 
 
