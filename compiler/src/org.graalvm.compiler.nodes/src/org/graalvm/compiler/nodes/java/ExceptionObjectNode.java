@@ -60,6 +60,15 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
         return LocationIdentity.any();
     }
 
+    /**
+     * An exception handler is an entry point to a method from the runtime and so represents an
+     * instruction that cannot be re-executed. It therefore needs a frame state.
+     */
+    @Override
+    public boolean hasSideEffect() {
+        return true;
+    }
+
     @Override
     public void lower(LoweringTool tool) {
         if (graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
