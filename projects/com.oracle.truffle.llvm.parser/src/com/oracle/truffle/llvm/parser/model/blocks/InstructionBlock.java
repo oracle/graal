@@ -60,6 +60,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.ShuffleVectorIn
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.StoreInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchOldInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.TerminatingInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
@@ -231,12 +232,12 @@ public final class InstructionBlock implements ValueSymbol {
         return name;
     }
 
-    public Instruction getInstruction(int index) {
-        return instructions.get(index);
-    }
-
     public Symbols getFunctionSymbols() {
         return function.getSymbols();
+    }
+
+    public Instruction getInstruction(int index) {
+        return instructions.get(index);
     }
 
     public int getInstructionCount() {
@@ -255,6 +256,11 @@ public final class InstructionBlock implements ValueSymbol {
 
     public void setImplicitName(int label) {
         this.name = LLVMIdentifier.toImplicitBlockName(label);
+    }
+
+    public TerminatingInstruction getTerminatingInstruction() {
+        assert instructions.get(instructions.size() - 1) instanceof TerminatingInstruction : "last instruction must be a terminating instruction";
+        return (TerminatingInstruction) instructions.get(instructions.size() - 1);
     }
 
     @Override

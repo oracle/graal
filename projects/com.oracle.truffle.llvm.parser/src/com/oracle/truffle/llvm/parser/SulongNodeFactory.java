@@ -51,7 +51,6 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NativeIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -85,6 +84,8 @@ public interface SulongNodeFactory {
     LLVMExpressionNode createSimpleConstantNoArray(LLVMParserRuntime runtime, Object constant, Type instructionType);
 
     LLVMExpressionNode createVectorLiteralNode(LLVMParserRuntime runtime, List<LLVMExpressionNode> listValues, Type type);
+
+    LLVMExpressionNode createFrameNuller(FrameSlot slot);
 
     LLVMControlFlowNode createRetVoid(LLVMParserRuntime runtime, SourceSection source);
 
@@ -148,13 +149,11 @@ public interface SulongNodeFactory {
 
     LLVMExpressionNode createBasicBlockNode(LLVMParserRuntime runtime, LLVMExpressionNode[] statementNodes, LLVMControlFlowNode terminatorNode, int blockId, String blockName);
 
-    LLVMExpressionNode createFunctionBlockNode(LLVMParserRuntime runtime, FrameSlot exceptionValueSlot, List<? extends LLVMExpressionNode> basicBlockNodes, LLVMStackFrameNuller[][] indexToSlotNuller,
-                    LLVMStackFrameNuller[][] slotNullerAfterNodes);
+    LLVMExpressionNode createFunctionBlockNode(LLVMParserRuntime runtime, FrameSlot exceptionValueSlot, List<? extends LLVMExpressionNode> basicBlockNodes, FrameSlot[][] beforeBlockNuller,
+                    FrameSlot[][] afterBlockNuller);
 
     RootNode createFunctionStartNode(LLVMParserRuntime runtime, LLVMExpressionNode functionBodyNode, LLVMExpressionNode[] copyArgumentsToFrame,
-                    SourceSection sourceSection,
-                    FrameDescriptor frameDescriptor,
-                    FunctionDefinition functionHeader, Source bcSource);
+                    SourceSection sourceSection, FrameDescriptor frameDescriptor, FunctionDefinition functionHeader, Source bcSource);
 
     LLVMExpressionNode createInlineAssemblerExpression(LLVMParserRuntime runtime, String asmExpression, String asmFlags, LLVMExpressionNode[] args, Type[] argTypes, Type retType,
                     SourceSection sourceSection);
@@ -162,8 +161,6 @@ public interface SulongNodeFactory {
     Object allocateGlobalVariable(LLVMParserRuntime runtime, GlobalVariable globalVariable);
 
     Object allocateGlobalConstant(LLVMParserRuntime runtime, GlobalConstant globalConstant);
-
-    LLVMStackFrameNuller createFrameNuller(LLVMParserRuntime runtime, String identifier, Type type, FrameSlot slot);
 
     LLVMFunctionDescriptor createFunctionDescriptor(LLVMContext context, String name, FunctionType type, int functionIndex);
 

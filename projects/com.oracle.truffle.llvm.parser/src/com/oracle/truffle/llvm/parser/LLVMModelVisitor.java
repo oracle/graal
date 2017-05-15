@@ -29,53 +29,60 @@
  */
 package com.oracle.truffle.llvm.parser;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.nodes.NodeUtil;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalConstant;
+import com.oracle.truffle.llvm.parser.model.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
-import com.oracle.truffle.llvm.runtime.LLVMException;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LazyToTruffleConverter;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 final class LLVMModelVisitor implements ModelVisitor {
+    private final Map<GlobalAlias, Symbol> aliases;
+    private final Map<GlobalValueSymbol, LLVMExpressionNode> globals;
+    private final List<FunctionDefinition> functions;
 
-    private final LLVMParserRuntime visitor;
+    LLVMModelVisitor() {
+        this.aliases = new HashMap<>();
+        this.globals = new HashMap<>();
+        this.functions = new ArrayList<>();
+    }
 
-    LLVMModelVisitor(LLVMParserRuntime visitor) {
-        this.visitor = visitor;
+    public Map<GlobalAlias, Symbol> getAliases() {
+        return aliases;
+    }
+
+    public Map<GlobalValueSymbol, LLVMExpressionNode> getGlobals() {
+        return globals;
+    }
+
+    public List<FunctionDefinition> getFunctions() {
+        return functions;
     }
 
     @Override
     public void visit(GlobalAlias alias) {
-        visitor.getAliases().put(alias, alias.getValue());
+        aliases.put(alias, alias.getValue());
     }
 
     @Override
     public void visit(GlobalConstant constant) {
-        visitor.getGlobals().put(constant, null);
+        globals.put(constant, null);
     }
 
     @Override
     public void visit(GlobalVariable variable) {
-        visitor.getGlobals().put(variable, null);
+        globals.put(variable, null);
     }
 
     @Override
@@ -84,75 +91,14 @@ final class LLVMModelVisitor implements ModelVisitor {
 
     @Override
     public void visit(FunctionDefinition method) {
-        final String name = method.getName();
+        String methodName = method.getName();
         if (!LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.printMetadata())) {
-            method.getMetadata().print(LLVMLogger.print(LLVMOptions.DEBUG.printMetadata()), name);
+            method.getMetadata().print(LLVMLogger.print(LLVMOptions.DEBUG.printMetadata()), methodName);
         }
-        LLVMFunctionDescriptor function = visitor.getContext().lookupFunctionDescriptor(method.getName(),
-                        i -> visitor.getNodeFactory().createFunctionDescriptor(visitor.getContext(), method.getName(), method.getType(), i));
-        if (LLVMOptions.ENGINE.lazyParsing()) {
-            function.declareInSulong(new LazyToTruffleConverterImpl(method, visitor));
-        } else {
-            function.declareInSulong((new LazyToTruffleConverterImpl(method, visitor)).convert());
-        }
-        visitor.addFunction(function);
-    }
-
-    private static class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
-        private final FunctionDefinition method;
-        private final LLVMParserRuntime visitor;
-
-        LazyToTruffleConverterImpl(FunctionDefinition method, LLVMParserRuntime visitor) {
-            this.method = method;
-            this.visitor = visitor;
-        }
-
-        @Override
-        public RootCallTarget convert() {
-            CompilerAsserts.neverPartOfCompilation();
-
-            FrameDescriptor frame = visitor.getStack().getFrame(method.getName());
-
-            final LLVMLifetimeAnalysis lifetimes = LLVMLifetimeAnalysis.getResult(method, frame, visitor.getPhis().getPhiMap(method.getName()));
-            LLVMExpressionNode body = visitor.createFunction(method, frame.findFrameSlot(LLVMException.FRAME_SLOT_ID), lifetimes);
-
-            List<LLVMExpressionNode> copyArgumentsToFrame = visitor.copyArgumentsToFrame(frame, method);
-            LLVMExpressionNode[] copyArgumentsToFrameArray = copyArgumentsToFrame.toArray(new LLVMExpressionNode[copyArgumentsToFrame.size()]);
-
-            final SourceSection sourceSection = visitor.getSourceSection(method);
-            RootNode rootNode = visitor.getNodeFactory().createFunctionStartNode(visitor, body, copyArgumentsToFrameArray, sourceSection, frame, method, visitor.getSource());
-
-            final String astPrintTarget = LLVMOptions.DEBUG.printFunctionASTs();
-            if (LLVMLogger.TARGET_STDOUT.equals(astPrintTarget) || LLVMLogger.TARGET_ANY.equals(astPrintTarget)) {
-                // Checkstyle: stop
-                NodeUtil.printTree(System.out, rootNode);
-                System.out.flush();
-                // Checkstyle: resume
-
-            } else if (LLVMLogger.TARGET_STDERR.equals(astPrintTarget)) {
-                // Checkstyle: stop
-                NodeUtil.printTree(System.err, rootNode);
-                System.err.flush();
-                // Checkstyle: resume
-
-            } else if (!LLVMLogger.TARGET_NONE.equals(astPrintTarget)) {
-                try (PrintStream out = new PrintStream(new FileOutputStream(astPrintTarget, true))) {
-                    NodeUtil.printTree(out, rootNode);
-                    out.flush();
-                } catch (IOException e) {
-                    throw new IllegalStateException("Cannot write to file: " + astPrintTarget);
-                }
-            }
-
-            RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-            visitor.exitFunction();
-            return callTarget;
-        }
-
+        functions.add(method);
     }
 
     @Override
     public void visit(Type type) {
     }
-
 }

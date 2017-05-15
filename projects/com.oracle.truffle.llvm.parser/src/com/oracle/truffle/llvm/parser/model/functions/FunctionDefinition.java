@@ -40,6 +40,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.llvm.parser.metadata.MetadataList;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
@@ -62,9 +63,13 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
+import com.oracle.truffle.llvm.runtime.LLVMException;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.metadata.MetadataList;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 
@@ -317,6 +322,27 @@ public final class FunctionDefinition implements Constant, FunctionGenerator, Va
     public MetadataList getMetadata() {
         CompilerAsserts.neverPartOfCompilation();
         return metadata;
+    }
+
+    public Map<String, Type> getNameToTypeMapping() {
+        final Map<String, Type> result = new HashMap<>();
+        ValueInstructionVisitor nameToTypeVisitor = new ValueInstructionVisitor() {
+            @Override
+            public void visitValueInstruction(ValueInstruction valueInstruction) {
+                result.put(valueInstruction.getName(), valueInstruction.getType());
+            }
+        };
+
+        result.put(LLVMException.FRAME_SLOT_ID, new PointerType(null));
+        result.put(LLVMStack.FRAME_ID, PrimitiveType.I64);
+        for (int i = 0; i < getBlockCount(); i++) {
+            getBlock(i).accept(nameToTypeVisitor);
+        }
+
+        for (FunctionParameter param : getParameters()) {
+            result.put(param.getName(), param.getType());
+        }
+        return result;
     }
 
     @Override

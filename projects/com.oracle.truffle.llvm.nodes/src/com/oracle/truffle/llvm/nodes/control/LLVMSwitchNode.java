@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.nodes.control;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -59,12 +58,9 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
 
     public abstract Object executeCondition(VirtualFrame frame);
 
-    @ExplodeLoop
-    public void writePhis(VirtualFrame frame, int successorIndex) {
-        LLVMExpressionNode[] phis = phiWriteNodes[successorIndex];
-        for (int i = 0; i < phis.length; i++) {
-            phis[i].executeGeneric(frame);
-        }
+    @Override
+    public LLVMExpressionNode[] getPhiNodes(int successorIndex) {
+        return phiWriteNodes[successorIndex];
     }
 
     public int[] getSuccessors() {

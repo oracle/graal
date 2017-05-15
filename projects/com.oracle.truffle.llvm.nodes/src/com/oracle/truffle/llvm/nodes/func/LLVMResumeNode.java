@@ -36,6 +36,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public final class LLVMResumeNode extends LLVMControlFlowNode {
 
@@ -49,6 +50,11 @@ public final class LLVMResumeNode extends LLVMControlFlowNode {
     @Override
     public int getSuccessorCount() {
         return 0;
+    }
+
+    @Override
+    public LLVMExpressionNode[] getPhiNodes(int successorIndex) {
+        return null;
     }
 
     public void execute(VirtualFrame frame) {

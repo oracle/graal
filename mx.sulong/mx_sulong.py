@@ -134,8 +134,6 @@ def travis2(args=None):
         if t: mx_testsuites.runSuite(['nwcc'])
     with Task('TestGCCSuiteCompile', tasks) as t:
         if t: mx_testsuites.runSuite(['parserTorture'])
-    with Task('TestLifetime', tasks) as t:
-        if t: mx_testsuites.runSuite(['lifetimeanalysis'])
 
 def pullTools(args=None):
     """pulls the LLVM and Dragonegg tools"""

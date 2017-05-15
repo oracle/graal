@@ -32,7 +32,9 @@ package com.oracle.truffle.llvm.parser.nodes;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.parser.LLVMLabelList;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
@@ -81,14 +83,26 @@ import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 
 public final class LLVMSymbolResolver {
-
     private final LLVMParserRuntime runtime;
+    private final FunctionDefinition method;
+    private final FrameDescriptor frame;
+    private final Map<String, Integer> labels;
+    private final LLVMLabelList allLabels;
 
-    private final LLVMLabelList labels;
+    public LLVMSymbolResolver(LLVMParserRuntime runtime, LLVMLabelList allLabels) {
+        this(runtime, null, null, null, allLabels);
+    }
 
-    public LLVMSymbolResolver(LLVMLabelList labels, LLVMParserRuntime runtime) {
-        this.labels = labels;
+    public LLVMSymbolResolver(LLVMParserRuntime runtime, FunctionDefinition method, FrameDescriptor frame, Map<String, Integer> labels) {
+        this(runtime, method, frame, labels, null);
+    }
+
+    private LLVMSymbolResolver(LLVMParserRuntime runtime, FunctionDefinition method, FrameDescriptor frame, Map<String, Integer> labels, LLVMLabelList allLabels) {
         this.runtime = runtime;
+        this.method = method;
+        this.frame = frame;
+        this.labels = labels;
+        this.allLabels = allLabels;
     }
 
     public static Integer evaluateIntegerConstant(Symbol constant) {
@@ -257,14 +271,14 @@ public final class LLVMSymbolResolver {
         return runtime.getNodeFactory().createVectorLiteralNode(runtime, values, constant.getType());
     }
 
-    private LLVMExpressionNode toFunction(FunctionDefinition function) {
-        final LLVMFunction llvmFunction = runtime.getNodeFactory().createAndRegisterFunctionDescriptor(runtime, function.getName(), function.getType());
-        return runtime.getNodeFactory().createLiteral(runtime, llvmFunction, function.getType());
+    private LLVMExpressionNode toFunction(FunctionDefinition toResolve) {
+        final LLVMFunction llvmFunction = runtime.getNodeFactory().createAndRegisterFunctionDescriptor(runtime, toResolve.getName(), toResolve.getType());
+        return runtime.getNodeFactory().createLiteral(runtime, llvmFunction, toResolve.getType());
     }
 
-    private LLVMExpressionNode toFunction(FunctionDeclaration function) {
-        final LLVMFunction llvmFunction = runtime.getNodeFactory().createAndRegisterFunctionDescriptor(runtime, function.getName(), function.getType());
-        return runtime.getNodeFactory().createLiteral(runtime, llvmFunction, function.getType());
+    private LLVMExpressionNode toFunction(FunctionDeclaration toResolve) {
+        final LLVMFunction llvmFunction = runtime.getNodeFactory().createAndRegisterFunctionDescriptor(runtime, toResolve.getName(), toResolve.getType());
+        return runtime.getNodeFactory().createLiteral(runtime, llvmFunction, toResolve.getType());
     }
 
     private LLVMExpressionNode toBinaryOperation(BinaryOperationConstant operation) {
@@ -286,7 +300,13 @@ public final class LLVMSymbolResolver {
     }
 
     private LLVMExpressionNode toBlockAddress(BlockAddressConstant constant) {
-        final int val = labels.labels(constant.getFunction().getName()).get(constant.getInstructionBlock().getName());
+        int val;
+        if (allLabels != null) {
+            val = allLabels.labels(constant.getFunction().getName()).get(constant.getInstructionBlock().getName());
+        } else {
+            assert constant.getFunction() == method;
+            val = labels.get(constant.getInstructionBlock().getName());
+        }
         return runtime.getNodeFactory().createLiteral(runtime, LLVMAddress.fromLong(val), new PointerType(null));
     }
 
@@ -363,11 +383,11 @@ public final class LLVMSymbolResolver {
 
     public LLVMExpressionNode resolve(Symbol symbol) {
         if (symbol instanceof ValueInstruction || symbol instanceof FunctionParameter) {
-            final FrameSlot slot = runtime.getMethodFrameDescriptor().findFrameSlot(((ValueSymbol) symbol).getName());
+            final FrameSlot slot = frame.findFrameSlot(((ValueSymbol) symbol).getName());
             return runtime.getNodeFactory().createFrameRead(runtime, symbol.getType(), slot);
 
         } else if (symbol instanceof GlobalValueSymbol) {
-            return (LLVMExpressionNode) runtime.getGlobalAddress((GlobalValueSymbol) symbol);
+            return (LLVMExpressionNode) runtime.getGlobalAddress(this, (GlobalValueSymbol) symbol);
 
         } else if (symbol instanceof NullConstant || symbol instanceof UndefinedConstant) {
             return toNullValue(symbol.getType());

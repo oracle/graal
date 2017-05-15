@@ -67,7 +67,6 @@ JVM process or which will not be supported by Sulong in the near future.
 | interop          | LLVMInteropTest        | Test Truffle interoperability   |
 | polyglot         | TestPolyGlotEngine     | Minimal Polyglot engine test    |
 | tck              | LLVMTckTest            | Certify Truffle compliance      |
-| lifetimeanalysis | LifetimeAnaylysisSuite | Tests the lifetime of variables |
 | nwcc             | NWCCSuite              | Test suite of the NWCC compiler |
 | assembly         | InlineAssemblyTest     | Inline assembler tests          |
 | sulong           | SulongSuite            | Sulong's own primary test suite |

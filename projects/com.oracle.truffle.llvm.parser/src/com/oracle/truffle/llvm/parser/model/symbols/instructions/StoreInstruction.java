@@ -105,9 +105,4 @@ public final class StoreInstruction extends VoidInstruction {
             source = replacement;
         }
     }
-
-    @Override
-    public boolean hasName() {
-        return false;
-    }
 }

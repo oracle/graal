@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,20 +27,22 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.test.util;
+package com.oracle.truffle.llvm.nodes.base;
 
-public interface LifetimeFileParserEventListener {
-    void startFile();
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-    void endFile(String functionName);
+public class LLVMFrameNuller extends LLVMExpressionNode {
+    private final FrameSlot frameSlot;
 
-    void beginDead();
+    public LLVMFrameNuller(FrameSlot frameSlot) {
+        this.frameSlot = frameSlot;
+    }
 
-    void endDead();
-
-    void variableIndent(String variableName);
-
-    void finishEntry(String block);
-
-    void functionIndent(String functionName);
+    @Override
+    public Object executeGeneric(VirtualFrame frame) {
+        LLVMFrameNullerUtil.nullFrameSlot(frame, frameSlot);
+        return null;
+    }
 }

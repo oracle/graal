@@ -34,129 +34,86 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
-import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
+@NodeField(name = "slot", type = FrameSlot.class)
 public abstract class LLVMReadNode extends LLVMExpressionNode {
 
-    @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMI1ReadNode extends LLVMExpressionNode {
+    protected abstract FrameSlot getSlot();
 
-        protected abstract FrameSlot getSlot();
-
+    public abstract static class LLVMI1ReadNode extends LLVMReadNode {
         @Specialization
         protected boolean readI1(VirtualFrame frame) {
             return FrameUtil.getBooleanSafe(frame, getSlot());
         }
     }
 
-    @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMI8ReadNode extends LLVMExpressionNode {
-
-        protected abstract FrameSlot getSlot();
-
+    public abstract static class LLVMI8ReadNode extends LLVMReadNode {
         @Specialization
         protected byte readI8(VirtualFrame frame) {
             return FrameUtil.getByteSafe(frame, getSlot());
         }
     }
 
-    @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMI16ReadNode extends LLVMExpressionNode {
-
-        protected abstract FrameSlot getSlot();
-
+    public abstract static class LLVMI16ReadNode extends LLVMReadNode {
         @Specialization
         protected short readI16(VirtualFrame frame) {
             return (short) FrameUtil.getIntSafe(frame, getSlot());
         }
     }
 
-    @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMI32ReadNode extends LLVMExpressionNode {
-
-        protected abstract FrameSlot getSlot();
-
+    public abstract static class LLVMI32ReadNode extends LLVMReadNode {
         @Specialization
         protected int readI32(VirtualFrame frame) {
             return FrameUtil.getIntSafe(frame, getSlot());
         }
     }
 
-    @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMI64ReadNode extends LLVMExpressionNode {
-
-        protected abstract FrameSlot getSlot();
-
+    public abstract static class LLVMI64ReadNode extends LLVMReadNode {
         @Specialization
         protected long readI64(VirtualFrame frame) {
             return FrameUtil.getLongSafe(frame, getSlot());
         }
     }
 
-    @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMIReadVarBitNode extends LLVMExpressionNode {
-
-        protected abstract FrameSlot getSlot();
-
+    public abstract static class LLVMIReadVarBitNode extends LLVMReadNode {
         @Specialization
-        protected LLVMIVarBit readVarBit(VirtualFrame frame) {
-            return (LLVMIVarBit) FrameUtil.getObjectSafe(frame, getSlot());
+        protected Object readVarBit(VirtualFrame frame) {
+            return FrameUtil.getObjectSafe(frame, getSlot());
         }
     }
 
-    @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMFloatReadNode extends LLVMExpressionNode {
-
-        protected abstract FrameSlot getSlot();
-
+    public abstract static class LLVMFloatReadNode extends LLVMReadNode {
         @Specialization
-        protected float readDouble(VirtualFrame frame) {
+        protected float readFloat(VirtualFrame frame) {
             return FrameUtil.getFloatSafe(frame, getSlot());
         }
     }
 
-    @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMDoubleReadNode extends LLVMExpressionNode {
-
-        protected abstract FrameSlot getSlot();
-
+    public abstract static class LLVMDoubleReadNode extends LLVMReadNode {
         @Specialization
         protected double readDouble(VirtualFrame frame) {
             return FrameUtil.getDoubleSafe(frame, getSlot());
         }
     }
 
-    @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVM80BitFloatReadNode extends LLVMExpressionNode {
-
-        protected abstract FrameSlot getSlot();
-
+    public abstract static class LLVM80BitFloatReadNode extends LLVMReadNode {
         @Specialization
-        protected LLVM80BitFloat read80BitFloat(VirtualFrame frame) {
-            return (LLVM80BitFloat) FrameUtil.getObjectSafe(frame, getSlot());
+        protected Object read80BitFloat(VirtualFrame frame) {
+            return FrameUtil.getObjectSafe(frame, getSlot());
         }
     }
 
-    @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMAddressReadNode extends LLVMExpressionNode {
-
-        protected abstract FrameSlot getSlot();
-
+    public abstract static class LLVMAddressReadNode extends LLVMReadNode {
         @Specialization
         protected Object readObject(VirtualFrame frame) {
             return FrameUtil.getObjectSafe(frame, getSlot());
         }
     }
 
-    @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMFunctionReadNode extends LLVMExpressionNode {
-
-        protected abstract FrameSlot getSlot();
-
+    public abstract static class LLVMFunctionReadNode extends LLVMReadNode {
         @Specialization
-        protected Object readI32(VirtualFrame frame) {
+        protected Object readObject(VirtualFrame frame) {
             return FrameUtil.getObjectSafe(frame, getSlot());
         }
     }

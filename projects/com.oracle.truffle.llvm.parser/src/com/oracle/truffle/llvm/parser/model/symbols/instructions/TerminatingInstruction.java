@@ -29,12 +29,11 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import java.util.List;
-
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 
 public interface TerminatingInstruction {
 
-    List<InstructionBlock> getSuccessors();
+    int getSuccessorCount();
 
+    InstructionBlock getSuccessor(int index);
 }

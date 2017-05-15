@@ -46,6 +46,11 @@ public final class LLVMIVarBit {
 
     private final byte[] arr;
 
+    private LLVMIVarBit() {
+        this.bits = 0;
+        this.arr = null;
+    }
+
     private LLVMIVarBit(int bits, byte[] arr) {
         this.bits = bits;
         LLVMPerformance.warn(null, "LLVMIVarBit:constructor");
@@ -61,6 +66,10 @@ public final class LLVMIVarBit {
 
     public static LLVMIVarBit create(int bitWidth, byte[] loadedBytes) {
         return new LLVMIVarBit(bitWidth, loadedBytes);
+    }
+
+    public static LLVMIVarBit createNull() {
+        return new LLVMIVarBit();
     }
 
     public static LLVMIVarBit createZeroExt(int bits, int from) {
