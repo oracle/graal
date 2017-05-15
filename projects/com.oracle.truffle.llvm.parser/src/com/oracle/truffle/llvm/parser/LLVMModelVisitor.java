@@ -122,7 +122,7 @@ final class LLVMModelVisitor implements ModelVisitor {
             LLVMExpressionNode[] afterFunction = new LLVMExpressionNode[0];
 
             final SourceSection sourceSection = visitor.getSourceSection(method);
-            RootNode rootNode = visitor.getNodeFactory().createFunctionStartNode(visitor, body, beforeFunction, afterFunction, sourceSection, frame, method);
+            RootNode rootNode = visitor.getNodeFactory().createFunctionStartNode(visitor, body, beforeFunction, afterFunction, sourceSection, frame, method, visitor.getSource());
 
             final String astPrintTarget = LLVMOptions.DEBUG.printFunctionASTs();
             if (LLVMLogger.TARGET_STDOUT.equals(astPrintTarget) || LLVMLogger.TARGET_ANY.equals(astPrintTarget)) {

@@ -98,27 +98,24 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
                 throw e;
             } catch (SulongRuntimeException e) {
                 CompilerDirectives.transferToInterpreter();
-                SourceSection s = getLastAvailableSourceSection(i);
-                SulongStackTrace stackTrace = e.getCStackTrace();
-                LLVMFunctionStartNode functionStartNode = NodeUtil.findParent(this, LLVMFunctionStartNode.class);
-                if (s == null) {
-                    stackTrace.addStackTraceElement(functionStartNode.getName(), blockName());
-                } else {
-                    stackTrace.addStackTraceElement(functionStartNode.getName(), blockName(), s.getStartLine());
-                }
+                fillStackTrace(e.getCStackTrace(), i);
                 throw e;
             } catch (Throwable t) {
                 CompilerDirectives.transferToInterpreter();
-                SourceSection s = getLastAvailableSourceSection(i);
-                SulongStackTrace stackTrace = new SulongStackTrace();
-                LLVMFunctionStartNode functionStartNode = NodeUtil.findParent(this, LLVMFunctionStartNode.class);
-                if (s == null) {
-                    stackTrace.addStackTraceElement(functionStartNode.getName(), blockName());
-                } else {
-                    stackTrace.addStackTraceElement(functionStartNode.getName(), blockName(), s.getStartLine());
-                }
+                final SulongStackTrace stackTrace = new SulongStackTrace();
+                fillStackTrace(stackTrace, i);
                 throw new SulongRuntimeException(t, stackTrace);
             }
+        }
+    }
+
+    private void fillStackTrace(SulongStackTrace stackTrace, int errorIndex) {
+        final SourceSection s = getLastAvailableSourceSection(errorIndex);
+        final LLVMFunctionStartNode f = NodeUtil.findParent(this, LLVMFunctionStartNode.class);
+        if (s == null) {
+            stackTrace.addStackTraceElement(f.getName(), f.getBcSource().getName(), blockName());
+        } else {
+            stackTrace.addStackTraceElement(f.getOriginalName(), s.getSource().getName(), f.getName(), f.getBcSource().getName(), blockName(), s.getStartLine(), s.getStartColumn());
         }
     }
 

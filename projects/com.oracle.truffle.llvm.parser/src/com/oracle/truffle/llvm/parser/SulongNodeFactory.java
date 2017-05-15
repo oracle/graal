@@ -242,7 +242,7 @@ public interface SulongNodeFactory {
     RootNode createFunctionStartNode(LLVMParserRuntime runtime, LLVMExpressionNode functionBodyNode, LLVMExpressionNode[] beforeFunction, LLVMExpressionNode[] afterFunction,
                     SourceSection sourceSection,
                     FrameDescriptor frameDescriptor,
-                    FunctionDefinition functionHeader);
+                    FunctionDefinition functionHeader, Source bcSource);
 
     /**
      * Creates an inline assembler instruction.
