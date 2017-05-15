@@ -25,7 +25,6 @@ package org.graalvm.compiler.hotspot;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import javax.management.Attribute;
 import javax.management.AttributeList;
@@ -199,8 +198,8 @@ public final class HotSpotGraalMBean implements DynamicMBean {
 
     private static Iterable<OptionDescriptor> allOptionDescriptors() {
         List<OptionDescriptor> arr = new ArrayList<>();
-        for (Iterator<OptionDescriptors> it = OptionsParser.getOptionsLoader().iterator(); it.hasNext();) {
-            for (OptionDescriptor descr : it.next()) {
+        for (OptionDescriptors set : OptionsParser.getOptionsLoader()) {
+            for (OptionDescriptor descr : set) {
                 arr.add(descr);
             }
         }
