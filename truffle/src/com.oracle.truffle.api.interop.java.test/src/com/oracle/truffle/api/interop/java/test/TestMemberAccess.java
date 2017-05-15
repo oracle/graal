@@ -45,6 +45,7 @@ import java.util.List;
 import java.util.Set;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import org.junit.Test;
@@ -156,6 +157,24 @@ public class TestMemberAccess {
     public void testKeysAndInternalKeysOnInstance() throws Exception {
         TruffleObject instance = JavaInterop.asTruffleObject(new TestClass());
         assertKeys(instance);
+    }
+
+    @Test
+    public void testUnderscoreKeys() throws Exception {
+        TruffleObject testClass = JavaInterop.asTruffleObject(Test_Underscore.class);
+        assertKeys(testClass);
+
+        CallUnderscore call = JavaInterop.asJavaObject(CallUnderscore.class, testClass);
+
+        Object obj = call.create__Lcom_oracle_truffle_api_interop_java_test_Test_1Underscore_2();
+        assertNotNull("An object created", obj);
+        assertTrue("Instance of my class", obj instanceof Test_Underscore);
+
+        Object copy = call.copy__Lcom_oracle_truffle_api_interop_java_test_Test_1Underscore_2Lcom_oracle_truffle_api_interop_java_test_Test_1Underscore_2(obj);
+        assertNotNull("An object copied", copy);
+        assertTrue("Instance of my class again", copy instanceof Test_Underscore);
+
+        assertEquals(obj, copy);
     }
 
     private void assertKeys(TruffleObject obj) throws UnsupportedMessageException {
@@ -746,5 +765,11 @@ public class TestMemberAccess {
         public String isOverloaded(short c) {
             return "short";
         }
+    }
+
+    public static interface CallUnderscore {
+        public Object create__Lcom_oracle_truffle_api_interop_java_test_Test_1Underscore_2();
+
+        public Object copy__Lcom_oracle_truffle_api_interop_java_test_Test_1Underscore_2Lcom_oracle_truffle_api_interop_java_test_Test_1Underscore_2(Object orig);
     }
 }

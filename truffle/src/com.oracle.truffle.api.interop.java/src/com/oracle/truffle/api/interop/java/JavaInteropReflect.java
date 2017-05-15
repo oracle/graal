@@ -559,13 +559,17 @@ final class JavaInteropReflect {
 
     private static String jniName(Method m) {
         StringBuilder sb = new StringBuilder();
-        sb.append(m.getName()).append("__");
+        noUnderscore(sb, m.getName()).append("__");
         appendType(sb, m.getReturnType());
         Class<?>[] arr = m.getParameterTypes();
         for (int i = 0; i < arr.length; i++) {
             appendType(sb, arr[i]);
         }
         return sb.toString();
+    }
+
+    private static StringBuilder noUnderscore(StringBuilder sb, String name) {
+        return sb.append(name.replace("_", "_1").replace('.', '_'));
     }
 
     private static void appendType(StringBuilder sb, Class<?> type) {
@@ -610,7 +614,7 @@ final class JavaInteropReflect {
             appendType(sb, type.getComponentType());
             return;
         }
-        sb.append('L').append(type.getName().replace('.', '_'));
+        noUnderscore(sb.append('L'), type.getName());
         sb.append("_2");
     }
 }
