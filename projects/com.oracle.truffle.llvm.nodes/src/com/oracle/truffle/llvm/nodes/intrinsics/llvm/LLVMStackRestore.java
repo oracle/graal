@@ -29,24 +29,19 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeField;
-import com.oracle.truffle.api.dsl.NodeFields;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild(type = LLVMExpressionNode.class)
-@NodeFields({@NodeField(type = FrameSlot.class, name = "stackPointerSlot")})
 public abstract class LLVMStackRestore extends LLVMBuiltin {
 
-    abstract FrameSlot getStackPointerSlot();
-
     @Specialization
-    public Object executeVoid(VirtualFrame frame, LLVMAddress addr) {
-        frame.setObject(getStackPointerSlot(), addr);
+    public Object executeVoid(LLVMAddress addr, @Cached("getContext().getStack()") LLVMStack stack) {
+        stack.setStackPointer(addr);
         return null;
     }
 

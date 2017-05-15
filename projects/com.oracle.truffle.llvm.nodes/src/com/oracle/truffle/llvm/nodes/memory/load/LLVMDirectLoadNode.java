@@ -92,12 +92,12 @@ public abstract class LLVMDirectLoadNode {
 
         @Specialization
         public LLVMFunctionHandle executeAddress(LLVMAddress addr) {
-            return new LLVMFunctionHandle(LLVMHeap.getFunctionIndex(addr));
+            return LLVMFunctionHandle.createHandle(LLVMHeap.getFunctionPointer(addr));
         }
 
         @Specialization
         public LLVMFunctionHandle executeAddress(LLVMGlobalVariable addr) {
-            return new LLVMFunctionHandle(LLVMHeap.getFunctionIndex(addr.getNativeLocation()));
+            return LLVMFunctionHandle.createHandle(LLVMHeap.getFunctionPointer(addr.getNativeLocation()));
         }
     }
 

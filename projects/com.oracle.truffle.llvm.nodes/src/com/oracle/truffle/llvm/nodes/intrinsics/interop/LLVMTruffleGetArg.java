@@ -49,7 +49,7 @@ public abstract class LLVMTruffleGetArg extends LLVMIntrinsic {
     public Object doIntrinsic(VirtualFrame frame, int index) {
         assert index >= 0;
         Object[] arguments = frame.getArguments();
-        return arguments[1 + index];
+        return arguments[index];
     }
 
 }

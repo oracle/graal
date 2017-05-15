@@ -43,7 +43,7 @@ public class LLVMFunctionMessageResolution {
     public abstract static class ForeignIsNullNode extends Node {
 
         protected Object access(@SuppressWarnings("unused") VirtualFrame frame, LLVMFunctionDescriptor object) {
-            return object.getFunctionIndex() == 0;
+            return object.isNullFunction();
         }
 
     }
@@ -70,7 +70,7 @@ public class LLVMFunctionMessageResolution {
         private LLVMForeignCallNode getHelperNode(LLVMFunctionDescriptor function) {
             if (executeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                executeNode = insert(LLVMForeignCallNodeGen.create(function.getContext().getStack(), function.getType().getReturnType()));
+                executeNode = insert(LLVMForeignCallNodeGen.create(function.getType().getReturnType()));
             }
 
             return executeNode;

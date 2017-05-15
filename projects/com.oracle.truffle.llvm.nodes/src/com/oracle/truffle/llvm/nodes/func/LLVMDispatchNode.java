@@ -67,7 +67,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     private String getSignature() {
         if (signature == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.signature = LLVMContext.getNativeSignature(type, LLVMCallNode.USER_ARGUMENT_OFFSET);
+            this.signature = LLVMContext.getNativeSignature(type);
         }
         return signature;
     }
@@ -78,7 +78,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
      * Function is defined in the user program (available as LLVM IR)
      */
 
-    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"function.getFunctionIndex() == cachedFunction.getFunctionIndex()", "cachedFunction.isLLVMIRFunction()"})
+    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"function.getFunctionPointer() == cachedFunction.getFunctionPointer()", "cachedFunction.isLLVMIRFunction()"})
     protected static Object doDirect(LLVMFunctionDescriptor function, Object[] arguments,
                     @Cached("function") LLVMFunctionDescriptor cachedFunction,
                     @Cached("create(cachedFunction.getLLVMIRFunction())") DirectCallNode callNode) {
@@ -105,7 +105,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return directCallNode;
     }
 
-    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"function.getFunctionIndex() == cachedFunction.getFunctionIndex()", "cachedFunction.isNativeIntrinsicFunction()"})
+    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"function.getFunctionPointer() == cachedFunction.getFunctionPointer()", "cachedFunction.isNativeIntrinsicFunction()"})
     protected Object doDirectIntrinsic(LLVMFunctionDescriptor function, Object[] arguments,
                     @Cached("function") LLVMFunctionDescriptor cachedFunction,
                     @Cached("getIntrinsificationCallNode(cachedFunction.getNativeIntrinsic())") DirectCallNode callNode) {
@@ -123,7 +123,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
      * available. We do a native call.
      */
 
-    @Specialization(limit = "10", guards = {"descriptor.getFunctionIndex() == cachedDescriptor.getFunctionIndex()", "descriptor.isNativeFunction()"})
+    @Specialization(limit = "10", guards = {"descriptor.getFunctionPointer() == cachedDescriptor.getFunctionPointer()", "descriptor.isNativeFunction()"})
     protected Object doCachedNative(VirtualFrame frame, LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached("descriptor") LLVMFunctionDescriptor cachedDescriptor,
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
@@ -157,9 +157,9 @@ public abstract class LLVMDispatchNode extends LLVMNode {
 
     @ExplodeLoop
     private static Object[] prepareNativeArguments(VirtualFrame frame, Object[] arguments, LLVMNativeConvertNode[] toNative) {
-        Object[] nativeArgs = new Object[arguments.length - 1];
-        for (int i = 1; i < arguments.length; i++) {
-            nativeArgs[i - 1] = toNative[i - 1].executeConvert(frame, arguments[i]);
+        Object[] nativeArgs = new Object[arguments.length];
+        for (int i = 0; i < arguments.length; i++) {
+            nativeArgs[i] = toNative[i].executeConvert(frame, arguments[i]);
         }
         return nativeArgs;
     }
@@ -171,15 +171,15 @@ public abstract class LLVMDispatchNode extends LLVMNode {
 
     protected Node createNativeCallNode() {
         CompilerAsserts.neverPartOfCompilation();
-        int argCount = type.getArgumentTypes().length - 1;
+        int argCount = type.getArgumentTypes().length;
         return Message.createExecute(argCount).createNode();
     }
 
     @ExplodeLoop
     protected LLVMNativeConvertNode[] createToNativeNodes() {
-        LLVMNativeConvertNode[] ret = new LLVMNativeConvertNode[type.getArgumentTypes().length - 1];
-        for (int i = 1; i < type.getArgumentTypes().length; i++) {
-            ret[i - 1] = LLVMNativeConvertNode.createToNative(type.getArgumentTypes()[i]);
+        LLVMNativeConvertNode[] ret = new LLVMNativeConvertNode[type.getArgumentTypes().length];
+        for (int i = 0; i < type.getArgumentTypes().length; i++) {
+            ret[i] = LLVMNativeConvertNode.createToNative(type.getArgumentTypes()[i]);
         }
         return ret;
     }

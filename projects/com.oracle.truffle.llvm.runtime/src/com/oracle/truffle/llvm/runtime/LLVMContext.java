@@ -62,7 +62,7 @@ public class LLVMContext {
     private final List<RootCallTarget> globalVarDeallocs = new ArrayList<>();
     private final List<RootCallTarget> constructorFunctions = new ArrayList<>();
     private final List<RootCallTarget> destructorFunctions = new ArrayList<>();
-    private final Deque<RootCallTarget> atExitFunctions = new ArrayDeque<>();
+    private final Deque<LLVMFunctionDescriptor> atExitFunctions = new ArrayDeque<>();
     private final List<LLVMThread> runningThreads = new ArrayList<>();
 
     private final LLVMGlobalVariableRegistry globalVariableRegistry = new LLVMGlobalVariableRegistry();
@@ -127,15 +127,15 @@ public class LLVMContext {
         this.nativeCallStatistics = LLVMOptions.ENGINE.traceNativeCalls() ? new HashMap<>() : null;
         this.llvmIRFunctions = new HashMap<>();
         this.nativeFunctions = new LLVMNativeFunctionsImpl(nativeLookup);
-        this.sigDfl = new LLVMFunctionHandle(0);
-        this.sigIgn = new LLVMFunctionHandle(1);
-        this.sigErr = new LLVMFunctionHandle(-1);
+        this.sigDfl = LLVMFunctionHandle.createHandle(0);
+        this.sigIgn = LLVMFunctionHandle.createHandle(1);
+        this.sigErr = LLVMFunctionHandle.createHandle((-1) & LLVMFunction.LOWER_MASK);
         this.toNative = new IdentityHashMap<>();
         this.toManaged = new HashMap<>();
         this.handlesLock = new Object();
 
         assert currentFunctionIndex == 0;
-        LLVMFunctionDescriptor zeroFunction = LLVMFunctionDescriptor.create(this, ZERO_FUNCTION, new FunctionType(MetaType.UNKNOWN, new Type[0], false), currentFunctionIndex++);
+        LLVMFunctionDescriptor zeroFunction = LLVMFunctionDescriptor.createDescriptor(this, ZERO_FUNCTION, new FunctionType(MetaType.UNKNOWN, new Type[0], false), currentFunctionIndex++);
         this.llvmIRFunctions.put(ZERO_FUNCTION, zeroFunction);
         this.functionDescriptors.add(zeroFunction);
     }
@@ -278,7 +278,7 @@ public class LLVMContext {
         destructorFunctions.add(destructorFunction);
     }
 
-    public void registerAtExitFunction(RootCallTarget atExitFunction) {
+    public void registerAtExitFunction(LLVMFunctionDescriptor atExitFunction) {
         atExitFunctions.push(atExitFunction);
     }
 
@@ -327,7 +327,7 @@ public class LLVMContext {
         return destructorFunctions;
     }
 
-    public Deque<RootCallTarget> getAtExitFunctions() {
+    public Deque<LLVMFunctionDescriptor> getAtExitFunctions() {
         return atExitFunctions;
     }
 
@@ -355,8 +355,9 @@ public class LLVMContext {
         haveLoadedDynamicBitcodeLibraries = true;
     }
 
-    public LLVMFunctionDescriptor lookup(LLVMFunction handle) {
-        return functionDescriptors.get(handle.getFunctionIndex());
+    public LLVMFunctionDescriptor lookup(LLVMFunctionHandle handle) {
+        assert handle.isSulong();
+        return functionDescriptors.get(handle.getSulongFunctionIndex());
     }
 
     public List<LLVMFunctionDescriptor> getFunctionDescriptors() {
@@ -378,7 +379,7 @@ public class LLVMContext {
             functionDescriptors.add(function);
             llvmIRFunctions.put(name, function);
 
-            assert function.getFunctionIndex() == currentFunctionIndex - 1;
+            assert LLVMFunction.getSulongFunctionIndex(function.getFunctionPointer()) == currentFunctionIndex - 1;
             assert functionDescriptors.get(currentFunctionIndex - 1) == function;
         }
         return function;
@@ -388,7 +389,7 @@ public class LLVMContext {
     public LLVMFunctionDescriptor getDescriptorForName(String name) {
         CompilerAsserts.neverPartOfCompilation();
         if (llvmIRFunctions.containsKey(name)) {
-            return functionDescriptors.get(llvmIRFunctions.get(name).getFunctionIndex());
+            return functionDescriptors.get(LLVMFunction.getSulongFunctionIndex(llvmIRFunctions.get(name).getFunctionPointer()));
         }
         throw new IllegalStateException();
     }
@@ -397,8 +398,8 @@ public class LLVMContext {
         return nativeLookup;
     }
 
-    public static String getNativeSignature(FunctionType type, int skipArguments) {
-        return NativeLookup.prepareSignature(type, skipArguments);
+    public static String getNativeSignature(FunctionType type) {
+        return NativeLookup.prepareSignature(type);
     }
 
 }

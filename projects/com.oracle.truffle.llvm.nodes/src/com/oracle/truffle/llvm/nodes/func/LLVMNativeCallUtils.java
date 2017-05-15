@@ -60,7 +60,9 @@ public final class LLVMNativeCallUtils {
 
     static Object callNativeFunction(LLVMContext context, Node nativeCall, TruffleObject function, Object[] nativeArgs, LLVMFunctionDescriptor descriptor) {
         if (LLVMOptions.ENGINE.traceNativeCalls()) {
-            traceNativeCall(context, descriptor);
+            if (descriptor != null) {
+                traceNativeCall(context, descriptor);
+            }
         }
         try {
             return ForeignAccess.sendExecute(nativeCall, function, nativeArgs);

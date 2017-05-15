@@ -30,33 +30,25 @@
 package com.oracle.truffle.llvm.nodes.others;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public class LLVMStaticInitsBlockNode extends RootNode {
 
     @Children private final LLVMExpressionNode[] nodes;
-    private final FrameSlot stackSlot;
-    private final LLVMStack stack;
 
-    public LLVMStaticInitsBlockNode(LLVMLanguage language, LLVMExpressionNode[] nodes, FrameDescriptor descriptor, LLVMContext llvmContext, FrameSlot stackSlot) {
+    public LLVMStaticInitsBlockNode(LLVMLanguage language, LLVMExpressionNode[] nodes, FrameDescriptor descriptor) {
         super(language, descriptor);
         this.nodes = nodes;
-        this.stackSlot = stackSlot;
-        stack = llvmContext.getStack();
 
     }
 
     @ExplodeLoop
     @Override
     public Object execute(VirtualFrame frame) {
-        frame.setObject(stackSlot, stack.getUpperBounds());
         for (LLVMExpressionNode node : nodes) {
             node.executeGeneric(frame);
         }

@@ -53,12 +53,12 @@ public abstract class LLVMToI8Node extends LLVMExpressionNode {
 
     @Specialization
     public byte executeI8(LLVMFunctionDescriptor from) {
-        return (byte) from.getFunctionIndex();
+        return (byte) from.getFunctionPointer();
     }
 
     @Specialization
     public byte executeI8(LLVMFunctionHandle from) {
-        return (byte) from.getFunctionIndex();
+        return (byte) from.getFunctionPointer();
     }
 
     @Specialization

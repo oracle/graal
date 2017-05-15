@@ -50,13 +50,13 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMFrameUtil;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMAbort;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMSignal;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.DestructorStackElement;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
@@ -101,10 +101,7 @@ public class LLVMGlobalRootNode extends RootNode {
                 assert LLVMSignal.getNumberOfRegisteredSignals() == 0;
 
                 frame.setObject(stackPointerSlot, stackPointer);
-                Object[] realArgs = new Object[arguments.length + LLVMCallNode.USER_ARGUMENT_OFFSET];
-                realArgs[0] = LLVMFrameUtil.getAddress(frame, stackPointerSlot);
-                System.arraycopy(arguments, 0, realArgs, LLVMCallNode.USER_ARGUMENT_OFFSET, arguments.length);
-                result = executeIteration(i, realArgs);
+                result = executeIteration(i, arguments);
 
                 getContext().awaitThreadTermination();
                 assert LLVMSignal.getNumberOfRegisteredSignals() == 0;
@@ -208,11 +205,15 @@ public class LLVMGlobalRootNode extends RootNode {
 
     @TruffleBoundary
     private void executeAtExitFunctions() {
-        Deque<RootCallTarget> atExitFunctions = getContext().getAtExitFunctions();
+        Deque<LLVMFunctionDescriptor> atExitFunctions = getContext().getAtExitFunctions();
         LLVMExitException lastExitException = null;
         while (!atExitFunctions.isEmpty()) {
             try {
-                atExitFunctions.pop().call(atExitFunctions);
+                try {
+                    ForeignAccess.sendExecute(Message.createExecute(0).createNode(), atExitFunctions.pop());
+                } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                    throw new IllegalStateException(e);
+                }
             } catch (LLVMExitException e) {
                 lastExitException = e;
             }

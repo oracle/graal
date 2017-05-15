@@ -51,6 +51,22 @@ public class LLVMAddressMessageResolution {
         }
     }
 
+    @Resolve(message = "IS_POINTER")
+    public abstract static class ForeignIsPointer extends Node {
+        @SuppressWarnings("unused")
+        protected boolean access(VirtualFrame frame, LLVMTruffleAddress receiver) {
+            return true;
+        }
+    }
+
+    @Resolve(message = "AS_POINTER")
+    public abstract static class ForeignAsPointer extends Node {
+        @SuppressWarnings("unused")
+        protected long access(VirtualFrame frame, LLVMTruffleAddress receiver) {
+            return receiver.getAddress().getVal();
+        }
+    }
+
     @Resolve(message = "IS_NULL")
     public abstract static class ForeignIsNull extends Node {
         @SuppressWarnings("unused")

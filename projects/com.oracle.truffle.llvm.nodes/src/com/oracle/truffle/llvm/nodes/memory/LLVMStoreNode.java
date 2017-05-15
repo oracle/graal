@@ -648,7 +648,7 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
         @Specialization
         public Object execute(LLVMAddress address, LLVMFunction function) {
-            LLVMHeap.putFunctionIndex(address, function.getFunctionIndex());
+            LLVMHeap.putFunctionPointer(address, function.getFunctionPointer());
             return null;
         }
 
@@ -1003,7 +1003,7 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
             for (int i = 0; i < values.length; i++) {
                 try {
                     LLVMFunctionDescriptor currentValue = (LLVMFunctionDescriptor) values[i].executeTruffleObject(frame);
-                    LLVMHeap.putFunctionIndex(currentPtr, currentValue.getFunctionIndex());
+                    LLVMHeap.putFunctionPointer(currentPtr, currentValue.getFunctionPointer());
                     currentPtr += stride;
                 } catch (UnexpectedResultException e) {
                     CompilerDirectives.transferToInterpreter();

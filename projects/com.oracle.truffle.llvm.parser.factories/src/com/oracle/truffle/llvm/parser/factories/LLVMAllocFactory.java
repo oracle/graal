@@ -33,26 +33,25 @@ import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstruction.LLVMAllocaInstr
 import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstructionFactory.LLVMI32AllocaInstructionNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstructionFactory.LLVMI64AllocaInstructionNodeGen;
-import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 final class LLVMAllocFactory {
 
-    static LLVMExpressionNode createAlloc(LLVMParserRuntime runtime, PrimitiveType llvmType, LLVMExpressionNode numElements, int byteSize, int alignment, Type symbolType) {
+    static LLVMExpressionNode createAlloc(PrimitiveType llvmType, LLVMExpressionNode numElements, int byteSize, int alignment, Type symbolType) {
         switch (llvmType.getPrimitiveKind()) {
             case I32:
-                return LLVMI32AllocaInstructionNodeGen.create(numElements, byteSize, alignment, runtime.getStackPointerSlot(), symbolType);
+                return LLVMI32AllocaInstructionNodeGen.create(numElements, byteSize, alignment, symbolType);
             case I64:
-                return LLVMI64AllocaInstructionNodeGen.create(numElements, byteSize, alignment, runtime.getStackPointerSlot(), symbolType);
+                return LLVMI64AllocaInstructionNodeGen.create(numElements, byteSize, alignment, symbolType);
             default:
                 throw new AssertionError(llvmType);
         }
     }
 
-    static LLVMAllocaInstruction createAlloc(LLVMParserRuntime runtime, int byteSize, int alignment, Type type) {
-        return LLVMAllocaInstructionNodeGen.create(byteSize, alignment, runtime.getStackPointerSlot(), type);
+    static LLVMAllocaInstruction createAlloc(int byteSize, int alignment, Type type) {
+        return LLVMAllocaInstructionNodeGen.create(byteSize, alignment, type);
     }
 
 }

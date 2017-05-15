@@ -199,3 +199,8 @@ extern "C"
 void *getNullPointer() {
     return (void*) 0;
 }
+
+extern "C"
+void *identity(void* p) {
+    return p;
+}

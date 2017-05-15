@@ -30,10 +30,11 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 
@@ -43,36 +44,39 @@ public final class LLVMComplexDivSC extends LLVMExpressionNode {
     @Child private LLVMExpressionNode bNode;
     @Child private LLVMExpressionNode cNode;
     @Child private LLVMExpressionNode dNode;
-    @Child private LLVMExpressionNode alloc;
 
-    public LLVMComplexDivSC(LLVMExpressionNode alloc, LLVMExpressionNode a, LLVMExpressionNode b, LLVMExpressionNode c, LLVMExpressionNode d) {
-        this.alloc = alloc;
+    public LLVMComplexDivSC(LLVMExpressionNode a, LLVMExpressionNode b, LLVMExpressionNode c, LLVMExpressionNode d) {
         this.aNode = a;
         this.bNode = b;
         this.cNode = c;
         this.dNode = d;
     }
 
+    @CompilationFinal private LLVMStack stack;
+
+    private LLVMStack getStack() {
+        if (stack == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            stack = getContext().getStack();
+        }
+        return stack;
+    }
+
     @Override
     public Object executeGeneric(VirtualFrame frame) {
-        try {
-            float a = aNode.executeFloat(frame);
-            float b = bNode.executeFloat(frame);
-            float c = cNode.executeFloat(frame);
-            float d = dNode.executeFloat(frame);
+        float a = aNode.executeFloat(frame);
+        float b = bNode.executeFloat(frame);
+        float c = cNode.executeFloat(frame);
+        float d = dNode.executeFloat(frame);
 
-            float denom = c * c + d * d;
-            float zReal = (a * c + b * d) / denom;
-            float zImag = (b * c - a * d) / denom;
+        float denom = c * c + d * d;
+        float zReal = (a * c + b * d) / denom;
+        float zImag = (b * c - a * d) / denom;
 
-            LLVMAddress allocatedMemory = alloc.executeLLVMAddress(frame);
-            LLVMMemory.putFloat(allocatedMemory, zReal);
-            LLVMMemory.putFloat(allocatedMemory.getVal() + LLVMExpressionNode.FLOAT_SIZE_IN_BYTES, zImag);
-            return LLVMFloatVector.readVectorFromMemory(allocatedMemory, 2);
-        } catch (UnexpectedResultException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
-        }
+        LLVMAddress allocatedMemory = getStack().allocateStackMemory(2 * LLVMExpressionNode.FLOAT_SIZE_IN_BYTES, 8);
+        LLVMMemory.putFloat(allocatedMemory, zReal);
+        LLVMMemory.putFloat(allocatedMemory.getVal() + LLVMExpressionNode.FLOAT_SIZE_IN_BYTES, zImag);
+        return LLVMFloatVector.readVectorFromMemory(allocatedMemory, 2);
     }
 
 }

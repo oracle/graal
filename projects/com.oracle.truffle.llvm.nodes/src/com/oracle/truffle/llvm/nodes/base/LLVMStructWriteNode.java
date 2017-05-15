@@ -171,7 +171,7 @@ public abstract class LLVMStructWriteNode extends Node {
 
         @Specialization
         public Object executeWrite(LLVMAddress address, LLVMFunction value) {
-            LLVMHeap.putFunctionIndex(address, value.getFunctionIndex());
+            LLVMHeap.putFunctionPointer(address, value.getFunctionPointer());
             return null;
         }
     }

@@ -342,7 +342,7 @@ abstract class Container {
 
         @Override
         void putFunction(LLVMGlobalVariable global, LLVMFunction value) {
-            LLVMMemory.putAddress(address, value.getFunctionIndex());
+            LLVMMemory.putAddress(address, value.getFunctionPointer());
         }
 
         @Override
@@ -710,7 +710,7 @@ abstract class Container {
             CompilerAsserts.neverPartOfCompilation();
             assert type instanceof PointerType;
             if (managedValue instanceof LLVMFunction) {
-                LLVMMemory.putAddress(address, ((LLVMFunction) managedValue).getFunctionIndex());
+                LLVMMemory.putAddress(address, ((LLVMFunction) managedValue).getFunctionPointer());
             } else if (managedValue instanceof LLVMAddress) {
                 LLVMMemory.putAddress(address, (LLVMAddress) managedValue);
             } else if (managedValue instanceof LLVMGlobalVariable) {
@@ -904,7 +904,7 @@ abstract class Container {
             CompilerAsserts.neverPartOfCompilation();
             assert type instanceof PointerType;
             if (managedValue instanceof LLVMFunction) {
-                LLVMMemory.putAddress(address, ((LLVMFunction) managedValue).getFunctionIndex());
+                LLVMMemory.putAddress(address, ((LLVMFunction) managedValue).getFunctionPointer());
             } else if (managedValue instanceof LLVMAddress) {
                 LLVMMemory.putAddress(address, (LLVMAddress) managedValue);
             } else if (managedValue instanceof LLVMGlobalVariable) {
