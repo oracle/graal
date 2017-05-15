@@ -112,16 +112,16 @@ public final class HotSpotGraalMBean implements DynamicMBean {
     }
 
     @SuppressWarnings("unused")
-    OptionValues optionsFor(OptionValues values, ResolvedJavaMethod forMethod) {
+    OptionValues optionsFor(OptionValues initialValues, ResolvedJavaMethod forMethod) {
         ensureRegistered(true);
-        return currentMap(values);
+        return currentMap(initialValues);
     }
 
-    private OptionValues currentMap(OptionValues values) {
+    private OptionValues currentMap(OptionValues initialValues) {
         if (changes.isEmpty()) {
-            return values;
+            return initialValues;
         }
-        return new OptionValues(values, changes);
+        return new OptionValues(initialValues, changes);
     }
 
     @Override
