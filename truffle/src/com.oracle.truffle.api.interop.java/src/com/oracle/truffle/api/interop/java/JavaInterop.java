@@ -76,12 +76,12 @@ import com.oracle.truffle.api.nodes.RootNode;
  * {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame) receiver}) with a field name
  * equal to the name of the interface method. If the read returns a primitive type, it is returned.
  * </li>
- * <li>If the read valueOf is another {@link TruffleObject}, it is inspected whether it handles
+ * <li>If the read value is another {@link TruffleObject}, it is inspected whether it handles
  * {@link Message#IS_EXECUTABLE}. If it does, a message {@link Message#createExecute(int)} with name
  * of the interface method and its parameters is sent to the object. The result is returned to the
  * interface method caller.</li>
- * <li>In case the read valueOf is neither primitive, neither {@link Message#IS_EXECUTABLE
- * executable} , and the interface method has no parameters, it is returned back.</li>
+ * <li>In case the read value is neither primitive, neither {@link Message#IS_EXECUTABLE executable}
+ * , and the interface method has no parameters, it is returned back.</li>
  * <li>All other cases yield an {@link InteropException}.</li>
  * </ol>
  * <p>
@@ -142,10 +142,10 @@ public final class JavaInterop {
      * <b>assert</b> access.x() == 5 : "Changed to five";
      * </pre>
      *
-     * @param <T> type of requested and returned valueOf
+     * @param <T> type of requested and returned value
      * @param type interface modeling structure of <code>foreignObject</code> in <b>Java</b>
      * @param foreignObject object coming from a {@link TruffleObject Truffle language}, can be
-     *            <code>null</code>, in such case the returned valueOf will likely be
+     *            <code>null</code>, in such case the returned value will likely be
      *            <code>null</code> as well
      * @return instance of requested interface granting access to specified
      *         <code>foreignObject</code>, can be <code>null</code>, if the foreignObject parameter
@@ -348,11 +348,11 @@ public final class JavaInterop {
     }
 
     /**
-     * Test whether the object represents a <code>null</code> valueOf.
+     * Test whether the object represents a <code>null</code> value.
      *
      * @param foreignObject object coming from a {@link TruffleObject Truffle language}, can be
      *            <code>null</code>.
-     * @return <code>true</code> when the object represents a <code>null</code> valueOf,
+     * @return <code>true</code> when the object represents a <code>null</code> value,
      *         <code>false</code> otherwise.
      * @see Message#IS_NULL
      * @since 0.18
