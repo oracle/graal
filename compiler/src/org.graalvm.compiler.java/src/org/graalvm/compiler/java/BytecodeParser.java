@@ -513,17 +513,34 @@ public class BytecodeParser implements GraphBuilderContext {
                     if (BytecodeFrame.isPlaceholderBci(frameState.bci)) {
                         if (frameState.bci == BytecodeFrame.AFTER_BCI) {
                             if (parser.getInvokeReturnType() == null) {
+                                // A frame state in a root compiled intrinsic.
                                 assert intrinsic.isCompilationRoot();
                                 FrameState newFrameState = graph.add(new FrameState(BytecodeFrame.INVALID_FRAMESTATE_BCI));
                                 frameState.replaceAndDelete(newFrameState);
                             } else {
-
                                 JavaKind returnKind = parser.getInvokeReturnType().getJavaKind();
                                 FrameStateBuilder frameStateBuilder = parser.frameState;
-                                if (frameState.stackSize() != 0) {
+                                if (frameState.rethrowException()) {
+                                    // This is a frame state for the entry point to an exception
+                                    // dispatcher in an intrinsic. For example, the invoke denoting
+                                    // a partial intrinsic exit will have an edge to such a
+                                    // dispatcher if the profile for the original invoke being
+                                    // intrinsified indicates an exception was seen. As per JVM
+                                    // bytecode semantics, the interpreter expects a single
+                                    // value on the stack on entry to an exception handler,
+                                    // namely the exception object.
+                                    ExceptionObjectNode exceptionObject = (ExceptionObjectNode) frameState.stackAt(0);
+                                    FrameStateBuilder dispatchState = frameStateBuilder.copy();
+                                    dispatchState.clearStack();
+                                    dispatchState.push(JavaKind.Object, exceptionObject);
+                                    dispatchState.setRethrowException(true);
+                                    FrameState newFrameState = dispatchState.create(parser.bci(), exceptionObject);
+                                    frameState.replaceAndDelete(newFrameState);
+                                    newFrameState.setNodeSourcePosition(frameState.getNodeSourcePosition());
+                                } else if (frameState.stackSize() != 0) {
                                     ValueNode returnVal = frameState.stackAt(0);
                                     if (!ReturnToCallerData.containsReturnValue(returnDataList, returnVal)) {
-                                        throw new GraalError("Frame state within an intrinsic has non return value on the stack: %s", returnVal);
+                                        throw new GraalError("AFTER_BCI frame state within an intrinsic has a non-return value on the stack: %s", returnVal);
                                     }
 
                                     // Swap the top-of-stack value with the return value
@@ -544,6 +561,7 @@ public class BytecodeParser implements GraphBuilderContext {
                                     newFrameState.setNodeSourcePosition(frameState.getNodeSourcePosition());
                                     frameState.replaceAndDelete(newFrameState);
                                 } else {
+                                    // An intrinsic for a void method.
                                     FrameState newFrameState = frameStateBuilder.create(parser.stream.nextBCI(), null);
                                     newFrameState.setNodeSourcePosition(frameState.getNodeSourcePosition());
                                     frameState.replaceAndDelete(newFrameState);
