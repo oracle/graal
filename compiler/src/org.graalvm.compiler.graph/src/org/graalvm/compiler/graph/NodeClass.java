@@ -49,7 +49,6 @@ import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugCounter;
 import org.graalvm.compiler.debug.DebugTimer;
-import org.graalvm.compiler.debug.Fingerprint;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Edges.Type;
 import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
@@ -879,15 +878,9 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                     replacement = replacements.replacement(node);
                 }
                 if (replacement != node) {
-                    if (Fingerprint.ENABLED) {
-                        Fingerprint.submit("replacing %s with %s", node, replacement);
-                    }
                     assert replacement != null;
                     newNodes.put(node, replacement);
                 } else {
-                    if (Fingerprint.ENABLED) {
-                        Fingerprint.submit("duplicating %s", node);
-                    }
                     Node newNode = node.clone(graph, WithAllEdges);
                     assert newNode.getNodeClass().isLeafNode() || newNode.hasNoUsages();
                     assert newNode.getClass() == node.getClass();
