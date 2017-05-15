@@ -29,11 +29,11 @@
  */
 package com.oracle.truffle.llvm.runtime.memory;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
 /**
  * Implements a stack that grows from the top to the bottom.
@@ -48,18 +48,14 @@ public final class LLVMStack extends LLVMMemory {
     @CompilationFinal private long upperBounds;
     private boolean isFreed = true;
 
-    /**
-     * Allocates the stack memory.
-     */
-    public LLVMAddress allocate() {
-        return allocate(STACK_SIZE_BYTE);
+    private long stackPointer;
+
+    public void allocate() {
+        allocate(STACK_SIZE_BYTE);
     }
 
-    /**
-     * Allocates the stack memory.
-     */
-    public LLVMAddress allocate(final long stackSize) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
+    private void allocate(final long stackSize) {
+        CompilerAsserts.neverPartOfCompilation();
         if (!isFreed) {
             throw new AssertionError("previously not deallocated");
         }
@@ -67,43 +63,41 @@ public final class LLVMStack extends LLVMMemory {
         lowerBounds = stackAllocation;
         upperBounds = stackAllocation + stackSize;
         isFreed = false;
-        return LLVMAddress.fromLong(upperBounds);
+        stackPointer = upperBounds;
     }
 
     public boolean isFreed() {
         return isFreed;
     }
 
-    /**
-     * Deallocates the stack memory.
-     */
+    public LLVMAddress getStackPointer() {
+        return LLVMAddress.fromLong(stackPointer);
+    }
+
+    public void setStackPointer(LLVMAddress pointer) {
+        this.stackPointer = pointer.getVal();
+    }
+
     public void free() {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
+        CompilerAsserts.neverPartOfCompilation();
         if (isFreed) {
             throw new AssertionError("already freed");
         }
         UNSAFE.freeMemory(lowerBounds);
         lowerBounds = 0;
         upperBounds = 0;
+        stackPointer = 0;
         isFreed = true;
     }
 
     public static final int NO_ALIGNMENT_REQUIREMENTS = 1;
 
-    /**
-     * Allocates stack memory and associates it with a type.
-     *
-     * @param size the size of the memory to be allocated, must be greater equals zero
-     * @param alignment the alignment, either {@link #NO_ALIGNMENT_REQUIREMENTS} or a power of two.
-     * @param type the type of the object for which memory is to be allocated
-     * @return the allocated memory, satisfying the alignment requirements
-     */
-    public LLVMAddress allocateMemory(final LLVMAddress stackPointer, final long size, final int alignment, final Type type) {
+    public LLVMAddress allocateStackMemory(final long size, final int alignment) {
         assert size >= 0;
         assert alignment != 0 && powerOfTwo(alignment);
-        final long alignedAllocation = (stackPointer.getVal() - size) & -alignment;
-        LLVMAddress newStackPointer = LLVMAddress.fromLong(alignedAllocation);
-        if (newStackPointer.unsignedLessThan(lowerBounds)) {
+        final long alignedAllocation = (stackPointer - size) & -alignment;
+        stackPointer = alignedAllocation;
+        if (stackPointer < lowerBounds) {
             CompilerDirectives.transferToInterpreter();
             throw new StackOverflowError("stack overflow");
         }
@@ -118,7 +112,7 @@ public final class LLVMStack extends LLVMMemory {
     protected void finalize() throws Throwable {
         super.finalize();
         if (!isFreed) {
-            throw new AssertionError("did not free stack memory!");
+            throw new AssertionError("Did not free stack memory!");
         }
     }
 

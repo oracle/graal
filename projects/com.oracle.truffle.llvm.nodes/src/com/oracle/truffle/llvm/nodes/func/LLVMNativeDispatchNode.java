@@ -61,8 +61,8 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
 
     protected LLVMNativeDispatchNode(FunctionType type) {
         this.type = type;
-        this.signature = LLVMContext.getNativeSignature(type, LLVMCallNode.USER_ARGUMENT_OFFSET);
-        this.nativeCallNode = Message.createExecute(type.getArgumentTypes().length - LLVMCallNode.USER_ARGUMENT_OFFSET).createNode();
+        this.signature = LLVMContext.getNativeSignature(type);
+        this.nativeCallNode = Message.createExecute(type.getArgumentTypes().length).createNode();
     }
 
     public abstract Object executeDispatch(VirtualFrame frame, LLVMFunctionHandle function, Object[] arguments);
@@ -85,9 +85,9 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
 
     @ExplodeLoop
     protected LLVMNativeConvertNode[] createToNativeNodes() {
-        LLVMNativeConvertNode[] ret = new LLVMNativeConvertNode[type.getArgumentTypes().length - 1];
-        for (int i = 1; i < type.getArgumentTypes().length; i++) {
-            ret[i - 1] = LLVMNativeConvertNode.createToNative(type.getArgumentTypes()[i]);
+        LLVMNativeConvertNode[] ret = new LLVMNativeConvertNode[type.getArgumentTypes().length];
+        for (int i = 0; i < type.getArgumentTypes().length; i++) {
+            ret[i] = LLVMNativeConvertNode.createToNative(type.getArgumentTypes()[i]);
         }
         return ret;
     }
@@ -99,9 +99,9 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
 
     @ExplodeLoop
     private static Object[] prepareNativeArguments(VirtualFrame frame, Object[] arguments, LLVMNativeConvertNode[] toNative) {
-        Object[] nativeArgs = new Object[arguments.length - 1];
-        for (int i = 1; i < arguments.length; i++) {
-            nativeArgs[i - 1] = toNative[i - 1].executeConvert(frame, arguments[i]);
+        Object[] nativeArgs = new Object[arguments.length];
+        for (int i = 0; i < arguments.length; i++) {
+            nativeArgs[i] = toNative[i].executeConvert(frame, arguments[i]);
         }
         return nativeArgs;
     }

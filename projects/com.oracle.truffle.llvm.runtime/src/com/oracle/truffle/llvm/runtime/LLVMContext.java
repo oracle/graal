@@ -62,7 +62,7 @@ public class LLVMContext {
     private final List<RootCallTarget> globalVarDeallocs = new ArrayList<>();
     private final List<RootCallTarget> constructorFunctions = new ArrayList<>();
     private final List<RootCallTarget> destructorFunctions = new ArrayList<>();
-    private final Deque<RootCallTarget> atExitFunctions = new ArrayDeque<>();
+    private final Deque<LLVMFunctionDescriptor> atExitFunctions = new ArrayDeque<>();
     private final List<LLVMThread> runningThreads = new ArrayList<>();
 
     private final LLVMGlobalVariableRegistry globalVariableRegistry = new LLVMGlobalVariableRegistry();
@@ -278,7 +278,7 @@ public class LLVMContext {
         destructorFunctions.add(destructorFunction);
     }
 
-    public void registerAtExitFunction(RootCallTarget atExitFunction) {
+    public void registerAtExitFunction(LLVMFunctionDescriptor atExitFunction) {
         atExitFunctions.push(atExitFunction);
     }
 
@@ -327,7 +327,7 @@ public class LLVMContext {
         return destructorFunctions;
     }
 
-    public Deque<RootCallTarget> getAtExitFunctions() {
+    public Deque<LLVMFunctionDescriptor> getAtExitFunctions() {
         return atExitFunctions;
     }
 
@@ -398,8 +398,8 @@ public class LLVMContext {
         return nativeLookup;
     }
 
-    public static String getNativeSignature(FunctionType type, int skipArguments) {
-        return NativeLookup.prepareSignature(type, skipArguments);
+    public static String getNativeSignature(FunctionType type) {
+        return NativeLookup.prepareSignature(type);
     }
 
 }

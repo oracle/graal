@@ -276,7 +276,7 @@ public interface SulongNodeFactory {
     LLVMExpressionNode createCompareExchangeInstruction(LLVMParserRuntime runtime, Type returnType, Type elementType, LLVMExpressionNode ptrNode, LLVMExpressionNode cmpNode,
                     LLVMExpressionNode newNode);
 
-    LLVMExpressionNode createLLVMBuiltin(Symbol target, LLVMExpressionNode[] args, FrameSlot stack, int callerArgumentCount, SourceSection sourceSection);
+    LLVMExpressionNode createLLVMBuiltin(Symbol target, LLVMExpressionNode[] args, int callerArgumentCount, SourceSection sourceSection);
 
     NativeIntrinsicProvider getNativeIntrinsicsFactory(LLVMLanguage language, LLVMContext context);
 

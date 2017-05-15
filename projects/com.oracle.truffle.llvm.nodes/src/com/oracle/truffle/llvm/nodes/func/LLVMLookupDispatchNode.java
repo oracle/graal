@@ -115,17 +115,17 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
     @ExplodeLoop
     private Object[] getForeignArguments(LLVMDataEscapeNode[] dataEscapeNodes, Object[] arguments, LLVMContext context) {
         assert arguments.length == type.getArgumentTypes().length;
-        Object[] args = new Object[type.getArgumentTypes().length - 1];
-        for (int i = 0; i < type.getArgumentTypes().length - 1; i++) {
-            args[i] = dataEscapeNodes[i].executeWithTarget(arguments[i + 1], context);
+        Object[] args = new Object[type.getArgumentTypes().length];
+        for (int i = 0; i < type.getArgumentTypes().length; i++) {
+            args[i] = dataEscapeNodes[i].executeWithTarget(arguments[i], context);
         }
         return args;
     }
 
     protected LLVMDataEscapeNode[] createLLVMDataEscapeNodes() {
-        LLVMDataEscapeNode[] args = new LLVMDataEscapeNode[type.getArgumentTypes().length - 1];
-        for (int i = 0; i < type.getArgumentTypes().length - 1; i++) {
-            args[i] = LLVMDataEscapeNodeGen.create(type.getArgumentTypes()[i + 1]);
+        LLVMDataEscapeNode[] args = new LLVMDataEscapeNode[type.getArgumentTypes().length];
+        for (int i = 0; i < type.getArgumentTypes().length; i++) {
+            args[i] = LLVMDataEscapeNodeGen.create(type.getArgumentTypes()[i]);
         }
         return args;
     }

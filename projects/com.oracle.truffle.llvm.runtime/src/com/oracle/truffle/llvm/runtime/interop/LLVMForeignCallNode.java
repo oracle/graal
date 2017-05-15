@@ -42,18 +42,15 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMPerformance;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 abstract class LLVMForeignCallNode extends LLVMNode {
 
-    private final LLVMStack stack;
     @Child protected LLVMDataEscapeNode prepareValueForEscape;
 
-    protected LLVMForeignCallNode(LLVMStack stack, Type returnType) {
-        this.stack = stack;
+    protected LLVMForeignCallNode(Type returnType) {
         this.prepareValueForEscape = LLVMDataEscapeNodeGen.create(returnType);
     }
 
@@ -71,12 +68,11 @@ abstract class LLVMForeignCallNode extends LLVMNode {
         }
 
         @ExplodeLoop
-        Object[] pack(Object[] arguments, LLVMStack stack) {
+        Object[] pack(Object[] arguments) {
             assert arguments.length == toLLVM.length;
-            final Object[] packedArguments = new Object[1 + toLLVM.length];
-            packedArguments[0] = stack.getUpperBounds();
+            final Object[] packedArguments = new Object[toLLVM.length];
             for (int i = 0; i < toLLVM.length; i++) {
-                packedArguments[i + 1] = toLLVM[i].executeWithTarget(arguments[i]);
+                packedArguments[i] = toLLVM[i].executeWithTarget(arguments[i]);
             }
             return packedArguments;
         }
@@ -90,15 +86,14 @@ abstract class LLVMForeignCallNode extends LLVMNode {
     protected static class SlowPackForeignArgumentsNode extends Node {
         @Child ToLLVMNode slowConvert = ToLLVMNode.createNode(null);
 
-        Object[] pack(LLVMFunctionDescriptor function, Object[] arguments, LLVMStack stack) {
+        Object[] pack(LLVMFunctionDescriptor function, Object[] arguments) {
             int actualArgumentsLength = Math.max(arguments.length, function.getType().getArgumentTypes().length);
-            final Object[] packedArguments = new Object[1 + actualArgumentsLength];
-            packedArguments[0] = stack.getUpperBounds();
+            final Object[] packedArguments = new Object[actualArgumentsLength];
             for (int i = 0; i < function.getType().getArgumentTypes().length; i++) {
-                packedArguments[i + 1] = slowConvert.slowConvert(arguments[i], ToLLVMNode.convert(function.getType().getArgumentTypes()[i]));
+                packedArguments[i] = slowConvert.slowConvert(arguments[i], ToLLVMNode.convert(function.getType().getArgumentTypes()[i]));
             }
             for (int i = function.getType().getArgumentTypes().length; i < arguments.length; i++) {
-                packedArguments[i + 1] = slowConvert.slowConvert(arguments[i]);
+                packedArguments[i] = slowConvert.slowConvert(arguments[i]);
             }
             return packedArguments;
         }
@@ -119,7 +114,7 @@ abstract class LLVMForeignCallNode extends LLVMNode {
                     @Cached("arguments.length") int cachedLength,
                     @Cached("function.getContext()") LLVMContext context) {
         assert !(function.getType().getReturnType() instanceof StructureType);
-        Object result = callNode.call(packNode.pack(arguments, stack));
+        Object result = callNode.call(packNode.pack(arguments));
         return prepareValueForEscape.executeWithTarget(result, context);
     }
 
@@ -128,7 +123,7 @@ abstract class LLVMForeignCallNode extends LLVMNode {
                     @Cached("create()") IndirectCallNode callNode, @Cached("createSlowPackArguments()") SlowPackForeignArgumentsNode slowPack) {
         assert !(function.getType().getReturnType() instanceof StructureType);
         LLVMPerformance.warn(this);
-        Object result = callNode.call(getCallTarget(function), slowPack.pack(function, arguments, stack));
+        Object result = callNode.call(getCallTarget(function), slowPack.pack(function, arguments));
         return prepareValueForEscape.executeWithTarget(result, function.getContext());
     }
 

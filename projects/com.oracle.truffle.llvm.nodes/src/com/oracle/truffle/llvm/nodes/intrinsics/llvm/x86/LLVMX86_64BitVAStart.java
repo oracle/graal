@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -39,8 +38,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.llvm.nodes.base.LLVMFrameUtil;
-import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
@@ -57,7 +54,6 @@ public final class LLVMX86_64BitVAStart extends LLVMExpressionNode {
 
     private static final int LONG_DOUBLE_SIZE = 16;
     private final int numberOfExplicitArguments;
-    private final FrameSlot stackpointer;
     private final SourceSection sourceSection;
     @Child private LLVMExpressionNode target;
     @Child private LLVMForceLLVMAddressNode targetToAddress;
@@ -77,14 +73,13 @@ public final class LLVMX86_64BitVAStart extends LLVMExpressionNode {
         return stack;
     }
 
-    public LLVMX86_64BitVAStart(int numberOfExplicitArguments, LLVMExpressionNode target, FrameSlot stackpointer, SourceSection sourceSection) {
+    public LLVMX86_64BitVAStart(int numberOfExplicitArguments, LLVMExpressionNode target, SourceSection sourceSection) {
         if (numberOfExplicitArguments < 0) {
             throw new AssertionError();
         }
         this.numberOfExplicitArguments = numberOfExplicitArguments;
         this.target = target;
         this.targetToAddress = getForceLLVMAddressNode();
-        this.stackpointer = stackpointer;
         this.sourceSection = sourceSection;
     }
 
@@ -113,18 +108,18 @@ public final class LLVMX86_64BitVAStart extends LLVMExpressionNode {
         // #############################
         // Allocate worst amount of memory - saves a few ifs
         LLVMAddress structAddress = targetToAddress.executeWithTarget(target.executeGeneric(frame));
-        LLVMAddress regSaveArea = LLVMFrameUtil.allocateMemory(getStack(), frame, stackpointer, X86_64BitVarArgs.GP_LIMIT + X86_64BitVarArgs.FP_LIMIT, 8, new PointerType(null));
+        LLVMAddress regSaveArea = getStack().allocateStackMemory(X86_64BitVarArgs.GP_LIMIT + X86_64BitVarArgs.FP_LIMIT, 8);
         LLVMMemory.putAddress(structAddress.getVal() + X86_64BitVarArgs.REG_SAVE_AREA, regSaveArea);
 
         int varArgsStartIndex = numberOfExplicitArguments;
-        Object[] realArguments = getRealArguments(frame);
+        Object[] realArguments = frame.getArguments();
         unboxArguments(realArguments, varArgsStartIndex);
         int argumentsLength = realArguments.length;
         int nrVarArgs = argumentsLength - varArgsStartIndex;
         int numberOfVarArgs = argumentsLength - varArgsStartIndex;
 
         // Allocate worst amount of memory - saves a few ifs
-        LLVMAddress overflowArgArea = LLVMFrameUtil.allocateMemory(getStack(), frame, stackpointer, numberOfVarArgs * 16, 8, new PointerType(null));
+        LLVMAddress overflowArgArea = getStack().allocateStackMemory(numberOfVarArgs * 16, 8);
         LLVMMemory.putAddress(structAddress.getVal() + X86_64BitVarArgs.OVERFLOW_ARG_AREA, overflowArgArea);
 
         LLVMMemory.putI32(structAddress.getVal() + X86_64BitVarArgs.GP_OFFSET, 0);
@@ -174,13 +169,6 @@ public final class LLVMX86_64BitVAStart extends LLVMExpressionNode {
     @Override
     public SourceSection getSourceSection() {
         return sourceSection;
-    }
-
-    private static Object[] getRealArguments(VirtualFrame frame) {
-        Object[] arguments = frame.getArguments();
-        Object[] newArguments = new Object[arguments.length - 1];
-        System.arraycopy(arguments, LLVMCallNode.USER_ARGUMENT_OFFSET, newArguments, 0, newArguments.length);
-        return newArguments;
     }
 
     private void unboxArguments(Object[] arguments, int varArgsStartIndex) {
