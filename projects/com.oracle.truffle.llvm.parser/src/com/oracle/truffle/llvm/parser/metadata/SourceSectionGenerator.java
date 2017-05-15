@@ -140,12 +140,13 @@ public final class SourceSectionGenerator {
                 }
 
                 final StringBuilder builder = new StringBuilder();
-                for (int i = 0; i < line; i++) {
+                for (int i = 1; i < line; i++) {
                     builder.append('\n');
                 }
                 for (int i = 0; i < column; i++) {
                     builder.append(' ');
                 }
+                builder.append('\n');
 
                 // we do not cache the fallback since the content will likely not match any other
                 // line information
