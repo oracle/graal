@@ -124,7 +124,8 @@ public final class ForeignAccessFactoryGenerator {
                         messageHandlers.containsKey(Message.IS_NULL) &&
                         messageHandlers.containsKey(Message.IS_EXECUTABLE) &&
                         messageHandlers.containsKey(Message.KEY_INFO) &&
-                        messageHandlers.containsKey(Message.HAS_SIZE))) {
+                        messageHandlers.containsKey(Message.HAS_SIZE) &&
+                        messageHandlers.containsKey(Message.IS_POINTER))) {
             w.append("import com.oracle.truffle.api.nodes.RootNode;").append("\n");
         }
     }
