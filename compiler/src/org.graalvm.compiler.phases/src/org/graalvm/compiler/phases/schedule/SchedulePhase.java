@@ -22,14 +22,6 @@
  */
 package org.graalvm.compiler.phases.schedule;
 
-import static org.graalvm.compiler.core.common.GraalOptions.OptScheduleOutOfLoops;
-import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.strictlyDominates;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Formatter;
-import java.util.List;
-
 import org.graalvm.api.word.LocationIdentity;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
@@ -37,8 +29,6 @@ import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.Debug;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Graph.NodeEvent;
 import org.graalvm.compiler.graph.Graph.NodeEventListener;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
@@ -53,6 +43,7 @@ import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.KillingBeginNode;
@@ -77,7 +68,14 @@ import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.Phase;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Formatter;
+import java.util.List;
+
+import static org.graalvm.compiler.core.common.GraalOptions.OptScheduleOutOfLoops;
+import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.strictlyDominates;
 
 public final class SchedulePhase extends Phase {
 
@@ -963,12 +961,7 @@ public final class SchedulePhase extends Phase {
                 MicroBlock inputBlock = nodeToBlock.get(input);
                 if (inputBlock == null) {
                     earliestBlock = null;
-                    try {
-                        stack.push(input);
-                    } catch (OutOfMemoryError e) {
-                        TTY.println(current.inputs().count());
-                        throw (GraalError) new GraalError("Stack size is %d", stack.size()).initCause(e);
-                    }
+                    stack.push(input);
                 } else if (earliestBlock != null && inputBlock.getId() >= earliestBlock.getId()) {
                     earliestBlock = inputBlock;
                 }

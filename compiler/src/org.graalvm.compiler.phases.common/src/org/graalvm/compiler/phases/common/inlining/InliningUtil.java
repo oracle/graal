@@ -22,14 +22,14 @@
  */
 package org.graalvm.compiler.phases.common.inlining;
 
-import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
-import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
-import static org.graalvm.compiler.core.common.GraalOptions.HotSpotPrintInlining;
-
-import java.lang.reflect.Constructor;
-import java.util.ArrayList;
-import java.util.List;
-
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -40,7 +40,6 @@ import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
 import org.graalvm.compiler.debug.Fingerprint;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.internal.method.MethodMetricsImpl;
 import org.graalvm.compiler.debug.internal.method.MethodMetricsInlineeScopeInfo;
 import org.graalvm.compiler.graph.GraalGraphError;
@@ -49,6 +48,7 @@ import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
+import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.NodeWorkList;
 import org.graalvm.compiler.nodeinfo.Verbosity;
@@ -59,6 +59,7 @@ import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
+import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -70,6 +71,7 @@ import org.graalvm.compiler.nodes.KillingBeginNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.ParameterNode;
+import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
@@ -96,14 +98,13 @@ import org.graalvm.util.Equivalence;
 import org.graalvm.util.UnmodifiableEconomicMap;
 import org.graalvm.util.UnmodifiableMapCursor;
 
-import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
+import java.lang.reflect.Constructor;
+import java.util.ArrayList;
+import java.util.List;
+
+import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
+import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
+import static org.graalvm.compiler.core.common.GraalOptions.HotSpotPrintInlining;
 
 public class InliningUtil extends ValueMergeUtil {
 
@@ -468,13 +469,14 @@ public class InliningUtil extends ValueMergeUtil {
                 invokeNode.replaceAtUsages(returnValue);
                 returnNode.replaceAndDelete(n);
             } else {
-                AbstractMergeNode merge = graph.add(new MergeNode());
-                if (stateAfter.getId() == 187) {
-                    TTY.println("found");
-                }
+                MergeNode merge = graph.add(new MergeNode());
                 merge.setStateAfter(stateAfter);
                 returnValue = mergeReturns(merge, returnNodes);
                 invokeNode.replaceAtUsages(returnValue);
+                if (returnValue instanceof PhiNode && ((PhiNode) returnValue).merge().equals(merge)) {
+                    NodeMap<Node> seen = new NodeMap<>(graph);
+                    fixFrameStates(merge, merge, seen, (PhiNode) returnValue, (PhiNode) returnValue);
+                }
                 merge.setNext(n);
             }
         } else {
@@ -507,6 +509,46 @@ public class InliningUtil extends ValueMergeUtil {
         assert inlineGraph.getSpeculationLog() == null : "Only the root graph should have a speculation log";
 
         return returnValue;
+    }
+
+    private static void fixFrameStates(MergeNode originalMerge, Node current, NodeMap<Node> seen, ValueNode currentValue, PhiNode returnPhi) {
+        // It is possible that some of the frame states that came from AFTER_BCI reference a Phi
+        // node that
+        // was created to merge multiple returns. This can create cycles (see GR-3949 and GR-3957).
+        // To detect this, we follow the control paths starting from the merge node,
+        // split the Phi node inputs at merges and assign the proper input to each frame state.
+        if (seen.containsKey(current)) {
+            return;
+        }
+        seen.put(current, current);
+        if (current instanceof StateSplit && current != originalMerge) {
+            FrameState state = ((StateSplit) current).stateAfter();
+            if (state != null && state.values().contains(returnPhi)) {
+                int index = 0;
+                for (ValueNode value : state.values().snapshot()) {
+                    if (value == returnPhi) {
+                        state.values().set(index, currentValue);
+                    }
+                    index++;
+                }
+            }
+        }
+        if (current instanceof AbstractMergeNode) {
+            AbstractMergeNode currentMerge = (AbstractMergeNode) current;
+            for (EndNode pred : currentMerge.cfgPredecessors()) {
+                ValueNode newValue = currentValue;
+                if (currentValue instanceof PhiNode) {
+                    PhiNode currentPhi = (PhiNode) currentValue;
+                    if (currentPhi.merge().equals(currentMerge)) {
+                        newValue = currentPhi.valueAt(pred);
+                    }
+                }
+                fixFrameStates(originalMerge, pred, seen, newValue, returnPhi);
+            }
+        }
+        if (current.predecessor() != null) {
+            fixFrameStates(originalMerge, current.predecessor(), seen, currentValue, returnPhi);
+        }
     }
 
     private static String formatGraph(StructuredGraph graph) {
