@@ -37,6 +37,7 @@ import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -53,26 +54,43 @@ public class LLVMFunctionStartNode extends RootNode {
     @Children private final LLVMStackFrameNuller[] nullers;
     private final String name;
     private final int explicitArgumentsCount;
-    private final SourceSection sourceSection;
     private final FrameSlot baseStackPointer;
+
+    private final DebugInformation debugInformation;
+
+    /*
+     * Encapsulation of these 3 objects keeps memory footprint low in case no debug info is
+     * available.
+     */
+    private static final class DebugInformation {
+        private final SourceSection sourceSection;
+        private final String originalName;
+        private final Source bcSource;
+
+        DebugInformation(SourceSection sourceSection, String originalName, Source bcSource) {
+            this.sourceSection = sourceSection;
+            this.originalName = originalName;
+            this.bcSource = bcSource;
+        }
+    }
 
     public LLVMFunctionStartNode(SourceSection sourceSection, LLVMLanguage language, LLVMExpressionNode node, LLVMExpressionNode[] beforeFunction, LLVMExpressionNode[] afterFunction,
                     FrameDescriptor frameDescriptor,
-                    String name, LLVMStackFrameNuller[] initNullers, FrameSlot baseStackPointer, int explicitArgumentsCount) {
+                    String name, LLVMStackFrameNuller[] initNullers, FrameSlot baseStackPointer, int explicitArgumentsCount, String originalName, Source bcSource) {
         super(language, frameDescriptor);
-        this.sourceSection = sourceSection;
+        this.debugInformation = new DebugInformation(sourceSection, originalName, bcSource);
         this.node = node;
         this.beforeFunction = beforeFunction;
         this.afterFunction = afterFunction;
         this.nullers = initNullers;
         this.name = name;
-        this.baseStackPointer = baseStackPointer;
         this.explicitArgumentsCount = explicitArgumentsCount;
+        this.baseStackPointer = baseStackPointer;
     }
 
     @Override
     public SourceSection getSourceSection() {
-        return sourceSection;
+        return debugInformation.sourceSection;
     }
 
     @CompilationFinal private LLVMStack stack;
@@ -151,5 +169,13 @@ public class LLVMFunctionStartNode extends RootNode {
 
     public int getExplicitArgumentsCount() {
         return explicitArgumentsCount;
+    }
+
+    public String getOriginalName() {
+        return debugInformation.originalName;
+    }
+
+    public Source getBcSource() {
+        return debugInformation.bcSource;
     }
 }

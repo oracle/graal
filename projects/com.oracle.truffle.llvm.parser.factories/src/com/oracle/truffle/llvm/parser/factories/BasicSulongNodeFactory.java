@@ -109,6 +109,7 @@ import com.oracle.truffle.llvm.parser.SulongNodeFactory;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionKind;
+import com.oracle.truffle.llvm.parser.metadata.DebugInfoGenerator;
 import com.oracle.truffle.llvm.parser.model.enums.CompareOperator;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
@@ -379,7 +380,7 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
     public RootNode createFunctionStartNode(LLVMParserRuntime runtime, LLVMExpressionNode functionBodyNode, LLVMExpressionNode[] beforeFunction, LLVMExpressionNode[] afterFunction,
                     SourceSection sourceSection,
                     FrameDescriptor frameDescriptor,
-                    FunctionDefinition functionHeader) {
+                    FunctionDefinition functionHeader, Source bcSource) {
         LLVMStackFrameNuller[] nullers = new LLVMStackFrameNuller[frameDescriptor.getSlots().size()];
         int i = 0;
         for (FrameSlot slot : frameDescriptor.getSlots()) {
@@ -395,8 +396,9 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
             }
             i++;
         }
+        final String originalName = DebugInfoGenerator.getSourceFunctionName(functionHeader);
         return new LLVMFunctionStartNode(sourceSection, runtime.getLanguage(), functionBodyNode, beforeFunction, afterFunction, frameDescriptor, functionHeader.getName(), nullers,
-                        runtime.getStackPointerSlot(), functionHeader.getParameters().size());
+                        runtime.getStackPointerSlot(), functionHeader.getParameters().size(), originalName, bcSource);
     }
 
     @Override
