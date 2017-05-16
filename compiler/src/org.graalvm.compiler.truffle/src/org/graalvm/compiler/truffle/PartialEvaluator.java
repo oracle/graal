@@ -171,7 +171,9 @@ public class PartialEvaluator {
         return configForParsing;
     }
 
-    public KnownTruffleFields getKnownTruffleFields() { return knownTruffleFields; }
+    public KnownTruffleFields getKnownTruffleFields() {
+        return knownTruffleFields;
+    }
 
     public ResolvedJavaMethod[] getCompilationRootMethods() {
         return new ResolvedJavaMethod[]{callRootMethod, callInlinedMethod};
