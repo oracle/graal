@@ -30,13 +30,11 @@
 package com.oracle.truffle.llvm.nodes.func;
 
 import java.util.Deque;
-import java.util.List;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -56,10 +54,8 @@ import com.oracle.truffle.llvm.runtime.LLVMContext.DestructorStackElement;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.SulongRuntimeException;
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 
 /**
@@ -71,11 +67,6 @@ public class LLVMGlobalRootNode extends RootNode {
     @Child private Node executeDestructor = Message.createExecute(1).createNode();
     private final DirectCallNode main;
     @CompilationFinal(dimensions = 1) protected final Object[] arguments;
-    // FIXME instead make the option system "PE safe"
-    protected final int executionCount = LLVMOptions.ENGINE.executionCount();
-    private final boolean printExecutionTime = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.printExecutionTime());
-    private long startExecutionTime;
-    private long endExecutionTime;
 
     public LLVMGlobalRootNode(LLVMLanguage language, FrameDescriptor descriptor, CallTarget main, Object... arguments) {
         super(language, descriptor);
@@ -88,14 +79,12 @@ public class LLVMGlobalRootNode extends RootNode {
     public Object execute(VirtualFrame frame) {
         try {
             Object result = null;
-            for (int i = 0; i < executionCount; i++) {
-                assert LLVMSignal.getNumberOfRegisteredSignals() == 0;
+            assert LLVMSignal.getNumberOfRegisteredSignals() == 0;
 
-                result = executeIteration(i, arguments);
+            result = executeIteration(arguments);
 
-                getContext().awaitThreadTermination();
-                assert LLVMSignal.getNumberOfRegisteredSignals() == 0;
-            }
+            getContext().awaitThreadTermination();
+            assert LLVMSignal.getNumberOfRegisteredSignals() == 0;
             return result;
         } catch (LLVMExitException e) {
             getContext().awaitThreadTermination();
@@ -125,17 +114,8 @@ public class LLVMGlobalRootNode extends RootNode {
         }
     }
 
-    protected Object executeIteration(int iteration, Object[] args) {
+    protected Object executeIteration(Object[] args) {
         Object result;
-
-        if (iteration != 0) {
-            executeStaticInits();
-            executeConstructorFunctions();
-        }
-
-        if (printExecutionTime) {
-            startExecutionTime = System.currentTimeMillis();
-        }
 
         int returnCode = 0;
 
@@ -151,46 +131,7 @@ public class LLVMGlobalRootNode extends RootNode {
             }
         }
 
-        if (printExecutionTime) {
-            endExecutionTime = System.currentTimeMillis();
-            printExecutionTime();
-        }
-
-        if (iteration != executionCount - 1) {
-            executeDestructorFunctions();
-        }
         return result;
-    }
-
-    @TruffleBoundary
-    private void printExecutionTime() {
-        long executionTime = endExecutionTime - startExecutionTime;
-        final String message = "execution time: " + executionTime + " ms";
-        LLVMLogger.print(LLVMOptions.DEBUG.printExecutionTime()).accept(message);
-    }
-
-    @TruffleBoundary
-    protected void executeStaticInits() {
-        List<RootCallTarget> globalVarInits = getContext().getGlobalVarInits();
-        for (RootCallTarget callTarget : globalVarInits) {
-            callTarget.call(globalVarInits);
-        }
-    }
-
-    @TruffleBoundary
-    private void executeConstructorFunctions() {
-        List<RootCallTarget> constructorFunctions = getContext().getConstructorFunctions();
-        for (RootCallTarget callTarget : constructorFunctions) {
-            callTarget.call(constructorFunctions);
-        }
-    }
-
-    @TruffleBoundary
-    private void executeDestructorFunctions() {
-        List<RootCallTarget> destructorFunctions = getContext().getDestructorFunctions();
-        for (RootCallTarget callTarget : destructorFunctions) {
-            callTarget.call(destructorFunctions);
-        }
     }
 
     @TruffleBoundary

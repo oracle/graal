@@ -124,7 +124,7 @@ public class LLVMContext {
 
     public LLVMContext(Env env) {
         this.nativeLookup = LLVMOptions.ENGINE.disableNativeInterface() ? null : new NativeLookup(env);
-        this.nativeCallStatistics = LLVMOptions.ENGINE.traceNativeCalls() ? new HashMap<>() : null;
+        this.nativeCallStatistics = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.printNativeCallStatistics()) ? new HashMap<>() : null;
         this.llvmIRFunctions = new HashMap<>();
         this.nativeFunctions = new LLVMNativeFunctionsImpl(nativeLookup);
         this.sigDfl = LLVMFunctionHandle.createHandle(0);
@@ -202,7 +202,7 @@ public class LLVMContext {
 
     @TruffleBoundary
     public void registerNativeCall(LLVMFunctionDescriptor descriptor) {
-        if (LLVMOptions.ENGINE.traceNativeCalls()) {
+        if (nativeCallStatistics != null) {
             String name = descriptor.getName() + " " + descriptor.getType();
             if (nativeCallStatistics.containsKey(name)) {
                 int count = nativeCallStatistics.get(name) + 1;
@@ -214,7 +214,7 @@ public class LLVMContext {
     }
 
     public void printNativeCallStatistic() {
-        if (LLVMOptions.ENGINE.traceNativeCalls()) {
+        if (nativeCallStatistics != null) {
             LinkedHashMap<String, Integer> sorted = nativeCallStatistics.entrySet().stream().sorted(Map.Entry.comparingByValue()).collect(Collectors.toMap(
                             Map.Entry::getKey,
                             Map.Entry::getValue,

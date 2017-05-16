@@ -377,7 +377,7 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
     }
 
     @Override
-    public RootNode createFunctionStartNode(LLVMParserRuntime runtime, LLVMExpressionNode functionBodyNode, LLVMExpressionNode[] beforeFunction, LLVMExpressionNode[] afterFunction,
+    public RootNode createFunctionStartNode(LLVMParserRuntime runtime, LLVMExpressionNode functionBodyNode, LLVMExpressionNode[] copyArgumentsToFrame,
                     SourceSection sourceSection,
                     FrameDescriptor frameDescriptor,
                     FunctionDefinition functionHeader, Source bcSource) {
@@ -395,7 +395,7 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
             i++;
         }
         final String originalName = DebugInfoGenerator.getSourceFunctionName(functionHeader);
-        return new LLVMFunctionStartNode(sourceSection, runtime.getLanguage(), functionBodyNode, beforeFunction, afterFunction, frameDescriptor, functionHeader.getName(), nullers,
+        return new LLVMFunctionStartNode(sourceSection, runtime.getLanguage(), functionBodyNode, copyArgumentsToFrame, frameDescriptor, functionHeader.getName(), nullers,
                         functionHeader.getParameters().size(), originalName, bcSource);
     }
 

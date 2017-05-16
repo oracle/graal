@@ -47,8 +47,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStackFrameNuller;
 public class LLVMFunctionStartNode extends RootNode {
 
     @Child private LLVMExpressionNode node;
-    @Children private final LLVMExpressionNode[] beforeFunction;
-    @Children private final LLVMExpressionNode[] afterFunction;
+    @Children private final LLVMExpressionNode[] copyArgumentsToFrame;
     @Children private final LLVMStackFrameNuller[] nullers;
     private final String name;
     private final int explicitArgumentsCount;
@@ -70,15 +69,14 @@ public class LLVMFunctionStartNode extends RootNode {
         }
     }
 
-    public LLVMFunctionStartNode(SourceSection sourceSection, LLVMLanguage language, LLVMExpressionNode node, LLVMExpressionNode[] beforeFunction, LLVMExpressionNode[] afterFunction,
+    public LLVMFunctionStartNode(SourceSection sourceSection, LLVMLanguage language, LLVMExpressionNode node, LLVMExpressionNode[] copyArgumentsToFrame,
                     FrameDescriptor frameDescriptor,
                     String name, LLVMStackFrameNuller[] initNullers, int explicitArgumentsCount, String originalName, Source bcSource) {
         super(language, frameDescriptor);
         this.debugInformation = new DebugInformation(sourceSection, originalName, bcSource);
         this.explicitArgumentsCount = explicitArgumentsCount;
         this.node = node;
-        this.beforeFunction = beforeFunction;
-        this.afterFunction = afterFunction;
+        this.copyArgumentsToFrame = copyArgumentsToFrame;
         this.nullers = initNullers;
         this.name = name;
     }
@@ -103,9 +101,8 @@ public class LLVMFunctionStartNode extends RootNode {
         long basePointer = getStack().getStackPointer().getVal();
 
         nullStack(frame);
-        doBefore(frame);
+        copyArgumentsToFrame(frame);
         Object result = node.executeGeneric(frame);
-        doAfter(frame);
 
         assert assertDestroyStack(basePointer);
         getStack().setStackPointer(LLVMAddress.fromLong(basePointer));
@@ -133,16 +130,9 @@ public class LLVMFunctionStartNode extends RootNode {
     }
 
     @ExplodeLoop
-    private void doAfter(VirtualFrame frame) {
-        for (LLVMExpressionNode after : afterFunction) {
-            after.executeGeneric(frame);
-        }
-    }
-
-    @ExplodeLoop
-    private void doBefore(VirtualFrame frame) {
-        for (LLVMExpressionNode before : beforeFunction) {
-            before.executeGeneric(frame);
+    private void copyArgumentsToFrame(VirtualFrame frame) {
+        for (LLVMExpressionNode n : copyArgumentsToFrame) {
+            n.executeGeneric(frame);
         }
     }
 

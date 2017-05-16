@@ -35,7 +35,7 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 public final class LLVMBoxedPrimitive {
 
     private final Object value;
-    private static final boolean TRACE = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.traceExecution());
+    private static final boolean TRACE = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.debug());
 
     public LLVMBoxedPrimitive(Object value) {
         if (TRACE) {
@@ -46,7 +46,7 @@ public final class LLVMBoxedPrimitive {
 
     @TruffleBoundary
     private static void trace(Object value) {
-        LLVMLogger.print(LLVMOptions.DEBUG.traceExecution()).accept(
+        LLVMLogger.print(LLVMOptions.DEBUG.debug()).accept(
                         String.format("[sulong] Convert a foreign primitive (%s) into an address value", String.valueOf(value)));
     }
 

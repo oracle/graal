@@ -92,13 +92,6 @@ public interface SulongNodeFactory {
 
     LLVMExpressionNode createFunctionArgNode(int argIndex, Type paramType);
 
-    /**
-     * Creates a function argument read node.
-     *
-     * @param argIndex the index from where to read the argument
-     * @param clazz the expected class of the argument
-     * @return an argument node
-     */
     LLVMExpressionNode createFunctionArgNode(int argIndex, Class<? extends Node> clazz);
 
     LLVMExpressionNode createFunctionCall(LLVMParserRuntime runtime, LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type, SourceSection sourceSection);
@@ -125,23 +118,8 @@ public interface SulongNodeFactory {
 
     LLVMExpressionNode createSelect(LLVMParserRuntime runtime, Type type, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue);
 
-    /**
-     * Creates a zero vector initializer.
-     *
-     * @param nrElements the number of elements of the vector
-     * @param llvmType the type of the vector
-     *
-     * @return the zero vector initializer
-     */
     LLVMExpressionNode createZeroVectorInitializer(LLVMParserRuntime runtime, int nrElements, VectorType llvmType);
 
-    /**
-     * Creates a node representing an <code>unreachable</code> instruction.
-     *
-     * @return an unreachable node
-     * @see <a href="http://llvm.org/docs/LangRef.html#unreachable-instruction">Unreachable in the
-     *      LLVM Language Reference Manual</a>
-     */
     LLVMControlFlowNode createUnreachableNode(LLVMParserRuntime runtime);
 
     LLVMControlFlowNode createIndirectBranch(LLVMParserRuntime runtime, LLVMExpressionNode value, int[] labelTargets, LLVMExpressionNode[][] phiWrites, SourceSection source);
@@ -156,18 +134,6 @@ public interface SulongNodeFactory {
 
     LLVMExpressionNode createArrayLiteral(LLVMParserRuntime runtime, List<LLVMExpressionNode> arrayValues, Type arrayType);
 
-    /**
-     * Creates an <code>alloca</code> node with a certain number of elements.
-     *
-     * @param numElementsType the type of <code>numElements</code>
-     * @param byteSize the size of an element
-     * @param alignment the alignment requirement
-     * @param numElements how many elements to allocate, may be <code>null</code> if only one
-     *            element should be allocated
-     * @param type the type of an element, may be <code>null</code> if only one element should be
-     *            allocated
-     * @return a node that allocates the specified number of elements
-     */
     LLVMExpressionNode createAlloc(LLVMParserRuntime runtime, Type type, int byteSize, int alignment, Type numElementsType, LLVMExpressionNode numElements);
 
     LLVMExpressionNode createInsertValue(LLVMParserRuntime runtime, LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, int size, int offset, LLVMExpressionNode valueToInsert,
@@ -175,92 +141,28 @@ public interface SulongNodeFactory {
 
     LLVMExpressionNode createZeroNode(LLVMParserRuntime runtime, LLVMExpressionNode addressNode, int size);
 
-    /**
-     * Creates the global root (e.g., the main function in C).
-     *
-     * @param mainCallTarget
-     * @param args
-     * @param mainTypes
-     * @param sourceFile
-     * @return the global root
-     */
     RootNode createGlobalRootNode(LLVMParserRuntime runtime, RootCallTarget mainCallTarget, Object[] args, Source sourceFile, Type[] mainTypes);
 
-    /**
-     * Wraps the global root (e.g., the main function in C) to convert its result.
-     *
-     * @param mainCallTarget
-     * @param returnType
-     * @return the wrapped global root
-     */
     RootNode createGlobalRootNodeWrapping(LLVMParserRuntime runtime, RootCallTarget mainCallTarget, Type returnType);
 
-    /**
-     * Creates a structure literal node.
-     *
-     * @param structureType type of the structure
-     * @param packed whether the struct is packed (alignment of the struct is one byte and there is
-     *            no padding between the elements)
-     * @param types the types of the structure members
-     * @param constants the structure members
-     * @return the constructed structure literal
-     */
     LLVMExpressionNode createStructureConstantNode(LLVMParserRuntime runtime, Type structureType, boolean packed, Type[] types, LLVMExpressionNode[] constants);
 
-    /**
-     * Creates a basic block node.
-     *
-     * @param statementNodes the statement nodes that do not change control flow
-     * @param terminatorNode the terminator instruction node that changes control flow
-     * @return the basic block node
-     */
     LLVMExpressionNode createBasicBlockNode(LLVMParserRuntime runtime, LLVMExpressionNode[] statementNodes, LLVMControlFlowNode terminatorNode, int blockId, String blockName);
 
-    /**
-     * Creates a node that groups together several basic blocks in a function and returns the
-     * function's result.
-     *
-     * @param returnSlot the frame slot for the return value
-     * @param basicBlockNodes the basic blocks
-     * @param indexToSlotNuller nuller node for nulling dead variables
-     * @param slotNullerAfterNodes
-     * @return the function block node
-     */
     LLVMExpressionNode createFunctionBlockNode(LLVMParserRuntime runtime, FrameSlot returnSlot, List<? extends LLVMExpressionNode> basicBlockNodes, LLVMStackFrameNuller[][] indexToSlotNuller,
                     LLVMStackFrameNuller[][] slotNullerAfterNodes);
 
-    /**
-     * Creates the entry point for a function.
-     *
-     * @param functionBodyNode the body of a function that returns the functions result
-     * @param beforeFunction function prologue nodes
-     * @param afterFunction function epilogue nodes
-     * @param frameDescriptor
-     * @param functionHeader
-     * @return a function root node
-     */
-    RootNode createFunctionStartNode(LLVMParserRuntime runtime, LLVMExpressionNode functionBodyNode, LLVMExpressionNode[] beforeFunction, LLVMExpressionNode[] afterFunction,
+    RootNode createFunctionStartNode(LLVMParserRuntime runtime, LLVMExpressionNode functionBodyNode, LLVMExpressionNode[] copyArgumentsToFrame,
                     SourceSection sourceSection,
                     FrameDescriptor frameDescriptor,
                     FunctionDefinition functionHeader, Source bcSource);
 
-    /**
-     * Creates an inline assembler instruction.
-     *
-     * @param asmExpression
-     * @param asmFlags
-     * @param args
-     * @param retType the type the inline assembler instruction produces
-     * @return an inline assembler node
-     */
     LLVMExpressionNode createInlineAssemblerExpression(LLVMParserRuntime runtime, String asmExpression, String asmFlags, LLVMExpressionNode[] args, Type[] argTypes, Type retType,
                     SourceSection sourceSection);
 
     Object allocateGlobalVariable(LLVMParserRuntime runtime, GlobalVariable globalVariable);
 
     Object allocateGlobalConstant(LLVMParserRuntime runtime, GlobalConstant globalConstant);
-
-    RootNode createStaticInitsRootNode(LLVMParserRuntime runtime, LLVMExpressionNode[] staticInits);
 
     LLVMStackFrameNuller createFrameNuller(LLVMParserRuntime runtime, String identifier, Type type, FrameSlot slot);
 
@@ -279,5 +181,7 @@ public interface SulongNodeFactory {
     LLVMExpressionNode createLLVMBuiltin(Symbol target, LLVMExpressionNode[] args, int callerArgumentCount, SourceSection sourceSection);
 
     NativeIntrinsicProvider getNativeIntrinsicsFactory(LLVMLanguage language, LLVMContext context);
+
+    RootNode createStaticInitsRootNode(LLVMParserRuntime visitor, LLVMExpressionNode[] deallocs);
 
 }
