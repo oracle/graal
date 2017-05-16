@@ -98,6 +98,7 @@ import org.graalvm.compiler.truffle.phases.InstrumentBranchesPhase;
 import org.graalvm.compiler.truffle.phases.InstrumentPhase;
 import org.graalvm.compiler.truffle.phases.InstrumentTruffleBoundariesPhase;
 import org.graalvm.compiler.truffle.phases.VerifyFrameDoesNotEscapePhase;
+import org.graalvm.compiler.truffle.substitutions.KnownTruffleFields;
 import org.graalvm.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
 import org.graalvm.compiler.truffle.substitutions.TruffleInvocationPluginProvider;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
@@ -133,6 +134,7 @@ public class PartialEvaluator {
     private final GraphBuilderConfiguration configForParsing;
     private final InvocationPlugins decodingInvocationPlugins;
     private final NodePlugin[] nodePlugins;
+    private final KnownTruffleFields knownTruffleFields;
 
     public PartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, SnippetReflectionProvider snippetReflection, Architecture architecture,
                     InstrumentPhase.Instrumentation instrumentation) {
@@ -143,6 +145,7 @@ public class PartialEvaluator {
         this.callDirectMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.getCallDirectMethod());
         this.callInlinedMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.getCallInlinedMethod());
         this.callSiteProxyMethod = providers.getMetaAccess().lookupJavaMethod(GraalFrameInstance.CALL_NODE_METHOD);
+        this.knownTruffleFields = new KnownTruffleFields(providers.getMetaAccess());
         this.instrumentation = instrumentation;
 
         try {
@@ -167,6 +170,8 @@ public class PartialEvaluator {
     public GraphBuilderConfiguration getConfigForParsing() {
         return configForParsing;
     }
+
+    public KnownTruffleFields getKnownTruffleFields() { return knownTruffleFields; }
 
     public ResolvedJavaMethod[] getCompilationRootMethods() {
         return new ResolvedJavaMethod[]{callRootMethod, callInlinedMethod};
