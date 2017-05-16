@@ -37,6 +37,7 @@ import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -54,11 +55,13 @@ public class LLVMFunctionStartNode extends RootNode {
     private final String name;
     private final int explicitArgumentsCount;
     private final SourceSection sourceSection;
+    private final String originalName;
+    private final Source bcSource;
     private final FrameSlot baseStackPointer;
 
     public LLVMFunctionStartNode(SourceSection sourceSection, LLVMLanguage language, LLVMExpressionNode node, LLVMExpressionNode[] beforeFunction, LLVMExpressionNode[] afterFunction,
                     FrameDescriptor frameDescriptor,
-                    String name, LLVMStackFrameNuller[] initNullers, FrameSlot baseStackPointer, int explicitArgumentsCount) {
+                    String name, LLVMStackFrameNuller[] initNullers, FrameSlot baseStackPointer, int explicitArgumentsCount, String originalName, Source bcSource) {
         super(language, frameDescriptor);
         this.sourceSection = sourceSection;
         this.node = node;
@@ -66,8 +69,10 @@ public class LLVMFunctionStartNode extends RootNode {
         this.afterFunction = afterFunction;
         this.nullers = initNullers;
         this.name = name;
-        this.baseStackPointer = baseStackPointer;
         this.explicitArgumentsCount = explicitArgumentsCount;
+        this.baseStackPointer = baseStackPointer;
+        this.originalName = originalName;
+        this.bcSource = bcSource;
     }
 
     @Override
@@ -151,5 +156,13 @@ public class LLVMFunctionStartNode extends RootNode {
 
     public int getExplicitArgumentsCount() {
         return explicitArgumentsCount;
+    }
+
+    public String getOriginalName() {
+        return originalName;
+    }
+
+    public Source getBcSource() {
+        return bcSource;
     }
 }
