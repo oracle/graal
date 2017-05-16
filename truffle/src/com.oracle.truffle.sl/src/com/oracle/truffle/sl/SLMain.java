@@ -91,6 +91,7 @@ import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNode;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
 import com.oracle.truffle.sl.parser.Parser;
 import com.oracle.truffle.sl.parser.SLNodeFactory;
+import com.oracle.truffle.sl.parser.SLParseError;
 import com.oracle.truffle.sl.parser.Scanner;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
@@ -217,6 +218,8 @@ public final class SLMain {
                 out.println(result.get());
             }
 
+        } catch (SLParseError ex) {
+            out.println(ex.getMessage());
         } catch (Throwable ex) {
             /*
              * PolyglotEngine.eval wraps the actual exception in an IOException, so we have to
