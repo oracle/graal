@@ -641,8 +641,13 @@ public abstract class Node implements NodeInterface, Cloneable {
             }
 
             @Override
-            public LanguageInfo createLanguageInfo(Object vm, TruffleLanguage<?> language, String name, String version, Set<String> mimeTypes) {
-                return new LanguageInfo(vm, language, name, version, mimeTypes);
+            public void setLanguageSpi(LanguageInfo languageInfo, TruffleLanguage<?> spi) {
+                languageInfo.setSpi(spi);
+            }
+
+            @Override
+            public LanguageInfo createLanguage(Object vmObject, String name, String version, Set<String> mimeTypes) {
+                return new LanguageInfo(vmObject, name, version, mimeTypes);
             }
 
         }

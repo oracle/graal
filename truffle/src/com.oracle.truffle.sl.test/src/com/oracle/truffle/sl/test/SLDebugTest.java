@@ -58,6 +58,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.Debugger;
@@ -121,17 +122,34 @@ public class SLDebugTest {
     }
 
     protected void checkStack(DebugStackFrame frame, String name, String... expectedFrame) {
-        Map<String, DebugValue> values = new HashMap<>();
-        for (DebugValue value : frame) {
-            values.put(value.getName(), value);
-        }
         assertEquals(name, frame.getName());
-        String message = String.format("Frame expected %s got %s", Arrays.toString(expectedFrame), values.toString());
-        Assert.assertEquals(message, expectedFrame.length / 2, values.size());
-        for (int i = 0; i < expectedFrame.length; i = i + 2) {
-            String expectedIdentifier = expectedFrame[i];
-            String expectedValue = expectedFrame[i + 1];
-            DebugValue value = values.get(expectedIdentifier);
+        checkDebugValues("variables", frame, expectedFrame);
+    }
+
+    protected void checkArgs(DebugStackFrame frame, String... expectedArgs) {
+        Iterable<DebugValue> arguments = null;
+        DebugScope scope = frame.getScope();
+        while (scope != null) {
+            if (scope.isFunctionScope()) {
+                arguments = scope.getArguments();
+                break;
+            }
+            scope = scope.getParent();
+        }
+        checkDebugValues("arguments", arguments, expectedArgs);
+    }
+
+    private static void checkDebugValues(String msg, Iterable<DebugValue> values, String... expected) {
+        Map<String, DebugValue> valMap = new HashMap<>();
+        for (DebugValue value : values) {
+            valMap.put(value.getName(), value);
+        }
+        String message = String.format("Frame %s expected %s got %s", msg, Arrays.toString(expected), valMap.toString());
+        Assert.assertEquals(message, expected.length / 2, valMap.size());
+        for (int i = 0; i < expected.length; i = i + 2) {
+            String expectedIdentifier = expected[i];
+            String expectedValue = expected[i + 1];
+            DebugValue value = valMap.get(expectedIdentifier);
             Assert.assertNotNull(value);
             Assert.assertEquals(expectedValue, value.as(String.class));
         }
@@ -160,43 +178,51 @@ public class SLDebugTest {
 
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, "fac", 6, true, "return 1", "n", "1");
+                checkArgs(event.getTopStackFrame(), "n", "1");
+                Iterator<DebugStackFrame> sfi = event.getStackFrames().iterator();
+                for (int i = 1; i <= 5; i++) {
+                    checkArgs(sfi.next(), "n", Integer.toString(i));
+                }
+                checkArgs(sfi.next()); // main
                 assertSame(breakpoint, event.getBreakpoints().iterator().next());
                 event.prepareStepOver(1);
             });
 
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, "fac", 8, false, "fac(n - 1)", "n", "2");
+                checkArgs(event.getTopStackFrame(), "n", "2");
                 assertEquals("1", event.getReturnValue().as(String.class));
                 assertTrue(event.getBreakpoints().isEmpty());
-                event.prepareStepOut();
+                event.prepareStepOut(1);
             });
 
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, "fac", 8, false, "fac(n - 1)", "n", "3");
                 assertEquals("2", event.getReturnValue().as(String.class));
                 assertTrue(event.getBreakpoints().isEmpty());
-                event.prepareStepOut();
+                event.prepareStepOut(1);
             });
 
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, "fac", 8, false, "fac(n - 1)", "n", "4");
                 assertEquals("6", event.getReturnValue().as(String.class));
                 assertTrue(event.getBreakpoints().isEmpty());
-                event.prepareStepOut();
+                event.prepareStepOut(1);
             });
 
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, "fac", 8, false, "fac(n - 1)", "n", "5");
                 assertEquals("24", event.getReturnValue().as(String.class));
                 assertTrue(event.getBreakpoints().isEmpty());
-                event.prepareStepOut();
+                event.prepareStepOut(1);
             });
 
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, "main", 2, false, "fac(5)");
+                checkArgs(event.getTopStackFrame());
                 assertEquals("120", event.getReturnValue().as(String.class));
                 assertTrue(event.getBreakpoints().isEmpty());
-                event.prepareStepOut();
+                event.prepareStepOut(1);
             });
 
             assertEquals("120", expectDone());
@@ -341,31 +367,33 @@ public class SLDebugTest {
             expectSuspended((SuspendedEvent event) -> {
                 DebugStackFrame frame = event.getTopStackFrame();
 
-                DebugValue a = frame.getValue("a");
+                DebugScope scope = frame.getScope();
+                DebugValue a = scope.getDeclaredValue("a");
                 assertFalse(a.isArray());
                 assertNull(a.getArray());
                 assertNull(a.getProperties());
 
-                DebugValue b = frame.getValue("b");
+                DebugValue b = scope.getDeclaredValue("b");
                 assertFalse(b.isArray());
                 assertNull(b.getArray());
                 assertNull(b.getProperties());
 
-                DebugValue c = frame.getValue("c");
+                DebugValue c = scope.getDeclaredValue("c");
                 assertFalse(c.isArray());
                 assertEquals("10", c.as(String.class));
                 assertNull(c.getArray());
                 assertNull(c.getProperties());
 
-                DebugValue d = frame.getValue("d");
+                DebugValue d = scope.getDeclaredValue("d");
                 assertFalse(d.isArray());
                 assertEquals("str", d.as(String.class));
                 assertNull(d.getArray());
                 assertNull(d.getProperties());
 
-                DebugValue e = frame.getValue("e");
+                DebugValue e = scope.getDeclaredValue("e");
                 assertFalse(e.isArray());
                 assertNull(e.getArray());
+                assertEquals(scope, e.getScope());
                 Collection<DebugValue> propertyValues = e.getProperties();
                 assertEquals(2, propertyValues.size());
                 Iterator<DebugValue> propertiesIt = propertyValues.iterator();
@@ -373,9 +401,11 @@ public class SLDebugTest {
                 DebugValue p1 = propertiesIt.next();
                 assertEquals("p1", p1.getName());
                 assertEquals("1", p1.as(String.class));
+                assertNull(p1.getScope());
                 assertTrue(propertiesIt.hasNext());
                 DebugValue p2 = propertiesIt.next();
                 assertEquals("p2", p2.getName());
+                assertNull(p2.getScope());
                 assertFalse(propertiesIt.hasNext());
 
                 propertyValues = p2.getProperties();
@@ -385,7 +415,91 @@ public class SLDebugTest {
                 DebugValue p21 = propertiesIt.next();
                 assertEquals("p21", p21.getName());
                 assertEquals("21", p21.as(String.class));
+                assertNull(p21.getScope());
                 assertFalse(propertiesIt.hasNext());
+            });
+
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testValuesScope() throws Throwable {
+        final Source varsSource = slCode("function main() {\n" +
+                        "  a = 1;\n" +
+                        "  if (a > 0) {\n" +
+                        "    b = 10;\n" +
+                        "    println(b);\n" +
+                        "  }\n" +
+                        "  println(b);\n" +
+                        "  println(a);\n" +
+                        "  println(\"END.\");\n" +
+                        "}");
+
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startEval(varsSource);
+
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                // No variables first:
+                assertFalse(frame.getScope().getDeclaredValues().iterator().hasNext());
+                event.prepareStepOver(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                // "a" only:
+                DebugScope scope = frame.getScope();
+                Iterator<DebugValue> varIt = scope.getDeclaredValues().iterator();
+                assertTrue(varIt.hasNext());
+                DebugValue a = varIt.next();
+                assertEquals("a", a.getName());
+                assertEquals(scope, a.getScope());
+                assertFalse(varIt.hasNext());
+                event.prepareStepOver(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                // "a" only:
+                DebugScope scope = frame.getScope();
+                Iterator<DebugValue> varIt = scope.getParent().getDeclaredValues().iterator();
+                assertTrue(varIt.hasNext());
+                DebugValue a = varIt.next();
+                assertEquals("a", a.getName());
+                assertEquals(scope.getParent(), a.getScope());
+                assertFalse(varIt.hasNext());
+                event.prepareStepOver(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                // "a" and "b":
+                DebugScope scope = frame.getScope();
+                Iterator<DebugValue> varIt = scope.getDeclaredValues().iterator();
+                assertTrue(varIt.hasNext());
+                DebugValue b = varIt.next();
+                assertEquals("b", b.getName());
+                assertEquals(scope, b.getScope());
+                // "a" is in the parent:
+                assertFalse(varIt.hasNext());
+                varIt = scope.getParent().getDeclaredValues().iterator();
+                assertTrue(varIt.hasNext());
+                DebugValue a = varIt.next();
+                assertEquals("a", a.getName());
+                assertEquals(scope.getParent(), a.getScope());
+                assertFalse(varIt.hasNext());
+                event.prepareStepOver(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                // "a" only again:
+                DebugScope scope = frame.getScope();
+                Iterator<DebugValue> varIt = scope.getDeclaredValues().iterator();
+                assertTrue(varIt.hasNext());
+                DebugValue a = varIt.next();
+                assertEquals("a", a.getName());
+                assertEquals(scope, a.getScope());
+                assertFalse(varIt.hasNext());
+                event.prepareContinue();
             });
 
             expectDone();
@@ -413,19 +527,20 @@ public class SLDebugTest {
             expectSuspended((SuspendedEvent event) -> {
                 DebugStackFrame frame = event.getTopStackFrame();
 
-                DebugValue v = frame.getValue("a");
+                DebugScope scope = frame.getScope();
+                DebugValue v = scope.getDeclaredValue("a");
                 assertEquals("Null", v.getMetaObject().as(String.class));
-                v = frame.getValue("b");
+                v = scope.getDeclaredValue("b");
                 assertEquals("Boolean", v.getMetaObject().as(String.class));
-                v = frame.getValue("c");
+                v = scope.getDeclaredValue("c");
                 assertEquals("Number", v.getMetaObject().as(String.class));
-                v = frame.getValue("cBig");
+                v = scope.getDeclaredValue("cBig");
                 assertEquals("Number", v.getMetaObject().as(String.class));
-                v = frame.getValue("d");
+                v = scope.getDeclaredValue("d");
                 assertEquals("String", v.getMetaObject().as(String.class));
-                v = frame.getValue("e");
+                v = scope.getDeclaredValue("e");
                 assertEquals("Object", v.getMetaObject().as(String.class));
-                v = frame.getValue("f");
+                v = scope.getDeclaredValue("f");
                 assertEquals("Function", v.getMetaObject().as(String.class));
             });
 
@@ -452,15 +567,16 @@ public class SLDebugTest {
             expectSuspended((SuspendedEvent event) -> {
                 DebugStackFrame frame = event.getTopStackFrame();
 
-                DebugValue v = frame.getValue("a");
+                DebugScope scope = frame.getScope();
+                DebugValue v = scope.getDeclaredValue("a");
                 assertNull(v.getSourceLocation());
-                v = frame.getValue("c");
+                v = scope.getDeclaredValue("c");
                 assertNull(v.getSourceLocation());
-                v = frame.getValue("d");
+                v = scope.getDeclaredValue("d");
                 assertNull(v.getSourceLocation());
-                v = frame.getValue("e");
+                v = scope.getDeclaredValue("e");
                 assertNull(v.getSourceLocation());
-                v = frame.getValue("f");
+                v = scope.getDeclaredValue("f");
                 SourceSection sourceLocation = v.getSourceLocation();
                 Assert.assertNotNull(sourceLocation);
                 assertEquals(9, sourceLocation.getStartLine());

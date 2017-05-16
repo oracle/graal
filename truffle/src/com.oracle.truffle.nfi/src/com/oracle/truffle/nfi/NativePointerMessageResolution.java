@@ -88,6 +88,22 @@ class NativePointerMessageResolution {
         }
     }
 
+    @Resolve(message = "IS_POINTER")
+    abstract static class IsNativePointerNode extends Node {
+
+        public boolean access(@SuppressWarnings("unused") NativePointer receiver) {
+            return true;
+        }
+    }
+
+    @Resolve(message = "AS_POINTER")
+    abstract static class AsNativePointerNode extends Node {
+
+        public long access(NativePointer receiver) {
+            return receiver.nativePointer;
+        }
+    }
+
     @Resolve(message = "UNBOX")
     abstract static class UnboxNativePointerNode extends Node {
 

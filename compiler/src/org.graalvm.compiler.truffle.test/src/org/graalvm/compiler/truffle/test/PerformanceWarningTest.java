@@ -50,55 +50,65 @@ public class PerformanceWarningTest {
 
     @Test
     public void testVirtualCall() {
-        testHelper(new RootNodeVirtualCall(), "perf warn", "execute");
+        testHelper(new RootNodeVirtualCall(), true, "perf warn", "execute");
     }
 
     @Test
     public void testDeepStack() {
-        testHelper(new RootNodeDeepStack(), "perf warn", "foo", "bar", "execute");
+        testHelper(new RootNodeDeepStack(), true, "perf warn", "foo", "bar", "execute");
     }
 
     @Test
     public void testInstanceOf() {
-        testHelper(new RootNodeInstanceOf(), "perf info", "foo", "bar", "execute");
+        testHelper(new RootNodeInstanceOf(), false, "perf info", "foo", "bar", "execute");
     }
 
     @Test
     public void testCombined() {
-        testHelper(new RootNodeCombined(), "perf info", "perf warn", "foo", "bar", "execute");
+        testHelper(new RootNodeCombined(), true, "perf info", "perf warn", "foo", "bar", "execute");
     }
 
     @Test
     public void testBoundaryCall() {
-        testHelper(new RootNodeBoundaryCall(), EMPTY_PERF_WARNINGS);
+        testHelper(new RootNodeBoundaryCall(), false, EMPTY_PERF_WARNINGS);
     }
 
     @Test
     public void testBoundaryVirtualCall() {
-        testHelper(new RootNodeBoundaryVirtualCall(), EMPTY_PERF_WARNINGS);
+        testHelper(new RootNodeBoundaryVirtualCall(), false, EMPTY_PERF_WARNINGS);
     }
 
     @Test
     public void testCast() {
-        testHelper(new RootNodeCast(), "perf info", "foo", "bar", "execute");
+        testHelper(new RootNodeCast(), false, "perf info", "foo", "bar", "execute");
     }
 
     @Test
     public void testSingleImplementor() {
-        testHelper(new RootNodeInterfaceSingleImplementorCall(), "perf info", "type check", "foo");
+        testHelper(new RootNodeInterfaceSingleImplementorCall(), false, "perf info", "type check", "foo");
     }
 
     @SuppressWarnings("try")
-    private static void testHelper(RootNode rootNode, String... outputStrings) {
+    private static void testHelper(RootNode rootNode, boolean expectException, String... outputStrings) {
 
         OptimizedCallTarget target = (OptimizedCallTarget) GraalTruffleRuntime.getRuntime().createCallTarget(rootNode);
 
         // Compile and capture output to TTY.
         ByteArrayOutputStream outContent = new ByteArrayOutputStream();
+        boolean seenException = false;
         try (TTY.Filter filter = new TTY.Filter(new LogStream(outContent))) {
-            try (TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TraceTrufflePerformanceWarnings, Boolean.TRUE)) {
+            try (TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TraceTrufflePerformanceWarnings, Boolean.TRUE);
+                            TruffleOptionsOverrideScope scope2 = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TrufflePerformanceWarningsAreFatal, Boolean.TRUE)) {
                 DefaultTruffleCompiler.create(GraalTruffleRuntime.getRuntime()).compileMethod(target, GraalTruffleRuntime.getRuntime(), null);
+            } catch (AssertionError e) {
+                seenException = true;
+                if (!expectException) {
+                    Assert.assertTrue("Unexpected exception caught.", false);
+                }
             }
+        }
+        if (expectException && !seenException) {
+            Assert.assertTrue("Expected exception not caught.", false);
         }
 
         // Check output on TTY.

@@ -44,6 +44,7 @@ import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.Accessor;
@@ -52,7 +53,6 @@ import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode.EventChainNode;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
-import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
@@ -165,8 +165,8 @@ final class InstrumentationHandler {
         visitRoot(root, new InsertWrappersVisitor(executionBindings));
     }
 
-    void addInstrument(Object key, Class<?> clazz, String[] expectedServices) {
-        addInstrumenter(key, new InstrumentClientInstrumenter(sourceVM, clazz, out, err, in), expectedServices);
+    void addInstrument(Object vmObject, Class<?> clazz, String[] expectedServices) {
+        addInstrumenter(vmObject, new InstrumentClientInstrumenter(vmObject, clazz, out, err, in), expectedServices);
     }
 
     void disposeInstrumenter(Object key, boolean cleanupRequired) {

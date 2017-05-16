@@ -31,6 +31,16 @@ import com.oracle.truffle.api.nodes.Node;
 
 @MessageResolution(receiverType = ComplexNumberAEntry.class)
 class ComplexNumberAEntryMessageResolution {
+
+    @Resolve(message = "KEYS")
+    abstract static class ComplexNumbersAEntryKeysNode extends Node {
+
+        public Object access(ComplexNumberAEntry complexNumber) {
+            assert complexNumber != null;
+            return ComplexNumberEntryKeys.INSTANCE;
+        }
+    }
+
     @Resolve(message = "READ")
     abstract static class ComplexNumbersAEntryReadNode extends Node {
 

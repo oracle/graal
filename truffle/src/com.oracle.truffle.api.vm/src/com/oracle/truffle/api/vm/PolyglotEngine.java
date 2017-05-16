@@ -48,6 +48,7 @@ import java.util.logging.Logger;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -1401,7 +1402,7 @@ public class PolyglotEngine {
                 synchronized (this) {
                     localEnv = env;
                     if (localEnv == null && create) {
-                        localEnv = Access.LANGS.createEnv(this, shared.getLanguage(), engine().out, engine().err, engine().in,
+                        localEnv = Access.LANGS.createEnv(this, shared.getLanguageEnsureInitialized(), engine().out, engine().err, engine().in,
                                         getArgumentsForLanguage());
                         context = Access.LANGS.getContext(localEnv);
                         env = localEnv;
@@ -1499,10 +1500,53 @@ public class PolyglotEngine {
 
             @Override
             public Env getEnvForInstrument(Object vmObject, String mimeType) {
-                Language lang = ((PolyglotRuntime) vmObject).currentVM().findLanguage(mimeType, true);
+                PolyglotEngine currentVM = ((Instrument) vmObject).getRuntime().currentVM();
+                if (currentVM == null) {
+                    throw new IllegalStateException("No current engine found.");
+                }
+                Language lang = currentVM.findLanguage(mimeType, true);
                 Env env = lang.getEnv(true);
                 assert env != null;
                 return env;
+            }
+
+            @Override
+            public <T> T lookup(InstrumentInfo info, Class<T> serviceClass) {
+                Object vmObject = SPIAccessor.langs().getVMObject(info);
+                Instrument instrument = (Instrument) vmObject;
+                return instrument.lookup(serviceClass);
+            }
+
+            @Override
+            public <S> S lookup(LanguageInfo language, Class<S> type) {
+                LanguageShared cache = (LanguageShared) SPIAccessor.nodesAccess().getEngineObject(language);
+                return SPIAccessor.langs().lookup(cache.getLanguageEnsureInitialized(), type);
+            }
+
+            @Override
+            public Map<String, LanguageInfo> getLanguages(Object vmObject) {
+                PolyglotRuntime vm;
+                if (vmObject instanceof Language) {
+                    vm = ((Language) vmObject).shared.getRuntime();
+                } else if (vmObject instanceof Instrument) {
+                    vm = ((Instrument) vmObject).getRuntime();
+                } else {
+                    throw new AssertionError();
+                }
+                return vm.languageInfos;
+            }
+
+            @Override
+            public Map<String, InstrumentInfo> getInstruments(Object vmObject) {
+                PolyglotRuntime vm;
+                if (vmObject instanceof Language) {
+                    vm = ((Language) vmObject).shared.getRuntime();
+                } else if (vmObject instanceof Instrument) {
+                    vm = ((Instrument) vmObject).getRuntime();
+                } else {
+                    throw new AssertionError();
+                }
+                return vm.instrumentInfos;
             }
 
             @Override

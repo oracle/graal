@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -51,15 +52,25 @@ abstract class SlowPathSerializeArgumentNode extends Node {
         return null;
     }
 
-    @Specialization(replaces = "cacheType", guards = "value != null")
+    @Specialization(replaces = "cacheType", guards = {"value != null", "!checkIsPointer(isPointer, value)"})
     protected Object genericWithUnbox(NativeArgumentBuffer buffer, LibFFIType type, TruffleObject value,
                     @Cached("createIsNull()") Node isNull,
                     @Cached("createUnbox()") Node unbox,
+                    @Cached("createIsPointer()") Node isPointer,
+                    @Cached("createAsPointer()") Node asPointer,
                     @Cached("createRecursive()") SlowPathSerializeArgumentNode recursive) {
         Object prepared = type.slowpathPrepareArgument(value);
         if (prepared == null) {
-            Object unboxed;
-            if (!ForeignAccess.sendIsNull(isNull, value)) {
+            if (ForeignAccess.sendIsPointer(isPointer, value)) {
+                try {
+                    long pointer = ForeignAccess.sendAsPointer(asPointer, value);
+                    return recursive.execute(buffer, type, pointer);
+                } catch (UnsupportedMessageException ex) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw UnsupportedTypeException.raise(ex, new Object[]{value});
+                }
+            } else if (!ForeignAccess.sendIsNull(isNull, value)) {
+                Object unboxed;
                 try {
                     unboxed = ForeignAccess.sendUnbox(unbox, value);
                 } catch (UnsupportedMessageException ex) {
@@ -82,6 +93,18 @@ abstract class SlowPathSerializeArgumentNode extends Node {
 
     protected static SlowPathSerializeArgumentNode createRecursive() {
         return SlowPathSerializeArgumentNodeGen.create();
+    }
+
+    protected static Node createIsPointer() {
+        return Message.IS_POINTER.createNode();
+    }
+
+    protected static Node createAsPointer() {
+        return Message.AS_POINTER.createNode();
+    }
+
+    protected static boolean checkIsPointer(Node isPointer, TruffleObject object) {
+        return ForeignAccess.sendIsPointer(isPointer, object);
     }
 
     protected static boolean needNoUnbox(Object value) {

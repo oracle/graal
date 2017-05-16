@@ -661,6 +661,15 @@ suite = {
       "workingSets" : "Graal,LIR,SPARC",
     },
 
+    "org.graalvm.api.word" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "1.8",
+      "workingSets" : "API",
+    },
+
     "org.graalvm.compiler.word" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1043,7 +1052,8 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.compiler.debug",
+        "org.graalvm.compiler.debug", 
+        "org.graalvm.api.word",
       ],
       "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -1295,6 +1305,7 @@ suite = {
     "GRAAL_API" : {
       "subDir" : "src",
       "dependencies" : [
+        "org.graalvm.api.word",
         "org.graalvm.compiler.api.replacements",
         "org.graalvm.compiler.api.runtime",
         "org.graalvm.compiler.graph",

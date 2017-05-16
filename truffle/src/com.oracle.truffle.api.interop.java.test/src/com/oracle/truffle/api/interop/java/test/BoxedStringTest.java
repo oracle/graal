@@ -152,4 +152,19 @@ public class BoxedStringTest implements TruffleObject, ForeignAccess.Factory26 {
         return null;
     }
 
+    @Override
+    public CallTarget accessIsPointer() {
+        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(false));
+    }
+
+    @Override
+    public CallTarget accessAsPointer() {
+        return null;
+    }
+
+    @Override
+    public CallTarget accessToNative() {
+        return null;
+    }
+
 }

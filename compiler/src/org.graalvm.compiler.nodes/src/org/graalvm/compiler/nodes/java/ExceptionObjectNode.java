@@ -26,7 +26,7 @@ import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
-import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.api.word.LocationIdentity;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.NodeClass;
@@ -58,6 +58,15 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
     @Override
     public LocationIdentity getLocationIdentity() {
         return LocationIdentity.any();
+    }
+
+    /**
+     * An exception handler is an entry point to a method from the runtime and so represents an
+     * instruction that cannot be re-executed. It therefore needs a frame state.
+     */
+    @Override
+    public boolean hasSideEffect() {
+        return true;
     }
 
     @Override

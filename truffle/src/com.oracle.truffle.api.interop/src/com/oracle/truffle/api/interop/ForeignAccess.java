@@ -455,6 +455,81 @@ public final class ForeignAccess {
     }
 
     /**
+     * Sends an {@link Message#IS_POINTER IS_POINTER message} to the foreign receiver object by
+     * executing the <code> isPointerNode </code>.
+     *
+     * @param isPointerNode the createNode created by {@link Message#createNode()}
+     * @param receiver foreign object to receive the message passed to {@link Message#createNode()}
+     *            method
+     * @return return value, if any
+     * @throws ClassCastException if the createNode has not been created by
+     *             {@link Message#createNode()} method.
+     * @since 0.26
+     */
+    public static boolean sendIsPointer(Node isPointerNode, TruffleObject receiver) {
+        try {
+            return (boolean) send(isPointerNode, receiver);
+        } catch (UnsupportedMessageException ex) {
+            return false;
+        } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError("Unexpected exception caught.", e);
+        }
+    }
+
+    /**
+     * Sends an {@link Message#AS_POINTER AS_POINTER message} to the foreign receiver object by
+     * executing the <code> asPointerNode </code>.
+     *
+     * @param asPointerNode the createNode created by {@link Message#createNode()}
+     * @param receiver foreign object to receive the message passed to {@link Message#createNode()}
+     *            method
+     * @return a raw 64bit pointer value
+     * @throws ClassCastException if the createNode has not been created by
+     *             {@link Message#createNode()} method.
+     * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
+     *             {@link Message#createNode() message represented} by <code>asPointerNode</code>
+     * @since 0.26
+     */
+    public static long sendAsPointer(Node asPointerNode, TruffleObject receiver) throws UnsupportedMessageException {
+        try {
+            return (long) ((InteropAccessNode) asPointerNode).execute(receiver);
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw e;
+        } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError("Unexpected exception caught.", e);
+        }
+    }
+
+    /**
+     * Sends an {@link Message#TO_NATIVE TO_NATIVE message} to the foreign receiver object by
+     * executing the <code> toNativeNode </code>.
+     *
+     * @param toNativeNode the createNode created by {@link Message#createNode()}
+     * @param receiver foreign object to receive the message passed to {@link Message#createNode()}
+     *            method
+     * @return return value
+     * @throws ClassCastException if the createNode has not been created by
+     *             {@link Message#createNode()} method.
+     * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
+     *             {@link Message#createNode() message represented} by <code>toNativeNode</code>
+     * @since 0.26
+     */
+    public static Object sendToNative(Node toNativeNode, TruffleObject receiver) throws UnsupportedMessageException {
+        try {
+            return ((InteropAccessNode) toNativeNode).execute(receiver);
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw e;
+        } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError("Unexpected exception caught.", e);
+        }
+    }
+
+    /**
      * Sends an EXECUTE {@link Message} to the foreign receiver object by executing the
      * <code> executeNode </code>.
      *
@@ -687,7 +762,8 @@ public final class ForeignAccess {
             CompilerDirectives.transferToInterpreter();
             try {
                 TruffleObject keys = sendKeys(Message.KEYS.createNode(), receiver, true);
-                int size = (Integer) sendGetSize(Message.GET_SIZE.createNode(), keys);
+                Number sizeNumber = (Number) sendGetSize(Message.GET_SIZE.createNode(), keys);
+                int size = sizeNumber.intValue();
                 Node readNode = Message.READ.createNode();
                 for (int i = 0; i < size; i++) {
                     Object key = sendRead(readNode, keys, i);
@@ -697,6 +773,22 @@ public final class ForeignAccess {
                     }
                 }
             } catch (UnsupportedMessageException | UnknownIdentifierException uex) {
+            }
+            try {
+                boolean hasSize = sendHasSize(Message.HAS_SIZE.createNode(), receiver);
+                if (hasSize && identifier instanceof Number) {
+                    int id = ((Number) identifier).intValue();
+                    if (id < 0 || id != ((Number) identifier).doubleValue()) {
+                        // identifier is some wild double number
+                        return 0;
+                    }
+                    Number sizeNumber = (Number) sendGetSize(Message.GET_SIZE.createNode(), receiver);
+                    int size = sizeNumber.intValue();
+                    if (id < size) {
+                        return 0b111;
+                    }
+                }
+            } catch (UnsupportedMessageException uex) {
             }
             return 0;
         } catch (InteropException e) {
@@ -988,6 +1080,39 @@ public final class ForeignAccess {
         CallTarget accessKeyInfo();
 
         /**
+         * Handles {@link Message#IS_POINTER} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.26
+         */
+        default CallTarget accessIsPointer() {
+            return null;
+        }
+
+        /**
+         * Handles {@link Message#AS_POINTER} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.26
+         */
+        default CallTarget accessAsPointer() {
+            return null;
+        }
+
+        /**
+         * Handles {@link Message#TO_NATIVE} message.
+         *
+         * @return call target to handle the message or <code>null</code> if this message is not
+         *         supported
+         * @since 0.26
+         */
+        default CallTarget accessToNative() {
+            return null;
+        }
+
+        /**
          * Handles request for access to a message not known in version 0.18.
          *
          * @param unknown the message
@@ -1132,6 +1257,7 @@ public final class ForeignAccess {
          * @since 0.18
          */
         CallTarget accessMessage(Message unknown);
+
     }
 
     /**
@@ -1416,6 +1542,12 @@ public final class ForeignAccess {
                         return factory.accessKeys();
                     case KeyInfoMsg.HASH:
                         return factory.accessKeyInfo();
+                    case IsPointer.HASH:
+                        return factory.accessIsPointer();
+                    case AsPointer.HASH:
+                        return factory.accessAsPointer();
+                    case ToNative.HASH:
+                        return factory.accessToNative();
                 }
             }
             return factory.accessMessage(msg);

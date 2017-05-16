@@ -37,7 +37,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registratio
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.replacements.classfile.ClassfileBytecodeProvider;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.compiler.word.nodes.WordCastNode;
+import org.graalvm.compiler.word.WordCastNode;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;

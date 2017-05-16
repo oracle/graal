@@ -39,11 +39,10 @@ public final class LanguageInfo {
     private final String version;
     private final Set<String> mimeTypes;
     private final Object engineObject;
-    private final TruffleLanguage<?> spi;
+    volatile TruffleLanguage<?> spi;
 
-    LanguageInfo(Object engineObject, TruffleLanguage<?> language, String name, String version, Set<String> mimeTypes) {
+    LanguageInfo(Object engineObject, String name, String version, Set<String> mimeTypes) {
         this.engineObject = engineObject;
-        this.spi = language;
         this.name = name;
         this.version = version;
         this.mimeTypes = mimeTypes;
@@ -81,6 +80,10 @@ public final class LanguageInfo {
 
     Object getEngineObject() {
         return engineObject;
+    }
+
+    void setSpi(TruffleLanguage<?> spi) {
+        this.spi = spi;
     }
 
     TruffleLanguage<?> getSpi() {

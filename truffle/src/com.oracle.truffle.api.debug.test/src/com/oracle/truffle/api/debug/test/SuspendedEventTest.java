@@ -179,15 +179,11 @@ public class SuspendedEventTest extends AbstractDebugTest {
                 run(() -> event.toString());
 
                 run(() -> {
-                    event.prepareKill();
-                    return null;
-                });
-                run(() -> {
                     event.prepareStepInto(1);
                     return null;
                 });
                 run(() -> {
-                    event.prepareStepOut();
+                    event.prepareStepOut(1);
                     return null;
                 });
                 run(() -> {
@@ -196,6 +192,10 @@ public class SuspendedEventTest extends AbstractDebugTest {
                 });
                 run(() -> {
                     event.prepareContinue();
+                    return null;
+                });
+                run(() -> {
+                    event.prepareKill();
                     return null;
                 });
 
@@ -221,8 +221,8 @@ public class SuspendedEventTest extends AbstractDebugTest {
                     run(() -> frame.isInternal());
                     run(() -> frame.toString());
 
-                    runExpectIllegalState(() -> frame.getValue(""));
-                    runExpectIllegalState(() -> frame.iterator());
+                    runExpectIllegalState(() -> frame.getScope().getDeclaredValue(""));
+                    runExpectIllegalState(() -> frame.getScope().getDeclaredValues().iterator());
                     runExpectIllegalState(() -> frame.eval(""));
                 }
 

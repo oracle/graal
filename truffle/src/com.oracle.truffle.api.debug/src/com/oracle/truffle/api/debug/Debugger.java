@@ -77,10 +77,12 @@ public final class Debugger {
      */
     private final PolyglotEngine sourceVM;
     private final Env env;
+    private final ObjectStructures.MessageNodes msgNodes;
 
     Debugger(PolyglotEngine sourceVM, Env env) {
         this.env = env;
         this.sourceVM = sourceVM;
+        this.msgNodes = new ObjectStructures.MessageNodes();
     }
 
     /**
@@ -124,6 +126,10 @@ public final class Debugger {
 
     Instrumenter getInstrumenter() {
         return env.getInstrumenter();
+    }
+
+    ObjectStructures.MessageNodes getMessageNodes() {
+        return msgNodes;
     }
 
     static void trace(String message, Object... parameters) {

@@ -29,6 +29,7 @@ import static org.junit.Assert.fail;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.source.Source;
@@ -183,7 +184,7 @@ public class StepTest extends AbstractDebugTest {
             session.suspendNextExecution();
 
             expectSuspended((SuspendedEvent event) -> {
-                checkState(event, 4, true, "STATEMENT").prepareStepOut();
+                checkState(event, 4, true, "STATEMENT").prepareStepOut(1);
             });
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, 6, false, "CALL(foo)").prepareContinue();
@@ -241,7 +242,7 @@ public class StepTest extends AbstractDebugTest {
                 checkState(event, 5, true, "STATEMENT(CALL(foo))").prepareStepInto(1);
             });
             expectSuspended((SuspendedEvent event) -> {
-                checkState(event, 3, true, "STATEMENT(CALL(bar))").prepareStepOut();
+                checkState(event, 3, true, "STATEMENT(CALL(bar))").prepareStepOut(1);
             });
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, 5, false, "CALL(foo)").prepareStepOver(1);
@@ -253,13 +254,13 @@ public class StepTest extends AbstractDebugTest {
                 checkState(event, 3, true, "STATEMENT(CALL(bar))").prepareStepInto(1);
             });
             expectSuspended((SuspendedEvent event) -> {
-                checkState(event, 2, true, "STATEMENT").prepareStepOut();
+                checkState(event, 2, true, "STATEMENT").prepareStepOut(1);
             });
             expectSuspended((SuspendedEvent event) -> {
-                checkState(event, 3, false, "CALL(bar)").prepareStepOut();
+                checkState(event, 3, false, "CALL(bar)").prepareStepOut(1);
             });
             expectSuspended((SuspendedEvent event) -> {
-                checkState(event, 6, false, "CALL(foo)").prepareStepOut();
+                checkState(event, 6, false, "CALL(foo)").prepareStepOut(1);
             });
 
             expectDone();
@@ -312,4 +313,151 @@ public class StepTest extends AbstractDebugTest {
         }
     }
 
+    @Test
+    public void testMultipleActions() throws Throwable {
+        final Source source = testSource("ROOT(\n" +    // 1
+                        "  DEFINE(bar, STATEMENT),\n" +
+                        "  DEFINE(foo, ROOT(STATEMENT(CALL(bar)), \n" +
+                        "                   STATEMENT(CALL(loop)))),\n" +
+                        "  DEFINE(loop,\n" +            // 5
+                        "    LOOP(3,\n" +
+                        "      STATEMENT),\n" +
+                        "    STATEMENT\n" +
+                        "  ),\n" +
+                        "  STATEMENT(CALL(foo)),\n" +   // 10
+                        "  STATEMENT(CALL(foo)),\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT(CALL(loop)),\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" +               // 15
+                        "  STATEMENT(CALL(loop)),\n" +
+                        "  STATEMENT\n" +
+                        ")\n");
+
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            Breakpoint bp14 = Breakpoint.newBuilder(source).lineIs(14).build();
+            Breakpoint bp17 = Breakpoint.newBuilder(source).lineIs(17).build();
+            session.install(bp14);
+            session.install(bp17);
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 10, true, "STATEMENT(CALL(foo))").prepareStepInto(1).prepareStepInto(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 2, true, "STATEMENT").prepareStepOut(1).prepareStepInto(2).prepareStepOver(3);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 8, true, "STATEMENT").prepareStepOut(2).prepareStepInto(3);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 2, true, "STATEMENT").prepareStepOver(1).prepareStepInto(2);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 7, true, "STATEMENT").prepareStepOver(3);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 8, true, "STATEMENT").prepareStepOut(2).prepareStepOver(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 12, true, "STATEMENT").prepareStepOver(1).prepareContinue();
+            });
+            // Breakpoint is hit
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 14, true, "STATEMENT").prepareStepInto(5).prepareKill();
+            });
+            // Breakpoint on line 17 not hit because of the kill
+            expectKilled();
+            Assert.assertEquals(1, bp14.getHitCount());
+            Assert.assertEquals(0, bp17.getHitCount());
+        }
+    }
+
+    @Test
+    public void testNoPreparesAfterContinueOrKill() throws Throwable {
+        final Source source = testSource("ROOT(\n" +
+                        "  DEFINE(loop,\n" +
+                        "    LOOP(3,\n" +
+                        "      STATEMENT),\n" +
+                        "    STATEMENT\n" +
+                        "  ),\n" +
+                        "  STATEMENT(CALL(loop))\n" +
+                        ")\n");
+
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            Breakpoint bp5 = Breakpoint.newBuilder(source).lineIs(5).build();
+            session.install(bp5);
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 7, true, "STATEMENT(CALL(loop))").prepareContinue();
+                try {
+                    event.prepareStepInto(1);
+                    Assert.fail("IllegalStateException should have been thrown.");
+                } catch (IllegalStateException ex) {
+                    // expected
+                }
+                try {
+                    event.prepareStepOver(1);
+                    Assert.fail("IllegalStateException should have been thrown.");
+                } catch (IllegalStateException ex) {
+                    // expected
+                }
+                try {
+                    event.prepareStepOut(1);
+                    Assert.fail("IllegalStateException should have been thrown.");
+                } catch (IllegalStateException ex) {
+                    // expected
+                }
+                try {
+                    event.prepareContinue();
+                    Assert.fail("IllegalStateException should have been thrown.");
+                } catch (IllegalStateException ex) {
+                    // expected
+                }
+                try {
+                    event.prepareKill();
+                    Assert.fail("IllegalStateException should have been thrown.");
+                } catch (IllegalStateException ex) {
+                    // expected
+                }
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 5, true, "STATEMENT").prepareKill();
+                try {
+                    event.prepareStepInto(1);
+                    Assert.fail("IllegalStateException should have been thrown.");
+                } catch (IllegalStateException ex) {
+                    // expected
+                }
+                try {
+                    event.prepareStepOver(1);
+                    Assert.fail("IllegalStateException should have been thrown.");
+                } catch (IllegalStateException ex) {
+                    // expected
+                }
+                try {
+                    event.prepareStepOut(1);
+                    Assert.fail("IllegalStateException should have been thrown.");
+                } catch (IllegalStateException ex) {
+                    // expected
+                }
+                try {
+                    event.prepareContinue();
+                    Assert.fail("IllegalStateException should have been thrown.");
+                } catch (IllegalStateException ex) {
+                    // expected
+                }
+                try {
+                    event.prepareKill();
+                    Assert.fail("IllegalStateException should have been thrown.");
+                } catch (IllegalStateException ex) {
+                    // expected
+                }
+            });
+            expectKilled();
+        }
+    }
 }

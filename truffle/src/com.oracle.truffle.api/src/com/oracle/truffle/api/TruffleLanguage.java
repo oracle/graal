@@ -38,7 +38,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -710,7 +709,7 @@ public abstract class TruffleLanguage<C> {
      */
     public static final class Env {
 
-        private final Object vmObject;
+        private final Object vmObject; // PolyglotEngine.Language
         private final LanguageInfo language;
         private final TruffleLanguage<Object> spi;
         private final InputStream in;
@@ -871,6 +870,65 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Returns an additional service provided by this instrument, specified by type. If an
+         * instrument is not enabled, it will be enabled automatically by requesting a supported
+         * service. If the instrument does not provide a service for a given type it will not be
+         * enabled automatically.
+         *
+         * @param <S> the requested type
+         * @param instrument identification of the instrument to query
+         * @param type the class of the requested type
+         * @return the registered service or <code>null</code> if none is found
+         * @since 0.26
+         */
+        @SuppressWarnings("static-method")
+        public <S> S lookup(InstrumentInfo instrument, Class<S> type) {
+            return AccessAPI.engineAccess().lookup(instrument, type);
+        }
+
+        /**
+         * Returns an additional service provided by the given language, specified by type. If an
+         * language is not loaded, it will not be automatically loaded by requesting a service. In
+         * order to ensure a language to be loaded at least one {@link Source} must be
+         * {@link #parse(Source, String...) parsed} first.
+         *
+         * @param <S> the requested type
+         * @param language the language to query
+         * @param type the class of the requested type
+         * @return the registered service or <code>null</code> if none is found
+         * @since 0.26
+         */
+        public <S> S lookup(@SuppressWarnings("hiding") LanguageInfo language, Class<S> type) {
+            if (this.language == language) {
+                throw new IllegalArgumentException("Cannot request services from the current language.");
+            }
+            TruffleLanguage<?> otherSpi = AccessAPI.nodesAccess().getLanguageSpi(language);
+            return otherSpi.lookup(type);
+        }
+
+        /**
+         * Returns a map mime-type to language instance of all languages that are installed in the
+         * environment. Using the language instance additional services can be
+         * {@link #lookup(LanguageInfo, Class) looked up} .
+         *
+         * @since 0.26
+         */
+        public Map<String, LanguageInfo> getLanguages() {
+            return AccessAPI.engineAccess().getLanguages(vmObject);
+        }
+
+        /**
+         * Returns a map instrument-id to instrument instance of all instruments that are installed
+         * in the environment. Using the instrument instance additional services can be
+         * {@link #lookup(InstrumentInfo, Class) looked up} .
+         *
+         * @since 0.26
+         */
+        public Map<String, InstrumentInfo> getInstruments() {
+            return AccessAPI.engineAccess().getInstruments(vmObject);
+        }
+
+        /**
          * Configuration arguments for this language. Arguments set
          * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#config when constructing the
          * engine} are accessible via this map.
@@ -994,7 +1052,7 @@ public abstract class TruffleLanguage<C> {
 
     static final AccessAPI API = new AccessAPI();
 
-    private static final class AccessAPI extends Accessor {
+    static final class AccessAPI extends Accessor {
 
         static EngineSupport engineAccess() {
             return API.engineSupport();
@@ -1022,10 +1080,19 @@ public abstract class TruffleLanguage<C> {
     static final class LanguageImpl extends Accessor.LanguageSupport {
 
         @Override
-        public LanguageInfo initializeLanguage(Object vm, TruffleLanguage<?> language, boolean legacyLanguage, String name, String version, Set<String> mimeTypes) {
-            LanguageInfo info = AccessAPI.nodesAccess().createLanguageInfo(vm, language, name, version, mimeTypes);
-            language.initialize(info, legacyLanguage);
-            return info;
+        public InstrumentInfo createInstrument(Object vmObject, String id, String name, String version) {
+            return new InstrumentInfo(vmObject, id, name, version);
+        }
+
+        @Override
+        public Object getVMObject(InstrumentInfo info) {
+            return info.getVmObject();
+        }
+
+        @Override
+        public void initializeLanguage(LanguageInfo language, TruffleLanguage<?> impl, boolean legacyLanguage) {
+            AccessAPI.nodesAccess().setLanguageSpi(language, impl);
+            impl.initialize(language, legacyLanguage);
         }
 
         @Override
@@ -1245,9 +1312,9 @@ public abstract class TruffleLanguage<C> {
 
         @Override
         public <S> S lookup(LanguageInfo language, Class<S> type) {
-            TruffleLanguage<?> spi = AccessAPI.nodesAccess().getLanguageSpi(language);
-            return spi.lookup(type);
+            return TruffleLanguage.AccessAPI.nodesAccess().getLanguageSpi(language).lookup(type);
         }
+
     }
 }
 

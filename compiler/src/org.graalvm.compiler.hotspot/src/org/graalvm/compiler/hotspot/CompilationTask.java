@@ -30,23 +30,8 @@ import static org.graalvm.compiler.core.GraalCompilerOptions.PrintCompilation;
 import static org.graalvm.compiler.core.GraalCompilerOptions.PrintFilter;
 import static org.graalvm.compiler.core.GraalCompilerOptions.PrintStackTraceOnException;
 import static org.graalvm.compiler.core.phases.HighTier.Options.Inline;
-import static org.graalvm.compiler.debug.Debug.VERBOSE_LEVEL;
-import static org.graalvm.compiler.debug.DelegatingDebugConfig.Feature.DUMP_METHOD;
-import static org.graalvm.compiler.debug.DelegatingDebugConfig.Level.DUMP;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Dump;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.DumpPath;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.ForceDebugEnable;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintCFGFileName;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintGraphFileName;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 import org.graalvm.compiler.code.CompilationResult;
@@ -54,9 +39,7 @@ import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugCounter;
-import org.graalvm.compiler.debug.DebugDumpHandler;
 import org.graalvm.compiler.debug.DebugDumpScope;
-import org.graalvm.compiler.debug.DebugRetryableTask;
 import org.graalvm.compiler.debug.DebugTimer;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Management;
@@ -64,7 +47,6 @@ import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.TimeSource;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.printer.GraalDebugConfigCustomizer;
 import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.BailoutException;
@@ -79,8 +61,6 @@ import jdk.vm.ci.hotspot.HotSpotNmethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCICompiler;
 import jdk.vm.ci.services.JVMCIServiceLocator;
-
-//JaCoCo Exclude
 
 public class CompilationTask {
 
@@ -115,12 +95,18 @@ public class CompilationTask {
     private final boolean useProfilingInfo;
     private final OptionValues options;
 
-    final class RetryableCompilation extends DebugRetryableTask<HotSpotCompilationRequestResult> {
+    final class RetryableCompilation extends HotSpotRetryableCompilation<HotSpotCompilationRequestResult> {
         private final EventProvider.CompilationEvent compilationEvent;
         CompilationResult result;
 
         RetryableCompilation(EventProvider.CompilationEvent compilationEvent) {
+            super(compiler.getGraalRuntime(), options);
             this.compilationEvent = compilationEvent;
+        }
+
+        @Override
+        public String toString() {
+            return getMethod().format("%H.%n");
         }
 
         @SuppressWarnings("try")
@@ -190,86 +176,6 @@ public class CompilationTask {
                 return HotSpotCompilationRequestResult.success(result.getBytecodeSize() - method.getCodeSize());
             }
             return null;
-        }
-
-        @Override
-        protected boolean onRetry(Throwable t) {
-            if (t instanceof BailoutException) {
-                return false;
-            }
-
-            if (!Debug.isEnabled()) {
-                TTY.printf("Error while processing %s due to %s.%nRe-run with -D%s%s=true to capture graph dumps upon a compilation failure.%n", CompilationTask.this,
-                                t, HotSpotGraalOptionValues.GRAAL_OPTION_PROPERTY_PREFIX, ForceDebugEnable.getName());
-                return false;
-            }
-
-            if (Dump.hasBeenSet(options)) {
-                // If dumping is explicitly enabled, Graal is being debugged
-                // so don't interfere with what the user is expecting to see.
-                return false;
-            }
-
-            String outputDirectory = compiler.getGraalRuntime().getOutputDirectory();
-            if (outputDirectory == null) {
-                return false;
-            }
-            String methodFQN = getMethod().format("%H.%n");
-            File dumpPath = new File(outputDirectory, methodFQN);
-            dumpPath.mkdirs();
-            if (!dumpPath.exists()) {
-                TTY.println("Warning: could not create dump directory " + dumpPath);
-                return false;
-            }
-
-            TTY.println("Retrying " + CompilationTask.this + " due to " + t);
-            retryLogPath = new File(dumpPath, "retry.log").getPath();
-            log("Exception causing retry", t);
-            retryDumpHandlers = new ArrayList<>();
-            retryOptions = new OptionValues(options,
-                            PrintCFGFileName, methodFQN,
-                            PrintGraphFileName, methodFQN,
-                            DumpPath, dumpPath.getPath());
-            override(DUMP, VERBOSE_LEVEL).enable(DUMP_METHOD);
-            new GraalDebugConfigCustomizer().customize(this);
-            return true;
-        }
-
-        private Collection<DebugDumpHandler> retryDumpHandlers;
-        private OptionValues retryOptions;
-        private String retryLogPath;
-
-        /**
-         * Prints a message to a retry log file.
-         *
-         * @param message the message to print
-         * @param t if non-{@code null}, the stack trace for this exception is written to the retry
-         *            log after {@code message}
-         */
-        private void log(String message, Throwable t) {
-            if (retryLogPath != null) {
-                try (PrintStream retryLog = new PrintStream(new FileOutputStream(retryLogPath), true)) {
-                    StringBuilder buf = new StringBuilder(Thread.currentThread() + ": " + message);
-                    if (t != null) {
-                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                        t.printStackTrace(new PrintStream(baos));
-                        buf.append(System.lineSeparator()).append(baos.toString());
-                    }
-                    retryLog.println(buf);
-                } catch (FileNotFoundException e) {
-                    TTY.println("Warning: could not open retry log file " + retryLogPath + " [" + e + "]");
-                }
-            }
-        }
-
-        @Override
-        public Collection<DebugDumpHandler> dumpHandlers() {
-            return retryDumpHandlers;
-        }
-
-        @Override
-        public OptionValues getOptions() {
-            return retryOptions;
         }
     }
 

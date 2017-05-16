@@ -203,6 +203,7 @@ final class LibFFIClosure {
                 Object unboxed = ForeignAccess.sendUnbox(unbox, str);
                 return recursive.execute(unboxed);
             } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
                 throw UnsupportedTypeException.raise(ex, new Object[]{str});
             }
         }

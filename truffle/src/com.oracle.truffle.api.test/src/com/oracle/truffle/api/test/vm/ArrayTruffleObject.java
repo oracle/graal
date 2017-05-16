@@ -185,4 +185,16 @@ final class ArrayTruffleObject implements TruffleObject, ForeignAccess.Factory26
             return new ArrayTruffleObject(values);
         }
     }
+
+    public CallTarget accessIsPointer() {
+        return target(RootNode.createConstantNode(Boolean.FALSE));
+    }
+
+    public CallTarget accessAsPointer() {
+        return null;
+    }
+
+    public CallTarget accessToNative() {
+        return null;
+    }
 }

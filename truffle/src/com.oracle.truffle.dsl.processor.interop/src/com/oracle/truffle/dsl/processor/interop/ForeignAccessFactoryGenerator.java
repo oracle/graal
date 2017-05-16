@@ -96,6 +96,9 @@ public final class ForeignAccessFactoryGenerator {
         appendFactoryAccessNew(w);
         appendFactoryAccessKeyInfo(w);
         appendFactoryAccessKeys(w);
+        appendFactoryAccessIsPointer(w);
+        appendFactoryAccessAsPointer(w);
+        appendFactoryAccessToNative(w);
         appendFactoryAccessMessage(w);
 
         w.append("}\n");
@@ -220,6 +223,27 @@ public final class ForeignAccessFactoryGenerator {
         w.append("    }").append("\n");
     }
 
+    private void appendFactoryAccessIsPointer(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
+        w.append("    public CallTarget accessIsPointer() {").append("\n");
+        appendOptionalDefaultHandlerBody(w, Message.IS_POINTER);
+        w.append("    }").append("\n");
+    }
+
+    private void appendFactoryAccessAsPointer(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
+        w.append("    public CallTarget accessAsPointer() {").append("\n");
+        appendOptionalHandlerBody(w, Message.AS_POINTER);
+        w.append("    }").append("\n");
+    }
+
+    private void appendFactoryAccessToNative(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
+        w.append("    public CallTarget accessToNative() {").append("\n");
+        appendOptionalHandlerBody(w, Message.TO_NATIVE);
+        w.append("    }").append("\n");
+    }
+
     private void appendFactoryAccessUnbox(Writer w) throws IOException {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessUnbox() {").append("\n");
@@ -276,7 +300,7 @@ public final class ForeignAccessFactoryGenerator {
         for (Object m : messageHandlers.keySet()) {
             if (!InteropDSLProcessor.KNOWN_MESSAGES.contains(m)) {
                 String msg = m instanceof Message ? Message.toString((Message) m) : (String) m;
-                w.append("      if (unknown instanceof ").append(msg).append(") {").append("\n");
+                w.append("      if (unknown != null && unknown.getClass().getName().equals(\"").append(msg).append("\")) {").append("\n");
                 w.append("        return Truffle.getRuntime().createCallTarget(").append(messageHandlers.get(m)).append(");").append("\n");
                 w.append("      }").append("\n");
             }

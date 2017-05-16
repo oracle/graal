@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -74,13 +75,15 @@ public final class PolyglotRuntime {
     final InputStream in;
     volatile boolean disposed;
     final boolean automaticDispose;
+    final Map<String, InstrumentInfo> instrumentInfos;
+    final Map<String, LanguageInfo> languageInfos;
 
     private PolyglotRuntime() {
         this(null, null, null, false);
     }
 
     PolyglotRuntime(DispatchOutputStream out, DispatchOutputStream err, InputStream in, boolean automaticDispose) {
-        this.instrumentationHandler = PolyglotEngine.Access.INSTRUMENT.createInstrumentationHandler(this, out, err, in);
+        this.instrumentationHandler = PolyglotEngine.SPIAccessor.instrumentAccess().createInstrumentationHandler(this, out, err, in);
         /*
          * TODO the engine profile needs to be shared between all engines that potentially share
          * code. Currently this is stored statically to be compatible with the legacy deprecated API
@@ -94,13 +97,25 @@ public final class PolyglotRuntime {
         List<LanguageCache> convertedLanguages = new ArrayList<>(new HashSet<>(LanguageCache.languages().values()));
         Collections.sort(convertedLanguages);
 
+        Map<String, LanguageInfo> langInfos = new LinkedHashMap<>();
+        Map<String, InstrumentInfo> instInfos = new LinkedHashMap<>();
+
         int languageIndex = 0;
         for (LanguageCache languageCache : convertedLanguages) {
-            languageList.add(new LanguageShared(this, languageCache, languageIndex++));
+            LanguageShared lang = new LanguageShared(this, languageCache, languageIndex++);
+            languageList.add(lang);
+            for (String mimeType : lang.language.getMimeTypes()) {
+                langInfos.put(mimeType, lang.language);
+            }
         }
         this.automaticDispose = automaticDispose;
         this.languages = languageList;
         this.instruments = createInstruments(InstrumentCache.load());
+        for (Instrument instrument : instruments.values()) {
+            instInfos.put(instrument.getId(), PolyglotEngine.Access.LANGS.createInstrument(instrument, instrument.getId(), instrument.getName(), instrument.getVersion()));
+        }
+        this.languageInfos = Collections.unmodifiableMap(langInfos);
+        this.instrumentInfos = Collections.unmodifiableMap(instInfos);
 
         this.out = out;
         this.err = err;
@@ -191,7 +206,9 @@ public final class PolyglotRuntime {
         final PolyglotRuntime runtime;
         final PolyglotEngineProfile engineProfile;
         final int languageId;
-        volatile LanguageInfo language;
+        final LanguageInfo language;
+
+        volatile boolean initialized;
 
         LanguageShared(PolyglotRuntime engineShared, LanguageCache cache, int languageId) {
             this.runtime = engineShared;
@@ -199,6 +216,7 @@ public final class PolyglotRuntime {
             assert engineProfile != null;
             this.cache = cache;
             this.languageId = languageId;
+            this.language = Access.NODES.createLanguage(this, cache.getName(), cache.getVersion(), cache.getMimeTypes());
         }
 
         Language currentLanguage() {
@@ -224,12 +242,13 @@ public final class PolyglotRuntime {
             return runtime;
         }
 
-        LanguageInfo getLanguage() {
-            if (language == null) {
+        LanguageInfo getLanguageEnsureInitialized() {
+            if (!initialized) {
                 synchronized (this) {
-                    if (language == null) {
+                    if (!initialized) {
+                        initialized = true;
                         LoadedLanguage loadedLanguage = cache.loadLanguage();
-                        this.language = Access.LANGS.initializeLanguage(this, loadedLanguage.getLanguage(), loadedLanguage.isSingleton(), cache.getName(), cache.getVersion(), cache.getMimeTypes());
+                        Access.LANGS.initializeLanguage(language, loadedLanguage.getLanguage(), loadedLanguage.isSingleton());
                     }
                 }
             }
@@ -330,12 +349,12 @@ public final class PolyglotRuntime {
      */
     public class Instrument {
 
-        private final InstrumentCache info;
+        private final InstrumentCache cache;
         private final Object instrumentLock = new Object();
         private volatile boolean enabled;
 
         Instrument(InstrumentCache cache) {
-            this.info = cache;
+            this.cache = cache;
         }
 
         /**
@@ -345,7 +364,7 @@ public final class PolyglotRuntime {
          * @since 0.9
          */
         public String getId() {
-            return info.getId();
+            return cache.getId();
         }
 
         /**
@@ -355,7 +374,7 @@ public final class PolyglotRuntime {
          * @since 0.9
          */
         public String getName() {
-            return info.getName();
+            return cache.getName();
         }
 
         /**
@@ -365,11 +384,15 @@ public final class PolyglotRuntime {
          * @since 0.9
          */
         public String getVersion() {
-            return info.getVersion();
+            return cache.getVersion();
         }
 
         InstrumentCache getCache() {
-            return info;
+            return cache;
+        }
+
+        PolyglotRuntime getRuntime() {
+            return PolyglotRuntime.this;
         }
 
         /**
@@ -398,8 +421,7 @@ public final class PolyglotRuntime {
             if (PolyglotRuntime.this.disposed) {
                 return null;
             }
-
-            if (!isEnabled() && info.supportsService(type)) {
+            if (!isEnabled() && cache.supportsService(type)) {
                 setEnabled(true);
             }
             return PolyglotEngine.Access.INSTRUMENT.getInstrumentationHandlerService(PolyglotRuntime.this.instrumentationHandler, this, type);
@@ -422,7 +444,7 @@ public final class PolyglotRuntime {
                         if (PolyglotRuntime.this.disposed) {
                             return;
                         }
-                        PolyglotEngine.Access.INSTRUMENT.addInstrument(PolyglotRuntime.this.instrumentationHandler, this, getCache().getInstrumentationClass(), info.services());
+                        PolyglotEngine.Access.INSTRUMENT.addInstrument(PolyglotRuntime.this.instrumentationHandler, this, getCache().getInstrumentationClass(), cache.services());
                     } else {
                         PolyglotEngine.Access.INSTRUMENT.disposeInstrument(PolyglotRuntime.this.instrumentationHandler, this, cleanup);
                     }
