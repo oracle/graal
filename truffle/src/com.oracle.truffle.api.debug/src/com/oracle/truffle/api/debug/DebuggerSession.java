@@ -169,6 +169,7 @@ public final class DebuggerSession implements Closeable {
     private volatile boolean suspendNext;
     private boolean suspendAll;
     private final StableBoolean stepping = new StableBoolean(false);
+    private final StableBoolean ignoreLanguageContextInitialization = new StableBoolean(false);
     private final StableBoolean breakpointsActive = new StableBoolean(true);
 
     private final int sessionId;
@@ -211,6 +212,15 @@ public final class DebuggerSession implements Closeable {
      */
     public Debugger getDebugger() {
         return debugger;
+    }
+
+    /**
+     * Set a stepping suspension filter. Prepared steps skip code that match this filter.
+     *
+     * @since 0.26
+     */
+    public void setSteppingFilter(SuspensionFilter steppingFilter) {
+        this.ignoreLanguageContextInitialization.set(steppingFilter.isIgnoreLanguageContextInitialization());
     }
 
     /**
@@ -491,6 +501,10 @@ public final class DebuggerSession implements Closeable {
 
     @TruffleBoundary
     void notifyCallback(DebuggerNode source, MaterializedFrame frame, Object returnValue, BreakpointConditionFailure conditionFailure) {
+        // SuspensionFilter:
+        if (source.isStepNode() && ignoreLanguageContextInitialization.get() && !source.getContext().isLanguageContextInitialized()) {
+            return;
+        }
         Thread currentThread = Thread.currentThread();
         SuspendedEvent event = currentSuspendedEventMap.get(currentThread);
         if (event != null) {
@@ -729,6 +743,11 @@ public final class DebuggerSession implements Closeable {
         }
 
         @Override
+        boolean isStepNode() {
+            return true;
+        }
+
+        @Override
         protected void onEnter(VirtualFrame frame) {
             if (stepping.get()) {
                 notifyCallback(this, frame.materialize(), null, null);
@@ -750,6 +769,11 @@ public final class DebuggerSession implements Closeable {
         @Override
         EventBinding<?> getBinding() {
             return callBinding;
+        }
+
+        @Override
+        boolean isStepNode() {
+            return true;
         }
 
         @Override
