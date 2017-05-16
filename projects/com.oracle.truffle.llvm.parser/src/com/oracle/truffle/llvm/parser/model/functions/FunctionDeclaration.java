@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.model.functions;
 
+import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
+import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
 import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -39,14 +41,20 @@ public final class FunctionDeclaration implements Constant, ValueSymbol {
 
     private final FunctionType type;
     private String name;
+    private final AttributesCodeEntry paramAttr;
 
-    public FunctionDeclaration(FunctionType type, String name) {
+    public FunctionDeclaration(FunctionType type, String name, AttributesCodeEntry paramAttr) {
         this.type = type;
         this.name = name;
+        this.paramAttr = paramAttr;
+    }
+
+    public FunctionDeclaration(FunctionType type, AttributesCodeEntry paramAttr) {
+        this(type, LLVMIdentifier.UNKNOWN, paramAttr);
     }
 
     public FunctionDeclaration(FunctionType type) {
-        this(type, LLVMIdentifier.UNKNOWN);
+        this(type, LLVMIdentifier.UNKNOWN, AttributesCodeEntry.EMPTY);
     }
 
     @Override
@@ -66,12 +74,24 @@ public final class FunctionDeclaration implements Constant, ValueSymbol {
 
     @Override
     public String toString() {
-        return "FunctionDeclaration [name=" + getName() + ", types=" + type.toString() + "]";
+        return "FunctionDeclaration [type=" + type + ", name=" + name + ", paramattr=" + paramAttr + "]";
     }
 
     @Override
     public FunctionType getType() {
         return type;
+    }
+
+    public AttributesGroup getFunctionAttributesGroup() {
+        return paramAttr.getFunctionAttributesGroup();
+    }
+
+    public AttributesGroup getReturnAttributesGroup() {
+        return paramAttr.getReturnAttributesGroup();
+    }
+
+    public AttributesGroup getParameterAttributesGroup(int idx) {
+        return paramAttr.getParameterAttributesGroup(idx);
     }
 
     @Override

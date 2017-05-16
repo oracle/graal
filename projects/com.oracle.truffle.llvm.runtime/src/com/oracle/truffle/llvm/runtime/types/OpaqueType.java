@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,50 +27,71 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.functions;
+package com.oracle.truffle.llvm.runtime.types;
 
-import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import java.util.Objects;
+
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
-import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
+import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
-public final class FunctionParameter implements ValueSymbol {
-
-    private final Type type;
-
-    private final int index;
+public class OpaqueType extends Type {
 
     private String name = LLVMIdentifier.UNKNOWN;
 
-    private final AttributesGroup parameterAttribute;
-
-    FunctionParameter(Type type, int index, AttributesGroup parameterAttribute) {
-        this.type = type;
-        this.index = index;
-        this.parameterAttribute = parameterAttribute;
+    public OpaqueType() {
     }
 
-    @Override
     public String getName() {
         return name;
     }
 
-    @Override
     public void setName(String name) {
         this.name = LLVMIdentifier.toLocalIdentifier(name);
     }
 
     @Override
-    public Type getType() {
-        return type;
+    public int getBitSize() {
+        return 0;
     }
 
-    public AttributesGroup getParameterAttribute() {
-        return parameterAttribute;
+    @Override
+    public void accept(TypeVisitor visitor) {
+        visitor.visit(this);
+    }
+
+    @Override
+    public int getAlignment(DataSpecConverter targetDataLayout) {
+        return Long.BYTES;
+    }
+
+    @Override
+    public int getSize(DataSpecConverter targetDataLayout) {
+        return 0;
     }
 
     @Override
     public String toString() {
-        return "FunctionParameter [type=" + type + ", index=" + index + ", name=" + name + "]";
+        if (name.equals(LLVMIdentifier.UNKNOWN)) {
+            return "opaque";
+        } else {
+            return name;
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((name == null) ? 0 : name.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof OpaqueType) {
+            OpaqueType other = (OpaqueType) obj;
+            return Objects.equals(name, other.name);
+        }
+        return false;
     }
 }

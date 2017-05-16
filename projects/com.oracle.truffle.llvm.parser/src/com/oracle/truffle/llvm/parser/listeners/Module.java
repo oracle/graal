@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.parser.listeners;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.enums.Visibility;
 import com.oracle.truffle.llvm.parser.model.generators.FunctionGenerator;
 import com.oracle.truffle.llvm.parser.model.generators.ModuleGenerator;
@@ -50,6 +51,8 @@ public final class Module implements ParserListener {
 
     private final ModuleGenerator generator;
 
+    private final ParameterAttributes paramAttributes = new ParameterAttributes();
+
     private int mode = 1;
 
     protected final Types types;
@@ -67,6 +70,7 @@ public final class Module implements ParserListener {
 
     private static final int FUNCTION_TYPE = 0;
     private static final int FUNCTION_ISPROTOTYPE = 2;
+    private static final int FUNCTION_PARAMATTR = 4;
 
     private void createFunction(long[] args) {
         Type type = types.get(args[FUNCTION_TYPE]);
@@ -77,7 +81,9 @@ public final class Module implements ParserListener {
         final FunctionType functionType = (FunctionType) type;
         final boolean isPrototype = args[FUNCTION_ISPROTOTYPE] != 0;
 
-        generator.createFunction(functionType, isPrototype);
+        final AttributesCodeEntry paramAttr = paramAttributes.getCodeEntry(args[FUNCTION_PARAMATTR]);
+
+        generator.createFunction(functionType, isPrototype, paramAttr);
         symbols.add(functionType);
         if (!isPrototype) {
             functions.add(functionType);
@@ -148,6 +154,12 @@ public final class Module implements ParserListener {
         switch (block) {
             case MODULE:
                 return this; // Entering from root
+
+            case PARAMATTR:
+                return paramAttributes;
+
+            case PARAMATTR_GROUP:
+                return paramAttributes;
 
             case CONSTANTS:
                 return new Constants(types, symbols, generator);

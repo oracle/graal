@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,50 +27,51 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.functions;
+package com.oracle.truffle.llvm.parser.model.attributes;
 
-import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
-import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
-import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
+import java.util.Optional;
 
-public final class FunctionParameter implements ValueSymbol {
+import com.oracle.truffle.llvm.parser.records.ParameterAttributeGroupRecord;
 
-    private final Type type;
+public final class KnownAttribute implements Attribute {
 
-    private final int index;
+    private final ParameterAttributeGroupRecord attr;
+    private final Optional<Long> value;
 
-    private String name = LLVMIdentifier.UNKNOWN;
-
-    private final AttributesGroup parameterAttribute;
-
-    FunctionParameter(Type type, int index, AttributesGroup parameterAttribute) {
-        this.type = type;
-        this.index = index;
-        this.parameterAttribute = parameterAttribute;
+    public KnownAttribute(ParameterAttributeGroupRecord attr, long value) {
+        this.attr = attr;
+        this.value = Optional.of(value);
     }
 
-    @Override
-    public String getName() {
-        return name;
+    public KnownAttribute(ParameterAttributeGroupRecord attr) {
+        this.attr = attr;
+        this.value = Optional.empty();
     }
 
-    @Override
-    public void setName(String name) {
-        this.name = LLVMIdentifier.toLocalIdentifier(name);
+    public ParameterAttributeGroupRecord getAttr() {
+        return attr;
     }
 
-    @Override
-    public Type getType() {
-        return type;
-    }
-
-    public AttributesGroup getParameterAttribute() {
-        return parameterAttribute;
+    public Optional<Long> getValue() {
+        return value;
     }
 
     @Override
     public String toString() {
-        return "FunctionParameter [type=" + type + ", index=" + index + ", name=" + name + "]";
+        return "KnownAttribute [attr=" + attr + ", value=" + value + "]";
     }
+
+    @Override
+    public String getIrString() {
+        if (value.isPresent()) {
+            if (attr == ParameterAttributeGroupRecord.ALIGN) {
+                return String.format("%s %d", attr.getIrString(), value.get());
+            } else {
+                return String.format("%s(%d)", attr.getIrString(), value.get());
+            }
+        } else {
+            return attr.getIrString();
+        }
+    }
+
 }

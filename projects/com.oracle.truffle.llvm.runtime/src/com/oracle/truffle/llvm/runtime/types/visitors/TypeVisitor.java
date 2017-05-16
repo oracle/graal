@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.types.visitors;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
+import com.oracle.truffle.llvm.runtime.types.OpaqueType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
@@ -58,5 +59,7 @@ public interface TypeVisitor {
     void visit(VariableBitWidthType vectorType);
 
     void visit(VoidType vectorType);
+
+    void visit(OpaqueType opaqueType);
 
 }

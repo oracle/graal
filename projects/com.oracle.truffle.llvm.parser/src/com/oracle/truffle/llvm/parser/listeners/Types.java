@@ -40,6 +40,7 @@ import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
+import com.oracle.truffle.llvm.runtime.types.OpaqueType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
@@ -102,7 +103,15 @@ public final class Types implements ParserListener, Iterable<Type> {
                 break;
 
             case OPAQUE:
-                type = MetaType.OPAQUE;
+                OpaqueType opaque = new OpaqueType();
+                if (table[size] != null) {
+                    if (table[size] instanceof UnresolvedNamedPointeeType) {
+                        opaque.setName(((UnresolvedNamedPointeeType) table[size]).getName());
+                    } else {
+                        opaque.setName(((UnresolvedNamedType) table[size]).getName());
+                    }
+                }
+                type = opaque;
                 break;
 
             case INTEGER:
@@ -186,7 +195,7 @@ public final class Types implements ParserListener, Iterable<Type> {
                 break;
             }
             case FUNCTION:
-                type = new FunctionType(get(args[1]), toTypes(this, args, 2, args.length), false);
+                type = new FunctionType(get(args[1]), toTypes(this, args, 2, args.length), args[0] != 0);
                 break;
 
             case TOKEN:

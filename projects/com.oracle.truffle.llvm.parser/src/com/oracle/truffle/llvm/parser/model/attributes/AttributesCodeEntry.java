@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,50 +27,54 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.functions;
+package com.oracle.truffle.llvm.parser.model.attributes;
 
-import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
-import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
-import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
+import java.util.Collections;
+import java.util.List;
 
-public final class FunctionParameter implements ValueSymbol {
+public class AttributesCodeEntry {
 
-    private final Type type;
+    public static final AttributesCodeEntry EMPTY = new AttributesCodeEntry(Collections.<AttributesGroup> emptyList());
 
-    private final int index;
+    private final List<AttributesGroup> codeEntry;
 
-    private String name = LLVMIdentifier.UNKNOWN;
-
-    private final AttributesGroup parameterAttribute;
-
-    FunctionParameter(Type type, int index, AttributesGroup parameterAttribute) {
-        this.type = type;
-        this.index = index;
-        this.parameterAttribute = parameterAttribute;
+    public AttributesCodeEntry(List<AttributesGroup> codeEntry) {
+        this.codeEntry = codeEntry;
     }
 
-    @Override
-    public String getName() {
-        return name;
+    public AttributesGroup getFunctionAttributesGroup() {
+        for (AttributesGroup entry : codeEntry) {
+            if (entry.isFunctionAttribute()) {
+                return entry;
+            }
+        }
+        return null;
     }
 
-    @Override
-    public void setName(String name) {
-        this.name = LLVMIdentifier.toLocalIdentifier(name);
+    public AttributesGroup getReturnAttributesGroup() {
+        for (AttributesGroup entry : codeEntry) {
+            if (entry.isReturnValueAttribute()) {
+                return entry;
+            }
+        }
+        return null;
     }
 
-    @Override
-    public Type getType() {
-        return type;
-    }
-
-    public AttributesGroup getParameterAttribute() {
-        return parameterAttribute;
+    public AttributesGroup getParameterAttributesGroup(int idx) {
+        /*
+         * parameter index enumeration is starting with 1 in the code entry, which means we need to
+         * increment index by one to find the correct attribution.
+         */
+        for (AttributesGroup entry : codeEntry) {
+            if (entry.isParameterAttribute() && entry.getParamIdx() == idx + 1) {
+                return entry;
+            }
+        }
+        return null;
     }
 
     @Override
     public String toString() {
-        return "FunctionParameter [type=" + type + ", index=" + index + ", name=" + name + "]";
+        return "AttributesCodeEntry [codeEntry=" + codeEntry + "]";
     }
 }
