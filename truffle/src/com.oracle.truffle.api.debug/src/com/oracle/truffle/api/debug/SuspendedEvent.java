@@ -232,6 +232,16 @@ public final class SuspendedEvent {
     }
 
     /**
+     * Test if the language context of the source of the event is initialized.
+     *
+     * @since 0.26
+     */
+    public boolean isLanguageContextInitialized() {
+        verifyValidState(true);
+        return context.isLanguageContextInitialized();
+    }
+
+    /**
      * Returns the return value of the currently executed source location. Returns <code>null</code>
      * if the execution is suspended {@link #isHaltedBefore() before} a guest language location. The
      * returned value is <code>null</code> if an exception occurred during execution of the

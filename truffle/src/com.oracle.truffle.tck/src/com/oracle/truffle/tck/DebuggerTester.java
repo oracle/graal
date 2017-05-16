@@ -38,6 +38,7 @@ import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import java.util.function.Function;
 
 /**
  * Test utility class that makes it easier to test and debug debugger functionality for guest
@@ -87,12 +88,25 @@ public final class DebuggerTester implements AutoCloseable {
      * @since 0.16
      */
     public DebuggerTester() {
+        this(null);
+    }
+
+    /**
+     * Constructs a new debugger tester instance. Boots up a new {@link PolyglotEngine engine} on
+     * Thread in the background. The tester instance needs to be {@link #close() closed} after use.
+     * Throws an AssertionError if the engine initialization fails.
+     *
+     * @param engineBuilderDecorator a decorator function that allows to customize the engine
+     *            builder
+     * @since 0.26
+     */
+    public DebuggerTester(Function<PolyglotEngine.Builder, PolyglotEngine.Builder> engineBuilderDecorator) {
         this.newEvent = new ArrayBlockingQueue<>(1);
         this.executing = new Semaphore(0);
         this.initialized = new Semaphore(0);
         final AtomicReference<PolyglotEngine> engineRef = new AtomicReference<>();
         final AtomicReference<Throwable> error = new AtomicReference<>();
-        this.executingLoop = new ExecutingLoop(engineRef, error);
+        this.executingLoop = new ExecutingLoop(engineRef, engineBuilderDecorator, error);
         this.evalThread = new Thread(executingLoop);
         this.evalThread.start();
         try {
@@ -383,10 +397,12 @@ public final class DebuggerTester implements AutoCloseable {
     class ExecutingLoop implements Runnable {
 
         private final AtomicReference<PolyglotEngine> engineRef;
+        private final Function<PolyglotEngine.Builder, PolyglotEngine.Builder> engineBuilderDecorator;
         private final AtomicReference<Throwable> error;
 
-        ExecutingLoop(AtomicReference<PolyglotEngine> engineRef, AtomicReference<Throwable> error) {
+        ExecutingLoop(AtomicReference<PolyglotEngine> engineRef, Function<PolyglotEngine.Builder, PolyglotEngine.Builder> engineBuilderDecorator, AtomicReference<Throwable> error) {
             this.engineRef = engineRef;
+            this.engineBuilderDecorator = engineBuilderDecorator;
             this.error = error;
         }
 
@@ -394,7 +410,11 @@ public final class DebuggerTester implements AutoCloseable {
         public void run() {
             PolyglotEngine localEngine;
             try {
-                localEngine = PolyglotEngine.newBuilder().setOut(out).setErr(err).build();
+                PolyglotEngine.Builder builder = PolyglotEngine.newBuilder().setOut(out).setErr(err);
+                if (engineBuilderDecorator != null) {
+                    builder = engineBuilderDecorator.apply(builder);
+                }
+                localEngine = builder.build();
                 engineRef.set(localEngine);
             } catch (Throwable t) {
                 error.set(t);
