@@ -48,6 +48,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import org.junit.Ignore;
 import org.junit.Test;
 
 // Checkstyle: stop line length check
@@ -219,86 +220,103 @@ public class TestMemberAccess {
         assertTrue("More than " + count + " real internals: " + foundInternalKeys, foundInternalKeys.size() >= count);
     }
 
+    @Ignore
     @Test
     public void testOverloaded1() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals("boolean", getValueFromMember("isOverloaded", true));
     }
 
+    @Ignore
     @Test
     public void testOverloaded2() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals(Boolean.class.getName(), getValueFromMember(TestClass2.class, "isOverloaded", Boolean.TRUE));
     }
 
+    @Ignore
     @Test
     public void testOverloaded3() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals("byte", getValueFromMember(TestClass2.class, "isOverloaded", Byte.MAX_VALUE));
     }
 
+    @Ignore
     @Test
     public void testOverloaded4() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals(Byte.class.getName(), getValueFromMember("isOverloaded", new Byte(Byte.MAX_VALUE)));
     }
 
+    @Ignore
     @Test
     public void testOverloaded5() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals("char", getValueFromMember("isOverloaded", 'a'));
     }
 
+    @Ignore
     @Test
     public void testOverloaded6() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals(Character.class.getName(), getValueFromMember(TestClass2.class, "isOverloaded", new Character('a')));
     }
 
+    @Ignore
     @Test
     public void testOverloaded7() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals("float", getValueFromMember(TestClass2.class, "isOverloaded", Float.MAX_VALUE));
     }
 
+    @Ignore
     @Test
     public void testOverloaded8() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals(Float.class.getName(), getValueFromMember("isOverloaded", new Float(Float.MAX_VALUE)));
     }
 
+    @Ignore
     @Test
     public void testOverloaded9() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals("double", getValueFromMember(TestClass2.class, "isOverloaded", Double.MAX_VALUE));
     }
 
+    @Ignore
     @Test
     public void testOverloaded10() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals(Double.class.getName(), getValueFromMember("isOverloaded", new Double(Double.MAX_VALUE)));
     }
 
+    @Ignore
     @Test
     public void testOverloaded11() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals("int", getValueFromMember("isOverloaded", Integer.MAX_VALUE));
     }
 
+    @Ignore
     @Test
     public void testOverloaded12() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals(Integer.class.getName(), getValueFromMember(TestClass2.class, "isOverloaded", new Integer(Integer.MAX_VALUE)));
     }
 
+    @Ignore
     @Test
     public void testOverloaded13() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals("long", getValueFromMember("isOverloaded", Long.MAX_VALUE));
     }
 
+    @Ignore
     @Test
     public void testOverloaded14() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals(Long.class.getName(), getValueFromMember(TestClass2.class, "isOverloaded", new Long(Long.MAX_VALUE)));
     }
 
+    @Ignore
     @Test
     public void testOverloaded15() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals("short", getValueFromMember(TestClass2.class, "isOverloaded", Short.MAX_VALUE));
     }
 
+    @Ignore
     @Test
     public void testOverloaded16() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals(Short.class.getName(), getValueFromMember("isOverloaded", new Short(Short.MAX_VALUE)));
     }
 
+    @Ignore
     @Test
     public void testOverloaded17() throws ClassNotFoundException, UnsupportedTypeException, InteropException {
         assertEquals(String.class.getName(), getValueFromMember("isOverloaded", "testString"));
