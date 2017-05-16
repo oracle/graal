@@ -38,7 +38,6 @@ import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
-import org.graalvm.compiler.debug.Fingerprint;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.internal.method.MethodMetricsImpl;
 import org.graalvm.compiler.debug.internal.method.MethodMetricsInlineeScopeInfo;
@@ -279,9 +278,6 @@ public class InliningUtil extends ValueMergeUtil {
         StructuredGraph graph = invokeNode.graph();
         MethodMetricsInlineeScopeInfo m = MethodMetricsInlineeScopeInfo.create(graph.getOptions());
         try (Debug.Scope s = Debug.methodMetricsScope("InlineEnhancement", m, false)) {
-            if (Fingerprint.ENABLED) {
-                Fingerprint.submit("inlining %s into %s: %s", formatGraph(inlineGraph), formatGraph(invoke.asNode().graph()), inlineGraph.getNodes().snapshot());
-            }
             final NodeInputList<ValueNode> parameters = invoke.callTarget().arguments();
 
             assert inlineGraph.getGuardsStage().ordinal() >= graph.getGuardsStage().ordinal();
@@ -549,13 +545,6 @@ public class InliningUtil extends ValueMergeUtil {
         if (current.predecessor() != null) {
             fixFrameStates(originalMerge, current.predecessor(), seen, currentValue, returnPhi);
         }
-    }
-
-    private static String formatGraph(StructuredGraph graph) {
-        if (graph.method() == null) {
-            return graph.name;
-        }
-        return graph.method().format("%H.%n(%p)");
     }
 
     @SuppressWarnings("try")

@@ -34,7 +34,6 @@ import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugCounter;
 import org.graalvm.compiler.debug.DebugTimer;
-import org.graalvm.compiler.debug.Fingerprint;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node.ValueNumberable;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
@@ -981,9 +980,6 @@ public class Graph {
 
         if (nodeEventListener != null) {
             nodeEventListener.nodeAdded(node);
-        }
-        if (Fingerprint.ENABLED) {
-            Fingerprint.submit("%s: %s", NodeEvent.NODE_ADDED, node);
         }
         afterRegister(node);
     }
