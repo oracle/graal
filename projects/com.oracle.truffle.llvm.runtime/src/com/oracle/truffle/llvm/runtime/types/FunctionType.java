@@ -55,6 +55,10 @@ public final class FunctionType extends Type {
         return returnType;
     }
 
+    public boolean isVarargs() {
+        return isVarargs;
+    }
+
     @Override
     public int getBitSize() {
         return 0;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,26 +27,45 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.generators;
+package com.oracle.truffle.llvm.parser.model.attributes;
 
-import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
-import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
-import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import java.util.Optional;
 
-public interface ModuleGenerator extends SymbolGenerator {
+public final class StringAttribute implements Attribute {
 
-    void createAlias(Type type, int aliasedValue, long linkage, long visibility);
+    private final String attr;
+    private final Optional<String> value;
 
-    void createFunction(FunctionType type, boolean isPrototype, AttributesCodeEntry paramattr);
+    public StringAttribute(String attr, String value) {
+        this.attr = attr;
+        this.value = Optional.of(value);
+    }
 
-    void createTargetDataLayout(TargetDataLayout layout);
+    public StringAttribute(String attr) {
+        this.attr = attr;
+        this.value = Optional.empty();
+    }
 
-    void createType(Type type);
+    public String getAttr() {
+        return attr;
+    }
 
-    void createGlobal(Type type, boolean isConstant, int initialiser, int align, long linkage, long visibility);
+    public Optional<String> getValue() {
+        return value;
+    }
 
-    void exitModule();
+    @Override
+    public String toString() {
+        return "StringAttribute [attr=" + attr + ", value=" + value + "]";
+    }
 
-    FunctionGenerator generateFunction();
+    @Override
+    public String getIrString() {
+        if (value.isPresent()) {
+            return String.format("\"%s\"=\"%s\"", attr, value);
+        } else {
+            return String.format("\"%s\"", attr);
+        }
+    }
+
 }

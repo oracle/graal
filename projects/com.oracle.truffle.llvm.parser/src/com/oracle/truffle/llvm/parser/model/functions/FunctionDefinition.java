@@ -36,10 +36,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
+import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.generators.FunctionGenerator;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
@@ -84,15 +87,18 @@ public final class FunctionDefinition implements Constant, FunctionGenerator, Va
 
     private String name;
 
-    public FunctionDefinition(FunctionType type, String name, MetadataList metadata) {
+    private final AttributesCodeEntry paramAttr;
+
+    public FunctionDefinition(FunctionType type, String name, MetadataList metadata, AttributesCodeEntry paramAttr) {
         this.type = type;
         this.metadata = metadata;
         namesToTypes = new HashMap<>();
         this.name = name;
+        this.paramAttr = paramAttr;
     }
 
-    public FunctionDefinition(FunctionType type, MetadataList metadata) {
-        this(type, LLVMIdentifier.UNKNOWN, metadata);
+    public FunctionDefinition(FunctionType type, MetadataList metadata, AttributesCodeEntry paramAttr) {
+        this(type, LLVMIdentifier.UNKNOWN, metadata, paramAttr);
     }
 
     @Override
@@ -135,9 +141,21 @@ public final class FunctionDefinition implements Constant, FunctionGenerator, Va
         return type;
     }
 
+    public Optional<AttributesGroup> getFunctionAttributesGroup() {
+        CompilerAsserts.neverPartOfCompilation();
+        return paramAttr.getFunctionAttributesGroup();
+    }
+
+    public Optional<AttributesGroup> getReturnAttributesGroup() {
+        CompilerAsserts.neverPartOfCompilation();
+        return paramAttr.getReturnAttributesGroup();
+    }
+
     @Override
     public void createParameter(Type t) {
-        FunctionParameter parameter = new FunctionParameter(t, parameters.size());
+        final int index = parameters.size();
+        final Optional<AttributesGroup> attrGroup = paramAttr.getParameterAttributesGroup(index);
+        FunctionParameter parameter = new FunctionParameter(t, index, attrGroup);
         symbols.addSymbol(parameter);
         parameters.add(parameter);
     }
@@ -324,8 +342,8 @@ public final class FunctionDefinition implements Constant, FunctionGenerator, Va
 
     @Override
     public String toString() {
-        CompilerAsserts.neverPartOfCompilation();
-        return "FunctionDefinition [symbolCount=" + symbols.getSize() + ", parameters=" + parameters + ", blocks=" + blocks.length + ", currentBlock=" + currentBlock + ", name=" + getName() + "]";
+        return "FunctionDefinition [symbols=" + symbols + ", parameters=" + parameters + ", blocks=" + Arrays.toString(blocks) + ", currentBlock=" + currentBlock + ", name=" + name + ", paramattr=" +
+                        paramAttr + "]";
     }
 
 }

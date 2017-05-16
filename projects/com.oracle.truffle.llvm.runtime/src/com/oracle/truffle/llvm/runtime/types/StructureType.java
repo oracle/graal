@@ -59,7 +59,7 @@ public final class StructureType extends AggregateType {
     }
 
     public void setName(String name) {
-        this.name = name;
+        this.name = LLVMIdentifier.toLocalIdentifier(name);
     }
 
     @Override

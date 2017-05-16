@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,26 +27,51 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.generators;
+package com.oracle.truffle.llvm.parser.model.attributes;
 
-import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
-import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
-import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import java.util.Optional;
 
-public interface ModuleGenerator extends SymbolGenerator {
+import com.oracle.truffle.llvm.parser.records.ParameterAttributeGroupRecord;
 
-    void createAlias(Type type, int aliasedValue, long linkage, long visibility);
+public final class KnownAttribute implements Attribute {
 
-    void createFunction(FunctionType type, boolean isPrototype, AttributesCodeEntry paramattr);
+    private final ParameterAttributeGroupRecord attr;
+    private final Optional<Long> value;
 
-    void createTargetDataLayout(TargetDataLayout layout);
+    public KnownAttribute(ParameterAttributeGroupRecord attr, long value) {
+        this.attr = attr;
+        this.value = Optional.of(value);
+    }
 
-    void createType(Type type);
+    public KnownAttribute(ParameterAttributeGroupRecord attr) {
+        this.attr = attr;
+        this.value = Optional.empty();
+    }
 
-    void createGlobal(Type type, boolean isConstant, int initialiser, int align, long linkage, long visibility);
+    public ParameterAttributeGroupRecord getAttr() {
+        return attr;
+    }
 
-    void exitModule();
+    public Optional<Long> getValue() {
+        return value;
+    }
 
-    FunctionGenerator generateFunction();
+    @Override
+    public String toString() {
+        return "KnownAttribute [attr=" + attr + ", value=" + value + "]";
+    }
+
+    @Override
+    public String getIrString() {
+        if (value.isPresent()) {
+            if (attr == ParameterAttributeGroupRecord.ALIGN) {
+                return String.format("%s %d", attr.getIrString(), value.get());
+            } else {
+                return String.format("%s(%d)", attr.getIrString(), value.get());
+            }
+        } else {
+            return attr.getIrString();
+        }
+    }
+
 }
