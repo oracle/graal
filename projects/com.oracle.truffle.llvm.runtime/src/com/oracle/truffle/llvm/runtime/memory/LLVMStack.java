@@ -96,6 +96,7 @@ public final class LLVMStack extends LLVMMemory {
         assert size >= 0;
         assert alignment != 0 && powerOfTwo(alignment);
         final long alignedAllocation = (stackPointer - size) & -alignment;
+        assert alignedAllocation <= stackPointer;
         stackPointer = alignedAllocation;
         if (stackPointer < lowerBounds) {
             CompilerDirectives.transferToInterpreter();
@@ -114,10 +115,6 @@ public final class LLVMStack extends LLVMMemory {
         if (!isFreed) {
             throw new AssertionError("Did not free stack memory!");
         }
-    }
-
-    public LLVMAddress getUpperBounds() {
-        return LLVMAddress.fromLong(upperBounds);
     }
 
 }

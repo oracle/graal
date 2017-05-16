@@ -30,19 +30,21 @@
 package com.oracle.truffle.llvm.nodes.base;
 
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 
 public abstract class LLVMMainFunctionReturnValueRootNode extends RootNode {
 
-    final RootCallTarget rootCallTarget;
+    @Child protected DirectCallNode callNode;
 
     protected LLVMMainFunctionReturnValueRootNode(LLVMLanguage language, RootCallTarget rootCallTarget) {
         super(language, new FrameDescriptor());
-        this.rootCallTarget = rootCallTarget;
+        this.callNode = Truffle.getRuntime().createDirectCallNode(rootCallTarget);
     }
 
     public static class LLVMMainFunctionReturnI1RootNode extends LLVMMainFunctionReturnValueRootNode {
@@ -53,7 +55,7 @@ public abstract class LLVMMainFunctionReturnValueRootNode extends RootNode {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            return ((Boolean) rootCallTarget.call()).booleanValue() ? 1 : 0;
+            return ((Boolean) callNode.call(new Object[]{})).booleanValue() ? 1 : 0;
         }
 
     }
@@ -66,7 +68,7 @@ public abstract class LLVMMainFunctionReturnValueRootNode extends RootNode {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            return ((LLVMIVarBit) rootCallTarget.call()).getIntValue();
+            return ((LLVMIVarBit) callNode.call(new Object[]{})).getIntValue();
         }
 
     }
@@ -79,7 +81,7 @@ public abstract class LLVMMainFunctionReturnValueRootNode extends RootNode {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            return ((Number) rootCallTarget.call()).intValue();
+            return ((Number) callNode.call(new Object[]{})).intValue();
         }
 
     }
@@ -94,7 +96,7 @@ public abstract class LLVMMainFunctionReturnValueRootNode extends RootNode {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            rootCallTarget.call();
+            callNode.call(new Object[]{});
             return VOID_RET_VALUE;
         }
 

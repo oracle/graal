@@ -388,8 +388,6 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
             Type slotType = runtime.getVariableNameTypesMapping().get(identifier);
             if (slot.equals(runtime.getReturnSlot())) {
                 nullers[i] = runtime.getNodeFactory().createFrameNuller(runtime, identifier, functionHeader.getType().getReturnType(), slot);
-            } else if (slot.equals(runtime.getStackPointerSlot())) {
-                nullers[i] = null;
             } else {
                 assert slotType != null : identifier;
                 nullers[i] = runtime.getNodeFactory().createFrameNuller(runtime, identifier, slotType, slot);
@@ -398,7 +396,7 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
         }
         final String originalName = DebugInfoGenerator.getSourceFunctionName(functionHeader);
         return new LLVMFunctionStartNode(sourceSection, runtime.getLanguage(), functionBodyNode, beforeFunction, afterFunction, frameDescriptor, functionHeader.getName(), nullers,
-                        runtime.getStackPointerSlot(), functionHeader.getParameters().size(), originalName, bcSource);
+                        functionHeader.getParameters().size(), originalName, bcSource);
     }
 
     @Override
@@ -416,7 +414,7 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
             return callNode;
         } else if (retType instanceof StructureType) {
             return LLVMStructCallUnboxNodeGen.create(callNode);
-        } else if (retType instanceof PointerType) {
+        } else if (retType instanceof FunctionType) {
             return new LLVMFunctionUnsupportedInlineAssemblerNode(sourceSection);
         } else if (retType instanceof PointerType) {
             return new LLVMAddressUnsupportedInlineAssemblerNode(sourceSection);

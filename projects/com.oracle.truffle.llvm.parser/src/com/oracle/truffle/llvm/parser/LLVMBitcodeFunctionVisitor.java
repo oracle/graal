@@ -125,10 +125,6 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         return frame.findFrameSlot(name);
     }
 
-    FrameSlot getStackSlot() {
-        return getSlot(LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID);
-    }
-
     LLVMSymbolResolver getSymbolResolver() {
         return symbolResolver;
     }

@@ -33,7 +33,6 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.nodes.func.LLVMGlobalRootNode;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
@@ -53,7 +52,6 @@ class LLVMRootNodeFactory {
                     Type[] mainTypes) {
         return createGlobalRootNode(
                         runtime.getLanguage(),
-                        runtime.getStackPointerSlot(),
                         runtime.getGlobalFrameDescriptor(),
                         mainCallTarget,
                         args,
@@ -63,14 +61,13 @@ class LLVMRootNodeFactory {
 
     private static LLVMGlobalRootNode createGlobalRootNode(
                     LLVMLanguage language,
-                    FrameSlot stack,
                     FrameDescriptor frame,
                     RootCallTarget mainCallTarget,
                     Object[] args,
                     Source sourceFile,
                     Type[] mainTypes) {
         Object[] arguments = createArgs(sourceFile, args, mainTypes);
-        return new LLVMGlobalRootNode(language, stack, frame, mainCallTarget, arguments);
+        return new LLVMGlobalRootNode(language, frame, mainCallTarget, arguments);
     }
 
     private static Object[] createArgs(Source sourceFile, Object[] mainArgs, Type[] llvmRuntimeTypes) {
