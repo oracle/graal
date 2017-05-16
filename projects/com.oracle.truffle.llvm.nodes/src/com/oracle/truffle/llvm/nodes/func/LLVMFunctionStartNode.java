@@ -54,16 +54,31 @@ public class LLVMFunctionStartNode extends RootNode {
     @Children private final LLVMStackFrameNuller[] nullers;
     private final String name;
     private final int explicitArgumentsCount;
-    private final SourceSection sourceSection;
-    private final String originalName;
-    private final Source bcSource;
     private final FrameSlot baseStackPointer;
+
+    private final DebugInformation debugInformation;
+
+    /*
+     * Encapsulation of these 3 objects keeps memory footprint low in case no debug info is
+     * available.
+     */
+    private static final class DebugInformation {
+        private final SourceSection sourceSection;
+        private final String originalName;
+        private final Source bcSource;
+
+        DebugInformation(SourceSection sourceSection, String originalName, Source bcSource) {
+            this.sourceSection = sourceSection;
+            this.originalName = originalName;
+            this.bcSource = bcSource;
+        }
+    }
 
     public LLVMFunctionStartNode(SourceSection sourceSection, LLVMLanguage language, LLVMExpressionNode node, LLVMExpressionNode[] beforeFunction, LLVMExpressionNode[] afterFunction,
                     FrameDescriptor frameDescriptor,
                     String name, LLVMStackFrameNuller[] initNullers, FrameSlot baseStackPointer, int explicitArgumentsCount, String originalName, Source bcSource) {
         super(language, frameDescriptor);
-        this.sourceSection = sourceSection;
+        this.debugInformation = new DebugInformation(sourceSection, originalName, bcSource);
         this.node = node;
         this.beforeFunction = beforeFunction;
         this.afterFunction = afterFunction;
@@ -71,13 +86,11 @@ public class LLVMFunctionStartNode extends RootNode {
         this.name = name;
         this.explicitArgumentsCount = explicitArgumentsCount;
         this.baseStackPointer = baseStackPointer;
-        this.originalName = originalName;
-        this.bcSource = bcSource;
     }
 
     @Override
     public SourceSection getSourceSection() {
-        return sourceSection;
+        return debugInformation.sourceSection;
     }
 
     @CompilationFinal private LLVMStack stack;
@@ -159,10 +172,10 @@ public class LLVMFunctionStartNode extends RootNode {
     }
 
     public String getOriginalName() {
-        return originalName;
+        return debugInformation.originalName;
     }
 
     public Source getBcSource() {
-        return bcSource;
+        return debugInformation.bcSource;
     }
 }
