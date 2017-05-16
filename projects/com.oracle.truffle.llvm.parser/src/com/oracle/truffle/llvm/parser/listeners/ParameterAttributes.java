@@ -50,7 +50,7 @@ public class ParameterAttributes implements ParserListener {
     private static final int WELL_KNOWN_ATTRIBUTE_KIND = 0;
     private static final int WELL_KNOWN_INTEGER_ATTRIBUTE_KIND = 1;
     private static final int STRING_ATTRIBUTE_KIND = 3;
-    private static final int STRING_VAULE_ATTRIBUTE_KIND = 4;
+    private static final int STRING_VALUE_ATTRIBUTE_KIND = 4;
 
     // stores attributes defined in PARAMATTR_GRP_CODE_ENTRY
     private final List<AttributesGroup> attributes = new ArrayList<>();
@@ -126,38 +126,29 @@ public class ParameterAttributes implements ParserListener {
             switch ((int) type) {
                 case WELL_KNOWN_ATTRIBUTE_KIND: {
                     ParameterAttributeGroupRecord attr = ParameterAttributeGroupRecord.decode(args[i++]);
-                    group.addAttibute(new KnownAttribute(attr));
+                    group.addAttribute(new KnownAttribute(attr));
                     break;
                 }
 
                 case WELL_KNOWN_INTEGER_ATTRIBUTE_KIND: {
                     ParameterAttributeGroupRecord attr = ParameterAttributeGroupRecord.decode(args[i++]);
-                    group.addAttibute(new KnownAttribute(attr, args[i++]));
+                    group.addAttribute(new KnownAttribute(attr, args[i++]));
                     break;
                 }
 
                 case STRING_ATTRIBUTE_KIND: {
                     StringBuilder strAttr = new StringBuilder();
-                    for (; args[i] != 0; i++) {
-                        strAttr.append((char) args[i]);
-                    }
-                    i++;
-                    group.addAttibute(new StringAttribute(strAttr.toString()));
+                    i = readString(i, args, strAttr);
+                    group.addAttribute(new StringAttribute(strAttr.toString()));
                     break;
                 }
 
-                case STRING_VAULE_ATTRIBUTE_KIND: {
+                case STRING_VALUE_ATTRIBUTE_KIND: {
                     StringBuilder strAttr = new StringBuilder();
+                    i = readString(i, args, strAttr);
                     StringBuilder strVal = new StringBuilder();
-                    for (; args[i] != 0; i++) {
-                        strAttr.append((char) args[i]);
-                    }
-                    i++;
-                    for (; args[i] != 0; i++) {
-                        strVal.append((char) args[i]);
-                    }
-                    i++;
-                    group.addAttibute(new StringAttribute(strAttr.toString(), strVal.toString()));
+                    i = readString(i, args, strVal);
+                    group.addAttribute(new StringAttribute(strAttr.toString(), strVal.toString()));
                     break;
                 }
 
@@ -165,6 +156,15 @@ public class ParameterAttributes implements ParserListener {
                     throw new RuntimeException("unexpected type: " + type);
             }
         }
+    }
+
+    private static int readString(int idx, long[] args, StringBuilder sb) {
+        int i = idx;
+        for (; args[i] != 0; i++) {
+            sb.append((char) args[i]);
+        }
+        i++;
+        return i;
     }
 
 }

@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.model.functions;
 
-import java.util.Optional;
-
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
@@ -84,15 +82,15 @@ public final class FunctionDeclaration implements Constant, ValueSymbol {
         return type;
     }
 
-    public Optional<AttributesGroup> getFunctionAttributesGroup() {
+    public AttributesGroup getFunctionAttributesGroup() {
         return paramAttr.getFunctionAttributesGroup();
     }
 
-    public Optional<AttributesGroup> getReturnAttributesGroup() {
+    public AttributesGroup getReturnAttributesGroup() {
         return paramAttr.getReturnAttributesGroup();
     }
 
-    public Optional<AttributesGroup> getParameterAttributesGroup(int idx) {
+    public AttributesGroup getParameterAttributesGroup(int idx) {
         return paramAttr.getParameterAttributesGroup(idx);
     }
 

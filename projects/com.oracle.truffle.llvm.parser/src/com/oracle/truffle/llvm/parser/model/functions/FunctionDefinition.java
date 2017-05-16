@@ -36,7 +36,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -141,12 +140,12 @@ public final class FunctionDefinition implements Constant, FunctionGenerator, Va
         return type;
     }
 
-    public Optional<AttributesGroup> getFunctionAttributesGroup() {
+    public AttributesGroup getFunctionAttributesGroup() {
         CompilerAsserts.neverPartOfCompilation();
         return paramAttr.getFunctionAttributesGroup();
     }
 
-    public Optional<AttributesGroup> getReturnAttributesGroup() {
+    public AttributesGroup getReturnAttributesGroup() {
         CompilerAsserts.neverPartOfCompilation();
         return paramAttr.getReturnAttributesGroup();
     }
@@ -154,7 +153,7 @@ public final class FunctionDefinition implements Constant, FunctionGenerator, Va
     @Override
     public void createParameter(Type t) {
         final int index = parameters.size();
-        final Optional<AttributesGroup> attrGroup = paramAttr.getParameterAttributesGroup(index);
+        final AttributesGroup attrGroup = paramAttr.getParameterAttributesGroup(index);
         FunctionParameter parameter = new FunctionParameter(t, index, attrGroup);
         symbols.addSymbol(parameter);
         parameters.add(parameter);
@@ -342,6 +341,7 @@ public final class FunctionDefinition implements Constant, FunctionGenerator, Va
 
     @Override
     public String toString() {
+        CompilerAsserts.neverPartOfCompilation();
         return "FunctionDefinition [symbols=" + symbols + ", parameters=" + parameters + ", blocks=" + Arrays.toString(blocks) + ", currentBlock=" + currentBlock + ", name=" + name + ", paramattr=" +
                         paramAttr + "]";
     }

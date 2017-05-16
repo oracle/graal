@@ -52,7 +52,7 @@ public final class AttributesGroup {
         return Collections.unmodifiableList(attributes);
     }
 
-    public void addAttibute(Attribute attr) {
+    public void addAttribute(Attribute attr) {
         attributes.add(attr);
     }
 

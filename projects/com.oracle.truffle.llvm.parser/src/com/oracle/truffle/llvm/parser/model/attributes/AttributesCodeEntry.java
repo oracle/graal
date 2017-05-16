@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.parser.model.attributes;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 public class AttributesCodeEntry {
 
@@ -43,35 +42,35 @@ public class AttributesCodeEntry {
         this.codeEntry = codeEntry;
     }
 
-    public Optional<AttributesGroup> getFunctionAttributesGroup() {
+    public AttributesGroup getFunctionAttributesGroup() {
         for (AttributesGroup entry : codeEntry) {
             if (entry.isFunctionAttribute()) {
-                return Optional.of(entry);
+                return entry;
             }
         }
-        return Optional.empty();
+        return null;
     }
 
-    public Optional<AttributesGroup> getReturnAttributesGroup() {
+    public AttributesGroup getReturnAttributesGroup() {
         for (AttributesGroup entry : codeEntry) {
             if (entry.isReturnValueAttribute()) {
-                return Optional.of(entry);
+                return entry;
             }
         }
-        return Optional.empty();
+        return null;
     }
 
-    public Optional<AttributesGroup> getParameterAttributesGroup(int idx) {
+    public AttributesGroup getParameterAttributesGroup(int idx) {
         /*
          * parameter index enumeration is starting with 1 in the code entry, which means we need to
          * increment index by one to find the correct attribution.
          */
         for (AttributesGroup entry : codeEntry) {
             if (entry.isParameterAttribute() && entry.getParamIdx() == idx + 1) {
-                return Optional.of(entry);
+                return entry;
             }
         }
-        return Optional.empty();
+        return null;
     }
 
     @Override
