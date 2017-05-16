@@ -265,6 +265,7 @@ import java.util.Formatter;
 import java.util.List;
 
 import org.graalvm.api.word.LocationIdentity;
+import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeDisassembler;
 import org.graalvm.compiler.bytecode.BytecodeLookupSwitch;
@@ -1498,6 +1499,16 @@ public class BytecodeParser implements GraphBuilderContext {
                 invokeBci = intrinsicCallSiteParser.bci();
                 profile = intrinsicCallSiteParser.getProfileForInvoke(invokeKind);
                 withExceptionEdge = !intrinsicCallSiteParser.omitInvokeExceptionEdge(inlineInfo);
+            } else {
+                // We are parsing the intrinsic for the root compilation or for inlining,
+                // This call is a partial intrinsic exit, and we do not have profile information
+                // for this callsite. We also have to assume that the call needs an exception
+                // edge. Finally, we know that this intrinsic is parsed for late inlining,
+                // so the bci must be set to unknown, so that the inliner patches it later.
+                assert intrinsicContext.isPostParseInlined();
+                invokeBci = BytecodeFrame.UNKNOWN_BCI;
+                profile = null;
+                withExceptionEdge = graph.method().getAnnotation(Snippet.class) == null;
             }
 
             if (originalMethod.isStatic()) {

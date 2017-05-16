@@ -469,9 +469,9 @@ public class InliningUtil extends ValueMergeUtil {
                 merge.setStateAfter(stateAfter);
                 returnValue = mergeReturns(merge, returnNodes);
                 invokeNode.replaceAtUsages(returnValue);
-                if (returnValue instanceof PhiNode && ((PhiNode) returnValue).merge().equals(merge)) {
+                if (merge.isPhiAtMerge(returnValue)) {
                     NodeMap<Node> seen = new NodeMap<>(graph);
-                    fixFrameStates(merge, merge, seen, (PhiNode) returnValue, (PhiNode) returnValue);
+                    fixFrameStates(merge, merge, seen, returnValue, (PhiNode) returnValue);
                 }
                 merge.setNext(n);
             }
@@ -533,11 +533,9 @@ public class InliningUtil extends ValueMergeUtil {
             AbstractMergeNode currentMerge = (AbstractMergeNode) current;
             for (EndNode pred : currentMerge.cfgPredecessors()) {
                 ValueNode newValue = currentValue;
-                if (currentValue instanceof PhiNode) {
+                if (currentMerge.isPhiAtMerge(currentValue)) {
                     PhiNode currentPhi = (PhiNode) currentValue;
-                    if (currentPhi.merge().equals(currentMerge)) {
-                        newValue = currentPhi.valueAt(pred);
-                    }
+                    newValue = currentPhi.valueAt(pred);
                 }
                 fixFrameStates(originalMerge, pred, seen, newValue, returnPhi);
             }
@@ -622,9 +620,21 @@ public class InliningUtil extends ValueMergeUtil {
 
             // pop return kind from invoke's stateAfter and replace with this frameState's return
             // value (top of stack)
-            if (frameState.stackSize() > 0 && (alwaysDuplicateStateAfter || stateAfterReturn.stackAt(0) != frameState.stackAt(0))) {
+            if (frameState.rethrowException()) {
+                // An exception edge.
+                if (stateAtExceptionEdge != null) {
+                    ExceptionObjectNode exceptionObject = (ExceptionObjectNode) frameState.stackAt(0);
+                    FrameState dispatchState = stateAtExceptionEdge.duplicateModified(invokeReturnKind, JavaKind.Object, exceptionObject);
+                    stateAfterReturn = dispatchState;
+                }
+            } else if (frameState.stackSize() > 0 && (alwaysDuplicateStateAfter || stateAfterReturn.stackAt(0) != frameState.stackAt(0))) {
+                // A non-void return value.
                 stateAfterReturn = stateAtReturn.duplicateModified(invokeReturnKind, invokeReturnKind, frameState.stackAt(0));
+            } else {
+                // A void return value.
+                stateAfterReturn = stateAtReturn.duplicate();
             }
+            assert stateAfterReturn.bci != BytecodeFrame.UNKNOWN_BCI;
 
             // Return value does no longer need to be limited by the monitor exit.
             for (MonitorExitNode n : frameState.usages().filter(MonitorExitNode.class)) {
