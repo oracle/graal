@@ -58,6 +58,7 @@ import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.GuardedUnsafeLoadNode;
+import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
@@ -457,7 +458,7 @@ public class TruffleGraphBuilderPlugins {
         Registration r = new Registration(plugins, FrameWithoutBoxing.class);
         registerFrameMethods(r);
         registerUnsafeCast(r, canDelayIntrinsification);
-        registerUnsafeLoadStorePlugins(r, null, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Object);
+        registerUnsafeLoadStorePlugins(r, canDelayIntrinsification, null, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Object);
 
         if (TruffleCompilerOptions.getValue(Options.TruffleIntrinsifyFrameAccess)) {
             for (Map.Entry<JavaKind, Integer> kindAndTag : accessorKindToTag.entrySet()) {
@@ -620,23 +621,31 @@ public class TruffleGraphBuilderPlugins {
         });
     }
 
+    @Deprecated
     public static void registerUnsafeLoadStorePlugins(Registration r, JavaConstant anyConstant, JavaKind... kinds) {
+        registerUnsafeLoadStorePlugins(r, true, anyConstant, kinds);
+    }
+
+    public static void registerUnsafeLoadStorePlugins(Registration r, boolean canDelayIntrinsification, JavaConstant anyConstant, JavaKind... kinds) {
         for (JavaKind kind : kinds) {
             String kindName = kind.getJavaName();
             kindName = toUpperCase(kindName.charAt(0)) + kindName.substring(1);
             String getName = "unsafeGet" + kindName;
             String putName = "unsafePut" + kindName;
-            r.register4(getName, Object.class, long.class, boolean.class, Object.class, new CustomizedUnsafeLoadPlugin(kind));
-            r.register4(putName, Object.class, long.class, kind == JavaKind.Object ? Object.class : kind.toJavaClass(), Object.class, new CustomizedUnsafeStorePlugin(kind, anyConstant));
+            r.register4(getName, Object.class, long.class, boolean.class, Object.class, new CustomizedUnsafeLoadPlugin(kind, canDelayIntrinsification));
+            r.register4(putName, Object.class, long.class, kind == JavaKind.Object ? Object.class : kind.toJavaClass(), Object.class,
+                            new CustomizedUnsafeStorePlugin(kind, anyConstant, canDelayIntrinsification));
         }
     }
 
     static class CustomizedUnsafeLoadPlugin implements InvocationPlugin {
 
         private final JavaKind returnKind;
+        private final boolean canDelayIntrinsification;
 
-        CustomizedUnsafeLoadPlugin(JavaKind returnKind) {
+        CustomizedUnsafeLoadPlugin(JavaKind returnKind, boolean canDelayIntrinsification) {
             this.returnKind = returnKind;
+            this.canDelayIntrinsification = canDelayIntrinsification;
         }
 
         @Override
@@ -653,9 +662,12 @@ public class TruffleGraphBuilderPlugins {
                 ConditionAnchorNode anchor = b.add(new ConditionAnchorNode(compare));
                 b.addPush(returnKind, b.add(new GuardedUnsafeLoadNode(b.addNonNullCast(object), offset, returnKind, locationIdentity, anchor)));
                 return true;
+            } else if (canDelayIntrinsification) {
+                return false;
+            } else {
+                b.addPush(returnKind, new RawLoadNode(object, offset, returnKind, LocationIdentity.any(), true));
+                return true;
             }
-            // TODO: should we throw b.bailout() here?
-            return false;
         }
     }
 
@@ -663,10 +675,12 @@ public class TruffleGraphBuilderPlugins {
 
         private final JavaKind kind;
         private final JavaConstant anyConstant;
+        private final boolean canDelayIntrinsification;
 
-        CustomizedUnsafeStorePlugin(JavaKind kind, JavaConstant anyConstant) {
+        CustomizedUnsafeStorePlugin(JavaKind kind, JavaConstant anyConstant, boolean canDelayIntrinsification) {
             this.kind = kind;
             this.anyConstant = anyConstant;
+            this.canDelayIntrinsification = canDelayIntrinsification;
         }
 
         @Override
@@ -685,9 +699,12 @@ public class TruffleGraphBuilderPlugins {
                 }
                 b.add(new RawStoreNode(object, offset, value, kind, locationIdentity, true, null, forceAnyLocation));
                 return true;
+            } else if (canDelayIntrinsification) {
+                return false;
+            } else {
+                b.add(new RawStoreNode(object, offset, value, kind, LocationIdentity.any(), true, null, true));
+                return true;
             }
-            // TODO: should we throw b.bailout() here?
-            return false;
         }
     }
 }
