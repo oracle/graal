@@ -82,6 +82,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.SLMain;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
+import com.oracle.truffle.sl.parser.SLParseError;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 import com.oracle.truffle.sl.test.SLTestRunner.TestCase;
@@ -315,16 +316,17 @@ public class SLTestRunner extends ParentRunner<TestCase> {
             context.installBuiltin(builtin);
         }
 
-        /* Parse the SL source file. */
-
-        Source source = Source.newBuilder(path.toFile()).interactive().build();
-
-        /* Call the main entry point, without any arguments. */
         try {
+            /* Parse the SL source file. */
+            Source source = Source.newBuilder(path.toFile()).interactive().build();
+
+            /* Call the main entry point, without any arguments. */
             engine.eval(source);
         } catch (UnsupportedSpecializationException ex) {
             out.println(SLMain.formatTypeError(ex));
         } catch (SLUndefinedNameException ex) {
+            out.println(ex.getMessage());
+        } catch (SLParseError ex) {
             out.println(ex.getMessage());
         }
     }
