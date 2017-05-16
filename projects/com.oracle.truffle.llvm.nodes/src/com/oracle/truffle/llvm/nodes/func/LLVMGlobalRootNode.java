@@ -39,7 +39,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -52,7 +51,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMAbort;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMSignal;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.DestructorStackElement;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
@@ -76,31 +74,23 @@ public class LLVMGlobalRootNode extends RootNode {
     // FIXME instead make the option system "PE safe"
     protected final int executionCount = LLVMOptions.ENGINE.executionCount();
     private final boolean printExecutionTime = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.printExecutionTime());
-    private final FrameSlot stackPointerSlot;
     private long startExecutionTime;
     private long endExecutionTime;
 
-    public LLVMGlobalRootNode(LLVMLanguage language, FrameSlot stackSlot, FrameDescriptor descriptor, CallTarget main, Object... arguments) {
+    public LLVMGlobalRootNode(LLVMLanguage language, FrameDescriptor descriptor, CallTarget main, Object... arguments) {
         super(language, descriptor);
-        this.stackPointerSlot = stackSlot;
         this.main = Truffle.getRuntime().createDirectCallNode(main);
         this.arguments = arguments;
-    }
-
-    public FrameSlot getStackPointerSlot() {
-        return stackPointerSlot;
     }
 
     @Override
     @ExplodeLoop
     public Object execute(VirtualFrame frame) {
-        LLVMAddress stackPointer = getContext().getStack().getUpperBounds();
         try {
             Object result = null;
             for (int i = 0; i < executionCount; i++) {
                 assert LLVMSignal.getNumberOfRegisteredSignals() == 0;
 
-                frame.setObject(stackPointerSlot, stackPointer);
                 result = executeIteration(i, arguments);
 
                 getContext().awaitThreadTermination();

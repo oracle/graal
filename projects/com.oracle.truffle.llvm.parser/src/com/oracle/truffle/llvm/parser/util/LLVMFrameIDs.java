@@ -35,6 +35,4 @@ public final class LLVMFrameIDs {
     public static final String FUNCTION_RETURN_VALUE_FRAME_SLOT_ID = "<function return value>";
     public static final String FUNCTION_EXCEPTION_VALUE_FRAME_SLOT_ID = "<function exception value>";
 
-    public static final String STACK_ADDRESS_FRAME_SLOT_ID = "<stack pointer>";
-
 }

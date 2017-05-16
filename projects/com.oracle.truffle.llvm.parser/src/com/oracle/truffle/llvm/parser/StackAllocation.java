@@ -33,7 +33,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
@@ -56,7 +55,6 @@ public final class StackAllocation {
     private StackAllocation(Map<String, FrameDescriptor> frameDescriptors) {
         this.frameDescriptors = frameDescriptors;
         rootFrame = new FrameDescriptor();
-        rootFrame.addFrameSlot(LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID);
     }
 
     public FrameDescriptor getFrame(String functionName) {
@@ -65,10 +63,6 @@ public final class StackAllocation {
 
     public FrameDescriptor getRootFrame() {
         return rootFrame;
-    }
-
-    public FrameSlot getRootStackSlot() {
-        return rootFrame.findFrameSlot(LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID);
     }
 
     static StackAllocation generate(ModelModule model) {
@@ -92,7 +86,6 @@ public final class StackAllocation {
                 frame.addFrameSlot(LLVMFrameIDs.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID);
             }
             frame.addFrameSlot(LLVMFrameIDs.FUNCTION_EXCEPTION_VALUE_FRAME_SLOT_ID, FrameSlotKind.Object);
-            frame.addFrameSlot(LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID, FrameSlotKind.Object);
 
             for (FunctionParameter parameter : functionDefinition.getParameters()) {
                 frame.addFrameSlot(parameter.getName(), Type.getFrameSlotKind(parameter.getType()));

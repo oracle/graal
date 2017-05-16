@@ -396,8 +396,6 @@ public final class LLVMParserRuntime {
             return methodType;
         } else if (LLVMFrameIDs.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID.equals(identifier)) {
             return method.getType().getReturnType();
-        } else if (LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID.equals(identifier)) {
-            return new PointerType(null);
         } else {
             throw new IllegalStateException("Cannot find Instruction with name: " + identifier);
         }
@@ -444,10 +442,6 @@ public final class LLVMParserRuntime {
 
     public Object getGlobalAddress(GlobalValueSymbol var) {
         return getGlobalVariable(var);
-    }
-
-    public FrameSlot getStackPointerSlot() {
-        return functionVisitor != null ? functionVisitor.getStackSlot() : stack.getRootStackSlot();
     }
 
     public int getByteAlignment(Type type) {
