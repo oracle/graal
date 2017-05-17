@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.control;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.source.SourceSection;
@@ -61,17 +62,27 @@ public class LLVMConditionalBranchNode extends LLVMControlFlowNode {
         return 2;
     }
 
-    @ExplodeLoop
     public void writePhis(VirtualFrame frame, int successorIndex) {
+        CompilerAsserts.partialEvaluationConstant(successorIndex);
         if (successorIndex == TRUE_SUCCESSOR) {
-            for (int i = 0; i < truePhiWriteNodes.length; i++) {
-                truePhiWriteNodes[i].executeGeneric(frame);
-            }
+            runTruePhis(frame);
         } else {
             assert successorIndex == FALSE_SUCCESSOR;
-            for (int i = 0; i < falsePhiWriteNodes.length; i++) {
-                falsePhiWriteNodes[i].executeGeneric(frame);
-            }
+            runFalsePhis(frame);
+        }
+    }
+
+    @ExplodeLoop
+    private void runFalsePhis(VirtualFrame frame) {
+        for (int i = 0; i < falsePhiWriteNodes.length; i++) {
+            falsePhiWriteNodes[i].executeGeneric(frame);
+        }
+    }
+
+    @ExplodeLoop
+    private void runTruePhis(VirtualFrame frame) {
+        for (int i = 0; i < truePhiWriteNodes.length; i++) {
+            truePhiWriteNodes[i].executeGeneric(frame);
         }
     }
 
