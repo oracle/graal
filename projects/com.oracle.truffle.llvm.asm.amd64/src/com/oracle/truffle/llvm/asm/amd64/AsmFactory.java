@@ -121,7 +121,7 @@ import com.oracle.truffle.llvm.nodes.cast.LLVMToI64NodeGen.LLVMToI64NoZeroExtNod
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI8NodeGen.LLVMToI8NoZeroExtNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMInlineAssemblyRootNode;
-import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstruction.LLVMAllocaInstruction;
+import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstruction.LLVMAllocaConstInstruction;
 import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMI16StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMI32StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMI64StoreNodeGen;
@@ -262,10 +262,10 @@ class AsmFactory {
         String[] tokens = asmFlags.substring(1, asmFlags.length() - 1).split(",");
 
         int index = 0;
-        LLVMAllocaInstruction alloca = null;
+        LLVMAllocaConstInstruction alloca = null;
         if (retType instanceof StructureType) { // multiple out values
-            assert args[0] instanceof LLVMAllocaInstruction;
-            alloca = (LLVMAllocaInstruction) args[0];
+            assert args[0] instanceof LLVMAllocaConstInstruction;
+            alloca = (LLVMAllocaConstInstruction) args[0];
             index++;
         }
 
@@ -806,12 +806,12 @@ class AsmFactory {
     }
 
     private void getArguments() {
-        LLVMAllocaInstruction alloca = null;
+        LLVMAllocaConstInstruction alloca = null;
         LLVMStructWriteNode[] writeNodes = null;
         LLVMExpressionNode[] valueNodes = null;
         if (retType instanceof StructureType) {
-            assert args[0] instanceof LLVMAllocaInstruction;
-            alloca = (LLVMAllocaInstruction) args[0];
+            assert args[0] instanceof LLVMAllocaConstInstruction;
+            alloca = (LLVMAllocaConstInstruction) args[0];
             writeNodes = new LLVMStructWriteNode[alloca.getLength()];
             valueNodes = new LLVMExpressionNode[alloca.getLength()];
         }

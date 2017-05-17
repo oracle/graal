@@ -116,11 +116,11 @@ final class LLVMModelVisitor implements ModelVisitor {
 
             LLVMExpressionNode body = visitor.createFunction(method, lifetimes);
 
-            List<LLVMExpressionNode> copytArgumentsToFrame = visitor.copyArgumentsToFrame(frame, method);
-            LLVMExpressionNode[] copytArgumentsToFrameArray = copytArgumentsToFrame.toArray(new LLVMExpressionNode[copytArgumentsToFrame.size()]);
+            List<LLVMExpressionNode> copyArgumentsToFrame = visitor.copyArgumentsToFrame(frame, method);
+            LLVMExpressionNode[] copyArgumentsToFrameArray = copyArgumentsToFrame.toArray(new LLVMExpressionNode[copyArgumentsToFrame.size()]);
 
             final SourceSection sourceSection = visitor.getSourceSection(method);
-            RootNode rootNode = visitor.getNodeFactory().createFunctionStartNode(visitor, body, copytArgumentsToFrameArray, sourceSection, frame, method, visitor.getSource());
+            RootNode rootNode = visitor.getNodeFactory().createFunctionStartNode(visitor, body, copyArgumentsToFrameArray, sourceSection, frame, method, visitor.getSource());
 
             final String astPrintTarget = LLVMOptions.DEBUG.printFunctionASTs();
             if (LLVMLogger.TARGET_STDOUT.equals(astPrintTarget) || LLVMLogger.TARGET_ANY.equals(astPrintTarget)) {
