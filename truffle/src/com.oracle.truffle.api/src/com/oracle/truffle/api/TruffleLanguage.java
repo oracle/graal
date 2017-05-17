@@ -718,6 +718,8 @@ public abstract class TruffleLanguage<C> {
         private final Map<String, Object> config;
         private List<Object> services;
         @CompilationFinal private Object context;
+        @CompilationFinal private volatile boolean initialized = false;
+        @CompilationFinal private volatile Assumption initializedUnchangedAssumption = Truffle.getRuntime().createAssumption("Language context initialized unchanged");
 
         @SuppressWarnings("unchecked")
         private Env(Object vmObject, LanguageInfo language, OutputStream out, OutputStream err, InputStream in, Map<String, Object> config) {
@@ -999,6 +1001,20 @@ public abstract class TruffleLanguage<C> {
                 throw ex;
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
+            } finally {
+                initialized = true;
+                Assumption old = initializedUnchangedAssumption;
+                initializedUnchangedAssumption = Truffle.getRuntime().createAssumption("Language context initialized unchanged");
+                old.invalidate();
+            }
+        }
+
+        private boolean isInitialized() {
+            if (initializedUnchangedAssumption.isValid()) {
+                return initialized;
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return initialized;
             }
         }
 
@@ -1113,6 +1129,11 @@ public abstract class TruffleLanguage<C> {
         @Override
         public void postInitEnv(Env env) {
             env.postInit();
+        }
+
+        @Override
+        public boolean isContextInitialized(Env env) {
+            return env.isInitialized();
         }
 
         @Override

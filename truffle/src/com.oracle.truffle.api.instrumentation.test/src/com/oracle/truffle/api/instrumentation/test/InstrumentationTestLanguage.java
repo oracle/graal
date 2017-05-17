@@ -37,6 +37,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
@@ -140,13 +141,30 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         }
         Object[] sharedContext = (Object[]) env.getConfig().get("context");
         if (sharedContext == null || sharedContext[0] == null) {
-            Context c = new Context(env.out(), env.err());
+            Source initSource = (Source) env.getConfig().get("initSource");
+            Boolean runInitAfterExec = (Boolean) env.getConfig().get("runInitAfterExec");
+            Context c = new Context(env.out(), env.err(), initSource, runInitAfterExec);
             if (sharedContext != null) {
                 sharedContext[0] = c;
             }
             return c;
         } else {
             return forkContext((Context) sharedContext[0]);
+        }
+    }
+
+    @Override
+    protected void initializeContext(Context context) throws Exception {
+        super.initializeContext(context);
+        Source code = context.initSource;
+        if (code != null) {
+            SourceSection outer = code.createSection(0, code.getLength());
+            BaseNode node = parse(code);
+            RootCallTarget rct = Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(this, "", outer, node));
+            rct.call();
+            if (context.runInitAfterExec) {
+                context.afterTarget = rct;
+            }
         }
     }
 
@@ -164,7 +182,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         } catch (LanguageError e) {
             throw new IOException(e);
         }
-        return Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(this, "", outer, node));
+        RootCallTarget afterTarget = getContextReference().get().afterTarget;
+        return Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(this, "", outer, afterTarget, node));
     }
 
     public BaseNode parse(Source code) {
@@ -351,12 +370,18 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
         private final String name;
         private final SourceSection sourceSection;
+        private final RootCallTarget afterTarget;
         @Children private final BaseNode[] expressions;
 
         protected InstrumentationTestRootNode(InstrumentationTestLanguage lang, String name, SourceSection sourceSection, BaseNode... expressions) {
+            this(lang, name, sourceSection, null, expressions);
+        }
+
+        protected InstrumentationTestRootNode(InstrumentationTestLanguage lang, String name, SourceSection sourceSection, RootCallTarget afterTarget, BaseNode... expressions) {
             super(lang);
             this.name = name;
             this.sourceSection = sourceSection;
+            this.afterTarget = afterTarget;
             this.expressions = expressions;
         }
 
@@ -380,6 +405,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                 if (baseNode != null) {
                     returnValue = baseNode.execute(frame);
                 }
+            }
+            if (afterTarget != null) {
+                afterTarget.call();
             }
             return returnValue;
         }
@@ -839,9 +867,14 @@ class Context {
     final Map<String, TruffleObject> callFunctionObjects = new HashMap<>();
     final OutputStream out;
     final OutputStream err;
+    final Source initSource;
+    final boolean runInitAfterExec;
+    RootCallTarget afterTarget;
 
-    Context(OutputStream out, OutputStream err) {
+    Context(OutputStream out, OutputStream err, Source initSource, Boolean runInitAfterExec) {
         this.out = out;
         this.err = err;
+        this.initSource = initSource;
+        this.runInitAfterExec = runInitAfterExec != null && runInitAfterExec;
     }
 }
