@@ -69,6 +69,10 @@ public abstract class AbstractDebugTest {
         popContext();
     }
 
+    protected final void resetContext(DebuggerTester newTester) {
+        this.tester = newTester;
+    }
+
     protected final DebuggerSession startSession() {
         return tester.startSession();
     }

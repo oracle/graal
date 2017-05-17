@@ -82,22 +82,6 @@ abstract class SerializeArgumentNode extends Node {
             return null;
         }
 
-        @Specialization(guards = {"!isSpecialized(arg)", "!checkNull(isNull, arg)"})
-        @SuppressWarnings("unused")
-        protected Object serializeUnbox(NativeArgumentBuffer buffer, TruffleObject arg,
-                        @Cached("createIsNull()") Node isNull,
-                        @Cached("createUnbox()") Node unbox,
-                        @Cached("argType.createSerializeArgumentNode()") SerializeArgumentNode serialize) {
-            try {
-                Object unboxed = ForeignAccess.sendUnbox(unbox, arg);
-                serialize.execute(buffer, unboxed);
-            } catch (UnsupportedMessageException ex) {
-                CompilerDirectives.transferToInterpreter();
-                throw UnsupportedTypeException.raise(ex, new Object[]{arg});
-            }
-            return null;
-        }
-
         @Specialization(guards = {"!isSpecialized(arg)", "checkIsPointer(isPointer, arg)"})
         @SuppressWarnings("unused")
         protected Object serializePointer(NativeArgumentBuffer buffer, TruffleObject arg,
@@ -107,6 +91,23 @@ abstract class SerializeArgumentNode extends Node {
             try {
                 long pointer = ForeignAccess.sendAsPointer(asPointer, arg);
                 serialize.execute(buffer, new NativePointer(pointer));
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw UnsupportedTypeException.raise(ex, new Object[]{arg});
+            }
+            return null;
+        }
+
+        @Specialization(guards = {"!isSpecialized(arg)", "!checkNull(isNull, arg)", "!checkIsPointer(isPointer, arg)"})
+        @SuppressWarnings("unused")
+        protected Object serializeUnbox(NativeArgumentBuffer buffer, TruffleObject arg,
+                        @Cached("createIsPointer()") Node isPointer,
+                        @Cached("createIsNull()") Node isNull,
+                        @Cached("createUnbox()") Node unbox,
+                        @Cached("argType.createSerializeArgumentNode()") SerializeArgumentNode serialize) {
+            try {
+                Object unboxed = ForeignAccess.sendUnbox(unbox, arg);
+                serialize.execute(buffer, unboxed);
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw UnsupportedTypeException.raise(ex, new Object[]{arg});
