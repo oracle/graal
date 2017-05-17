@@ -99,14 +99,17 @@ public class LLVMFunctionStartNode extends RootNode {
     @Override
     public Object execute(VirtualFrame frame) {
         long basePointer = getStack().getStackPointer().getVal();
+        try {
 
-        nullStack(frame);
-        copyArgumentsToFrame(frame);
-        Object result = node.executeGeneric(frame);
+            nullStack(frame);
+            copyArgumentsToFrame(frame);
+            Object result = node.executeGeneric(frame);
 
-        assert assertDestroyStack(basePointer);
-        getStack().setStackPointer(LLVMAddress.fromLong(basePointer));
-        return result;
+            return result;
+        } finally {
+            assert assertDestroyStack(basePointer);
+            getStack().setStackPointer(LLVMAddress.fromLong(basePointer));
+        }
     }
 
     /*
