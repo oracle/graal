@@ -917,9 +917,9 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 PhiNode materializedValuePhi = getPhi(resultObject, StampFactory.forKind(JavaKind.Object));
                 for (int i = 0; i < states.length; i++) {
                     Block predecessor = getPredecessor(i);
-                    if (!ensureVirtual && states[i].getObjectState(virtual).isVirtual()) {
+                    if (!ensureVirtual && states[i].getObjectState(getObject.apply(i)).isVirtual()) {
                         // we can materialize if not all inputs are "ensureVirtualized"
-                        states[i].getObjectState(virtual).setEnsureVirtualized(false);
+                        states[i].getObjectState(getObject.apply(i)).setEnsureVirtualized(false);
                     }
                     ensureMaterialized(states[i], getObject.apply(i), predecessor.getEndNode(), blockEffects.get(predecessor), COUNTER_MATERIALIZATIONS_MERGE);
                     setPhiInput(materializedValuePhi, i, states[i].getObjectState(getObject.apply(i)).getMaterializedValue());
