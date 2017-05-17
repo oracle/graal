@@ -37,6 +37,9 @@ import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
@@ -54,6 +57,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class ReplacementsParseTest extends ReplacementsTest {
 
     private static final String IN_COMPILED_HANDLER_MARKER = "*** in compiled handler ***";
+    private InlineInvokePlugin.InlineInfo inlineInvokeDecision;
 
     @SuppressWarnings("serial")
     static class CustomError extends Error {
@@ -249,7 +253,7 @@ public class ReplacementsParseTest extends ReplacementsTest {
     @BeforeClass
     public static void warmupProfiles() {
         ReplacementsParseTest test = new ReplacementsParseTest();
-        for (int i = 0; i < 10000; i++) {
+        for (int i = 0; i < 40000; i++) {
             test.test1Snippet(i);
             test.test2Snippet(i);
             test.doNextAfter(new double[16], new double[16]);
@@ -458,6 +462,25 @@ public class ReplacementsParseTest extends ReplacementsTest {
             }
         } catch (GraalGraphError e) {
             assertTrue(e.getMessage().startsWith("Invalid frame state"));
+        }
+    }
+
+    @Override
+    protected InlineInvokePlugin.InlineInfo bytecodeParserShouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+        return inlineInvokeDecision;
+    }
+
+    @Test
+    public void testCallCopyFirstWithoutInlinePartialIntrinsicExit() {
+        OptionValues options = new OptionValues(getInitialOptions(), InlinePartialIntrinsicExitDuringParsing, false);
+        inlineInvokeDecision = InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
+        try {
+            byte[] in = {0, 1, 2, 3, 4};
+            byte[] out = new byte[in.length];
+            test(options, "callCopyFirst", in, out, true);
+            test(options, "callCopyFirst", in, out, false);
+        } finally {
+            inlineInvokeDecision = null;
         }
     }
 }
