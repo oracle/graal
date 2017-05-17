@@ -194,7 +194,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
     public FrameState(int bci, ValueNode returnValueOrExceptionObject) {
         this(null, null, bci, 0, returnValueOrExceptionObject.getStackKind().getSlotCount(), 0, returnValueOrExceptionObject instanceof ExceptionObjectNode, false, null,
                         Collections.<EscapeObjectState> emptyList());
-        assert bci == BytecodeFrame.AFTER_BCI;
+        assert (bci == BytecodeFrame.AFTER_BCI && !rethrowException()) || (bci == BytecodeFrame.AFTER_EXCEPTION_BCI && rethrowException());
         this.values.initialize(0, returnValueOrExceptionObject);
     }
 

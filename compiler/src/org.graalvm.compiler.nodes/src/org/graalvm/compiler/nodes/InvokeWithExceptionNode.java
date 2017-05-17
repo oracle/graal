@@ -204,7 +204,7 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
     public void replaceWithNewBci(int bci) {
         Debug.forceDump(graph(), "before");
         AbstractBeginNode nextNode = next();
-        ExceptionObjectNode exceptionObject = (ExceptionObjectNode) exceptionEdge;
+        AbstractBeginNode exceptionObject = exceptionEdge;
         setExceptionEdge(null);
         setNext(null);
         InvokeWithExceptionNode repl = graph().add(new InvokeWithExceptionNode(callTarget(), exceptionObject, bci));

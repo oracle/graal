@@ -42,6 +42,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.options.OptionValues;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import jdk.vm.ci.code.InstalledCode;
@@ -243,6 +244,21 @@ public class ReplacementsParseTest extends ReplacementsTest {
             r.registerMethodSubstitution(TestObjectSubstitutions.class, "identity", String.class);
         }
         super.registerInvocationPlugins(invocationPlugins);
+    }
+
+    @BeforeClass
+    public static void warmupProfiles() {
+        ReplacementsParseTest test = new ReplacementsParseTest();
+        for (int i = 0; i < 10000; i++) {
+            test.test1Snippet(i);
+            test.test2Snippet(i);
+            test.doNextAfter(new double[16], new double[16]);
+            callStringize("normal");
+            callStringizeId(new TestObject());
+            callLambda("some string");
+            callCopyFirst(new byte[16], new byte[16], true);
+            callCopyFirstL2R(new byte[16], new byte[16]);
+        }
     }
 
     /**
