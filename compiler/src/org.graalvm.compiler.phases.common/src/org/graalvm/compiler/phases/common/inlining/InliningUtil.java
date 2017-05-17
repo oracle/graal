@@ -39,6 +39,7 @@ import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.internal.method.MethodMetricsImpl;
 import org.graalvm.compiler.debug.internal.method.MethodMetricsInlineeScopeInfo;
 import org.graalvm.compiler.graph.GraalGraphError;
@@ -289,7 +290,7 @@ public class InliningUtil extends ValueMergeUtil {
 
             ArrayList<Node> nodes = new ArrayList<>(inlineGraph.getNodes().count());
             ArrayList<ReturnNode> returnNodes = new ArrayList<>(4);
-            ArrayList<InvokeNode> partialIntrinsicExits = new ArrayList<>();
+            ArrayList<Invoke> partialIntrinsicExits = new ArrayList<>();
             UnwindNode unwindNode = null;
             final StartNode entryPointNode = inlineGraph.start();
             FixedNode firstCFGNode = entryPointNode.next();
@@ -303,10 +304,10 @@ public class InliningUtil extends ValueMergeUtil {
                     nodes.add(node);
                     if (node instanceof ReturnNode) {
                         returnNodes.add((ReturnNode) node);
-                    } else if (node instanceof InvokeNode) {
-                        InvokeNode invokeInInlineGraph = (InvokeNode) node;
+                    } else if (node instanceof Invoke) {
+                        Invoke invokeInInlineGraph = (Invoke) node;
                         if (invokeInInlineGraph.bci() == BytecodeFrame.UNKNOWN_BCI) {
-                            ResolvedJavaMethod target1 = invoke.callTarget().targetMethod();
+                            ResolvedJavaMethod target1 = inlineeMethod;
                             ResolvedJavaMethod target2 = invokeInInlineGraph.callTarget().targetMethod();
                             assert target1.equals(target2) : String.format("invoke in inlined method expected to be partial intrinsic exit (i.e., call to %s), not a call to %s",
                                             target1.format("%H.%n(%p)"), target2.format("%H.%n(%p)"));
@@ -368,12 +369,16 @@ public class InliningUtil extends ValueMergeUtil {
             for (int i = 0; i < returnNodes.size(); i++) {
                 returnNodes.set(i, (ReturnNode) duplicates.get(returnNodes.get(i)));
             }
-            for (InvokeNode exit : partialIntrinsicExits) {
+            for (Invoke exit : partialIntrinsicExits) {
                 // A partial intrinsic exit must be replaced with a call to
                 // the intrinsified method.
-                InvokeNode dup = (InvokeNode) duplicates.get(exit);
-                InvokeNode repl = graph.add(new InvokeNode(invoke.callTarget(), invoke.bci()));
-                dup.intrinsify(repl);
+                Invoke dup = (Invoke) duplicates.get(exit.asNode());
+                if (dup instanceof InvokeNode) {
+                    InvokeNode repl = graph.add(new InvokeNode(invoke.callTarget(), invoke.bci()));
+                    dup.intrinsify(repl.asNode());
+                } else {
+                    ((InvokeWithExceptionNode) dup).replaceWithNewBci(invoke.bci());
+                }
             }
             if (unwindNode != null) {
                 unwindNode = (UnwindNode) duplicates.get(unwindNode);
@@ -518,15 +523,19 @@ public class InliningUtil extends ValueMergeUtil {
         }
         seen.put(current, current);
         if (current instanceof StateSplit && current != originalMerge) {
-            FrameState state = ((StateSplit) current).stateAfter();
+            StateSplit stateSplit = (StateSplit) current;
+            FrameState state = stateSplit.stateAfter();
             if (state != null && state.values().contains(returnPhi)) {
                 int index = 0;
-                for (ValueNode value : state.values().snapshot()) {
+                FrameState duplicate = state.duplicate();
+                for (ValueNode value : state.values()) {
                     if (value == returnPhi) {
-                        state.values().set(index, currentValue);
+                        duplicate.values().set(index, currentValue);
                     }
                     index++;
                 }
+                stateSplit.setStateAfter(duplicate);
+                GraphUtil.tryKillUnused(state);
             }
         }
         if (current instanceof AbstractMergeNode) {
@@ -592,6 +601,9 @@ public class InliningUtil extends ValueMergeUtil {
                 }
                 processFrameState(frameState, invoke, inlineGraph.method(), stateAtExceptionEdge, outerFrameState, alwaysDuplicateStateAfter, invoke.callTarget().targetMethod(),
                                 invoke.callTarget().arguments());
+            } else if (original.bci == BytecodeFrame.UNKNOWN_BCI) {
+                // Not alive.
+                TTY.print("not alive " + frameState);
             }
         }
     }
@@ -620,14 +632,8 @@ public class InliningUtil extends ValueMergeUtil {
 
             // pop return kind from invoke's stateAfter and replace with this frameState's return
             // value (top of stack)
-            if (frameState.rethrowException()) {
-                // An exception edge.
-                if (stateAtExceptionEdge != null) {
-                    ExceptionObjectNode exceptionObject = (ExceptionObjectNode) frameState.stackAt(0);
-                    FrameState dispatchState = stateAtExceptionEdge.duplicateModified(invokeReturnKind, JavaKind.Object, exceptionObject);
-                    stateAfterReturn = dispatchState;
-                }
-            } else if (frameState.stackSize() > 0 && (alwaysDuplicateStateAfter || stateAfterReturn.stackAt(0) != frameState.stackAt(0))) {
+            assert !frameState.rethrowException() : frameState;
+            if (frameState.stackSize() > 0 && (alwaysDuplicateStateAfter || stateAfterReturn.stackAt(0) != frameState.stackAt(0))) {
                 // A non-void return value.
                 stateAfterReturn = stateAtReturn.duplicateModified(invokeReturnKind, invokeReturnKind, frameState.stackAt(0));
             } else {

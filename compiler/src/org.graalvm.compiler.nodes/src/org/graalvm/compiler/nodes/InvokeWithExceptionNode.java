@@ -30,13 +30,16 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
 import java.util.Map;
 
+import jdk.vm.ci.code.BytecodeFrame;
 import org.graalvm.api.word.LocationIdentity;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
+import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
@@ -198,12 +201,32 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
         GraphUtil.killCFG(edge);
     }
 
+    public void replaceWithNewBci(int bci) {
+        Debug.forceDump(graph(), "before");
+        AbstractBeginNode nextNode = next();
+        ExceptionObjectNode exceptionObject = (ExceptionObjectNode) exceptionEdge;
+        setExceptionEdge(null);
+        setNext(null);
+        InvokeWithExceptionNode repl = graph().add(new InvokeWithExceptionNode(callTarget(), exceptionObject, bci));
+        repl.setStateAfter(stateAfter);
+        this.setStateAfter(null);
+        this.replaceAtPredecessor(repl);
+        repl.setNext(nextNode);
+        boolean removed = this.callTarget().removeUsage(this);
+        assert removed;
+        this.replaceAtUsages(repl);
+        this.markDeleted();
+        Debug.forceDump(graph(), "after");
+    }
+
     @Override
     public void intrinsify(Node node) {
         assert !(node instanceof ValueNode) || (((ValueNode) node).getStackKind() == JavaKind.Void) == (getStackKind() == JavaKind.Void);
         CallTargetNode call = callTarget;
         FrameState state = stateAfter();
-        killExceptionEdge();
+        if (exceptionEdge != null) {
+            killExceptionEdge();
+        }
         if (node instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) node;
             stateSplit.setStateAfter(state);

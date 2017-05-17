@@ -36,6 +36,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
 import java.util.Map;
 
+import jdk.vm.ci.code.BytecodeFrame;
 import org.graalvm.api.word.LocationIdentity;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
