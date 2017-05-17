@@ -85,7 +85,7 @@ public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
 
         @Specialization
         public LLVMAddress execute() {
-            return getStack().allocateStackMemory(getSize(), getAlignment());
+            return LLVMAddress.fromLong(getStack().allocateStackMemory(getSize(), getAlignment()));
         }
 
     }
@@ -94,12 +94,12 @@ public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
     public abstract static class LLVMAllocaInstruction extends LLVMAllocInstruction {
         @Specialization
         public LLVMAddress execute(int nr) {
-            return getStack().allocateStackMemory(getSize() * nr, getAlignment());
+            return LLVMAddress.fromLong(getStack().allocateStackMemory(getSize() * nr, getAlignment()));
         }
 
         @Specialization
         public LLVMAddress execute(long nr) {
-            return getStack().allocateStackMemory((int) (getSize() * nr), getAlignment());
+            return LLVMAddress.fromLong(getStack().allocateStackMemory((int) (getSize() * nr), getAlignment()));
         }
     }
 

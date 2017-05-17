@@ -65,7 +65,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         public abstract Object executeWithTarget(VirtualFrame frame, LLVMAddress address, Object cmpValue, Object newValue, LLVMStack stack);
 
         private LLVMAddress getResultAllocation(LLVMStack stack) {
-            return stack.allocateStackMemory(resultSize, 8);
+            return LLVMAddress.fromLong(stack.allocateStackMemory(resultSize, 8));
         }
 
         @Specialization

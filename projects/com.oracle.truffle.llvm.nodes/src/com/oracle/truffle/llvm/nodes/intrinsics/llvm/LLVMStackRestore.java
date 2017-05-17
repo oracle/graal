@@ -41,7 +41,7 @@ public abstract class LLVMStackRestore extends LLVMBuiltin {
 
     @Specialization
     public Object executeVoid(LLVMAddress addr, @Cached("getContext().getStack()") LLVMStack stack) {
-        stack.setStackPointer(addr);
+        stack.setStackPointer(addr.getVal());
         return null;
     }
 

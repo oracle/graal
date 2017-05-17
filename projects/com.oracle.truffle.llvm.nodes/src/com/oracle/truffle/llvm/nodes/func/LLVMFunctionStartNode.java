@@ -37,7 +37,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
@@ -98,7 +97,7 @@ public class LLVMFunctionStartNode extends RootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        long basePointer = getStack().getStackPointer().getVal();
+        long basePointer = getStack().getStackPointer();
         try {
 
             nullStack(frame);
@@ -108,17 +107,16 @@ public class LLVMFunctionStartNode extends RootNode {
             return result;
         } finally {
             assert assertDestroyStack(basePointer);
-            getStack().setStackPointer(LLVMAddress.fromLong(basePointer));
+            getStack().setStackPointer(basePointer);
         }
     }
 
     /*
      * Allows us to find broken stackpointers immediately because old stackregions are destroyed.
      */
-    @SuppressWarnings("deprecation")
     private boolean assertDestroyStack(long basePointer) {
-        LLVMAddress currSp = getStack().getStackPointer();
-        long size = basePointer - currSp.getVal();
+        long currSp = getStack().getStackPointer();
+        long size = basePointer - currSp;
         LLVMMemory.memset(currSp, size, (byte) 0xFF);
         return true;
     }
