@@ -112,17 +112,15 @@ final class LLVMModelVisitor implements ModelVisitor {
 
             FrameDescriptor frame = visitor.getStack().getFrame(method.getName());
 
-            List<LLVMExpressionNode> parameters = visitor.createParameters(frame, method);
-
             final LLVMLifetimeAnalysis lifetimes = LLVMLifetimeAnalysis.getResult(method, frame, visitor.getPhis().getPhiMap(method.getName()));
 
             LLVMExpressionNode body = visitor.createFunction(method, lifetimes);
 
-            LLVMExpressionNode[] beforeFunction = parameters.toArray(new LLVMExpressionNode[parameters.size()]);
-            LLVMExpressionNode[] afterFunction = new LLVMExpressionNode[0];
+            List<LLVMExpressionNode> copyArgumentsToFrame = visitor.copyArgumentsToFrame(frame, method);
+            LLVMExpressionNode[] copyArgumentsToFrameArray = copyArgumentsToFrame.toArray(new LLVMExpressionNode[copyArgumentsToFrame.size()]);
 
             final SourceSection sourceSection = visitor.getSourceSection(method);
-            RootNode rootNode = visitor.getNodeFactory().createFunctionStartNode(visitor, body, beforeFunction, afterFunction, sourceSection, frame, method, visitor.getSource());
+            RootNode rootNode = visitor.getNodeFactory().createFunctionStartNode(visitor, body, copyArgumentsToFrameArray, sourceSection, frame, method, visitor.getSource());
 
             final String astPrintTarget = LLVMOptions.DEBUG.printFunctionASTs();
             if (LLVMLogger.TARGET_STDOUT.equals(astPrintTarget) || LLVMLogger.TARGET_ANY.equals(astPrintTarget)) {

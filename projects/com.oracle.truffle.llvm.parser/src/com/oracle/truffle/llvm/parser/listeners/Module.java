@@ -187,7 +187,7 @@ public final class Module implements ParserListener {
 
             case METADATA:
             case METADATA_KIND:
-                return new Metadata(types, symbols, generator);
+                return new Metadata(types, generator);
 
             default:
                 LLVMLogger.info("Entering Unknown Block inside Module: " + block);

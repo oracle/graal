@@ -90,7 +90,7 @@ public final class Function implements ParserListener {
             case METADATA:
             case METADATA_ATTACHMENT:
             case METADATA_KIND:
-                return new Metadata(types, symbols, generator);
+                return new Metadata(types, generator);
 
             default:
                 LLVMLogger.info("Entering Unknown Block inside Function: " + block);

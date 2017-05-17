@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.parser.listeners;
 
 import java.util.Arrays;
-import java.util.List;
 
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
@@ -110,13 +109,10 @@ public final class Metadata implements ParserListener {
 
     protected final Types types;
 
-    protected final List<Type> symbols;
-
     protected final MetadataList metadata;
 
-    Metadata(Types types, List<Type> symbols, SymbolGenerator generator) {
+    Metadata(Types types, SymbolGenerator generator) {
         this.types = types;
-        this.symbols = symbols;
         this.generator = generator;
         metadata = generator.getMetadata();
     }

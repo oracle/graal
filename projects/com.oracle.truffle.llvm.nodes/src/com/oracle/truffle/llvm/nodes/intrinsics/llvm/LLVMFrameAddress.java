@@ -40,9 +40,9 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMFrameAddress extends LLVMBuiltin {
 
     @Specialization
-    public Object executePointee(int frameLevel, @Cached("getContext().getStack()") LLVMStack stack) {
+    public LLVMAddress executePointee(int frameLevel, @Cached("getContext().getStack()") LLVMStack stack) {
         if (frameLevel == 0) {
-            return stack.getStackPointer();
+            return LLVMAddress.fromLong(stack.getStackPointer());
         } else {
             return LLVMAddress.nullPointer();
         }

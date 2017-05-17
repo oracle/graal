@@ -46,7 +46,7 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleReleaseHandle extends LLVMIntrinsic {
 
-    private static final boolean TRACE = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.traceExecution());
+    private static final boolean TRACE = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.debug());
 
     @Specialization
     public Object executeIntrinsic(LLVMAddress handle, @Cached("getContext()") LLVMContext context) {
@@ -66,7 +66,7 @@ public abstract class LLVMTruffleReleaseHandle extends LLVMIntrinsic {
 
     @TruffleBoundary
     private static void trace(LLVMAddress address) {
-        LLVMLogger.print(LLVMOptions.DEBUG.traceExecution()).accept(
+        LLVMLogger.print(LLVMOptions.DEBUG.debug()).accept(
                         String.format("[sulong] Native handle (%s) released.", String.valueOf(address)));
     }
 

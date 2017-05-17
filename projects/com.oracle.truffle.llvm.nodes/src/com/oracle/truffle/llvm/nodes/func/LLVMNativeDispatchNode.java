@@ -52,8 +52,6 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
 @SuppressWarnings("unused")
 public abstract class LLVMNativeDispatchNode extends LLVMNode {
 
-    protected static final int INLINE_CACHE_SIZE = 5;
-
     private final FunctionType type;
     private final String signature;
     @Child private Node identityExecuteNode = Message.createExecute(1).createNode();

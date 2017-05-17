@@ -108,7 +108,7 @@ public final class LLVMX86_64BitVAStart extends LLVMExpressionNode {
         // #############################
         // Allocate worst amount of memory - saves a few ifs
         LLVMAddress structAddress = targetToAddress.executeWithTarget(target.executeGeneric(frame));
-        LLVMAddress regSaveArea = getStack().allocateStackMemory(X86_64BitVarArgs.GP_LIMIT + X86_64BitVarArgs.FP_LIMIT, 8);
+        long regSaveArea = getStack().allocateStackMemory(X86_64BitVarArgs.GP_LIMIT + X86_64BitVarArgs.FP_LIMIT, 8);
         LLVMMemory.putAddress(structAddress.getVal() + X86_64BitVarArgs.REG_SAVE_AREA, regSaveArea);
 
         int varArgsStartIndex = numberOfExplicitArguments;
@@ -119,7 +119,7 @@ public final class LLVMX86_64BitVAStart extends LLVMExpressionNode {
         int numberOfVarArgs = argumentsLength - varArgsStartIndex;
 
         // Allocate worst amount of memory - saves a few ifs
-        LLVMAddress overflowArgArea = getStack().allocateStackMemory(numberOfVarArgs * 16, 8);
+        long overflowArgArea = getStack().allocateStackMemory(numberOfVarArgs * 16, 8);
         LLVMMemory.putAddress(structAddress.getVal() + X86_64BitVarArgs.OVERFLOW_ARG_AREA, overflowArgArea);
 
         LLVMMemory.putI32(structAddress.getVal() + X86_64BitVarArgs.GP_OFFSET, 0);
@@ -136,25 +136,25 @@ public final class LLVMX86_64BitVAStart extends LLVMExpressionNode {
                 VarArgArea area = getVarArgArea(types[i]);
                 if (area == VarArgArea.GP_AREA) {
                     if (gpOffset < X86_64BitVarArgs.GP_LIMIT) {
-                        storeArgument(types[i], regSaveArea.getVal() + gpOffset, object);
+                        storeArgument(types[i], regSaveArea + gpOffset, object);
                         gpOffset += X86_64BitVarArgs.GP_STEP;
                     } else {
-                        storeArgument(types[i], overflowArgArea.getVal() + overflowOffset, object);
+                        storeArgument(types[i], overflowArgArea + overflowOffset, object);
                         overflowOffset += X86_64BitVarArgs.STACK_STEP;
                     }
                 } else if (area == VarArgArea.FP_AREA) {
                     if (fpOffset < X86_64BitVarArgs.FP_LIMIT) {
-                        storeArgument(types[i], regSaveArea.getVal() + fpOffset, object);
+                        storeArgument(types[i], regSaveArea + fpOffset, object);
                         fpOffset += X86_64BitVarArgs.FP_STEP;
                     } else {
-                        storeArgument(types[i], overflowArgArea.getVal() + overflowOffset, object);
+                        storeArgument(types[i], overflowArgArea + overflowOffset, object);
                         overflowOffset += X86_64BitVarArgs.STACK_STEP;
                     }
                 } else if (area == VarArgArea.OVERFLOW_AREA) {
                     if (types[i] != PrimitiveType.X86_FP80) {
                         throw new AssertionError();
                     }
-                    storeArgument(types[i], overflowArgArea.getVal() + overflowOffset, object);
+                    storeArgument(types[i], overflowArgArea + overflowOffset, object);
                     overflowOffset += LONG_DOUBLE_SIZE;
                 } else {
                     CompilerDirectives.transferToInterpreter();

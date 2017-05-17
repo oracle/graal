@@ -45,7 +45,7 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleHandleToManaged extends LLVMIntrinsic {
 
-    private static final boolean TRACE = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.traceExecution());
+    private static final boolean TRACE = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.debug());
 
     @Specialization
     public TruffleObject executeIntrinsic(Object rawHandle, @Cached("getContext()") LLVMContext context, @Cached("getForceLLVMAddressNode()") LLVMForceLLVMAddressNode forceAddressNode) {
@@ -59,7 +59,7 @@ public abstract class LLVMTruffleHandleToManaged extends LLVMIntrinsic {
 
     @TruffleBoundary
     private static void trace(LLVMAddress address, TruffleObject object) {
-        LLVMLogger.print(LLVMOptions.DEBUG.traceExecution()).accept(
+        LLVMLogger.print(LLVMOptions.DEBUG.debug()).accept(
                         String.format("[sulong] Managed object (%s) for native handle (%s) requested.", String.valueOf(object), String.valueOf(address)));
     }
 

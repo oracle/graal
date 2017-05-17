@@ -47,7 +47,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.llvm.Sulong;
 import com.oracle.truffle.llvm.pipe.CaptureOutput;
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.test.options.SulongTestOptions;
 import com.oracle.truffle.llvm.test.util.ProcessUtil;
 import com.oracle.truffle.llvm.test.util.ProcessUtil.ProcessResult;
@@ -68,7 +67,7 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
         Path referenceFile = files.get(0);
         List<Path> testCandidates = Files.walk(getTestDirectory()).filter(isFile).filter(isSulong).collect(Collectors.toList());
         ProcessResult processResult = ProcessUtil.executeNativeCommand(referenceFile.toAbsolutePath().toString());
-        String referenceStdOut = getReferenceResult(processResult);
+        String referenceStdOut = processResult.getStdOutput();
         final int referenceReturnValue = processResult.getReturnValue();
 
         for (Path candidate : testCandidates) {
@@ -100,14 +99,6 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
             }
         }
         pass(getTestName());
-    }
-
-    private static String getReferenceResult(ProcessResult processResult) {
-        final StringBuilder builder = new StringBuilder();
-        for (int i = 0; i < LLVMOptions.ENGINE.executionCount(); i++) {
-            builder.append(processResult.getStdOutput());
-        }
-        return builder.toString();
     }
 
     protected static void fail(String testName, AssertionError error) {

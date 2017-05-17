@@ -88,10 +88,6 @@ public final class LLVMAddress {
         return Long.compareUnsigned(val, val2.val) <= 0;
     }
 
-    public static LLVMAddress createUndefinedAddress() {
-        return new LLVMAddress(-1);
-    }
-
     @Override
     public String toString() {
         return String.format("0x%x", getVal());

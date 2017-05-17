@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
+import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.api.RootCallTarget;
@@ -42,6 +43,16 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.asm.amd64.Parser;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
+import com.oracle.truffle.llvm.nodes.control.LLVMBrUnconditionalNode;
+import com.oracle.truffle.llvm.nodes.control.LLVMConditionalBranchNode;
+import com.oracle.truffle.llvm.nodes.control.LLVMDispatchBasicBlockNode;
+import com.oracle.truffle.llvm.nodes.control.LLVMIndirectBranchNode;
+import com.oracle.truffle.llvm.nodes.control.LLVMRetNodeFactory.LLVMVoidReturnNodeGen;
+import com.oracle.truffle.llvm.nodes.control.LLVMSwitchNode.LLVMI16SwitchNode;
+import com.oracle.truffle.llvm.nodes.control.LLVMSwitchNode.LLVMI32SwitchNode;
+import com.oracle.truffle.llvm.nodes.control.LLVMSwitchNode.LLVMI64SwitchNode;
+import com.oracle.truffle.llvm.nodes.control.LLVMSwitchNode.LLVMI8SwitchNode;
+import com.oracle.truffle.llvm.nodes.func.LLVMArgNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallUnboxNodeFactory.LLVMI16CallUnboxNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallUnboxNodeFactory.LLVMI32CallUnboxNodeGen;
@@ -93,7 +104,10 @@ import com.oracle.truffle.llvm.nodes.literals.LLVMFunctionLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMI1LiteralNode;
 import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMI32LiteralNode;
 import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMI8LiteralNode;
-import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstruction.LLVMAllocaInstruction;
+import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstruction.LLVMAllocaConstInstruction;
+import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstructionFactory.LLVMAllocaConstInstructionNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMCompareExchangeNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNode.LLVMAddressArrayLiteralNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMStaticInitsBlockNode;
@@ -202,7 +216,7 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
 
     @Override
     public LLVMControlFlowNode createRetVoid(LLVMParserRuntime runtime, SourceSection source) {
-        return LLVMFunctionFactory.createRetVoid(runtime, source);
+        return LLVMVoidReturnNodeGen.create(source, runtime.getReturnSlot());
     }
 
     @Override
@@ -253,7 +267,7 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
     @Override
     public LLVMExpressionNode createTypedElementPointer(LLVMParserRuntime runtime, LLVMExpressionNode aggregateAddress, LLVMExpressionNode index, int indexedTypeLength,
                     Type targetType) {
-        return LLVMGetElementPtrFactory.create(aggregateAddress, index, indexedTypeLength, targetType);
+        return LLVMAddressGetElementPtrNodeGen.create(aggregateAddress, index, indexedTypeLength, targetType);
     }
 
     @Override
@@ -282,24 +296,39 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
 
     @Override
     public LLVMControlFlowNode createIndirectBranch(LLVMParserRuntime runtime, LLVMExpressionNode value, int[] labelTargets, LLVMExpressionNode[][] phiWrites, SourceSection source) {
-        return LLVMBranchFactory.createIndirectBranch(value, labelTargets, phiWrites, source);
+        return new LLVMIndirectBranchNode(value, labelTargets, phiWrites, source);
     }
 
     @Override
     public LLVMControlFlowNode createSwitch(LLVMParserRuntime runtime, LLVMExpressionNode cond, int[] successors, LLVMExpressionNode[] cases,
                     PrimitiveType llvmType, LLVMExpressionNode[][] phiWriteNodes, SourceSection source) {
-        return LLVMSwitchFactory.createSwitch(cond, successors, cases, llvmType, phiWriteNodes, source);
+        switch (llvmType.getPrimitiveKind()) {
+            case I8:
+                LLVMExpressionNode[] i8Cases = Arrays.copyOf(cases, cases.length, LLVMExpressionNode[].class);
+                return new LLVMI8SwitchNode(cond, i8Cases, successors, phiWriteNodes, source);
+            case I16:
+                LLVMExpressionNode[] i16Cases = Arrays.copyOf(cases, cases.length, LLVMExpressionNode[].class);
+                return new LLVMI16SwitchNode(cond, i16Cases, successors, phiWriteNodes, source);
+            case I32:
+                LLVMExpressionNode[] i32Cases = Arrays.copyOf(cases, cases.length, LLVMExpressionNode[].class);
+                return new LLVMI32SwitchNode(cond, i32Cases, successors, phiWriteNodes, source);
+            case I64:
+                LLVMExpressionNode[] i64Cases = Arrays.copyOf(cases, cases.length, LLVMExpressionNode[].class);
+                return new LLVMI64SwitchNode(cond, i64Cases, successors, phiWriteNodes, source);
+            default:
+                throw new AssertionError(llvmType);
+        }
     }
 
     @Override
     public LLVMControlFlowNode createConditionalBranch(LLVMParserRuntime runtime, int trueIndex, int falseIndex, LLVMExpressionNode conditionNode, LLVMExpressionNode[] truePhiWriteNodes,
                     LLVMExpressionNode[] falsePhiWriteNodes, SourceSection sourceSection) {
-        return LLVMBranchFactory.createConditionalBranch(trueIndex, falseIndex, conditionNode, truePhiWriteNodes, falsePhiWriteNodes, sourceSection);
+        return new LLVMConditionalBranchNode(trueIndex, falseIndex, truePhiWriteNodes, falsePhiWriteNodes, conditionNode, sourceSection);
     }
 
     @Override
     public LLVMControlFlowNode createUnconditionalBranch(LLVMParserRuntime runtime, int unconditionalIndex, LLVMExpressionNode[] phiWrites, SourceSection source) {
-        return LLVMBranchFactory.createUnconditionalBranch(unconditionalIndex, phiWrites, source);
+        return new LLVMBrUnconditionalNode(unconditionalIndex, phiWrites, source);
     }
 
     @Override
@@ -327,14 +356,14 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
                     types[i] = elemType;
                     currentOffset += runtime.getByteSize(elemType);
                 }
-                LLVMAllocaInstruction alloc = LLVMAllocFactory.createAlloc(byteSize, alignment, type);
+                LLVMAllocaConstInstruction alloc = LLVMAllocaConstInstructionNodeGen.create(byteSize, alignment, type);
                 alloc.setTypes(types);
                 alloc.setOffsets(offsets);
                 return alloc;
             }
-            return LLVMAllocFactory.createAlloc(byteSize, alignment, type);
+            return LLVMAllocaConstInstructionNodeGen.create(byteSize, alignment, type);
         } else {
-            return LLVMAllocFactory.createAlloc((PrimitiveType) llvmType, numElements, byteSize, alignment, type);
+            return LLVMAllocaInstructionNodeGen.create(numElements, byteSize, alignment, type);
         }
     }
 
@@ -367,17 +396,17 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
 
     @Override
     public LLVMExpressionNode createBasicBlockNode(LLVMParserRuntime runtime, LLVMExpressionNode[] statementNodes, LLVMControlFlowNode terminatorNode, int blockId, String blockName) {
-        return LLVMBlockFactory.createBasicBlock(statementNodes, terminatorNode, blockId, blockName);
+        return new LLVMBasicBlockNode(statementNodes, terminatorNode, blockId, blockName);
     }
 
     @Override
     public LLVMExpressionNode createFunctionBlockNode(LLVMParserRuntime runtime, FrameSlot retSlot, List<? extends LLVMExpressionNode> allFunctionNodes, LLVMStackFrameNuller[][] beforeSlotNullerNodes,
                     LLVMStackFrameNuller[][] afterSlotNullerNodes) {
-        return LLVMBlockFactory.createFunctionBlock(retSlot, allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]), beforeSlotNullerNodes, afterSlotNullerNodes);
+        return new LLVMDispatchBasicBlockNode(allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]), beforeSlotNullerNodes, afterSlotNullerNodes, retSlot);
     }
 
     @Override
-    public RootNode createFunctionStartNode(LLVMParserRuntime runtime, LLVMExpressionNode functionBodyNode, LLVMExpressionNode[] beforeFunction, LLVMExpressionNode[] afterFunction,
+    public RootNode createFunctionStartNode(LLVMParserRuntime runtime, LLVMExpressionNode functionBodyNode, LLVMExpressionNode[] copyArgumentsToFrame,
                     SourceSection sourceSection,
                     FrameDescriptor frameDescriptor,
                     FunctionDefinition functionHeader, Source bcSource) {
@@ -395,7 +424,7 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
             i++;
         }
         final String originalName = DebugInfoGenerator.getSourceFunctionName(functionHeader);
-        return new LLVMFunctionStartNode(sourceSection, runtime.getLanguage(), functionBodyNode, beforeFunction, afterFunction, frameDescriptor, functionHeader.getName(), nullers,
+        return new LLVMFunctionStartNode(sourceSection, runtime.getLanguage(), functionBodyNode, copyArgumentsToFrame, frameDescriptor, functionHeader.getName(), nullers,
                         functionHeader.getParameters().size(), originalName, bcSource);
     }
 
@@ -447,7 +476,7 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
 
     @Override
     public LLVMExpressionNode createFunctionArgNode(int i, Class<? extends Node> clazz) {
-        return LLVMFunctionFactory.createFunctionArgNode(i);
+        return LLVMArgNodeGen.create(i);
     }
 
     @Override
@@ -571,7 +600,7 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
                 throw new IllegalStateException();
             }
         }
-        return LLVMFunctionFactory.createLandingpad(allocateLandingPadValue, exceptionSlot, cleanup, landingpadEntries);
+        return new LLVMLandingpadNode(allocateLandingPadValue, exceptionSlot, cleanup, landingpadEntries);
     }
 
     private static LLVMLandingpadNode.LandingpadEntryNode getLandingpadCatchEntry(LLVMExpressionNode exp) {

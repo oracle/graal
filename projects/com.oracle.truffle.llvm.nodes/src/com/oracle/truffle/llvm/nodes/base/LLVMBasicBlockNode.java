@@ -57,7 +57,7 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 public class LLVMBasicBlockNode extends LLVMExpressionNode {
 
     public static final int RETURN_FROM_FUNCTION = -1;
-    private static final boolean TRACE = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.traceExecution());
+    private static final boolean TRACE = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.debug());
 
     @Children private final LLVMExpressionNode[] statements;
     @Child public LLVMControlFlowNode termInstruction;
@@ -141,7 +141,7 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
 
     @TruffleBoundary
     private static void trace(LLVMExpressionNode statement) {
-        LLVMLogger.print(LLVMOptions.DEBUG.traceExecution()).accept(("[sulong] " + statement.getSourceDescription()));
+        LLVMLogger.print(LLVMOptions.DEBUG.debug()).accept(("[sulong] " + statement.getSourceDescription()));
     }
 
     @Override

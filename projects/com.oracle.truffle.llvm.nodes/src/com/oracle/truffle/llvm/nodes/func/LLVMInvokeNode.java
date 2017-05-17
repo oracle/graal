@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
@@ -43,7 +44,6 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
-    public static final int ARG_START_INDEX = 1;
     @Children protected final LLVMExpressionNode[] normalPhiWriteNodes;
     @Children protected final LLVMExpressionNode[] unwindPhiWriteNodes;
     private final int normalSuccessor;
@@ -97,17 +97,29 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
 
     public abstract void execute(VirtualFrame frame);
 
+    private final ConditionProfile profile = ConditionProfile.createCountingProfile();
+
     @ExplodeLoop
     public void writePhis(VirtualFrame frame, int successorIndex) {
-        if (successorIndex == NORMAL_SUCCESSOR) {
-            for (int i = 0; i < normalPhiWriteNodes.length; i++) {
-                normalPhiWriteNodes[i].executeGeneric(frame);
-            }
+        if (profile.profile(successorIndex == NORMAL_SUCCESSOR)) {
+            runNormalPhis(frame);
         } else {
             assert successorIndex == UNWIND_SUCCESSOR;
-            for (int i = 0; i < unwindPhiWriteNodes.length; i++) {
-                unwindPhiWriteNodes[i].executeGeneric(frame);
-            }
+            runUnwindPhis(frame);
+        }
+    }
+
+    @ExplodeLoop
+    private void runUnwindPhis(VirtualFrame frame) {
+        for (int i = 0; i < unwindPhiWriteNodes.length; i++) {
+            unwindPhiWriteNodes[i].executeGeneric(frame);
+        }
+    }
+
+    @ExplodeLoop
+    private void runNormalPhis(VirtualFrame frame) {
+        for (int i = 0; i < normalPhiWriteNodes.length; i++) {
+            normalPhiWriteNodes[i].executeGeneric(frame);
         }
     }
 

@@ -37,7 +37,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
@@ -47,8 +46,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStackFrameNuller;
 public class LLVMFunctionStartNode extends RootNode {
 
     @Child private LLVMExpressionNode node;
-    @Children private final LLVMExpressionNode[] beforeFunction;
-    @Children private final LLVMExpressionNode[] afterFunction;
+    @Children private final LLVMExpressionNode[] copyArgumentsToFrame;
     @Children private final LLVMStackFrameNuller[] nullers;
     private final String name;
     private final int explicitArgumentsCount;
@@ -70,15 +68,14 @@ public class LLVMFunctionStartNode extends RootNode {
         }
     }
 
-    public LLVMFunctionStartNode(SourceSection sourceSection, LLVMLanguage language, LLVMExpressionNode node, LLVMExpressionNode[] beforeFunction, LLVMExpressionNode[] afterFunction,
+    public LLVMFunctionStartNode(SourceSection sourceSection, LLVMLanguage language, LLVMExpressionNode node, LLVMExpressionNode[] copyArgumentsToFrame,
                     FrameDescriptor frameDescriptor,
                     String name, LLVMStackFrameNuller[] initNullers, int explicitArgumentsCount, String originalName, Source bcSource) {
         super(language, frameDescriptor);
         this.debugInformation = new DebugInformation(sourceSection, originalName, bcSource);
         this.explicitArgumentsCount = explicitArgumentsCount;
         this.node = node;
-        this.beforeFunction = beforeFunction;
-        this.afterFunction = afterFunction;
+        this.copyArgumentsToFrame = copyArgumentsToFrame;
         this.nullers = initNullers;
         this.name = name;
     }
@@ -100,25 +97,26 @@ public class LLVMFunctionStartNode extends RootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        long basePointer = getStack().getStackPointer().getVal();
+        long basePointer = getStack().getStackPointer();
+        try {
 
-        nullStack(frame);
-        doBefore(frame);
-        Object result = node.executeGeneric(frame);
-        doAfter(frame);
+            nullStack(frame);
+            copyArgumentsToFrame(frame);
+            Object result = node.executeGeneric(frame);
 
-        assert assertDestroyStack(basePointer);
-        getStack().setStackPointer(LLVMAddress.fromLong(basePointer));
-        return result;
+            return result;
+        } finally {
+            assert assertDestroyStack(basePointer);
+            getStack().setStackPointer(basePointer);
+        }
     }
 
     /*
      * Allows us to find broken stackpointers immediately because old stackregions are destroyed.
      */
-    @SuppressWarnings("deprecation")
     private boolean assertDestroyStack(long basePointer) {
-        LLVMAddress currSp = getStack().getStackPointer();
-        long size = basePointer - currSp.getVal();
+        long currSp = getStack().getStackPointer();
+        long size = basePointer - currSp;
         LLVMMemory.memset(currSp, size, (byte) 0xFF);
         return true;
     }
@@ -133,16 +131,9 @@ public class LLVMFunctionStartNode extends RootNode {
     }
 
     @ExplodeLoop
-    private void doAfter(VirtualFrame frame) {
-        for (LLVMExpressionNode after : afterFunction) {
-            after.executeGeneric(frame);
-        }
-    }
-
-    @ExplodeLoop
-    private void doBefore(VirtualFrame frame) {
-        for (LLVMExpressionNode before : beforeFunction) {
-            before.executeGeneric(frame);
+    private void copyArgumentsToFrame(VirtualFrame frame) {
+        for (LLVMExpressionNode n : copyArgumentsToFrame) {
+            n.executeGeneric(frame);
         }
     }
 

@@ -73,10 +73,10 @@ public final class LLVMComplexDivSC extends LLVMExpressionNode {
         float zReal = (a * c + b * d) / denom;
         float zImag = (b * c - a * d) / denom;
 
-        LLVMAddress allocatedMemory = getStack().allocateStackMemory(2 * LLVMExpressionNode.FLOAT_SIZE_IN_BYTES, 8);
+        long allocatedMemory = getStack().allocateStackMemory(2 * LLVMExpressionNode.FLOAT_SIZE_IN_BYTES, 8);
         LLVMMemory.putFloat(allocatedMemory, zReal);
-        LLVMMemory.putFloat(allocatedMemory.getVal() + LLVMExpressionNode.FLOAT_SIZE_IN_BYTES, zImag);
-        return LLVMFloatVector.readVectorFromMemory(allocatedMemory, 2);
+        LLVMMemory.putFloat(allocatedMemory + LLVMExpressionNode.FLOAT_SIZE_IN_BYTES, zImag);
+        return LLVMFloatVector.readVectorFromMemory(LLVMAddress.fromLong(allocatedMemory), 2);
     }
 
 }

@@ -224,7 +224,7 @@ public final class LLVMParserRuntime {
         return nodeFactory.createFrameNuller(this, identifier, type, slot);
     }
 
-    List<LLVMExpressionNode> createParameters(FrameDescriptor frame, FunctionDefinition method) {
+    List<LLVMExpressionNode> copyArgumentsToFrame(FrameDescriptor frame, FunctionDefinition method) {
         final List<FunctionParameter> parameters = method.getParameters();
         final List<LLVMExpressionNode> formalParamInits = new ArrayList<>();
 
