@@ -43,7 +43,6 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
-    public static final int ARG_START_INDEX = 1;
     @Children protected final LLVMExpressionNode[] normalPhiWriteNodes;
     @Children protected final LLVMExpressionNode[] unwindPhiWriteNodes;
     private final int normalSuccessor;

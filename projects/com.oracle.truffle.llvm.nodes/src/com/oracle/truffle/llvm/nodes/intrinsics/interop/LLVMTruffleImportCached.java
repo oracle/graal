@@ -47,10 +47,6 @@ public abstract class LLVMTruffleImportCached extends LLVMIntrinsic {
         return toLLVM.executeWithTarget(getLLVMLanguage().getEnvironment().importSymbol(name));
     }
 
-    protected static boolean stringEquals(String s1, String s2) {
-        return s1.equals(s2);
-    }
-
     protected static String getString(LLVMAddress value) {
         return LLVMTruffleIntrinsicUtil.readString(value);
     }

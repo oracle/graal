@@ -41,7 +41,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -384,14 +383,6 @@ public class LLVMContext {
         }
         return function;
 
-    }
-
-    public LLVMFunctionDescriptor getDescriptorForName(String name) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (llvmIRFunctions.containsKey(name)) {
-            return functionDescriptors.get(LLVMFunction.getSulongFunctionIndex(llvmIRFunctions.get(name).getFunctionPointer()));
-        }
-        throw new IllegalStateException();
     }
 
     public NativeLookup getNativeLookup() {

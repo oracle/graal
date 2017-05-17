@@ -34,7 +34,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.base.LLVMFrameUtil;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -48,7 +47,7 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
 
         @Specialization
         protected boolean readI1(VirtualFrame frame) {
-            return LLVMFrameUtil.getI1(frame, getSlot());
+            return FrameUtil.getBooleanSafe(frame, getSlot());
         }
     }
 
@@ -59,7 +58,7 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
 
         @Specialization
         protected byte readI8(VirtualFrame frame) {
-            return LLVMFrameUtil.getI8(frame, getSlot());
+            return FrameUtil.getByteSafe(frame, getSlot());
         }
     }
 
@@ -70,7 +69,7 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
 
         @Specialization
         protected short readI16(VirtualFrame frame) {
-            return LLVMFrameUtil.getI16(frame, getSlot());
+            return (short) FrameUtil.getIntSafe(frame, getSlot());
         }
     }
 
@@ -81,7 +80,7 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
 
         @Specialization
         protected int readI32(VirtualFrame frame) {
-            return LLVMFrameUtil.getI32(frame, getSlot());
+            return FrameUtil.getIntSafe(frame, getSlot());
         }
     }
 
@@ -92,7 +91,7 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
 
         @Specialization
         protected long readI64(VirtualFrame frame) {
-            return LLVMFrameUtil.getI64(frame, getSlot());
+            return FrameUtil.getLongSafe(frame, getSlot());
         }
     }
 
@@ -103,7 +102,7 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
 
         @Specialization
         protected LLVMIVarBit readVarBit(VirtualFrame frame) {
-            return LLVMFrameUtil.getIVarbit(frame, getSlot());
+            return (LLVMIVarBit) FrameUtil.getObjectSafe(frame, getSlot());
         }
     }
 
@@ -114,7 +113,7 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
 
         @Specialization
         protected float readDouble(VirtualFrame frame) {
-            return LLVMFrameUtil.getFloat(frame, getSlot());
+            return FrameUtil.getFloatSafe(frame, getSlot());
         }
     }
 
@@ -125,7 +124,7 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
 
         @Specialization
         protected double readDouble(VirtualFrame frame) {
-            return LLVMFrameUtil.getDouble(frame, getSlot());
+            return FrameUtil.getDoubleSafe(frame, getSlot());
         }
     }
 
@@ -136,7 +135,7 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
 
         @Specialization
         protected LLVM80BitFloat read80BitFloat(VirtualFrame frame) {
-            return LLVMFrameUtil.get80BitFloat(frame, getSlot());
+            return (LLVM80BitFloat) FrameUtil.getObjectSafe(frame, getSlot());
         }
     }
 

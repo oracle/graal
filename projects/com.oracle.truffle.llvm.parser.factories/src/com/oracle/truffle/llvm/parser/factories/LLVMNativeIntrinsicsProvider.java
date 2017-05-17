@@ -211,10 +211,6 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
         return args;
     }
 
-    protected void register(final String name, final LLVMNativeIntrinsicFactory intrinsic) {
-        factories.put(name, intrinsic);
-    }
-
     protected void registerTruffleIntrinsics() {
         factories.put("@truffle_write", new LLVMNativeIntrinsicFactory(true, true) {
             @Override

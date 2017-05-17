@@ -203,13 +203,6 @@ final class LLVMFunctionFactory {
         throw new AssertionError(llvmType);
     }
 
-    static LLVMControlFlowNode createFunctionInvokeSubstitution(LLVMExpressionNode substitution, FunctionType type, FrameSlot returnvalueSlot,
-                    FrameSlot exceptionValueSlot, int normalSuccessor, int unwindSuccessor, LLVMExpressionNode[] normalPhiWriteNodes, LLVMExpressionNode[] unwindPhiWriteNodes,
-                    SourceSection sourceSection) {
-        return new LLVMInvokeNode.LLVMSubstitutionInvokeNode(type, substitution, returnvalueSlot, exceptionValueSlot, normalSuccessor, unwindSuccessor,
-                        normalPhiWriteNodes, unwindPhiWriteNodes, sourceSection);
-    }
-
     static RootNode createGlobalRootNodeWrapping(LLVMLanguage language, RootCallTarget mainCallTarget, Type returnType) {
         if (returnType instanceof VoidType) {
             return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnVoidRootNode(language, mainCallTarget);

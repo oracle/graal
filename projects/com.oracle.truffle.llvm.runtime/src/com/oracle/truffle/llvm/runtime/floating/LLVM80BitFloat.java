@@ -502,9 +502,6 @@ public final class LLVM80BitFloat {
         }
     }
 
-    public static void iDependOnTheDoubleHack() {
-    }
-
     public LLVM80BitFloat negate() {
         return new LLVM80BitFloat(!getSign(), getExponent(), getFraction());
     }
