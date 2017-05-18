@@ -22,24 +22,14 @@
  */
 package org.graalvm.compiler.nodes;
 
-import static org.graalvm.compiler.nodeinfo.InputType.Extension;
-import static org.graalvm.compiler.nodeinfo.InputType.Memory;
-import static org.graalvm.compiler.nodeinfo.InputType.State;
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
-
-import java.util.Map;
-
-import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.api.word.LocationIdentity;
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
-import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
@@ -48,7 +38,13 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.UncheckedInterfaceProvider;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
-import jdk.vm.ci.meta.JavaKind;
+import java.util.Map;
+
+import static org.graalvm.compiler.nodeinfo.InputType.Extension;
+import static org.graalvm.compiler.nodeinfo.InputType.Memory;
+import static org.graalvm.compiler.nodeinfo.InputType.State;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
 @NodeInfo(nameTemplate = "Invoke!#{p#targetMethod/s}", allowedUsageTypes = {Memory}, cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
 public final class InvokeWithExceptionNode extends ControlSplitNode implements Invoke, MemoryCheckpoint.Single, LIRLowerable, UncheckedInterfaceProvider {
@@ -202,7 +198,6 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
     }
 
     public void replaceWithNewBci(int bci) {
-        Debug.forceDump(graph(), "before");
         AbstractBeginNode nextNode = next();
         AbstractBeginNode exceptionObject = exceptionEdge;
         setExceptionEdge(null);
@@ -216,7 +211,6 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
         assert removed;
         this.replaceAtUsages(repl);
         this.markDeleted();
-        Debug.forceDump(graph(), "after");
     }
 
     @Override
@@ -306,8 +300,8 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
     }
 
     /**
-     * Replaces this InvokeWithExceptionNode with a normal InvokeNode.
-     * Kills the exception dispatch code.
+     * Replaces this InvokeWithExceptionNode with a normal InvokeNode. Kills the exception dispatch
+     * code.
      */
     public InvokeNode replaceWithInvoke() {
         InvokeNode invokeNode = graph().add(new InvokeNode(callTarget, bci));

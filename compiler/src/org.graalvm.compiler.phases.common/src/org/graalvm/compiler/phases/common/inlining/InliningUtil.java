@@ -429,10 +429,6 @@ public class InliningUtil extends ValueMergeUtil {
         invokeNode.replaceAtPredecessor(firstNode);
 
         if (invoke instanceof InvokeWithExceptionNode) {
-            if (((InvokeWithExceptionNode) invoke).methodCallTarget().targetMethod().toString().contains("encrypt")
-                    || ((InvokeWithExceptionNode) invoke).methodCallTarget().targetMethod().toString().contains("decrypt")) {
-                TTY.println("found");
-            }
             InvokeWithExceptionNode invokeWithException = ((InvokeWithExceptionNode) invoke);
             if (unwindNode != null && unwindNode.isAlive()) {
                 assert unwindNode.predecessor() != null;
@@ -518,8 +514,8 @@ public class InliningUtil extends ValueMergeUtil {
 
     private static void fixFrameStates(MergeNode originalMerge, Node current, NodeMap<Node> seen, ValueNode currentValue, PhiNode returnPhi) {
         // It is possible that some of the frame states that came from AFTER_BCI reference a Phi
-        // node that
-        // was created to merge multiple returns. This can create cycles (see GR-3949 and GR-3957).
+        // node that was created to merge multiple returns. This can create cycles
+        // (see GR-3949 and GR-3957).
         // To detect this, we follow the control paths starting from the merge node,
         // split the Phi node inputs at merges and assign the proper input to each frame state.
         if (seen.containsKey(current)) {
@@ -605,17 +601,15 @@ public class InliningUtil extends ValueMergeUtil {
                     outerFrameState = stateAtReturn.duplicateModifiedDuringCall(invoke.bci(), invokeReturnKind);
                 }
                 processFrameState(frameState, invoke, replacements, inlineGraph.method(), stateAtExceptionEdge, outerFrameState, alwaysDuplicateStateAfter, invoke.callTarget().targetMethod(),
-                        invoke.callTarget().arguments());
-            } else if (original.bci == BytecodeFrame.UNKNOWN_BCI) {
-                // Not alive.
-                TTY.print("not alive " + frameState);
+                                invoke.callTarget().arguments());
             }
         }
         // If processing the frame states replaced any nodes, update the duplicates map.
         duplicates.replaceAll((key, value) -> replacements.containsKey(value) ? replacements.get(value) : value);
     }
 
-    public static FrameState processFrameState(FrameState frameState, Invoke invoke, EconomicMap<Node, Node> replacements, ResolvedJavaMethod inlinedMethod, FrameState stateAtExceptionEdge, FrameState outerFrameState,
+    public static FrameState processFrameState(FrameState frameState, Invoke invoke, EconomicMap<Node, Node> replacements, ResolvedJavaMethod inlinedMethod, FrameState stateAtExceptionEdge,
+                    FrameState outerFrameState,
                     boolean alwaysDuplicateStateAfter, ResolvedJavaMethod invokeTargetMethod, List<ValueNode> invokeArgsList) {
         assert outerFrameState == null || !outerFrameState.isDeleted() : outerFrameState;
         final FrameState stateAtReturn = invoke.stateAfter();
@@ -751,9 +745,10 @@ public class InliningUtil extends ValueMergeUtil {
                             GraphUtil.killCFG(end);
                         }
                     } else if (fixedStateSplit instanceof ExceptionObjectNode) {
-                        // The target invoke does not have an exception edge. This means that the bytecode parser
-                        // made the wrong assumption of making an InvokeWithExceptionNode for the partial
-                        // intrinsic exit. We therefore replace the InvokeWithExceptionNode with a normal
+                        // The target invoke does not have an exception edge. This means that the
+                        // bytecode parser made the wrong assumption of making an
+                        // InvokeWithExceptionNode for the partial intrinsic exit. We therefore
+                        // replace the InvokeWithExceptionNode with a normal
                         // InvokeNode -- the deoptimization occurs when the invoke throws.
                         InvokeWithExceptionNode oldInvoke = (InvokeWithExceptionNode) fixedStateSplit.predecessor();
                         FrameState oldFrameState = oldInvoke.stateAfter();

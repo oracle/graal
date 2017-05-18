@@ -22,20 +22,11 @@
  */
 package org.graalvm.compiler.graph;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.function.Consumer;
-
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugCounter;
 import org.graalvm.compiler.debug.DebugTimer;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node.ValueNumberable;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.options.Option;
@@ -45,6 +36,14 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.UnmodifiableEconomicMap;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.function.Consumer;
+
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
 /**
  * This class is a graph container, it contains the set of nodes that belong to this graph.
@@ -971,9 +970,6 @@ public class Graph {
         }
         int id = nodesSize++;
         nodes[id] = node;
-        if ((id == 254 || id == 293 || id == 142) && node.getClass().getSimpleName().contains("BeginNode") && this.toString().contains("update")) {
-            TTY.println("found begin node");
-        }
         node.id = id;
         if (currentNodeSourcePosition != null) {
             node.setNodeSourcePosition(currentNodeSourcePosition);
