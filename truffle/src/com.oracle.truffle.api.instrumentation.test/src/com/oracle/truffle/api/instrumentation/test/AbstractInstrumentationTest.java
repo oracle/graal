@@ -60,6 +60,10 @@ public abstract class AbstractInstrumentationTest {
         engine = createEngine(langMimeType);
     }
 
+    protected final PolyglotRuntime getRuntime() {
+        return runtime;
+    }
+
     protected void assertEnabledInstrument(String id) {
         Assert.assertTrue(engine.getRuntime().getInstruments().get(id).isEnabled());
     }

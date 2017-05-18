@@ -638,6 +638,11 @@ public final class Breakpoint {
         }
 
         @Override
+        boolean isStepNode() {
+            return false;
+        }
+
+        @Override
         Breakpoint getBreakpoint() {
             return breakpoint;
         }

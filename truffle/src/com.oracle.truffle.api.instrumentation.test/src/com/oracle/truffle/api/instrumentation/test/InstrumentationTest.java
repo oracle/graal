@@ -39,6 +39,8 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.io.Reader;
 import java.nio.CharBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -1134,6 +1136,14 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
     }
 
+    private void setupEngine(Source initSource, boolean runInitAfterExec) {
+        PolyglotEngine.Builder builder = PolyglotEngine.newBuilder();
+        builder.runtime(getRuntime());
+        builder.config(InstrumentationTestLanguage.MIME_TYPE, "initSource", initSource);
+        builder.config(InstrumentationTestLanguage.MIME_TYPE, "runInitAfterExec", runInitAfterExec);
+        engine = builder.build();
+    }
+
     @Test
     public void testAccessInstruments() {
         Instrument instrument = engine.getRuntime().getInstruments().get("testAccessInstruments");
@@ -1259,7 +1269,104 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         } catch (Exception e1) {
             // expected
         }
+    }
 
+    @Test
+    public void testLanguageInitializedOrNot() throws Exception {
+        Source initSource = Source.newBuilder("STATEMENT(EXPRESSION, EXPRESSION)").name("<init>").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
+        setupEngine(initSource, false);
+
+        PolyglotRuntime.Instrument instrument = engine.getRuntime().getInstruments().get("testLangInitialized");
+
+        // Events during language initialization phase are included:
+        TestLangInitialized.initializationEvents = true;
+        instrument.setEnabled(true);
+        TestLangInitialized service = instrument.lookup(TestLangInitialized.class);
+        run("LOOP(2, STATEMENT())");
+        assertEquals("[StatementNode, false, ExpressionNode, false, ExpressionNode, false, LoopNode, true, StatementNode, true, StatementNode, true]", service.getEnteredNodes());
+        instrument.setEnabled(false);
+    }
+
+    @Test
+    public void testLanguageInitializedOnly() throws Exception {
+        Source initSource = Source.newBuilder("STATEMENT(EXPRESSION, EXPRESSION)").name("<init>").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
+        setupEngine(initSource, false);
+        PolyglotRuntime.Instrument instrument = engine.getRuntime().getInstruments().get("testLangInitialized");
+
+        // Events during language initialization phase are excluded:
+        TestLangInitialized.initializationEvents = false;
+        instrument.setEnabled(true);
+        TestLangInitialized service = instrument.lookup(TestLangInitialized.class);
+        run("LOOP(2, STATEMENT())");
+        assertEquals("[LoopNode, true, StatementNode, true, StatementNode, true]", service.getEnteredNodes());
+        instrument.setEnabled(false);
+    }
+
+    @Test
+    public void testLanguageInitializedOrNotAppend() throws Exception {
+        Source initSource = Source.newBuilder("STATEMENT(EXPRESSION, EXPRESSION)").name("<init>").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
+        setupEngine(initSource, true);
+        PolyglotRuntime.Instrument instrument = engine.getRuntime().getInstruments().get("testLangInitialized");
+
+        // Events during language initialization phase are prepended and appended:
+        TestLangInitialized.initializationEvents = true;
+        instrument.setEnabled(true);
+        TestLangInitialized service = instrument.lookup(TestLangInitialized.class);
+        run("LOOP(2, STATEMENT())");
+        assertEquals("[StatementNode, false, ExpressionNode, false, ExpressionNode, false, LoopNode, true, StatementNode, true, StatementNode, true, StatementNode, true, ExpressionNode, true, ExpressionNode, true]",
+                        service.getEnteredNodes());
+        instrument.setEnabled(false);
+    }
+
+    @Test
+    public void testLanguageInitializedOnlyAppend() throws Exception {
+        Source initSource = Source.newBuilder("STATEMENT(EXPRESSION, EXPRESSION)").name("<init>").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
+        setupEngine(initSource, true);
+        PolyglotRuntime.Instrument instrument = engine.getRuntime().getInstruments().get("testLangInitialized");
+
+        // Events during language initialization phase are excluded,
+        // but events from the same nodes used for initialization are appended:
+        TestLangInitialized.initializationEvents = false;
+        instrument.setEnabled(true);
+        TestLangInitialized service = instrument.lookup(TestLangInitialized.class);
+        run("LOOP(2, STATEMENT())");
+        assertEquals("[LoopNode, true, StatementNode, true, StatementNode, true, StatementNode, true, ExpressionNode, true, ExpressionNode, true]", service.getEnteredNodes());
+        instrument.setEnabled(false);
+    }
+
+    @Registration(id = "testLangInitialized")
+    public static class TestLangInitialized extends TruffleInstrument implements ExecutionEventListener {
+
+        static boolean initializationEvents;
+        private final List<String> enteredNodes = new ArrayList<>();
+
+        @Override
+        protected void onCreate(Env env) {
+            env.registerService(this);
+            env.getInstrumenter().attachListener(SourceSectionFilter.ANY, this);
+        }
+
+        @Override
+        public void onEnter(EventContext context, VirtualFrame frame) {
+            if (!initializationEvents && !context.isLanguageContextInitialized()) {
+                // Skipt language context initialization if initializationEvents is false
+                return;
+            }
+            enteredNodes.add(context.getInstrumentedNode().getClass().getSimpleName());
+            enteredNodes.add(Boolean.toString(context.isLanguageContextInitialized()));
+        }
+
+        @Override
+        public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+        }
+
+        @Override
+        public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+        }
+
+        String getEnteredNodes() {
+            return enteredNodes.toString();
+        }
     }
 
     private static final class MyKillException extends ThreadDeath {
