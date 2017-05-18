@@ -123,7 +123,7 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
      */
     protected HotSpotSuitesProvider createSuites(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, Plugins plugins,
                     Replacements replacements) {
-        return new HotSpotSuitesProvider(new SPARCSuitesCreator(compilerConfiguration, plugins), config, runtime, new SPARCAddressLowering());
+        return new SPARCHotSpotSuitesProvider(new SPARCSuitesCreator(compilerConfiguration, plugins), config, runtime, new SPARCAddressLowering());
     }
 
     protected SPARCHotSpotBackend createBackend(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {

@@ -182,7 +182,7 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
      */
     protected HotSpotSuitesProvider createSuites(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, Plugins plugins,
                     HotSpotRegistersProvider registers, Replacements replacements, OptionValues options) {
-        return new HotSpotSuitesProvider(new AMD64HotSpotSuitesCreator(compilerConfiguration, plugins), config, runtime,
+        return new AMD64HotSpotSuitesProvider(new AMD64HotSpotSuitesCreator(compilerConfiguration, plugins), config, runtime,
                                          new AMD64HotSpotAddressLowering(config, registers.getHeapBaseRegister(), options));
     }
 

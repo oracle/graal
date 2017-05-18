@@ -176,7 +176,7 @@ public class AArch64HotSpotBackendFactory implements HotSpotBackendFactory {
     }
 
     protected HotSpotSuitesProvider createSuites(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, Plugins plugins) {
-        return new HotSpotSuitesProvider(new AArch64SuitesCreator(compilerConfiguration, plugins), config, runtime, new AArch64AddressLowering());
+        return new AArch64HotSpotSuitesProvider(new AArch64SuitesCreator(compilerConfiguration, plugins), config, runtime, new AArch64AddressLowering());
     }
 
     protected HotSpotSnippetReflectionProvider createSnippetReflection(HotSpotGraalRuntimeProvider runtime, HotSpotConstantReflectionProvider constantReflection, WordTypes wordTypes) {
