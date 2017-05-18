@@ -49,7 +49,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableRegistry;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
@@ -70,7 +70,7 @@ public class LLVMContext {
 
     private final LLVMNativeFunctions nativeFunctions;
 
-    private final LLVMStack stack = new LLVMStack();
+    private final LLVMThreadingStack threadingStack = new LLVMThreadingStack();
 
     private Object[] mainArguments;
 
@@ -245,8 +245,8 @@ public class LLVMContext {
         nativeLookup.addLibraryToNativeLookup(library);
     }
 
-    public LLVMStack getStack() {
-        return stack;
+    public LLVMThreadingStack getThreadingStack() {
+        return threadingStack;
     }
 
     public void setMainArguments(Object[] mainArguments) {

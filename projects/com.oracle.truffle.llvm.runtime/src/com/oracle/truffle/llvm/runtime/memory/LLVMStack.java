@@ -29,19 +29,37 @@
  */
 package com.oracle.truffle.llvm.runtime.memory;
 
+import java.lang.reflect.Field;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
+import sun.misc.Unsafe;
+
 /**
  * Implements a stack that grows from the top to the bottom.
  */
-public final class LLVMStack extends LLVMMemory {
+public final class LLVMStack {
 
     private static final long STACK_SIZE_KB = LLVMOptions.ENGINE.stackSize();
 
     private static final long STACK_SIZE_BYTE = STACK_SIZE_KB * 1024;
+
+    static final Unsafe UNSAFE = getUnsafe();
+
+    @SuppressWarnings("restriction")
+    private static Unsafe getUnsafe() {
+        CompilerAsserts.neverPartOfCompilation();
+        try {
+            Field singleoneInstanceField = Unsafe.class.getDeclaredField("theUnsafe");
+            singleoneInstanceField.setAccessible(true);
+            return (Unsafe) singleoneInstanceField.get(null);
+        } catch (Exception e) {
+            throw new AssertionError();
+        }
+    }
 
     @CompilationFinal private long lowerBounds;
     @CompilationFinal private long upperBounds;
@@ -49,7 +67,7 @@ public final class LLVMStack extends LLVMMemory {
 
     private long stackPointer;
 
-    public void allocate() {
+    public LLVMStack() {
         allocate(STACK_SIZE_BYTE);
     }
 

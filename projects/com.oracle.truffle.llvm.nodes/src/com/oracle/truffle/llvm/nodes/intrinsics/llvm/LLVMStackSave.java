@@ -32,13 +32,13 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 
 public abstract class LLVMStackSave extends LLVMBuiltin {
 
     @Specialization
-    public LLVMAddress executePointee(@Cached("getContext().getStack()") LLVMStack stack) {
-        return LLVMAddress.fromLong(stack.getStackPointer());
+    public LLVMAddress executePointee(@Cached("getContext().getThreadingStack()") LLVMThreadingStack stack) {
+        return LLVMAddress.fromLong(stack.getStack().getStackPointer());
     }
 
 }

@@ -33,16 +33,16 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild(type = LLVMExpressionNode.class, value = "val")
 public abstract class LLVMFrameAddress extends LLVMBuiltin {
 
     @Specialization
-    public LLVMAddress executePointee(int frameLevel, @Cached("getContext().getStack()") LLVMStack stack) {
+    public LLVMAddress executePointee(int frameLevel, @Cached("getContext().getThreadingStack()") LLVMThreadingStack stack) {
         if (frameLevel == 0) {
-            return LLVMAddress.fromLong(stack.getStackPointer());
+            return LLVMAddress.fromLong(stack.getStack().getStackPointer());
         } else {
             return LLVMAddress.nullPointer();
         }

@@ -33,15 +33,15 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMStackRestore extends LLVMBuiltin {
 
     @Specialization
-    public Object executeVoid(LLVMAddress addr, @Cached("getContext().getStack()") LLVMStack stack) {
-        stack.setStackPointer(addr.getVal());
+    public Object executeVoid(LLVMAddress addr, @Cached("getContext().getThreadingStack()") LLVMThreadingStack stack) {
+        stack.getStack().setStackPointer(addr.getVal());
         return null;
     }
 
