@@ -39,7 +39,6 @@ import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.internal.method.MethodMetricsImpl;
 import org.graalvm.compiler.debug.internal.method.MethodMetricsInlineeScopeInfo;
 import org.graalvm.compiler.graph.GraalGraphError;

@@ -197,12 +197,12 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
         GraphUtil.killCFG(edge);
     }
 
-    public void replaceWithNewBci(int bci) {
+    public void replaceWithNewBci(int newBci) {
         AbstractBeginNode nextNode = next();
         AbstractBeginNode exceptionObject = exceptionEdge;
         setExceptionEdge(null);
         setNext(null);
-        InvokeWithExceptionNode repl = graph().add(new InvokeWithExceptionNode(callTarget(), exceptionObject, bci));
+        InvokeWithExceptionNode repl = graph().add(new InvokeWithExceptionNode(callTarget(), exceptionObject, newBci));
         repl.setStateAfter(stateAfter);
         this.setStateAfter(null);
         this.replaceAtPredecessor(repl);

@@ -434,6 +434,10 @@ public class ReplacementsParseTest extends ReplacementsTest {
         return res;
     }
 
+    public static int callCopyFirstWrapper(byte[] in, byte[] out, boolean left2right) {
+        return callCopyFirst(in, out, left2right);
+    }
+
     public static int callCopyFirstL2R(byte[] in, byte[] out) {
         int res = TestObject.copyFirstL2R(in, out);
         if (res == 17) {
@@ -477,8 +481,8 @@ public class ReplacementsParseTest extends ReplacementsTest {
         try {
             byte[] in = {0, 1, 2, 3, 4};
             byte[] out = new byte[in.length];
-            test(options, "callCopyFirst", in, out, true);
-            test(options, "callCopyFirst", in, out, false);
+            test(options, "callCopyFirstWrapper", in, out, true);
+            test(options, "callCopyFirstWrapper", in, out, false);
         } finally {
             inlineInvokeDecision = null;
         }
