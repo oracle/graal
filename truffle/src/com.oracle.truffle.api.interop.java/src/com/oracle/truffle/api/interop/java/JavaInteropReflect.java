@@ -78,6 +78,21 @@ final class JavaInteropReflect {
                     return new JavaFunctionObject(m, obj);
                 }
             }
+            int signature = name.indexOf("__");
+            if (signature != -1) {
+                for (Method m : object.clazz.getMethods()) {
+                    final boolean isStatic = (m.getModifiers() & Modifier.STATIC) != 0;
+                    if (onlyStatic != isStatic) {
+                        continue;
+                    }
+                    if (name.startsWith(m.getName())) {
+                        final String fullName = jniName(m);
+                        if (fullName.equals(name)) {
+                            return new JavaFunctionObject(m, obj);
+                        }
+                    }
+                }
+            }
             throw UnknownIdentifierException.raise(name);
         }
         return JavaInterop.asTruffleObject(val);
@@ -107,6 +122,21 @@ final class JavaInteropReflect {
                 continue;
             }
             if (m.getName().equals(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static boolean isJNIMethod(JavaObject object, String name) {
+        Object obj = object.obj;
+        final boolean onlyStatic = obj == null;
+        for (Method m : object.clazz.getMethods()) {
+            final boolean isStatic = (m.getModifiers() & Modifier.STATIC) != 0;
+            if (onlyStatic != isStatic) {
+                continue;
+            }
+            if (jniName(m).equals(name)) {
                 return true;
             }
         }
@@ -186,7 +216,7 @@ final class JavaInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static String[] findUniquePublicMemberNames(Class<?> c, boolean onlyInstance) throws SecurityException {
+    static String[] findUniquePublicMemberNames(Class<?> c, boolean onlyInstance, boolean includeInternal) throws SecurityException {
         Class<?> clazz = c;
         while ((clazz.getModifiers() & Modifier.PUBLIC) == 0) {
             clazz = clazz.getSuperclass();
@@ -208,6 +238,9 @@ final class JavaInteropReflect {
                 continue;
             }
             names.add(method.getName());
+            if (includeInternal) {
+                names.add(jniName(method));
+            }
         }
         return names.toArray(new String[0]);
     }
@@ -522,5 +555,66 @@ final class JavaInteropReflect {
 
     private static Object toJava(Object ret, Method method) {
         return ToJavaNode.toJava(ret, TypeAndClass.forReturnType(method));
+    }
+
+    private static String jniName(Method m) {
+        StringBuilder sb = new StringBuilder();
+        noUnderscore(sb, m.getName()).append("__");
+        appendType(sb, m.getReturnType());
+        Class<?>[] arr = m.getParameterTypes();
+        for (int i = 0; i < arr.length; i++) {
+            appendType(sb, arr[i]);
+        }
+        return sb.toString();
+    }
+
+    private static StringBuilder noUnderscore(StringBuilder sb, String name) {
+        return sb.append(name.replace("_", "_1").replace('.', '_'));
+    }
+
+    private static void appendType(StringBuilder sb, Class<?> type) {
+        if (type == Integer.TYPE) {
+            sb.append('I');
+            return;
+        }
+        if (type == Long.TYPE) {
+            sb.append('J');
+            return;
+        }
+        if (type == Double.TYPE) {
+            sb.append('D');
+            return;
+        }
+        if (type == Float.TYPE) {
+            sb.append('F');
+            return;
+        }
+        if (type == Byte.TYPE) {
+            sb.append('B');
+            return;
+        }
+        if (type == Boolean.TYPE) {
+            sb.append('Z');
+            return;
+        }
+        if (type == Short.TYPE) {
+            sb.append('S');
+            return;
+        }
+        if (type == Void.TYPE) {
+            sb.append('V');
+            return;
+        }
+        if (type == Character.TYPE) {
+            sb.append('C');
+            return;
+        }
+        if (type.isArray()) {
+            sb.append("_3");
+            appendType(sb, type.getComponentType());
+            return;
+        }
+        noUnderscore(sb.append('L'), type.getName());
+        sb.append("_2");
     }
 }

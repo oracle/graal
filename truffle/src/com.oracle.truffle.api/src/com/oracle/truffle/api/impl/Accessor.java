@@ -184,6 +184,8 @@ public abstract class Accessor {
 
         public abstract <S> S lookup(LanguageInfo languageEnsureInitialized, Class<S> type);
 
+        public abstract boolean isContextInitialized(Env env);
+
     }
 
     public abstract static class InstrumentSupport {

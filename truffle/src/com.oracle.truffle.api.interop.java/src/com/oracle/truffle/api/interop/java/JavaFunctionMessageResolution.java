@@ -89,9 +89,14 @@ class JavaFunctionMessageResolution {
                         if (i < argumentTypes.length - 1) {
                             types[i] = new TypeAndClass<>(argumentTypes[i], argumentClasses[i]);
                         } else {
-                            final GenericArrayType arrayType = (GenericArrayType) argumentTypes[argumentTypes.length - 1];
+                            final Type lastArgumentType = argumentTypes[argumentTypes.length - 1];
                             final Class<?> arrayClazz = argumentClasses[argumentClasses.length - 1];
-                            types[i] = new TypeAndClass<>(arrayType.getGenericComponentType(), arrayClazz.getComponentType());
+                            if (lastArgumentType instanceof GenericArrayType) {
+                                final GenericArrayType arrayType = (GenericArrayType) lastArgumentType;
+                                types[i] = new TypeAndClass<>(arrayType.getGenericComponentType(), arrayClazz.getComponentType());
+                            } else {
+                                types[i] = new TypeAndClass<>(arrayClazz.getComponentType(), arrayClazz.getComponentType());
+                            }
                         }
                     }
                     return types;
