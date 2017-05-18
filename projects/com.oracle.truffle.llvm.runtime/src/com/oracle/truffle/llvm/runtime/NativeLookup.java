@@ -157,7 +157,18 @@ public final class NativeLookup {
         return types;
     }
 
-    private static TruffleObject getNativeFunction(List<TruffleObject> libraryHandles, TruffleObject defaultLibrary, String name) {
+    /**
+     * On Darwin, some native symbols are given a prefix supposedly to prevent mangling, e.g. glob,
+     * chmod.
+     */
+    private static final String NO_MANGLE_PREFIX = "\"\\01_";
+
+    private static TruffleObject getNativeFunction(List<TruffleObject> libraryHandles, TruffleObject defaultLibrary, String nameIn) {
+        String name = nameIn;
+        if (name.contains(NO_MANGLE_PREFIX)) {
+            name = name.replace(NO_MANGLE_PREFIX, "");
+            name = name.substring(0, name.length() - 1);
+        }
         for (TruffleObject libraryHandle : libraryHandles) {
             TruffleObject symbol = getNativeFunction(libraryHandle, name);
             if (symbol != null) {
@@ -166,7 +177,7 @@ public final class NativeLookup {
         }
         TruffleObject symbol = getNativeFunction(defaultLibrary, name);
         if (symbol == null) {
-            LLVMLogger.info("external symbol " + name + " could not be resolved!");
+            LLVMLogger.info("external symbol " + nameIn + " could not be resolved!");
         }
         return symbol;
     }
