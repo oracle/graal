@@ -145,7 +145,7 @@ public class AArch64Move {
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             Register dst = asRegister(result);
             AArch64Address adr = address.toAddress();
-            masm.loadAddress(dst, adr, address.getPlatformKind().getSizeInBytes());
+            masm.loadAddress(dst, adr, address.getScaleFactor());
         }
     }
 
