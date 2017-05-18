@@ -321,8 +321,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         LIRKind wordKind = LIRKind.value(target().arch.getWordKind());
         RegisterValue thread = getProviders().getRegisters().getThreadRegister().asValue(wordKind);
         final int transferSize = value.getValueKind().getPlatformKind().getSizeInBytes();
-        final int scaledDisplacement = offset >> NumUtil.log2Ceil(transferSize);
-        AArch64AddressValue address = new AArch64AddressValue(value.getValueKind(), thread, Value.ILLEGAL, scaledDisplacement, true, AddressingMode.IMMEDIATE_SCALED);
+        AArch64AddressValue address = new AArch64AddressValue(value.getValueKind(), thread, Value.ILLEGAL, offset, transferSize, AddressingMode.IMMEDIATE_SCALED);
         append(new StoreOp((AArch64Kind) value.getPlatformKind(), address, loadReg(value), null));
     }
 
