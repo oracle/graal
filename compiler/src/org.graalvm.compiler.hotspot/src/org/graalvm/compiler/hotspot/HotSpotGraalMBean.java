@@ -54,6 +54,7 @@ public final class HotSpotGraalMBean implements DynamicMBean {
     private final OptionValues options;
     private final EconomicMap<OptionKey<?>, Object> changes;
     private ObjectName registered;
+    private OptionValues cachedOptions;
 
     private HotSpotGraalMBean(OptionValues options) {
         this.options = options;
@@ -111,7 +112,7 @@ public final class HotSpotGraalMBean implements DynamicMBean {
     }
 
     @SuppressWarnings("unused")
-    OptionValues optionsFor(OptionValues initialValues, ResolvedJavaMethod forMethod) {
+    public OptionValues optionsFor(OptionValues initialValues, ResolvedJavaMethod forMethod) {
         ensureRegistered(true);
         return currentMap(initialValues);
     }
@@ -120,7 +121,12 @@ public final class HotSpotGraalMBean implements DynamicMBean {
         if (changes.isEmpty()) {
             return initialValues;
         }
-        return new OptionValues(initialValues, changes);
+        OptionValues current = cachedOptions;
+        if (current == null) {
+            current = new OptionValues(initialValues, changes);
+            cachedOptions = current;
+        }
+        return current;
     }
 
     @Override
@@ -143,6 +149,7 @@ public final class HotSpotGraalMBean implements DynamicMBean {
     }
 
     private Attribute setImpl(Attribute attribute) {
+        cachedOptions = null;
         for (OptionDescriptor option : allOptionDescriptors()) {
             if (option.getName().equals(attribute.getName())) {
                 changes.put(option.getOptionKey(), attribute.getValue());

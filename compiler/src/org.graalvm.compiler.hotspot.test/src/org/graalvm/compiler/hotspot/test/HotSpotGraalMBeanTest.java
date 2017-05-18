@@ -31,9 +31,13 @@ import javax.management.MBeanServer;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 import org.graalvm.compiler.hotspot.HotSpotGraalMBean;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.util.EconomicMap;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
@@ -87,15 +91,7 @@ public class HotSpotGraalMBeanTest {
         MBeanInfo info = server.getMBeanInfo(name);
         assertNotNull("Info is found", info);
 
-        MBeanAttributeInfo printCompilation = null;
-        for (MBeanAttributeInfo attr : info.getAttributes()) {
-            if (attr.getName().equals("PrintCompilation")) {
-                assertTrue("Readable", attr.isReadable());
-                assertTrue("Writable", attr.isWritable());
-                printCompilation = attr;
-                break;
-            }
-        }
+        MBeanAttributeInfo printCompilation = findAttributeInfo("PrintCompilation", info);
         assertNotNull("PrintCompilation found", printCompilation);
         assertEquals("true/false", Boolean.class.getName(), printCompilation.getType());
 
@@ -108,4 +104,53 @@ public class HotSpotGraalMBeanTest {
         assertNull("Default value was not set", before);
         assertEquals("Changed to on", Boolean.TRUE, after);
     }
+
+    private static MBeanAttributeInfo findAttributeInfo(String attrName, MBeanInfo info) {
+        MBeanAttributeInfo printCompilation = null;
+        for (MBeanAttributeInfo attr : info.getAttributes()) {
+            if (attr.getName().equals(attrName)) {
+                assertTrue("Readable", attr.isReadable());
+                assertTrue("Writable", attr.isWritable());
+                printCompilation = attr;
+                break;
+            }
+        }
+        return printCompilation;
+    }
+
+    @Test
+    public void optionsAreCached() throws Exception {
+        ObjectName name;
+
+        assertNotNull("Server is started", ManagementFactory.getPlatformMBeanServer());
+
+        HotSpotGraalMBean realBean = HotSpotGraalMBean.create();
+
+        OptionValues original = new OptionValues(EconomicMap.create());
+
+        assertSame(original, realBean.optionsFor(original, null));
+
+        assertNotNull("Bean is registered", name = realBean.ensureRegistered(false));
+        final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+
+        ObjectInstance bean = server.getObjectInstance(name);
+        assertNotNull("Bean is registered", bean);
+        MBeanInfo info = server.getMBeanInfo(name);
+        assertNotNull("Info is found", info);
+
+        MBeanAttributeInfo dump = findAttributeInfo("Dump", info);
+
+        Attribute dumpTo1 = new Attribute(dump.getName(), 1);
+
+        server.setAttribute(name, dumpTo1);
+        Object after = server.getAttribute(name, dump.getName());
+        assertEquals(1, after);
+
+        final OptionValues modified1 = realBean.optionsFor(original, null);
+        assertNotSame(original, modified1);
+        final OptionValues modified2 = realBean.optionsFor(original, null);
+        assertSame("Options are cached", modified1, modified2);
+
+    }
+
 }
