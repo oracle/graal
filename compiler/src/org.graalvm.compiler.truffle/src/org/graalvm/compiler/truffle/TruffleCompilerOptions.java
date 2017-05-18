@@ -147,7 +147,7 @@ public class TruffleCompilerOptions {
     public static final OptionKey<Integer> TruffleInvalidationReprofileCount = new OptionKey<>(3);
 
     @Option(help = "Delay compilation after a node replacement", type = OptionType.Expert)
-    public static final OptionKey<Integer> TruffleReplaceReprofileCount = new OptionKey<>(10);
+    public static final OptionKey<Integer> TruffleReplaceReprofileCount = new OptionKey<>(3);
 
     @Option(help = "Enable automatic inlining of call targets", type = OptionType.Debug)
     public static final OptionKey<Boolean> TruffleFunctionInlining = new OptionKey<>(true);
