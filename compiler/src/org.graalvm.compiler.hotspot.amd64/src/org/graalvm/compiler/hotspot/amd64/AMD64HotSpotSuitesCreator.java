@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,34 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core.sparc;
+package org.graalvm.compiler.hotspot.amd64;
 
-import java.util.ListIterator;
-
-import org.graalvm.compiler.java.DefaultSuitesProvider;
+import org.graalvm.compiler.core.amd64.AMD64SuitesCreator;
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.hotspot.lir.HotSpotZapRegistersPhase;
+import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.PhaseSuite;
-import org.graalvm.compiler.phases.common.ExpandLogicPhase;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
-import org.graalvm.compiler.phases.tiers.LowTierContext;
-import org.graalvm.compiler.phases.tiers.Suites;
 
-public class SPARCSuitesProvider extends DefaultSuitesProvider {
-    public SPARCSuitesProvider(CompilerConfiguration compilerConfiguration, Plugins plugins) {
+public class AMD64HotSpotSuitesCreator extends AMD64SuitesCreator
+{
+
+    public AMD64HotSpotSuitesCreator(CompilerConfiguration compilerConfiguration, Plugins plugins) {
         super(compilerConfiguration, plugins);
     }
 
     @Override
-    public Suites createSuites(OptionValues options) {
-        Suites s = super.createSuites(options);
-        ListIterator<BasePhase<? super LowTierContext>> l = s.getLowTier().findPhase(ExpandLogicPhase.class);
-        while (PhaseSuite.findNextPhase(l, ExpandLogicPhase.class)) {
-            // Search for last occurrence of ExpandLogicPhase
+    public LIRSuites createLIRSuites(OptionValues options) {
+        LIRSuites lirSuites = super.createLIRSuites(options);
+        if (GraalOptions.DetailedAsserts.getValue(options)) {
+            lirSuites.getPostAllocationOptimizationStage().appendPhase(new HotSpotZapRegistersPhase());
         }
-        l.previous();
-        l.add(new SPARCIntegerCompareCanonicalizationPhase());
-        return s;
+        return lirSuites;
     }
 }

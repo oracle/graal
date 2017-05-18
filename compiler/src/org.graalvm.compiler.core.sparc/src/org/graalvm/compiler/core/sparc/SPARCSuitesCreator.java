@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,40 +20,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.java;
+package org.graalvm.compiler.core.sparc;
 
-import org.graalvm.compiler.lir.phases.LIRSuites;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import java.util.ListIterator;
+
+import org.graalvm.compiler.java.DefaultSuitesCreator;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.common.ExpandLogicPhase;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
-import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.tiers.LowTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 
-public class DefaultSuitesProvider extends SuitesProviderBase {
-
-    private final CompilerConfiguration compilerConfiguration;
-
-    public DefaultSuitesProvider(CompilerConfiguration compilerConfiguration, Plugins plugins) {
-        super();
-        this.defaultGraphBuilderSuite = createGraphBuilderSuite(plugins);
-        this.compilerConfiguration = compilerConfiguration;
+public class SPARCSuitesCreator extends DefaultSuitesCreator
+{
+    public SPARCSuitesCreator(CompilerConfiguration compilerConfiguration, Plugins plugins) {
+        super(compilerConfiguration, plugins);
     }
 
     @Override
     public Suites createSuites(OptionValues options) {
-        return Suites.createSuites(compilerConfiguration, options);
-    }
-
-    protected PhaseSuite<HighTierContext> createGraphBuilderSuite(Plugins plugins) {
-        PhaseSuite<HighTierContext> suite = new PhaseSuite<>();
-        suite.appendPhase(new GraphBuilderPhase(GraphBuilderConfiguration.getDefault(plugins)));
-        return suite;
-    }
-
-    @Override
-    public LIRSuites createLIRSuites(OptionValues options) {
-        return Suites.createLIRSuites(compilerConfiguration, options);
+        Suites s = super.createSuites(options);
+        ListIterator<BasePhase<? super LowTierContext>> l = s.getLowTier().findPhase(ExpandLogicPhase.class);
+        while (PhaseSuite.findNextPhase(l, ExpandLogicPhase.class)) {
+            // Search for last occurrence of ExpandLogicPhase
+        }
+        l.previous();
+        l.add(new SPARCIntegerCompareCanonicalizationPhase());
+        return s;
     }
 }

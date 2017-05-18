@@ -22,16 +22,17 @@
  */
 package org.graalvm.compiler.core.amd64;
 
-import org.graalvm.compiler.java.DefaultSuitesProvider;
+import org.graalvm.compiler.java.DefaultSuitesCreator;
 import org.graalvm.compiler.lir.amd64.phases.StackMoveOptimizationPhase;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 
-public class AMD64SuitesProvider extends DefaultSuitesProvider {
+public class AMD64SuitesCreator extends DefaultSuitesCreator
+{
 
-    public AMD64SuitesProvider(CompilerConfiguration compilerConfiguration, Plugins plugins) {
+    public AMD64SuitesCreator(CompilerConfiguration compilerConfiguration, Plugins plugins) {
         super(compilerConfiguration, plugins);
     }
 
