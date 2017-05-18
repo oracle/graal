@@ -87,6 +87,10 @@ public final class AArch64AddressValue extends CompositeValue {
         return scaleFactor != 1;
     }
 
+    public int getScaleFactor() {
+        return scaleFactor;
+    }
+    
     public AddressingMode getAddressingMode() {
         return addressingMode;
     }
