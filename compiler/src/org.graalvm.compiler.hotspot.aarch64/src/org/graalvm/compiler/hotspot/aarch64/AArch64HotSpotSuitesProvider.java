@@ -27,7 +27,7 @@ import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotSuitesProvider;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.common.AddressLoweringPhase;
+import org.graalvm.compiler.phases.common.AddressLoweringByUsePhase;
 import org.graalvm.compiler.phases.common.ExpandLogicPhase;
 import org.graalvm.compiler.phases.common.FixReadsPhase;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
@@ -41,12 +41,12 @@ import java.util.ListIterator;
  */
 public class AArch64HotSpotSuitesProvider extends HotSpotSuitesProvider
 {
-    private final AddressLoweringPhase.AddressLowering addressLowering;
+    private final AddressLoweringByUsePhase.AddressLoweringByUse addressLoweringByUse;
 
-    public AArch64HotSpotSuitesProvider(SuitesCreator defaultSuitesCreator, GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, AddressLoweringPhase.AddressLowering addressLowering)
+    public AArch64HotSpotSuitesProvider(SuitesCreator defaultSuitesCreator, GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, AddressLoweringByUsePhase.AddressLoweringByUse addressLoweringByUse)
     {
         super(defaultSuitesCreator, config, runtime);
-        this.addressLowering = addressLowering;
+        this.addressLoweringByUse = addressLoweringByUse;
     }
 
     @Override
@@ -58,7 +58,7 @@ public class AArch64HotSpotSuitesProvider extends HotSpotSuitesProvider
         if (findPhase == null) {
             findPhase = suites.getLowTier().findPhase(ExpandLogicPhase.class);
         }
-        findPhase.add(new AddressLoweringPhase(addressLowering));
+        findPhase.add(new AddressLoweringByUsePhase(addressLoweringByUse));
 
         return suites;
     }

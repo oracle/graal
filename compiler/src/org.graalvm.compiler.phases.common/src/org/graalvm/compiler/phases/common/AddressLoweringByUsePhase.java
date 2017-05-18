@@ -112,20 +112,4 @@ public class AddressLoweringByUsePhase extends Phase {
             GraphUtil.killWithUnusedFloatingInputs(node);
         }
     }
-
-    private ValueNode getBase(AddressNode address)
-    {
-        return address.getBase();
-    }
-
-    private ValueNode getIndex(AddressNode address)
-    {
-        if (address instanceof RawAddressNode) {
-            return null;
-        } else if (address instanceof OffsetAddressNode) {
-            return ((OffsetAddressNode) address).getOffset();
-        } else {
-            return address.getIndex();
-        }
-    }
 }
