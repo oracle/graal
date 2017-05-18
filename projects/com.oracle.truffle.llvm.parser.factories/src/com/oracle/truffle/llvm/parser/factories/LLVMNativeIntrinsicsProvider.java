@@ -115,6 +115,9 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexDiv;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexDivSC;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexMul;
+import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunConstructorFunctionsNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunDestructorFunctionsNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunGlobalVariableInitalizationNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -181,6 +184,8 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
     }
 
     public LLVMNativeIntrinsicsProvider collectIntrinsics() {
+        registerSulongIntrinsics();
+        registerTruffleIntrinsics();
         registerTruffleIntrinsics();
         registerAbortIntrinsics();
         registerTruffleOnlyIntrinsics();
@@ -209,6 +214,29 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
             args[i - startIndex] = types[i];
         }
         return args;
+    }
+
+    protected void registerSulongIntrinsics() {
+        factories.put("@sulong_run_global_variable_initialization", new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@sulong_run_global_variable_initialization", LLVMRunGlobalVariableInitalizationNodeGen.create());
+            }
+        });
+        factories.put("@sulong_run_constructor_functions", new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@sulong_run_constructor_functions",
+                                LLVMRunConstructorFunctionsNodeGen.create());
+            }
+        });
+        factories.put("@sulong_run_destructor_functions", new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@sulong_run_destructor_functions",
+                                LLVMRunDestructorFunctionsNodeGen.create());
+            }
+        });
     }
 
     protected void registerTruffleIntrinsics() {
