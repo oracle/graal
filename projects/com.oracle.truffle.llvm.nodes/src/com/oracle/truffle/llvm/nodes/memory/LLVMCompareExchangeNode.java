@@ -39,6 +39,7 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
@@ -141,13 +142,13 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMAddress address, Object comparisonValue, Object newValue, @Cached("getContext().getStack()") LLVMStack stack) {
-        return cmpxch.executeWithTarget(frame, address, comparisonValue, newValue, stack);
+    public Object execute(VirtualFrame frame, LLVMAddress address, Object comparisonValue, Object newValue, @Cached("getContext().getThreadingStack()") LLVMThreadingStack stack) {
+        return cmpxch.executeWithTarget(frame, address, comparisonValue, newValue, stack.getStack());
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMGlobalVariable address, Object comparisonValue, Object newValue, @Cached("getContext().getStack()") LLVMStack stack) {
-        return cmpxch.executeWithTarget(frame, address.getNativeLocation(), comparisonValue, newValue, stack);
+    public Object execute(VirtualFrame frame, LLVMGlobalVariable address, Object comparisonValue, Object newValue, @Cached("getContext().getThreadingStack()") LLVMThreadingStack stack) {
+        return cmpxch.executeWithTarget(frame, address.getNativeLocation(), comparisonValue, newValue, stack.getStack());
     }
 
 }

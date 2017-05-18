@@ -34,7 +34,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 
@@ -52,14 +52,14 @@ public final class LLVMComplexDivSC extends LLVMExpressionNode {
         this.dNode = d;
     }
 
-    @CompilationFinal private LLVMStack stack;
+    @CompilationFinal private LLVMThreadingStack threadingStack;
 
-    private LLVMStack getStack() {
-        if (stack == null) {
+    private LLVMThreadingStack getThreadingStack() {
+        if (threadingStack == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            stack = getContext().getStack();
+            threadingStack = getContext().getThreadingStack();
         }
-        return stack;
+        return threadingStack;
     }
 
     @Override
@@ -73,7 +73,7 @@ public final class LLVMComplexDivSC extends LLVMExpressionNode {
         float zReal = (a * c + b * d) / denom;
         float zImag = (b * c - a * d) / denom;
 
-        long allocatedMemory = getStack().allocateStackMemory(2 * LLVMExpressionNode.FLOAT_SIZE_IN_BYTES, 8);
+        long allocatedMemory = getThreadingStack().getStack().allocateStackMemory(2 * LLVMExpressionNode.FLOAT_SIZE_IN_BYTES, 8);
         LLVMMemory.putFloat(allocatedMemory, zReal);
         LLVMMemory.putFloat(allocatedMemory + LLVMExpressionNode.FLOAT_SIZE_IN_BYTES, zImag);
         return LLVMFloatVector.readVectorFromMemory(LLVMAddress.fromLong(allocatedMemory), 2);

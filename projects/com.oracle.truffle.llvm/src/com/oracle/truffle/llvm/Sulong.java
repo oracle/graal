@@ -267,7 +267,6 @@ public final class Sulong extends LLVMLanguage {
                         context.setParseOnly((boolean) parseOnly);
                     }
                 }
-                context.getStack().allocate();
                 return context;
             }
 
@@ -279,7 +278,7 @@ public final class Sulong extends LLVMLanguage {
                 for (RootCallTarget destructor : context.getGlobalVarDeallocs()) {
                     destructor.call();
                 }
-                context.getStack().free();
+                context.getThreadingStack().freeStacks();
             }
         };
     }
