@@ -47,6 +47,7 @@ import com.oracle.truffle.llvm.parser.model.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
+import com.oracle.truffle.llvm.runtime.LLVMException;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LazyToTruffleConverter;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -113,8 +114,7 @@ final class LLVMModelVisitor implements ModelVisitor {
             FrameDescriptor frame = visitor.getStack().getFrame(method.getName());
 
             final LLVMLifetimeAnalysis lifetimes = LLVMLifetimeAnalysis.getResult(method, frame, visitor.getPhis().getPhiMap(method.getName()));
-
-            LLVMExpressionNode body = visitor.createFunction(method, lifetimes);
+            LLVMExpressionNode body = visitor.createFunction(method, frame.findFrameSlot(LLVMException.FRAME_SLOT_ID), lifetimes);
 
             List<LLVMExpressionNode> copyArgumentsToFrame = visitor.copyArgumentsToFrame(frame, method);
             LLVMExpressionNode[] copyArgumentsToFrameArray = copyArgumentsToFrame.toArray(new LLVMExpressionNode[copyArgumentsToFrame.size()]);

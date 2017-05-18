@@ -27,12 +27,34 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package com.oracle.truffle.llvm.nodes.intrinsics.sulong;
 
-package com.oracle.truffle.llvm.parser.util;
+import java.util.List;
 
-public final class LLVMFrameIDs {
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 
-    public static final String FUNCTION_RETURN_VALUE_FRAME_SLOT_ID = "<function return value>";
-    public static final String FUNCTION_EXCEPTION_VALUE_FRAME_SLOT_ID = "<function exception value>";
+public abstract class LLVMRunGlobalVariableInitalization extends LLVMIntrinsic {
+
+    @Child private IndirectCallNode callNode = Truffle.getRuntime().createIndirectCallNode();
+    @CompilationFinal(dimensions = 1) private RootCallTarget[] targets;
+
+    @Specialization
+    public Object execute() {
+        if (targets == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            List<RootCallTarget> globalVarInits = getContext().getGlobalVarInits();
+            targets = globalVarInits.toArray(new RootCallTarget[globalVarInits.size()]);
+        }
+        for (RootCallTarget target : targets) {
+            callNode.call(target, new Object[]{});
+        }
+        return null;
+    }
 
 }
