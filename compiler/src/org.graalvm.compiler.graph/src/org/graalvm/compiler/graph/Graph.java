@@ -35,6 +35,7 @@ import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugCounter;
 import org.graalvm.compiler.debug.DebugTimer;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node.ValueNumberable;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.options.Option;
@@ -970,6 +971,9 @@ public class Graph {
         }
         int id = nodesSize++;
         nodes[id] = node;
+        if ((id == 254 || id == 293 || id == 142) && node.getClass().getSimpleName().contains("BeginNode") && this.toString().contains("update")) {
+            TTY.println("found begin node");
+        }
         node.id = id;
         if (currentNodeSourcePosition != null) {
             node.setNodeSourcePosition(currentNodeSourcePosition);

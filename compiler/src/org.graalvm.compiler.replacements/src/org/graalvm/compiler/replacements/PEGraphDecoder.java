@@ -521,7 +521,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                  * anything because the usages of the frameState are not available yet. So we need
                  * to call it again.
                  */
-                InliningUtil.handleMissingAfterExceptionFrameState(frameState);
+                PEMethodScope peMethodScope = (PEMethodScope) methodScope;
+                InliningUtil.handleMissingAfterExceptionFrameState(frameState, peMethodScope.invokeData.invoke, null, true);
 
                 /*
                  * The frameState must be gone now, because it is not a valid deoptimization point.
@@ -1168,8 +1169,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                      */
                     invokeArgsList = Arrays.asList(methodScope.arguments);
                 }
-                return InliningUtil.processFrameState(frameState, methodScope.invokeData.invoke, methodScope.method, methodScope.exceptionState, methodScope.outerState, true, methodScope.method,
-                                invokeArgsList);
+                return InliningUtil.processFrameState(frameState, methodScope.invokeData.invoke, null, methodScope.method, methodScope.exceptionState, methodScope.outerState, true,
+                                methodScope.method, invokeArgsList);
 
             } else if (node instanceof MonitorIdNode) {
                 ensureOuterStateDecoded(methodScope);

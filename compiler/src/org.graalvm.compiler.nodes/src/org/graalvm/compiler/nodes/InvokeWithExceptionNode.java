@@ -304,4 +304,16 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
     public int getSuccessorCount() {
         return 2;
     }
+
+    /**
+     * Replaces this InvokeWithExceptionNode with a normal InvokeNode.
+     * Kills the exception dispatch code.
+     */
+    public InvokeNode replaceWithInvoke() {
+        InvokeNode invokeNode = graph().add(new InvokeNode(callTarget, bci));
+        AbstractBeginNode oldException = this.exceptionEdge;
+        graph().replaceSplitWithFixed(this, invokeNode, this.next());
+        GraphUtil.killCFG(oldException);
+        return invokeNode;
+    }
 }
