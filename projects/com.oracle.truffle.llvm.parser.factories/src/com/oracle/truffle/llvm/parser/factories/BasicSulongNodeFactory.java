@@ -216,7 +216,7 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
 
     @Override
     public LLVMControlFlowNode createRetVoid(LLVMParserRuntime runtime, SourceSection source) {
-        return LLVMVoidReturnNodeGen.create(source, runtime.getReturnSlot());
+        return LLVMVoidReturnNodeGen.create(source);
     }
 
     @Override
@@ -400,9 +400,10 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createFunctionBlockNode(LLVMParserRuntime runtime, FrameSlot retSlot, List<? extends LLVMExpressionNode> allFunctionNodes, LLVMStackFrameNuller[][] beforeSlotNullerNodes,
+    public LLVMExpressionNode createFunctionBlockNode(LLVMParserRuntime runtime, FrameSlot exceptionValueSlot, List<? extends LLVMExpressionNode> allFunctionNodes,
+                    LLVMStackFrameNuller[][] beforeSlotNullerNodes,
                     LLVMStackFrameNuller[][] afterSlotNullerNodes) {
-        return new LLVMDispatchBasicBlockNode(allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]), beforeSlotNullerNodes, afterSlotNullerNodes, retSlot);
+        return new LLVMDispatchBasicBlockNode(exceptionValueSlot, allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]), beforeSlotNullerNodes, afterSlotNullerNodes);
     }
 
     @Override
@@ -415,12 +416,8 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
         for (FrameSlot slot : frameDescriptor.getSlots()) {
             String identifier = (String) slot.getIdentifier();
             Type slotType = runtime.getVariableNameTypesMapping().get(identifier);
-            if (slot.equals(runtime.getReturnSlot())) {
-                nullers[i] = runtime.getNodeFactory().createFrameNuller(runtime, identifier, functionHeader.getType().getReturnType(), slot);
-            } else {
-                assert slotType != null : identifier;
-                nullers[i] = runtime.getNodeFactory().createFrameNuller(runtime, identifier, slotType, slot);
-            }
+            assert slotType != null : identifier;
+            nullers[i] = runtime.getNodeFactory().createFrameNuller(runtime, identifier, slotType, slot);
             i++;
         }
         final String originalName = DebugInfoGenerator.getSourceFunctionName(functionHeader);
@@ -577,15 +574,15 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
     }
 
     @Override
-    public LLVMControlFlowNode createFunctionInvoke(LLVMParserRuntime runtime, LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type,
-                    FrameSlot returnValueSlot, FrameSlot exceptionValueSlot, int normalIndex, int unwindIndex, LLVMExpressionNode[] normalPhiWriteNodes, LLVMExpressionNode[] unwindPhiWriteNodes,
+    public LLVMControlFlowNode createFunctionInvoke(LLVMParserRuntime runtime, FrameSlot resultLocation, LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type,
+                    int normalIndex, int unwindIndex, LLVMExpressionNode[] normalPhiWriteNodes, LLVMExpressionNode[] unwindPhiWriteNodes,
                     SourceSection sourceSection) {
-        return LLVMFunctionFactory.createFunctionInvoke(functionNode, argNodes, type, returnValueSlot, exceptionValueSlot, normalIndex, unwindIndex, normalPhiWriteNodes, unwindPhiWriteNodes,
+        return LLVMFunctionFactory.createFunctionInvoke(resultLocation, functionNode, argNodes, type, normalIndex, unwindIndex, normalPhiWriteNodes, unwindPhiWriteNodes,
                         sourceSection);
     }
 
     @Override
-    public LLVMExpressionNode createLandingPad(LLVMParserRuntime runtime, LLVMExpressionNode allocateLandingPadValue, FrameSlot exceptionSlot, boolean cleanup, long[] clauseKinds,
+    public LLVMExpressionNode createLandingPad(LLVMParserRuntime runtime, LLVMExpressionNode allocateLandingPadValue, FrameSlot exceptionValueSlot, boolean cleanup, long[] clauseKinds,
                     LLVMExpressionNode[] entries) {
 
         LLVMLandingpadNode.LandingpadEntryNode[] landingpadEntries = new LLVMLandingpadNode.LandingpadEntryNode[entries.length];
@@ -600,7 +597,7 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
                 throw new IllegalStateException();
             }
         }
-        return new LLVMLandingpadNode(allocateLandingPadValue, exceptionSlot, cleanup, landingpadEntries);
+        return new LLVMLandingpadNode(allocateLandingPadValue, exceptionValueSlot, cleanup, landingpadEntries);
     }
 
     private static LLVMLandingpadNode.LandingpadEntryNode getLandingpadCatchEntry(LLVMExpressionNode exp) {
@@ -614,8 +611,8 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
     }
 
     @Override
-    public LLVMControlFlowNode createResumeInstruction(LLVMParserRuntime runtime, FrameSlot exceptionSlot, SourceSection source) {
-        return new LLVMResumeNode(exceptionSlot, source);
+    public LLVMControlFlowNode createResumeInstruction(LLVMParserRuntime runtime, FrameSlot exceptionValueSlot, SourceSection source) {
+        return new LLVMResumeNode(exceptionValueSlot, source);
     }
 
     @Override

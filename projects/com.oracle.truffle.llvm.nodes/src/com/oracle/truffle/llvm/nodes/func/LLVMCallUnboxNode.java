@@ -76,8 +76,8 @@ public abstract class LLVMCallUnboxNode {
     public abstract static class LLVMI16CallUnboxNode extends LLVMExpressionNode {
 
         @Specialization
-        public short executeI16(int value) {
-            return (short) value;
+        public short executeI16(short value) {
+            return value;
         }
     }
 

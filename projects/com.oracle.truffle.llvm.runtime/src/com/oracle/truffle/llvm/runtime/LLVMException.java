@@ -33,6 +33,8 @@ import com.oracle.truffle.api.nodes.ControlFlowException;
 
 public final class LLVMException extends ControlFlowException {
 
+    public static final String FRAME_SLOT_ID = "<function exception value>";
+
     private static final long serialVersionUID = 1L;
 
     private final LLVMAddress ptr;

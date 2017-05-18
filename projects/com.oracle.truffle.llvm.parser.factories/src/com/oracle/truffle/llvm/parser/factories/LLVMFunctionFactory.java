@@ -88,39 +88,38 @@ final class LLVMFunctionFactory {
     }
 
     static LLVMControlFlowNode createNonVoidRet(LLVMParserRuntime runtime, LLVMExpressionNode retValue, Type type, SourceSection source) {
-        FrameSlot retSlot = runtime.getReturnSlot();
-        if (retValue == null || retSlot == null) {
+        if (retValue == null) {
             throw new AssertionError();
         }
         if (type instanceof VectorType) {
-            return LLVMVectorRetNodeGen.create(source, retValue, retSlot);
+            return LLVMVectorRetNodeGen.create(source, retValue);
         } else if (type instanceof VariableBitWidthType) {
-            return LLVMIVarBitRetNodeGen.create(source, retValue, retSlot);
+            return LLVMIVarBitRetNodeGen.create(source, retValue);
         } else if (Type.isFunctionOrFunctionPointer(type)) {
-            return LLVMFunctionRetNodeGen.create(source, retValue, retSlot);
+            return LLVMFunctionRetNodeGen.create(source, retValue);
         } else if (type instanceof PointerType) {
-            return LLVMAddressRetNodeGen.create(source, retValue, retSlot);
+            return LLVMAddressRetNodeGen.create(source, retValue);
         } else if (type instanceof StructureType) {
             int size = runtime.getByteSize(type);
-            return LLVMStructRetNodeGen.create(runtime.getNativeFunctions(), source, retValue, retSlot, size);
+            return LLVMStructRetNodeGen.create(runtime.getNativeFunctions(), source, retValue, size);
         } else if (type instanceof PrimitiveType) {
             switch (((PrimitiveType) type).getPrimitiveKind()) {
                 case I1:
-                    return LLVMI1RetNodeGen.create(source, retValue, retSlot);
+                    return LLVMI1RetNodeGen.create(source, retValue);
                 case I8:
-                    return LLVMI8RetNodeGen.create(source, retValue, retSlot);
+                    return LLVMI8RetNodeGen.create(source, retValue);
                 case I16:
-                    return LLVMI16RetNodeGen.create(source, retValue, retSlot);
+                    return LLVMI16RetNodeGen.create(source, retValue);
                 case I32:
-                    return LLVMI32RetNodeGen.create(source, retValue, retSlot);
+                    return LLVMI32RetNodeGen.create(source, retValue);
                 case I64:
-                    return LLVMI64RetNodeGen.create(source, retValue, retSlot);
+                    return LLVMI64RetNodeGen.create(source, retValue);
                 case FLOAT:
-                    return LLVMFloatRetNodeGen.create(source, retValue, retSlot);
+                    return LLVMFloatRetNodeGen.create(source, retValue);
                 case DOUBLE:
-                    return LLVMDoubleRetNodeGen.create(source, retValue, retSlot);
+                    return LLVMDoubleRetNodeGen.create(source, retValue);
                 case X86_FP80:
-                    return LLVM80BitFloatRetNodeGen.create(source, retValue, retSlot);
+                    return LLVM80BitFloatRetNodeGen.create(source, retValue);
                 default:
                     throw new AssertionError(type);
             }
@@ -158,10 +157,9 @@ final class LLVMFunctionFactory {
         return createUnresolvedNodeWrapping(functionType.getReturnType(), unresolvedCallNode);
     }
 
-    static LLVMControlFlowNode createFunctionInvoke(LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type, FrameSlot returnvalueSlot,
-                    FrameSlot exceptionValueSlot,
+    static LLVMControlFlowNode createFunctionInvoke(FrameSlot resultLocation, LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type,
                     int normalIndex, int unwindIndex, LLVMExpressionNode[] normalPhiWriteNodes, LLVMExpressionNode[] unwindPhiWriteNodes, SourceSection sourceSection) {
-        return new LLVMInvokeNode.LLVMFunctionInvokeNode(type, functionNode, argNodes, returnvalueSlot, exceptionValueSlot, normalIndex, unwindIndex, normalPhiWriteNodes, unwindPhiWriteNodes,
+        return new LLVMInvokeNode.LLVMFunctionInvokeNode(type, resultLocation, functionNode, argNodes, normalIndex, unwindIndex, normalPhiWriteNodes, unwindPhiWriteNodes,
                         sourceSection);
     }
 

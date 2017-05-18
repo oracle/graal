@@ -41,7 +41,6 @@ import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolResolver;
-import com.oracle.truffle.llvm.parser.util.LLVMFrameIDs;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -111,14 +110,6 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
 
     public FrameDescriptor getFrame() {
         return frame;
-    }
-
-    FrameSlot getReturnSlot() {
-        return getSlot(LLVMFrameIDs.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID);
-    }
-
-    FrameSlot getExceptionSlot() {
-        return getSlot(LLVMFrameIDs.FUNCTION_EXCEPTION_VALUE_FRAME_SLOT_ID);
     }
 
     FrameSlot getSlot(String name) {

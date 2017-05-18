@@ -64,10 +64,10 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstructio
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolResolver;
-import com.oracle.truffle.llvm.parser.util.LLVMFrameIDs;
 import com.oracle.truffle.llvm.parser.util.LLVMParserAsserts;
 import com.oracle.truffle.llvm.parser.util.Pair;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMException;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
@@ -170,7 +170,7 @@ public final class LLVMParserRuntime {
         this.sourceSectionGenerator = new SourceSectionGenerator();
     }
 
-    LLVMExpressionNode createFunction(FunctionDefinition method, LLVMLifetimeAnalysis lifetimes) {
+    LLVMExpressionNode createFunction(FunctionDefinition method, FrameSlot exceptionValueSlot, LLVMLifetimeAnalysis lifetimes) {
         String functionName = method.getName();
 
         LLVMBitcodeFunctionVisitor visitor = new LLVMBitcodeFunctionVisitor(
@@ -189,7 +189,8 @@ public final class LLVMParserRuntime {
 
         final LLVMStackFrameNuller[][] slotNullerBeginNodes = getSlotNuller(method, lifetimes.getNullableBefore());
         final LLVMStackFrameNuller[][] slotNullerAfterNodes = getSlotNuller(method, lifetimes.getNullableAfter());
-        return nodeFactory.createFunctionBlockNode(this, visitor.getReturnSlot(), visitor.getBlocks(), slotNullerBeginNodes, slotNullerAfterNodes);
+
+        return nodeFactory.createFunctionBlockNode(this, exceptionValueSlot, visitor.getBlocks(), slotNullerBeginNodes, slotNullerAfterNodes);
     }
 
     private LLVMStackFrameNuller[][] getSlotNuller(FunctionDefinition method, Map<InstructionBlock, FrameSlot[]> slots) {
@@ -230,10 +231,7 @@ public final class LLVMParserRuntime {
 
         int argIndex = 0;
         if (method.getType().getReturnType() instanceof StructureType) {
-            final LLVMExpressionNode functionReturnParameterNode = nodeFactory.createFunctionArgNode(argIndex++, method.getType().getReturnType());
-            final FrameSlot returnSlot = frame.findOrAddFrameSlot(LLVMFrameIDs.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID);
-            final LLVMExpressionNode returnValue = nodeFactory.createFrameWrite(this, method.getType().getReturnType(), functionReturnParameterNode, returnSlot, null);
-            formalParamInits.add(returnValue);
+            argIndex++;
         }
         for (final FunctionParameter parameter : parameters) {
             final LLVMExpressionNode parameterNode = nodeFactory.createFunctionArgNode(argIndex++, parameter.getType());
@@ -394,8 +392,6 @@ public final class LLVMParserRuntime {
         final Type methodType = method.getType(identifier);
         if (methodType != null) {
             return methodType;
-        } else if (LLVMFrameIDs.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID.equals(identifier)) {
-            return method.getType().getReturnType();
         } else {
             throw new IllegalStateException("Cannot find Instruction with name: " + identifier);
         }
@@ -415,7 +411,7 @@ public final class LLVMParserRuntime {
     private void initFunction(LLVMBitcodeFunctionVisitor visitor) {
         this.functionVisitor = visitor;
         nameToTypeMapping.clear();
-        nameToTypeMapping.put(LLVMFrameIDs.FUNCTION_EXCEPTION_VALUE_FRAME_SLOT_ID, new PointerType(null));
+        nameToTypeMapping.put(LLVMException.FRAME_SLOT_ID, new PointerType(null));
         if (visitor != null) {
             for (int i = 0; i < visitor.getFunction().getBlockCount(); i++) {
                 visitor.getFunction().getBlock(i).accept(nameToTypeMappingVisitor);
@@ -431,13 +427,6 @@ public final class LLVMParserRuntime {
 
     public LLVMExpressionNode allocateFunctionLifetime(Type type, int size, int alignment) {
         return nodeFactory.createAlloc(this, type, size, alignment, null, null);
-    }
-
-    public FrameSlot getReturnSlot() {
-        if (functionVisitor != null) {
-            return functionVisitor.getReturnSlot();
-        }
-        throw new IllegalStateException("There is currently no active function visitor set");
     }
 
     public Object getGlobalAddress(GlobalValueSymbol var) {

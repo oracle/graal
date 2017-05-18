@@ -76,7 +76,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstr
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolResolver;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
-import com.oracle.truffle.llvm.parser.util.LLVMFrameIDs;
+import com.oracle.truffle.llvm.runtime.LLVMException;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
@@ -213,11 +213,11 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final int size = runtime.getByteSize(type);
         final int align = runtime.getByteAlignment(type);
         LLVMExpressionNode allocateLandingPadValue = nodeFactory.createAlloc(runtime, type, size, align, null, null);
-        FrameSlot exceptionSlot = method.getExceptionSlot();
         LLVMExpressionNode[] entries = new LLVMExpressionNode[landingpadInstruction.getClauseSymbols().length];
         for (int i = 0; i < entries.length; i++) {
             entries[i] = symbols.resolve(landingpadInstruction.getClauseSymbols()[i]);
         }
+        FrameSlot exceptionSlot = method.getSlot(LLVMException.FRAME_SLOT_ID);
         LLVMExpressionNode landingPad = nodeFactory.createLandingPad(runtime, allocateLandingPadValue, exceptionSlot, landingpadInstruction.isCleanup(), landingpadInstruction.getClauseTypes(),
                         entries);
         createFrameWrite(landingPad, landingpadInstruction);
@@ -225,7 +225,8 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(ResumeInstruction resumeInstruction) {
-        LLVMControlFlowNode resume = nodeFactory.createResumeInstruction(runtime, method.getExceptionSlot(), runtime.getSourceSection(resumeInstruction));
+        FrameSlot exceptionSlot = method.getSlot(LLVMException.FRAME_SLOT_ID);
+        LLVMControlFlowNode resume = nodeFactory.createResumeInstruction(runtime, exceptionSlot, runtime.getSourceSection(resumeInstruction));
         method.addTerminatingInstruction(resume, block.getBlockIndex(), block.getName());
     }
 
@@ -326,8 +327,8 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         if (function == null) {
             function = symbols.resolve(target);
         }
-        LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(runtime, function, argNodes, new FunctionType(targetType, argTypes, false),
-                        method.getSlot(call.getName()), method.getExceptionSlot(), regularIndex, unwindIndex, normalPhiWriteNodesArray,
+        LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(runtime, method.getSlot(call.getName()), function, argNodes, new FunctionType(targetType, argTypes, false),
+                        regularIndex, unwindIndex, normalPhiWriteNodesArray,
                         unwindPhiWriteNodesArray, sourceSection);
 
         method.addTerminatingInstruction(result, block.getBlockIndex(), block.getName());
@@ -375,7 +376,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         if (function == null) {
             function = symbols.resolve(target);
         }
-        LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(runtime, function, args, new FunctionType(call.getType(), argsType, false), method.getReturnSlot(), method.getExceptionSlot(),
+        LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(runtime, null, function, args, new FunctionType(call.getType(), argsType, false),
                         regularIndex, unwindIndex, normalPhiWriteNodesArray, unwindPhiWriteNodesArray, sourceSection);
 
         method.addTerminatingInstruction(result, block.getBlockIndex(), block.getName());
@@ -549,7 +550,6 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             node = nodeFactory.createRetVoid(runtime, runtime.getSourceSection(ret));
         } else {
             final Type type = ret.getValue().getType();
-            method.getFrame().findFrameSlot(LLVMFrameIDs.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID).setKind(Type.getFrameSlotKind(type));
             final LLVMExpressionNode value = symbols.resolve(ret.getValue());
             node = nodeFactory.createNonVoidRet(runtime, value, type, runtime.getSourceSection(ret));
         }
