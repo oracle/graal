@@ -22,10 +22,8 @@
  */
 package org.graalvm.compiler.nodes.java;
 
-import static org.graalvm.compiler.nodeinfo.InputType.Memory;
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
-
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import org.graalvm.api.word.LocationIdentity;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
@@ -41,7 +39,9 @@ import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
+import static org.graalvm.compiler.nodeinfo.InputType.Memory;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
 /**
  * The entry to an exception handler with the exception coming from a call (as opposed to a local
@@ -92,6 +92,8 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
     @Override
     public boolean verify() {
         assertTrue(stateAfter() != null, "an exception handler needs a frame state");
+        assertTrue(stateAfter().stackSize() == 1 && stateAfter().stackAt(0).stamp().getStackKind() == JavaKind.Object,
+                        "an exception handler's frame state must have only the exception on the stack");
         return super.verify();
     }
 }
