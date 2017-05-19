@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.nodes.func;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -43,9 +44,11 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
+import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
@@ -59,7 +62,7 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
 
     protected LLVMNativeDispatchNode(FunctionType type) {
         this.type = type;
-        this.signature = LLVMContext.getNativeSignature(type);
+        this.signature = LLVMContext.getNativeSignature(type, LLVMCallNode.USER_ARGUMENT_OFFSET);
         this.nativeCallNode = Message.createExecute(type.getArgumentTypes().length).createNode();
     }
 
@@ -81,11 +84,21 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
         }
     }
 
+    @CompilationFinal private LLVMThreadingStack threadingStack = null;
+
+    private LLVMThreadingStack getThreadingStack(LLVMContext context) {
+        if (threadingStack == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            threadingStack = context.getThreadingStack();
+        }
+        return threadingStack;
+    }
+
     @ExplodeLoop
     protected LLVMNativeConvertNode[] createToNativeNodes() {
-        LLVMNativeConvertNode[] ret = new LLVMNativeConvertNode[type.getArgumentTypes().length];
-        for (int i = 0; i < type.getArgumentTypes().length; i++) {
-            ret[i] = LLVMNativeConvertNode.createToNative(type.getArgumentTypes()[i]);
+        LLVMNativeConvertNode[] ret = new LLVMNativeConvertNode[type.getArgumentTypes().length - LLVMCallNode.USER_ARGUMENT_OFFSET];
+        for (int i = LLVMCallNode.USER_ARGUMENT_OFFSET; i < type.getArgumentTypes().length; i++) {
+            ret[i - LLVMCallNode.USER_ARGUMENT_OFFSET] = LLVMNativeConvertNode.createToNative(type.getArgumentTypes()[i]);
         }
         return ret;
     }
@@ -97,9 +110,9 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
 
     @ExplodeLoop
     private static Object[] prepareNativeArguments(VirtualFrame frame, Object[] arguments, LLVMNativeConvertNode[] toNative) {
-        Object[] nativeArgs = new Object[arguments.length];
-        for (int i = 0; i < arguments.length; i++) {
-            nativeArgs[i] = toNative[i].executeConvert(frame, arguments[i]);
+        Object[] nativeArgs = new Object[arguments.length - LLVMCallNode.USER_ARGUMENT_OFFSET];
+        for (int i = LLVMCallNode.USER_ARGUMENT_OFFSET; i < arguments.length; i++) {
+            nativeArgs[i - LLVMCallNode.USER_ARGUMENT_OFFSET] = toNative[i - LLVMCallNode.USER_ARGUMENT_OFFSET].executeConvert(frame, arguments[i]);
         }
         return nativeArgs;
     }
@@ -113,7 +126,9 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
                     @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative) {
         Object[] nativeArgs = prepareNativeArguments(frame, arguments, toNative);
+        getThreadingStack(context).getStack().setStackPointer((long) arguments[0]);
         Object returnValue = LLVMNativeCallUtils.callNativeFunction(context, nativeCallNode, nativeFunctionHandle, nativeArgs, null);
+        getThreadingStack(context).getStack().setStackPointer((long) arguments[0]);
         return fromNative.executeConvert(frame, returnValue);
     }
 
@@ -124,7 +139,9 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
                     @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative) {
         Object[] nativeArgs = prepareNativeArguments(frame, arguments, toNative);
+        getThreadingStack(context).getStack().setStackPointer((long) arguments[0]);
         Object returnValue = LLVMNativeCallUtils.callNativeFunction(context, nativeCallNode, dispatchIdentity(identity, function.getFunctionPointer()), nativeArgs, null);
+        getThreadingStack(context).getStack().setStackPointer((long) arguments[0]);
         return fromNative.executeConvert(frame, returnValue);
     }
 }

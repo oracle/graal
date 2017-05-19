@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -49,7 +50,7 @@ public abstract class LLVMTruffleGetArg extends LLVMIntrinsic {
     public Object doIntrinsic(VirtualFrame frame, int index) {
         assert index >= 0;
         Object[] arguments = frame.getArguments();
-        return arguments[index];
+        return arguments[LLVMCallNode.USER_ARGUMENT_OFFSET + index];
     }
 
 }

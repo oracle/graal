@@ -29,11 +29,15 @@
  */
 package com.oracle.truffle.llvm.nodes.others;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public class LLVMStaticInitsBlockNode extends RootNode {
@@ -46,9 +50,21 @@ public class LLVMStaticInitsBlockNode extends RootNode {
 
     }
 
+    @CompilationFinal private FrameSlot stackPointerSlot;
+
+    private FrameSlot getStackPointerSlot() {
+        if (stackPointerSlot == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            stackPointerSlot = getRootNode().getFrameDescriptor().findFrameSlot(LLVMStack.FRAME_ID);
+            assert stackPointerSlot != null;
+        }
+        return stackPointerSlot;
+    }
+
     @ExplodeLoop
     @Override
     public Object execute(VirtualFrame frame) {
+        frame.setLong(getStackPointerSlot(), (long) frame.getArguments()[0]);
         for (LLVMExpressionNode node : nodes) {
             node.executeGeneric(frame);
         }

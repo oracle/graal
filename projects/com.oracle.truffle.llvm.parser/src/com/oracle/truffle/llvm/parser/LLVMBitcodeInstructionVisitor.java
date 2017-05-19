@@ -175,10 +175,15 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     @Override
     public void visit(CallInstruction call) {
         final Type targetType = call.getType();
-        int argumentCount = getArgumentCount(call, targetType);
+        int argumentCount = getArgumentCount(call.getArgumentCount(), targetType);
         final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[argumentCount];
         final Type[] argTypes = new Type[argumentCount];
         int argIndex = 0;
+        // stack pointer
+        argNodes[argIndex] = nodeFactory.createFrameRead(runtime, PrimitiveType.I64, method.getStackSlot());
+        argTypes[argIndex] = new PointerType(null);
+        argIndex++;
+
         if (targetType instanceof StructureType) {
             final int size = runtime.getByteSize(targetType);
             final int align = runtime.getByteAlignment(targetType);
@@ -186,9 +191,10 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             argNodes[argIndex] = nodeFactory.createAlloc(runtime, targetType, size, align, null, null);
             argIndex++;
         }
-        for (int i = 0; argIndex < argumentCount; i++, argIndex++) {
+        for (int i = 0; argIndex < argumentCount; i++) {
             argNodes[argIndex] = symbols.resolve(call.getArgument(i));
             argTypes[argIndex] = call.getArgument(i).getType();
+            argIndex++;
         }
 
         final SourceSection sourceSection = runtime.getSourceSection(call);
@@ -253,12 +259,16 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             }
         }
 
-        int explicitArgumentCount = call.getArgumentCount();
-        final LLVMExpressionNode[] args = new LLVMExpressionNode[explicitArgumentCount];
-        final Type[] argsType = new Type[explicitArgumentCount];
+        final int argumentCount = call.getArgumentCount() + 1; // stackpointer
+        final LLVMExpressionNode[] args = new LLVMExpressionNode[argumentCount];
+        final Type[] argsType = new Type[argumentCount];
 
         int argIndex = 0;
-        for (int i = 0; i < explicitArgumentCount; i++) {
+        args[argIndex] = nodeFactory.createFrameRead(runtime, PrimitiveType.I64, method.getStackSlot());
+        argsType[argIndex] = new PointerType(null);
+        argIndex++;
+
+        for (int i = 0; i < call.getArgumentCount(); i++) {
             args[argIndex] = symbols.resolve(call.getArgument(i));
             argsType[argIndex] = call.getArgument(i).getType();
             argIndex++;
@@ -282,10 +292,13 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     @Override
     public void visit(InvokeInstruction call) {
         final Type targetType = call.getType();
-        int argumentCount = getArgumentCount(call, targetType);
+        int argumentCount = getArgumentCount(call.getArgumentCount(), targetType);
         final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[argumentCount];
         final Type[] argTypes = new Type[argumentCount];
         int argIndex = 0;
+        argNodes[argIndex] = nodeFactory.createFrameRead(runtime, PrimitiveType.I64, method.getStackSlot());
+        argTypes[argIndex] = new PointerType(null);
+        argIndex++;
         if (targetType instanceof StructureType) {
             final int size = runtime.getByteSize(targetType);
             final int align = runtime.getByteAlignment(targetType);
@@ -337,12 +350,17 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     @Override
     public void visit(VoidInvokeInstruction call) {
         final Symbol target = call.getCallTarget();
-        int explicitArgumentCount = call.getArgumentCount();
-        final LLVMExpressionNode[] args = new LLVMExpressionNode[explicitArgumentCount];
-        final Type[] argsType = new Type[explicitArgumentCount];
+
+        final int argumentCount = call.getArgumentCount() + 1; // stackpointer
+        final LLVMExpressionNode[] args = new LLVMExpressionNode[argumentCount];
+        final Type[] argsType = new Type[argumentCount];
 
         int argIndex = 0;
-        for (int i = 0; i < explicitArgumentCount; i++) {
+        args[argIndex] = nodeFactory.createFrameRead(runtime, PrimitiveType.I64, method.getStackSlot());
+        argsType[argIndex] = new PointerType(null);
+        argIndex++;
+
+        for (int i = 0; i < call.getArgumentCount(); i++) {
             args[argIndex] = symbols.resolve(call.getArgument(i));
             argsType[argIndex] = call.getArgument(i).getType();
             argIndex++;
@@ -383,20 +401,13 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     }
 
-    private static int getArgumentCount(CallInstruction call, final Type targetType) {
-        int argumentCount = call.getArgumentCount();
+    private static int getArgumentCount(int argumentCount, final Type targetType) {
+        int count = argumentCount;
         if (targetType instanceof StructureType) {
-            argumentCount++;
+            count++;
         }
-        return argumentCount;
-    }
-
-    private static int getArgumentCount(InvokeInstruction call, final Type targetType) {
-        int argumentCount = call.getArgumentCount();
-        if (targetType instanceof StructureType) {
-            argumentCount++;
-        }
-        return argumentCount;
+        count++; // stackpointer
+        return count;
     }
 
     @Override

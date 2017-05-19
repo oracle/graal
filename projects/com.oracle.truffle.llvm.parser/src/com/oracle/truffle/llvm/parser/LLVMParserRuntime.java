@@ -72,6 +72,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
@@ -229,7 +230,10 @@ public final class LLVMParserRuntime {
         final List<FunctionParameter> parameters = method.getParameters();
         final List<LLVMExpressionNode> formalParamInits = new ArrayList<>();
 
-        int argIndex = 0;
+        final LLVMExpressionNode stackPointerNode = nodeFactory.createFunctionArgNode(0, PrimitiveType.I64);
+        formalParamInits.add(nodeFactory.createFrameWrite(this, PrimitiveType.I64, stackPointerNode, frame.findFrameSlot(LLVMStack.FRAME_ID), null));
+
+        int argIndex = 1;
         if (method.getType().getReturnType() instanceof StructureType) {
             argIndex++;
         }
@@ -348,7 +352,7 @@ public final class LLVMParserRuntime {
             final LLVMExpressionNode oneLiteralNode = nodeFactory.createLiteral(this, 1, PrimitiveType.I32);
             final LLVMExpressionNode functionLoadTarget = nodeFactory.createTypedElementPointer(this, loadedStruct, oneLiteralNode, indexedTypeLength, functionType);
             final LLVMExpressionNode loadedFunction = nodeFactory.createLoad(this, functionType, functionLoadTarget);
-            final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{};
+            final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{nodeFactory.createFrameRead(this, PrimitiveType.I64, stack.getRootFrame().findFrameSlot(LLVMStack.FRAME_ID))};
             final LLVMExpressionNode functionCall = nodeFactory.createFunctionCall(this, loadedFunction, argNodes, functionType, null);
 
             final StructureConstant structorDefinition = (StructureConstant) arrayConstant.getElement(i);
@@ -412,6 +416,7 @@ public final class LLVMParserRuntime {
         this.functionVisitor = visitor;
         nameToTypeMapping.clear();
         nameToTypeMapping.put(LLVMException.FRAME_SLOT_ID, new PointerType(null));
+        nameToTypeMapping.put(LLVMStack.FRAME_ID, PrimitiveType.I64);
         if (visitor != null) {
             for (int i = 0; i < visitor.getFunction().getBlockCount(); i++) {
                 visitor.getFunction().getBlock(i).accept(nameToTypeMappingVisitor);

@@ -389,8 +389,8 @@ public class LLVMContext {
         return nativeLookup;
     }
 
-    public static String getNativeSignature(FunctionType type) {
-        return NativeLookup.prepareSignature(type);
+    public static String getNativeSignature(FunctionType type, int skipArguments) {
+        return NativeLookup.prepareSignature(type, skipArguments);
     }
 
 }

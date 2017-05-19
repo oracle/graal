@@ -41,6 +41,7 @@ import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolResolver;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -132,6 +133,10 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
     public void visit(InstructionBlock block) {
         this.instructions.clear();
         block.accept(new LLVMBitcodeInstructionVisitor(this, block, nodeFactory));
+    }
+
+    public FrameSlot getStackSlot() {
+        return frame.findFrameSlot(LLVMStack.FRAME_ID);
     }
 
 }

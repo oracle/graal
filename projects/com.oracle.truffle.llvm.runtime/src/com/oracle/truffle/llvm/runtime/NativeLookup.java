@@ -116,10 +116,10 @@ public final class NativeLookup {
 
     private static String getNativeType(Type type) {
         if (type instanceof FunctionType) {
-            return prepareSignature((FunctionType) type);
+            return prepareSignature((FunctionType) type, 0);
         } else if (type instanceof PointerType && ((PointerType) type).getPointeeType() instanceof FunctionType) {
             FunctionType functionType = (FunctionType) ((PointerType) type).getPointeeType();
-            return prepareSignature(functionType);
+            return prepareSignature(functionType, 0);
         } else if (type instanceof PointerType) {
             return "POINTER";
         } else if (type instanceof PrimitiveType) {
@@ -233,11 +233,11 @@ public final class NativeLookup {
         }
     }
 
-    static String prepareSignature(FunctionType type) {
+    static String prepareSignature(FunctionType type, int skipArguments) {
         // TODO varargs
         CompilerAsserts.neverPartOfCompilation();
         String nativeRet = getNativeType(type.getReturnType());
-        String[] argTypes = getNativeTypes(type.getArgumentTypes(), 0);
+        String[] argTypes = getNativeTypes(type.getArgumentTypes(), skipArguments);
         StringBuilder sb = new StringBuilder();
         sb.append("(");
         for (String a : argTypes) {

@@ -41,6 +41,8 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 public final class LLVMCallNode extends LLVMExpressionNode {
 
+    public static final int USER_ARGUMENT_OFFSET = 1;
+
     @Child private LLVMExpressionNode functionNode;
     @Children private final LLVMExpressionNode[] argumentNodes;
     @Children private final ArgumentNode[] prepareArgumentNodes;

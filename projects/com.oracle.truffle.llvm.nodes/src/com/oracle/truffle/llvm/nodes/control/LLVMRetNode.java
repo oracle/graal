@@ -281,7 +281,7 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
     @NodeField(name = "structSize", type = int.class)
     public abstract static class LLVMStructRetNode extends LLVMRetNode {
 
-        @Child private LLVMArgNode argIdx0 = LLVMArgNodeGen.create(0);
+        @Child private LLVMArgNode argIdx1 = LLVMArgNodeGen.create(1);
 
         @Child private MemCopyNode memCopy;
 
@@ -299,7 +299,7 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
 
         private Object returnStruct(VirtualFrame frame, LLVMAddress retResult) {
             try {
-                LLVMAddress retStructAddress = argIdx0.executeLLVMAddress(frame);
+                LLVMAddress retStructAddress = argIdx1.executeLLVMAddress(frame);
                 memCopy.execute(retStructAddress, retResult, getStructSize());
                 return retStructAddress;
             } catch (UnexpectedResultException e) {

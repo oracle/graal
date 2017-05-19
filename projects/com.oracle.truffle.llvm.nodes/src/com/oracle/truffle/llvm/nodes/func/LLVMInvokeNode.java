@@ -30,11 +30,15 @@
 package com.oracle.truffle.llvm.nodes.func;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -125,6 +129,26 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
     }
 
     public abstract void execute(VirtualFrame frame);
+
+    @CompilationFinal private LLVMThreadingStack threadingStack;
+
+    protected LLVMThreadingStack getThreadingStack() {
+        if (threadingStack == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            threadingStack = getContext().getThreadingStack();
+        }
+        return threadingStack;
+    }
+
+    @CompilationFinal private FrameSlot stackPointer;
+
+    protected FrameSlot getStackPointerSlot() {
+        if (stackPointer == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            stackPointer = getRootNode().getFrameDescriptor().findFrameSlot(LLVMStack.FRAME_ID);
+        }
+        return stackPointer;
+    }
 
     private final ConditionProfile profile = ConditionProfile.createCountingProfile();
 

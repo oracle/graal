@@ -77,11 +77,16 @@ public class LLVMGlobalRootNode extends RootNode {
     @Override
     @ExplodeLoop
     public Object execute(VirtualFrame frame) {
+        long basePointer = getContext().getThreadingStack().getStack().getStackPointer();
         try {
             Object result = null;
             assert LLVMSignal.getNumberOfRegisteredSignals() == 0;
 
-            result = executeIteration(arguments);
+            Object[] realArgs = new Object[arguments.length + LLVMCallNode.USER_ARGUMENT_OFFSET];
+            realArgs[0] = basePointer;
+            System.arraycopy(arguments, 0, realArgs, LLVMCallNode.USER_ARGUMENT_OFFSET, arguments.length);
+
+            result = executeIteration(realArgs);
 
             getContext().awaitThreadTermination();
             assert LLVMSignal.getNumberOfRegisteredSignals() == 0;
@@ -95,6 +100,7 @@ public class LLVMGlobalRootNode extends RootNode {
             e.getCStackTrace().printCStackTrace();
             throw e;
         } finally {
+            getContext().getThreadingStack().getStack().setStackPointer(basePointer);
             runDestructors();
             // if not done already, we want at least call a shutdown command
             getContext().shutdownThreads();

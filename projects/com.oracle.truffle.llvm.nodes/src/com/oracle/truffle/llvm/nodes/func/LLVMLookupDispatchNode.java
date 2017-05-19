@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.nodes.func;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -38,6 +40,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
@@ -45,6 +48,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.ToLLVMNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
@@ -98,6 +102,16 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
         return LLVMNativeDispatchNodeGen.create(type);
     }
 
+    @CompilationFinal private LLVMThreadingStack threadingStack = null;
+
+    private LLVMThreadingStack getThreadingStack(LLVMContext context) {
+        if (threadingStack == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            threadingStack = context.getThreadingStack();
+        }
+        return threadingStack;
+    }
+
     @Specialization(guards = "isForeignFunction(function)")
     protected Object doForeign(TruffleObject function, Object[] arguments,
                     @Cached("createCrossLanguageCallNode(arguments)") Node crossLanguageCallNode,
@@ -105,7 +119,9 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
                     @Cached("createToLLVMNode()") ToLLVMNode toLLVMNode,
                     @Cached("getContext()") LLVMContext context) {
         try {
+            getThreadingStack(context).getStack().setStackPointer((long) arguments[0]);
             Object ret = ForeignAccess.sendExecute(crossLanguageCallNode, function, getForeignArguments(dataEscapeNodes, arguments, context));
+            getThreadingStack(context).getStack().setStackPointer((long) arguments[0]);
             return toLLVMNode.executeWithTarget(ret);
         } catch (InteropException e) {
             throw new IllegalStateException(e);
@@ -115,17 +131,17 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
     @ExplodeLoop
     private Object[] getForeignArguments(LLVMDataEscapeNode[] dataEscapeNodes, Object[] arguments, LLVMContext context) {
         assert arguments.length == type.getArgumentTypes().length;
-        Object[] args = new Object[type.getArgumentTypes().length];
-        for (int i = 0; i < type.getArgumentTypes().length; i++) {
-            args[i] = dataEscapeNodes[i].executeWithTarget(arguments[i], context);
+        Object[] args = new Object[type.getArgumentTypes().length - LLVMCallNode.USER_ARGUMENT_OFFSET];
+        for (int i = 0; i < type.getArgumentTypes().length - LLVMCallNode.USER_ARGUMENT_OFFSET; i++) {
+            args[i] = dataEscapeNodes[i].executeWithTarget(arguments[i + LLVMCallNode.USER_ARGUMENT_OFFSET], context);
         }
         return args;
     }
 
     protected LLVMDataEscapeNode[] createLLVMDataEscapeNodes() {
-        LLVMDataEscapeNode[] args = new LLVMDataEscapeNode[type.getArgumentTypes().length];
-        for (int i = 0; i < type.getArgumentTypes().length; i++) {
-            args[i] = LLVMDataEscapeNodeGen.create(type.getArgumentTypes()[i]);
+        LLVMDataEscapeNode[] args = new LLVMDataEscapeNode[type.getArgumentTypes().length - LLVMCallNode.USER_ARGUMENT_OFFSET];
+        for (int i = 0; i < type.getArgumentTypes().length - LLVMCallNode.USER_ARGUMENT_OFFSET; i++) {
+            args[i] = LLVMDataEscapeNodeGen.create(type.getArgumentTypes()[i + LLVMCallNode.USER_ARGUMENT_OFFSET]);
         }
         return args;
     }

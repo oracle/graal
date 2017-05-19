@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.func;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -38,8 +36,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStackFrameNuller;
 
@@ -85,40 +81,12 @@ public class LLVMFunctionStartNode extends RootNode {
         return debugInformation.sourceSection;
     }
 
-    @CompilationFinal private LLVMThreadingStack threadingStack;
-
-    private LLVMThreadingStack getThreadingStack() {
-        if (threadingStack == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            threadingStack = getLanguage(LLVMLanguage.class).getContextReference().get().getThreadingStack();
-        }
-        return threadingStack;
-    }
-
     @Override
     public Object execute(VirtualFrame frame) {
-        long basePointer = getThreadingStack().getStack().getStackPointer();
-        try {
-
-            nullStack(frame);
-            copyArgumentsToFrame(frame);
-            Object result = node.executeGeneric(frame);
-
-            return result;
-        } finally {
-            assert assertDestroyStack(basePointer);
-            getThreadingStack().getStack().setStackPointer(basePointer);
-        }
-    }
-
-    /*
-     * Allows us to find broken stackpointers immediately because old stackregions are destroyed.
-     */
-    private boolean assertDestroyStack(long basePointer) {
-        long currSp = getThreadingStack().getStack().getStackPointer();
-        long size = basePointer - currSp;
-        LLVMMemory.memset(currSp, size, (byte) 0xFF);
-        return true;
+        nullStack(frame);
+        copyArgumentsToFrame(frame);
+        Object result = node.executeGeneric(frame);
+        return result;
     }
 
     @ExplodeLoop
