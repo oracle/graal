@@ -44,6 +44,7 @@ import org.graalvm.compiler.options.OptionValues;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.PlatformKind;
 
 /**
  * Manages the selection of allocation strategies.
@@ -55,6 +56,7 @@ public final class DefaultTraceRegisterAllocationPolicy {
         LinearScanOnly,
         BottomUpOnly,
         AlmostTrivial,
+        NumVariables,
         Ratio,
         Loops,
         MaxFreq,
@@ -67,6 +69,8 @@ public final class DefaultTraceRegisterAllocationPolicy {
         public static final OptionKey<Boolean> TraceRAtrivialBlockAllocator = new OptionKey<>(true);
         @Option(help = "Use BottomUp if there is only one block with at most this number of instructions", type = OptionType.Debug)
         public static final OptionKey<Integer> TraceRAalmostTrivialSize = new OptionKey<>(2);
+        @Option(help = "Use BottomUp for traces with low number of variables at block boundaries", type = OptionType.Debug)
+        public static final OptionKey<Integer> TraceRAnumVariables = new OptionKey<>(null);
         @Option(help = "Use LSRA / BottomUp ratio", type = OptionType.Debug)
         public static final OptionKey<Double> TraceRAbottomUpRatio = new OptionKey<>(0.0);
         @Option(help = "Probabiltiy Threshold", type = OptionType.Debug)
@@ -145,6 +149,39 @@ public final class DefaultTraceRegisterAllocationPolicy {
                 return false;
             }
             return getLIR().getLIRforBlock(trace.getBlocks()[0]).size() <= Options.TraceRAalmostTrivialSize.getValue(getOptions());
+        }
+
+    }
+
+    public static final class BottomUpNumVariablesStrategy extends BottomUpStrategy {
+
+        private final int numVarLimit;
+
+        public BottomUpNumVariablesStrategy(TraceRegisterAllocationPolicy plan) {
+            // explicitly specify the enclosing instance for the superclass constructor call
+            super(plan);
+            Integer value = Options.TraceRAnumVariables.getValue(getOptions());
+            if (value != null) {
+                numVarLimit = value;
+            } else {
+                /* Default to the number of allocatable word registers. */
+                PlatformKind wordKind = getTarget().arch.getWordKind();
+                int numWordRegisters = getRegisterAllocationConfig().getAllocatableRegisters(wordKind).allocatableRegisters.length;
+                numVarLimit = numWordRegisters;
+            }
+        }
+
+        @Override
+        public boolean shouldApplyTo(Trace trace) {
+            if (!super.shouldApplyTo(trace)) {
+                return false;
+            }
+            GlobalLivenessInfo livenessInfo = getGlobalLivenessInfo();
+            int maxNumVars = livenessInfo.getBlockIn(trace.getBlocks()[0]).length;
+            for (AbstractBlockBase<?> block : trace.getBlocks()) {
+                maxNumVars = Math.max(maxNumVars, livenessInfo.getBlockOut(block).length);
+            }
+            return maxNumVars <= numVarLimit;
         }
 
     }
@@ -295,6 +332,7 @@ public final class DefaultTraceRegisterAllocationPolicy {
                         GlobalLivenessInfo livenessInfo, ArrayList<AllocationStrategy> strategies) {
             return new TraceLinearScanPhase(target, lirGenRes, spillMoveFactory, registerAllocationConfig, resultTraces, neverSpillConstant, cachedStackSlots, livenessInfo);
         }
+
     }
 
     public static TraceRegisterAllocationPolicy allocationPolicy(TargetDescription target, LIRGenerationResult lirGenRes, MoveFactory spillMoveFactory,
@@ -314,6 +352,9 @@ public final class DefaultTraceRegisterAllocationPolicy {
                 break;
             case AlmostTrivial:
                 plan.appendStrategy(new BottomUpAlmostTrivialStrategy(plan));
+                break;
+            case NumVariables:
+                plan.appendStrategy(new BottomUpNumVariablesStrategy(plan));
                 break;
             case Ratio:
                 plan.appendStrategy(new BottomUpRatioStrategy(plan));
