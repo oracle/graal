@@ -32,7 +32,6 @@ import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginStateSplitNode;
-import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.KillingBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -71,11 +70,6 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
     }
 
     @Override
-    public void markDeleted() {
-        super.markDeleted();
-    }
-
-    @Override
     public void lower(LoweringTool tool) {
         if (graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
             /*
@@ -96,15 +90,10 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
     }
 
     @Override
-    public void setStateAfter(FrameState x) {
-        super.setStateAfter(x);
-        assert stateAfter().stackSize() == 1 && stateAfter().stackAt(0).stamp().getStackKind() == JavaKind.Object;
-    }
-
-    @Override
     public boolean verify() {
         assertTrue(stateAfter() != null, "an exception handler needs a frame state");
-        assert stateAfter().stackSize() == 1 && stateAfter().stackAt(0).stamp().getStackKind() == JavaKind.Object;
+        assertTrue(stateAfter().stackSize() == 1 && stateAfter().stackAt(0).stamp().getStackKind() == JavaKind.Object,
+                        "an exception handler's frame state must have only the exception on the stack");
         return super.verify();
     }
 }
