@@ -76,10 +76,6 @@ public final class TraceRegisterAllocationPolicy {
             return target;
         }
 
-        protected final OptionValues getOptions() {
-            return getLIR().getOptions();
-        }
-
         /**
          * Returns {@code true} if the allocation strategy should be used for {@code trace}.
          */
@@ -114,6 +110,10 @@ public final class TraceRegisterAllocationPolicy {
         this.livenessInfo = livenessInfo;
 
         this.strategies = new ArrayList<>(3);
+    }
+
+    protected OptionValues getOptions() {
+        return lirGenRes.getLIR().getOptions();
     }
 
     public void appendStrategy(AllocationStrategy strategy) {
