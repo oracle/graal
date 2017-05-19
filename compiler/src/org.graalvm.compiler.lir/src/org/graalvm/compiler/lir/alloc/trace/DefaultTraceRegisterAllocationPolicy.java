@@ -54,6 +54,7 @@ public final class DefaultTraceRegisterAllocationPolicy {
         Default,
         LinearScanOnly,
         BottomUpOnly,
+        AlmostTrivial,
         Ratio,
         Loops,
         MaxFreq,
@@ -64,6 +65,8 @@ public final class DefaultTraceRegisterAllocationPolicy {
         // @formatter:off
         @Option(help = "Use special allocator for trivial blocks.", type = OptionType.Debug)
         public static final OptionKey<Boolean> TraceRAtrivialBlockAllocator = new OptionKey<>(true);
+        @Option(help = "Use BottomUp if there is only one block with at most this number of instructions", type = OptionType.Debug)
+        public static final OptionKey<Integer> TraceRAalmostTrivialSize = new OptionKey<>(2);
         @Option(help = "Use LSRA / BottomUp ratio", type = OptionType.Debug)
         public static final OptionKey<Double> TraceRAbottomUpRatio = new OptionKey<>(0.0);
         @Option(help = "Probabiltiy Threshold", type = OptionType.Debug)
@@ -124,6 +127,26 @@ public final class DefaultTraceRegisterAllocationPolicy {
                         GlobalLivenessInfo livenessInfo, ArrayList<AllocationStrategy> strategies) {
             return new BottomUpAllocator(target, lirGenRes, spillMoveFactory, registerAllocationConfig, cachedStackSlots, resultTraces, neverSpillConstant, livenessInfo);
         }
+    }
+
+    public static final class BottomUpAlmostTrivialStrategy extends BottomUpStrategy {
+
+        public BottomUpAlmostTrivialStrategy(TraceRegisterAllocationPolicy plan) {
+            // explicitly specify the enclosing instance for the superclass constructor call
+            super(plan);
+        }
+
+        @Override
+        public boolean shouldApplyTo(Trace trace) {
+            if (!super.shouldApplyTo(trace)) {
+                return false;
+            }
+            if (trace.size() != 1) {
+                return false;
+            }
+            return getLIR().getLIRforBlock(trace.getBlocks()[0]).size() <= Options.TraceRAalmostTrivialSize.getValue(getOptions());
+        }
+
     }
 
     public static final class BottomUpRatioStrategy extends BottomUpStrategy {
@@ -288,6 +311,9 @@ public final class DefaultTraceRegisterAllocationPolicy {
                 break;
             case BottomUpOnly:
                 plan.appendStrategy(new BottomUpStrategy(plan));
+                break;
+            case AlmostTrivial:
+                plan.appendStrategy(new BottomUpAlmostTrivialStrategy(plan));
                 break;
             case Ratio:
                 plan.appendStrategy(new BottomUpRatioStrategy(plan));
