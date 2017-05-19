@@ -26,6 +26,7 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompila
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInvalidationReprofileCount;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleMinInvokeThreshold;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleOSRCompilationThreshold;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleReplaceReprofileCount;
 import static org.junit.Assert.assertSame;
 
 import java.util.concurrent.ExecutionException;
@@ -104,6 +105,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
         Assert.assertTrue(rootNode.wasRepeatingCalledCompiled());
     }
 
+    @SuppressWarnings("try")
     @Theory
     public void testOSRAndRewriteDoesNotStifleTargetCompilation(OSRLoopFactory factory) {
         try (TruffleCompilerOptions.TruffleOptionsOverrideScope s = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleCompilationThreshold, 3)) {
@@ -113,7 +115,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
             assertCompiled(rootNode.getOSRTarget());
             assertNotCompiled(target);
             target.nodeReplaced(rootNode.toReplace, new TestRepeatingNode(), "test");
-            for (int i = 0; i < TruffleCompilerOptions.getValue(TruffleCompilationThreshold) - 1; i++) {
+            for (int i = 0; i < TruffleCompilerOptions.getValue(TruffleCompilationThreshold) + TruffleCompilerOptions.getValue(TruffleReplaceReprofileCount) - 1; i++) {
                 target.call(2);
             }
             assertCompiled(rootNode.getOSRTarget());
