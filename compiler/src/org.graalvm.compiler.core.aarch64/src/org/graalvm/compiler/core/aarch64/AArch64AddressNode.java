@@ -121,7 +121,7 @@ public class AArch64AddressNode extends AddressNode implements LIRLowerable {
         return displacement;
     }
 
-    public void setDisplacement(int displacement, int scaleFactor, AArch64Address.AddressingMode addressingMode) {
+    public void setDisplacement(long displacement, int scaleFactor, AArch64Address.AddressingMode addressingMode) {
         this.displacement = displacement;
         this.scaleFactor = scaleFactor;
         this.addressingMode = addressingMode;
