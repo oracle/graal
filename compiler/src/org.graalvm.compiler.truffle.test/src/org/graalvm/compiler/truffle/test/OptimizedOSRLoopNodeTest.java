@@ -106,7 +106,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
 
     @SuppressWarnings("try")
     @Theory
-    public void testOSRAndRewriteDoesNotStifleTargetCompilation(OSRLoopFactory factory) {
+    public void testOSRAndRewriteDoesNotSuppressTargetCompilation(OSRLoopFactory factory) {
         try (TruffleCompilerOptions.TruffleOptionsOverrideScope s = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleCompilationThreshold, 3)) {
             TestRootNodeWithReplacement rootNode = new TestRootNodeWithReplacement(factory, new TestRepeatingNode());
             OptimizedCallTarget target = new OptimizedCallTarget(null, rootNode);
