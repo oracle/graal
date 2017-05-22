@@ -128,7 +128,7 @@ public abstract class Source {
     private String mimeType;
     private final boolean internal;
     private final boolean interactive;
-    private TextMap textMap;
+    private volatile TextMap textMap;
 
     /**
      * Creates new {@link Source} builder for specified <code>file</code>. Once the source is built
@@ -592,13 +592,19 @@ public abstract class Source {
     }
 
     final TextMap getTextMap() {
-        if (textMap == null) {
-            textMap = createTextMap();
+        TextMap res = textMap;
+        if (res == null) {
+            synchronized (this) {
+                if (textMap == null) {
+                    textMap = createTextMap();
+                }
+                res = textMap;
+            }
         }
-        return textMap;
+        return res;
     }
 
-    final void clearTextMap() {
+    final synchronized void clearTextMap() {
         textMap = null;
     }
 
