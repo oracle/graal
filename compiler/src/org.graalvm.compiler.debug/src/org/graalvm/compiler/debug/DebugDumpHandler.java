@@ -26,7 +26,7 @@ import java.io.Closeable;
 
 public interface DebugDumpHandler extends Closeable {
 
-    void dump(Object object, String message);
+    void dump(Object object, String format, Object... arguments);
 
     /**
      * Add arbitrary capability for use by the handler.
