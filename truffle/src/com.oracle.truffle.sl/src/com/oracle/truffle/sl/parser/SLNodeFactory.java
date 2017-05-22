@@ -167,16 +167,21 @@ public class SLNodeFactory {
     }
 
     public void finishFunction(SLStatementNode bodyNode) {
-        methodNodes.add(bodyNode);
-        final int bodyEndPos = bodyNode.getSourceSection().getCharEndIndex();
-        final SourceSection functionSrc = source.createSection(functionStartPos, bodyEndPos - functionStartPos);
-        final SLStatementNode methodBlock = finishBlock(methodNodes, functionBodyStartPos, bodyEndPos - functionBodyStartPos);
-        assert lexicalScope == null : "Wrong scoping of blocks in parser";
+        if (bodyNode == null) {
+            // a state update that would otherwise be performed by finishBlock
+            lexicalScope = lexicalScope.outer;
+        } else {
+            methodNodes.add(bodyNode);
+            final int bodyEndPos = bodyNode.getSourceSection().getCharEndIndex();
+            final SourceSection functionSrc = source.createSection(functionStartPos, bodyEndPos - functionStartPos);
+            final SLStatementNode methodBlock = finishBlock(methodNodes, functionBodyStartPos, bodyEndPos - functionBodyStartPos);
+            assert lexicalScope == null : "Wrong scoping of blocks in parser";
 
-        final SLFunctionBodyNode functionBodyNode = new SLFunctionBodyNode(methodBlock);
-        functionBodyNode.setSourceSection(functionSrc);
-        final SLRootNode rootNode = new SLRootNode(language, frameDescriptor, functionBodyNode, functionSrc, functionName);
-        allFunctions.put(functionName, rootNode);
+            final SLFunctionBodyNode functionBodyNode = new SLFunctionBodyNode(methodBlock);
+            functionBodyNode.setSourceSection(functionSrc);
+            final SLRootNode rootNode = new SLRootNode(language, frameDescriptor, functionBodyNode, functionSrc, functionName);
+            allFunctions.put(functionName, rootNode);
+        }
 
         functionStartPos = 0;
         functionName = null;
@@ -192,6 +197,10 @@ public class SLNodeFactory {
 
     public SLStatementNode finishBlock(List<SLStatementNode> bodyNodes, int startPos, int length) {
         lexicalScope = lexicalScope.outer;
+
+        if (containsNull(bodyNodes)) {
+            return null;
+        }
 
         List<SLStatementNode> flattenedNodes = new ArrayList<>(bodyNodes.size());
         flattenBlocks(bodyNodes, flattenedNodes);
@@ -262,9 +271,14 @@ public class SLNodeFactory {
      * @param whileToken The token containing the while node's info
      * @param conditionNode The conditional node for this while loop
      * @param bodyNode The body of the while loop
-     * @return A SLWhileNode built using the given parameters.
+     * @return A SLWhileNode built using the given parameters. null if either conditionNode or
+     *         bodyNode is null.
      */
     public SLStatementNode createWhile(Token whileToken, SLExpressionNode conditionNode, SLStatementNode bodyNode) {
+        if (conditionNode == null || bodyNode == null) {
+            return null;
+        }
+
         conditionNode.addStatementTag();
         final int start = whileToken.charPos;
         final int end = bodyNode.getSourceSection().getCharEndIndex();
@@ -279,10 +293,15 @@ public class SLNodeFactory {
      * @param ifToken The token containing the if node's info
      * @param conditionNode The condition node of this if statement
      * @param thenPartNode The then part of the if
-     * @param elsePartNode The else part of the if
-     * @return An SLIfNode for the given parameters.
+     * @param elsePartNode The else part of the if (null if no else part)
+     * @return An SLIfNode for the given parameters. null if either conditionNode or thenPartNode is
+     *         null.
      */
     public SLStatementNode createIf(Token ifToken, SLExpressionNode conditionNode, SLStatementNode thenPartNode, SLStatementNode elsePartNode) {
+        if (conditionNode == null || thenPartNode == null) {
+            return null;
+        }
+
         conditionNode.addStatementTag();
         final int start = ifToken.charPos;
         final int end = elsePartNode == null ? thenPartNode.getSourceSection().getCharEndIndex() : elsePartNode.getSourceSection().getCharEndIndex();
@@ -295,7 +314,7 @@ public class SLNodeFactory {
      * Returns an {@link SLReturnNode} for the given parameters.
      *
      * @param t The token containing the return node's info
-     * @param valueNode The value of the return
+     * @param valueNode The value of the return (null if not returning a value)
      * @return An SLReturnNode for the given parameters.
      */
     public SLStatementNode createReturn(Token t, SLExpressionNode valueNode) {
@@ -314,8 +333,13 @@ public class SLNodeFactory {
      * @param leftNode The left node of the expression
      * @param rightNode The right node of the expression
      * @return A subclass of SLExpressionNode using the given parameters based on the given opToken.
+     *         null if either leftNode or rightNode is null.
      */
     public SLExpressionNode createBinary(Token opToken, SLExpressionNode leftNode, SLExpressionNode rightNode) {
+        if (leftNode == null || rightNode == null) {
+            return null;
+        }
+
         final SLExpressionNode result;
         switch (opToken.val) {
             case "+":
@@ -371,9 +395,14 @@ public class SLNodeFactory {
      * @param functionNode The function being called
      * @param parameterNodes The parameters of the function call
      * @param finalToken A token used to determine the end of the sourceSelection for this call
-     * @return An SLInvokeNode for the given parameters.
+     * @return An SLInvokeNode for the given parameters. null if functionNode or any of the
+     *         parameterNodes are null.
      */
     public SLExpressionNode createCall(SLExpressionNode functionNode, List<SLExpressionNode> parameterNodes, Token finalToken) {
+        if (functionNode == null || containsNull(parameterNodes)) {
+            return null;
+        }
+
         final SLExpressionNode result = new SLInvokeNode(functionNode, parameterNodes.toArray(new SLExpressionNode[parameterNodes.size()]));
 
         final int startPos = functionNode.getSourceSection().getCharIndex();
@@ -388,9 +417,13 @@ public class SLNodeFactory {
      *
      * @param nameNode The name of the variable being assigned
      * @param valueNode The value to be assigned
-     * @return An SLExpressionNode for the given parameters.
+     * @return An SLExpressionNode for the given parameters. null if nameNode or valueNode is null.
      */
     public SLExpressionNode createAssignment(SLExpressionNode nameNode, SLExpressionNode valueNode) {
+        if (nameNode == null || valueNode == null) {
+            return null;
+        }
+
         String name = ((SLStringLiteralNode) nameNode).executeGeneric(null);
         FrameSlot frameSlot = frameDescriptor.findOrAddFrameSlot(name);
         lexicalScope.locals.put(name, frameSlot);
@@ -414,10 +447,15 @@ public class SLNodeFactory {
      * @return either:
      *         <ul>
      *         <li>A SLReadLocalVariableNode representing the local variable being read.</li>
-     *         <li>A SLFunctionLiteralNode representing the function definition</li>
+     *         <li>A SLFunctionLiteralNode representing the function definition.</li>
+     *         <li>null if nameNode is null.</li>
      *         </ul>
      */
     public SLExpressionNode createRead(SLExpressionNode nameNode) {
+        if (nameNode == null) {
+            return null;
+        }
+
         String name = ((SLStringLiteralNode) nameNode).executeGeneric(null);
         final SLExpressionNode result;
         final FrameSlot frameSlot = lexicalScope.locals.get(name);
@@ -459,6 +497,10 @@ public class SLNodeFactory {
     }
 
     public SLExpressionNode createParenExpression(SLExpressionNode expressionNode, int start, int length) {
+        if (expressionNode == null) {
+            return null;
+        }
+
         final SLParenExpressionNode result = new SLParenExpressionNode(expressionNode);
         result.setSourceSection(source.createSection(start, length));
         return result;
@@ -469,9 +511,14 @@ public class SLNodeFactory {
      *
      * @param receiverNode The receiver of the property access
      * @param nameNode The name of the property being accessed
-     * @return An SLExpressionNode for the given parameters.
+     * @return An SLExpressionNode for the given parameters. null if receiverNode or nameNode is
+     *         null.
      */
     public SLExpressionNode createReadProperty(SLExpressionNode receiverNode, SLExpressionNode nameNode) {
+        if (receiverNode == null || nameNode == null) {
+            return null;
+        }
+
         final SLExpressionNode result = SLReadPropertyNodeGen.create(receiverNode, nameNode);
 
         final int startPos = receiverNode.getSourceSection().getCharIndex();
@@ -487,9 +534,14 @@ public class SLNodeFactory {
      * @param receiverNode The receiver object of the property assignment
      * @param nameNode The name of the property being assigned
      * @param valueNode The value to be assigned
-     * @return An SLExpressionNode for the given parameters.
+     * @return An SLExpressionNode for the given parameters. null if receiverNode, nameNode or
+     *         valueNode is null.
      */
     public SLExpressionNode createWriteProperty(SLExpressionNode receiverNode, SLExpressionNode nameNode, SLExpressionNode valueNode) {
+        if (receiverNode == null || nameNode == null || valueNode == null) {
+            return null;
+        }
+
         final SLExpressionNode result = SLWritePropertyNodeGen.create(receiverNode, nameNode, valueNode);
 
         final int start = receiverNode.getSourceSection().getCharIndex();
@@ -504,6 +556,18 @@ public class SLNodeFactory {
      */
     private void srcFromToken(SLStatementNode node, Token token) {
         node.setSourceSection(source.createSection(token.charPos, token.val.length()));
+    }
+
+    /**
+     * Checks whether a list contains a null.
+     */
+    private static boolean containsNull(List<?> list) {
+        for (Object e : list) {
+            if (e == null) {
+                return true;
+            }
+        }
+        return false;
     }
 
 }

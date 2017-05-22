@@ -48,7 +48,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
@@ -488,7 +487,7 @@ public class Parser {
             for (String error : parser.errors.errors) {
                 msg.append(error).append("\n");
             }
-            throw new SLException(msg.toString());
+            throw new SLParseError(msg.toString());
         }
         return parser.factory.getAllFunctions();
     }
