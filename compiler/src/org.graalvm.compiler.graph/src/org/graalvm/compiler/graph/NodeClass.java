@@ -809,10 +809,11 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     /**
      * The template used to build the {@link Verbosity#Name} version. Variable parts are specified
-     * using &#123;i#inputName&#125; or &#123;p#propertyName&#125;.
+     * using &#123;i#inputName&#125; or &#123;p#propertyName&#125;. Returns empty string if no
+     * special name template is specified.
      */
     public String getNameTemplate() {
-        return nameTemplate.isEmpty() ? shortName() : nameTemplate;
+        return nameTemplate;
     }
 
     interface InplaceUpdateClosure {
