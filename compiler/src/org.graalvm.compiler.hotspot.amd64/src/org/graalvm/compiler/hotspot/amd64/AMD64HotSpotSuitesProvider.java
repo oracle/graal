@@ -39,7 +39,7 @@ import java.util.ListIterator;
  * Subclass to factor out management of address lowering.
  */
 public class AMD64HotSpotSuitesProvider extends HotSpotSuitesProvider {
-    
+
     private final AddressLoweringPhase.AddressLowering addressLowering;
 
     public AMD64HotSpotSuitesProvider(SuitesCreator defaultSuitesCreator, GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, AddressLoweringPhase.AddressLowering addressLowering) {
