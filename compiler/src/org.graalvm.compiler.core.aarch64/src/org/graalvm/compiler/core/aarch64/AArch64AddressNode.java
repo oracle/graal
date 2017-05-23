@@ -40,7 +40,7 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 /**
- * Represents an AArch64 address in the graph
+ * Represents an AArch64 address in the graph.
  */
 @NodeInfo
 public class AArch64AddressNode extends AddressNode implements LIRLowerable {
@@ -88,7 +88,7 @@ public class AArch64AddressNode extends AddressNode implements LIRLowerable {
         }
 
         LIRKind kind = LIRKind.combineDerived(tool.getLIRKind(stamp()), baseReference, indexReference);
-        gen.setResult(this, new AArch64AddressValue(kind, baseValue, indexValue, (int)displacement, scaleFactor, addressingMode));
+        gen.setResult(this, new AArch64AddressValue(kind, baseValue, indexValue, (int) displacement, scaleFactor, addressingMode));
     }
 
     @Override

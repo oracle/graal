@@ -61,28 +61,28 @@ public class AddressLoweringByUsePhase extends Phase {
             AddressNode address;
             AddressNode lowered;
             if (node instanceof ReadNode) {
-                ReadNode readNode = (ReadNode)node;
+                ReadNode readNode = (ReadNode) node;
                 Stamp stamp = readNode.stamp();
                 address = readNode.getAddress();
                 lowered = lowering.lower(readNode, stamp, address);
             } else if (node instanceof JavaReadNode) {
-                JavaReadNode javaReadNode = (JavaReadNode)node;
+                JavaReadNode javaReadNode = (JavaReadNode) node;
                 Stamp stamp = javaReadNode.stamp();
                 address = javaReadNode.getAddress();
                 lowered = lowering.lower(javaReadNode, stamp, address);
             } else if (node instanceof FloatingReadNode) {
-                FloatingReadNode floatingReadNode = (FloatingReadNode)node;
+                FloatingReadNode floatingReadNode = (FloatingReadNode) node;
                 Stamp stamp = floatingReadNode.stamp();
                 address = floatingReadNode.getAddress();
                 lowered = lowering.lower(floatingReadNode, stamp, address);
             } else if (node instanceof AbstractWriteNode) {
-                AbstractWriteNode abstractWriteNode = (AbstractWriteNode)node;
+                AbstractWriteNode abstractWriteNode = (AbstractWriteNode) node;
                 Stamp stamp = abstractWriteNode.value().stamp();
                 address = abstractWriteNode.getAddress();
                 lowered = lowering.lower(abstractWriteNode, stamp, address);
             // TODO -- PrefetchAllocateNode is not yet implemented for AArch64
             // } else if (node instanceof PrefetchAllocateNode) {
-                // PrefetchAllocateNode prefetchAllocateNode = (PrefetchAllocateNode)node;
+                // PrefetchAllocateNode prefetchAllocateNode = (PrefetchAllocateNode) node;
                 // Stamp stamp = prefetchAllocateNode.value().stamp();
                 // n.b.this getter is not provided!
                 // address = prefetchAllocateNode.getAddress();
@@ -101,8 +101,8 @@ public class AddressLoweringByUsePhase extends Phase {
         // now replace any remaining unlowered address nodes
         for (Node node : graph.getNodes()) {
             AddressNode lowered;
-            if(node instanceof RawAddressNode || node instanceof OffsetAddressNode) {
-                AddressNode address = (AddressNode)node;
+            if (node instanceof RawAddressNode || node instanceof OffsetAddressNode) {
+                AddressNode address = (AddressNode) node;
                 lowered = lowering.lower(address);
             } else {
                 continue;
