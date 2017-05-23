@@ -90,7 +90,7 @@ public final class AArch64AddressValue extends CompositeValue {
     public int getScaleFactor() {
         return scaleFactor;
     }
-    
+
     public AddressingMode getAddressingMode() {
         return addressingMode;
     }
@@ -99,7 +99,7 @@ public final class AArch64AddressValue extends CompositeValue {
         Register baseReg = toRegister(base);
         Register offsetReg = toRegister(offset);
         AArch64Assembler.ExtendType extendType = addressingMode == AddressingMode.EXTENDED_REGISTER_OFFSET ? ExtendType.SXTW : null;
-        return AArch64Address.createAddress(addressingMode, baseReg, offsetReg, displacement/scaleFactor, isScaled(), extendType);
+        return AArch64Address.createAddress(addressingMode, baseReg, offsetReg, displacement / scaleFactor, isScaled(), extendType);
     }
 
     @Override

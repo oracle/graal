@@ -29,8 +29,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plu
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 
-public class AMD64SuitesCreator extends DefaultSuitesCreator
-{
+public class AMD64SuitesCreator extends DefaultSuitesCreator {
 
     public AMD64SuitesCreator(CompilerConfiguration compilerConfiguration, Plugins plugins) {
         super(compilerConfiguration, plugins);

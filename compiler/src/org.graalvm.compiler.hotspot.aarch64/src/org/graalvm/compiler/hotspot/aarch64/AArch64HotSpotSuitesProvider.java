@@ -37,21 +37,19 @@ import org.graalvm.compiler.phases.tiers.SuitesCreator;
 import java.util.ListIterator;
 
 /**
- * Subclass to factor out management of address lowering
+ * Subclass to factor out management of address lowering.
  */
-public class AArch64HotSpotSuitesProvider extends HotSpotSuitesProvider
-{
+public class AArch64HotSpotSuitesProvider extends HotSpotSuitesProvider {
+
     private final AddressLoweringByUsePhase.AddressLoweringByUse addressLoweringByUse;
 
-    public AArch64HotSpotSuitesProvider(SuitesCreator defaultSuitesCreator, GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, AddressLoweringByUsePhase.AddressLoweringByUse addressLoweringByUse)
-    {
+    public AArch64HotSpotSuitesProvider(SuitesCreator defaultSuitesCreator, GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, AddressLoweringByUsePhase.AddressLoweringByUse addressLoweringByUse){
         super(defaultSuitesCreator, config, runtime);
         this.addressLoweringByUse = addressLoweringByUse;
     }
 
     @Override
-    public Suites createSuites(OptionValues options)
-    {
+    public Suites createSuites(OptionValues options) {
         Suites suites = super.createSuites(options);
 
         ListIterator<BasePhase<? super LowTierContext>> findPhase = suites.getLowTier().findPhase(FixReadsPhase.class);
