@@ -64,20 +64,24 @@ public class VerifyCompilationFinalProcessor extends AbstractProcessor {
         return false;
     }
 
-    private boolean checkDimensions(final VariableElement fld) {
-        final CompilerDirectives.CompilationFinal compFin = fld.getAnnotation(CompilerDirectives.CompilationFinal.class);
+    private boolean checkDimensions(final VariableElement field) {
+        final CompilerDirectives.CompilationFinal compFin = field.getAnnotation(CompilerDirectives.CompilationFinal.class);
         if (compFin != null) {
-            final int compFinDim = compFin.dimensions();
-            final int fldDim = dimension(fld.asType());
-            if (compFinDim < -1) {
-                emitError(fld, "@CompilationFinal.dimension cannot be negative.");
+            final int compFinDimensions = compFin.dimensions();
+            final int fieldDimensions = dimension(field.asType());
+            if (compFinDimensions < -1) {
+                emitError(field, "@CompilationFinal.dimensions cannot be negative.");
                 return false;
             }
-            if (compFinDim > fldDim) {
-                if (fldDim == 0) {
-                    emitError(fld, String.format("Positive @CompilationFinal.dimension (%d) not allowed for non array type.", compFinDim));
+            if (compFinDimensions == -1 && fieldDimensions > 0) {
+                emitWarning(field, "@CompilationFinal.dimensions should be given for an array type.");
+                return false;
+            }
+            if (compFinDimensions > fieldDimensions) {
+                if (fieldDimensions == 0) {
+                    emitError(field, String.format("Positive @CompilationFinal.dimensions (%d) not allowed for non array type.", compFinDimensions));
                 } else {
-                    emitError(fld, String.format("@CompilationFinal.dimension (%d) cannot exceed the array's dimension (%d).", compFinDim, fldDim));
+                    emitError(field, String.format("@CompilationFinal.dimensions (%d) cannot exceed the array's dimensions (%d).", compFinDimensions, fieldDimensions));
                 }
                 return false;
             }
@@ -94,6 +98,13 @@ public class VerifyCompilationFinalProcessor extends AbstractProcessor {
             return;
         }
         processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, message, originatingElm);
+    }
+
+    private void emitWarning(final Element originatingElm, final String message) {
+        if (ExpectError.isExpectedError(processingEnv, originatingElm, message)) {
+            return;
+        }
+        processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING, message, originatingElm);
     }
 
     private static int dimension(final TypeMirror type) {

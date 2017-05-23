@@ -28,11 +28,11 @@ import com.oracle.truffle.api.dsl.test.ExpectError;
 public class VerifyCompilationFinalProcessorTest {
 
     static class NonArrayWithNegativeDimension {
-        @ExpectError("@CompilationFinal.dimension cannot be negative.") @CompilerDirectives.CompilationFinal(dimensions = -2) private int opCode;
+        @ExpectError("@CompilationFinal.dimensions cannot be negative.") @CompilerDirectives.CompilationFinal(dimensions = -2) private int opCode;
     }
 
     static class NonArrayWithPositiveDimension {
-        @ExpectError("Positive @CompilationFinal.dimension (1) not allowed for non array type.") @CompilerDirectives.CompilationFinal(dimensions = 1) private int opCode;
+        @ExpectError("Positive @CompilationFinal.dimensions (1) not allowed for non array type.") @CompilerDirectives.CompilationFinal(dimensions = 1) private int opCode;
     }
 
     static class NonArrayWithZeroDimension {
@@ -44,11 +44,11 @@ public class VerifyCompilationFinalProcessorTest {
     }
 
     static class ArrayWithNegativeDimension {
-        @ExpectError("@CompilationFinal.dimension cannot be negative.") @CompilerDirectives.CompilationFinal(dimensions = -2) private int[] vector;
+        @ExpectError("@CompilationFinal.dimensions cannot be negative.") @CompilerDirectives.CompilationFinal(dimensions = -2) private int[] vector;
     }
 
     static class ArrayWithInvalidDimension {
-        @ExpectError("@CompilationFinal.dimension (4) cannot exceed the array's dimension (3).") @CompilerDirectives.CompilationFinal(dimensions = 4) private int[][][] matrix;
+        @ExpectError("@CompilationFinal.dimensions (4) cannot exceed the array's dimensions (3).") @CompilerDirectives.CompilationFinal(dimensions = 4) private int[][][] matrix;
     }
 
     static class ArrayWithValidDimension {
@@ -59,6 +59,6 @@ public class VerifyCompilationFinalProcessorTest {
     }
 
     static class ArrayWithNoDimension {
-        @CompilerDirectives.CompilationFinal private int[] vector;
+        @ExpectError("@CompilationFinal.dimensions should be given for an array type.") @CompilerDirectives.CompilationFinal private int[] vector;
     }
 }
