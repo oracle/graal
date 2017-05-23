@@ -50,6 +50,7 @@ import com.oracle.truffle.llvm.nodes.control.LLVMRetNodeFactory.LLVMVectorRetNod
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMInvokeNode;
+import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMAddressProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMDoubleProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMFloatProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI32ProfiledValueNodeGen;
@@ -133,6 +134,8 @@ final class LLVMFunctionFactory {
                 default:
                     return argNode;
             }
+        } else if (paramType instanceof PointerType) {
+            return LLVMAddressProfiledValueNodeGen.create(argNode);
         } else {
             return argNode;
         }
