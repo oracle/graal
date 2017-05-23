@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -42,6 +43,7 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMPerformance;
+import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -68,11 +70,12 @@ abstract class LLVMForeignCallNode extends LLVMNode {
         }
 
         @ExplodeLoop
-        Object[] pack(Object[] arguments) {
+        Object[] pack(Object[] arguments, long stackPointer) {
             assert arguments.length == toLLVM.length;
-            final Object[] packedArguments = new Object[toLLVM.length];
+            final Object[] packedArguments = new Object[1 + toLLVM.length];
+            packedArguments[0] = stackPointer;
             for (int i = 0; i < toLLVM.length; i++) {
-                packedArguments[i] = toLLVM[i].executeWithTarget(arguments[i]);
+                packedArguments[i + 1] = toLLVM[i].executeWithTarget(arguments[i]);
             }
             return packedArguments;
         }
@@ -86,14 +89,15 @@ abstract class LLVMForeignCallNode extends LLVMNode {
     protected static class SlowPackForeignArgumentsNode extends Node {
         @Child ToLLVMNode slowConvert = ToLLVMNode.createNode(null);
 
-        Object[] pack(LLVMFunctionDescriptor function, Object[] arguments) {
+        Object[] pack(LLVMFunctionDescriptor function, Object[] arguments, long stackPointer) {
             int actualArgumentsLength = Math.max(arguments.length, function.getType().getArgumentTypes().length);
-            final Object[] packedArguments = new Object[actualArgumentsLength];
+            final Object[] packedArguments = new Object[1 + actualArgumentsLength];
+            packedArguments[0] = stackPointer;
             for (int i = 0; i < function.getType().getArgumentTypes().length; i++) {
-                packedArguments[i] = slowConvert.slowConvert(arguments[i], ToLLVMNode.convert(function.getType().getArgumentTypes()[i]));
+                packedArguments[i + 1] = slowConvert.slowConvert(arguments[i], ToLLVMNode.convert(function.getType().getArgumentTypes()[i]));
             }
             for (int i = function.getType().getArgumentTypes().length; i < arguments.length; i++) {
-                packedArguments[i] = slowConvert.slowConvert(arguments[i]);
+                packedArguments[i + 1] = slowConvert.slowConvert(arguments[i]);
             }
             return packedArguments;
         }
@@ -105,6 +109,16 @@ abstract class LLVMForeignCallNode extends LLVMNode {
 
     public abstract Object executeCall(VirtualFrame frame, LLVMFunction function, Object[] arguments);
 
+    @CompilationFinal private LLVMThreadingStack threadingStack = null;
+
+    private LLVMThreadingStack getThreadingStack(LLVMContext context) {
+        if (threadingStack == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            threadingStack = context.getThreadingStack();
+        }
+        return threadingStack;
+    }
+
     @SuppressWarnings("unused")
     @Specialization(guards = {"function.getFunctionPointer() == functionIndex", "cachedLength == arguments.length"})
     public Object callDirect(LLVMFunctionDescriptor function, Object[] arguments,
@@ -114,7 +128,9 @@ abstract class LLVMForeignCallNode extends LLVMNode {
                     @Cached("arguments.length") int cachedLength,
                     @Cached("function.getContext()") LLVMContext context) {
         assert !(function.getType().getReturnType() instanceof StructureType);
-        Object result = callNode.call(packNode.pack(arguments));
+        long stackPointer = getThreadingStack(context).getStack().getStackPointer();
+        Object result = callNode.call(packNode.pack(arguments, stackPointer));
+        getThreadingStack(context).getStack().setStackPointer(stackPointer);
         return prepareValueForEscape.executeWithTarget(result, context);
     }
 
@@ -123,7 +139,9 @@ abstract class LLVMForeignCallNode extends LLVMNode {
                     @Cached("create()") IndirectCallNode callNode, @Cached("createSlowPackArguments()") SlowPackForeignArgumentsNode slowPack) {
         assert !(function.getType().getReturnType() instanceof StructureType);
         LLVMPerformance.warn(this);
-        Object result = callNode.call(getCallTarget(function), slowPack.pack(function, arguments));
+        long stackPointer = function.getContext().getThreadingStack().getStack().getStackPointer();
+        Object result = callNode.call(getCallTarget(function), slowPack.pack(function, arguments, stackPointer));
+        function.getContext().getThreadingStack().getStack().setStackPointer(stackPointer);
         return prepareValueForEscape.executeWithTarget(result, function.getContext());
     }
 

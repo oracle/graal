@@ -29,20 +29,34 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
-import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameUtil;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild(type = LLVMExpressionNode.class, value = "val")
 public abstract class LLVMFrameAddress extends LLVMBuiltin {
 
+    @CompilationFinal private FrameSlot stackPointer;
+
+    private FrameSlot getStackPointerSlot() {
+        if (stackPointer == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            stackPointer = getRootNode().getFrameDescriptor().findFrameSlot(LLVMStack.FRAME_ID);
+        }
+        return stackPointer;
+    }
+
     @Specialization
-    public LLVMAddress executePointee(int frameLevel, @Cached("getContext().getThreadingStack()") LLVMThreadingStack stack) {
+    public LLVMAddress executePointee(VirtualFrame frame, int frameLevel) {
         if (frameLevel == 0) {
-            return LLVMAddress.fromLong(stack.getStack().getStackPointer());
+            return LLVMAddress.fromLong(FrameUtil.getLongSafe(frame, getStackPointerSlot()));
         } else {
             return LLVMAddress.nullPointer();
         }

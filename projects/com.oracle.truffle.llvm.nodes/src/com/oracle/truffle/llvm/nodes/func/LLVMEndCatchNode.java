@@ -47,6 +47,7 @@ import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public final class LLVMEndCatchNode extends LLVMExpressionNode {
 
+    @Child private LLVMExpressionNode stackPointer;
     @Child private LLVMLookupDispatchNode dispatch;
     @Child private LLVMNativeFunctions.SulongDecrementHandlerCountNode decHandlerCount;
     @Child private LLVMNativeFunctions.SulongGetHandlerCountNode getHandlerCount;
@@ -64,7 +65,8 @@ public final class LLVMEndCatchNode extends LLVMExpressionNode {
         return cachedContext;
     }
 
-    public LLVMEndCatchNode() {
+    public LLVMEndCatchNode(LLVMExpressionNode stackPointer) {
+        this.stackPointer = stackPointer;
         this.dispatch = LLVMLookupDispatchNodeGen.create(new FunctionType(VoidType.INSTANCE, new Type[]{new PointerType(null)}, false));
     }
 
@@ -130,7 +132,7 @@ public final class LLVMEndCatchNode extends LLVMExpressionNode {
             LLVMAddress destructorAddress = getGetDestructor().get(ptr);
             if (getGetHandlerCount().get(ptr) <= 0 && destructorAddress.getVal() != 0) {
                 LLVMFunctionHandle destructor = LLVMFunctionHandle.createHandle(destructorAddress.getVal());
-                dispatch.executeDispatch(frame, destructor, new Object[]{getGetThrownObject().getThrownObject(ptr)});
+                dispatch.executeDispatch(frame, destructor, new Object[]{stackPointer.executeI64(frame), getGetThrownObject().getThrownObject(ptr)});
             }
             return null;
         } catch (Throwable e) {

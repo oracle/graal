@@ -31,10 +31,11 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 
@@ -52,14 +53,14 @@ public final class LLVMComplexDivSC extends LLVMExpressionNode {
         this.dNode = d;
     }
 
-    @CompilationFinal private LLVMThreadingStack threadingStack;
+    @CompilationFinal private FrameSlot stackPointer;
 
-    private LLVMThreadingStack getThreadingStack() {
-        if (threadingStack == null) {
+    private FrameSlot getStackPointerSlot() {
+        if (stackPointer == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            threadingStack = getContext().getThreadingStack();
+            stackPointer = getRootNode().getFrameDescriptor().findFrameSlot(LLVMStack.FRAME_ID);
         }
-        return threadingStack;
+        return stackPointer;
     }
 
     @Override
@@ -73,7 +74,7 @@ public final class LLVMComplexDivSC extends LLVMExpressionNode {
         float zReal = (a * c + b * d) / denom;
         float zImag = (b * c - a * d) / denom;
 
-        long allocatedMemory = getThreadingStack().getStack().allocateStackMemory(2 * LLVMExpressionNode.FLOAT_SIZE_IN_BYTES, 8);
+        long allocatedMemory = LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), 2 * LLVMExpressionNode.FLOAT_SIZE_IN_BYTES, 8);
         LLVMMemory.putFloat(allocatedMemory, zReal);
         LLVMMemory.putFloat(allocatedMemory + LLVMExpressionNode.FLOAT_SIZE_IN_BYTES, zImag);
         return LLVMFloatVector.readVectorFromMemory(LLVMAddress.fromLong(allocatedMemory), 2);

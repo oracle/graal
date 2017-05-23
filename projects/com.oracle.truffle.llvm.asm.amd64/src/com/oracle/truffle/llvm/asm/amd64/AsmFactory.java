@@ -120,6 +120,7 @@ import com.oracle.truffle.llvm.nodes.cast.LLVMToI32NodeGen.LLVMToI32NoZeroExtNod
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI64NodeGen.LLVMToI64NoZeroExtNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI8NodeGen.LLVMToI8NoZeroExtNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNodeGen;
+import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMInlineAssemblyRootNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstruction.LLVMAllocaConstInstruction;
 import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMI16StoreNodeGen;
@@ -261,11 +262,11 @@ class AsmFactory {
         argInfo = new ArrayList<>();
         String[] tokens = asmFlags.substring(1, asmFlags.length() - 1).split(",");
 
-        int index = 0;
+        int index = LLVMCallNode.USER_ARGUMENT_OFFSET;
         LLVMAllocaConstInstruction alloca = null;
         if (retType instanceof StructureType) { // multiple out values
-            assert args[0] instanceof LLVMAllocaConstInstruction;
-            alloca = (LLVMAllocaConstInstruction) args[0];
+            assert args[1] instanceof LLVMAllocaConstInstruction;
+            alloca = (LLVMAllocaConstInstruction) args[1];
             index++;
         }
 
@@ -810,8 +811,8 @@ class AsmFactory {
         LLVMStructWriteNode[] writeNodes = null;
         LLVMExpressionNode[] valueNodes = null;
         if (retType instanceof StructureType) {
-            assert args[0] instanceof LLVMAllocaConstInstruction;
-            alloca = (LLVMAllocaConstInstruction) args[0];
+            assert args[1] instanceof LLVMAllocaConstInstruction;
+            alloca = (LLVMAllocaConstInstruction) args[1];
             writeNodes = new LLVMStructWriteNode[alloca.getLength()];
             valueNodes = new LLVMExpressionNode[alloca.getLength()];
         }
@@ -910,7 +911,7 @@ class AsmFactory {
         }
 
         if (retType instanceof StructureType) {
-            LLVMExpressionNode addrArg = LLVMArgNodeGen.create(0);
+            LLVMExpressionNode addrArg = LLVMArgNodeGen.create(1);
             FrameSlot slot = frameDescriptor.addFrameSlot("returnValue", FrameSlotKind.Object);
             LLVMWriteAddressNode writeAddr = LLVMWriteAddressNodeGen.create(addrArg, slot, null);
             statements.add(writeAddr);
