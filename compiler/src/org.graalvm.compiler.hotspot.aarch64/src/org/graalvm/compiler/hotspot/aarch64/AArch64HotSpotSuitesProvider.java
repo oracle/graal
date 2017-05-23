@@ -43,7 +43,7 @@ public class AArch64HotSpotSuitesProvider extends HotSpotSuitesProvider {
 
     private final AddressLoweringByUsePhase.AddressLoweringByUse addressLoweringByUse;
 
-    public AArch64HotSpotSuitesProvider(SuitesCreator defaultSuitesCreator, GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, AddressLoweringByUsePhase.AddressLoweringByUse addressLoweringByUse){
+    public AArch64HotSpotSuitesProvider(SuitesCreator defaultSuitesCreator, GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, AddressLoweringByUsePhase.AddressLoweringByUse addressLoweringByUse) {
         super(defaultSuitesCreator, config, runtime);
         this.addressLoweringByUse = addressLoweringByUse;
     }

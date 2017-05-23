@@ -49,7 +49,7 @@ public class AArch64AddressLoweringByUse extends AddressLoweringByUsePhase.Addre
         if (address instanceof RawAddressNode) {
             return doLower(stamp, address.getBase(), null);
         } else if (address instanceof OffsetAddressNode) {
-            OffsetAddressNode offsetAddress = (OffsetAddressNode)address;
+            OffsetAddressNode offsetAddress = (OffsetAddressNode) address;
             return doLower(stamp, offsetAddress.getBase(), offsetAddress.getOffset());
         } else {
             // must be an already transformed AArch64AddressNode
@@ -116,7 +116,7 @@ public class AArch64AddressLoweringByUse extends AddressLoweringByUsePhase.Addre
             if (javaConstant.getJavaKind().isNumericInteger()) {
                 long disp = javaConstant.asLong();
                 mode = immediateMode(kind, disp);
-                if(isDisplacementMode(mode)) {
+                if (isDisplacementMode(mode)) {
                     index = null;
                     // we can fold this in as a displacement
                     // but first see if we can pull up any additional
@@ -129,7 +129,7 @@ public class AArch64AddressLoweringByUse extends AddressLoweringByUsePhase.Addre
                         if (child.isJavaConstant() && child.asJavaConstant().getJavaKind().isNumericInteger()) {
                             long newDisp = disp + child.asJavaConstant().asLong();
                             AArch64Address.AddressingMode newMode = immediateMode(kind, newDisp);
-                            if( newMode != AArch64Address.AddressingMode.REGISTER_OFFSET) {
+                            if (newMode != AArch64Address.AddressingMode.REGISTER_OFFSET) {
                                 disp = newDisp;
                                 mode = newMode;
                                 base = add.getY();

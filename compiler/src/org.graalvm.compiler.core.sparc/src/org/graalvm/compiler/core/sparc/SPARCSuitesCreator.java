@@ -35,7 +35,7 @@ import org.graalvm.compiler.phases.tiers.LowTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 
 public class SPARCSuitesCreator extends DefaultSuitesCreator {
-    
+
     public SPARCSuitesCreator(CompilerConfiguration compilerConfiguration, Plugins plugins) {
         super(compilerConfiguration, plugins);
     }
