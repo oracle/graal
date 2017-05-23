@@ -30,8 +30,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plu
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 
-public class AMD64HotSpotSuitesCreator extends AMD64SuitesCreator
-{
+public class AMD64HotSpotSuitesCreator extends AMD64SuitesCreator {
 
     public AMD64HotSpotSuitesCreator(CompilerConfiguration compilerConfiguration, Plugins plugins) {
         super(compilerConfiguration, plugins);
