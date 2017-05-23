@@ -934,6 +934,12 @@ public final class LLVMInteropTest {
     }
 
     @Test
+    public void test074() {
+        Runner runner = new Runner("interop074");
+        testGlobal(runner);
+    }
+
+    @Test
     public void testStrlen() throws Exception {
         Runner runner = new Runner("strlen");
         try {
