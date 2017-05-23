@@ -129,7 +129,7 @@ public class AArch64AddressLoweringByUse extends AddressLoweringByUsePhase.Addre
                         AddNode add = (AddNode) base;
                         tryNextBase = false;
                         ValueNode child = add.getX();
-                        if(child.isJavaConstant()) {
+                        if (child.isJavaConstant() && child.asJavaConstant().getJavaKind().isNumericInteger()) {
                             long newDisp = disp + child.asJavaConstant().asLong();
                             AArch64Address.AddressingMode newMode = immediateMode(kind, newDisp);
                             if(newMode != AArch64Address.AddressingMode.REGISTER_OFFSET) {
@@ -141,7 +141,7 @@ public class AArch64AddressLoweringByUse extends AddressLoweringByUsePhase.Addre
                             }
                         } else {
                             child = add.getY();
-                            if(child.isJavaConstant()) {
+                            if (child.isJavaConstant() && child.asJavaConstant().getJavaKind().isNumericInteger()) {
                                 long newDisp = disp + child.asJavaConstant().asLong();
                                 AArch64Address.AddressingMode newMode = immediateMode(kind, newDisp);
                                 if(newMode != AArch64Address.AddressingMode.REGISTER_OFFSET) {
@@ -154,7 +154,7 @@ public class AArch64AddressLoweringByUse extends AddressLoweringByUsePhase.Addre
                             }
                         }
                     }
-                    if(disp != 0) {
+                    if (disp != 0) {
                         // ok now set the displacement in place of an index
                         ret.setIndex(null);
                         int scaleFactor = computeScaleFactor(kind, disp, mode);
