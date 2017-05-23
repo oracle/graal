@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.op.compare;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -36,6 +37,8 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressCompareNodeGen.LLVMAddressEQNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressCompareNodeGen.LLVMAddressNEQNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMAddressCompareNodeGen.ToComparableValueNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
@@ -61,7 +64,7 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
         NEQ,
     }
 
-    public static LLVMAddressCompareNode create(Kind kind, LLVMExpressionNode l, LLVMExpressionNode r) {
+    public static LLVMExpressionNode create(Kind kind, LLVMExpressionNode l, LLVMExpressionNode r) {
         switch (kind) {
             case SLT:
                 return LLVMAddressCompareNodeGen.create(new AddressCompare() {
@@ -138,24 +141,9 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
                 }, l, r);
 
             case EQ:
-                return LLVMAddressCompareNodeGen.create(new AddressCompare() {
-
-                    @Override
-                    public boolean compare(LLVMAddress val1, LLVMAddress val2) {
-                        return val1.getVal() == val2.getVal();
-                    }
-
-                }, l, r);
-
+                return LLVMAddressEQNodeGen.create(l, r);
             case NEQ:
-                return LLVMAddressCompareNodeGen.create(new AddressCompare() {
-
-                    @Override
-                    public boolean compare(LLVMAddress val1, LLVMAddress val2) {
-                        return val1.getVal() != val2.getVal();
-                    }
-
-                }, l, r);
+                return LLVMAddressNEQNodeGen.create(l, r);
             default:
                 throw new AssertionError();
 
@@ -231,8 +219,88 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
     @Child private ToComparableValue convertVal2 = ToComparableValueNodeGen.create(null);
 
     @Specialization
-    public boolean doCompare(Object val1, Object val2) {
+    public boolean doGenericCompare(Object val1, Object val2) {
         return op.compare(convertVal1.executeWithTarget(val1), convertVal2.executeWithTarget(val2));
+    }
+
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    abstract static class LLVMAddressEQNode extends LLVMExpressionNode {
+        protected boolean isNullAddress(LLVMAddress a) {
+            return a.getVal() == 0;
+        }
+
+        protected ToComparableValue create() {
+            return ToComparableValueNodeGen.create(null);
+        }
+
+        @Specialization(guards = {"isNullAddress(val2)"})
+        @SuppressWarnings("unused")
+        public boolean globalEQNull(LLVMGlobalVariable val1, LLVMAddress val2) {
+            return false;
+        }
+
+        @Specialization(guards = {"isNullAddress(val1)"})
+        @SuppressWarnings("unused")
+        public boolean globalEQNull(LLVMAddress val1, LLVMGlobalVariable val2) {
+            return false;
+        }
+
+        @Specialization
+        public boolean globalEQ(LLVMGlobalVariable val1, LLVMGlobalVariable val2) {
+            return val1 == val2;
+        }
+
+        protected boolean isSpecialCase(Object val1, Object val2) {
+            boolean c1 = val1 instanceof LLVMGlobalVariable && val2 instanceof LLVMAddress && isNullAddress((LLVMAddress) val2);
+            boolean c2 = val1 instanceof LLVMAddress && val2 instanceof LLVMGlobalVariable && isNullAddress((LLVMAddress) val1);
+            boolean c3 = val1 instanceof LLVMGlobalVariable && val2 instanceof LLVMGlobalVariable;
+            return c1 || c2 || c3;
+        }
+
+        @Specialization(guards = {"!isSpecialCase(val1, val2)"})
+        public boolean doGenericCompare(Object val1, Object val2, @Cached("create()") ToComparableValue convertVal1, @Cached("create()") ToComparableValue convertVal2) {
+            return convertVal1.executeWithTarget(val1).getVal() == convertVal2.executeWithTarget(val2).getVal();
+        }
+    }
+
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    abstract static class LLVMAddressNEQNode extends LLVMExpressionNode {
+        protected boolean isNullAddress(LLVMAddress a) {
+            return a.getVal() == 0;
+        }
+
+        protected ToComparableValue create() {
+            return ToComparableValueNodeGen.create(null);
+        }
+
+        @Specialization(guards = {"isNullAddress(val2)"})
+        @SuppressWarnings("unused")
+        public boolean globalNEQNull(LLVMGlobalVariable val1, LLVMAddress val2) {
+            return true;
+        }
+
+        @Specialization(guards = {"isNullAddress(val1)"})
+        @SuppressWarnings("unused")
+        public boolean globalNEQNull(LLVMAddress val1, LLVMGlobalVariable val2) {
+            return true;
+        }
+
+        @Specialization
+        public boolean globalNEQ(LLVMGlobalVariable val1, LLVMGlobalVariable val2) {
+            return val1 != val2;
+        }
+
+        protected boolean isSpecialCase(Object val1, Object val2) {
+            boolean c1 = val1 instanceof LLVMGlobalVariable && val2 instanceof LLVMAddress && isNullAddress((LLVMAddress) val2);
+            boolean c2 = val1 instanceof LLVMAddress && val2 instanceof LLVMGlobalVariable && isNullAddress((LLVMAddress) val1);
+            boolean c3 = val1 instanceof LLVMGlobalVariable && val2 instanceof LLVMGlobalVariable;
+            return c1 || c2 || c3;
+        }
+
+        @Specialization(guards = {"!isSpecialCase(val1, val2)"})
+        public boolean doGenericCompare(Object val1, Object val2, @Cached("create()") ToComparableValue convertVal1, @Cached("create()") ToComparableValue convertVal2) {
+            return convertVal1.executeWithTarget(val1).getVal() != convertVal2.executeWithTarget(val2).getVal();
+        }
     }
 
 }
