@@ -74,6 +74,14 @@ public class VerifyCompilationFinalProcessor extends AbstractProcessor {
                 return false;
             }
             if (compFinDimensions == -1 && fieldDimensions > 0) {
+                final SuppressWarnings suppressWarnings = field.getAnnotation(SuppressWarnings.class);
+                if (suppressWarnings != null) {
+                    for (String warning : suppressWarnings.value()) {
+                        if ("VerifyCompilationFinal".equals(warning)) {
+                            return true;
+                        }
+                    }
+                }
                 emitWarning(field, "@CompilationFinal.dimensions should be given for an array type.");
                 return false;
             }
