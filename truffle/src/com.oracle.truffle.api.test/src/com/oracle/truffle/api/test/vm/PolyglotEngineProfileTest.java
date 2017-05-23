@@ -28,7 +28,6 @@ import static com.oracle.truffle.api.test.ReflectionUtils.newInstance;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertNotNull;
 
 import java.util.concurrent.Executors;
 
@@ -50,10 +49,7 @@ public class PolyglotEngineProfileTest {
         assertEquals(store1, get(profile));
         leave(profile, prev);
 
-        // TODO should return null PolyglotEngineProfile is changed to return null again after
-        // leaving for constant profiles.
-        // assertNull(get(profile));
-        assertNotNull(get(profile));
+        assertNull(get(profile));
 
         prev = enter(profile, store1);
         assertEquals(store1, get(profile));
