@@ -30,43 +30,6 @@ meth public {com.oracle.truffle.api.utilities.AssumedValue%0} get()
 supr java.lang.Object
 hfds ASSUMPTION_UPDATER,assumption,name,value
 
-CLSS public final com.oracle.truffle.api.utilities.BinaryConditionProfile
- anno 0 java.lang.Deprecated()
-meth public boolean profile(boolean)
-meth public boolean wasFalse()
-meth public boolean wasTrue()
-meth public java.lang.String toString()
-supr com.oracle.truffle.api.utilities.ConditionProfile
-hfds wasFalse,wasTrue
-
-CLSS public final com.oracle.truffle.api.utilities.BranchProfile
- anno 0 java.lang.Deprecated()
-meth public boolean isVisited()
-meth public java.lang.String toString()
-meth public static com.oracle.truffle.api.utilities.BranchProfile create()
- anno 0 java.lang.Deprecated()
-meth public void enter()
-supr com.oracle.truffle.api.nodes.NodeCloneable
-hfds visited
-
-CLSS public abstract com.oracle.truffle.api.utilities.ConditionProfile
- anno 0 java.lang.Deprecated()
-meth public abstract boolean profile(boolean)
-meth public static com.oracle.truffle.api.utilities.ConditionProfile createBinaryProfile()
- anno 0 java.lang.Deprecated()
-meth public static com.oracle.truffle.api.utilities.ConditionProfile createCountingProfile()
- anno 0 java.lang.Deprecated()
-supr com.oracle.truffle.api.nodes.NodeCloneable
-
-CLSS public final com.oracle.truffle.api.utilities.CountingConditionProfile
- anno 0 java.lang.Deprecated()
-meth public boolean profile(boolean)
-meth public int getFalseCount()
-meth public int getTrueCount()
-meth public java.lang.String toString()
-supr com.oracle.truffle.api.utilities.ConditionProfile
-hfds falseCount,trueCount
-
 CLSS public com.oracle.truffle.api.utilities.CyclicAssumption
 cons public init(java.lang.String)
 meth public com.oracle.truffle.api.Assumption getAssumption()
@@ -129,26 +92,6 @@ meth public void check() throws com.oracle.truffle.api.nodes.InvalidAssumptionEx
 meth public void invalidate()
 supr java.lang.Object
 
-CLSS public com.oracle.truffle.api.utilities.PrimitiveValueProfile
- anno 0 java.lang.Deprecated()
-meth public <%0 extends java.lang.Object> {%%0} profile({%%0})
-meth public boolean isGeneric()
-meth public boolean isUninitialized()
-meth public boolean profile(boolean)
-meth public byte profile(byte)
-meth public char profile(char)
-meth public double profile(double)
-meth public float profile(float)
-meth public int profile(int)
-meth public java.lang.Object getCachedValue()
-meth public java.lang.String toString()
-meth public long profile(long)
-meth public short profile(short)
-meth public static boolean exactCompare(double,double)
-meth public static boolean exactCompare(float,float)
-supr com.oracle.truffle.api.utilities.ValueProfile
-hfds GENERIC,UNINITIALIZED,cachedValue
-
 CLSS public com.oracle.truffle.api.utilities.UnionAssumption
 cons public init(com.oracle.truffle.api.Assumption,com.oracle.truffle.api.Assumption)
 cons public init(java.lang.String,com.oracle.truffle.api.Assumption,com.oracle.truffle.api.Assumption)
@@ -159,19 +102,6 @@ meth public void check() throws com.oracle.truffle.api.nodes.InvalidAssumptionEx
 meth public void invalidate()
 supr java.lang.Object
 hfds first,name,second
-
-CLSS public abstract com.oracle.truffle.api.utilities.ValueProfile
- anno 0 java.lang.Deprecated()
-cons public init()
- anno 0 java.lang.Deprecated()
-meth public abstract <%0 extends java.lang.Object> {%%0} profile({%%0})
-meth public static com.oracle.truffle.api.utilities.PrimitiveValueProfile createPrimitiveProfile()
- anno 0 java.lang.Deprecated()
-meth public static com.oracle.truffle.api.utilities.ValueProfile createClassProfile()
- anno 0 java.lang.Deprecated()
-meth public static com.oracle.truffle.api.utilities.ValueProfile createIdentityProfile()
- anno 0 java.lang.Deprecated()
-supr com.oracle.truffle.api.nodes.NodeCloneable
 
 CLSS public abstract interface java.lang.Cloneable
 
