@@ -628,10 +628,10 @@ public class SourceSectionFilterTest {
         Node root = createNode(sampleSource1.createSection(0, 23));
 
         SourceSectionFilter filter = SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION, InstrumentationTestLanguage.DEFINE).//
-        tagIsNot(InstrumentationTestLanguage.DEFINE, InstrumentationTestLanguage.ROOT).//
-        indexIn(0, 3).//
-        sourceIs(sampleSource1).sourceSectionEquals(sampleSource1.createSection(0, 5)).//
-        lineIn(1, 1).lineIs(1).mimeTypeIs("mime1", "mime2").build();
+                        tagIsNot(InstrumentationTestLanguage.DEFINE, InstrumentationTestLanguage.ROOT).//
+                        indexIn(0, 3).//
+                        sourceIs(sampleSource1).sourceSectionEquals(sampleSource1.createSection(0, 5)).//
+                        lineIn(1, 1).lineIs(1).mimeTypeIs("mime1", "mime2").build();
 
         Assert.assertFalse(isInstrumented(filter, root, source()));
         Assert.assertTrue(isInstrumentedRoot(filter, null));
