@@ -89,4 +89,8 @@ final class ClassTypeSequence implements JavaType, CharSequence {
         return clazz.getName().subSequence(start, end);
     }
 
+    @Override
+    public String toString() {
+        return clazz.getName();
+    }
 }
