@@ -21,6 +21,17 @@ suite = {
     },
   },
   "defaultLicense" : "GPLv2-CPE",
+  "imports" : {
+    "suites": [
+      {
+        "name" : "sdk",
+        "subdir": True,
+        "urls" : [
+          {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
+         ]
+      },
+    ]
+  },
   "libraries" : {
 
     # ------------- Libraries -------------
