@@ -1,6 +1,7 @@
 suite = {
   "mxversion" : "5.70.0",
   "name" : "sdk",
+  "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/graalvm/graal",
   "developer" : {
     "name" : "Graal developers",
