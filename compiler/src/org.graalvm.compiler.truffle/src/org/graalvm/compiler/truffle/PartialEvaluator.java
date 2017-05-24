@@ -45,6 +45,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import jdk.vm.ci.meta.SpeculationLog;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.SourceStackTraceBailoutException;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -183,14 +184,19 @@ public class PartialEvaluator {
         return new ResolvedJavaMethod[]{callSiteProxyMethod, callDirectMethod};
     }
 
+    public StructuredGraph createGraph(final OptimizedCallTarget callTarget, TruffleInlining inliningDecision, ResolvedJavaMethod rootMethod, AllowAssumptions allowAssumptions,
+                    CompilationIdentifier compilationId, CancellableCompileTask task) {
+        return createGraph(callTarget, inliningDecision, rootForCallTarget(callTarget), allowAssumptions, compilationId, callTarget.getSpeculationLog(), task);
+    }
+
     public StructuredGraph createGraph(final OptimizedCallTarget callTarget, TruffleInlining inliningDecision, AllowAssumptions allowAssumptions, CompilationIdentifier compilationId,
                     CancellableCompileTask task) {
-        return createGraph(callTarget, inliningDecision, rootForCallTarget(callTarget), allowAssumptions, compilationId, task);
+        return createGraph(callTarget, inliningDecision, rootForCallTarget(callTarget), allowAssumptions, compilationId, callTarget.getSpeculationLog(), task);
     }
 
     @SuppressWarnings("try")
     public StructuredGraph createGraph(final OptimizedCallTarget callTarget, TruffleInlining inliningDecision, ResolvedJavaMethod rootMethod, AllowAssumptions allowAssumptions,
-                    CompilationIdentifier compilationId, CancellableCompileTask task) {
+                    CompilationIdentifier compilationId, SpeculationLog log, CancellableCompileTask task) {
         try (Scope c = Debug.scope("TruffleTree")) {
             Debug.dump(Debug.BASIC_LEVEL, new TruffleTreeDumpHandler.TruffleTreeDump(callTarget), "%s", callTarget);
         } catch (Throwable e) {
@@ -203,7 +209,7 @@ public class PartialEvaluator {
         final StructuredGraph graph = new StructuredGraph.Builder(options, allowAssumptions).
                         name(name).
                         method(rootMethod).
-                        speculationLog(callTarget.getSpeculationLog()).
+                        speculationLog(log).
                         compilationId(compilationId).
                         cancellable(task).
                         build();

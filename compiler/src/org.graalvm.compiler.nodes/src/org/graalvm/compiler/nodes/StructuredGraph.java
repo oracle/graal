@@ -243,7 +243,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      */
     private final Assumptions assumptions;
 
-    private final SpeculationLog speculationLog;
+    private SpeculationLog speculationLog;
 
     private ScheduleResult lastSchedule;
 
@@ -846,6 +846,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public SpeculationLog getSpeculationLog() {
         return speculationLog;
+    }
+
+    public void setSpeculationLog(SpeculationLog speculationLog) {
+        this.speculationLog = speculationLog;
     }
 
     public void clearAllStateAfter() {
