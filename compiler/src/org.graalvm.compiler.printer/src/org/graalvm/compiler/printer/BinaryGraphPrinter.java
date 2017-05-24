@@ -102,7 +102,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
     private static final int KLASS = 0x00;
     private static final int ENUM_KLASS = 0x01;
 
-    static final int CURRENT_MAJOR_VERSION = 1;
+    static final int CURRENT_MAJOR_VERSION = 2;
     static final int CURRENT_MINOR_VERSION = 0;
 
     static final byte[] MAGIC_BYTES = {'B', 'I', 'G', 'V'};
@@ -172,9 +172,14 @@ public class BinaryGraphPrinter implements GraphPrinter {
     }
 
     @Override
-    public void print(Graph graph, String title, Map<Object, Object> properties) throws IOException {
+    public void print(Graph graph, Map<Object, Object> properties, int id, String format, Object... args) throws IOException {
         writeByte(BEGIN_GRAPH);
-        writePoolObject(title);
+        writeInt(id);
+        writeString(format);
+        writeInt(args.length);
+        for (Object a : args) {
+            writePoolObject(a);
+        }
         writeGraph(graph, properties);
         flush();
     }
@@ -375,7 +380,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         } else if (object instanceof NodeClass) {
             NodeClass<?> nodeClass = (NodeClass<?>) object;
             writeByte(POOL_NODE_CLASS);
-            writeString(nodeClass.getJavaClass().getSimpleName());
+            writePoolObject(nodeClass.getJavaClass());
             writeString(nodeClass.getNameTemplate());
             writeEdgesInfo(nodeClass, Inputs);
             writeEdgesInfo(nodeClass, Successors);
