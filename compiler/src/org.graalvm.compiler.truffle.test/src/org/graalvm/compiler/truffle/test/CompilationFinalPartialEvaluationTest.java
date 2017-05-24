@@ -77,12 +77,12 @@ public class CompilationFinalPartialEvaluationTest extends PartialEvaluationTest
         @CompilationFinal(dimensions = 2) private static final int[][] intArrayStaticFinal2 = {INT_ARRAY, INT_ARRAY, INT_ARRAY, null};
         @CompilationFinal(dimensions = 2) private static final Object[][] objArrayStaticFinal2 = {OBJ_ARRAY, OBJ_ARRAY, OBJ_ARRAY, null};
 
-        @CompilationFinal private Object intArrayDefault0 = INT_ARRAY;
-        @CompilationFinal private Object objArrayDefault0 = OBJ_ARRAY;
-        @CompilationFinal private Object[] intArrayDefault1 = new int[][]{INT_ARRAY, INT_ARRAY, INT_ARRAY, null};
-        @CompilationFinal private Object[] objArrayDefault1 = new Object[][]{OBJ_ARRAY, OBJ_ARRAY, OBJ_ARRAY, null};
-        @CompilationFinal private int[][] intArrayDefault2 = {INT_ARRAY, INT_ARRAY, INT_ARRAY, null};
-        @CompilationFinal private Object[][] objArrayDefault2 = {OBJ_ARRAY, OBJ_ARRAY, OBJ_ARRAY, null};
+        @SuppressWarnings("VerifyCompilationFinal") @CompilationFinal private Object intArrayDefault0 = INT_ARRAY;
+        @SuppressWarnings("VerifyCompilationFinal") @CompilationFinal private Object objArrayDefault0 = OBJ_ARRAY;
+        @SuppressWarnings("VerifyCompilationFinal") @CompilationFinal private Object[] intArrayDefault1 = new int[][]{INT_ARRAY, INT_ARRAY, INT_ARRAY, null};
+        @SuppressWarnings("VerifyCompilationFinal") @CompilationFinal private Object[] objArrayDefault1 = new Object[][]{OBJ_ARRAY, OBJ_ARRAY, OBJ_ARRAY, null};
+        @SuppressWarnings("VerifyCompilationFinal") @CompilationFinal private int[][] intArrayDefault2 = {INT_ARRAY, INT_ARRAY, INT_ARRAY, null};
+        @SuppressWarnings("VerifyCompilationFinal") @CompilationFinal private Object[][] objArrayDefault2 = {OBJ_ARRAY, OBJ_ARRAY, OBJ_ARRAY, null};
 
         CompilationFinalTestNode() {
         }

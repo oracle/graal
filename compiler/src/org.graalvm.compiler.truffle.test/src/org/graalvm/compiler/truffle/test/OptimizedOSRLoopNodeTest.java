@@ -22,9 +22,11 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationThreshold;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInvalidationReprofileCount;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleMinInvokeThreshold;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleOSRCompilationThreshold;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleReplaceReprofileCount;
 import static org.junit.Assert.assertSame;
 
 import java.util.concurrent.ExecutionException;
@@ -71,9 +73,8 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
     private static final int OSR_THRESHOLD = TruffleCompilerOptions.getValue(TruffleOSRCompilationThreshold);
     private static final int OSR_INVALIDATION_REPROFILE = TruffleCompilerOptions.getValue(TruffleInvalidationReprofileCount);
 
-    @DataPoint public static final OSRLoopFactory CONFIGURED = (repeating, readFrameSlots,
-                    writtenFrameSlots) -> OptimizedOSRLoopNode.createOSRLoop(repeating, OSR_THRESHOLD,
-                                    OSR_INVALIDATION_REPROFILE, readFrameSlots, writtenFrameSlots);
+    @DataPoint public static final OSRLoopFactory CONFIGURED = (repeating, readFrameSlots, writtenFrameSlots) -> OptimizedOSRLoopNode.createOSRLoop(repeating, OSR_THRESHOLD,
+                    OSR_INVALIDATION_REPROFILE, readFrameSlots, writtenFrameSlots);
 
     @DataPoint public static final OSRLoopFactory DEFAULT = (repeating, readFrameSlots,
                     writtenFrameSlots) -> (OptimizedOSRLoopNode) OptimizedOSRLoopNode.create(repeating);
@@ -101,6 +102,24 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
         target.call(2);
         assertCompiled(rootNode.getOSRTarget());
         Assert.assertTrue(rootNode.wasRepeatingCalledCompiled());
+    }
+
+    @SuppressWarnings("try")
+    @Theory
+    public void testOSRAndRewriteDoesNotSuppressTargetCompilation(OSRLoopFactory factory) {
+        try (TruffleCompilerOptions.TruffleOptionsOverrideScope s = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleCompilationThreshold, 3)) {
+            TestRootNodeWithReplacement rootNode = new TestRootNodeWithReplacement(factory, new TestRepeatingNode());
+            OptimizedCallTarget target = new OptimizedCallTarget(null, rootNode);
+            target.call(OSR_THRESHOLD + 1);
+            assertCompiled(rootNode.getOSRTarget());
+            assertNotCompiled(target);
+            target.nodeReplaced(rootNode.toReplace, new TestRepeatingNode(), "test");
+            for (int i = 0; i < TruffleCompilerOptions.getValue(TruffleCompilationThreshold) + TruffleCompilerOptions.getValue(TruffleReplaceReprofileCount) - 1; i++) {
+                target.call(2);
+            }
+            assertCompiled(rootNode.getOSRTarget());
+            assertCompiled(target);
+        }
     }
 
     /*
@@ -592,6 +611,15 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
             } catch (ExecutionException | TimeoutException e) {
                 Assert.fail("timeout");
             }
+        }
+    }
+
+    private static class TestRootNodeWithReplacement extends TestRootNode {
+        @Child OptimizedOSRLoopNode toReplace;
+
+        TestRootNodeWithReplacement(OSRLoopFactory factory, TestRepeatingNode repeating) {
+            super(factory, repeating);
+            toReplace = factory.createOSRLoop(repeating, new FrameSlot[]{param1, param2}, new FrameSlot[]{param1, param2});
         }
     }
 

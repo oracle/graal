@@ -22,6 +22,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * [JavaInterop.toJavaClass](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/interop/java/JavaInterop.html#toJavaClass) can find proper Java class for a wrapped object
 * Added environment methods TruffleLanguage.Env.getLanguages(), TruffleLanguage.Env.getInstruments(), TruffleInstrument.Env.getLanguages(), TruffleInstrument.Env.getInstruments() that allows languages or instruments to inspect some basic information about other installed languages or instruments.
 * Added lookup methods TruffleLanguage.Env.lookup(LanguageInfo, Class), TruffleLanguage.Env.lookup(InstrumentInfo, Class), TruffleInstrument.Env.lookup(LanguageInfo, Class) and TruffleInstrument.Env.lookup(InstrumentInfo, Class) that allows the exchange of services between instruments and languages.
+* Added [EventContext.isLanguageContextInitialized](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/EventContext.html#isLanguageContextInitialized--) to be able to test language context initialization in instruments.
+* Added [SuspensionFilter](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/debug/SuspensionFilter.html) class, [DebuggerSession.setSteppingFilter](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerSession.html#setSteppingFilter-com.oracle.truffle.api.debug.SuspensionFilter-) and [SuspendedEvent.isLanguageContextInitialized](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/debug/SuspendedEvent.html#isLanguageContextInitialized--) to be able to ignore language context initialization during debugging.
 
 ## Version 0.25
 3-Apr-2017

@@ -27,11 +27,13 @@ package com.oracle.truffle.api.instrumentation;
 import java.io.IOException;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AccessorInstrumentHandler;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -84,6 +86,26 @@ public final class EventContext {
     public Node getInstrumentedNode() {
         WrapperNode wrapper = probeNode.findWrapper();
         return wrapper != null ? wrapper.getDelegateNode() : null;
+    }
+
+    /**
+     * Test if language context of the source of the event is initialized.
+     *
+     * @since 0.26
+     */
+    public boolean isLanguageContextInitialized() {
+        CompilerAsserts.neverPartOfCompilation();
+        Node node = getInstrumentedNode();
+        if (node == null) {
+            return true;
+        }
+        RootNode root = node.getRootNode();
+        if (root == null) {
+            return true;
+        }
+        LanguageInfo languageInfo = root.getLanguageInfo();
+        Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(languageInfo);
+        return AccessorInstrumentHandler.langAccess().isContextInitialized(env);
     }
 
     /**

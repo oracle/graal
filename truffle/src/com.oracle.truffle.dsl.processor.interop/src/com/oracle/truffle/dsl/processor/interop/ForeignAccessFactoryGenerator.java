@@ -124,7 +124,8 @@ public final class ForeignAccessFactoryGenerator {
                         messageHandlers.containsKey(Message.IS_NULL) &&
                         messageHandlers.containsKey(Message.IS_EXECUTABLE) &&
                         messageHandlers.containsKey(Message.KEY_INFO) &&
-                        messageHandlers.containsKey(Message.HAS_SIZE))) {
+                        messageHandlers.containsKey(Message.HAS_SIZE) &&
+                        messageHandlers.containsKey(Message.IS_POINTER))) {
             w.append("import com.oracle.truffle.api.nodes.RootNode;").append("\n");
         }
     }
@@ -300,7 +301,7 @@ public final class ForeignAccessFactoryGenerator {
         for (Object m : messageHandlers.keySet()) {
             if (!InteropDSLProcessor.KNOWN_MESSAGES.contains(m)) {
                 String msg = m instanceof Message ? Message.toString((Message) m) : (String) m;
-                w.append("      if (unknown != null && unknown.getClass().getName().equals(\"").append(msg).append("\")) {").append("\n");
+                w.append("      if (unknown != null && unknown.getClass().getCanonicalName().equals(\"").append(msg).append("\")) {").append("\n");
                 w.append("        return Truffle.getRuntime().createCallTarget(").append(messageHandlers.get(m)).append(");").append("\n");
                 w.append("      }").append("\n");
             }

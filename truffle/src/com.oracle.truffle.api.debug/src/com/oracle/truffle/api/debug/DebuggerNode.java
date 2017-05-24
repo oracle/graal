@@ -56,6 +56,8 @@ abstract class DebuggerNode extends ExecutionEventNode {
         return null;
     }
 
+    abstract boolean isStepNode();
+
     abstract SteppingLocation getSteppingLocation();
 
     final EventContext getContext() {

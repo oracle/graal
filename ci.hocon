@@ -3,6 +3,9 @@ builds = []
 
 binaries-repository = "lafo-snapshots"
 
+#SDK
+include "sdk/ci.hocon"
+
 #Truffle
 include "truffle/ci.hocon"
 

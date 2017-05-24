@@ -39,6 +39,28 @@ final class JavaObject implements TruffleObject {
         this.clazz = clazz;
     }
 
+    static boolean isInstance(TruffleObject obj) {
+        return obj instanceof JavaObject;
+    }
+
+    static boolean isJavaInstance(Class<?> targetType, Object javaObject) {
+        if (javaObject instanceof JavaObject) {
+            final Object value = valueOf(javaObject);
+            return targetType.isInstance(value);
+        } else {
+            return false;
+        }
+    }
+
+    static Object valueOf(Object value) {
+        final JavaObject obj = (JavaObject) value;
+        if (obj.isClass()) {
+            return obj.clazz;
+        } else {
+            return obj.obj;
+        }
+    }
+
     @Override
     public ForeignAccess getForeignAccess() {
         return JavaObjectMessageResolutionForeign.ACCESS;
@@ -49,12 +71,8 @@ final class JavaObject implements TruffleObject {
         return System.identityHashCode(obj);
     }
 
-    public static boolean isInstance(TruffleObject obj) {
-        return obj instanceof JavaObject;
-    }
-
     public boolean isClass() {
-        return obj == null;
+        return NULL != this && obj == null;
     }
 
     @Override

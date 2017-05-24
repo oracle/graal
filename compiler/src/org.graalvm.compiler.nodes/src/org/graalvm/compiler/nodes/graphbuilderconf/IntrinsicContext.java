@@ -23,6 +23,7 @@
 package org.graalvm.compiler.nodes.graphbuilderconf;
 
 import static jdk.vm.ci.code.BytecodeFrame.AFTER_BCI;
+import static jdk.vm.ci.code.BytecodeFrame.AFTER_EXCEPTION_BCI;
 import static jdk.vm.ci.code.BytecodeFrame.BEFORE_BCI;
 import static jdk.vm.ci.code.BytecodeFrame.INVALID_FRAMESTATE_BCI;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
@@ -172,7 +173,7 @@ public class IntrinsicContext {
             sideEffects.addSideEffect(forStateSplit);
             FrameState frameState;
             if (forStateSplit instanceof ExceptionObjectNode) {
-                frameState = graph.add(new FrameState(AFTER_BCI, (ExceptionObjectNode) forStateSplit));
+                frameState = graph.add(new FrameState(AFTER_EXCEPTION_BCI, (ExceptionObjectNode) forStateSplit));
             } else {
                 frameState = graph.add(new FrameState(AFTER_BCI));
             }

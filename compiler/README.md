@@ -78,7 +78,7 @@ Further information can be found on the [Debugging](docs/Debugging.md) page.
 
 ## Publications and Presentations
 
-For video tutorials, presentations and publications on Graal visit the [Publications](docs/Publications.md) page.
+For video tutorials, presentations and publications on Graal visit the [Publications](../docs/Publications.md) page.
 
 ## Building JVMCI JDK8
 

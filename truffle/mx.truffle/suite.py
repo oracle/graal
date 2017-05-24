@@ -1,6 +1,7 @@
 suite = {
-  "mxversion" : "5.70.0",
+  "mxversion" : "5.103.0",
   "name" : "truffle",
+  "sourceinprojectwhitelist" : [],
   "url" : "http://openjdk.java.net/projects/graal",
   "developer" : {
     "name" : "Truffle and Graal developers",
@@ -20,6 +21,17 @@ suite = {
     },
   },
   "defaultLicense" : "GPLv2-CPE",
+  "imports" : {
+    "suites": [
+      {
+        "name" : "sdk",
+        "subdir": True,
+        "urls" : [
+          {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
+         ]
+      },
+    ]
+  },
   "libraries" : {
 
     # ------------- Libraries -------------
