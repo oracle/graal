@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,16 +24,21 @@
  */
 package org.graalvm.api.word;
 
-public interface WordBase {
-
-    long rawValue();
+public interface ComparableWord extends WordBase {
 
     /**
-     * This is deprecated because of the easy to mistype name collision between {@link #equals} and
-     * the other word based equality routines. In general you should never be statically calling
-     * this method anyway.
+     * Compares this word with the specified value.
+     *
+     * @param val value to which this word is to be compared.
+     * @return {@code this == val}
      */
-    @Override
-    @Deprecated
-    boolean equals(Object o);
+    boolean equal(ComparableWord val);
+
+    /**
+     * Compares this word with the specified value.
+     *
+     * @param val value to which this word is to be compared.
+     * @return {@code this != val}
+     */
+    boolean notEqual(ComparableWord val);
 }
