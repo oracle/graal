@@ -70,6 +70,7 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 
 public class BinaryGraphPrinter implements GraphPrinter {
 
@@ -98,6 +99,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
     private static final int PROPERTY_FALSE = 0x06;
     private static final int PROPERTY_ARRAY = 0x07;
     private static final int PROPERTY_SUBGRAPH = 0x08;
+    private static final int PROPERTY_NODE_SOURCE_POSITION = 0x09;
 
     private static final int KLASS = 0x00;
     private static final int ENUM_KLASS = 0x01;
@@ -480,6 +482,16 @@ public class BinaryGraphPrinter implements GraphPrinter {
                     writePoolObject(o);
                 }
             }
+        } else if (obj instanceof NodeSourcePosition) {
+            writeByte(PROPERTY_NODE_SOURCE_POSITION);
+            NodeSourcePosition pos = (NodeSourcePosition) obj;
+            while (pos != null) {
+                ResolvedJavaMethod method = pos.getMethod();
+                writePoolObject(method);
+                writeInt(pos.getBCI());
+                pos = pos.getCaller();
+            }
+            writePoolObject(null);
         } else {
             writeByte(PROPERTY_POOL);
             writePoolObject(obj);
