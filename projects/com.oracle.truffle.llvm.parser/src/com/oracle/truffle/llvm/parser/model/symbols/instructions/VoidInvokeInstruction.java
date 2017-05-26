@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
@@ -123,13 +122,17 @@ public final class VoidInvokeInstruction extends VoidInstruction implements Invo
     }
 
     @Override
-    public List<InstructionBlock> getSuccessors() {
-        return Arrays.asList(new InstructionBlock[]{normalSuccessor, unwindSuccessor});
+    public int getSuccessorCount() {
+        return 2;
     }
 
     @Override
-    public boolean hasName() {
-        return false;
+    public InstructionBlock getSuccessor(int index) {
+        if (index == 0) {
+            return normalSuccessor;
+        } else {
+            assert index == 1;
+            return unwindSuccessor;
+        }
     }
-
 }

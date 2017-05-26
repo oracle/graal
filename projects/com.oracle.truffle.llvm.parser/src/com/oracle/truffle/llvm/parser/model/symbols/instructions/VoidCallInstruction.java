@@ -110,9 +110,4 @@ public final class VoidCallInstruction extends VoidInstruction implements Call {
         }
         return inst;
     }
-
-    @Override
-    public boolean hasName() {
-        return false;
-    }
 }

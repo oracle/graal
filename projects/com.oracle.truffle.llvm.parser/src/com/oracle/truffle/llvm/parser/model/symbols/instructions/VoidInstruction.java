@@ -38,4 +38,9 @@ public abstract class VoidInstruction extends Instruction {
     public final Type getType() {
         return VoidType.INSTANCE;
     }
+
+    @Override
+    public boolean hasName() {
+        return false;
+    }
 }

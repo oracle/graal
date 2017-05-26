@@ -29,51 +29,37 @@
  */
 package com.oracle.truffle.llvm.nodes.func;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.nodes.base.LLVMFrameNullerUtil;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStackFrameNuller;
 
 public class LLVMFunctionStartNode extends RootNode {
 
     @Child private LLVMExpressionNode node;
     @Children private final LLVMExpressionNode[] copyArgumentsToFrame;
-    @Children private final LLVMStackFrameNuller[] nullers;
+    @CompilationFinal(dimensions = 1) FrameSlot[] frameSlotsToInitialize;
     private final String name;
     private final int explicitArgumentsCount;
     private final DebugInformation debugInformation;
 
-    /*
-     * Encapsulation of these 3 objects keeps memory footprint low in case no debug info is
-     * available.
-     */
-    private static final class DebugInformation {
-        private final SourceSection sourceSection;
-        private final String originalName;
-        private final Source bcSource;
-
-        DebugInformation(SourceSection sourceSection, String originalName, Source bcSource) {
-            this.sourceSection = sourceSection;
-            this.originalName = originalName;
-            this.bcSource = bcSource;
-        }
-    }
-
     public LLVMFunctionStartNode(SourceSection sourceSection, LLVMLanguage language, LLVMExpressionNode node, LLVMExpressionNode[] copyArgumentsToFrame,
-                    FrameDescriptor frameDescriptor,
-                    String name, LLVMStackFrameNuller[] initNullers, int explicitArgumentsCount, String originalName, Source bcSource) {
+                    FrameDescriptor frameDescriptor, String name, int explicitArgumentsCount, String originalName, Source bcSource) {
         super(language, frameDescriptor);
         this.debugInformation = new DebugInformation(sourceSection, originalName, bcSource);
         this.explicitArgumentsCount = explicitArgumentsCount;
         this.node = node;
         this.copyArgumentsToFrame = copyArgumentsToFrame;
-        this.nullers = initNullers;
         this.name = name;
+
+        this.frameSlotsToInitialize = frameDescriptor.getSlots().toArray(new FrameSlot[0]);
     }
 
     @Override
@@ -91,10 +77,8 @@ public class LLVMFunctionStartNode extends RootNode {
 
     @ExplodeLoop
     private void nullStack(VirtualFrame frame) {
-        for (LLVMStackFrameNuller nuller : nullers) {
-            if (nuller != null) {
-                nuller.nullifySlot(frame);
-            }
+        for (FrameSlot frameSlot : frameSlotsToInitialize) {
+            LLVMFrameNullerUtil.nullFrameSlot(frame, frameSlot);
         }
     }
 
@@ -125,5 +109,21 @@ public class LLVMFunctionStartNode extends RootNode {
 
     public Source getBcSource() {
         return debugInformation.bcSource;
+    }
+
+    /*
+     * Encapsulation of these 3 objects keeps memory footprint low in case no debug info is
+     * available.
+     */
+    private static final class DebugInformation {
+        private final SourceSection sourceSection;
+        private final String originalName;
+        private final Source bcSource;
+
+        DebugInformation(SourceSection sourceSection, String originalName, Source bcSource) {
+            this.sourceSection = sourceSection;
+            this.originalName = originalName;
+            this.bcSource = bcSource;
+        }
     }
 }

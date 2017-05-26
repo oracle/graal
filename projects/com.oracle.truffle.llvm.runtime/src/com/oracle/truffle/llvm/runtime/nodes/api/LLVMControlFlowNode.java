@@ -41,6 +41,8 @@ public abstract class LLVMControlFlowNode extends LLVMNode {
 
     public abstract int getSuccessorCount();
 
+    public abstract LLVMExpressionNode[] getPhiNodes(int successorIndex);
+
     public boolean needsBranchProfiling() {
         return getSuccessorCount() > 1;
     }

@@ -47,8 +47,8 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
-    @Children protected final LLVMExpressionNode[] normalPhiWriteNodes;
-    @Children protected final LLVMExpressionNode[] unwindPhiWriteNodes;
+    @CompilationFinal(dimensions = 1) protected final LLVMExpressionNode[] normalPhiWriteNodes;
+    @CompilationFinal(dimensions = 1) protected final LLVMExpressionNode[] unwindPhiWriteNodes;
     private final int normalSuccessor;
     private final int unwindSuccessor;
 
@@ -82,6 +82,16 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
 
     public int getUnwindSuccessor() {
         return unwindSuccessor;
+    }
+
+    @Override
+    public LLVMExpressionNode[] getPhiNodes(int successorIndex) {
+        if (successorIndex == NORMAL_SUCCESSOR) {
+            return normalPhiWriteNodes;
+        } else {
+            assert successorIndex == UNWIND_SUCCESSOR;
+            return unwindPhiWriteNodes;
+        }
     }
 
     protected void writeResult(VirtualFrame frame, Object value) {

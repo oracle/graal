@@ -29,9 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import java.util.Arrays;
-import java.util.List;
-
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
@@ -68,8 +65,18 @@ public final class ConditionalBranchInstruction extends VoidInstruction implemen
     }
 
     @Override
-    public List<InstructionBlock> getSuccessors() {
-        return Arrays.asList(trueSuccessor, falseSuccessor);
+    public int getSuccessorCount() {
+        return 2;
+    }
+
+    @Override
+    public InstructionBlock getSuccessor(int index) {
+        if (index == 0) {
+            return trueSuccessor;
+        } else {
+            assert index == 1;
+            return falseSuccessor;
+        }
     }
 
     @Override
@@ -83,10 +90,5 @@ public final class ConditionalBranchInstruction extends VoidInstruction implemen
         final ConditionalBranchInstruction inst = new ConditionalBranchInstruction(trueSuccessor, falseSuccessor);
         inst.condition = symbols.getSymbol(conditionIndex, inst);
         return inst;
-    }
-
-    @Override
-    public boolean hasName() {
-        return false;
     }
 }

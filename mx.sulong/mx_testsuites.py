@@ -28,7 +28,6 @@ _llvmSuiteDirRoot = os.path.join(_llvmSuiteDir, "test-suite-3.2.src/")
 _gccSuiteDir = os.path.join(_testDir, "gcc/")
 _gccSuiteDirRoot = os.path.join(_gccSuiteDir, "gcc-5.2.0/gcc/testsuite/")
 _parserTortureSuiteDirRoot = os.path.join(_gccSuiteDir, "gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile")
-_LTADirRoot = os.path.join(_gccSuiteDir, "lta/gcc-5.2.0/gcc/testsuite/")
 _nwccSuiteDir = os.path.join(_testDir, "nwcc/")
 _nwccSuiteDirRoot2 = os.path.join(_nwccSuiteDir, "nwcc_0.8.3/tests/")
 _nwccSuiteDirRoot1 = os.path.join(_nwccSuiteDir, "nwcc_0.8.3/test2/")
@@ -177,13 +176,6 @@ def runInlineAssemblySuite38(vmArgs):
     compileSuite(['assembly'])
     return run38(vmArgs, "com.oracle.truffle.llvm.test.alpha.InlineAssemblyTest")
 
-def runLifetimeAnalysisTests(vmArgs):
-    """runs the LTA test suite"""
-    mx_sulong.ensureDragonEggExists()
-    compileSuite(['gcc'])
-    ensureLifetimeAnalysisReferenceExists()
-    return run32(vmArgs, "com.oracle.truffle.llvm.test.alpha.LifetimeAnalysisSuite")
-
 def runParserTortureSuite(vmArgs):
     """runs the ParserTorture test suite"""
     mx_sulong.ensureDragonEggExists()
@@ -302,7 +294,6 @@ testSuites = {
     'shootout' : (compileShootoutSuite, runShootoutSuite),
     'interop' : (compileInteropTests38, runInteropTests38),
     'tck' : (compileInteropTests38, runTCKTests38),
-    'lifetimeanalysis' : (compileGCCSuite, runLifetimeAnalysisTests),
     'parserTorture' : (compileParserTurtureSuite, runParserTortureSuite),
     'polyglot' : (None, runPolyglotTests),
     'type' : (None, runTypeTests),
@@ -362,12 +353,6 @@ def ensureNWCCSuiteExists():
         pullTestSuite('NWCC_SUITE', _nwccSuiteDir, subDirInsideTar=[os.path.relpath(_nwccSuiteDirRoot1, _nwccSuiteDir)])
     if not os.path.exists(_nwccSuiteDirRoot2):
         pullTestSuite('NWCC_SUITE', _nwccSuiteDir, subDirInsideTar=[os.path.relpath(_nwccSuiteDirRoot2, _nwccSuiteDir)])
-
-def ensureLifetimeAnalysisReferenceExists():
-    """downloads the LTA ref files for GCC suite if not downloaded yet"""
-    if not os.path.exists(_LTADirRoot):
-        pullTestSuite('LTA_REF', _LTADirRoot)
-
 
 def pullTestSuite(library, destDir, **kwargs):
     """downloads and unpacks a test suite"""

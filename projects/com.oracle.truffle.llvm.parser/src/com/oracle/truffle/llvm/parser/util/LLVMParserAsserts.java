@@ -36,21 +36,22 @@ public final class LLVMParserAsserts {
     private LLVMParserAsserts() {
     }
 
-    public static Object[] assertNoNullElement(Object[] objects) {
+    public static boolean noNullElements(Object[] objects) {
         for (Object o : objects) {
             if (o == null) {
                 throw new AssertionError(Arrays.toString(objects));
             }
         }
-        return objects;
+        return true;
     }
 
-    public static <T> void assertNoNullElement(Iterable<T> it) {
+    public static <T> boolean noNullElements(Iterable<T> it) {
         for (T obj : it) {
             if (obj == null) {
                 throw new AssertionError(it);
             }
         }
+        return true;
     }
 
 }

@@ -43,6 +43,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.asm.amd64.Parser;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMFrameNuller;
 import com.oracle.truffle.llvm.nodes.control.LLVMBrUnconditionalNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMConditionalBranchNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMDispatchBasicBlockNode;
@@ -126,7 +127,6 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.NativeAllocator;
@@ -134,17 +134,8 @@ import com.oracle.truffle.llvm.runtime.NativeIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.NativeResolver;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStackFrameNuller;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStackFrameNuller.LLVMAddressNuller;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStackFrameNuller.LLVMBooleanNuller;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStackFrameNuller.LLVMByteNuller;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStackFrameNuller.LLVMDoubleNuller;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStackFrameNuller.LLVMFloatNuller;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStackFrameNuller.LLVMIntNuller;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStackFrameNuller.LLVMLongNuller;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -203,6 +194,11 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
     @Override
     public LLVMExpressionNode createVectorLiteralNode(LLVMParserRuntime runtime, List<LLVMExpressionNode> listValues, Type type) {
         return LLVMLiteralFactory.createVectorLiteralNode(listValues, (VectorType) type);
+    }
+
+    @Override
+    public LLVMFrameNuller createFrameNuller(FrameSlot slot) {
+        return new LLVMFrameNuller(slot);
     }
 
     @Override
@@ -392,32 +388,16 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
 
     @Override
     public LLVMExpressionNode createFunctionBlockNode(LLVMParserRuntime runtime, FrameSlot exceptionValueSlot, List<? extends LLVMExpressionNode> allFunctionNodes,
-                    LLVMStackFrameNuller[][] beforeSlotNullerNodes,
-                    LLVMStackFrameNuller[][] afterSlotNullerNodes) {
-        return new LLVMDispatchBasicBlockNode(exceptionValueSlot, allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]), beforeSlotNullerNodes, afterSlotNullerNodes);
+                    FrameSlot[][] beforeBlockNuller, FrameSlot[][] afterBlockNuller) {
+        return new LLVMDispatchBasicBlockNode(exceptionValueSlot, allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]), beforeBlockNuller, afterBlockNuller);
     }
 
     @Override
     public RootNode createFunctionStartNode(LLVMParserRuntime runtime, LLVMExpressionNode functionBodyNode, LLVMExpressionNode[] copyArgumentsToFrame,
-                    SourceSection sourceSection,
-                    FrameDescriptor frameDescriptor,
-                    FunctionDefinition functionHeader, Source bcSource) {
-        LLVMStackFrameNuller[] nullers = new LLVMStackFrameNuller[frameDescriptor.getSlots().size()];
-        int i = 0;
-        for (FrameSlot slot : frameDescriptor.getSlots()) {
-            String identifier = (String) slot.getIdentifier();
-            Type slotType = runtime.getVariableNameTypesMapping().get(identifier);
-            if (LLVMStack.FRAME_ID.equals(identifier)) {
-                nullers[i] = runtime.getNodeFactory().createFrameNuller(runtime, identifier, new PointerType(null), slot);
-            } else {
-                assert slotType != null : identifier;
-                nullers[i] = runtime.getNodeFactory().createFrameNuller(runtime, identifier, slotType, slot);
-            }
-            i++;
-        }
-        final String originalName = DebugInfoGenerator.getSourceFunctionName(functionHeader);
-        return new LLVMFunctionStartNode(sourceSection, runtime.getLanguage(), functionBodyNode, copyArgumentsToFrame, frameDescriptor, functionHeader.getName(), nullers,
-                        functionHeader.getParameters().size(), originalName, bcSource);
+                    SourceSection sourceSection, FrameDescriptor frame, FunctionDefinition functionHeader, Source bcSource) {
+        String originalName = DebugInfoGenerator.getSourceFunctionName(functionHeader);
+        return new LLVMFunctionStartNode(sourceSection, runtime.getLanguage(), functionBodyNode, copyArgumentsToFrame, frame, functionHeader.getName(), functionHeader.getParameters().size(),
+                        originalName, bcSource);
     }
 
     @Override
@@ -490,39 +470,6 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
     @Override
     public RootNode createStaticInitsRootNode(LLVMParserRuntime runtime, LLVMExpressionNode[] staticInits) {
         return new LLVMStaticInitsBlockNode(runtime.getLanguage(), staticInits, runtime.getGlobalFrameDescriptor());
-    }
-
-    @Override
-    public LLVMStackFrameNuller createFrameNuller(LLVMParserRuntime runtime, String identifier, Type llvmType, FrameSlot slot) {
-        switch (slot.getKind()) {
-            case Boolean:
-                return new LLVMBooleanNuller(slot);
-            case Byte:
-                return new LLVMByteNuller(slot);
-            case Int:
-                return new LLVMIntNuller(slot);
-            case Long:
-                return new LLVMLongNuller(slot);
-            case Float:
-                return new LLVMFloatNuller(slot);
-            case Double:
-                return new LLVMDoubleNuller(slot);
-            case Object:
-                /*
-                 * It would be cleaner to not distinguish between the frame slot kinds, and use the
-                 * variable type instead. We cannot simply set the object to null, because phis that
-                 * have null and other Objects inside escape and are allocated. We set a null
-                 * address here, since other Sulong data types that use Object are implemented
-                 * inefficiently anyway. In the long term, they should have their own stack nuller.
-                 */
-                return new LLVMAddressNuller(slot);
-            case Illegal:
-                LLVMLogger.info("illegal frame slot at stack nuller: " + identifier);
-                return new LLVMAddressNuller(slot);
-            default:
-                throw new AssertionError();
-        }
-
     }
 
     @Override

@@ -29,9 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import java.util.Collections;
-import java.util.List;
-
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
 
@@ -46,16 +43,16 @@ public final class UnreachableInstruction extends VoidInstruction implements Ter
     }
 
     @Override
-    public List<InstructionBlock> getSuccessors() {
-        return Collections.emptyList();
+    public int getSuccessorCount() {
+        return 0;
+    }
+
+    @Override
+    public InstructionBlock getSuccessor(int index) {
+        throw new UnsupportedOperationException();
     }
 
     public static UnreachableInstruction generate() {
         return new UnreachableInstruction();
-    }
-
-    @Override
-    public boolean hasName() {
-        return false;
     }
 }

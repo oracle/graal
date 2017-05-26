@@ -29,12 +29,11 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
 import com.oracle.truffle.llvm.parser.metadata.MDLocation;
+import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 public abstract class Instruction implements Symbol {
-
     private MDLocation debugLocation = null;
 
     public MDLocation getDebugLocation() {
@@ -46,5 +45,4 @@ public abstract class Instruction implements Symbol {
     }
 
     public abstract void accept(InstructionVisitor visitor);
-
 }

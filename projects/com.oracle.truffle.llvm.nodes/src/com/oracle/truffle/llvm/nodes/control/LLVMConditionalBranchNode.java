@@ -30,8 +30,8 @@
 package com.oracle.truffle.llvm.nodes.control;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -39,8 +39,8 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public class LLVMConditionalBranchNode extends LLVMControlFlowNode {
 
     @Child private LLVMExpressionNode condition;
-    @Children final LLVMExpressionNode[] truePhiWriteNodes;
-    @Children final LLVMExpressionNode[] falsePhiWriteNodes;
+    @CompilationFinal(dimensions = 1) final LLVMExpressionNode[] truePhiWriteNodes;
+    @CompilationFinal(dimensions = 1) final LLVMExpressionNode[] falsePhiWriteNodes;
     private final int trueSuccessor;
     private final int falseSuccessor;
 
@@ -62,27 +62,14 @@ public class LLVMConditionalBranchNode extends LLVMControlFlowNode {
         return 2;
     }
 
-    public void writePhis(VirtualFrame frame, int successorIndex) {
+    @Override
+    public LLVMExpressionNode[] getPhiNodes(int successorIndex) {
         CompilerAsserts.partialEvaluationConstant(successorIndex);
         if (successorIndex == TRUE_SUCCESSOR) {
-            runTruePhis(frame);
+            return truePhiWriteNodes;
         } else {
             assert successorIndex == FALSE_SUCCESSOR;
-            runFalsePhis(frame);
-        }
-    }
-
-    @ExplodeLoop
-    private void runFalsePhis(VirtualFrame frame) {
-        for (int i = 0; i < falsePhiWriteNodes.length; i++) {
-            falsePhiWriteNodes[i].executeGeneric(frame);
-        }
-    }
-
-    @ExplodeLoop
-    private void runTruePhis(VirtualFrame frame) {
-        for (int i = 0; i < truePhiWriteNodes.length; i++) {
-            truePhiWriteNodes[i].executeGeneric(frame);
+            return falsePhiWriteNodes;
         }
     }
 

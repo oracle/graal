@@ -72,6 +72,12 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
         return LLVMBasicBlockNode.RETURN_FROM_FUNCTION;
     }
 
+    @Override
+    public LLVMExpressionNode[] getPhiNodes(int successorIndex) {
+        assert successorIndex == 0;
+        return null;
+    }
+
     public abstract Object execute(VirtualFrame frame);
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)

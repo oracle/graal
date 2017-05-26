@@ -34,9 +34,6 @@ import com.oracle.truffle.llvm.option.OptionCategory;
 
 @OptionCategory(name = "Test Options")
 abstract class TestOptions {
-    @Option(commandLineName = "LifetimeTestsGenerateReferenceOutput", help = "Generate the reference output file for the lifetime test cases based on the current version of the lifetime analysis.", name = "generateLifetimeReferenceOutput") //
-    protected static final Boolean LIFETIME_TEST_GENERATE_REFERENCE_OUTPUT = false;
-
     @Option(commandLineName = "IgnoreFortran", help = "Ignores all Fortran tests.", name = "ignoreFortran") //
     protected static final Boolean IGNORE_FORTRAN = false;
 

@@ -29,10 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
@@ -81,11 +77,18 @@ public final class SwitchInstruction extends VoidInstruction implements Terminat
     }
 
     @Override
-    public List<InstructionBlock> getSuccessors() {
-        final List<InstructionBlock> successors = new ArrayList<>(blocks.length + 1);
-        Collections.addAll(successors, blocks);
-        successors.add(defaultBlock);
-        return successors;
+    public int getSuccessorCount() {
+        return blocks.length + 1;
+    }
+
+    @Override
+    public InstructionBlock getSuccessor(int index) {
+        assert index >= 0 && index < getSuccessorCount();
+        if (index >= blocks.length) {
+            return defaultBlock;
+        } else {
+            return blocks[index];
+        }
     }
 
     @Override
@@ -111,10 +114,5 @@ public final class SwitchInstruction extends VoidInstruction implements Terminat
         }
 
         return inst;
-    }
-
-    @Override
-    public boolean hasName() {
-        return false;
     }
 }

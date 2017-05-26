@@ -29,9 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import java.util.Collections;
-import java.util.List;
-
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
@@ -54,8 +51,13 @@ public final class ReturnInstruction extends VoidInstruction implements Terminat
     }
 
     @Override
-    public List<InstructionBlock> getSuccessors() {
-        return Collections.emptyList();
+    public int getSuccessorCount() {
+        return 0;
+    }
+
+    @Override
+    public InstructionBlock getSuccessor(int index) {
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -73,10 +75,5 @@ public final class ReturnInstruction extends VoidInstruction implements Terminat
 
     public static ReturnInstruction generate() {
         return new ReturnInstruction();
-    }
-
-    @Override
-    public boolean hasName() {
-        return false;
     }
 }

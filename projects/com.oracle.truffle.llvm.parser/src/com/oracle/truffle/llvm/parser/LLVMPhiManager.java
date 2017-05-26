@@ -43,6 +43,7 @@ import com.oracle.truffle.llvm.parser.model.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.PhiInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.TerminatingInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
@@ -157,5 +158,45 @@ public final class LLVMPhiManager implements ModelVisitor {
         public Symbol getValue() {
             return value;
         }
+    }
+
+    public static ArrayList<Phi>[] getPhisForSuccessors(TerminatingInstruction terminatingInstruction, List<Phi> phis) {
+        assert phis != null;
+
+        @SuppressWarnings("unchecked")
+        ArrayList<Phi>[] phisPerSuccessor = new ArrayList[terminatingInstruction.getSuccessorCount()];
+        for (int i = 0; i < phisPerSuccessor.length; i++) {
+            phisPerSuccessor[i] = new ArrayList<>();
+        }
+
+        for (Phi phi : phis) {
+            assignPhiToSuccessor(terminatingInstruction, phi, phisPerSuccessor);
+        }
+        return phisPerSuccessor;
+    }
+
+    private static void assignPhiToSuccessor(TerminatingInstruction terminatingInstruction, Phi phi, ArrayList<Phi>[] phisPerSuccessor) {
+        for (int i = 0; i < terminatingInstruction.getSuccessorCount(); i++) {
+            if (terminatingInstruction.getSuccessor(i) == phi.getBlock()) {
+                ArrayList<Phi> phis = phisPerSuccessor[i];
+                if (!hasMatchingPhi(phis, phi)) {
+                    phis.add(phi);
+                    return;
+                }
+            }
+        }
+        throw new RuntimeException("Could not find a matching successor for a phi.");
+    }
+
+    private static boolean hasMatchingPhi(ArrayList<Phi> possiblePhiList, Phi phi) {
+        for (int j = 0; j < possiblePhiList.size(); j++) {
+            if (possiblePhiList.get(j).getPhiValue() == phi.getPhiValue()) {
+                // this successor already has a phi that corresponds to the same phi symbol -> it
+                // can't be for that successor. this case happens when we have the same successor
+                // block multiple times in the list of the successors.
+                return true;
+            }
+        }
+        return false;
     }
 }

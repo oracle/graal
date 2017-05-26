@@ -280,8 +280,7 @@ final class LLVMLiteralFactory {
         Type elementType = arrayType.getElementType();
         int baseTypeSize = runtime.getByteSize(elementType);
         int size = nrElements * baseTypeSize;
-        LLVMExpressionNode arrayAlloc = runtime.allocateFunctionLifetime(arrayType, size,
-                        runtime.getByteAlignment(arrayType));
+        LLVMExpressionNode arrayAlloc = runtime.allocateFunctionLifetime(arrayType, size, runtime.getByteAlignment(arrayType));
         int byteLength = runtime.getByteSize(elementType);
         if (size == 0) {
             throw new AssertionError(elementType + " has size of 0!");
