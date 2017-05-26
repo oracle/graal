@@ -271,11 +271,11 @@ abstract class Container {
     }
 
     static final class NativeContainer extends Container {
-        private final LLVMAddress address;
+        private final long address;
 
         NativeContainer(Type type, LLVMAddress address) {
             super(type);
-            this.address = address;
+            this.address = address.getVal();
         }
 
         @Override
@@ -285,7 +285,7 @@ abstract class Container {
 
         @Override
         LLVMAddress getNativeLocation(LLVMGlobalVariable global) {
-            return address;
+            return LLVMAddress.fromLong(address);
         }
 
         @Override

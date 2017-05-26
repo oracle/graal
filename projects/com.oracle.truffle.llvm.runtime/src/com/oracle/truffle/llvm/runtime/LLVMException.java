@@ -37,14 +37,14 @@ public final class LLVMException extends ControlFlowException {
 
     private static final long serialVersionUID = 1L;
 
-    private final LLVMAddress ptr;
+    private final long ptr;
 
     public LLVMException(LLVMAddress ptr) {
-        this.ptr = ptr;
+        this.ptr = ptr.getVal();
     }
 
     public LLVMAddress getPointer() {
-        return ptr;
+        return LLVMAddress.fromLong(ptr);
     }
 
 }
