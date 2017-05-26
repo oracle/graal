@@ -61,4 +61,10 @@ public class VerifyCompilationFinalProcessorTest {
     static class ArrayWithNoDimension {
         @ExpectError("@CompilationFinal.dimensions should be given for an array type.") @CompilerDirectives.CompilationFinal private int[] vector;
     }
+
+    public enum ECJ451 {
+        A,
+        B;
+        @CompilerDirectives.CompilationFinal(dimensions = 0) private static final ECJ451[] VALUES = ECJ451.values();
+    }
 }
