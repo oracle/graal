@@ -206,4 +206,37 @@ public class ObjectNFITest extends NFITest {
         Assert.assertThat("return value", ret, is(instanceOf(TestObject.class)));
         Assert.assertEquals("intField", 8472, ((TestObject) ret).intField);
     }
+
+    public class TestCompareObjectNode extends NFITestRootNode {
+
+        final TruffleObject keepExistingObject = lookupAndBind("keep_existing_object", "(object):pointer");
+        final TruffleObject compareExistingObject = lookupAndBind("compare_existing_object", "(pointer, pointer):sint32");
+
+        @Child Node executeKeepExistingObject = Message.createExecute(1).createNode();
+        @Child Node executeCompareExistingObject = Message.createExecute(1).createNode();
+        @Child Node executeFreeAndGetContent = Message.createExecute(2).createNode();
+
+        @Override
+        public Object executeTest(VirtualFrame frame) throws InteropException {
+            Object obj1 = frame.getArguments()[0];
+            Object obj2 = frame.getArguments()[1];
+
+            Object nativePtr1 = ForeignAccess.sendExecute(executeKeepExistingObject, keepExistingObject, obj1);
+            Object nativePtr2 = ForeignAccess.sendExecute(executeKeepExistingObject, keepExistingObject, obj2);
+
+            Object ret = ForeignAccess.sendExecute(executeCompareExistingObject, compareExistingObject, nativePtr1, nativePtr2);
+            return ret;
+        }
+    }
+
+    @Test
+    public void testCompareExistingObject(@Inject(TestCompareObjectNode.class) CallTarget callTarget) {
+        TestObject testObj = new TestObject(42);
+        TestObject testObj2 = new TestObject(43);
+        Object ret = callTarget.call(testObj, testObj);
+        Assert.assertEquals(1, (int) (Integer) ret);
+        ret = callTarget.call(testObj, testObj2);
+        Assert.assertEquals(0, (int) (Integer) ret);
+    }
+
 }

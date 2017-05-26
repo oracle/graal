@@ -91,3 +91,8 @@ TruffleObject pass_object(TruffleObject objArg, TruffleObject (*getObject)(), Tr
     TruffleObject objLocal = getObject();
     return verifyObject(objArg, objLocal);
 }
+
+int compare_existing_object(struct NativeStorage *storage1, struct NativeStorage *storage2) {
+    return isSameObject(storage1->obj, storage2->obj);
+}
+ 
