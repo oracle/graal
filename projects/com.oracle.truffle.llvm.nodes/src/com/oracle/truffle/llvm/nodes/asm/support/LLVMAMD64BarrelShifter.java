@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.asm.support;
 
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public class LLVMAMD64BarrelShifter {
     private static final int MASK_8 = 0x07;

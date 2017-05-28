@@ -32,9 +32,8 @@ package com.oracle.truffle.llvm.nodes.asm;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-//@NodeChildren({@NodeChild("cf"), @NodeChild("zf"), @NodeChild("of"), @NodeChild("sf")})
 public abstract class LLVMAMD64SetNode {
     private static final byte ZERO = 0;
     private static final byte ONE = 1;

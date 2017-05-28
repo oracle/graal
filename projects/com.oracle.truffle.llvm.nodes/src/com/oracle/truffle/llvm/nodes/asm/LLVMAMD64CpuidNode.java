@@ -32,8 +32,8 @@ package com.oracle.truffle.llvm.nodes.asm;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI32RegisterNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild("level")
 public abstract class LLVMAMD64CpuidNode extends LLVMExpressionNode {
@@ -51,16 +51,16 @@ public abstract class LLVMAMD64CpuidNode extends LLVMExpressionNode {
 
     @Specialization
     public Object execute(VirtualFrame frame, int level) {
-        int a, b, c, d;
+        int a;
+        int b;
+        int c;
+        int d;
         switch (level) {
             case 0:
                 a = 0;
                 b = 0x6f6c7553;
                 c = 0x34364d56;
                 d = 0x4c4c676e;
-                // b = 0x756e6547;
-                // c = 0x6c65746e;
-                // d = 0x49656e69;
                 break;
             default:
                 a = 0;

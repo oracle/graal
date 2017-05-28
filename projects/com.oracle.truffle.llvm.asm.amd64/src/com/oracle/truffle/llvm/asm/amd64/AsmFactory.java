@@ -181,6 +181,7 @@ import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 class AsmFactory {
     private static final int REG_START_INDEX = 1;
+    private static final String TEMP_REGISTER_PREFIX = "__$$tmp_r_";
 
     private final FrameDescriptor frameDescriptor;
     private final List<LLVMExpressionNode> statements;
@@ -217,11 +218,13 @@ class AsmFactory {
         private final int outIndex;
         private final String source;
         private final String register;
+        private final boolean anonymous;
 
-        Argument(boolean input, boolean output, boolean memory, Type type, int index, int inIndex, int outIndex, String source, String register) {
+        Argument(boolean input, boolean output, boolean memory, boolean anonymous, Type type, int index, int inIndex, int outIndex, String source, String register) {
             this.input = input;
             this.output = output;
             this.memory = memory;
+            this.anonymous = anonymous;
             this.type = type;
             this.index = index;
             this.inIndex = inIndex;
@@ -240,6 +243,10 @@ class AsmFactory {
 
         public boolean isMemory() {
             return memory;
+        }
+
+        public boolean isAnonymous() {
+            return anonymous;
         }
 
         public Type getType() {
@@ -280,7 +287,7 @@ class AsmFactory {
 
         @Override
         public String toString() {
-            return String.format("Argument[IDX=%d,I=%s,O=%s,M=%s,T=%s,S=%s]", index, input, output, memory, type, source);
+            return String.format("Argument[IDX=%d,I=%s,O=%s,M=%s,T=%s,R=%s,S=%s]", index, input, output, memory, type, register, source);
         }
     }
 
@@ -296,6 +303,7 @@ class AsmFactory {
             boolean isInput = true;
             boolean isOutput = false;
             boolean isMemory = false;
+            boolean isAnonymous = false;
             String source = null;
             String registerName = null;
             int i;
@@ -330,16 +338,23 @@ class AsmFactory {
             int end = source.lastIndexOf('}');
             if (start != -1 && end != -1) {
                 registerName = source.substring(start + 1, end);
+            } else if (source.equals("r") || source.equals("imr")) { // "g" -> "imr"
+                registerName = TEMP_REGISTER_PREFIX + argInfo.size();
+                isAnonymous = true;
             } else if (source.length() == 1 && source.charAt(0) >= '0' && source.charAt(0) <= '9') {
                 // '0' - '9'
                 int id = source.charAt(0) - '0';
                 Argument arg = argInfo.get(id);
+                assert isInput && !isOutput;
                 isInput = true;
                 isOutput = false;
-                registerName = arg.getRegister();
+                if (arg.isRegister()) {
+                    registerName = arg.getRegister();
+                }
+                isAnonymous = arg.isAnonymous();
             }
 
-            assert registerName == null || AsmRegisterOperand.isRegister(registerName);
+            assert registerName == null || AsmRegisterOperand.isRegister(registerName) || registerName.startsWith(TEMP_REGISTER_PREFIX);
 
             int idIn = index;
             int idOut = outIndex;
@@ -361,7 +376,11 @@ class AsmFactory {
             } else {
                 throw new AssertionError("neither input nor output");
             }
-            argInfo.add(new Argument(isInput, isOutput, isMemory, type, argInfo.size(), idIn, idOut, source, registerName));
+            if (isAnonymous && type instanceof PointerType) {
+                assert registerName != null;
+                addFrameSlot(registerName, type);
+            }
+            argInfo.add(new Argument(isInput, isOutput, isMemory, isAnonymous, type, argInfo.size(), idIn, idOut, source, registerName));
         }
         assert index == argTypes.length;
         assert retType instanceof StructureType ? outIndex == retOffsets.length : outIndex == 0;
@@ -921,6 +940,8 @@ class AsmFactory {
                         kind = FrameSlotKind.Illegal;
                         break;
                 }
+            } else if (type instanceof PointerType) {
+                kind = FrameSlotKind.Object;
             } else {
                 kind = FrameSlotKind.Illegal;
             }
@@ -1010,7 +1031,7 @@ class AsmFactory {
             if (arg.isInput()) {
                 FrameSlot slot = null;
                 if (arg.isRegister()) {
-                    String reg = AsmRegisterOperand.getBaseRegister(arg.getRegister());
+                    String reg = arg.isAnonymous() ? arg.getRegister() : AsmRegisterOperand.getBaseRegister(arg.getRegister());
                     slot = getRegisterSlot(reg);
                     todoRegisters.remove(reg);
                     LLVMExpressionNode argnode = LLVMArgNodeGen.create(arg.getInIndex());
@@ -1177,23 +1198,27 @@ class AsmFactory {
                     default:
                         throw new AsmParseException("unsupported operand type: " + type);
                 }
-            } else {
+            } else if (info.isRegister()) {
                 assert type instanceof PointerType || type == info.getType();
+                frame = getRegisterSlot(info.getRegister());
                 if (type instanceof PointerType) {
                     return LLVMAddressReadNodeGen.create(frame);
                 }
+                LLVMExpressionNode register = LLVMI64ReadNodeGen.create(frame);
                 switch (((PrimitiveType) type).getPrimitiveKind()) {
                     case I8:
-                        return LLVMI8ReadNodeGen.create(frame);
+                        return LLVMToI8NoZeroExtNodeGen.create(register);
                     case I16:
-                        return LLVMI16ReadNodeGen.create(frame);
+                        return LLVMToI16NoZeroExtNodeGen.create(register);
                     case I32:
-                        return LLVMI32ReadNodeGen.create(frame);
+                        return LLVMToI32NoZeroExtNodeGen.create(register);
                     case I64:
-                        return LLVMI64ReadNodeGen.create(frame);
+                        return register;
                     default:
                         throw new AsmParseException("unsupported operand type: " + type);
                 }
+            } else {
+                throw new AssertionError("this should not happen; " + info);
             }
         } else if (operand instanceof AsmMemoryOperand) {
             AsmMemoryOperand op = (AsmMemoryOperand) operand;
@@ -1267,21 +1292,33 @@ class AsmFactory {
                     default:
                         throw new AsmParseException("unsupported operand type: " + type);
                 }
-            } else {
-                assert type == info.getType();
-                FrameSlot frame = getArgumentSlot(op.getIndex(), type);
+            } else if (info.isRegister()) {
+                assert type == info.getType() || info.getType() instanceof PointerType;
+                FrameSlot frame = getRegisterSlot(info.getRegister());
+                LLVMExpressionNode register = LLVMI64ReadNodeGen.create(frame);
+                LLVMExpressionNode out = null;
+                if (info.getType() instanceof PointerType) {
+                    throw new AsmParseException("not yet implemented: address within register");
+                }
                 switch (((PrimitiveType) type).getPrimitiveKind()) {
                     case I8:
-                        return LLVMWriteI8NodeGen.create(from, frame, null);
+                        out = LLVMI8ToR64NodeGen.create(0, register, from);
+                        break;
                     case I16:
-                        return LLVMWriteI16NodeGen.create(from, frame, null);
+                        out = LLVMI16ToR64NodeGen.create(register, from);
+                        break;
                     case I32:
-                        return LLVMWriteI32NodeGen.create(from, frame, null);
+                        out = LLVMI32ToR64NodeGen.create(register, from);
+                        break;
                     case I64:
-                        return LLVMWriteI64NodeGen.create(from, frame, null);
+                        out = from;
+                        break;
                     default:
                         throw new AsmParseException("unsupported operand type: " + type);
                 }
+                return LLVMWriteI64NodeGen.create(out, frame, null);
+            } else {
+                throw new AssertionError("this should not happen; " + info);
             }
         }
         throw new AsmParseException("unsupported operand type: " + operand);
@@ -1310,6 +1347,10 @@ class AsmFactory {
     }
 
     private FrameSlot getRegisterSlot(String name) {
+        if (name.startsWith(TEMP_REGISTER_PREFIX)) {
+            addFrameSlot(name, PrimitiveType.I64);
+            return frameDescriptor.findFrameSlot(name);
+        }
         AsmRegisterOperand op = new AsmRegisterOperand(name);
         String baseRegister = op.getBaseRegister();
         addFrameSlot(baseRegister, PrimitiveType.I64);
