@@ -34,25 +34,23 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions.MemCopyNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMProfiledMemMove;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMInsertValueNode extends LLVMExpressionNode {
 
     @Child LLVMExpressionNode sourceAggregate;
     @Child LLVMExpressionNode targetAggregate;
-    final int sourceAggregateSize;
-    final int offset;
+    protected final int sourceAggregateSize;
+    protected final int offset;
+    private final LLVMProfiledMemMove profiledMemMove;
 
-    @Child private MemCopyNode memCopy;
-
-    public LLVMInsertValueNode(LLVMNativeFunctions heapFunctions, LLVMExpressionNode sourceAggregate, LLVMExpressionNode targetAggregate, int sourceAggregateSize, int offset) {
+    public LLVMInsertValueNode(LLVMExpressionNode sourceAggregate, LLVMExpressionNode targetAggregate, int sourceAggregateSize, int offset) {
         this.sourceAggregate = sourceAggregate;
         this.targetAggregate = targetAggregate;
         this.sourceAggregateSize = sourceAggregateSize;
         this.offset = offset;
-        this.memCopy = heapFunctions.createMemCopyNode();
+        this.profiledMemMove = new LLVMProfiledMemMove();
     }
 
     @Override
@@ -60,7 +58,7 @@ public abstract class LLVMInsertValueNode extends LLVMExpressionNode {
         try {
             LLVMAddress sourceAggr = sourceAggregate.executeLLVMAddress(frame);
             LLVMAddress targetAggr = targetAggregate.executeLLVMAddress(frame);
-            memCopy.execute(targetAggr, sourceAggr, sourceAggregateSize);
+            profiledMemMove.memmove(targetAggr, sourceAggr, sourceAggregateSize);
             return targetAggr;
         } catch (UnexpectedResultException e) {
             CompilerDirectives.transferToInterpreter();
@@ -77,9 +75,9 @@ public abstract class LLVMInsertValueNode extends LLVMExpressionNode {
 
         @Child private LLVMExpressionNode element;
 
-        public LLVMInsertFloatValueNode(LLVMNativeFunctions heapFunctions, LLVMExpressionNode sourceAggregate, LLVMExpressionNode targetAggregate, int sourceAggregateSize, int offset,
+        public LLVMInsertFloatValueNode(LLVMExpressionNode sourceAggregate, LLVMExpressionNode targetAggregate, int sourceAggregateSize, int offset,
                         LLVMExpressionNode element) {
-            super(heapFunctions, sourceAggregate, targetAggregate, sourceAggregateSize, offset);
+            super(sourceAggregate, targetAggregate, sourceAggregateSize, offset);
             this.element = element;
         }
 
@@ -96,9 +94,9 @@ public abstract class LLVMInsertValueNode extends LLVMExpressionNode {
 
         @Child private LLVMExpressionNode element;
 
-        public LLVMInsertDoubleValueNode(LLVMNativeFunctions heapFunctions, LLVMExpressionNode sourceAggregate, LLVMExpressionNode targetAggregate, int sourceAggregateSize, int offset,
+        public LLVMInsertDoubleValueNode(LLVMExpressionNode sourceAggregate, LLVMExpressionNode targetAggregate, int sourceAggregateSize, int offset,
                         LLVMExpressionNode element) {
-            super(heapFunctions, sourceAggregate, targetAggregate, sourceAggregateSize, offset);
+            super(sourceAggregate, targetAggregate, sourceAggregateSize, offset);
             this.element = element;
         }
 
@@ -115,9 +113,9 @@ public abstract class LLVMInsertValueNode extends LLVMExpressionNode {
 
         @Child private LLVMExpressionNode element;
 
-        public LLVMInsertI32ValueNode(LLVMNativeFunctions heapFunctions, LLVMExpressionNode sourceAggregate, LLVMExpressionNode targetAggregate, int sourceAggregateSize, int offset,
+        public LLVMInsertI32ValueNode(LLVMExpressionNode sourceAggregate, LLVMExpressionNode targetAggregate, int sourceAggregateSize, int offset,
                         LLVMExpressionNode element) {
-            super(heapFunctions, sourceAggregate, targetAggregate, sourceAggregateSize, offset);
+            super(sourceAggregate, targetAggregate, sourceAggregateSize, offset);
             this.element = element;
         }
 
@@ -134,9 +132,9 @@ public abstract class LLVMInsertValueNode extends LLVMExpressionNode {
 
         @Child private LLVMExpressionNode element;
 
-        public LLVMInsertAddressValueNode(LLVMNativeFunctions heapFunctions, LLVMExpressionNode sourceAggregate, LLVMExpressionNode targetAggregate, int sourceAggregateSize, int offset,
+        public LLVMInsertAddressValueNode(LLVMExpressionNode sourceAggregate, LLVMExpressionNode targetAggregate, int sourceAggregateSize, int offset,
                         LLVMExpressionNode element) {
-            super(heapFunctions, sourceAggregate, targetAggregate, sourceAggregateSize, offset);
+            super(sourceAggregate, targetAggregate, sourceAggregateSize, offset);
             this.element = element;
         }
 

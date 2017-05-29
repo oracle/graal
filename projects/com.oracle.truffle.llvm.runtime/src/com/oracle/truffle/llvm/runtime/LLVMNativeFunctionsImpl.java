@@ -29,9 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.lang.reflect.Field;
-
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -40,26 +37,8 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 
-import sun.misc.Unsafe;
-
 final class LLVMNativeFunctionsImpl extends LLVMNativeFunctions {
 
-    static final Unsafe UNSAFE = getUnsafe();
-
-    @SuppressWarnings("restriction")
-    private static Unsafe getUnsafe() {
-        CompilerAsserts.neverPartOfCompilation();
-        try {
-            Field singleoneInstanceField = Unsafe.class.getDeclaredField("theUnsafe");
-            singleoneInstanceField.setAccessible(true);
-            return (Unsafe) singleoneInstanceField.get(null);
-        } catch (Exception e) {
-            throw new AssertionError();
-        }
-    }
-
-    private final TruffleObject memmove;
-    private final TruffleObject memcpy;
     private final TruffleObject dynamicCast;
     private final TruffleObject sulongCanCatch;
     private final TruffleObject sulongThrow;
@@ -77,8 +56,6 @@ final class LLVMNativeFunctionsImpl extends LLVMNativeFunctions {
     private final TruffleObject nullPointer;
 
     LLVMNativeFunctionsImpl(NativeLookup nativeLookup) {
-        memmove = nativeLookup == null ? null : nativeLookup.getNativeFunction("@memmove", "(POINTER,POINTER,UINT64):POINTER");
-        memcpy = nativeLookup == null ? null : nativeLookup.getNativeFunction("@memcpy", "(POINTER,POINTER,UINT64):POINTER");
         dynamicCast = nativeLookup == null ? null : nativeLookup.getNativeFunction("@__dynamic_cast", "(POINTER,POINTER,POINTER,UINT64):POINTER");
         sulongCanCatch = nativeLookup == null ? null : nativeLookup.getNativeFunction("@sulong_eh_canCatch", "(POINTER,POINTER,POINTER):UINT32");
         sulongThrow = nativeLookup == null ? null : nativeLookup.getNativeFunction("@sulong_eh_throw", "(POINTER,POINTER,POINTER,POINTER,POINTER):VOID");
@@ -99,16 +76,6 @@ final class LLVMNativeFunctionsImpl extends LLVMNativeFunctions {
     @Override
     public NullPointerNode createNullPointerNode() {
         return new NullPointerImpl(nullPointer);
-    }
-
-    @Override
-    public MemCopyNode createMemMoveNode() {
-        return new MemCopyNodeImpl(memmove);
-    }
-
-    @Override
-    public MemCopyNode createMemCopyNode() {
-        return new MemCopyNodeImpl(memcpy);
     }
 
     @Override
@@ -372,18 +339,6 @@ final class LLVMNativeFunctionsImpl extends LLVMNativeFunctions {
         @Override
         public void free(LLVMAddress ptr) {
             execute(ptr.getVal());
-        }
-    }
-
-    private static class MemCopyNodeImpl extends MemCopyNode {
-
-        MemCopyNodeImpl(TruffleObject function) {
-            super(function, 3);
-        }
-
-        @Override
-        public void execute(LLVMAddress target, LLVMAddress source, long length) {
-            UNSAFE.copyMemory(source.getVal(), target.getVal(), length);
         }
     }
 
