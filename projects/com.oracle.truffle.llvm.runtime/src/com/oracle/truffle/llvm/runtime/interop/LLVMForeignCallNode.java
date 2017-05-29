@@ -128,6 +128,7 @@ abstract class LLVMForeignCallNode extends LLVMNode {
                     @Cached("arguments.length") int cachedLength,
                     @Cached("function.getContext()") LLVMContext context) {
         assert !(function.getType().getReturnType() instanceof StructureType);
+        getThreadingStack(context).checkThread();
         long stackPointer = getThreadingStack(context).getStack().getStackPointer();
         Object result = callNode.call(packNode.pack(arguments, stackPointer));
         getThreadingStack(context).getStack().setStackPointer(stackPointer);
@@ -139,6 +140,7 @@ abstract class LLVMForeignCallNode extends LLVMNode {
                     @Cached("create()") IndirectCallNode callNode, @Cached("createSlowPackArguments()") SlowPackForeignArgumentsNode slowPack) {
         assert !(function.getType().getReturnType() instanceof StructureType);
         LLVMPerformance.warn(this);
+        function.getContext().getThreadingStack().checkThread();
         long stackPointer = function.getContext().getThreadingStack().getStack().getStackPointer();
         Object result = callNode.call(getCallTarget(function), slowPack.pack(function, arguments, stackPointer));
         function.getContext().getThreadingStack().getStack().setStackPointer(stackPointer);

@@ -243,6 +243,7 @@ public final class Sulong extends LLVMLanguage {
                     }
                 }
                 if (!context.isParseOnly()) {
+                    context.getThreadingStack().checkThread();
                     long stackPointer = context.getThreadingStack().getStack().getStackPointer();
                     result.getGlobalVarInits().call(stackPointer);
                     context.getThreadingStack().getStack().setStackPointer(stackPointer);
@@ -276,6 +277,7 @@ public final class Sulong extends LLVMLanguage {
 
             @Override
             public void disposeContext(LLVMContext context) {
+                context.getThreadingStack().checkThread();
                 for (RootCallTarget destructorFunction : context.getDestructorFunctions()) {
                     long stackPointer = context.getThreadingStack().getStack().getStackPointer();
                     destructorFunction.call(stackPointer);
