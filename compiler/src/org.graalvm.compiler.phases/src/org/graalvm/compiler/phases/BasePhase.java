@@ -268,24 +268,14 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     }
 
     protected CharSequence getName() {
-        String className = BasePhase.this.getClass().getName();
-        String s = className.substring(className.lastIndexOf(".") + 1); // strip the package name
-        int innerClassPos = s.indexOf('$');
-        if (innerClassPos > 0) {
-            /* Remove inner class name. */
-            s = s.substring(0, innerClassPos);
-        }
-        if (s.endsWith("Phase")) {
-            s = s.substring(0, s.length() - "Phase".length());
-        }
-        return s;
+        return new ClassTypeSequence(BasePhase.this.getClass());
     }
 
     protected abstract void run(StructuredGraph graph, C context);
 
     @Override
     public String contractorName() {
-        return (String) getName();
+        return getName().toString();
     }
 
     @Override

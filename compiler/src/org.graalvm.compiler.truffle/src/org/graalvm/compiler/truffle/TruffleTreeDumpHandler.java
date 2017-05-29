@@ -57,9 +57,9 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
     }
 
     @Override
-    public void dump(Object object, final String message) {
+    public void dump(Object object, final String format, Object... arguments) {
         if (object instanceof TruffleTreeDump && Options.PrintGraph.getValue(options) && TruffleCompilerOptions.getValue(Options.PrintTruffleTrees)) {
-            dumpRootCallTarget(message, ((TruffleTreeDump) object).callTarget);
+            dumpRootCallTarget(format, ((TruffleTreeDump) object).callTarget);
         }
     }
 

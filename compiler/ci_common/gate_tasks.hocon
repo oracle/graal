@@ -24,7 +24,7 @@ builds += [
   ${gateTest8}                 ${gateSolarisSPARC} {name: "gate-compiler-test-8-solaris-sparcv9",                    timelimit: "1:00:00"}
   ${gateTest9}                 ${gateSolarisSPARC} {name: "gate-compiler-test-9-solaris-sparcv9",                    timelimit: "1:00:00"}
   ${gateTestCTW8}              ${gateSolarisSPARC} {name: "gate-compiler-ctw-8-solaris-sparcv9",                     timelimit: "1:00:00"}
-#GR-3784  ${gateTestCTW9}              ${gateSolarisSPARC} {name: "gate-compiler-ctw-9-solaris-sparcv9",                     timelimit: "1:00:00"}
+  ${gateTestCTW9}              ${gateSolarisSPARC} {name: "gate-compiler-ctw-9-solaris-sparcv9",                     timelimit: "1:00:00"}
 # ${gateTest8Debug}            ${gateSolarisSPARC} {name: "gate-compiler-test-8-solaris-sparcv9-fastdebug",          timelimit: "1:00:00"}
   ${gateTestBenchmark8}        ${gateSolarisSPARC} {name: "gate-compiler-benchmarktest-8-solaris-sparcv9",           timelimit: "1:00:00"}
 # ${gateTestBenchmark8Debug}   ${gateSolarisSPARC} {name: "gate-compiler-benchmarktest-8-solaris-sparcv9-fastdebug", timelimit: "1:00:00"}
