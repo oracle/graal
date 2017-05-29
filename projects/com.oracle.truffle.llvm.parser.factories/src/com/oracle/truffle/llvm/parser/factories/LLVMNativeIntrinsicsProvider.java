@@ -895,7 +895,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap("@pow", LLVMPowNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(1), null));
+                return wrap("@pow", LLVMPowNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), null));
             }
         });
         factories.put("@exp", new LLVMNativeIntrinsicFactory(true, false) {
