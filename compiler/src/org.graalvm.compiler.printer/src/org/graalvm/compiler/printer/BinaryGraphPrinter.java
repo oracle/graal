@@ -102,7 +102,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
     private static final int KLASS = 0x00;
     private static final int ENUM_KLASS = 0x01;
 
-    static final int CURRENT_MAJOR_VERSION = 2;
+    static final int CURRENT_MAJOR_VERSION = 3;
     static final int CURRENT_MINOR_VERSION = 0;
 
     static final byte[] MAGIC_BYTES = {'B', 'I', 'G', 'V'};
@@ -178,7 +178,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         writeString(format);
         writeInt(args.length);
         for (Object a : args) {
-            writePoolObject(a);
+            writePropertyObject(a);
         }
         writeGraph(graph, properties);
         flush();
