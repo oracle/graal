@@ -1,8 +1,8 @@
 x4150.default : ${linux-amd64} {
   capabilities: ${linux-amd64.capabilities} [x4150, no_frequency_scaling]
   environment : {
-    XMX         : "64g"
-    XMS         : "64g"
+    XMX         : "32g"
+    XMS         : "32g"
     JVM_CONFIG  : ${jvm-config.default}
     JVM         : "server"
     MACHINE_NAME: "x4150"
