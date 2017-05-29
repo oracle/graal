@@ -33,6 +33,7 @@ import java.lang.reflect.Field;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -75,8 +76,8 @@ public final class LLVMStack {
         allocate(STACK_SIZE_BYTE);
     }
 
+    @TruffleBoundary
     private void allocate(final long stackSize) {
-        CompilerAsserts.neverPartOfCompilation();
         if (!isFreed) {
             throw new AssertionError("previously not deallocated");
         }
@@ -107,8 +108,8 @@ public final class LLVMStack {
         this.stackPointer = pointer;
     }
 
+    @TruffleBoundary
     public void free() {
-        CompilerAsserts.neverPartOfCompilation();
         if (isFreed) {
             throw new AssertionError("already freed");
         }
