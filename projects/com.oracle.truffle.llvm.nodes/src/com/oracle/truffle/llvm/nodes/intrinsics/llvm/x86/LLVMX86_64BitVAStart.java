@@ -44,6 +44,7 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -278,13 +279,15 @@ public final class LLVMX86_64BitVAStart extends LLVMExpressionNode {
         return type;
     }
 
-    private static void storeArgument(Type type, long currentPtr, Object object) {
+    @Child private LLVMGlobalVariableAccess globalAccess = createGlobalAccess();
+
+    private void storeArgument(Type type, long currentPtr, Object object) {
         if (type instanceof PrimitiveType) {
             doPrimitiveWrite(type, currentPtr, object);
         } else if (type instanceof PointerType && object instanceof LLVMAddress) {
             LLVMMemory.putAddress(currentPtr, (LLVMAddress) object);
         } else if (type instanceof PointerType && object instanceof LLVMGlobalVariable) {
-            LLVMMemory.putAddress(currentPtr, ((LLVMGlobalVariable) object).getNativeLocation());
+            LLVMMemory.putAddress(currentPtr, globalAccess.getNativeLocation(((LLVMGlobalVariable) object)));
         } else {
             throw new AssertionError(type);
         }

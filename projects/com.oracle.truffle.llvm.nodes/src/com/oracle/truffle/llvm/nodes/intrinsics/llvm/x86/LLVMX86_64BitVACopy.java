@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -36,6 +37,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -46,8 +48,9 @@ public abstract class LLVMX86_64BitVACopy extends LLVMBuiltin {
     public abstract int getNumberExplicitArguments();
 
     @Specialization
-    public Object executeVoid(LLVMGlobalVariable dest, LLVMGlobalVariable source) {
-        return executeVoid(dest.getNativeLocation(), source.getNativeLocation());
+    public Object executeVoid(LLVMGlobalVariable dest, LLVMGlobalVariable source, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess1,
+                    @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess2) {
+        return executeVoid(globalAccess1.getNativeLocation(dest), globalAccess2.getNativeLocation(source));
     }
 
     @Specialization

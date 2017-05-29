@@ -29,11 +29,13 @@
  */
 package com.oracle.truffle.llvm.nodes.memory;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
@@ -58,8 +60,8 @@ public class LLVMLoadVectorNode {
         }
 
         @Specialization
-        public LLVMI1Vector executeI1Vector(LLVMGlobalVariable addr) {
-            return LLVMMemory.getI1Vector(addr.getNativeLocation(), getSize());
+        public LLVMI1Vector executeI1Vector(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            return LLVMMemory.getI1Vector(globalAccess.getNativeLocation(addr), getSize());
         }
     }
 
@@ -70,8 +72,8 @@ public class LLVMLoadVectorNode {
         public abstract int getSize();
 
         @Specialization
-        public LLVMI8Vector executeI8Vector(LLVMGlobalVariable addr) {
-            return LLVMMemory.getI8Vector(addr.getNativeLocation(), getSize());
+        public LLVMI8Vector executeI8Vector(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            return LLVMMemory.getI8Vector(globalAccess.getNativeLocation(addr), getSize());
         }
 
         @Specialization
@@ -87,8 +89,8 @@ public class LLVMLoadVectorNode {
         public abstract int getSize();
 
         @Specialization
-        public LLVMI16Vector executeI16Vector(LLVMGlobalVariable addr) {
-            return LLVMMemory.getI16Vector(addr.getNativeLocation(), getSize());
+        public LLVMI16Vector executeI16Vector(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            return LLVMMemory.getI16Vector(globalAccess.getNativeLocation(addr), getSize());
         }
 
         @Specialization
@@ -104,8 +106,8 @@ public class LLVMLoadVectorNode {
         public abstract int getSize();
 
         @Specialization
-        public LLVMI32Vector executeI32Vector(LLVMGlobalVariable addr) {
-            return LLVMMemory.getI32Vector(addr.getNativeLocation(), getSize());
+        public LLVMI32Vector executeI32Vector(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            return LLVMMemory.getI32Vector(globalAccess.getNativeLocation(addr), getSize());
         }
 
         @Specialization
@@ -121,8 +123,8 @@ public class LLVMLoadVectorNode {
         public abstract int getSize();
 
         @Specialization
-        public LLVMI64Vector executeI64Vector(LLVMGlobalVariable addr) {
-            return LLVMMemory.getI64Vector(addr.getNativeLocation(), getSize());
+        public LLVMI64Vector executeI64Vector(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            return LLVMMemory.getI64Vector(globalAccess.getNativeLocation(addr), getSize());
         }
 
         @Specialization
@@ -138,8 +140,8 @@ public class LLVMLoadVectorNode {
         public abstract int getSize();
 
         @Specialization
-        public LLVMFloatVector executeFloatVector(LLVMGlobalVariable addr) {
-            return LLVMMemory.getFloatVector(addr.getNativeLocation(), getSize());
+        public LLVMFloatVector executeFloatVector(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            return LLVMMemory.getFloatVector(globalAccess.getNativeLocation(addr), getSize());
         }
 
         @Specialization
@@ -155,8 +157,8 @@ public class LLVMLoadVectorNode {
         public abstract int getSize();
 
         @Specialization
-        public LLVMDoubleVector executeDoubleVector(LLVMGlobalVariable addr) {
-            return LLVMMemory.getDoubleVector(addr.getNativeLocation(), getSize());
+        public LLVMDoubleVector executeDoubleVector(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            return LLVMMemory.getDoubleVector(globalAccess.getNativeLocation(addr), getSize());
         }
 
         @Specialization

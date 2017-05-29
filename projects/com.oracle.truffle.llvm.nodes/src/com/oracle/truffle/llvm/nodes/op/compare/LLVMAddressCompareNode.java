@@ -45,6 +45,7 @@ import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -178,8 +179,8 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMAddress doLLVMGlobalVariableDescriptor(LLVMGlobalVariable address) {
-            return address.getNativeLocation();
+        protected LLVMAddress doLLVMGlobalVariableDescriptor(LLVMGlobalVariable address, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            return globalAccess.getNativeLocation(address);
         }
 
         @Child private Node isNull = Message.IS_NULL.createNode();

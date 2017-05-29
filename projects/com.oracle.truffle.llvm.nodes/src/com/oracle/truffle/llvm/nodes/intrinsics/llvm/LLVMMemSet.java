@@ -29,11 +29,13 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMProfiledMemSet;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -51,8 +53,8 @@ public abstract class LLVMMemSet extends LLVMBuiltin {
 
     @SuppressWarnings("unused")
     @Specialization
-    public Object execute(LLVMGlobalVariable address, byte value, int length, int align, boolean isVolatile) {
-        profiledMemSet.memset(address.getNativeLocation(), value, length);
+    public Object execute(LLVMGlobalVariable address, byte value, int length, int align, boolean isVolatile, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        profiledMemSet.memset(globalAccess.getNativeLocation(address), value, length);
         return address;
     }
 
@@ -65,8 +67,8 @@ public abstract class LLVMMemSet extends LLVMBuiltin {
 
     @SuppressWarnings("unused")
     @Specialization
-    public Object execute(LLVMGlobalVariable address, byte value, long length, int align, boolean isVolatile) {
-        profiledMemSet.memset(address.getNativeLocation(), value, length);
+    public Object execute(LLVMGlobalVariable address, byte value, long length, int align, boolean isVolatile, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        profiledMemSet.memset(globalAccess.getNativeLocation(address), value, length);
         return address;
     }
 }

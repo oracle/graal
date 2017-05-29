@@ -134,6 +134,7 @@ import com.oracle.truffle.llvm.runtime.NativeAllocator;
 import com.oracle.truffle.llvm.runtime.NativeIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.NativeResolver;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -444,9 +445,11 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
 
                 private final LLVMGlobalVariable global = descriptor;
 
+                @Child private LLVMGlobalVariableAccess access = createGlobalAccess();
+
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
-                    global.destroy();
+                    access.destroy(global);
                     return null;
                 }
             });
