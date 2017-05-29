@@ -198,15 +198,19 @@ public class LLVMSimpleLiteralNode {
 
     public static class LLVM80BitFloatLiteralNode extends LLVMExpressionNode {
 
-        private final LLVM80BitFloat literal;
+        private final boolean sign;
+        private final int exponent;
+        private final long fraction;
 
         public LLVM80BitFloatLiteralNode(LLVM80BitFloat literal) {
-            this.literal = literal;
+            this.sign = literal.getSign();
+            this.exponent = literal.getExponent();
+            this.fraction = literal.getFraction();
         }
 
         @Override
         public LLVM80BitFloat executeLLVM80BitFloat(VirtualFrame frame) {
-            return literal;
+            return new LLVM80BitFloat(sign, exponent, fraction);
         }
 
         @Override
@@ -217,15 +221,15 @@ public class LLVMSimpleLiteralNode {
 
     public static class LLVMAddressLiteralNode extends LLVMExpressionNode {
 
-        private final LLVMAddress address;
+        private final long address;
 
         public LLVMAddressLiteralNode(LLVMAddress address) {
-            this.address = address;
+            this.address = address.getVal();
         }
 
         @Override
         public LLVMAddress executeLLVMAddress(VirtualFrame frame) {
-            return address;
+            return LLVMAddress.fromLong(address);
         }
 
         @Override

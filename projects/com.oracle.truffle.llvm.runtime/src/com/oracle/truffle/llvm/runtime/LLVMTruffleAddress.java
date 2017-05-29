@@ -35,12 +35,12 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMAddressMessageResolutionForei
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMTruffleAddress implements TruffleObject {
-    private final LLVMAddress address;
+    private final long address;
     private final Type type;
     private final LLVMContext context;
 
     public LLVMTruffleAddress(LLVMAddress address, Type type, LLVMContext context) {
-        this.address = address;
+        this.address = address.getVal();
         this.type = type;
         this.context = context;
     }
@@ -50,7 +50,7 @@ public final class LLVMTruffleAddress implements TruffleObject {
     }
 
     public LLVMAddress getAddress() {
-        return address;
+        return LLVMAddress.fromLong(address);
     }
 
     public Type getType() {
@@ -68,7 +68,7 @@ public final class LLVMTruffleAddress implements TruffleObject {
 
     @Override
     public String toString() {
-        return address.toString();
+        return Long.toString(address);
     }
 
 }

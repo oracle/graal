@@ -105,11 +105,11 @@ public class LLVMContext {
 
     public static final class DestructorStackElement {
         private final LLVMFunctionDescriptor destructor;
-        private final LLVMAddress thiz;
+        private final long thiz;
 
         public DestructorStackElement(LLVMFunctionDescriptor destructor, LLVMAddress thiz) {
             this.destructor = destructor;
-            this.thiz = thiz;
+            this.thiz = thiz.getVal();
         }
 
         public LLVMFunctionDescriptor getDestructor() {
@@ -117,7 +117,7 @@ public class LLVMContext {
         }
 
         public LLVMAddress getThiz() {
-            return thiz;
+            return LLVMAddress.fromLong(thiz);
         }
     }
 
