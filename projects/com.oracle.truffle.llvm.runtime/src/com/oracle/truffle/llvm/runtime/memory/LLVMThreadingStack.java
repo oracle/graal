@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.runtime.memory;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
-import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
