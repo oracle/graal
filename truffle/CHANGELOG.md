@@ -49,7 +49,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Deprecated [TruffleLanguage.createFindContextNode](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) and [TruffleLanguage.findContext](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html).
 * Deprecated [Node.getLanguage](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/nodes/Node.html).
 * Deprecated [MessageResolution.language](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/nodes/Node.html) without replacement. (jackpot rule available)
-* Deprecated [ExecutionContext](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/ExecutionContext.html) without replacement.
+* Deprecated [ExecutionContext](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/ExecutionContext.html), use RootNode#getCompilerOptions().
 * Added [TruffleInstrument.Registration.services()](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Registration#services) to support declarative registration of services
 * Deprecated internal class DSLOptions. Will be removed in the next release.
 * Deprecated [Shape.getData()](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/object/Shape.html) and [ObjectType.createShapeData(Shape)](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/object/ObjectType.html) without replacement.
