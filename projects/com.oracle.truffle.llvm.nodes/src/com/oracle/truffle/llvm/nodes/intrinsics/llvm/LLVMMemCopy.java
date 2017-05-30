@@ -29,13 +29,12 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions.MemCopyNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMProfiledMemMove;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMMemCopy {
@@ -45,41 +44,33 @@ public abstract class LLVMMemCopy {
                     @NodeChild(type = LLVMExpressionNode.class, value = "align"), @NodeChild(type = LLVMExpressionNode.class, value = "isVolatile")})
     public abstract static class LLVMMemI32Copy extends LLVMBuiltin {
 
-        @Child private MemCopyNode memCopy;
-
-        private MemCopyNode getMemCopy() {
-            if (memCopy == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                memCopy = insert(getContext().getNativeFunctions().createMemCopyNode());
-            }
-            return memCopy;
-        }
+        private final LLVMProfiledMemMove profiledMemMove = new LLVMProfiledMemMove();
 
         @SuppressWarnings("unused")
         @Specialization
         public Object executeVoid(LLVMAddress target, LLVMAddress source, int length, int align, boolean isVolatile) {
-            getMemCopy().execute(target, source, length);
+            profiledMemMove.memmove(target, source, length);
             return null;
         }
 
         @SuppressWarnings("unused")
         @Specialization
         public Object executeVoid(LLVMGlobalVariable target, LLVMAddress source, int length, int align, boolean isVolatile) {
-            getMemCopy().execute(target.getNativeLocation(), source, length);
+            profiledMemMove.memmove(target.getNativeLocation(), source, length);
             return null;
         }
 
         @SuppressWarnings("unused")
         @Specialization
         public Object executeVoid(LLVMAddress target, LLVMGlobalVariable source, int length, int align, boolean isVolatile) {
-            getMemCopy().execute(target, source.getNativeLocation(), length);
+            profiledMemMove.memmove(target, source.getNativeLocation(), length);
             return null;
         }
 
         @SuppressWarnings("unused")
         @Specialization
         public Object executeVoid(LLVMGlobalVariable target, LLVMGlobalVariable source, int length, int align, boolean isVolatile) {
-            getMemCopy().execute(target.getNativeLocation(), source.getNativeLocation(), length);
+            profiledMemMove.memmove(target.getNativeLocation(), source.getNativeLocation(), length);
             return null;
         }
 
@@ -90,41 +81,33 @@ public abstract class LLVMMemCopy {
                     @NodeChild(type = LLVMExpressionNode.class, value = "align"), @NodeChild(type = LLVMExpressionNode.class, value = "isVolatile")})
     public abstract static class LLVMMemI64Copy extends LLVMBuiltin {
 
-        @Child private MemCopyNode memCopy;
-
-        private MemCopyNode getMemCopy() {
-            if (memCopy == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                memCopy = insert(getContext().getNativeFunctions().createMemCopyNode());
-            }
-            return memCopy;
-        }
+        private final LLVMProfiledMemMove profiledMemMove = new LLVMProfiledMemMove();
 
         @SuppressWarnings("unused")
         @Specialization
         public Object executeVoid(LLVMAddress target, LLVMAddress source, long length, int align, boolean isVolatile) {
-            getMemCopy().execute(target, source, length);
+            profiledMemMove.memmove(target, source, length);
             return null;
         }
 
         @SuppressWarnings("unused")
         @Specialization
         public Object executeVoid(LLVMGlobalVariable target, LLVMAddress source, long length, int align, boolean isVolatile) {
-            getMemCopy().execute(target.getNativeLocation(), source, length);
+            profiledMemMove.memmove(target.getNativeLocation(), source, length);
             return null;
         }
 
         @SuppressWarnings("unused")
         @Specialization
         public Object executeVoid(LLVMAddress target, LLVMGlobalVariable source, long length, int align, boolean isVolatile) {
-            getMemCopy().execute(target, source.getNativeLocation(), length);
+            profiledMemMove.memmove(target, source.getNativeLocation(), length);
             return null;
         }
 
         @SuppressWarnings("unused")
         @Specialization
         public Object executeVoid(LLVMGlobalVariable target, LLVMGlobalVariable source, long length, int align, boolean isVolatile) {
-            getMemCopy().execute(target.getNativeLocation(), source.getNativeLocation(), length);
+            profiledMemMove.memmove(target.getNativeLocation(), source.getNativeLocation(), length);
             return null;
         }
 

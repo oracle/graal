@@ -49,17 +49,15 @@ public final class LLVMHeap extends LLVMMemory {
     public static final int FUNCTION_PTR_SIZE_BYTE = 8;
 
     public static void putFunctionPointer(LLVMAddress address, long functionIndex) {
-        UNSAFE.putLong(LLVMMemory.extractAddr(address), functionIndex);
+        LLVMMemory.putI64(address, functionIndex);
     }
 
     public static void putFunctionPointer(long ptr, long functionIndex) {
-        assert ptr != 0;
-        UNSAFE.putLong(ptr, functionIndex);
+        LLVMMemory.putI64(ptr, functionIndex);
     }
 
     public static long getFunctionPointer(LLVMAddress addr) {
-        long functionIndex = UNSAFE.getLong(LLVMMemory.extractAddr(addr));
-        return functionIndex;
+        return LLVMMemory.getI64(addr);
     }
 
 }

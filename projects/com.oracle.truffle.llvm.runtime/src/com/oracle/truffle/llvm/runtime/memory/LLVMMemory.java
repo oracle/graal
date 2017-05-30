@@ -48,7 +48,7 @@ import sun.misc.Unsafe;
 
 public abstract class LLVMMemory {
 
-    static final Unsafe UNSAFE = getUnsafe();
+    private static final Unsafe UNSAFE = getUnsafe();
 
     @SuppressWarnings("restriction")
     private static Unsafe getUnsafe() {
@@ -84,6 +84,12 @@ public abstract class LLVMMemory {
             CompilerDirectives.transferToInterpreter();
             throw e;
         }
+    }
+
+    /** Use {@link com.oracle.truffle.llvm.runtime.memory.LLVMProfiledMemMove} instead. */
+    @Deprecated
+    public static void copyMemory(long sourceAddress, long targetAddress, long length) {
+        UNSAFE.copyMemory(sourceAddress, targetAddress, length);
     }
 
     public static void free(LLVMAddress address) {

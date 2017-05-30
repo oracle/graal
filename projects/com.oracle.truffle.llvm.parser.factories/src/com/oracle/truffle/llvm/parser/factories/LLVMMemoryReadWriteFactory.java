@@ -152,10 +152,10 @@ final class LLVMMemoryReadWriteFactory {
     }
 
     static LLVMExpressionNode createStore(LLVMParserRuntime runtime, LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type, SourceSection source) {
-        return createStore(runtime, pointerNode, valueNode, type, runtime.getByteSize(type), source);
+        return createStore(pointerNode, valueNode, type, runtime.getByteSize(type), source);
     }
 
-    private static LLVMExpressionNode createStore(LLVMParserRuntime runtime, LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type, int size, SourceSection source) {
+    private static LLVMExpressionNode createStore(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type, int size, SourceSection source) {
         if (type instanceof PrimitiveType) {
             switch (((PrimitiveType) type).getPrimitiveKind()) {
                 case I1:
@@ -182,7 +182,7 @@ final class LLVMMemoryReadWriteFactory {
         } else if (Type.isFunctionOrFunctionPointer(type)) {
             return LLVMFunctionStoreNodeGen.create(type, source, pointerNode, valueNode);
         } else if (type instanceof StructureType || type instanceof ArrayType) {
-            return LLVMStructStoreNodeGen.create(runtime.getNativeFunctions(), type, source, pointerNode, valueNode, size);
+            return LLVMStructStoreNodeGen.create(type, source, pointerNode, valueNode, size);
         } else if (type instanceof PointerType) {
             if (pointerNode instanceof LLVMAccessGlobalVariableStorageNode) {
                 return LLVMGlobalVariableStoreNodeGen.create(((LLVMAccessGlobalVariableStorageNode) pointerNode).getDescriptor(), source, valueNode);

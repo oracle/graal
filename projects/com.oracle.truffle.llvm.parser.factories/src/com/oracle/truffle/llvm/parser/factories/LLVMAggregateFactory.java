@@ -89,21 +89,21 @@ final class LLVMAggregateFactory {
         }
     }
 
-    static LLVMExpressionNode createInsertValue(LLVMParserRuntime runtime, LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, int size, int offset,
+    static LLVMExpressionNode createInsertValue(LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, int size, int offset,
                     LLVMExpressionNode valueToInsert, Type llvmType) {
         if (llvmType instanceof PrimitiveType) {
             switch (((PrimitiveType) llvmType).getPrimitiveKind()) {
                 case FLOAT:
-                    return new LLVMInsertFloatValueNode(runtime.getNativeFunctions(), sourceAggregate, resultAggregate, size, offset, valueToInsert);
+                    return new LLVMInsertFloatValueNode(sourceAggregate, resultAggregate, size, offset, valueToInsert);
                 case DOUBLE:
-                    return new LLVMInsertDoubleValueNode(runtime.getNativeFunctions(), sourceAggregate, resultAggregate, size, offset, valueToInsert);
+                    return new LLVMInsertDoubleValueNode(sourceAggregate, resultAggregate, size, offset, valueToInsert);
                 case I32:
-                    return new LLVMInsertI32ValueNode(runtime.getNativeFunctions(), sourceAggregate, resultAggregate, size, offset, valueToInsert);
+                    return new LLVMInsertI32ValueNode(sourceAggregate, resultAggregate, size, offset, valueToInsert);
                 default:
                     throw new AssertionError(llvmType);
             }
         } else if (llvmType instanceof PointerType) {
-            return new LLVMInsertAddressValueNode(runtime.getNativeFunctions(), sourceAggregate, resultAggregate, size, offset, valueToInsert);
+            return new LLVMInsertAddressValueNode(sourceAggregate, resultAggregate, size, offset, valueToInsert);
         } else {
             throw new AssertionError(llvmType);
         }
@@ -135,7 +135,7 @@ final class LLVMAggregateFactory {
             if (byteSize == 0) {
                 return LLVMEmptyStructWriteNodeGen.create();
             } else {
-                return LLVMCompoundStructWriteNodeGen.create(runtime.getNativeFunctions(), byteSize);
+                return LLVMCompoundStructWriteNodeGen.create(byteSize);
             }
         } else {
             return LLVMPrimitiveStructWriteNodeGen.create();

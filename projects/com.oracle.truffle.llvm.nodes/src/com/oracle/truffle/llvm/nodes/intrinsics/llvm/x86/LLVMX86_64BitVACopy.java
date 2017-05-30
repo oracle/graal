@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -38,7 +37,6 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions.MemCopyNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
@@ -46,16 +44,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMX86_64BitVACopy extends LLVMBuiltin {
 
     public abstract int getNumberExplicitArguments();
-
-    @Child private MemCopyNode memCopy;
-
-    public MemCopyNode getMemCopy() {
-        if (memCopy == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            memCopy = insert(getContext().getNativeFunctions().createMemCopyNode());
-        }
-        return memCopy;
-    }
 
     @Specialization
     public Object executeVoid(LLVMGlobalVariable dest, LLVMGlobalVariable source) {

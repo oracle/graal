@@ -38,8 +38,7 @@ import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
-import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions.MemCopyNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMProfiledMemMove;
 
 public abstract class LLVMStructWriteNode extends Node {
 
@@ -178,36 +177,35 @@ public abstract class LLVMStructWriteNode extends Node {
 
     public abstract static class LLVMCompoundStructWriteNode extends LLVMStructWriteNode {
 
-        private int size;
+        private final int size;
+        private final LLVMProfiledMemMove profiledMemMove;
 
-        @Child private MemCopyNode memCopy;
-
-        public LLVMCompoundStructWriteNode(LLVMNativeFunctions heapFunctions, int size) {
+        public LLVMCompoundStructWriteNode(int size) {
             this.size = size;
-            this.memCopy = heapFunctions.createMemCopyNode();
+            this.profiledMemMove = new LLVMProfiledMemMove();
         }
 
         @Specialization
         public Object executeWrite(LLVMAddress address, LLVMAddress value) {
-            memCopy.execute(address, value, size);
+            profiledMemMove.memmove(address, value, size);
             return null;
         }
 
         @Specialization
         public Object executeWrite(LLVMGlobalVariable address, LLVMAddress value) {
-            memCopy.execute(address.getNativeLocation(), value, size);
+            profiledMemMove.memmove(address.getNativeLocation(), value, size);
             return null;
         }
 
         @Specialization
         public Object executeWrite(LLVMAddress address, LLVMGlobalVariable value) {
-            memCopy.execute(address, value.getNativeLocation(), size);
+            profiledMemMove.memmove(address, value.getNativeLocation(), size);
             return null;
         }
 
         @Specialization
         public Object executeWrite(LLVMGlobalVariable address, LLVMGlobalVariable value) {
-            memCopy.execute(address.getNativeLocation(), value.getNativeLocation(), size);
+            profiledMemMove.memmove(address.getNativeLocation(), value.getNativeLocation(), size);
             return null;
         }
 

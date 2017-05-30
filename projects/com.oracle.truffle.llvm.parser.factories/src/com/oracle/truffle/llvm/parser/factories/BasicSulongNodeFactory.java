@@ -357,7 +357,7 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
     @Override
     public LLVMExpressionNode createInsertValue(LLVMParserRuntime runtime, LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, int size, int offset,
                     LLVMExpressionNode valueToInsert, Type llvmType) {
-        return LLVMAggregateFactory.createInsertValue(runtime, resultAggregate, sourceAggregate, size, offset, valueToInsert, llvmType);
+        return LLVMAggregateFactory.createInsertValue(resultAggregate, sourceAggregate, size, offset, valueToInsert, llvmType);
     }
 
     @Override
