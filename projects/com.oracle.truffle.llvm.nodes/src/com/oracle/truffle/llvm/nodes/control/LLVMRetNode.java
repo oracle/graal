@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.control;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -45,6 +46,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMProfiledMemMove;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -313,8 +315,8 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
         }
 
         @Specialization
-        public Object execute(VirtualFrame frame, LLVMGlobalVariable retResult) {
-            return returnStruct(frame, retResult.getNativeLocation());
+        public Object execute(VirtualFrame frame, LLVMGlobalVariable retResult, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            return returnStruct(frame, globalAccess.getNativeLocation(retResult));
         }
 
     }

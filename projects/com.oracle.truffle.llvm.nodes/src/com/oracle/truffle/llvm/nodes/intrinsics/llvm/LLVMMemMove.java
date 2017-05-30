@@ -29,11 +29,13 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMProfiledMemMove;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -55,22 +57,23 @@ public abstract class LLVMMemMove {
 
         @SuppressWarnings("unused")
         @Specialization
-        public Object executeVoid(LLVMGlobalVariable dest, LLVMAddress source, long length, int align, boolean isVolatile) {
-            profiledMemMove.memmove(dest.getNativeLocation(), source, length);
+        public Object executeVoid(LLVMGlobalVariable dest, LLVMAddress source, long length, int align, boolean isVolatile, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            profiledMemMove.memmove(globalAccess.getNativeLocation(dest), source, length);
             return null;
         }
 
         @SuppressWarnings("unused")
         @Specialization
-        public Object executeVoid(LLVMAddress dest, LLVMGlobalVariable source, long length, int align, boolean isVolatile) {
-            profiledMemMove.memmove(dest, source.getNativeLocation(), length);
+        public Object executeVoid(LLVMAddress dest, LLVMGlobalVariable source, long length, int align, boolean isVolatile, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            profiledMemMove.memmove(dest, globalAccess.getNativeLocation(source), length);
             return null;
         }
 
         @SuppressWarnings("unused")
         @Specialization
-        public Object executeVoid(LLVMGlobalVariable dest, LLVMGlobalVariable source, long length, int align, boolean isVolatile) {
-            profiledMemMove.memmove(dest.getNativeLocation(), source.getNativeLocation(), length);
+        public Object executeVoid(LLVMGlobalVariable dest, LLVMGlobalVariable source, long length, int align, boolean isVolatile,
+                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess1, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess2) {
+            profiledMemMove.memmove(globalAccess1.getNativeLocation(dest), globalAccess2.getNativeLocation(source), length);
             return null;
         }
 

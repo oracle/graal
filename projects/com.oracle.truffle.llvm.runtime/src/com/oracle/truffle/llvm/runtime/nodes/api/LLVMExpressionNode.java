@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -48,6 +49,7 @@ import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNodeFactory.LLVMForceLLVMAddressNodeGen;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
@@ -210,8 +212,8 @@ public abstract class LLVMExpressionNode extends LLVMNode {
         }
 
         @Specialization
-        public LLVMAddress doAddressCase(LLVMGlobalVariable a) {
-            return a.getNativeLocation();
+        public LLVMAddress doAddressCase(LLVMGlobalVariable a, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            return globalAccess.getNativeLocation(a);
         }
 
         @Specialization
@@ -250,6 +252,11 @@ public abstract class LLVMExpressionNode extends LLVMNode {
         protected boolean notLLVM(TruffleObject pointer) {
             return LLVMExpressionNode.notLLVM(pointer);
         }
+
+        protected static final LLVMGlobalVariableAccess createGlobalAccess() {
+            return new LLVMGlobalVariableAccess();
+        }
+
     }
 
     public static final LLVMForceLLVMAddressNode getForceLLVMAddressNode() {

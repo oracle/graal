@@ -29,12 +29,14 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.c;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -42,8 +44,8 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMTruffleReadBytes extends LLVMIntrinsic {
 
     @Specialization
-    public Object executeIntrinsic(LLVMGlobalVariable value) {
-        return executeIntrinsic(value.getNativeLocation());
+    public Object executeIntrinsic(LLVMGlobalVariable value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        return executeIntrinsic(globalAccess.getNativeLocation(value));
     }
 
     @Specialization

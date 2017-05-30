@@ -34,11 +34,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.NativeAllocator;
 import com.oracle.truffle.llvm.runtime.NativeResolver;
 import com.oracle.truffle.llvm.runtime.global.Container.NativeContainer;
@@ -88,109 +83,14 @@ public final class LLVMGlobalVariable {
         }
     }
 
-    public void destroy() {
-        getContainer().destroy();
-    }
-
-    public LLVMAddress getNativeLocation() {
-        return getContainer().getNativeLocation(this);
-    }
-
-    public Type getType() {
-        return getContainer().getType();
-    }
-
-    public void putI1(boolean value) {
-        getContainer().putI1(this, value);
-    }
-
-    public void putI8(byte value) {
-        getContainer().putI8(this, value);
-    }
-
-    public void putI16(short value) {
-        getContainer().putI16(this, value);
-    }
-
-    public void putAddress(LLVMAddress value) {
-        getContainer().putAddress(this, value);
-    }
-
-    public void putDouble(double value) {
-        getContainer().putDouble(this, value);
-    }
-
-    public void putFloat(float value) {
-        getContainer().putFloat(this, value);
-    }
-
-    public void putI64(long value) {
-        getContainer().putI64(this, value);
-    }
-
-    public void putI32(int value) {
-        getContainer().putI32(this, value);
-    }
-
-    public Object get() {
-        return getContainer().get(this);
-    }
-
-    public double getDouble() {
-        return getContainer().getDouble(this);
-    }
-
-    public float getFloat() {
-        return getContainer().getFloat(this);
-    }
-
-    public short getI16() {
-        return getContainer().getI16(this);
-    }
-
-    public boolean getI1() {
-        return getContainer().getI1(this);
-    }
-
-    public int getI32() {
-        return getContainer().getI32(this);
-    }
-
-    public long getI64() {
-        return getContainer().getI64(this);
-    }
-
-    public byte getI8() {
-        return getContainer().getI8(this);
-    }
-
-    public void putTruffleObject(TruffleObject value) {
-        getContainer().putTruffleObject(this, value);
-    }
-
-    public void putLLVMTruffleObject(LLVMTruffleObject value) {
-        getContainer().putLLVMTruffleObject(this, value);
-    }
-
-    public void putFunction(LLVMFunction value) {
-        getContainer().putFunction(this, value);
-    }
-
-    public void putBoxedPrimitive(LLVMBoxedPrimitive value) {
-        getContainer().putBoxedPrimitive(this, value);
-    }
-
-    public boolean isUninitialized() {
-        return getContainer() instanceof UninitializedContainer;
-    }
-
-    public void putGlobal(LLVMGlobalVariable value) {
-        getContainer().putGlobal(this, value);
-    }
-
     @Override
     public String toString() {
         return "GlobalVariable " + name;
+    }
+
+    public boolean isUninitialized() {
+        CompilerAsserts.neverPartOfCompilation();
+        return container instanceof UninitializedContainer;
     }
 
 }

@@ -29,18 +29,20 @@
  */
 package com.oracle.truffle.llvm.nodes.base;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMProfiledMemMove;
 
-public abstract class LLVMStructWriteNode extends Node {
+public abstract class LLVMStructWriteNode extends LLVMNode {
 
     public abstract Object executeWrite(VirtualFrame frame, Object address, Object value);
 
@@ -97,50 +99,50 @@ public abstract class LLVMStructWriteNode extends Node {
         // global variable descriptor
 
         @Specialization
-        public Object executeWrite(LLVMGlobalVariable address, boolean value) {
-            address.putI1(value);
+        public Object executeWrite(LLVMGlobalVariable address, boolean value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            globalAccess.putI1(address, value);
             return null;
         }
 
         @Specialization
-        public Object executeWrite(LLVMGlobalVariable address, byte value) {
-            address.putI8(value);
+        public Object executeWrite(LLVMGlobalVariable address, byte value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            globalAccess.putI8(address, value);
             return null;
         }
 
         @Specialization
-        public Object executeWrite(LLVMGlobalVariable address, short value) {
-            address.putI16(value);
+        public Object executeWrite(LLVMGlobalVariable address, short value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            globalAccess.putI16(address, value);
             return null;
         }
 
         @Specialization
-        public Object executeWrite(LLVMGlobalVariable address, int value) {
-            address.putI32(value);
+        public Object executeWrite(LLVMGlobalVariable address, int value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            globalAccess.putI32(address, value);
             return null;
         }
 
         @Specialization
-        public Object executeWrite(LLVMGlobalVariable address, long value) {
-            address.putI64(value);
+        public Object executeWrite(LLVMGlobalVariable address, long value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            globalAccess.putI64(address, value);
             return null;
         }
 
         @Specialization
-        public Object executeWrite(LLVMGlobalVariable address, float value) {
-            address.putFloat(value);
+        public Object executeWrite(LLVMGlobalVariable address, float value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            globalAccess.putFloat(address, value);
             return null;
         }
 
         @Specialization
-        public Object executeWrite(LLVMGlobalVariable address, double value) {
-            address.putDouble(value);
+        public Object executeWrite(LLVMGlobalVariable address, double value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            globalAccess.putDouble(address, value);
             return null;
         }
 
         @Specialization
-        public Object executeWrite(LLVMGlobalVariable address, LLVM80BitFloat value) {
-            LLVMMemory.put80BitFloat(address.getNativeLocation(), value);
+        public Object executeWrite(LLVMGlobalVariable address, LLVM80BitFloat value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            LLVMMemory.put80BitFloat(globalAccess.getNativeLocation(address), value);
             return null;
         }
 
@@ -151,20 +153,21 @@ public abstract class LLVMStructWriteNode extends Node {
         }
 
         @Specialization
-        public Object executeWrite(LLVMGlobalVariable address, LLVMAddress value) {
-            address.putAddress(value);
+        public Object executeWrite(LLVMGlobalVariable address, LLVMAddress value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            globalAccess.putAddress(address, value);
             return null;
         }
 
         @Specialization
-        public Object executeWrite(LLVMAddress address, LLVMGlobalVariable value) {
-            LLVMMemory.putAddress(address, value.getNativeLocation());
+        public Object executeWrite(LLVMAddress address, LLVMGlobalVariable value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            LLVMMemory.putAddress(address, globalAccess.getNativeLocation(value));
             return null;
         }
 
         @Specialization
-        public Object executeWrite(LLVMGlobalVariable address, LLVMGlobalVariable value) {
-            LLVMMemory.putAddress(address.getNativeLocation(), value.getNativeLocation());
+        public Object executeWrite(LLVMGlobalVariable address, LLVMGlobalVariable value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess1,
+                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess2) {
+            LLVMMemory.putAddress(globalAccess1.getNativeLocation(address), globalAccess2.getNativeLocation(value));
             return null;
         }
 
@@ -192,20 +195,21 @@ public abstract class LLVMStructWriteNode extends Node {
         }
 
         @Specialization
-        public Object executeWrite(LLVMGlobalVariable address, LLVMAddress value) {
-            profiledMemMove.memmove(address.getNativeLocation(), value, size);
+        public Object executeWrite(LLVMGlobalVariable address, LLVMAddress value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            profiledMemMove.memmove(globalAccess.getNativeLocation(address), value, size);
             return null;
         }
 
         @Specialization
-        public Object executeWrite(LLVMAddress address, LLVMGlobalVariable value) {
-            profiledMemMove.memmove(address, value.getNativeLocation(), size);
+        public Object executeWrite(LLVMAddress address, LLVMGlobalVariable value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+            profiledMemMove.memmove(address, globalAccess.getNativeLocation(value), size);
             return null;
         }
 
         @Specialization
-        public Object executeWrite(LLVMGlobalVariable address, LLVMGlobalVariable value) {
-            profiledMemMove.memmove(address.getNativeLocation(), value.getNativeLocation(), size);
+        public Object executeWrite(LLVMGlobalVariable address, LLVMGlobalVariable value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess1,
+                        @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess2) {
+            profiledMemMove.memmove(globalAccess1.getNativeLocation(address), globalAccess2.getNativeLocation(value), size);
             return null;
         }
 

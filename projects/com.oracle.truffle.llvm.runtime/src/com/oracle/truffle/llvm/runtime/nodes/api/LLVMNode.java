@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.api;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 
 public abstract class LLVMNode extends Node {
     public final LLVMContext getContext() {
@@ -40,5 +41,9 @@ public abstract class LLVMNode extends Node {
 
     public final LLVMLanguage getLLVMLanguage() {
         return getRootNode().getLanguage(LLVMLanguage.class);
+    }
+
+    protected static final LLVMGlobalVariableAccess createGlobalAccess() {
+        return new LLVMGlobalVariableAccess();
     }
 }
