@@ -146,7 +146,11 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
             } else {
                 TruffleObject nativeFunction;
                 if (!descriptor.isNullFunction()) {
-                    nativeFunction = descriptor.context.getNativeLookup().getNativeFunction(descriptor.getName());
+                    NativeLookup nativeLookup = descriptor.context.getNativeLookup();
+                    if (nativeLookup == null) {
+                        throw new AssertionError("The NativeLookup is disabled. Failed to look up the function " + descriptor.getName() + ".");
+                    }
+                    nativeFunction = nativeLookup.getNativeFunction(descriptor.getName());
                 } else {
                     nativeFunction = null;
                 }
