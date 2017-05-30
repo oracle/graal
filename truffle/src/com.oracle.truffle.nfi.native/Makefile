@@ -75,10 +75,12 @@ ${LIBFFI_LIB}: libffi-build/Makefile
 	@echo MAKE libffi
 	@$(MAKE) -C libffi-build > libffi.build.log
 
+# on the Mac /bin/sh is bash which will produce output if CDPATH is set which causes
+# this command to fail, so clear it out before running the command.
 libffi-build/Makefile libffi-build/include/ffi.h: libffi-3.2.1/configure
 	@echo CONFIGURE libffi
 	@mkdir -p libffi-build
-	@cd libffi-build && CFLAGS="${CFLAGS}" ../libffi-3.2.1/configure --enable-static > ../libffi.configure.log
+	@unset CDPATH && cd libffi-build && CFLAGS="${CFLAGS}" ../libffi-3.2.1/configure --enable-static > ../libffi.configure.log
 
 libffi-3.2.1/configure: ${LIBFFI_SRC}
 	@tar xzf ${LIBFFI_SRC}
