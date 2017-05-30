@@ -117,6 +117,7 @@ import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionKind;
 import com.oracle.truffle.llvm.parser.metadata.DebugInfoGenerator;
 import com.oracle.truffle.llvm.parser.model.enums.CompareOperator;
+import com.oracle.truffle.llvm.parser.model.enums.Flag;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalConstant;
@@ -182,7 +183,7 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createLogicalOperation(LLVMParserRuntime runtime, LLVMExpressionNode left, LLVMExpressionNode right, LLVMLogicalInstructionKind type, Type llvmType) {
+    public LLVMExpressionNode createLogicalOperation(LLVMParserRuntime runtime, LLVMExpressionNode left, LLVMExpressionNode right, LLVMLogicalInstructionKind type, Type llvmType, Flag[] flags) {
         return LLVMLogicalFactory.createLogicalOperation(left, right, type, llvmType);
     }
 
@@ -242,7 +243,7 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createArithmeticOperation(LLVMParserRuntime runtime, LLVMExpressionNode left, LLVMExpressionNode right, LLVMArithmeticInstructionType type, Type llvmType) {
+    public LLVMExpressionNode createArithmeticOperation(LLVMParserRuntime runtime, LLVMExpressionNode left, LLVMExpressionNode right, LLVMArithmeticInstructionType type, Type llvmType, Flag[] flags) {
         return LLVMArithmeticFactory.createArithmeticOperation(left, right, type, llvmType);
     }
 
