@@ -89,6 +89,7 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         try {
             ForeignAccess.sendWrite(foreignWrite, addr.getObject(), (int) (addr.getOffset() / stride), dataEscape.executeWithTarget(value, context));
         } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);
         }
     }
@@ -97,6 +98,7 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         try {
             ForeignAccess.sendWrite(foreignWrite, addr, 0, dataEscape.executeWithTarget(value, context));
         } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);
         }
     }

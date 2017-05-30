@@ -40,7 +40,6 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
@@ -124,6 +123,7 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
             getThreadingStack(context).getStack().setStackPointer((long) arguments[0]);
             return toLLVMNode.executeWithTarget(ret);
         } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);
         }
     }

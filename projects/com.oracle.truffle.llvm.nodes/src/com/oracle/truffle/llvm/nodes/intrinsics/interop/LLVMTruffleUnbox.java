@@ -76,6 +76,7 @@ public abstract class LLVMTruffleUnbox extends LLVMIntrinsic {
             Object rawValue = ForeignAccess.sendUnbox(foreignUnbox, value);
             return toLLVM.executeWithTarget(rawValue);
         } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);
         }
     }

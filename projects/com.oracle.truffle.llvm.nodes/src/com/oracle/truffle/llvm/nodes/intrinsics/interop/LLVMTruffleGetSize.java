@@ -61,6 +61,7 @@ public abstract class LLVMTruffleGetSize extends LLVMIntrinsic {
             Object rawValue = ForeignAccess.sendGetSize(foreignGetSize, value);
             return (int) toLLVM.executeWithTarget(rawValue);
         } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);
         }
     }

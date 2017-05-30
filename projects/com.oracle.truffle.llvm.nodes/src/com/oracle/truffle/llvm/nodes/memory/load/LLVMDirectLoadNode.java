@@ -142,6 +142,7 @@ public abstract class LLVMDirectLoadNode {
             try {
                 return toLLVM.executeWithTarget(ForeignAccess.sendRead(foreignRead, addr.getObject(), (int) (addr.getOffset() / LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES)));
             } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
                 throw new UnsupportedOperationException(e);
             }
         }
@@ -151,6 +152,7 @@ public abstract class LLVMDirectLoadNode {
             try {
                 return toLLVM.executeWithTarget(ForeignAccess.sendRead(foreignRead, addr, 0));
             } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
                 throw new UnsupportedOperationException(e);
             }
         }
