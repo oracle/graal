@@ -66,6 +66,9 @@ abstract class ComputeInExecutor<R> implements Runnable {
             }
             throw (RuntimeException) exception;
         }
+        if (exception instanceof Error) {
+            throw (Error) exception;
+        }
         if (exception != null) {
             throw new RuntimeException(exception);
         }
@@ -91,11 +94,15 @@ abstract class ComputeInExecutor<R> implements Runnable {
                 executor.checkThread();
             }
             result = compute();
-        } catch (Exception ex) {
+        } catch (Throwable ex) {
             if (ex.getClass() == RuntimeException.class && ex.getCause() != null) {
                 exception = ex.getCause();
             } else {
                 exception = ex;
+            }
+            if (ex instanceof ThreadDeath) {
+                // Make sure the thread is really killed
+                throw ex;
             }
         } finally {
             if (executor != null) {
