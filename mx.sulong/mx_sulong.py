@@ -450,7 +450,6 @@ def compilationSucceedsOption():
 def getBenchmarkOptions():
     return [
         '-Dgraal.TruffleBackgroundCompilation=false',
-        '-Dsulong.ExecutionCount=5',
         '-Dsulong.PerformanceWarningsAreFatal=true',
         '-Dgraal.TruffleTimeThreshold=1000000',
         '-Xms4g',
