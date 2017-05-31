@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.108.0",
+  "mxversion" : "5.110.4",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -1053,7 +1053,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.compiler.debug", 
+        "org.graalvm.compiler.debug",
         "org.graalvm.api.word",
       ],
       "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
