@@ -11,7 +11,7 @@ existing one (e.g. [ReBench](https://github.com/smarr/ReBench)). The harness
 has to run warm-up iterations of the benchmark until all functions have
 been compiled (you can check with `-Dgraal.TraceTruffleCompilation=true`,
 see below). Then, you can start to record the iterations that are used to
-compute the the benchmark score.
+compute the benchmark score.
 
 You can have a look at
 [Bringing Low-Level Languages to the JVM: Efficient Execution of LLVM IR on Truffle](http://conf.researchr.org/event/vmil2016/vmil2016-bringing-low-level-languages-to-the-jvm-efficient-execution-of-llvm-ir-on-truffle)
@@ -45,9 +45,6 @@ the benchmark.
 * `-Dgraal.TruffleTimeThreshold=1000000`: specifies up until which time
   Graal is used to compile a function. If the value is too low, then
   some parts of the program might get never compiled.
-* `-Dsulong.ExecutionCount=<number>`: execute the programm the specified
-  number of times, which is useful when a benchmark should be executed
-  without a test harness
 
 There are also other Sulong (see `mx su-options`) and Graal options
 relevant for benchmarking. Sulong's mx benchmark commands mentioned above

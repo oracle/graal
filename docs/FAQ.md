@@ -3,8 +3,8 @@
 ### How can I get started understanding Sulong?
 
 A good starting point is to read and look through the
-[papers and presentations about Sulong](PUBLICATIONS.md). The paper
-[Sulong - Execution of LLVM-Based Languages on the JVM](http://2016.ecoop.org/event/icooolps-2016-sulong-execution-of-llvm-based-languages-on-the-jvm)
+[papers and presentations about Sulong](PUBLICATIONS.md).
+The paper [Sulong - Execution of LLVM-Based Languages on the JVM](http://2016.ecoop.org/event/icooolps-2016-sulong-execution-of-llvm-based-languages-on-the-jvm)
 provides a minimal description of Sulong and describes its main goals.
 
 To understand more about Truffle, on which Sulong is implemented, is to
@@ -18,13 +18,6 @@ To understand how Sulong calls native functions you can read the paper
 To start working with the code you can try to tackle one of the
 [open issues](https://github.com/graalvm/sulong/issues?utf8=%E2%9C%93&q=is%3Aissue+is%3Aopen+label%3Abeginner+).
 Do not hesitate to ask questions!
-
-### How does Sulong call native functions?
-
-Sulong uses the Graal Native Function Interface to call native
-functions. You can read the paper [An efficient native function interface for Java
-](http://dl.acm.org/citation.cfm?id=2500832) to learn more about how
-it works.
 
 ### How can I get a list of options supported by Sulong?
 
@@ -54,7 +47,7 @@ additional "free" test cases for a given C/C++ file.
 
 ## Why does Sulong rely on GCC 4.6?
 
-Sulong uses the GCC plugin [DragonEgg](http://dragonegg.llvm.org/) which
+Sulong uses the GCC plugin [DragonEgg 3.2](http://dragonegg.llvm.org/) which
 works best with GCC versions 4.5, 4.6, and 4.7.
 Per default, our mx commands try to use GCC version 4.6. To use another
 version, you can edit `sulong/mx.sulong/env` and, e.g., set the
@@ -82,9 +75,8 @@ SulongSuite. You can run this single test using
 
 In order to work with Eclipse, use `mx eclipseinit` to generate the
 Eclipse project files. Import not only the Sulong project, but also the
-Graal, Truffle, and JVMCI projects. You have the choice to either use
-remote debugging and launch Sulong in mx, or launch Sulong within
-Eclipse.
+Truffle project. You have the choice to either use remote debugging and
+launch Sulong in mx, or launch Sulong within Eclipse.
 
 If you use Eclipse to launch Sulong, you have to ensure that all needed
 packages are on the classpath and all necessary options set. You can

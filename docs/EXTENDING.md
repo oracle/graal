@@ -17,11 +17,11 @@ Sulong's assumption is that all nodes inherit from either `LLVMNode` or
 implement statements, while `LLVMExpressionNode` returns a result and is
 used to implement expressions (see [`DATATYPES.md`](DATATYPES.md)).
 
-By implementing the `NodeFactoryFacadeProvider` one can provide a custom
-implementation of `NodeFactoryFacade` that the parser uses to create
-Truffle nodes. Changes to `NodeFactoryFacade` are kept minimal, to not
-force projects that implement the `NodeFactoryFacade` to frequently update
-their code.
+By exposing an implementation of the `SulongNodeFactory` interface as
+a service one can provide a custom implementation of `SulongNodeFactory`
+that the parser uses to create Truffle nodes. Changes to
+`SulongNodeFactory` are kept minimal, to not force projects that implement
+the `SulongNodeFactory` to frequently update their code.
 
 To use the node facade, an option (see `mx su-options`) exists to select
 a node facade implementation, which is currently `sulong.NodeConfiguration`.

@@ -1,3 +1,5 @@
+# Safe Sulong
+
 Safe Sulong is a version of Sulong that only uses managed memory (Java allocations)
 to prevent temporal and spatial memory safety errors. You can read about
 its architecture in
@@ -10,7 +12,7 @@ Safe Sulong is currently in development and not available on Github. The version
 on Github relies on unmanaged memory with which memory safety violations
 can still occur.
 
-# The Computer Language Benchmarks Game: fasta-redux C gcc #2 program
+## The Computer Language Benchmarks Game: fasta-redux C gcc #2 program
 
 The Computer Language Benchmarks Game "shootouts" are small benchmarks
 to compare the performance of different languages. The
@@ -200,7 +202,7 @@ goes unnoticed. The function terminates after reading a "garbage
 value" that lets the condition yield false. Safe Sulong detects the
 out-of-bounds access through its bounds checks and terminates the program.
 
-## Fix
+### Fix
 
 A fix for the buffer overflow is to make the probability check more robust
 by taking into account that floating point computations have rounding errors:

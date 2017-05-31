@@ -73,3 +73,11 @@ JVM process or which will not be supported by Sulong in the near future.
 | gcc              | GCCSuite               | GCC's test suite                |
 | arguments        | MainArgsTest           | Tests main args passing         |
 | shootout         | ShootoutsSuite         | Language Benchmark game tests   |
+| sulongcpp38      | SulongCPPSuite         | C++ Exception Handling tests    |
+
+These testsuites are compiled by either the Clang provided by mx or any Clang
+in versions 3.2 or 3.3 that are available on the system `PATH`. There are also
+`llvm38`, `nwcc38`, `sulong38`, `gcc38` suites which correspond to their
+counterparts without version number but are compiled by Clang in a version
+between 3.8 and 4.0. The `sulongcpp38` suite depends on such a Clang version
+since certain required features are not available in earlier versions.

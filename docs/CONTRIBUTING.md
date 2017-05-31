@@ -1,3 +1,5 @@
+# Contributing
+
 To submit pull requests for Sulong, you need to sign the Oracle
 Contributor Agreement. There is a white-list for contributors who have
 signed the OCA so please add a comment to your first pull request
@@ -10,7 +12,7 @@ merge his or her own pull requests.
 When creating a pull request, make sure you designate an assignee to
 ensure the request is processed in a timely manner.
 
-Before submitting a pull request please run "mx gate" to validate that
+Before submitting a pull request please run `mx gate` to validate that
 your changes do not break tests and conform with the coding conventions.
 
 Please comply with the guidelines for commit messages and PR
@@ -21,13 +23,11 @@ hook that checks messages before issuing a commit by copying
 you do not have to rewrite the history of your commits after a gate check
 fails.
 
-Commit messages
-================
+## Commit messages
 
 - Each commit (message) should contain (and describe) one logical change.
 
-PR request:
-===========
+### PR request
 
 - You should only address one feature or change per PR request.
 - You do not need to explain self-explanatory changes such as updates of
@@ -37,8 +37,7 @@ needed, (2) how the change or feature is implemented, and optionally (3)
 what further implications the change has. You can either use the PR
 request description field or the commit message.
 
-Both PR request titles and commit messages:
-===========================================
+### Both PR request titles and commit messages
 
 - Write the summary line and description of what you have done in the
 imperative mode, that is as if you were commanding someone. Start the
@@ -47,8 +46,7 @@ line with "Fix", "Add", "Change" instead of "Fixed", "Added", "Changed".
 don't end with a period.
 - Start each title and commit message with a capital letter.
 
-Links:
-======
+## Links
 
 - [https://github.com/erlang/otp/wiki/writing-good-commit-messages](https://github.com/erlang/otp/wiki/writing-good-commit-messages)
 - [http://who-t.blogspot.co.at/2009/12/on-commit-messages.html](http://who-t.blogspot.co.at/2009/12/on-commit-messages.html)
