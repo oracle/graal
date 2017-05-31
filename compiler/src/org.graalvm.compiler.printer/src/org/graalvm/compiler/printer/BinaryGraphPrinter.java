@@ -102,7 +102,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
     private static final int KLASS = 0x00;
     private static final int ENUM_KLASS = 0x01;
 
-    static final int CURRENT_MAJOR_VERSION = 3;
+    static final int CURRENT_MAJOR_VERSION = 1;
     static final int CURRENT_MINOR_VERSION = 0;
 
     static final byte[] MAGIC_BYTES = {'B', 'I', 'G', 'V'};
@@ -171,14 +171,19 @@ public class BinaryGraphPrinter implements GraphPrinter {
         return snippetReflection;
     }
 
+    @SuppressWarnings("all")
     @Override
     public void print(Graph graph, Map<Object, Object> properties, int id, String format, Object... args) throws IOException {
         writeByte(BEGIN_GRAPH);
-        writeInt(id);
-        writeString(format);
-        writeInt(args.length);
-        for (Object a : args) {
-            writePropertyObject(a);
+        if (CURRENT_MAJOR_VERSION == 3) {
+            writeInt(id);
+            writeString(format);
+            writeInt(args.length);
+            for (Object a : args) {
+                writePropertyObject(a);
+            }
+        } else {
+            writePoolObject(String.format(format, args));
         }
         writeGraph(graph, properties);
         flush();
@@ -350,6 +355,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         return getClassName(klass.getComponentType()) + "[]";
     }
 
+    @SuppressWarnings("all")
     private void addPoolEntry(Object object) throws IOException {
         char index = constantPool.add(object);
         writeByte(POOL_NEW);
@@ -380,7 +386,11 @@ public class BinaryGraphPrinter implements GraphPrinter {
         } else if (object instanceof NodeClass) {
             NodeClass<?> nodeClass = (NodeClass<?>) object;
             writeByte(POOL_NODE_CLASS);
-            writePoolObject(nodeClass.getJavaClass());
+            if (CURRENT_MAJOR_VERSION == 3) {
+                writePoolObject(nodeClass.getJavaClass());
+            } else {
+                writeString(nodeClass.getJavaClass().getSimpleName());
+            }
             writeString(nodeClass.getNameTemplate());
             writeEdgesInfo(nodeClass, Inputs);
             writeEdgesInfo(nodeClass, Successors);

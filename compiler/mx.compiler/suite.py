@@ -84,8 +84,8 @@ suite = {
     },
 
     "IDEALGRAPHVISUALIZER_DIST" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/idealgraphvisualizer/idealgraphvisualizer-7bd4616e7e24.zip"],
-      "sha1" : "b90a2d53ff7f06e2fe118dd3aa2b2d4c8cd9ec1e",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/idealgraphvisualizer/idealgraphvisualizer-8820e1874bf7.zip"],
+      "sha1" : "7eb51f6d643ed7833268b6971e273826d44c22b1",
     },
 
     "JOL_INTERNALS" : {
