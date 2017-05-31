@@ -171,6 +171,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         return snippetReflection;
     }
 
+    @SuppressWarnings("all")
     @Override
     public void print(Graph graph, Map<Object, Object> properties, int id, String format, Object... args) throws IOException {
         writeByte(BEGIN_GRAPH);
@@ -354,6 +355,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         return getClassName(klass.getComponentType()) + "[]";
     }
 
+    @SuppressWarnings("all")
     private void addPoolEntry(Object object) throws IOException {
         char index = constantPool.add(object);
         writeByte(POOL_NEW);
