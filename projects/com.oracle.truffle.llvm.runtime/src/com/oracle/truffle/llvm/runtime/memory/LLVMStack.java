@@ -29,6 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.memory;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.lang.reflect.Field;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -45,6 +49,16 @@ import sun.misc.Unsafe;
  * Implements a stack that grows from the top to the bottom.
  */
 public final class LLVMStack {
+
+    /**
+     * Nodes that access (e.g. alloca) or need (e.g. calls) the stack must be annotated
+     * with @StackNode.
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ElementType.TYPE})
+    public @interface NeedsStack {
+
+    }
 
     public static final String FRAME_ID = "<stackpointer>";
 

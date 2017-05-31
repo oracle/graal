@@ -37,7 +37,9 @@ import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.NeedsStack;
 
+@NeedsStack
 public abstract class LLVMStackSave extends LLVMBuiltin {
 
     @CompilationFinal private FrameSlot stackPointer;

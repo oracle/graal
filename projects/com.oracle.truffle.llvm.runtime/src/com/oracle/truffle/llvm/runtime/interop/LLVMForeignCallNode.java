@@ -126,12 +126,18 @@ abstract class LLVMForeignCallNode extends LLVMNode {
                     @Cached("create(getCallTarget(function))") DirectCallNode callNode,
                     @Cached("createFastPackArguments(function, arguments.length)") PackForeignArgumentsNode packNode,
                     @Cached("arguments.length") int cachedLength,
-                    @Cached("function.getContext()") LLVMContext context) {
+                    @Cached("function.getContext()") LLVMContext context,
+                    @Cached("function.needsStackPointer()") boolean needsStackPointer) {
         assert !(function.getType().getReturnType() instanceof StructureType);
-        getThreadingStack(context).checkThread();
-        long stackPointer = getThreadingStack(context).getStack().getStackPointer();
-        Object result = callNode.call(packNode.pack(arguments, stackPointer));
-        getThreadingStack(context).getStack().setStackPointer(stackPointer);
+        Object result;
+        if (needsStackPointer) {
+            getThreadingStack(context).checkThread();
+            long stackPointer = getThreadingStack(context).getStack().getStackPointer();
+            result = callNode.call(packNode.pack(arguments, stackPointer));
+            getThreadingStack(context).getStack().setStackPointer(stackPointer);
+        } else {
+            result = callNode.call(packNode.pack(arguments, 0));
+        }
         return prepareValueForEscape.executeWithTarget(result, context);
     }
 
