@@ -69,6 +69,7 @@ public final class LLVMTruffleWrite {
         try {
             ForeignAccess.sendWrite(foreignWrite, value, name, v);
         } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);
         }
     }
@@ -77,6 +78,7 @@ public final class LLVMTruffleWrite {
         try {
             ForeignAccess.sendWrite(foreignWrite, value, id, v);
         } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);
         }
     }

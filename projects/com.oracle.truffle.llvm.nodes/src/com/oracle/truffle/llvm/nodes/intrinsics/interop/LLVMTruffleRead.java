@@ -66,6 +66,7 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
             Object rawValue = ForeignAccess.sendRead(foreignRead, value, name);
             return toLLVM.executeWithTarget(rawValue);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);
         }
     }
@@ -75,6 +76,7 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
             Object rawValue = ForeignAccess.sendRead(foreignRead, value, id);
             return toLLVM.executeWithTarget(rawValue);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);
         }
     }

@@ -125,14 +125,22 @@ public final class Sulong extends LLVMLanguage {
         return getContextReference().get();
     }
 
+    private static final List<SulongNodeFactory> cachedNodeFactories;
+
+    static {
+        cachedNodeFactories = new ArrayList<>();
+        for (SulongNodeFactory f : ServiceLoader.load(SulongNodeFactory.class)) {
+            cachedNodeFactories.add(f);
+        }
+    }
+
     private static SulongNodeFactory getNodeFactory() {
-        ServiceLoader<SulongNodeFactory> loader = ServiceLoader.load(SulongNodeFactory.class);
-        if (!loader.iterator().hasNext()) {
+        if (cachedNodeFactories.isEmpty()) {
             throw new AssertionError("Could not find a " + SulongNodeFactory.class.getSimpleName() + " for the creation of the Truffle nodes");
         }
         SulongNodeFactory factory = null;
         String expectedConfigName = LLVMOptions.ENGINE.nodeConfiguration();
-        for (SulongNodeFactory prov : loader) {
+        for (SulongNodeFactory prov : cachedNodeFactories) {
             String configName = prov.getConfigurationName();
             if (configName != null && configName.equals(expectedConfigName)) {
                 factory = prov;

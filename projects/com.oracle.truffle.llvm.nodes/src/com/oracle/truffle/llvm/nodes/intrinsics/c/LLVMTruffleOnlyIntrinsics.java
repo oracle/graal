@@ -71,6 +71,7 @@ public final class LLVMTruffleOnlyIntrinsics {
             try {
                 return (long) ForeignAccess.sendExecute(foreignExecute, nativeFunction, args);
             } catch (InteropException e) {
+                CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(e);
             }
         }
@@ -91,6 +92,7 @@ public final class LLVMTruffleOnlyIntrinsics {
             try {
                 return (int) ForeignAccess.sendExecute(foreignExecute, nativeFunction, args);
             } catch (InteropException e) {
+                CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(e);
             }
         }
@@ -151,7 +153,7 @@ public final class LLVMTruffleOnlyIntrinsics {
                     throw new AssertionError(e);
                 }
             } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
+                CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(object);
             }
         }

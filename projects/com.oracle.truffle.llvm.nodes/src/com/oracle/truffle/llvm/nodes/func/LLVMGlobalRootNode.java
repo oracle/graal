@@ -97,6 +97,7 @@ public class LLVMGlobalRootNode extends RootNode {
             assert LLVMSignal.getNumberOfRegisteredSignals() == 0;
             return e.getReturnCode();
         } catch (SulongRuntimeException e) {
+            CompilerDirectives.transferToInterpreter();
             System.err.println();
             e.getCStackTrace().printCStackTrace();
             throw e;

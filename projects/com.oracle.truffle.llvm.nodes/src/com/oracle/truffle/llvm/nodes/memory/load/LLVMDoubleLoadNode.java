@@ -61,6 +61,7 @@ public abstract class LLVMDoubleLoadNode extends LLVMExpressionNode {
             Object value = ForeignAccess.sendRead(foreignRead, addr.getObject(), index);
             return (double) toLLVM.executeWithTarget(value);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);
         }
     }
