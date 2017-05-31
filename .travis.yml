@@ -24,9 +24,9 @@ env:
 #    - JDK="jdk8" GATE="style,fullbuild"
 #    - JDK="jdk8" GATE="build,test"
 #    - JDK="jdk8" GATE="build,bootstraplite"
-    - JDK="jdk9" GATE="style,fullbuild" SIGTEST="true"
-    - JDK="jdk9" GATE="build,test" SIGTEST="false"
-    - JDK="jdk9" GATE="build,bootstraplite" SIGTEST="false"
+    - JDK="jdk9" GATE="style,fullbuild"
+    - JDK="jdk9" GATE="build,test"
+    - JDK="jdk9" GATE="build,bootstraplite"
 install:
   - |
       export MX_PATH=${TRAVIS_BUILD_DIR}/../mx
@@ -71,21 +71,10 @@ install:
         tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${JDK_TAR}
         export JAVA_HOME=${TRAVIS_BUILD_DIR}/../jdk-9
       fi
-  - |
-      if [ "${SIGTEST}" == "true" ]
-      then
-        wget http://hudson.apidesign.org/job/sigtest-truffle/lastSuccessfulBuild/artifact/truffle-signature.tgz
-        tar xzvf truffle-signature.tgz
-      fi
 
 script:
   - echo ${JAVA_HOME}
   - ${JAVA_HOME}/bin/java -version
   - mx -v --primary-suite-path ${TRAVIS_BUILD_DIR}/compiler --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
-  - |
-      if [ "${SIGTEST}" == "true" ]
-      then
-        mx --primary-suite-path truffle sigtest --check all || echo "There are changes!"
-      fi
 after_failure:
   - cat hs_err*
