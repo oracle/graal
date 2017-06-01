@@ -386,12 +386,14 @@ public class BinaryGraphPrinter implements GraphPrinter {
         } else if (object instanceof NodeClass) {
             NodeClass<?> nodeClass = (NodeClass<?>) object;
             writeByte(POOL_NODE_CLASS);
-            if (CURRENT_MAJOR_VERSION == 3) {
+            if (CURRENT_MAJOR_VERSION >= 3) {
                 writePoolObject(nodeClass.getJavaClass());
+                writeString(nodeClass.getNameTemplate());
             } else {
                 writeString(nodeClass.getJavaClass().getSimpleName());
+                String nameTemplate = nodeClass.getNameTemplate();
+                writeString(nameTemplate.isEmpty() ? nodeClass.shortName() : nameTemplate);
             }
-            writeString(nodeClass.getNameTemplate());
             writeEdgesInfo(nodeClass, Inputs);
             writeEdgesInfo(nodeClass, Successors);
         } else if (object instanceof ResolvedJavaMethod || object instanceof Bytecode) {
