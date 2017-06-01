@@ -562,27 +562,27 @@ public class PartialEvaluator {
         return decision;
     }
 
-    private static final class PerformanceInformationHandler {
+    public static final class PerformanceInformationHandler {
 
         private static boolean warningSeen = false;
 
-        private static boolean isEnabled() {
+        public static boolean isEnabled() {
             return TruffleCompilerOptions.getValue(TraceTrufflePerformanceWarnings) || TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal);
         }
 
-        private static void logPerformanceWarning(OptimizedCallTarget target, List<Node> locations, String details, Map<String, Object> properties) {
+        public static void logPerformanceWarning(String callTargetName, List<? extends Node> locations, String details, Map<String, Object> properties) {
             warningSeen = true;
-            logPerformanceWarningImpl(target, "perf warn", details, properties);
+            logPerformanceWarningImpl(callTargetName, "perf warn", details, properties);
             logPerformanceStackTrace(locations);
         }
 
-        private static void logPerformanceInfo(OptimizedCallTarget target, List<? extends Node> locations, String details, Map<String, Object> properties) {
-            logPerformanceWarningImpl(target, "perf info", details, properties);
+        private static void logPerformanceInfo(String callTargetName, List<? extends Node> locations, String details, Map<String, Object> properties) {
+            logPerformanceWarningImpl(callTargetName, "perf info", details, properties);
             logPerformanceStackTrace(locations);
         }
 
-        private static void logPerformanceWarningImpl(OptimizedCallTarget target, String msg, String details, Map<String, Object> properties) {
-            AbstractDebugCompilationListener.log(0, msg, String.format("%-60s|%s", target, details), properties);
+        private static void logPerformanceWarningImpl(String callTargetName, String msg, String details, Map<String, Object> properties) {
+            AbstractDebugCompilationListener.log(0, msg, String.format("%-60s|%s", callTargetName, details), properties);
         }
 
         private static void logPerformanceStackTrace(List<? extends Node> locations) {
@@ -591,7 +591,7 @@ public class PartialEvaluator {
             }
             for (Node location : locations) {
                 StackTraceElement[] stackTrace = GraphUtil.approxSourceStackTraceElement(location);
-                if (stackTrace == null) {
+                if (stackTrace == null || stackTrace.length == 0) {
                     GraalTruffleRuntime.getRuntime().log(String.format("No stack trace available for %s.", location));
                 } else {
                     GraalTruffleRuntime.getRuntime().log(String.format("Approximated stack trace for %s:", location));
@@ -614,7 +614,7 @@ public class PartialEvaluator {
                     continue; // native methods cannot be inlined
                 }
                 if (call.targetMethod().getAnnotation(TruffleBoundary.class) == null && call.targetMethod().getAnnotation(TruffleCallBoundary.class) == null) {
-                    logPerformanceWarning(target, Arrays.asList(call), String.format("not inlined %s call to %s (%s)", call.invokeKind(), call.targetMethod(), call), null);
+                    logPerformanceWarning(target.getName(), Arrays.asList(call), String.format("not inlined %s call to %s (%s)", call.invokeKind(), call.targetMethod(), call), null);
                     warnings.add(call);
                 }
             }
@@ -632,7 +632,7 @@ public class PartialEvaluator {
             }
             MapCursor<String, ArrayList<ValueNode>> entry = groupedByType.getEntries();
             while (entry.advance()) {
-                logPerformanceInfo(target, entry.getValue(), String.format("non-leaf type check: %s", entry.getKey()), Collections.singletonMap("Nodes", entry.getValue()));
+                logPerformanceInfo(target.getName(), entry.getValue(), String.format("non-leaf type check: %s", entry.getKey()), Collections.singletonMap("Nodes", entry.getValue()));
             }
 
             if (Debug.isEnabled() && !warnings.isEmpty()) {
@@ -655,7 +655,7 @@ public class PartialEvaluator {
             }
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("callNode", callNode);
-            logPerformanceWarning(target, null, "A direct call within the Truffle AST is not reachable anymore. Call node could not be inlined.", properties);
+            logPerformanceWarning(target.getName(), null, "A direct call within the Truffle AST is not reachable anymore. Call node could not be inlined.", properties);
         }
 
         static void reportCallTargetChanged(OptimizedCallTarget target, OptimizedDirectCallNode callNode, TruffleInliningDecision decision) {
@@ -665,7 +665,7 @@ public class PartialEvaluator {
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("originalTarget", decision.getTarget());
             properties.put("callNode", callNode);
-            logPerformanceWarning(target, null, "CallTarget changed during compilation. Call node could not be inlined.", properties);
+            logPerformanceWarning(target.getName(), null, "CallTarget changed during compilation. Call node could not be inlined.", properties);
         }
     }
 }

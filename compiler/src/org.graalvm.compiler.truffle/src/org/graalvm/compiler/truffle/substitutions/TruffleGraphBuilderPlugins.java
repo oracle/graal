@@ -28,7 +28,9 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleUseFram
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
+import java.util.Collections;
 import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
@@ -52,6 +54,7 @@ import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.PiArrayNode;
 import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
@@ -60,6 +63,7 @@ import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.GuardedUnsafeLoadNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
+import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
@@ -80,7 +84,9 @@ import org.graalvm.compiler.truffle.FrameWithBoxing;
 import org.graalvm.compiler.truffle.FrameWithoutBoxing;
 import org.graalvm.compiler.truffle.OptimizedAssumption;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.PartialEvaluator;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.nodes.AssumptionValidAssumption;
 import org.graalvm.compiler.truffle.nodes.IsCompilationConstantNode;
 import org.graalvm.compiler.truffle.nodes.ObjectLocationIdentity;
@@ -665,7 +671,8 @@ public class TruffleGraphBuilderPlugins {
             } else if (canDelayIntrinsification) {
                 return false;
             } else {
-                b.addPush(returnKind, new RawLoadNode(object, offset, returnKind, LocationIdentity.any(), true));
+                RawLoadNode load = b.addPush(returnKind, new RawLoadNode(object, offset, returnKind, LocationIdentity.any(), true));
+                logPerformanceWarningLocationNotConstant(location, targetMethod, load);
                 return true;
             }
         }
@@ -702,9 +709,29 @@ public class TruffleGraphBuilderPlugins {
             } else if (canDelayIntrinsification) {
                 return false;
             } else {
-                b.add(new RawStoreNode(object, offset, value, kind, LocationIdentity.any(), true, null, true));
+                RawStoreNode store = b.add(new RawStoreNode(object, offset, value, kind, LocationIdentity.any(), true, null, true));
+                logPerformanceWarningLocationNotConstant(location, targetMethod, store);
                 return true;
             }
+        }
+    }
+
+    @SuppressWarnings("try")
+    static void logPerformanceWarningLocationNotConstant(ValueNode location, ResolvedJavaMethod targetMethod, UnsafeAccessNode access) {
+        if (!PartialEvaluator.PerformanceInformationHandler.isEnabled()) {
+            return;
+        }
+        StructuredGraph graph = location.graph();
+        try (Debug.Scope s = Debug.scope("TrufflePerformanceWarnings", graph)) {
+            TruffleDebugJavaMethod truffleMethod = Debug.contextLookup(TruffleDebugJavaMethod.class);
+            String callTargetName = truffleMethod != null ? truffleMethod.getName() : "";
+            Map<String, Object> properties = new LinkedHashMap<>();
+            properties.put("location", location);
+            properties.put("method", targetMethod.format("%h.%n"));
+            PartialEvaluator.PerformanceInformationHandler.logPerformanceWarning(callTargetName, Collections.singletonList(access), "location argument not PE-constant", properties);
+            Debug.dump(Debug.VERBOSE_LEVEL, graph, "perf warn: location argument not PE-constant: %s", location);
+        } catch (Throwable t) {
+            Debug.handle(t);
         }
     }
 }
