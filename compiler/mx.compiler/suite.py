@@ -918,7 +918,10 @@ suite = {
         "org.graalvm.compiler.virtual",
         "org.graalvm.compiler.loop.phases",
       ],
-      "uses" : ["org.graalvm.compiler.core.match.MatchStatementSet"],
+      "uses" : [
+        "org.graalvm.compiler.core.match.MatchStatementSet",
+        "org.graalvm.compiler.hotspot.HotSpotCodeCacheListener",
+      ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",
       "annotationProcessors" : [
