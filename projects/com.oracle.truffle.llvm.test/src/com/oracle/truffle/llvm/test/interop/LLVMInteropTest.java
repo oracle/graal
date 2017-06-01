@@ -49,6 +49,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.SulongRuntimeException;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
@@ -937,6 +938,18 @@ public final class LLVMInteropTest {
     public void test074() {
         Runner runner = new Runner("interop074");
         testGlobal(runner);
+    }
+
+    @Test
+    public void test075() throws Exception {
+        Runner runner = new Runner("interop075");
+        runner.run();
+        Value needsStack = runner.findGlobalSymbol("needsStack");
+        LLVMFunctionDescriptor needsStackDescriptor = needsStack.as(LLVMFunctionDescriptor.class);
+        Assert.assertTrue(needsStackDescriptor.needsStackPointer());
+        Value noStack = runner.findGlobalSymbol("noStack");
+        LLVMFunctionDescriptor noStackDescriptor = noStack.as(LLVMFunctionDescriptor.class);
+        Assert.assertFalse(noStackDescriptor.needsStackPointer());
     }
 
     @Test
