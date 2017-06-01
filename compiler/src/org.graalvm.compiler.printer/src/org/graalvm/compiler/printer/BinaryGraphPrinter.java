@@ -175,7 +175,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
     @Override
     public void print(Graph graph, Map<Object, Object> properties, int id, String format, Object... args) throws IOException {
         writeByte(BEGIN_GRAPH);
-        if (CURRENT_MAJOR_VERSION == 3) {
+        if (CURRENT_MAJOR_VERSION >= 3) {
             writeInt(id);
             writeString(format);
             writeInt(args.length);
@@ -386,7 +386,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         } else if (object instanceof NodeClass) {
             NodeClass<?> nodeClass = (NodeClass<?>) object;
             writeByte(POOL_NODE_CLASS);
-            if (CURRENT_MAJOR_VERSION == 3) {
+            if (CURRENT_MAJOR_VERSION >= 3) {
                 writePoolObject(nodeClass.getJavaClass());
             } else {
                 writeString(nodeClass.getJavaClass().getSimpleName());
