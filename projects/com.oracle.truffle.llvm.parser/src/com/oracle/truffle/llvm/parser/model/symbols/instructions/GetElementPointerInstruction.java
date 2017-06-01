@@ -48,8 +48,6 @@ public final class GetElementPointerInstruction extends ValueInstruction {
 
     private final boolean isInbounds;
 
-    private String referenceName = null;
-
     private GetElementPointerInstruction(Type type, boolean isInbounds) {
         super(type);
         this.indices = new ArrayList<>();
@@ -76,14 +74,6 @@ public final class GetElementPointerInstruction extends ValueInstruction {
         return base;
     }
 
-    public void setReferenceName(String referenceName) {
-        this.referenceName = referenceName;
-    }
-
-    public String getReferenceName() {
-        return referenceName;
-    }
-
     public List<Symbol> getIndices() {
         return Collections.unmodifiableList(indices);
     }
@@ -104,7 +94,7 @@ public final class GetElementPointerInstruction extends ValueInstruction {
         }
     }
 
-    public static GetElementPointerInstruction fromSymbols(Symbols symbols, Type type, int pointer, int[] indices, boolean isInbounds) {
+    public static GetElementPointerInstruction fromSymbols(Symbols symbols, Type type, int pointer, List<Integer> indices, boolean isInbounds) {
         final GetElementPointerInstruction inst = new GetElementPointerInstruction(type, isInbounds);
         inst.base = symbols.getSymbol(pointer, inst);
         for (int index : indices) {

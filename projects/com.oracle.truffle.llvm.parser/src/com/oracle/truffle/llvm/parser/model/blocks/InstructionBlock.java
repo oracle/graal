@@ -167,7 +167,7 @@ public final class InstructionBlock implements ValueSymbol {
         addInstruction(ExtractValueInstruction.fromSymbols(function.getSymbols(), type, aggregate, index));
     }
 
-    public void createGetElementPointer(Type type, int pointer, int[] indices, boolean isInbounds) {
+    public void createGetElementPointer(Type type, int pointer, List<Integer> indices, boolean isInbounds) {
         addInstruction(GetElementPointerInstruction.fromSymbols(function.getSymbols(), type, pointer, indices, isInbounds));
     }
 
