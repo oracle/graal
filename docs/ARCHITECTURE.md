@@ -5,7 +5,7 @@ An Architecture Haiku is ["a one-page, quick-to-build, uber-terse design descrip
 ## Solution description
 
 Sulong is a system to run C, Fortran, and other native languages on the JVM.
-Sulong uses LLVM front ends to compile languages to LLVM IR.
+Sulong uses LLVM frontends to compile languages to LLVM IR.
 It then executes this IR with a new Truffle LLVM IR interpreter.
 Sulong uses the Graal compiler to compile frequently executed functions
 to machine code.
@@ -51,28 +51,27 @@ Truffle and native code interoperability > Peak performance > Extensibility
 
 * Since Truffle interoperability is important, Sulong complies with the
 Truffle API and provides interoperability intrinsics
-(see `LLVMRuntimeIntrinsicFactory` and `include/truffle.h`).
+(see `LLVMNativeIntrinsicsProvider` and `include/truffle.h`).
 * Since peak performance is important, Truffle nodes performs profiling
-(e.g, in `LLVMI32ProfilingLoadNode` and `LLVMBasicBlockNode`) in the
+(e.g, in `LLVMValueProfilingNode` and `LLVMBasicBlockNode`) in the
 interpreter, and are otherwise kept simple to be compiled to efficient
 machine code.
 * Since extensibility is important, the parser (`com.oracle.truffle.llvm.parser`)
-does not import the node implementations (`com.oracle.truffle.llvm.nodes.impl`)
-to directly instantiate the Truffle nodes. Instead, the `NodeFactoryFacade`
+does not import the node implementations (`com.oracle.truffle.llvm.nodes`)
+to directly instantiate the Truffle nodes. Instead, the `SulongNodeFactory`
 facade class provides an abstraction to transparently construct Truffle nodes
 for LLVM IR constructs. Sulong loads different node factory facades with a
-`ServiceLoader` in the `LLVM` class.
+`ServiceLoader` in the `Sulong` class.
 * Since native code interoperability is important, Sulong uses the
-Graal Native Function interface to call native functions
-(see `com.oracle.truffle.llvm.nativeint`). It allocates unmanaged memory
-for the stack (`LLVMStack`) with `sun.misc.Unsafe` and unmanaged heap
+Truffle Native Function interface to call native functions. It allocates unmanaged
+memory for the stack (`LLVMStack`) with `sun.misc.Unsafe` and unmanaged heap
 memory by directly calling `malloc` and other standard library allocation
 functions.
 
 ## Architectural styles and patterns
 
-* Interpreter pattern implemented by the Truffle nodes in `com.oracle.truffle.llvm.nodes.impl`
-* Adapted facade pattern combined with factory pattern in `NodeFactoryFacade`
+* Interpreter pattern implemented by the Truffle nodes in `com.oracle.truffle.llvm.nodes`
+* Adapted facade pattern combined with factory pattern in `SulongNodeFactory`
 to simplify the instantiation of the nodes
-* Adapted visitor pattern in `LLVMVisitor` and other classes to traverse
+* Adapted visitor pattern in `LLVMParserRuntime` and other classes to traverse
 the AST produced from the LLVM IR file and construct Truffle nodes for it

@@ -10,6 +10,9 @@ The OCA check confirms that a contributor has signed the OCA.
 2. The Travis gate: We run a test gate in which we execute our test cases
 and static analysis tools.
 
+3. Internal tests: In addition to Travis CI we also use an additional, private,
+test gate in which we run further tests on additional clang versions.
+
 ## The Travis Gate
 
 Travis is an open-source CI service. We use this service to execute our

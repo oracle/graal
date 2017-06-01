@@ -1,8 +1,10 @@
+# Datatypes
+
 We map LLVM IR's data types to Java primitive and composite types. This
 document describes how we map them, and also which Sulong Truffle nodes
 produce values of these types.
 
-# Void
+## Void
 
 We implement statements and the void data type by instantiating LLVMNode,
 which has a void return type.
@@ -11,7 +13,7 @@ which has a void return type.
 |----------------|----------------|------------|--------------|
 | void           | void           | LLVMNode   | complete     |
 
-# Integer
+## Integer
 
 We map the most common LLVM IR integer data types (i1, i8, 16, i32, and i64)
 directly to Java primitive data types of the same bit length. For other
@@ -27,7 +29,7 @@ Support for LLVMIVarBit is not yet complete.
 | i64            | long           | LLVMI64Node     | complete     |
 | ...            | LLVMIVarBit    | LLVMIVarBitNode | incomplete   |
 
-# Floating Point
+## Floating Point
 
 We support float and double as the most common data types on AMD64.
 Since GCC and Clang compile C's long double to 80 bit floats on this
@@ -43,7 +45,7 @@ emulating it with Java primitives.
 | x86_fp80       | LLVM80BitFloat | LLVM80BitFloatNode | incomplete   |
 | ppc_fp128      |                |                    | unsupported  |
 
-# Pointer
+## Pointer
 
 We use LLVMAddress, which is a wrapper class for a machine pointer
 (contained in a long), to support pointers.
@@ -52,14 +54,14 @@ We use LLVMAddress, which is a wrapper class for a machine pointer
 |----------------|----------------|-----------------|--------------|
 | *              | LLVMAddress    | LLVMAddressNode | complete     |
 
-# Function
+## Function
 
 | LLVM data type | Java data type         | Node class       | Completeness |
 |----------------|------------------------|------------------|--------------|
 | function       | LLVMFunctionDescriptor | LLVMFunctionNode | complete     |
 
-# Vector
+## Vector
 
-| LLVM data type | Java data type | Node class     | Completeness |
-|----------------|----------------|----------------|--------------|
-| vector types   | LLVMVector     | LLVMVectorNode | experimental |
+| LLVM data type | Java data type | Node class            | Completeness |
+|----------------|----------------|-----------------------|--------------|
+| vector types   | LLVMVector     | LLVMVectorLiteralNode | incomplete   |

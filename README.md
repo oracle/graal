@@ -15,10 +15,6 @@ Truffle's language interoperability capabilities, you will soon be able
 to call functions from/to other languages on Truffle such as Ruby,
 JavaScript, or R.
 
-The project bases on the LLVM IR parser of the
-[llvm-ir-editor project](https://github.com/amishne/llvm-ir-editor)
-by Alon Mishne.
-
 External Dependencies
 ---------------------
 
@@ -32,11 +28,8 @@ On the Mac you can use Homebrew:
     brew install gcc46 --with-fortran
     brew link --force gmp4
 
-On some versions of Mac OS X, `gcc46` [may fail to install with a segmentation
-fault](https://github.com/Homebrew/homebrew-versions/issues/515). A fix for this
-is to `brew edit gcc46` and replace the patch `p0` with
-[patch-10.10.diff](https://gist.githubusercontent.com/chrisseaton/7008085997269e3478e1/raw/46bff773d37914d6e66d0d8e1cab0d50d77e7280/patch-10.10.diff),
-shasum `51814a0d79a9f21344c76f2d4235b59d9a4bc1601117e8ca5bfabdb82305aad0`.
+On some versions of Mac OS X, `gcc46` may fail to install with a segmentation
+fault. You can find more details and suggestions on how to fix this [here](https://github.com/Homebrew/homebrew-versions/issues/515).
 
 However you install GCC on the Mac, you may then need to manually link the
 gcc libraries we use into a location where they can be found, as
@@ -88,6 +81,10 @@ Now, Sulong is ready to start. You can for example compile a C file named
     mx su-clang -c -emit-llvm -o test.bc test.c
     mx su-run test.bc
 
+For best experience we suggest to use clang 3.8, though versions 3.2, 3.3 and
+3.8 to 4.0 should also work. Additionally, if you compile with the `-g` option
+Sulong can provide source-file information in stacktraces.
+
 Libraries to load can be specified using the `-l` flag, as in a compiler:
 
     mx su-run -lz test.bc
@@ -97,6 +94,16 @@ command to generate the Eclipse project files (there is also mx ideinit
 for other IDEs):
 
     mx eclipseinit
+
+If you want to use the project from within Intellij Idea, use the following
+command instead:
+
+    mx intellijinit
+
+If you also want to edit the mx configuration files from within Idea, you can
+append the `--mx-python-modules` argument to this. Since the configuration files
+consist of Python code, you will probably want to install the
+[Python Language Support Plugin](https://plugins.jetbrains.com/plugin/631-python).
 
 If you want to inspect the command line that mx generates for a mx
 command you can use the -v flag.
@@ -189,7 +196,7 @@ in the backend. One can also see global the global variables `@.str` and
 What is Truffle?
 ----------------
 
-[Truffle](https://github.com/graalvm/truffle) is a language
+[Truffle](https://github.com/graalvm/graal/tree/master/truffle) is a language
 implementation framework written in Java. It allows language designers
 to implement a (guest) language as an Abstract Syntax Tree (AST)
 interpreter. Additionally, Truffle provides many language independent
@@ -205,28 +212,13 @@ malloc) and thus has a direct dependency on Graal.
 What is Graal?
 -------------
 
-Graal is a JIT compiler written in Java that receives Java bytecode as
+[Graal](https://github.com/graalvm/graal/tree/master/compiler) is a JIT
+compiler written in Java that receives Java bytecode as
 an input and produces machine code. Currently, Graal is an alternative
 to the C1 and C2 compilers of the HotSpot VM. The term GraalVM refers to
 a HotSpot VM using Graal as its JIT compiler. Graal's focus is on
 speculative optimizations, while it also provides an advanced partial
 escape analysis.
-
-How can I trace compilation?
-----------------------------
-
-You can enable textual notifications about compilations:
-
-```
-mx su-run <file> -Dgraal.TraceTruffleCompilation=true
-```
-
-To visualize Graal's graphs you can use the Ideal Graph Visualizer:
-
-```
-mx igv
-mx su-run <file> -Dgraal.Dump=Truffle
-```
 
 Build Status
 ------------
@@ -236,9 +228,6 @@ Thanks to Travis CI, all commits of this repository are tested:
 
 Further Information
 -------------------
-
-The parser of the project bases on the LLVM IR editor plugin for Eclipse
-by [Alon Mishne](https://github.com/amishne/llvm-ir-editor).
 
 The logo was designed by
 [Valentina Caruso](https://www.behance.net/volantina).
