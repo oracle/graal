@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.TruffleInlining;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class PerformanceTruffleInliningTest extends TruffleInliningTest {
@@ -111,6 +112,7 @@ public class PerformanceTruffleInliningTest extends TruffleInliningTest {
     }
 
     @Test
+    @Ignore("Flaky. Sometimes (very rarely) takes over 500ms. Seems that this can only be due to outside interference during execution")
     public void testHugeGraph() {
         hugeGraphBuilderHelper(10, 4, "1");
         OptimizedCallTarget target = builder.target("main").calls("1").buildTarget();
