@@ -25,6 +25,7 @@ package org.graalvm.compiler.truffle;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.PrintTruffleExpansionHistogram;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTrufflePerformanceWarnings;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleStackTraceLimit;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleFunctionInlining;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInlineAcrossTruffleBoundary;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBoundaries;
@@ -32,8 +33,6 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrum
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleIterativePartialEscape;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TrufflePerformanceWarningsAreFatal;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -46,7 +45,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.code.SourceStackTraceBailoutException;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.Debug;
@@ -78,8 +76,8 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.phases.common.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.phases.common.ConditionalEliminationPhase;
+import org.graalvm.compiler.phases.common.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
@@ -589,16 +587,40 @@ public class PartialEvaluator {
             if (locations == null || locations.isEmpty()) {
                 return;
             }
+            int limit = TruffleCompilerOptions.getValue(TraceTruffleStackTraceLimit);
+            if (limit <= 0) {
+                return;
+            }
+
+            EconomicMap<String, List<Node>> groupedByStackTrace = EconomicMap.create(Equivalence.DEFAULT);
             for (Node location : locations) {
                 StackTraceElement[] stackTrace = GraphUtil.approxSourceStackTraceElement(location);
-                if (stackTrace == null || stackTrace.length == 0) {
-                    GraalTruffleRuntime.getRuntime().log(String.format("No stack trace available for %s.", location));
+                StringBuilder sb = new StringBuilder();
+                String indent = "    ";
+                for (int i = 0; i < stackTrace.length && i < limit; i++) {
+                    if (i != 0) {
+                        sb.append('\n');
+                    }
+                    sb.append(indent).append("at ").append(stackTrace[i]);
+                }
+                if (stackTrace.length > limit) {
+                    sb.append('\n').append(indent).append("...");
+                }
+                String stackTraceAsString = sb.toString();
+                if (!groupedByStackTrace.containsKey(stackTraceAsString)) {
+                    groupedByStackTrace.put(stackTraceAsString, new ArrayList<>());
+                }
+                groupedByStackTrace.get(stackTraceAsString).add(location);
+            }
+            MapCursor<String, List<Node>> entry = groupedByStackTrace.getEntries();
+            while (entry.advance()) {
+                String stackTrace = entry.getKey();
+                List<Node> locationGroup = entry.getValue();
+                if (stackTrace.isEmpty()) {
+                    GraalTruffleRuntime.getRuntime().log(String.format("  No stack trace available for %s.", locationGroup));
                 } else {
-                    GraalTruffleRuntime.getRuntime().log(String.format("Approximated stack trace for %s:", location));
-                    SourceStackTraceBailoutException exception = SourceStackTraceBailoutException.create(null, "", stackTrace);
-                    StringWriter sw = new StringWriter();
-                    exception.printStackTrace(new PrintWriter(sw));
-                    GraalTruffleRuntime.getRuntime().log(sw.toString());
+                    GraalTruffleRuntime.getRuntime().log(String.format("  Approximated stack trace for %s:", locationGroup));
+                    GraalTruffleRuntime.getRuntime().log(stackTrace);
                 }
             }
         }
