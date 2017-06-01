@@ -29,7 +29,11 @@
  */
 package com.oracle.truffle.llvm.test.util;
 
+import com.oracle.truffle.llvm.Sulong;
+import com.oracle.truffle.llvm.pipe.CaptureOutput;
+import com.oracle.truffle.llvm.test.options.SulongTestOptions;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.TimeUnit;
@@ -95,6 +99,19 @@ public class ProcessUtil {
 
     }
 
+    public static ProcessResult executeSulongTestMain(File bitcodeFile, Object... args) throws IOException {
+        if (SulongTestOptions.TEST.testAOTImage() == null) {
+            try (CaptureOutput out = new CaptureOutput()) {
+                int result = Sulong.executeMain(bitcodeFile, args);
+                System.out.flush();
+                String stdout = out.getResult();
+                return new ProcessResult(bitcodeFile.getName(), result, "", stdout);
+            }
+        } else {
+            return executeNativeCommand(SulongTestOptions.TEST.testAOTImage() + " " + bitcodeFile.getAbsolutePath() + " " + concatCommand(args));
+        }
+    }
+
     public static ProcessResult executeNativeCommandZeroReturn(String command) {
         ProcessResult result = executeNativeCommand(command);
         checkNoError(result);
@@ -118,7 +135,7 @@ public class ProcessUtil {
     /**
      * Concats a command by introducing whitespaces between the array elements.
      */
-    static String concatCommand(String[] command) {
+    static String concatCommand(Object[] command) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < command.length; i++) {
             if (i != 0) {
