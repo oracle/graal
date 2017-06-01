@@ -119,7 +119,7 @@ public class ProfileSnippets implements Snippets {
                 args.add("bci", bci);
                 args.add("targetBci", targetBci);
 
-                SnippetTemplate template = template(args);
+                SnippetTemplate template = template(graph.getDebug(), args);
                 template.instantiate(providers.getMetaAccess(), profileNode, DEFAULT_REPLACER, args);
             } else if (profileNode instanceof ProfileInvokeNode) {
                 ProfileInvokeNode profileInvokeNode = (ProfileInvokeNode) profileNode;
@@ -127,7 +127,7 @@ public class ProfileSnippets implements Snippets {
                 Arguments args = new Arguments(profileMethodEntry, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("counters", counters);
                 args.addConst("freqLog", profileInvokeNode.getNotificationFreqLog());
-                SnippetTemplate template = template(args);
+                SnippetTemplate template = template(graph.getDebug(), args);
                 template.instantiate(providers.getMetaAccess(), profileNode, DEFAULT_REPLACER, args);
             } else {
                 throw new GraalError("Unsupported profile node type: " + profileNode);

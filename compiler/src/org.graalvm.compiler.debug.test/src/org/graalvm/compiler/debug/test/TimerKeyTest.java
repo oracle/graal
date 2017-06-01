@@ -22,16 +22,20 @@
  */
 package org.graalvm.compiler.debug.test;
 
+import static org.graalvm.compiler.debug.DebugContext.DEFAULT_LOG_STREAM;
+import static org.graalvm.compiler.debug.DebugContext.NO_CONFIG_CUSTOMIZERS;
+import static org.graalvm.compiler.debug.DebugContext.NO_DESCRIPTION;
+import static org.graalvm.compiler.debug.DebugContext.NO_GLOBAL_METRIC_VALUES;
 import static org.junit.Assert.assertEquals;
 
 import java.lang.management.ThreadMXBean;
 
-import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCloseable;
-import org.graalvm.compiler.debug.DebugConfig;
-import org.graalvm.compiler.debug.DebugConfigScope;
-import org.graalvm.compiler.debug.DebugTimer;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalDebugConfig;
 import org.graalvm.compiler.debug.Management;
+import org.graalvm.compiler.debug.TimerKey;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.util.EconomicMap;
 import org.junit.Assume;
@@ -39,7 +43,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 @SuppressWarnings("try")
-public class DebugTimerTest {
+public class TimerKeyTest {
 
     private static final ThreadMXBean threadMXBean = Management.getThreadMXBean();
 
@@ -71,28 +75,33 @@ public class DebugTimerTest {
      */
     @Test
     public void test2() {
-        OptionValues options = new OptionValues(EconomicMap.create());
-        DebugConfig debugConfig = Debug.fixedConfig(options, 0, 0, false, false, true, false, false, null, null, System.out);
-        try (DebugConfigScope dcs = new DebugConfigScope(debugConfig); Debug.Scope s = Debug.scope("DebugTimerTest")) {
-            DebugTimer timerC = Debug.timer("TimerC");
-            try (DebugCloseable c1 = timerC.start()) {
+        EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
+        map.put(GraalDebugConfig.Options.Time, "");
+        OptionValues options = new OptionValues(map);
+        DebugContext debug = new DebugContext(options,
+                        NO_DESCRIPTION,
+                        NO_GLOBAL_METRIC_VALUES,
+                        DEFAULT_LOG_STREAM,
+                        NO_CONFIG_CUSTOMIZERS);
+
+        TimerKey timerC = DebugContext.timer("TimerC");
+        try (DebugCloseable c1 = timerC.start(debug)) {
+            spin(50);
+            try (DebugCloseable c2 = timerC.start(debug)) {
                 spin(50);
-                try (DebugCloseable c2 = timerC.start()) {
+                try (DebugCloseable c3 = timerC.start(debug)) {
                     spin(50);
-                    try (DebugCloseable c3 = timerC.start()) {
+                    try (DebugCloseable c4 = timerC.start(debug)) {
                         spin(50);
-                        try (DebugCloseable c4 = timerC.start()) {
+                        try (DebugCloseable c5 = timerC.start(debug)) {
                             spin(50);
-                            try (DebugCloseable c5 = timerC.start()) {
-                                spin(50);
-                            }
                         }
                     }
                 }
             }
-            if (timerC.getFlat() != null) {
-                assertEquals(timerC.getFlat().getCurrentValue(), timerC.getCurrentValue());
-            }
+        }
+        if (timerC.getFlat() != null) {
+            assertEquals(timerC.getFlat().getCurrentValue(debug), timerC.getCurrentValue(debug));
         }
     }
 }

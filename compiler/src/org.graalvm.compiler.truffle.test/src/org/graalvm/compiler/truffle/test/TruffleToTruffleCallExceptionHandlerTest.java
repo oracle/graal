@@ -24,11 +24,11 @@ package org.graalvm.compiler.truffle.test;
 
 import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 
-import org.graalvm.compiler.debug.Debug;
-import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.UnwindNode;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.DefaultTruffleCompiler;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
@@ -123,10 +123,12 @@ public class TruffleToTruffleCallExceptionHandlerTest {
         compilable.call(arguments);
         compilable.call(arguments);
         compilable.call(arguments);
-        try (Scope s = Debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
-            return truffleCompiler.getPartialEvaluator().createGraph(compilable, new TruffleInlining(compilable, new DefaultInliningPolicy()), allowAssumptions, INVALID_COMPILATION_ID, null);
+        OptionValues options = TruffleCompilerOptions.getOptions();
+        DebugContext debug = DebugContext.create(options);
+        try (DebugContext.Scope s = debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
+            return truffleCompiler.getPartialEvaluator().createGraph(debug, compilable, new TruffleInlining(compilable, new DefaultInliningPolicy()), allowAssumptions, INVALID_COMPILATION_ID, null);
         } catch (Throwable e) {
-            throw Debug.handle(e);
+            throw debug.handle(e);
         }
     }
 

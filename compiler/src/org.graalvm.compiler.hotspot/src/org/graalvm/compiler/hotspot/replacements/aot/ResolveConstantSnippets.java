@@ -148,7 +148,7 @@ public class ResolveConstantSnippets implements Snippets {
             Arguments args = new Arguments(snippet, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("constant", value);
 
-            SnippetTemplate template = template(args);
+            SnippetTemplate template = template(graph.getDebug(), args);
             template.instantiate(providers.getMetaAccess(), resolveConstantNode, DEFAULT_REPLACER, args);
 
             assert resolveConstantNode.hasNoUsages();
@@ -168,7 +168,7 @@ public class ResolveConstantSnippets implements Snippets {
                 Arguments args = new Arguments(initializeKlass, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("constant", value);
 
-                SnippetTemplate template = template(args);
+                SnippetTemplate template = template(graph.getDebug(), args);
                 template.instantiate(providers.getMetaAccess(), initializeKlassNode, DEFAULT_REPLACER, args);
                 assert initializeKlassNode.hasNoUsages();
                 if (!initializeKlassNode.isDeleted()) {
@@ -186,7 +186,7 @@ public class ResolveConstantSnippets implements Snippets {
             Arguments args = new Arguments(resolveMethodAndLoadCounters, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("method", method);
             args.add("klassHint", resolveMethodAndLoadCountersNode.getHub());
-            SnippetTemplate template = template(args);
+            SnippetTemplate template = template(graph.getDebug(), args);
             template.instantiate(providers.getMetaAccess(), resolveMethodAndLoadCountersNode, DEFAULT_REPLACER, args);
 
             assert resolveMethodAndLoadCountersNode.hasNoUsages();

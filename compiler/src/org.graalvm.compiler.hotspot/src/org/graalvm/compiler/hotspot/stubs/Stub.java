@@ -25,19 +25,20 @@ package org.graalvm.compiler.hotspot.stubs;
 import static org.graalvm.compiler.core.GraalCompiler.emitBackEnd;
 import static org.graalvm.compiler.core.GraalCompiler.emitFrontEnd;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
+import static org.graalvm.compiler.debug.DebugContext.DEFAULT_CONFIG_CUSTOMIZERS;
+import static org.graalvm.compiler.debug.DebugContext.DEFAULT_LOG_STREAM;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.DebugStubsAndSnippets;
 import static org.graalvm.compiler.hotspot.HotSpotHostBackend.UNCOMMON_TRAP_HANDLER;
 import static org.graalvm.util.CollectionsUtil.allMatch;
 
 import java.util.ListIterator;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.target.Backend;
-import org.graalvm.compiler.debug.Debug;
-import org.graalvm.compiler.debug.Debug.Scope;
-import org.graalvm.compiler.debug.DebugConfig;
-import org.graalvm.compiler.debug.internal.DebugScope;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.hotspot.HotSpotCompiledCodeBuilder;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
@@ -155,7 +156,7 @@ public abstract class Stub {
      *
      * @param compilationId unique compilation id for the stub
      */
-    protected abstract StructuredGraph getGraph(CompilationIdentifier compilationId);
+    protected abstract StructuredGraph getGraph(DebugContext debug, CompilationIdentifier compilationId);
 
     @Override
     public String toString() {
@@ -172,39 +173,55 @@ public abstract class Stub {
      */
     protected abstract Object debugScopeContext();
 
+    private static final AtomicInteger nextStubId = new AtomicInteger();
+
+    private DebugContext openDebugContext(DebugContext outer) {
+        if (DebugStubsAndSnippets.getValue(options)) {
+            Description description = new Description(linkage, "Stub_" + nextStubId.incrementAndGet());
+            return new DebugContext(options,
+                            description,
+                            outer.getGlobalMetrics(),
+                            DEFAULT_LOG_STREAM,
+                            DEFAULT_CONFIG_CUSTOMIZERS,
+                            providers.getSnippetReflection());
+        }
+        return DebugContext.DISABLED;
+    }
+
     /**
      * Gets the code for this stub, compiling it first if necessary.
      */
     @SuppressWarnings("try")
     public synchronized InstalledCode getCode(final Backend backend) {
         if (code == null) {
-            DebugConfig config = DebugStubsAndSnippets.getValue(options) ? DebugScope.getConfig() : Debug.silentConfig();
-            try (Scope d = Debug.sandbox("CompilingStub", config, providers.getCodeCache(), debugScopeContext())) {
-                CodeCacheProvider codeCache = providers.getCodeCache();
-
-                CompilationResult compResult = buildCompilationResult(backend);
-                try (Scope s = Debug.scope("CodeInstall", compResult)) {
-                    assert destroyedCallerRegisters != null;
-                    // Add a GeneratePIC check here later, we don't want to install
-                    // code if we don't have a corresponding VM global symbol.
-                    HotSpotCompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(codeCache, null, null, compResult);
-                    code = codeCache.installCode(null, compiledCode, null, null, false);
+            try (DebugContext debug = openDebugContext(DebugContext.forCurrentThread())) {
+                try (DebugContext.Scope d = debug.scope("CompilingStub", providers.getCodeCache(), debugScopeContext())) {
+                    CodeCacheProvider codeCache = providers.getCodeCache();
+                    CompilationResult compResult = buildCompilationResult(debug, backend);
+                    try (DebugContext.Scope s = debug.scope("CodeInstall", compResult);
+                                    DebugContext.Activation a = debug.activate()) {
+                        assert destroyedCallerRegisters != null;
+                        // Add a GeneratePIC check here later, we don't want to install
+                        // code if we don't have a corresponding VM global symbol.
+                        HotSpotCompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(codeCache, null, null, compResult);
+                        code = codeCache.installCode(null, compiledCode, null, null, false);
+                    } catch (Throwable e) {
+                        throw debug.handle(e);
+                    }
                 } catch (Throwable e) {
-                    throw Debug.handle(e);
+                    throw debug.handle(e);
                 }
-            } catch (Throwable e) {
-                throw Debug.handle(e);
+                assert code != null : "error installing stub " + this;
             }
-            assert code != null : "error installing stub " + this;
         }
 
         return code;
     }
 
     @SuppressWarnings("try")
-    private CompilationResult buildCompilationResult(final Backend backend) {
+    private CompilationResult buildCompilationResult(DebugContext debug, final Backend backend) {
         CompilationResult compResult = new CompilationResult(toString(), GeneratePIC.getValue(options));
-        final StructuredGraph graph = getGraph(getStubCompilationId());
+        final StructuredGraph graph = getGraph(debug, getStubCompilationId());
 
         // Stubs cannot be recompiled so they cannot be compiled with assumptions
         assert graph.getAssumptions() == null;
@@ -215,14 +232,14 @@ public abstract class Stub {
             graph.replaceFixed(graph.start(), newStart);
         }
 
-        try (Scope s0 = Debug.scope("StubCompilation", graph, providers.getCodeCache())) {
+        try (DebugContext.Scope s0 = debug.scope("StubCompilation", graph, providers.getCodeCache())) {
             Suites suites = createSuites();
             emitFrontEnd(providers, backend, graph, providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, DefaultProfilingInfo.get(TriState.UNKNOWN), suites);
             LIRSuites lirSuites = createLIRSuites();
             emitBackEnd(graph, Stub.this, getInstalledCodeOwner(), backend, compResult, CompilationResultBuilderFactory.Default, getRegisterConfig(), lirSuites);
             assert checkStubInvariants(compResult);
         } catch (Throwable e) {
-            throw Debug.handle(e);
+            throw debug.handle(e);
         }
         return compResult;
     }
@@ -231,11 +248,11 @@ public abstract class Stub {
      * Gets a {@link CompilationResult} that can be used for code generation. Required for AOT.
      */
     @SuppressWarnings("try")
-    public CompilationResult getCompilationResult(final Backend backend) {
-        try (Scope d = Debug.sandbox("CompilingStub", DebugScope.getConfig(), providers.getCodeCache(), debugScopeContext())) {
-            return buildCompilationResult(backend);
+    public CompilationResult getCompilationResult(DebugContext debug, final Backend backend) {
+        try (DebugContext.Scope d = debug.scope("CompilingStub", providers.getCodeCache(), debugScopeContext())) {
+            return buildCompilationResult(debug, backend);
         } catch (Throwable e) {
-            throw Debug.handle(e);
+            throw debug.handle(e);
         }
     }
 

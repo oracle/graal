@@ -26,21 +26,14 @@ import java.io.Closeable;
 
 public interface DebugDumpHandler extends Closeable {
 
-    void dump(Object object, String format, Object... arguments);
-
-    /**
-     * Add arbitrary capability for use by the handler.
-     *
-     * @param capability
-     */
-    default void addCapability(Object capability) {
-    }
+    void dump(DebugContext debug, Object object, String format, Object... arguments);
 
     /**
      * Flushes and releases resources managed by this dump handler. A subsequent call to
-     * {@link #dump(java.lang.Object, java.lang.String, java.lang.Object...)} will create and open
-     * new resources. That is, this method can be used to reset the handler.
+     * {@link #dump(DebugContext, java.lang.Object, java.lang.String, java.lang.Object...)} will
+     * create and open new resources. That is, this method can be used to reset the handler.
      */
     @Override
-    void close();
+    default void close() {
+    }
 }

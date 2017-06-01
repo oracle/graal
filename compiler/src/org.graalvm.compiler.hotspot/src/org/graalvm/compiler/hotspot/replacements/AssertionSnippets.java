@@ -85,7 +85,7 @@ public class AssertionSnippets implements Snippets {
             args.add("condition", assertionNode.condition());
             args.addConst("message", "failed runtime assertion in snippet/stub: " + assertionNode.message() + " (" + graph.method() + ")");
 
-            template(args).instantiate(providers.getMetaAccess(), assertionNode, DEFAULT_REPLACER, args);
+            template(assertionNode.getDebug(), args).instantiate(providers.getMetaAccess(), assertionNode, DEFAULT_REPLACER, args);
         }
     }
 }

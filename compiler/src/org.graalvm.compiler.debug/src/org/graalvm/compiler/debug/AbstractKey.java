@@ -20,50 +20,61 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.debug.internal;
+package org.graalvm.compiler.debug;
 
 /**
- * A name and index for a value managed in a thread local value map. All access to the value is made
- * via a {@link DebugValue} instance.
+ * A name and index for a metric value.
  */
-public abstract class DebugValue implements Comparable<DebugValue> {
+abstract class AbstractKey implements MetricKey {
 
-    private final String name;
+    private final String nameFormat;
+    private final Object nameArg1;
+    private final Object nameArg2;
+
+    private String name;
     private int index;
-    private boolean conditional;
+    private String doc;
 
-    protected DebugValue(String name, boolean conditional) {
-        this.name = name;
+    protected AbstractKey(String nameFormat, Object nameArg1, Object nameArg2) {
+        this.nameFormat = nameFormat;
+        this.nameArg1 = nameArg1;
+        this.nameArg2 = nameArg2;
         this.index = -1;
-        this.conditional = conditional;
     }
 
-    public long getCurrentValue() {
+    protected void setDoc(String doc) {
+        this.doc = doc;
+    }
+
+    @Override
+    public String getDoc() {
+        return doc;
+    }
+
+    @Override
+    public String getDocName() {
+        return getName();
+    }
+
+    public long getCurrentValue(DebugContext debug) {
         ensureInitialized();
-        return DebugScope.getInstance().getCurrentValue(index);
+        return debug.getMetricValue(index);
     }
 
-    protected void setCurrentValue(long l) {
+    void setCurrentValue(DebugContext debug, long l) {
         ensureInitialized();
-        DebugScope.getInstance().setCurrentValue(index, l);
+        debug.setMetricValue(index, l);
     }
 
-    public void setConditional(boolean flag) {
-        conditional = flag;
-    }
-
-    public boolean isConditional() {
-        return conditional;
-    }
-
-    private void ensureInitialized() {
+    void ensureInitialized() {
         if (index == -1) {
             index = KeyRegistry.register(this);
         }
     }
 
-    protected void addToCurrentValue(long value) {
-        setCurrentValue(getCurrentValue() + value);
+    void addToCurrentValue(DebugContext debug, long value) {
+        ensureInitialized();
+        debug.setMetricValue(index, debug.getMetricValue(index) + value);
     }
 
     /**
@@ -77,29 +88,20 @@ public abstract class DebugValue implements Comparable<DebugValue> {
     /**
      * Gets the globally unique name for the value represented by this object.
      */
+    @Override
     public String getName() {
+        if (name == null) {
+            name = createName(nameFormat, nameArg1, nameArg2);
+        }
         return name;
     }
 
-    @Override
-    public int compareTo(DebugValue o) {
-        return name.compareTo(o.name);
+    protected String createName(String format, Object arg1, Object arg2) {
+        return DebugContext.formatDebugName(format, arg1, arg2);
     }
 
     @Override
     public String toString() {
-        return name + "@" + index;
+        return getName() + "@" + index;
     }
-
-    public abstract String toString(long value);
-
-    /**
-     * The raw unit of the value (e.g. 'us', 'ms'). Use {@code ""} if there is no unit.
-     */
-    public abstract String rawUnit();
-
-    /**
-     * The raw value.
-     */
-    public abstract String toRawString(long value);
 }

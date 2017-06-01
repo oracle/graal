@@ -20,26 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.debug.internal;
+package org.graalvm.compiler.debug;
 
 import java.io.PrintStream;
 import java.util.Iterator;
-import java.util.concurrent.Callable;
-import java.util.concurrent.atomic.AtomicLong;
 
-import org.graalvm.compiler.debug.Debug;
-import org.graalvm.compiler.debug.DebugConfig;
-import org.graalvm.compiler.debug.DebugDumpHandler;
-import org.graalvm.compiler.debug.DebugVerifyHandler;
-import org.graalvm.compiler.debug.DelegatingDebugConfig;
-import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.debug.JavaMethodContext;
-import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.debug.TopLevelDebugConfig;
+import org.graalvm.compiler.debug.DebugContext.DisabledScope;
 
 import jdk.vm.ci.meta.JavaMethod;
 
-public final class DebugScope implements Debug.Scope {
+public final class ScopeImpl implements DebugContext.Scope {
 
     private final class IndentImpl implements Indent {
 
@@ -122,37 +112,16 @@ public final class DebugScope implements Debug.Scope {
         }
     }
 
-    /**
-     * Interface for an additional information object per scope. The information object will be
-     * given to child scopes, but can be explicitly set with
-     * {@link DebugScope#enhanceWithExtraInfo(CharSequence, ExtraInfo, boolean, Object...)}
-     */
-    public interface ExtraInfo {
-
-    }
-
-    private static final ThreadLocal<DebugScope> instanceTL = new ThreadLocal<>();
-    private static final ThreadLocal<DebugScope> lastClosedTL = new ThreadLocal<>();
-    private static final ThreadLocal<DebugConfig> configTL = new ThreadLocal<>();
-    private static final ThreadLocal<Throwable> lastExceptionThrownTL = new ThreadLocal<>();
-
-    private final DebugScope parent;
-    private final DebugConfig parentConfig;
+    private final DebugContext owner;
+    private final ScopeImpl parent;
     private final boolean sandbox;
     private IndentImpl lastUsedIndent;
     private boolean logScopeName;
 
     private final Object[] context;
 
-    private DebugValueMap valueMap;
-
     private String qualifiedName;
     private final String unqualifiedName;
-
-    private final ExtraInfo extraInfo;
-
-    private static final AtomicLong uniqueScopeId = new AtomicLong();
-    private final long scopeId;
 
     private static final char SCOPE_SEP = '.';
 
@@ -160,48 +129,25 @@ public final class DebugScope implements Debug.Scope {
     private boolean timeEnabled;
     private boolean memUseTrackingEnabled;
     private boolean verifyEnabled;
-    private boolean methodMetricsEnabled;
 
     private int currentDumpLevel;
     private int currentLogLevel;
 
     private PrintStream output;
-
-    public static long getCurrentGlobalScopeId() {
-        return uniqueScopeId.get();
-    }
-
-    public static DebugScope getInstance() {
-        DebugScope result = instanceTL.get();
-        if (result == null) {
-            DebugScope topLevelDebugScope = new DebugScope(Thread.currentThread());
-            instanceTL.set(topLevelDebugScope);
-            return topLevelDebugScope;
-        } else {
-            return result;
-        }
-    }
-
-    public static DebugConfig getConfig() {
-        return configTL.get();
-    }
+    private boolean interceptDisabled;
 
     static final Object[] EMPTY_CONTEXT = new Object[0];
 
-    private DebugScope(Thread thread) {
-        this(thread.getName(), null, uniqueScopeId.incrementAndGet(), null, false);
-        computeValueMap(thread.getName());
-        DebugValueMap.registerTopLevel(getValueMap());
+    ScopeImpl(DebugContext owner, Thread thread) {
+        this(owner, thread.getName(), null, false);
     }
 
-    private DebugScope(String unqualifiedName, DebugScope parent, long scopeId, ExtraInfo metaInfo, boolean sandbox, Object... context) {
+    ScopeImpl(DebugContext owner, String unqualifiedName, ScopeImpl parent, boolean sandbox, Object... context) {
+        this.owner = owner;
         this.parent = parent;
         this.sandbox = sandbox;
-        this.parentConfig = getConfig();
         this.context = context;
-        this.scopeId = scopeId;
         this.unqualifiedName = unqualifiedName;
-        this.extraInfo = metaInfo;
         if (parent != null) {
             logScopeName = !unqualifiedName.equals("");
         } else {
@@ -212,82 +158,15 @@ public final class DebugScope implements Debug.Scope {
         assert context != null;
     }
 
-    private void computeValueMap(String name) {
-        if (parent != null) {
-            for (DebugValueMap child : parent.getValueMap().getChildren()) {
-                if (child.getName().equals(name)) {
-                    this.valueMap = child;
-                    return;
-                }
-            }
-            this.valueMap = new DebugValueMap(name);
-            parent.getValueMap().addChild(this.valueMap);
-        } else {
-            this.valueMap = new DebugValueMap(name);
-        }
-    }
-
     @Override
     public void close() {
-        instanceTL.set(parent);
-        configTL.set(parentConfig);
-        lastClosedTL.set(this);
+        owner.currentScope = parent;
+        owner.lastClosedScope = this;
     }
 
     public boolean isDumpEnabled(int dumpLevel) {
         assert dumpLevel >= 0;
         return currentDumpLevel >= dumpLevel;
-    }
-
-    /**
-     * Enable dumping at the new {@code dumpLevel} for the remainder of enclosing scopes. This only
-     * works if a {@link TopLevelDebugConfig} was installed at a higher scope.
-     *
-     * @param dumpLevel
-     */
-    public static void setDumpLevel(int dumpLevel) {
-        TopLevelDebugConfig config = fetchTopLevelDebugConfig("setDebugLevel");
-        if (config != null) {
-            config.override(DelegatingDebugConfig.Level.DUMP, dumpLevel);
-            recursiveUpdateFlags();
-        }
-    }
-
-    /**
-     * Enable logging at the new {@code logLevel} for the remainder of enclosing scopes. This only
-     * works if a {@link TopLevelDebugConfig} was installed at a higher scope.
-     *
-     * @param logLevel
-     */
-    public static void setLogLevel(int logLevel) {
-        TopLevelDebugConfig config = fetchTopLevelDebugConfig("setLogLevel");
-        if (config != null) {
-            config.override(DelegatingDebugConfig.Level.LOG, logLevel);
-            config.delegate(DelegatingDebugConfig.Feature.LOG_METHOD);
-            recursiveUpdateFlags();
-        }
-    }
-
-    private static void recursiveUpdateFlags() {
-        DebugScope c = DebugScope.getInstance();
-        while (c != null) {
-            c.updateFlags();
-            c = c.parent;
-        }
-    }
-
-    private static TopLevelDebugConfig fetchTopLevelDebugConfig(String msg) {
-        DebugConfig config = getConfig();
-        if (config instanceof TopLevelDebugConfig) {
-            return (TopLevelDebugConfig) config;
-        } else {
-            if (config == null) {
-                TTY.println("DebugScope.%s ignored because debugging is disabled", msg);
-            } else {
-                TTY.println("DebugScope.%s ignored because top level delegate config missing", msg);
-            }
-            return null;
-        }
     }
 
     public boolean isVerifyEnabled() {
@@ -307,70 +186,51 @@ public final class DebugScope implements Debug.Scope {
         return timeEnabled;
     }
 
-    public boolean isMethodMeterEnabled() {
-        return methodMetricsEnabled;
-    }
-
     public boolean isMemUseTrackingEnabled() {
         return memUseTrackingEnabled;
     }
 
     public void log(int logLevel, String msg, Object... args) {
+        assert owner.checkNoConcurrentAccess();
         if (isLogEnabled(logLevel)) {
             getLastUsedIndent().log(logLevel, msg, args);
         }
     }
 
-    public ExtraInfo getExtraInfo() {
-        return extraInfo;
-    }
-
-    public long scopeId() {
-        return scopeId;
-    }
-
     public void dump(int dumpLevel, Object object, String formatString, Object... args) {
+        assert isDumpEnabled(dumpLevel);
         if (isDumpEnabled(dumpLevel)) {
             DebugConfig config = getConfig();
             if (config != null) {
                 for (DebugDumpHandler dumpHandler : config.dumpHandlers()) {
-                    dumpHandler.dump(object, formatString, args);
+                    dumpHandler.dump(owner, object, formatString, args);
                 }
             }
         }
     }
 
-    /**
-     * This method exists mainly to allow a debugger (e.g., Eclipse) to force dump a graph.
-     */
-    public static void forceDump(Object object, String format, Object... args) {
-        DebugConfig config = getConfig();
-        if (config != null) {
-            for (DebugDumpHandler dumpHandler : config.dumpHandlers()) {
-                dumpHandler.dump(object, format, args);
-            }
-        } else {
-            TTY.println("Forced dump ignored because debugging is disabled - use -Dgraal.ForceDebugEnable=true");
-        }
+    private DebugConfig getConfig() {
+        return owner.currentConfig;
     }
 
     /**
-     * @see Debug#verify(Object, String)
+     * @see DebugContext#verify(Object, String)
      */
     public void verify(Object object, String formatString, Object... args) {
         if (isVerifyEnabled()) {
             DebugConfig config = getConfig();
             if (config != null) {
+                String message = String.format(formatString, args);
                 for (DebugVerifyHandler handler : config.verifyHandlers()) {
-                    handler.verify(object, formatString, args);
+                    handler.verify(owner, object, message);
                 }
             }
         }
     }
 
     /**
-     * Creates and enters a new debug scope which is either a child of the current scope or a
-     * disjoint top level scope.
+     * Creates and enters a new scope which is either a child of the current scope or a disjoint top
+     * level scope.
      *
      * @param name the name of the new scope
      * @param sandboxConfig the configuration to use for a new top level scope, or null if the new
@@ -378,89 +238,97 @@ public final class DebugScope implements Debug.Scope {
      * @param newContextObjects objects to be appended to the debug context
      * @return the new scope which will be exited when its {@link #close()} method is called
      */
-    public DebugScope scope(CharSequence name, DebugConfig sandboxConfig, Object... newContextObjects) {
-        DebugScope newScope = null;
+    public ScopeImpl scope(CharSequence name, DebugConfig sandboxConfig, Object... newContextObjects) {
+        ScopeImpl newScope = null;
         if (sandboxConfig != null) {
-            newScope = new DebugScope(name.toString(), this, uniqueScopeId.incrementAndGet(), null, true, newContextObjects);
-            configTL.set(sandboxConfig);
+            newScope = new ScopeImpl(owner, name.toString(), this, true, newContextObjects);
         } else {
-            newScope = this.createChild(name.toString(), this.extraInfo, newContextObjects);
+            newScope = this.createChild(name.toString(), newContextObjects);
         }
-        instanceTL.set(newScope);
-        newScope.updateFlags();
+        newScope.updateFlags(owner.currentConfig);
         return newScope;
     }
 
-    public DebugScope enhanceWithExtraInfo(CharSequence name, ExtraInfo newInfo, boolean newId, Object... newContext) {
-        DebugScope newScope = createChild(name.toString(), newInfo, newId ? uniqueScopeId.incrementAndGet() : this.scopeId, newContext);
-        instanceTL.set(newScope);
-        newScope.updateFlags();
-        return newScope;
+    @SuppressWarnings({"unchecked", "unused"})
+    private static <E extends Exception> RuntimeException silenceException(Class<E> type, Throwable ex) throws E {
+        throw (E) ex;
     }
 
     public RuntimeException handle(Throwable e) {
-        DebugScope lastClosed = lastClosedTL.get();
         try {
-            assert lastClosed.parent == this : "Debug.handle() used with no matching Debug.scope(...) or Debug.sandbox(...) " +
-                            "or an exception occurred while opening a scope";
-            if (e != lastExceptionThrownTL.get()) {
-                RuntimeException newException = null;
-                instanceTL.set(lastClosed);
-                try (DebugScope s = lastClosed) {
-                    newException = s.interceptException(e);
+            if (owner.lastClosedScope instanceof ScopeImpl) {
+                ScopeImpl lastClosed = (ScopeImpl) owner.lastClosedScope;
+                assert lastClosed.parent == this : "Debug.handle() used with no matching Debug.scope(...) or Debug.sandbox(...) " +
+                                "or an exception occurred while opening a scope";
+                if (e != owner.lastExceptionThrown) {
+                    RuntimeException newException = null;
+                    owner.currentScope = lastClosed;
+                    try (ScopeImpl s = lastClosed) {
+                        newException = s.interceptException(e);
+                    }
+                    assert owner.currentScope == this;
+                    assert lastClosed == owner.lastClosedScope;
+                    if (newException == null) {
+                        owner.lastExceptionThrown = e;
+                    } else {
+                        owner.lastExceptionThrown = newException;
+                        throw newException;
+                    }
                 }
-                assert instanceTL.get() == this;
-                assert lastClosed == lastClosedTL.get();
-                if (newException == null) {
-                    lastExceptionThrownTL.set(e);
-                } else {
-                    lastExceptionThrownTL.set(newException);
-                    throw newException;
-                }
+            } else {
+                assert owner.lastClosedScope instanceof DisabledScope : owner.lastClosedScope;
             }
         } catch (Throwable t) {
             t.initCause(e);
             throw t;
         }
+
         if (e instanceof Error) {
             throw (Error) e;
         }
         if (e instanceof RuntimeException) {
             throw (RuntimeException) e;
         }
-        throw new RuntimeException(e);
+        throw silenceException(RuntimeException.class, e);
     }
 
-    private void updateFlags() {
-        DebugConfig config = getConfig();
+    void updateFlags(DebugConfig config) {
         if (config == null) {
             countEnabled = false;
             memUseTrackingEnabled = false;
             timeEnabled = false;
             verifyEnabled = false;
             currentDumpLevel = -1;
-            methodMetricsEnabled = false;
             // Be pragmatic: provide a default log stream to prevent a crash if the stream is not
             // set while logging
             output = TTY.out;
         } else {
-            countEnabled = config.isCountEnabled();
-            memUseTrackingEnabled = config.isMemUseTrackingEnabled();
-            timeEnabled = config.isTimeEnabled();
-            verifyEnabled = config.isVerifyEnabled();
+            countEnabled = config.isCountEnabled(this);
+            memUseTrackingEnabled = config.isMemUseTrackingEnabled(this);
+            timeEnabled = config.isTimeEnabled(this);
+            verifyEnabled = config.isVerifyEnabled(this);
             output = config.output();
-            currentDumpLevel = config.getDumpLevel();
-            currentLogLevel = config.getLogLevel();
-            methodMetricsEnabled = config.isMethodMeterEnabled();
+            currentDumpLevel = config.getDumpLevel(this);
+            currentLogLevel = config.getLogLevel(this);
         }
+    }
+
+    DebugCloseable disableIntercept() {
+        boolean previous = interceptDisabled;
+        interceptDisabled = true;
+        return new DebugCloseable() {
+            @Override
+            public void close() {
+                interceptDisabled = previous;
+            }
+        };
     }
 
     @SuppressWarnings("try")
     private RuntimeException interceptException(final Throwable e) {
-        final DebugConfig config = getConfig();
-        if (config != null) {
-            try (DebugScope s = scope("InterceptException", null, e)) {
-                return config.interceptException(e);
+        if (!interceptDisabled && owner.currentConfig != null) {
+            try (ScopeImpl s = scope("InterceptException", null, e)) {
+                return owner.currentConfig.interceptException(owner, e);
             } catch (Throwable t) {
                 return new RuntimeException("Exception while intercepting exception", t);
             }
@@ -468,38 +336,20 @@ public final class DebugScope implements Debug.Scope {
         return null;
     }
 
-    private DebugValueMap getValueMap() {
-        if (valueMap == null) {
-            computeValueMap(unqualifiedName);
-        }
-        return valueMap;
+    private ScopeImpl createChild(String newName, Object[] newContext) {
+        return new ScopeImpl(owner, newName, this, false, newContext);
     }
 
-    long getCurrentValue(int index) {
-        return getValueMap().getCurrentValue(index);
-    }
-
-    void setCurrentValue(int index, long l) {
-        getValueMap().setCurrentValue(index, l);
-    }
-
-    private DebugScope createChild(String newName, ExtraInfo newInfo, Object[] newContext) {
-        return new DebugScope(newName, this, this.scopeId, newInfo, false, newContext);
-    }
-
-    private DebugScope createChild(String newName, ExtraInfo newInfo, long newId, Object[] newContext) {
-        return new DebugScope(newName, this, newId, newInfo, false, newContext);
-    }
-
+    @Override
     public Iterable<Object> getCurrentContext() {
-        final DebugScope scope = this;
+        final ScopeImpl scope = this;
         return new Iterable<Object>() {
 
             @Override
             public Iterator<Object> iterator() {
                 return new Iterator<Object>() {
 
-                    DebugScope currentScope = scope;
+                    ScopeImpl currentScope = scope;
                     int objectIndex;
 
                     @Override
@@ -533,23 +383,7 @@ public final class DebugScope implements Debug.Scope {
         };
     }
 
-    public static <T> T call(Callable<T> callable) {
-        try {
-            return callable.call();
-        } catch (Exception e) {
-            if (e instanceof RuntimeException) {
-                throw (RuntimeException) e;
-            } else {
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
-    public void setConfig(DebugConfig newConfig) {
-        configTL.set(newConfig);
-        updateFlags();
-    }
-
+    @Override
     public String getQualifiedName() {
         if (qualifiedName == null) {
             if (parent == null) {

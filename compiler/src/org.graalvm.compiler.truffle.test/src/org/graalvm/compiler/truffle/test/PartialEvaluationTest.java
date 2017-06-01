@@ -25,17 +25,15 @@ package org.graalvm.compiler.truffle.test;
 import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 import static org.graalvm.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
-import org.graalvm.compiler.debug.Debug;
-import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
-import org.graalvm.compiler.debug.DebugEnvironment;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
@@ -44,6 +42,7 @@ import org.graalvm.compiler.truffle.DefaultTruffleCompiler;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.TruffleCompiler;
+import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.TruffleInlining;
 import org.junit.Assert;
@@ -59,7 +58,8 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
         this.truffleCompiler = DefaultTruffleCompiler.create(runtime);
 
-        DebugEnvironment.ensureInitialized(getInitialOptions(), runtime.getRequiredGraalCapability(SnippetReflectionProvider.class));
+        // DebugEnvironment.ensureInitialized(getInitialOptions(),
+        // runtime.getRequiredGraalCapability(SnippetReflectionProvider.class));
     }
 
     /**
@@ -90,7 +90,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         StructuredGraph actual = partialEval(compilable, arguments, AllowAssumptions.YES, compilationId);
         truffleCompiler.compileMethodHelper(actual, methodName, null, compilable, asCompilationRequest(compilationId));
         removeFrameStates(actual);
-        StructuredGraph expected = parseForComparison(methodName);
+        StructuredGraph expected = parseForComparison(methodName, actual.getDebug());
         Assert.assertEquals(getCanonicalGraphString(expected, true, true), getCanonicalGraphString(actual, true, true));
         return compilable;
     }
@@ -115,10 +115,12 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         compilable.call(arguments);
         compilable.call(arguments);
 
-        try (Scope s = Debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
-            return truffleCompiler.getPartialEvaluator().createGraph(compilable, new TruffleInlining(compilable, new DefaultInliningPolicy()), allowAssumptions, compilationId, null);
+        OptionValues options = TruffleCompilerOptions.getOptions();
+        DebugContext debug = DebugContext.create(options);
+        try (DebugContext.Scope s = debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
+            return truffleCompiler.getPartialEvaluator().createGraph(debug, compilable, new TruffleInlining(compilable, new DefaultInliningPolicy()), allowAssumptions, compilationId, null);
         } catch (Throwable e) {
-            throw Debug.handle(e);
+            throw debug.handle(e);
         }
     }
 
@@ -132,13 +134,13 @@ public class PartialEvaluationTest extends GraalCompilerTest {
     }
 
     @SuppressWarnings("try")
-    protected StructuredGraph parseForComparison(final String methodName) {
-        try (Scope s = Debug.scope("Truffle", new DebugDumpScope("Comparison: " + methodName))) {
+    protected StructuredGraph parseForComparison(final String methodName, DebugContext debug) {
+        try (DebugContext.Scope s = debug.scope("Truffle", new DebugDumpScope("Comparison: " + methodName))) {
             StructuredGraph graph = parseEager(methodName, AllowAssumptions.YES);
             compile(graph.method(), graph);
             return graph;
         } catch (Throwable e) {
-            throw Debug.handle(e);
+            throw debug.handle(e);
         }
     }
 }

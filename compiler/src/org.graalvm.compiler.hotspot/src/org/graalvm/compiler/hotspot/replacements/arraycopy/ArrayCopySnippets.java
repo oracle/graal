@@ -617,7 +617,7 @@ public class ArrayCopySnippets implements Snippets {
             args.add("destPos", arraycopy.getDestinationPosition());
             args.addConst("length", arraycopy.getUnrollLength());
             args.addConst("elementKind", arraycopy.getElementKind());
-            template(args).instantiate(providers.getMetaAccess(), arraycopy, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(graph.getDebug(), args).instantiate(providers.getMetaAccess(), arraycopy, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
         /**
@@ -629,7 +629,7 @@ public class ArrayCopySnippets implements Snippets {
          */
         private void instantiate(Arguments args, BasicArrayCopyNode arraycopy) {
             StructuredGraph graph = arraycopy.graph();
-            SnippetTemplate template = template(args);
+            SnippetTemplate template = template(graph.getDebug(), args);
             UnmodifiableEconomicMap<Node, Node> replacements = template.instantiate(providers.getMetaAccess(), arraycopy, SnippetTemplate.DEFAULT_REPLACER, args, false);
             for (Node originalNode : replacements.getKeys()) {
                 if (originalNode instanceof Invoke) {

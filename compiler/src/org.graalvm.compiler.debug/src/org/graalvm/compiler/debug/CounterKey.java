@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,33 +20,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core.test.debug;
+package org.graalvm.compiler.debug;
 
-import org.junit.Test;
+/**
+ * A counter for some value of interest.
+ */
+public interface CounterKey extends MetricKey {
 
-import org.graalvm.compiler.debug.DebugConfig;
-import org.graalvm.compiler.phases.Phase;
+    /**
+     * Adds 1 to this counter.
+     */
+    void increment(DebugContext debug);
 
-public class MethodMetricsTest6 extends MethodMetricsTest {
+    /**
+     * Adds {@code value} to this counter.
+     */
+    void add(DebugContext debug, long value);
+
+    /**
+     * Gets the current value of this counter.
+     */
+    long getCurrentValue(DebugContext debug);
+
+    /**
+     * Determines if this counter is enabled.
+     */
+    boolean isEnabled(DebugContext debug);
 
     @Override
-    protected Phase additionalPhase() {
-        return new MethodMetricPhases.CountingBinOpPhase();
-    }
-
-    @Override
-    DebugConfig getConfig() {
-        return overrideGraalDebugConfig(System.out, "MethodMetricsTest$TestApplication.*", "CountingBinOpPhase");
-    }
-
-    @Override
-    void assertValues() throws Throwable {
-        assertValues("BinOps", new long[]{1, 1, 1, 1, 1, 1, 0, 1, 1, 1});
-    }
-
-    @Override
-    @Test
-    public void test() throws Throwable {
-        super.test();
-    }
+    CounterKey doc(String string);
 }

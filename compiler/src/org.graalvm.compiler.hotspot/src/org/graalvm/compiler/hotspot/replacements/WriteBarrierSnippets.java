@@ -423,7 +423,7 @@ public class WriteBarrierSnippets implements Snippets {
                 args.add("object", address.getBase());
             }
             args.addConst("counters", counters);
-            template(args).instantiate(providers.getMetaAccess(), writeBarrier, DEFAULT_REPLACER, args);
+            template(writeBarrier.getDebug(), args).instantiate(providers.getMetaAccess(), writeBarrier, DEFAULT_REPLACER, args);
         }
 
         public void lower(SerialArrayRangeWriteBarrier arrayRangeWriteBarrier, LoweringTool tool) {
@@ -431,7 +431,7 @@ public class WriteBarrierSnippets implements Snippets {
             args.add("object", arrayRangeWriteBarrier.getObject());
             args.add("startIndex", arrayRangeWriteBarrier.getStartIndex());
             args.add("length", arrayRangeWriteBarrier.getLength());
-            template(args).instantiate(providers.getMetaAccess(), arrayRangeWriteBarrier, DEFAULT_REPLACER, args);
+            template(arrayRangeWriteBarrier.getDebug(), args).instantiate(providers.getMetaAccess(), arrayRangeWriteBarrier, DEFAULT_REPLACER, args);
         }
 
         public void lower(G1PreWriteBarrier writeBarrierPre, HotSpotRegistersProvider registers, LoweringTool tool) {
@@ -456,7 +456,7 @@ public class WriteBarrierSnippets implements Snippets {
             args.addConst("threadRegister", registers.getThreadRegister());
             args.addConst("trace", traceBarrier(writeBarrierPre.graph()));
             args.addConst("counters", counters);
-            template(args).instantiate(providers.getMetaAccess(), writeBarrierPre, DEFAULT_REPLACER, args);
+            template(writeBarrierPre.getDebug(), args).instantiate(providers.getMetaAccess(), writeBarrierPre, DEFAULT_REPLACER, args);
         }
 
         public void lower(G1ReferentFieldReadBarrier readBarrier, HotSpotRegistersProvider registers, LoweringTool tool) {
@@ -481,7 +481,7 @@ public class WriteBarrierSnippets implements Snippets {
             args.addConst("threadRegister", registers.getThreadRegister());
             args.addConst("trace", traceBarrier(readBarrier.graph()));
             args.addConst("counters", counters);
-            template(args).instantiate(providers.getMetaAccess(), readBarrier, DEFAULT_REPLACER, args);
+            template(readBarrier.getDebug(), args).instantiate(providers.getMetaAccess(), readBarrier, DEFAULT_REPLACER, args);
         }
 
         public void lower(G1PostWriteBarrier writeBarrierPost, HotSpotRegistersProvider registers, LoweringTool tool) {
@@ -511,7 +511,7 @@ public class WriteBarrierSnippets implements Snippets {
             args.addConst("threadRegister", registers.getThreadRegister());
             args.addConst("trace", traceBarrier(writeBarrierPost.graph()));
             args.addConst("counters", counters);
-            template(args).instantiate(providers.getMetaAccess(), writeBarrierPost, DEFAULT_REPLACER, args);
+            template(graph.getDebug(), args).instantiate(providers.getMetaAccess(), writeBarrierPost, DEFAULT_REPLACER, args);
         }
 
         public void lower(G1ArrayRangePreWriteBarrier arrayRangeWriteBarrier, HotSpotRegistersProvider registers, LoweringTool tool) {
@@ -520,7 +520,7 @@ public class WriteBarrierSnippets implements Snippets {
             args.add("startIndex", arrayRangeWriteBarrier.getStartIndex());
             args.add("length", arrayRangeWriteBarrier.getLength());
             args.addConst("threadRegister", registers.getThreadRegister());
-            template(args).instantiate(providers.getMetaAccess(), arrayRangeWriteBarrier, DEFAULT_REPLACER, args);
+            template(arrayRangeWriteBarrier.getDebug(), args).instantiate(providers.getMetaAccess(), arrayRangeWriteBarrier, DEFAULT_REPLACER, args);
         }
 
         public void lower(G1ArrayRangePostWriteBarrier arrayRangeWriteBarrier, HotSpotRegistersProvider registers, LoweringTool tool) {
@@ -529,7 +529,7 @@ public class WriteBarrierSnippets implements Snippets {
             args.add("startIndex", arrayRangeWriteBarrier.getStartIndex());
             args.add("length", arrayRangeWriteBarrier.getLength());
             args.addConst("threadRegister", registers.getThreadRegister());
-            template(args).instantiate(providers.getMetaAccess(), arrayRangeWriteBarrier, DEFAULT_REPLACER, args);
+            template(arrayRangeWriteBarrier.getDebug(), args).instantiate(providers.getMetaAccess(), arrayRangeWriteBarrier, DEFAULT_REPLACER, args);
         }
     }
 

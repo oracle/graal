@@ -3,7 +3,7 @@ It complements the detailed information in [Debugging](Debugging.md) which shoul
 
 ## Graal scenarios
 
-Add `-Dgraaldebug.timer.CompilationTime=true` to measure the time spent in compilation.
+Add `-Dgraal.Timers=CompilationTime` to measure the time spent in compilation.
 
 Add `-XX:JVMCIThreads=1` to have a single JVMCI compiler thread. This simplifies
 debugging in an IDE by ensuring a breakpoint in Graal code is hit by a single thread.

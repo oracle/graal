@@ -34,37 +34,28 @@ import java.util.concurrent.TimeUnit;
  * }
  * </pre>
  */
-public interface DebugTimer {
+public interface TimerKey extends MetricKey {
 
     /**
-     * Starts this timer if timing is {@linkplain Debug#isTimeEnabled() enabled} or this is an
-     * {@linkplain #isConditional() unconditional} timer.
+     * Starts this timer.
      *
      * @return an object that must be closed once the activity has completed to add the elapsed time
      *         since this call to the total for this timer
      */
-    DebugCloseable start();
-
-    /**
-     * Sets a flag determining if this timer is only enabled if timing is
-     * {@link Debug#isTimeEnabled() enabled}.
-     */
-    void setConditional(boolean flag);
-
-    /**
-     * Determines if this timer is only enabled if timing is {@link Debug#isTimeEnabled() enabled}.
-     */
-    boolean isConditional();
+    DebugCloseable start(DebugContext debug);
 
     /**
      * Gets the current value of this timer.
      */
-    long getCurrentValue();
+    long getCurrentValue(DebugContext debug);
 
     /**
      * Gets the time unit of this timer.
      */
     TimeUnit getTimeUnit();
+
+    @Override
+    TimerKey doc(String string);
 
     /**
      * Gets the timer recording the amount time spent within a timed scope minus the time spent in
@@ -72,7 +63,7 @@ public interface DebugTimer {
      *
      * @return null if this timer does not support flat timing
      */
-    default DebugTimer getFlat() {
+    default TimerKey getFlat() {
         return null;
     }
 }

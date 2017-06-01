@@ -22,6 +22,31 @@
  */
 package org.graalvm.compiler.debug;
 
+import java.util.Collection;
+
+import org.graalvm.compiler.options.OptionValues;
+
+/**
+ * Service for specifying {@link DebugDumpHandler}s and {@link DebugVerifyHandler}s when
+ * constructing a {@link GraalDebugConfig}.
+ */
 public interface DebugConfigCustomizer {
-    void customize(DebugConfig config);
+    /**
+     * Adds {@link DebugDumpHandler}s to {@code dumpHandlers}.
+     *
+     * @param options options that may be used to configure any handlers created by this method
+     * @param dumpHandlers the list to which the new handlers should be added
+     * @param handlerArgs extra parameters that may be used to configure the new handlers
+     */
+    default void addDumpHandlersTo(OptionValues options, Collection<DebugDumpHandler> dumpHandlers, Object... handlerArgs) {
+    }
+
+    /**
+     * Adds {@link DebugVerifyHandler}s to {@code verifyHandlers}.
+     *
+     * @param options options that may be used to configure any handlers created by this method
+     * @param verifyHandlers the list to which the new handlers should be added
+     */
+    default void addVerifyHandlersTo(OptionValues options, Collection<DebugVerifyHandler> verifyHandlers) {
+    }
 }

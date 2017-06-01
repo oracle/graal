@@ -20,31 +20,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.debug.internal;
-
-import org.graalvm.compiler.debug.DebugCloseable;
+package org.graalvm.compiler.debug;
 
 /**
- * A helper class for DebugValues that can nest and need to split out accumulated and flat values
- * for some kind of counter-like measurement.
+ * A helper class for {@link AbstractKey}s that can nest and need to split out accumulated and flat
+ * values for some kind of counter-like measurement.
  */
-abstract class CloseableCounterImpl implements DebugCloseable {
+public abstract class CloseableCounter implements DebugCloseable {
 
-    protected final CloseableCounterImpl parent;
-    protected final AccumulatedDebugValue counter;
+    protected final DebugContext debug;
+    protected final CloseableCounter parent;
+    protected final AccumulatedKey counter;
     protected final long start;
     protected long nestedAmountToSubtract;
 
-    CloseableCounterImpl(CloseableCounterImpl parent, AccumulatedDebugValue counter) {
+    CloseableCounter(DebugContext debug, CloseableCounter parent, AccumulatedKey counter) {
+        this.debug = debug;
         this.parent = parent;
         this.start = getCounterValue();
         this.counter = counter;
     }
 
+    @Override
+    public DebugContext getDebug() {
+        return debug;
+    }
+
     /**
      * A hook for subclasses. Lets them perform custom operations with the value since the last
-     * invocation of {@link CloseableCounterImpl#close()} of this accumulated
-     * {@link CloseableCounterImpl#counter}.
+     * invocation of {@link CloseableCounter#close()} of this accumulated
+     * {@link CloseableCounter#counter}.
      *
      * @param difference since the last invocation of this counter flat
      */
@@ -54,8 +59,7 @@ abstract class CloseableCounterImpl implements DebugCloseable {
 
     /**
      * A hook for subclasses. Lets them perform custom operations with the value since the last
-     * invocation of {@link CloseableCounterImpl#close()} of this flat
-     * {@link CloseableCounterImpl#counter}.
+     * invocation of {@link CloseableCounter#close()} of this flat {@link CloseableCounter#counter}.
      *
      * @param difference since the last invocation of this counter flat
      */
@@ -72,7 +76,7 @@ abstract class CloseableCounterImpl implements DebugCloseable {
                 parent.nestedAmountToSubtract += difference;
                 // Look for our counter in an outer scope and fix up
                 // the adjustment to the flat count
-                CloseableCounterImpl ancestor = parent.parent;
+                CloseableCounter ancestor = parent.parent;
                 while (ancestor != null) {
                     if (ancestor.counter.getName().equals(counter.getName())) {
                         ancestor.nestedAmountToSubtract -= difference;
@@ -83,8 +87,8 @@ abstract class CloseableCounterImpl implements DebugCloseable {
             }
         }
         long flatAmount = difference - nestedAmountToSubtract;
-        counter.addToCurrentValue(difference);
-        counter.flat.addToCurrentValue(flatAmount);
+        counter.addToCurrentValue(debug, difference);
+        counter.flat.addToCurrentValue(debug, flatAmount);
         interceptDifferenceAccm(difference);
         interceptDifferenceFlat(flatAmount);
     }

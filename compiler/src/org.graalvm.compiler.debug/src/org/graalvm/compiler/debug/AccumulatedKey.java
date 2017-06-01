@@ -22,15 +22,25 @@
  */
 package org.graalvm.compiler.debug;
 
-import org.graalvm.compiler.debug.Debug.Params;
+abstract class AccumulatedKey extends AbstractKey {
+    protected final AbstractKey flat;
 
-/**
- * Defines a service that can modify the {@linkplain Params parameters} for {@link Debug}.
- */
-public interface DebugInitializationParticipant {
+    static final String ACCUMULATED_KEY_SUFFIX = "_Accm";
+    static final String FLAT_KEY_SUFFIX = "_Flat";
 
-    /**
-     * Modifies the given {@link Debug} initialization parameters as necessary.
-     */
-    void apply(Params params);
+    protected AccumulatedKey(AbstractKey flat, String nameFormat, Object nameArg1, Object nameArg2) {
+        super(nameFormat, nameArg1, nameArg2);
+        this.flat = flat;
+    }
+
+    @Override
+    protected String createName(String format, Object arg1, Object arg2) {
+        return super.createName(format, arg1, arg2) + ACCUMULATED_KEY_SUFFIX;
+    }
+
+    @Override
+    public String getDocName() {
+        String name = getName();
+        return name.substring(0, name.length() - ACCUMULATED_KEY_SUFFIX.length());
+    }
 }

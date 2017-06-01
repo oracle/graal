@@ -27,11 +27,9 @@ import static org.graalvm.compiler.core.test.GraalCompilerTest.getInitialOptions
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
-import org.junit.Test;
-
 import org.graalvm.compiler.api.test.Graal;
-import org.graalvm.compiler.debug.Debug;
-import org.graalvm.compiler.debug.DebugConfigScope;
+import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.graph.Node;
@@ -40,6 +38,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.PhaseSuite;
@@ -48,6 +47,7 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.phases.verify.VerifyDebugUsage;
 import org.graalvm.compiler.runtime.RuntimeProvider;
+import org.junit.Test;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -58,8 +58,9 @@ public class VerifyDebugUsageTest {
 
         @Override
         protected void run(StructuredGraph graph) {
+            DebugContext debug = graph.getDebug();
             for (Node n : graph.getNodes()) {
-                Debug.log("%s", n.toString());
+                debug.log("%s", n.toString());
             }
         }
 
@@ -70,9 +71,10 @@ public class VerifyDebugUsageTest {
         @Override
         @SuppressWarnings("try")
         protected void run(StructuredGraph graph) {
-            try (Indent i = Debug.logAndIndent("%s", graph.toString())) {
+            DebugContext debug = graph.getDebug();
+            try (Indent i = debug.logAndIndent("%s", graph.toString())) {
                 for (Node n : graph.getNodes()) {
-                    Debug.log("%s", n);
+                    debug.log("%s", n);
                 }
             }
         }
@@ -83,7 +85,8 @@ public class VerifyDebugUsageTest {
 
         @Override
         protected void run(StructuredGraph graph) {
-            Debug.dump(Debug.BASIC_LEVEL, graph, "%s", graph.toString());
+            DebugContext debug = graph.getDebug();
+            debug.dump(DebugContext.BASIC_LEVEL, graph, "%s", graph.toString());
         }
     }
 
@@ -91,7 +94,8 @@ public class VerifyDebugUsageTest {
 
         @Override
         protected void run(StructuredGraph graph) {
-            Debug.dump(Debug.VERY_DETAILED_LEVEL + 1, graph, "%s", graph);
+            DebugContext debug = graph.getDebug();
+            debug.dump(DebugContext.VERY_DETAILED_LEVEL + 1, graph, "%s", graph);
         }
     }
 
@@ -99,7 +103,8 @@ public class VerifyDebugUsageTest {
 
         @Override
         protected void run(StructuredGraph graph) {
-            Debug.dump(getLevel(), graph, "%s", graph);
+            DebugContext debug = graph.getDebug();
+            debug.dump(getLevel(), graph, "%s", graph);
         }
 
         int getLevel() {
@@ -111,7 +116,8 @@ public class VerifyDebugUsageTest {
 
         @Override
         protected void run(StructuredGraph graph) {
-            Debug.verify(graph, "%s", graph.toString());
+            DebugContext debug = graph.getDebug();
+            debug.verify(graph, "%s", graph.toString());
         }
 
     }
@@ -120,8 +126,9 @@ public class VerifyDebugUsageTest {
 
         @Override
         protected void run(StructuredGraph graph) {
+            DebugContext debug = graph.getDebug();
             for (Node n : graph.getNodes()) {
-                Debug.log("error " + n);
+                debug.log("error " + n);
             }
         }
 
@@ -132,9 +139,10 @@ public class VerifyDebugUsageTest {
         @Override
         @SuppressWarnings("try")
         protected void run(StructuredGraph graph) {
-            try (Indent i = Debug.logAndIndent("error " + graph)) {
+            DebugContext debug = graph.getDebug();
+            try (Indent i = debug.logAndIndent("error " + graph)) {
                 for (Node n : graph.getNodes()) {
-                    Debug.log("%s", n);
+                    debug.log("%s", n);
                 }
             }
         }
@@ -145,7 +153,8 @@ public class VerifyDebugUsageTest {
 
         @Override
         protected void run(StructuredGraph graph) {
-            Debug.dump(Debug.BASIC_LEVEL, graph, "error " + graph);
+            DebugContext debug = graph.getDebug();
+            debug.dump(DebugContext.BASIC_LEVEL, graph, "error " + graph);
         }
 
     }
@@ -154,7 +163,8 @@ public class VerifyDebugUsageTest {
 
         @Override
         protected void run(StructuredGraph graph) {
-            Debug.verify(graph, "error " + graph);
+            DebugContext debug = graph.getDebug();
+            debug.verify(graph, "error " + graph);
         }
 
     }
@@ -163,8 +173,9 @@ public class VerifyDebugUsageTest {
 
         @Override
         protected void run(StructuredGraph graph) {
+            DebugContext debug = graph.getDebug();
             for (Node n : graph.getNodes()) {
-                Debug.log("%s", n);
+                debug.log("%s", n);
             }
         }
 
@@ -175,9 +186,10 @@ public class VerifyDebugUsageTest {
         @Override
         @SuppressWarnings("try")
         protected void run(StructuredGraph graph) {
-            try (Indent i = Debug.logAndIndent("%s", graph)) {
+            DebugContext debug = graph.getDebug();
+            try (Indent i = debug.logAndIndent("%s", graph)) {
                 for (Node n : graph.getNodes()) {
-                    Debug.log("%s", n);
+                    debug.log("%s", n);
                 }
             }
         }
@@ -188,7 +200,8 @@ public class VerifyDebugUsageTest {
 
         @Override
         protected void run(StructuredGraph graph) {
-            Debug.dump(Debug.BASIC_LEVEL, graph, "%s", graph);
+            DebugContext debug = graph.getDebug();
+            debug.dump(DebugContext.BASIC_LEVEL, graph, "%s", graph);
         }
 
     }
@@ -197,7 +210,8 @@ public class VerifyDebugUsageTest {
 
         @Override
         protected void run(StructuredGraph graph) {
-            Debug.verify(graph, "%s", graph);
+            DebugContext debug = graph.getDebug();
+            debug.verify(graph, "%s", graph);
         }
 
     }
@@ -332,12 +346,14 @@ public class VerifyDebugUsageTest {
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
         graphBuilderSuite.appendPhase(new GraphBuilderPhase(config));
         HighTierContext context = new HighTierContext(providers, graphBuilderSuite, OptimisticOptimizations.NONE);
+        OptionValues options = getInitialOptions();
+        DebugContext debug = DebugContext.create(options);
         for (Method m : c.getDeclaredMethods()) {
             if (!Modifier.isNative(m.getModifiers()) && !Modifier.isAbstract(m.getModifiers())) {
                 ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
-                StructuredGraph graph = new StructuredGraph.Builder(getInitialOptions()).method(method).build();
+                StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(method).build();
                 graphBuilderSuite.apply(graph, context);
-                try (DebugConfigScope s = Debug.disableIntercept()) {
+                try (DebugCloseable s = debug.disableIntercept()) {
                     new VerifyDebugUsage().apply(graph, context);
                 }
             }

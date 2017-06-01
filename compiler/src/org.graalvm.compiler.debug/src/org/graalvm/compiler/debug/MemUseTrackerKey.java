@@ -20,42 +20,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.debug.internal;
+package org.graalvm.compiler.debug;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import com.sun.management.ThreadMXBean;
 
 /**
- * Registry for allocating a globally unique integer id to each {@link DebugValue}.
+ * Tracks memory usage within a scope using {@link ThreadMXBean}. This facility should be employed
+ * using the try-with-resources pattern:
+ *
+ * <pre>
+ * try (DebugCloseable a = memUseTracker.start()) {
+ *     // the code to measure
+ * }
+ * </pre>
  */
-public class KeyRegistry {
-
-    private static final Map<String, Integer> keyMap = new HashMap<>();
-    private static final List<DebugValue> debugValues = new ArrayList<>();
+public interface MemUseTrackerKey extends MetricKey {
 
     /**
-     * Ensures a given debug value is registered.
+     * Creates a point from which memory usage will be recorded if memory use tracking is
+     * {@linkplain DebugContext#isMemUseTrackingEnabled() enabled}.
      *
-     * @return the globally unique id for {@code value}
+     * @return an object that must be closed once the activity has completed to add the memory used
+     *         since this call to the total for this tracker
      */
-    public static synchronized int register(DebugValue value) {
-        String name = value.getName();
-        if (!keyMap.containsKey(name)) {
-            keyMap.put(name, debugValues.size());
-            debugValues.add(value);
-        }
-        return keyMap.get(name);
-    }
+    DebugCloseable start(DebugContext debug);
 
     /**
-     * Gets a immutable view of the registered debug values.
-     *
-     * @return a list where {@code get(i).getIndex() == i}
+     * Gets the current value of this tracker.
      */
-    public static synchronized List<DebugValue> getDebugValues() {
-        return Collections.unmodifiableList(debugValues);
+    long getCurrentValue(DebugContext debug);
+
+    @Override
+    MemUseTrackerKey doc(String string);
+
+    static long getCurrentThreadAllocatedBytes() {
+        return Management.getCurrentThreadAllocatedBytes();
     }
 }

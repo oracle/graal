@@ -26,8 +26,14 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugDumpHandler;
+import org.graalvm.compiler.options.OptionValues;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.internal.ComparisonCriteria;
 import org.junit.internal.ExactComparisonCriteria;
@@ -364,5 +370,46 @@ public class GraalTest {
      */
     public static void assertFalse(boolean condition, String message, Object... objects) {
         assertTrue(!condition, message, objects);
+    }
+
+    /**
+     * Gets the capabilities available to any {@link DebugDumpHandler}s created by
+     * {@link #getDebugContext(OptionValues)}.
+     */
+    protected Object[] getDumpHandlerCapabilities() {
+        return new Object[0];
+    }
+
+    /**
+     * Gets a {@link DebugContext} object corresponding to {@code options}, creating a new one if
+     * none currently exists. Debug contexts created by this method will have their
+     * {@link DebugDumpHandler}s closed in {@link #afterTest()}.
+     */
+    protected DebugContext getDebugContext(OptionValues options) {
+        List<DebugContext> cached = cachedDebugs.get();
+        if (cached == null) {
+            cached = new ArrayList<>();
+            cachedDebugs.set(cached);
+        }
+        for (DebugContext debug : cached) {
+            if (debug.getOptions() == options) {
+                return debug;
+            }
+        }
+        DebugContext debug = DebugContext.create(options, getDumpHandlerCapabilities());
+        cached.add(debug);
+        return debug;
+    }
+
+    private final ThreadLocal<List<DebugContext>> cachedDebugs = new ThreadLocal<>();
+
+    @After
+    public void afterTest() {
+        List<DebugContext> cached = cachedDebugs.get();
+        if (cached != null) {
+            for (DebugContext debug : cached) {
+                debug.closeDumpHandlers(true);
+            }
+        }
     }
 }

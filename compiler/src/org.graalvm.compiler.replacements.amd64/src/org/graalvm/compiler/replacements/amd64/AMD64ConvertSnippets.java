@@ -28,7 +28,6 @@ import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -189,8 +188,8 @@ public class AMD64ConvertSnippets implements Snippets {
             args.add("input", convert.getValue());
             args.add("result", graph.unique(new AMD64FloatConvertNode(convert.getFloatConvert(), convert.getValue())));
 
-            SnippetTemplate template = template(args);
-            Debug.log("Lowering %s in %s: node=%s, template=%s, arguments=%s", convert.getFloatConvert(), graph, convert, template, args);
+            SnippetTemplate template = template(convert.getDebug(), args);
+            convert.getDebug().log("Lowering %s in %s: node=%s, template=%s, arguments=%s", convert.getFloatConvert(), graph, convert, template, args);
             template.instantiate(providers.getMetaAccess(), convert, DEFAULT_REPLACER, tool, args);
             convert.safeDelete();
         }

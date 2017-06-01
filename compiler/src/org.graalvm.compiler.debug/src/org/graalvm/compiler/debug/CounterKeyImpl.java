@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,32 +20,46 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core.test.debug;
+package org.graalvm.compiler.debug;
 
-import org.junit.Test;
+import org.graalvm.util.Pair;
 
-import org.graalvm.compiler.debug.DebugConfig;
-import org.graalvm.compiler.phases.Phase;
+class CounterKeyImpl extends AbstractKey implements CounterKey {
 
-public class MethodMetricsTest1 extends MethodMetricsTest {
-    @Override
-    protected Phase additionalPhase() {
-        return new MethodMetricPhases.CountingAddPhase();
+    CounterKeyImpl(String format, Object arg1, Object arg2) {
+        super(format, arg1, arg2);
     }
 
     @Override
-    DebugConfig getConfig() {
-        return overrideGraalDebugConfig(System.out, "MethodMetricsTest$TestApplication.*", "CountingAddPhase");
+    public void increment(DebugContext debug) {
+        add(debug, 1);
     }
 
     @Override
-    void assertValues() throws Throwable {
-        assertValues("PhaseRunsOnMethod", new long[]{1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
+    public Pair<String, String> toCSVFormat(long value) {
+        return Pair.create(String.valueOf(value), "");
     }
 
     @Override
-    @Test
-    public void test() throws Throwable {
-        super.test();
+    public String toHumanReadableFormat(long value) {
+        return Long.toString(value);
+    }
+
+    @Override
+    public void add(DebugContext debug, long value) {
+        if (debug.isCounterEnabled(this)) {
+            addToCurrentValue(debug, value);
+        }
+    }
+
+    @Override
+    public boolean isEnabled(DebugContext debug) {
+        return debug.isCounterEnabled(this);
+    }
+
+    @Override
+    public CounterKey doc(String doc) {
+        setDoc(doc);
+        return this;
     }
 }

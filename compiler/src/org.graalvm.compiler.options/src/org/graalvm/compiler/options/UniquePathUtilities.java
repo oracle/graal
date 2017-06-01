@@ -66,7 +66,7 @@ public class UniquePathUtilities {
         return id.generateID(extension);
     }
 
-    private static String formatExtension(String ext) {
+    public static String formatExtension(String ext) {
         if (ext == null || ext.length() == 0) {
             return "";
         }
@@ -81,9 +81,9 @@ public class UniquePathUtilities {
     }
 
     /**
-     * Generates a {@link Path} using the format "%s-%d_%d%s" with the {@link OptionKey#getValue
-     * base filename}, a {@link #globalTimeStamp global timestamp} , {@link #getThreadDumpId a per
-     * thread unique id} and an optional {@code extension}.
+     * Generates a {@link Path} using the format "%s-%d_%d%s" with the {@code baseNameOption}, a
+     * {@link #globalTimeStamp global timestamp} , {@link #getThreadDumpId a per thread unique id}
+     * and an optional {@code extension}.
      *
      * @return the output file path or null if the flag is null
      */
@@ -92,23 +92,23 @@ public class UniquePathUtilities {
     }
 
     /**
-     * Generate a {@link Path} using the format "%s-%d_%s" with the {@link OptionKey#getValue base
-     * filename}, a {@link #globalTimeStamp global timestamp} and an optional {@code extension} .
+     * Generate a {@link Path} using the format "%s-%d_%s" with the {@code baseNameOption}, a
+     * {@link #globalTimeStamp global timestamp} and an optional {@code extension} .
      *
      * @return the output file path or null if the flag is null
      */
-    public static Path getPathGlobal(OptionValues options, OptionKey<String> option, OptionKey<String> defaultDirectory, String extension) {
-        return getPath(options, option, defaultDirectory, extension, false);
+    public static Path getPathGlobal(OptionValues options, OptionKey<String> baseNameOption, OptionKey<String> defaultDirectory, String extension) {
+        return getPath(options, baseNameOption, defaultDirectory, extension, false);
     }
 
-    private static Path getPath(OptionValues options, OptionKey<String> option, OptionKey<String> defaultDirectory, String extension, boolean includeThreadId) {
-        if (option.getValue(options) == null) {
+    private static Path getPath(OptionValues options, OptionKey<String> baseNameOption, OptionKey<String> defaultDirectory, String extension, boolean includeThreadId) {
+        if (baseNameOption.getValue(options) == null) {
             return null;
         }
         String ext = formatExtension(extension);
         final String name = includeThreadId
-                        ? String.format("%s-%d_%s%s", option.getValue(options), getGlobalTimeStamp(), getThreadDumpId(ext), ext)
-                        : String.format("%s-%d%s", option.getValue(options), getGlobalTimeStamp(), ext);
+                        ? String.format("%s-%d_%s%s", baseNameOption.getValue(options), getGlobalTimeStamp(), getThreadDumpId(ext), ext)
+                        : String.format("%s-%d%s", baseNameOption.getValue(options), getGlobalTimeStamp(), ext);
         Path result = Paths.get(name);
         if (result.isAbsolute() || defaultDirectory == null) {
             return result;

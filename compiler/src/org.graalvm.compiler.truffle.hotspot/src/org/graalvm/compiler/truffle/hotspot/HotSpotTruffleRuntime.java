@@ -37,19 +37,14 @@ import java.util.ListIterator;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompilationRequestIdentifier;
 import org.graalvm.compiler.core.target.Backend;
-import org.graalvm.compiler.debug.Debug;
-import org.graalvm.compiler.debug.Debug.Scope;
-import org.graalvm.compiler.debug.DebugConfig;
-import org.graalvm.compiler.debug.DebugEnvironment;
-import org.graalvm.compiler.debug.GraalDebugConfig;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Activation;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.internal.DebugScope;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotCompilationIdentifier;
@@ -118,22 +113,10 @@ import jdk.vm.ci.runtime.JVMCICompiler;
 public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
     static class Lazy extends BackgroundCompileQueue {
-        private StackIntrospection stackIntrospection;
-        private final HotSpotTruffleRuntime runtime;
+        StackIntrospection stackIntrospection;
 
         Lazy(HotSpotTruffleRuntime runtime) {
             runtime.installDefaultListeners();
-            this.runtime = runtime;
-        }
-
-        @Override
-        public GraalDebugConfig getDebugConfig() {
-            if (Debug.isEnabled()) {
-                SnippetReflectionProvider snippetReflection = runtime.getRequiredGraalCapability(SnippetReflectionProvider.class);
-                return DebugEnvironment.ensureInitialized(TruffleCompilerOptions.getOptions(), snippetReflection);
-            } else {
-                return null;
-            }
         }
     }
 
@@ -145,6 +128,12 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     @Override
     public OptionValues getInitialOptions() {
         return HotSpotGraalOptionValues.HOTSPOT_OPTIONS;
+    }
+
+    @Override
+    protected DebugContext openDebugContext(OptionValues options, CompilationIdentifier compilationId, OptimizedCallTarget callTarget) {
+        HotSpotGraalRuntimeProvider runtime = (HotSpotGraalRuntimeProvider) getRequiredGraalCapability(RuntimeProvider.class);
+        return runtime.openDebugContext(options, compilationId, callTarget);
     }
 
     @Override
@@ -192,12 +181,13 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    protected void compileMethod(OptimizedCallTarget optimizedCallTarget, CancellableCompileTask task) {
+    protected void compileMethod(DebugContext initialDebug, TruffleCompiler compiler, OptimizedCallTarget optimizedCallTarget, ResolvedJavaMethod rootMethod, CompilationIdentifier compilationId,
+                    CancellableCompileTask task) {
         HotSpotGraalRuntimeProvider runtime = (HotSpotGraalRuntimeProvider) getRequiredGraalCapability(RuntimeProvider.class);
-        HotSpotRetryableCompilation<Void> compilation = new HotSpotRetryableCompilation<Void>(runtime, getOptions()) {
+        HotSpotRetryableCompilation<Void> compilation = new HotSpotRetryableCompilation<Void>(runtime) {
             @Override
-            protected Void run(Throwable failure) {
-                HotSpotTruffleRuntime.super.compileMethod(optimizedCallTarget, task);
+            protected Void run(DebugContext debug, Throwable failure) {
+                HotSpotTruffleRuntime.super.compileMethod(debug, compiler, optimizedCallTarget, rootMethod, compilationId, task);
                 return null;
             }
 
@@ -206,7 +196,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
                 return optimizedCallTarget.toString();
             }
         };
-        compilation.execute();
+        compilation.runWithRetry(initialDebug);
     }
 
     @Override
@@ -230,6 +220,11 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         }
     }
 
+    /**
+     * Compiles and installs code for {@link OptimizedCallTarget#callBoundary}.
+     *
+     * @see HotSpotTruffleRuntime#compileTruffleCallBoundaryMethod
+     */
     @SuppressWarnings("try")
     public void installOptimizedCallTargetCallMethod() {
         Providers providers = getHotSpotProviders();
@@ -237,14 +232,21 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         ResolvedJavaType type = metaAccess.lookupJavaType(OptimizedCallTarget.class);
         for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
             if (method.getAnnotation(TruffleCallBoundary.class) != null) {
+
+                HotSpotGraalRuntimeProvider runtime = (HotSpotGraalRuntimeProvider) getRequiredGraalCapability(RuntimeProvider.class);
                 HotSpotCompilationIdentifier compilationId = (HotSpotCompilationIdentifier) getHotSpotBackend().getCompilationIdentifier(method);
-                CompilationResult compResult = compileTruffleCallBoundaryMethod(method, compilationId);
-                CodeCacheProvider codeCache = providers.getCodeCache();
-                try (Scope s = Debug.scope("CodeInstall", codeCache, method, compResult)) {
-                    CompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(codeCache, method, compilationId.getRequest(), compResult);
-                    codeCache.setDefaultCode(method, compiledCode);
-                } catch (Throwable e) {
-                    throw Debug.handle(e);
+                OptionValues options = getOptions();
+                try (DebugContext debug = DebugStubsAndSnippets.getValue(options) ? runtime.openDebugContext(options, compilationId, method) : DebugContext.DISABLED;
+                                Activation a = debug.activate();
+                                DebugContext.Scope d = debug.scope("InstallingTruffleStub")) {
+                    CompilationResult compResult = compileTruffleCallBoundaryMethod(method, compilationId, debug);
+                    CodeCacheProvider codeCache = providers.getCodeCache();
+                    try (DebugContext.Scope s = debug.scope("CodeInstall", codeCache, method, compResult)) {
+                        CompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(codeCache, method, compilationId.getRequest(), compResult);
+                        codeCache.setDefaultCode(method, compiledCode);
+                    } catch (Throwable e) {
+                        throw debug.handle(e);
+                    }
                 }
             }
         }
@@ -268,16 +270,17 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     /**
-     * Compiles a method annotated by {@link TruffleCallBoundary}.
+     * Compiles a method annotated by {@link TruffleCallBoundary}. The compiled code has a special
+     * entry point generated by an {@link OptimizedCallTargetInstrumentationFactory}.
      */
-    private CompilationResult compileTruffleCallBoundaryMethod(ResolvedJavaMethod javaMethod, CompilationIdentifier compilationId) {
+    private CompilationResult compileTruffleCallBoundaryMethod(ResolvedJavaMethod javaMethod, CompilationIdentifier compilationId, DebugContext debug) {
         HotSpotProviders providers = getHotSpotProviders();
         SuitesProvider suitesProvider = providers.getSuites();
         OptionValues options = getOptions();
         Suites suites = suitesProvider.getDefaultSuites(options).copy();
         LIRSuites lirSuites = suitesProvider.getDefaultLIRSuites(options);
         removeInliningPhase(suites);
-        StructuredGraph graph = new StructuredGraph.Builder(options, AllowAssumptions.NO).method(javaMethod).compilationId(compilationId).build();
+        StructuredGraph graph = new StructuredGraph.Builder(options, debug, AllowAssumptions.NO).method(javaMethod).compilationId(compilationId).build();
 
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         Plugins plugins = new Plugins(new InvocationPlugins());
@@ -350,13 +353,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     @SuppressWarnings("try")
     @Override
     public void reinstallStubs() {
-        OptionValues options = TruffleCompilerOptions.getOptions();
-        DebugConfig config = DebugStubsAndSnippets.getValue(options) ? DebugScope.getConfig() : Debug.silentConfig();
-        try (Scope d = Debug.sandbox("InstallingTruffleStub", config)) {
-            installOptimizedCallTargetCallMethod();
-        } catch (Throwable e) {
-            throw Debug.handle(e);
-        }
+        installOptimizedCallTargetCallMethod();
     }
 
     @Override
@@ -397,6 +394,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         if (factory == null) {
             return null;
         }
+
         return new HotSpotNativeFunctionInterface(getOptions(), getHotSpotProviders(), factory, backend, config.dllLoad, config.dllLookup, config.rtldDefault);
     }
 

@@ -22,35 +22,39 @@
  */
 package org.graalvm.compiler.debug;
 
-import org.graalvm.compiler.debug.internal.DebugScope;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.graalvm.util.EconomicMap;
 
 /**
- * A utility for scoping a change to the current debug {@linkplain DebugScope#setConfig(DebugConfig)
- * configuration}. For example:
- *
- * <pre>
- *     DebugConfig config = ...;
- *     try (DebugConfigScope s = new DebugConfigScope(config)) {
- *         // ...
- *     }
- * </pre>
+ * Registry for allocating a globally unique integer id to each {@link AbstractKey}.
  */
-public class DebugConfigScope implements AutoCloseable {
+public class KeyRegistry {
 
-    private final DebugConfig current;
+    private static final EconomicMap<String, Integer> keyMap = EconomicMap.create();
+    private static final List<AbstractKey> keys = new ArrayList<>();
 
     /**
-     * Sets the current debug {@linkplain DebugScope#setConfig(DebugConfig) configuration} to a
-     * given value and creates an object that when {@linkplain #close() closed} resets the
-     * configuration to the {@linkplain DebugScope#getConfig() current} configuration.
+     * Ensures a given metric key is registered.
+     *
+     * @return the globally unique id for {@code value}
      */
-    public DebugConfigScope(DebugConfig config) {
-        this.current = DebugScope.getConfig();
-        DebugScope.getInstance().setConfig(config);
+    static synchronized int register(AbstractKey key) {
+        String name = key.getName();
+        if (!keyMap.containsKey(name)) {
+            keyMap.put(name, keys.size());
+            keys.add(key);
+        }
+        return keyMap.get(name);
     }
 
-    @Override
-    public void close() {
-        DebugScope.getInstance().setConfig(current);
+    /**
+     * Gets a copy of the registered keys.
+     *
+     * @return a list where {@code get(i).getIndex() == i}
+     */
+    public static synchronized List<MetricKey> getKeys() {
+        return new ArrayList<>(keys);
     }
 }

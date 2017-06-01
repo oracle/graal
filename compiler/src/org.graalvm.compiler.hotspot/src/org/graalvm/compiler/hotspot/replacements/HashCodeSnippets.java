@@ -86,7 +86,7 @@ public class HashCodeSnippets implements Snippets {
             StructuredGraph graph = node.graph();
             Arguments args = new Arguments(identityHashCodeSnippet, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("thisObj", node.object);
-            SnippetTemplate template = template(args);
+            SnippetTemplate template = template(node.getDebug(), args);
             template.instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 

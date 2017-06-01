@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.hotspot.debug;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -443,7 +442,7 @@ public class BenchmarkCounters {
                 Path path = UniquePathUtilities.getPathGlobal(options, Options.BenchmarkCountersFile, GraalDebugConfig.Options.DumpPath, "csv");
                 TTY.println("Writing benchmark counters to '%s'", path);
                 return new PrintStream(path.toFile());
-            } catch (FileNotFoundException e) {
+            } catch (IOException e) {
                 TTY.out().println(e.getMessage());
                 TTY.out().println("Fallback to default");
             }

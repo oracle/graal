@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.debug.internal;
+package org.graalvm.compiler.debug;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,10 +30,13 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * A node in a tree of {@link DebugValue}s.
+ * A node in a tree of values.
  */
 public class DebugValueMap {
 
+    /**
+     * The top level maps for all threads.
+     */
     private static final List<DebugValueMap> topLevelMaps = new ArrayList<>();
 
     private long[] values;
@@ -118,6 +121,21 @@ public class DebugValueMap {
 
     public static synchronized List<DebugValueMap> getTopLevelMaps() {
         return topLevelMaps;
+    }
+
+    /**
+     * The top level map for the current thread.
+     */
+    private static final ThreadLocal<DebugValueMap> topLevelMap = new ThreadLocal<>();
+
+    static DebugValueMap getTopLevelMap() {
+        DebugValueMap map = topLevelMap.get();
+        if (map == null) {
+            map = new DebugValueMap(Thread.currentThread().getName());
+            topLevelMap.set(map);
+            registerTopLevel(map);
+        }
+        return map;
     }
 
     public void normalize() {

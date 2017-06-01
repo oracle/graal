@@ -199,7 +199,7 @@ public class LazyInitializationTest {
     }
 
     private boolean isGraalClassAllowed(Class<?> cls) {
-        if (CompilerThreadFactory.class.equals(cls) || CompilerThreadFactory.DebugConfigAccess.class.equals(cls)) {
+        if (CompilerThreadFactory.class.equals(cls)) {
             // The HotSpotTruffleRuntime creates a CompilerThreadFactory for Truffle.
             return true;
         }

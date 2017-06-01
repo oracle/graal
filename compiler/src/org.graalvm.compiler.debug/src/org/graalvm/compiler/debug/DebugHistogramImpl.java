@@ -20,14 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.debug.internal;
+package org.graalvm.compiler.debug;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-
-import org.graalvm.compiler.debug.DebugHistogram;
 
 public class DebugHistogramImpl implements DebugHistogram {
 

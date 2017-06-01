@@ -22,15 +22,18 @@
  */
 package org.graalvm.compiler.truffle;
 
-import org.graalvm.compiler.debug.DebugConfig;
+import java.util.Collection;
+
 import org.graalvm.compiler.debug.DebugConfigCustomizer;
+import org.graalvm.compiler.debug.DebugDumpHandler;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
 @ServiceProvider(DebugConfigCustomizer.class)
 public class TruffleTreeDebugConfigCustomizer implements DebugConfigCustomizer {
 
     @Override
-    public void customize(DebugConfig config) {
-        config.dumpHandlers().add(new TruffleTreeDumpHandler(config.getOptions()));
+    public void addDumpHandlersTo(OptionValues options, Collection<DebugDumpHandler> dumpHandlers, Object... capabilites) {
+        dumpHandlers.add(new TruffleTreeDumpHandler(options));
     }
 }

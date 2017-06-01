@@ -20,13 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.debug.internal;
+package org.graalvm.compiler.debug;
 
 import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.List;
 
-import org.graalvm.compiler.debug.DebugHistogram;
 import org.graalvm.compiler.debug.DebugHistogram.CountedValue;
 import org.graalvm.compiler.debug.DebugHistogram.Printer;
 

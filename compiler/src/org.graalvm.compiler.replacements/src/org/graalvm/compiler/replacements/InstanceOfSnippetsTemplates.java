@@ -94,7 +94,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
                 replacer.replaceUsingInstantiation();
             } else {
                 Arguments args = makeArguments(replacer, tool);
-                template(args).instantiate(providers.getMetaAccess(), instanceOf, replacer, tool, args);
+                template(instanceOf.getDebug(), args).instantiate(providers.getMetaAccess(), instanceOf, replacer, tool, args);
             }
         }
 

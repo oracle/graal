@@ -756,7 +756,7 @@ public class MonitorSnippets implements Snippets {
                 args.addConst("counters", counters);
             }
 
-            template(args).instantiate(providers.getMetaAccess(), monitorenterNode, DEFAULT_REPLACER, args);
+            template(graph.getDebug(), args).instantiate(providers.getMetaAccess(), monitorenterNode, DEFAULT_REPLACER, args);
         }
 
         public void lower(MonitorExitNode monitorexitNode, HotSpotRegistersProvider registers, LoweringTool tool) {
@@ -775,7 +775,7 @@ public class MonitorSnippets implements Snippets {
             args.addConst("options", graph.getOptions());
             args.addConst("counters", counters);
 
-            template(args).instantiate(providers.getMetaAccess(), monitorexitNode, DEFAULT_REPLACER, args);
+            template(graph.getDebug(), args).instantiate(providers.getMetaAccess(), monitorexitNode, DEFAULT_REPLACER, args);
         }
 
         public static boolean isTracingEnabledForType(ValueNode object) {
@@ -843,7 +843,7 @@ public class MonitorSnippets implements Snippets {
 
                         Arguments args = new Arguments(checkCounter, graph.getGuardsStage(), tool.getLoweringStage());
                         args.addConst("errMsg", msg);
-                        inlineeGraph = template(args).copySpecializedGraph();
+                        inlineeGraph = template(graph.getDebug(), args).copySpecializedGraph(graph.getDebug());
                         InliningUtil.inline(invoke, inlineeGraph, false, null);
                     }
                 }

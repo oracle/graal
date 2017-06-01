@@ -100,7 +100,7 @@ public class LoadExceptionObjectSnippets implements Snippets {
             } else {
                 Arguments args = new Arguments(loadException, loadExceptionObject.graph().getGuardsStage(), tool.getLoweringStage());
                 args.addConst("threadRegister", registers.getThreadRegister());
-                template(args).instantiate(providers.getMetaAccess(), loadExceptionObject, DEFAULT_REPLACER, args);
+                template(loadExceptionObject.getDebug(), args).instantiate(providers.getMetaAccess(), loadExceptionObject, DEFAULT_REPLACER, args);
             }
         }
     }

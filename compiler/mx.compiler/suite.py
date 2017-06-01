@@ -192,7 +192,6 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "uses" : [
         "org.graalvm.compiler.debug.DebugConfigCustomizer",
-        "org.graalvm.compiler.debug.DebugInitializationParticipant",
         "org.graalvm.compiler.debug.TTYStreamProvider",
       ],
       "dependencies" : [
@@ -1080,6 +1079,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "org.graalvm.compiler.debug",
         "org.graalvm.util",
         "mx:JUNIT",
       ],
