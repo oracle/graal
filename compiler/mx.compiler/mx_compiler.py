@@ -347,8 +347,12 @@ def verify_jvmci_ci_versions(args):
             mx.abort("No JVMCI version found in {0} files!".format(msg))
         return version, dev
 
-    hocon_version, hocon_dev = _grep_version(glob.glob(join(mx.primary_suite().vc_dir, '*.hocon')) + glob.glob(join(mx.primary_suite().dir, 'ci*.hocon')) + glob.glob(join(mx.primary_suite().dir, 'ci*/*.hocon')), 'ci.hocon')
-    travis_version, travis_dev = _grep_version(glob.glob('.travis.yml'), 'TravisCI')
+    primary_suite = mx.primary_suite()
+    hocon_version, hocon_dev = _grep_version(
+        glob.glob(join(primary_suite.vc_dir, '*.hocon')) +
+        glob.glob(join(primary_suite.dir, 'ci*.hocon')) +
+        glob.glob(join(primary_suite.dir, 'ci*/*.hocon')), 'hocon')
+    travis_version, travis_dev = _grep_version([join(primary_suite.vc_dir, '.travis.yml')], 'TravisCI')
 
     if hocon_version != travis_version or hocon_dev != travis_dev:
         versions_ok = False
