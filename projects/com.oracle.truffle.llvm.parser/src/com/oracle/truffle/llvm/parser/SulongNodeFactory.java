@@ -99,8 +99,8 @@ public interface SulongNodeFactory {
     LLVMExpressionNode createFunctionCall(LLVMParserRuntime runtime, LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type, SourceSection sourceSection);
 
     LLVMControlFlowNode createFunctionInvoke(LLVMParserRuntime runtime, FrameSlot resultLocation, LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type, int normalIndex,
-                    int unwindIndex, LLVMExpressionNode[] normalPhiWriteNodes,
-                    LLVMExpressionNode[] unwindPhiWriteNodes, SourceSection sourceSection);
+                    int unwindIndex, LLVMExpressionNode normalPhiWriteNodes,
+                    LLVMExpressionNode unwindPhiWriteNodes, SourceSection sourceSection);
 
     LLVMExpressionNode createFrameRead(LLVMParserRuntime runtime, Type llvmType, FrameSlot frameSlot);
 
@@ -123,15 +123,15 @@ public interface SulongNodeFactory {
 
     LLVMControlFlowNode createUnreachableNode(LLVMParserRuntime runtime);
 
-    LLVMControlFlowNode createIndirectBranch(LLVMParserRuntime runtime, LLVMExpressionNode value, int[] labelTargets, LLVMExpressionNode[][] phiWrites, SourceSection source);
+    LLVMControlFlowNode createIndirectBranch(LLVMParserRuntime runtime, LLVMExpressionNode value, int[] labelTargets, LLVMExpressionNode[] phiWrites, SourceSection source);
 
     LLVMControlFlowNode createSwitch(LLVMParserRuntime runtime, LLVMExpressionNode cond, int[] labels, LLVMExpressionNode[] cases,
-                    PrimitiveType llvmType, LLVMExpressionNode[][] phiWriteNodes, SourceSection source);
+                    PrimitiveType llvmType, LLVMExpressionNode[] phiWriteNodes, SourceSection source);
 
-    LLVMControlFlowNode createConditionalBranch(LLVMParserRuntime runtime, int trueIndex, int falseIndex, LLVMExpressionNode conditionNode, LLVMExpressionNode[] truePhiWriteNodes,
-                    LLVMExpressionNode[] falsePhiWriteNodes, SourceSection sourceSection);
+    LLVMControlFlowNode createConditionalBranch(LLVMParserRuntime runtime, int trueIndex, int falseIndex, LLVMExpressionNode conditionNode, LLVMExpressionNode truePhiWriteNodes,
+                    LLVMExpressionNode falsePhiWriteNodes, SourceSection sourceSection);
 
-    LLVMControlFlowNode createUnconditionalBranch(LLVMParserRuntime runtime, int unconditionalIndex, LLVMExpressionNode[] phiWrites, SourceSection source);
+    LLVMControlFlowNode createUnconditionalBranch(LLVMParserRuntime runtime, int unconditionalIndex, LLVMExpressionNode phi, SourceSection source);
 
     LLVMExpressionNode createArrayLiteral(LLVMParserRuntime runtime, List<LLVMExpressionNode> arrayValues, Type arrayType);
 
@@ -180,5 +180,7 @@ public interface SulongNodeFactory {
     NativeIntrinsicProvider getNativeIntrinsicsFactory(LLVMLanguage language, LLVMContext context);
 
     RootNode createStaticInitsRootNode(LLVMParserRuntime visitor, LLVMExpressionNode[] deallocs);
+
+    LLVMExpressionNode createPhi(LLVMExpressionNode[] from, FrameSlot[] to, Type[] types);
 
 }

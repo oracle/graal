@@ -41,10 +41,10 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 public final class LLVMIndirectBranchNode extends LLVMControlFlowNode {
 
     @Child private LLVMBranchAddressNode branchAddress;
-    @CompilationFinal(dimensions = 2) private final LLVMExpressionNode[][] phiWriteNodes;
+    @Children private final LLVMExpressionNode[] phiWriteNodes;
     @CompilationFinal(dimensions = 1) private final int[] successors;
 
-    public LLVMIndirectBranchNode(LLVMBranchAddressNode branchAddress, int[] indices, LLVMExpressionNode[][] phiWriteNodes, SourceSection sourceSection) {
+    public LLVMIndirectBranchNode(LLVMBranchAddressNode branchAddress, int[] indices, LLVMExpressionNode[] phiWriteNodes, SourceSection sourceSection) {
         super(sourceSection);
         assert indices.length > 1;
         this.successors = indices;
@@ -58,7 +58,7 @@ public final class LLVMIndirectBranchNode extends LLVMControlFlowNode {
     }
 
     @Override
-    public LLVMExpressionNode[] getPhiNodes(int successorIndex) {
+    public LLVMExpressionNode getPhiNode(int successorIndex) {
         return phiWriteNodes[successorIndex];
     }
 

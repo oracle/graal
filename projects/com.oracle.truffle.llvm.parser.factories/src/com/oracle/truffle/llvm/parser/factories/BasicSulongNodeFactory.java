@@ -48,6 +48,7 @@ import com.oracle.truffle.llvm.nodes.control.LLVMBrUnconditionalNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMConditionalBranchNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMDispatchBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMIndirectBranchNode;
+import com.oracle.truffle.llvm.nodes.control.LLVMWritePhisNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMIndirectBranchNode.LLVMBasicBranchAddressNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMRetNodeFactory.LLVMVoidReturnNodeGen;
 import com.oracle.truffle.llvm.nodes.control.LLVMSwitchNode.LLVMI16SwitchNode;
@@ -284,13 +285,13 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
     }
 
     @Override
-    public LLVMControlFlowNode createIndirectBranch(LLVMParserRuntime runtime, LLVMExpressionNode value, int[] labelTargets, LLVMExpressionNode[][] phiWrites, SourceSection source) {
+    public LLVMControlFlowNode createIndirectBranch(LLVMParserRuntime runtime, LLVMExpressionNode value, int[] labelTargets, LLVMExpressionNode[] phiWrites, SourceSection source) {
         return new LLVMIndirectBranchNode(new LLVMBasicBranchAddressNode(value), labelTargets, phiWrites, source);
     }
 
     @Override
     public LLVMControlFlowNode createSwitch(LLVMParserRuntime runtime, LLVMExpressionNode cond, int[] successors, LLVMExpressionNode[] cases,
-                    PrimitiveType llvmType, LLVMExpressionNode[][] phiWriteNodes, SourceSection source) {
+                    PrimitiveType llvmType, LLVMExpressionNode[] phiWriteNodes, SourceSection source) {
         switch (llvmType.getPrimitiveKind()) {
             case I8:
                 LLVMExpressionNode[] i8Cases = Arrays.copyOf(cases, cases.length, LLVMExpressionNode[].class);
@@ -310,13 +311,13 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
     }
 
     @Override
-    public LLVMControlFlowNode createConditionalBranch(LLVMParserRuntime runtime, int trueIndex, int falseIndex, LLVMExpressionNode conditionNode, LLVMExpressionNode[] truePhiWriteNodes,
-                    LLVMExpressionNode[] falsePhiWriteNodes, SourceSection sourceSection) {
+    public LLVMControlFlowNode createConditionalBranch(LLVMParserRuntime runtime, int trueIndex, int falseIndex, LLVMExpressionNode conditionNode, LLVMExpressionNode truePhiWriteNodes,
+                    LLVMExpressionNode falsePhiWriteNodes, SourceSection sourceSection) {
         return new LLVMConditionalBranchNode(trueIndex, falseIndex, truePhiWriteNodes, falsePhiWriteNodes, conditionNode, sourceSection);
     }
 
     @Override
-    public LLVMControlFlowNode createUnconditionalBranch(LLVMParserRuntime runtime, int unconditionalIndex, LLVMExpressionNode[] phiWrites, SourceSection source) {
+    public LLVMControlFlowNode createUnconditionalBranch(LLVMParserRuntime runtime, int unconditionalIndex, LLVMExpressionNode phiWrites, SourceSection source) {
         return new LLVMBrUnconditionalNode(unconditionalIndex, phiWrites, source);
     }
 
@@ -488,7 +489,7 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
 
     @Override
     public LLVMControlFlowNode createFunctionInvoke(LLVMParserRuntime runtime, FrameSlot resultLocation, LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type,
-                    int normalIndex, int unwindIndex, LLVMExpressionNode[] normalPhiWriteNodes, LLVMExpressionNode[] unwindPhiWriteNodes,
+                    int normalIndex, int unwindIndex, LLVMExpressionNode normalPhiWriteNodes, LLVMExpressionNode unwindPhiWriteNodes,
                     SourceSection sourceSection) {
         return LLVMFunctionFactory.createFunctionInvoke(resultLocation, functionNode, argNodes, type, normalIndex, unwindIndex, normalPhiWriteNodes, unwindPhiWriteNodes,
                         sourceSection);
@@ -666,5 +667,10 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
     @Override
     public NativeIntrinsicProvider getNativeIntrinsicsFactory(LLVMLanguage language, LLVMContext context) {
         return new LLVMNativeIntrinsicsProvider(context, language).collectIntrinsics();
+    }
+
+    @Override
+    public LLVMExpressionNode createPhi(LLVMExpressionNode[] from, FrameSlot[] to, Type[] types) {
+        return new LLVMWritePhisNode(from, to, types);
     }
 }

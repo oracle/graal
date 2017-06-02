@@ -29,20 +29,19 @@
  */
 package com.oracle.truffle.llvm.nodes.control;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public class LLVMBrUnconditionalNode extends LLVMControlFlowNode {
 
-    @CompilationFinal(dimensions = 1) private final LLVMExpressionNode[] phiWrites;
+    @Child private LLVMExpressionNode phi;
     private final int successor;
 
-    public LLVMBrUnconditionalNode(int successor, LLVMExpressionNode[] phiWrites, SourceSection sourceSection) {
+    public LLVMBrUnconditionalNode(int successor, LLVMExpressionNode phi, SourceSection sourceSection) {
         super(sourceSection);
         this.successor = successor;
-        this.phiWrites = phiWrites;
+        this.phi = phi;
     }
 
     @Override
@@ -51,9 +50,9 @@ public class LLVMBrUnconditionalNode extends LLVMControlFlowNode {
     }
 
     @Override
-    public LLVMExpressionNode[] getPhiNodes(int successorIndex) {
+    public LLVMExpressionNode getPhiNode(int successorIndex) {
         assert successorIndex == 0;
-        return phiWrites;
+        return phi;
     }
 
     public int getSuccessor() {

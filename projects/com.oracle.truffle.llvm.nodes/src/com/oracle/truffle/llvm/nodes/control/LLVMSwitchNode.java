@@ -37,16 +37,16 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
 
-    @CompilationFinal(dimensions = 2) final LLVMExpressionNode[][] phiWriteNodes;
+    @Children private final LLVMExpressionNode[] phiNodes;
     @Child protected LLVMExpressionNode cond;
     @Children public final LLVMExpressionNode[] cases;
     @CompilationFinal(dimensions = 1) private final int[] successors;
 
-    public LLVMSwitchNode(int[] successors, LLVMExpressionNode[][] phiWriteNodes, LLVMExpressionNode cond, LLVMExpressionNode[] cases, SourceSection sourceSection) {
+    public LLVMSwitchNode(int[] successors, LLVMExpressionNode[] phiNodes, LLVMExpressionNode cond, LLVMExpressionNode[] cases, SourceSection sourceSection) {
         super(sourceSection);
         assert successors.length == cases.length + 1 : "the last entry of the successors array must be the default case";
         this.successors = successors;
-        this.phiWriteNodes = phiWriteNodes;
+        this.phiNodes = phiNodes;
         this.cond = cond;
         this.cases = cases;
     }
@@ -59,8 +59,8 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
     public abstract Object executeCondition(VirtualFrame frame);
 
     @Override
-    public LLVMExpressionNode[] getPhiNodes(int successorIndex) {
-        return phiWriteNodes[successorIndex];
+    public LLVMExpressionNode getPhiNode(int successorIndex) {
+        return phiNodes[successorIndex];
     }
 
     public int[] getSuccessors() {
@@ -68,8 +68,8 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
     }
 
     public static final class LLVMI8SwitchNode extends LLVMSwitchNode {
-        public LLVMI8SwitchNode(LLVMExpressionNode cond, LLVMExpressionNode[] cases, int[] successors, LLVMExpressionNode[][] phiWriteNodes, SourceSection source) {
-            super(successors, phiWriteNodes, cond, cases, source);
+        public LLVMI8SwitchNode(LLVMExpressionNode cond, LLVMExpressionNode[] cases, int[] successors, LLVMExpressionNode[] phiNodes, SourceSection source) {
+            super(successors, phiNodes, cond, cases, source);
         }
 
         @Override
@@ -80,8 +80,8 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
     }
 
     public static final class LLVMI16SwitchNode extends LLVMSwitchNode {
-        public LLVMI16SwitchNode(LLVMExpressionNode cond, LLVMExpressionNode[] cases, int[] successors, LLVMExpressionNode[][] phiWriteNodes, SourceSection source) {
-            super(successors, phiWriteNodes, cond, cases, source);
+        public LLVMI16SwitchNode(LLVMExpressionNode cond, LLVMExpressionNode[] cases, int[] successors, LLVMExpressionNode[] phiNodes, SourceSection source) {
+            super(successors, phiNodes, cond, cases, source);
         }
 
         @Override
@@ -92,8 +92,8 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
     }
 
     public static final class LLVMI32SwitchNode extends LLVMSwitchNode {
-        public LLVMI32SwitchNode(LLVMExpressionNode cond, LLVMExpressionNode[] cases, int[] successors, LLVMExpressionNode[][] phiWriteNodes, SourceSection source) {
-            super(successors, phiWriteNodes, cond, cases, source);
+        public LLVMI32SwitchNode(LLVMExpressionNode cond, LLVMExpressionNode[] cases, int[] successors, LLVMExpressionNode[] phiNodes, SourceSection source) {
+            super(successors, phiNodes, cond, cases, source);
         }
 
         @Override
@@ -104,8 +104,8 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
     }
 
     public static final class LLVMI64SwitchNode extends LLVMSwitchNode {
-        public LLVMI64SwitchNode(LLVMExpressionNode cond, LLVMExpressionNode[] cases, int[] successors, LLVMExpressionNode[][] phiWriteNodes, SourceSection source) {
-            super(successors, phiWriteNodes, cond, cases, source);
+        public LLVMI64SwitchNode(LLVMExpressionNode cond, LLVMExpressionNode[] cases, int[] successors, LLVMExpressionNode[] phiNodes, SourceSection source) {
+            super(successors, phiNodes, cond, cases, source);
         }
 
         @Override

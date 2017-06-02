@@ -49,8 +49,8 @@ import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 @NeedsStack
 public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
-    @CompilationFinal(dimensions = 1) protected final LLVMExpressionNode[] normalPhiWriteNodes;
-    @CompilationFinal(dimensions = 1) protected final LLVMExpressionNode[] unwindPhiWriteNodes;
+    @Child protected LLVMExpressionNode normalPhiNode;
+    @Child protected LLVMExpressionNode unwindPhiNode;
     private final int normalSuccessor;
     private final int unwindSuccessor;
 
@@ -63,13 +63,13 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
 
     public LLVMInvokeNode(FunctionType type, FrameSlot resultLocation,
                     int normalSuccessor, int unwindSuccessor,
-                    LLVMExpressionNode[] normalPhiWriteNodes, LLVMExpressionNode[] unwindPhiWriteNodes, SourceSection sourceSection) {
+                    LLVMExpressionNode normalPhiNode, LLVMExpressionNode unwindPhiNode, SourceSection sourceSection) {
         super(sourceSection);
         this.normalSuccessor = normalSuccessor;
         this.unwindSuccessor = unwindSuccessor;
         this.type = type;
-        this.normalPhiWriteNodes = normalPhiWriteNodes;
-        this.unwindPhiWriteNodes = unwindPhiWriteNodes;
+        this.normalPhiNode = normalPhiNode;
+        this.unwindPhiNode = unwindPhiNode;
         this.resultLocation = resultLocation;
     }
 
@@ -87,12 +87,12 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
     }
 
     @Override
-    public LLVMExpressionNode[] getPhiNodes(int successorIndex) {
+    public LLVMExpressionNode getPhiNode(int successorIndex) {
         if (successorIndex == NORMAL_SUCCESSOR) {
-            return normalPhiWriteNodes;
+            return normalPhiNode;
         } else {
             assert successorIndex == UNWIND_SUCCESSOR;
-            return unwindPhiWriteNodes;
+            return unwindPhiNode;
         }
     }
 
@@ -167,24 +167,10 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
     @ExplodeLoop
     public void writePhis(VirtualFrame frame, int successorIndex) {
         if (profile.profile(successorIndex == NORMAL_SUCCESSOR)) {
-            runNormalPhis(frame);
+            normalPhiNode.executeGeneric(frame);
         } else {
             assert successorIndex == UNWIND_SUCCESSOR;
-            runUnwindPhis(frame);
-        }
-    }
-
-    @ExplodeLoop
-    private void runUnwindPhis(VirtualFrame frame) {
-        for (int i = 0; i < unwindPhiWriteNodes.length; i++) {
-            unwindPhiWriteNodes[i].executeGeneric(frame);
-        }
-    }
-
-    @ExplodeLoop
-    private void runNormalPhis(VirtualFrame frame) {
-        for (int i = 0; i < normalPhiWriteNodes.length; i++) {
-            normalPhiWriteNodes[i].executeGeneric(frame);
+            unwindPhiNode.executeGeneric(frame);
         }
     }
 
@@ -194,8 +180,8 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
 
         public LLVMSubstitutionInvokeNode(FunctionType type, FrameSlot resultLocation, LLVMExpressionNode substitution,
                         int normalSuccessor, int unwindSuccessor,
-                        LLVMExpressionNode[] normalPhiWriteNodes, LLVMExpressionNode[] unwindPhiWriteNodes, SourceSection sourceSection) {
-            super(type, resultLocation, normalSuccessor, unwindSuccessor, normalPhiWriteNodes, unwindPhiWriteNodes, sourceSection);
+                        LLVMExpressionNode normalPhiNode, LLVMExpressionNode unwindPhiNode, SourceSection sourceSection) {
+            super(type, resultLocation, normalSuccessor, unwindSuccessor, normalPhiNode, unwindPhiNode, sourceSection);
             this.substitution = substitution;
         }
 
@@ -213,8 +199,8 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
 
         public LLVMFunctionInvokeNode(FunctionType type, FrameSlot resultLocation, LLVMExpressionNode functionNode, LLVMExpressionNode[] argumentNodes,
                         int normalSuccessor, int unwindSuccessor,
-                        LLVMExpressionNode[] normalPhiWriteNodes, LLVMExpressionNode[] unwindPhiWriteNodes, SourceSection sourceSection) {
-            super(type, resultLocation, normalSuccessor, unwindSuccessor, normalPhiWriteNodes, unwindPhiWriteNodes, sourceSection);
+                        LLVMExpressionNode normalPhiNode, LLVMExpressionNode unwindPhiNode, SourceSection sourceSection) {
+            super(type, resultLocation, normalSuccessor, unwindSuccessor, normalPhiNode, unwindPhiNode, sourceSection);
             this.functionNode = functionNode;
             this.argumentNodes = argumentNodes;
             this.dispatchNode = LLVMLookupDispatchNodeGen.create(type);

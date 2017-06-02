@@ -74,7 +74,7 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
     }
 
     @Override
-    public LLVMExpressionNode[] getPhiNodes(int successorIndex) {
+    public LLVMExpressionNode getPhiNode(int successorIndex) {
         assert successorIndex == 0;
         return null;
     }
