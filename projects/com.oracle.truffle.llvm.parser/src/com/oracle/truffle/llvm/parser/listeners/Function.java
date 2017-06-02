@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.listeners;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -53,8 +54,6 @@ import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public final class Function implements ParserListener {
-
-    private static final int INSERT_VALUE_MAX_ARGS = 3;
 
     private final FunctionGenerator generator;
 
@@ -273,7 +272,7 @@ public final class Function implements ParserListener {
 
         final int target = getIndex(args[i++]);
         final Type calleeType;
-        if (target <= symbols.size()) {
+        if (target < symbols.size()) {
             calleeType = symbols.get(target);
         } else {
             calleeType = types.get(args[i++]);
@@ -288,9 +287,10 @@ public final class Function implements ParserListener {
         }
 
         final int[] arguments = new int[args.length - i];
-        for (int j = 0; i < args.length; i++, j++) {
-            arguments[j] = getIndex(args[i]);
-            if (arguments[j] >= symbols.size()) {
+        for (int j = 0; i < args.length; j++) {
+            int index = getIndex(args[i++]);
+            arguments[j] = index;
+            if (index >= symbols.size()) {
                 i++;
             }
         }
@@ -325,6 +325,9 @@ public final class Function implements ParserListener {
         for (int j = 0; j < numClauses; j++) {
             clauseKinds[j] = args[i++];
             clauseTypes[j] = getIndex(args[i++]);
+            if (clauseTypes[j] >= symbols.size()) {
+                i++;
+            }
         }
         symbols.add(type);
         instructionBlock.createLandingpad(type, isCleanup, clauseKinds, clauseTypes);
@@ -364,9 +367,22 @@ public final class Function implements ParserListener {
             }
         }
 
-        final int[] arguments = new int[args.length - i];
-        for (int j = 0; i < args.length; i++, j++) {
-            arguments[j] = getIndex(args[i]);
+        int[] arguments = new int[args.length - i];
+        int skipped = 0;
+        int j = 0;
+        while (j < functionType.getArgumentTypes().length && i < args.length) {
+            arguments[j++] = getIndex(args[i++]);
+        }
+        while (i < args.length) {
+            int index = getIndex(args[i++]);
+            arguments[j++] = index;
+            if (index >= symbols.size()) {
+                i++;
+                skipped++;
+            }
+        }
+        if (skipped > 0) {
+            arguments = Arrays.copyOf(arguments, arguments.length - skipped);
         }
 
         final Type returnType = functionType.getReturnType();
@@ -652,10 +668,17 @@ public final class Function implements ParserListener {
     }
 
     private void createExtractElement(long[] args) {
-        int vector = getIndex(args[0]);
-        int index = getIndex(args[1]);
+        int i = 0;
+        int vector = getIndex(args[i++]);
 
-        Type type = ((VectorType) symbols.get(vector)).getElementType();
+        Type type;
+        if (vector >= symbols.size()) {
+            type = types.get(i++);
+        } else {
+            type = ((VectorType) symbols.get(vector)).getElementType();
+        }
+
+        int index = getIndex(args[i]);
 
         instructionBlock.createExtractElement(type, vector, index);
 
@@ -663,15 +686,21 @@ public final class Function implements ParserListener {
     }
 
     private void createExtractValue(long[] args) {
-        int aggregate = getIndex(args[0]);
-        int index = (int) args[1];
+        int i = 0;
+        int aggregate = getIndex(args[i++]);
+        Type type = null;
+        if (aggregate >= symbols.size()) {
+            type = types.get(i++);
+        }
+        int index = (int) args[i++];
+        if (type == null) {
+            type = ((AggregateType) symbols.get(aggregate)).getElementType(index);
+        }
 
-        if (args.length != 2) {
+        if (i != args.length) {
             // This is supported in neither parser.
             throw new UnsupportedOperationException("Multiple indices are not yet supported!");
         }
-
-        Type type = ((AggregateType) symbols.get(aggregate)).getElementType(index);
 
         instructionBlock.createExtractValue(type, aggregate, index);
 
@@ -736,32 +765,50 @@ public final class Function implements ParserListener {
     }
 
     private void createInsertElement(long[] args) {
-        int vector = getIndex(args[0]);
-        int index = getIndex(args[2]);
-        int value = getIndex(args[1]);
+        int i = 0;
 
-        Type symbol = symbols.get(vector);
+        int vector = getIndex(args[i++]);
+        Type type;
+        if (vector >= symbols.size()) {
+            type = types.get(i++);
+        } else {
+            type = symbols.get(vector);
+        }
 
-        instructionBlock.createInsertElement(symbol, vector, index, value);
+        int value = getIndex(args[i++]);
+        int index = getIndex(args[i]);
 
-        symbols.add(symbol);
+        instructionBlock.createInsertElement(type, vector, index, value);
+
+        symbols.add(type);
     }
 
     private void createInsertValue(long[] args) {
-        int aggregate = getIndex(args[0]);
-        int index = (int) args[2];
-        int value = getIndex(args[1]);
+        int i = 0;
 
-        if (args.length != INSERT_VALUE_MAX_ARGS) {
+        int aggregate = getIndex(args[i++]);
+        Type type;
+        if (aggregate >= symbols.size()) {
+            type = types.get(i++);
+        } else {
+            type = symbols.get(aggregate);
+        }
+
+        int value = getIndex(args[i++]);
+        if (value >= symbols.size()) {
+            i++;
+        }
+
+        int index = (int) args[i++];
+
+        if (args.length != i) {
             // This is supported in neither parser.
             throw new UnsupportedOperationException("Multiple indices are not yet supported!");
         }
 
-        Type symbol = symbols.get(aggregate);
+        instructionBlock.createInsertValue(type, aggregate, index, value);
 
-        instructionBlock.createInsertValue(symbol, aggregate, index, value);
-
-        symbols.add(symbol);
+        symbols.add(type);
     }
 
     private void createPhi(long[] args) {
@@ -807,11 +854,20 @@ public final class Function implements ParserListener {
     }
 
     private void createShuffleVector(long[] args) {
-        int vector1 = getIndex(args[0]);
-        int vector2 = getIndex(args[1]);
-        int mask = getIndex(args[2]);
+        int i = 0;
 
-        PrimitiveType subtype = ((VectorType) symbols.get(vector1)).getElementType();
+        int vector1 = getIndex(args[i++]);
+        Type vectorType;
+        if (vector1 >= symbols.size()) {
+            vectorType = types.get(i++);
+        } else {
+            vectorType = symbols.get(vector1);
+        }
+
+        int vector2 = getIndex(args[i++]);
+        int mask = getIndex(args[i]);
+
+        PrimitiveType subtype = ((VectorType) vectorType).getElementType();
         int length = ((VectorType) symbols.get(mask)).getNumberOfElements();
         Type type = new VectorType(subtype, length);
 
