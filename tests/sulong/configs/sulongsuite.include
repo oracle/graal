@@ -701,3 +701,6 @@ c/vector/vectorDivision.c
 c/vector/vectorLiteral.c
 c/vector/vectorMultiplication.c
 c/vector/vectorSubtraction.c
+c/cyclicPhi.c
+c/cyclicPhi2.c
+c/cyclicPhi3.c
