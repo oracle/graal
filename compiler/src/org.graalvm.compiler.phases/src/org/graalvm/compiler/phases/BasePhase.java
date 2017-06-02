@@ -150,14 +150,22 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     }
 
     private boolean dumpBefore(final StructuredGraph graph, final C context, boolean isTopLevel) {
-        if (isTopLevel && Debug.isDumpEnabled(Debug.VERBOSE_LEVEL)) {
-            Debug.dump(Debug.VERBOSE_LEVEL, graph, "Before phase %s", getName());
+        if (isTopLevel && (Debug.isDumpEnabled(Debug.VERBOSE_LEVEL) || shouldDumpBeforeAtBasicLevel() && Debug.isDumpEnabled(Debug.BASIC_LEVEL))) {
+            if (shouldDumpBeforeAtBasicLevel()) {
+                Debug.dump(Debug.BASIC_LEVEL, graph, "Before phase %s", getName());
+            } else {
+                Debug.dump(Debug.VERBOSE_LEVEL, graph, "Before phase %s", getName());
+            }
         } else if (!isTopLevel && Debug.isDumpEnabled(Debug.VERBOSE_LEVEL + 1)) {
             Debug.dump(Debug.VERBOSE_LEVEL + 1, graph, "Before subphase %s", getName());
         } else if (Debug.isDumpEnabled(Debug.ENABLED_LEVEL) && shouldDump(graph, context)) {
             Debug.dump(Debug.ENABLED_LEVEL, graph, "Before %s %s", isTopLevel ? "phase" : "subphase", getName());
             return true;
         }
+        return false;
+    }
+
+    protected boolean shouldDumpBeforeAtBasicLevel() {
         return false;
     }
 
