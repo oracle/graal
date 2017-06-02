@@ -34,20 +34,16 @@ import java.nio.file.Path;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.llvm.Sulong;
-import com.oracle.truffle.llvm.pipe.CaptureOutput;
+import com.oracle.truffle.llvm.test.util.ProcessUtil;
+import com.oracle.truffle.llvm.test.util.ProcessUtil.ProcessResult;
 
 public abstract class BaseSulongOnlyHarness {
 
     @Test
     public void test() throws Exception {
-        int sulongResult = -1;
-        String sulongStdOut;
-        try (CaptureOutput out = new CaptureOutput()) {
-            sulongResult = Sulong.executeMain(getPath().toAbsolutePath().toFile(), getConfiguration().args);
-            System.out.flush();
-            sulongStdOut = out.getResult();
-        }
+        ProcessResult out = ProcessUtil.executeSulongTestMain(getPath().toAbsolutePath().toFile(), getConfiguration().args);
+        int sulongResult = out.getReturnValue();
+        String sulongStdOut = out.getStdOutput();
 
         if (sulongResult != (sulongResult & 0xFF)) {
             Assert.fail("Broken unittest " + getPath() + ". Test exits with invalid value (" + sulongResult + ").");
