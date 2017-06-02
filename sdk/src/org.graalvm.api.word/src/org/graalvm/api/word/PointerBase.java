@@ -1,10 +1,12 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,21 +24,9 @@
  */
 package org.graalvm.api.word;
 
-public interface ComparableWord extends WordBase {
-
-    /**
-     * Compares this word with the specified value.
-     *
-     * @param val value to which this word is to be compared.
-     * @return {@code this == val}
-     */
-    boolean equal(ComparableWord val);
-
-    /**
-     * Compares this word with the specified value.
-     *
-     * @param val value to which this word is to be compared.
-     * @return {@code this != val}
-     */
-    boolean notEqual(ComparableWord val);
+/**
+ * Marker interface for all {@link WordBase word types} that have the semantic of a pointer (but not
+ * necessarily all the memory access methods defined in {@link Pointer}).
+ */
+public interface PointerBase extends ComparableWord {
 }

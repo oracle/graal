@@ -36,6 +36,15 @@ suite = {
       "javaCompliance" : "1.8",
       "workingSets" : "API,SDK",
     },
+
+    "org.graalvm.api.word" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [],
+      "checkstyle" : "org.graalvm.api.word",
+      "javaCompliance" : "1.8",
+      "workingSets" : "API,SDK",
+    },
   },
   "licenses" : {
     "UPL" : {
@@ -51,6 +60,15 @@ suite = {
         "org.graalvm.polyglot",
       ],
       "distDependencies" : [],
+    },
+
+    "WORD_API" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.api.word",
+      ],
+      "distDependencies" : [
+      ],
     },
   },
 }
