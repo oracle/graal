@@ -24,9 +24,6 @@ builds += [
     name: "gate-truffle-javadoc"
   },
   ${linux-amd64} ${linux-deploy} ${maven-deploy-dry-run} ${truffleCommon} {name: "gate-truffle-maven-dry-run"}
-  ${linux-amd64} ${linux-deploy} ${deploy-binaries} ${truffleCommon} {name : "postmerge-truffle-deploy-binaries-linux-amd64"}
-  ${darwin-amd64} ${darwin-deploy} ${deploy-binaries} ${truffleCommon} {name : "postmerge-truffle-deploy-binaries-darwin-amd64"}
-  ${solaris-sparcv9} ${solaris-deploy} ${deploy-binaries} ${truffleCommon} {name : "postmerge-truffle-deploy-binaries-solaris-sparcv9"}
   ${solaris-sparcv9} ${java8} ${gateLite} {
     targets : [ gate ],
     name: "gate-truffle-solaris-lite-8"
