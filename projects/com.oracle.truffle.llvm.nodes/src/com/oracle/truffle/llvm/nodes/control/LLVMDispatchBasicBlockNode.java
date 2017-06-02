@@ -245,11 +245,9 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
 
     @ExplodeLoop
     private static void executePhis(VirtualFrame frame, LLVMControlFlowNode controlFlowNode, int successorIndex) {
-        LLVMExpressionNode[] phiWrites = controlFlowNode.getPhiNodes(successorIndex);
-        if (phiWrites != null) {
-            for (int i = 0; i < phiWrites.length; i++) {
-                phiWrites[i].executeGeneric(frame);
-            }
+        LLVMExpressionNode phi = controlFlowNode.getPhiNode(successorIndex);
+        if (phi != null) {
+            phi.executeGeneric(frame);
         }
     }
 
@@ -264,6 +262,6 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
     }
 
     private static boolean noPhisNecessary(LLVMControlFlowNode controlFlowNode) {
-        return controlFlowNode.getSuccessorCount() == 0 || controlFlowNode.getSuccessorCount() == 1 && controlFlowNode.getPhiNodes(0) == null;
+        return controlFlowNode.getSuccessorCount() == 0 || controlFlowNode.getSuccessorCount() == 1 && controlFlowNode.getPhiNode(0) == null;
     }
 }

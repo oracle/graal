@@ -146,7 +146,7 @@ final class LLVMFunctionFactory {
     }
 
     static LLVMControlFlowNode createFunctionInvoke(FrameSlot resultLocation, LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type,
-                    int normalIndex, int unwindIndex, LLVMExpressionNode[] normalPhiWriteNodes, LLVMExpressionNode[] unwindPhiWriteNodes, SourceSection sourceSection) {
+                    int normalIndex, int unwindIndex, LLVMExpressionNode normalPhiWriteNodes, LLVMExpressionNode unwindPhiWriteNodes, SourceSection sourceSection) {
         return new LLVMInvokeNode.LLVMFunctionInvokeNode(type, resultLocation, functionNode, argNodes, normalIndex, unwindIndex, normalPhiWriteNodes, unwindPhiWriteNodes,
                         sourceSection);
     }

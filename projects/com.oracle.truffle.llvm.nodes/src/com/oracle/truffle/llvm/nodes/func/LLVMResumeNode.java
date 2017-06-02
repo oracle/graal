@@ -53,7 +53,7 @@ public final class LLVMResumeNode extends LLVMControlFlowNode {
     }
 
     @Override
-    public LLVMExpressionNode[] getPhiNodes(int successorIndex) {
+    public LLVMExpressionNode getPhiNode(int successorIndex) {
         return null;
     }
 

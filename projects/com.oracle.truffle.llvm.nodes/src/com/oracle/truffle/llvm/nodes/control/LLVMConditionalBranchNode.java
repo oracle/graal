@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.control;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
@@ -39,21 +38,21 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public class LLVMConditionalBranchNode extends LLVMControlFlowNode {
 
     @Child private LLVMExpressionNode condition;
-    @CompilationFinal(dimensions = 1) final LLVMExpressionNode[] truePhiWriteNodes;
-    @CompilationFinal(dimensions = 1) final LLVMExpressionNode[] falsePhiWriteNodes;
+    @Child private LLVMExpressionNode truePhi;
+    @Child private LLVMExpressionNode falsePhi;
     private final int trueSuccessor;
     private final int falseSuccessor;
 
     public static final int TRUE_SUCCESSOR = 0;
     public static final int FALSE_SUCCESSOR = 1;
 
-    public LLVMConditionalBranchNode(int trueSuccessor, int falseSuccessor, LLVMExpressionNode[] truePhiWriteNodes, LLVMExpressionNode[] falsePhiWriteNodes, LLVMExpressionNode condition,
+    public LLVMConditionalBranchNode(int trueSuccessor, int falseSuccessor, LLVMExpressionNode truePhi, LLVMExpressionNode falsePhi, LLVMExpressionNode condition,
                     SourceSection sourceSection) {
         super(sourceSection);
         this.trueSuccessor = trueSuccessor;
         this.falseSuccessor = falseSuccessor;
-        this.truePhiWriteNodes = truePhiWriteNodes;
-        this.falsePhiWriteNodes = falsePhiWriteNodes;
+        this.truePhi = truePhi;
+        this.falsePhi = falsePhi;
         this.condition = condition;
     }
 
@@ -63,13 +62,13 @@ public class LLVMConditionalBranchNode extends LLVMControlFlowNode {
     }
 
     @Override
-    public LLVMExpressionNode[] getPhiNodes(int successorIndex) {
+    public LLVMExpressionNode getPhiNode(int successorIndex) {
         CompilerAsserts.partialEvaluationConstant(successorIndex);
         if (successorIndex == TRUE_SUCCESSOR) {
-            return truePhiWriteNodes;
+            return truePhi;
         } else {
             assert successorIndex == FALSE_SUCCESSOR;
-            return falsePhiWriteNodes;
+            return falsePhi;
         }
     }
 
