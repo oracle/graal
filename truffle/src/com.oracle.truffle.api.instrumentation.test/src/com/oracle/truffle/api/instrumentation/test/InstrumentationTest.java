@@ -48,10 +48,13 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.AllocationEvent;
+import com.oracle.truffle.api.instrumentation.AllocationEventFilter;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
@@ -70,6 +73,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotRuntime;
 import com.oracle.truffle.api.vm.PolyglotRuntime.Instrument;
+import com.oracle.truffle.api.instrumentation.AllocationListener;
 
 public class InstrumentationTest extends AbstractInstrumentationTest {
 
@@ -1366,6 +1370,46 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
         String getEnteredNodes() {
             return enteredNodes.toString();
+        }
+    }
+
+    @Test
+    public void testAllocation() throws Exception {
+        PolyglotRuntime.Instrument instrument = engine.getRuntime().getInstruments().get("testAllocation");
+        instrument.setEnabled(true);
+        TestAllocation allocation = instrument.lookup(TestAllocation.class);
+        run("LOOP(3, VARIABLE(a, 10))");
+        instrument.setEnabled(false);
+        assertEquals("[W 4 null, A 4 10, W 4 null, A 4 10, W 4 null, A 4 10]", allocation.getAllocations());
+
+    }
+
+    @Registration(id = "testAllocation")
+    public static class TestAllocation extends TruffleInstrument implements AllocationListener {
+
+        private final List<String> allocations = new ArrayList<>();
+
+        @Override
+        protected void onCreate(Env env) {
+            env.registerService(this);
+            LanguageInfo testLanguage = env.getLanguages().get(InstrumentationTestLanguage.MIME_TYPE);
+            env.getInstrumenter().attachAllocationListener(AllocationEventFilter.newBuilder().languages(testLanguage).build(), this);
+        }
+
+        String getAllocations() {
+            return allocations.toString();
+        }
+
+        @Override
+        @TruffleBoundary
+        public void onEnter(AllocationEvent event) {
+            allocations.add("W " + event.getSizeChange() + " " + event.getValue());
+        }
+
+        @Override
+        @TruffleBoundary
+        public void onReturnValue(AllocationEvent event) {
+            allocations.add("A " + event.getSizeChange() + " " + event.getValue());
         }
     }
 

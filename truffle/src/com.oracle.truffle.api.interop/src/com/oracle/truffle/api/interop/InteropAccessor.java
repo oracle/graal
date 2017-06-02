@@ -44,6 +44,11 @@ class InteropAccessor extends Accessor {
                 ForeignAccess fa = (ForeignAccess) access;
                 return fa.checkLanguage();
             }
+
+            @Override
+            public boolean isTruffleObject(Object value) {
+                return value instanceof TruffleObject;
+            }
         };
     }
 
