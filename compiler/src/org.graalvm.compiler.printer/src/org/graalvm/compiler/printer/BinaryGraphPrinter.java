@@ -183,7 +183,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
                 writePropertyObject(a);
             }
         } else {
-            writePoolObject(String.format(format, args));
+            writePoolObject(formatTitle(id, format, args));
         }
         writeGraph(graph, properties);
         flush();
