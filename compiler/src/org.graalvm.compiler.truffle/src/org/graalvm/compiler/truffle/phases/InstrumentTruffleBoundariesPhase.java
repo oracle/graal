@@ -31,7 +31,7 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 
 /**
@@ -67,7 +67,7 @@ public class InstrumentTruffleBoundariesPhase extends InstrumentPhase {
     }
 
     @Override
-    protected void instrumentGraph(StructuredGraph graph, HighTierContext context, JavaConstant tableConstant) {
+    protected void instrumentGraph(StructuredGraph graph, PhaseContext context, JavaConstant tableConstant) {
         for (Node n : graph.getNodes()) {
             if (n instanceof Invoke && ((Invoke) n).callTarget().targetMethod().isAnnotationPresent(TruffleBoundary.class)) {
                 Point p = getOrCreatePoint(n);
