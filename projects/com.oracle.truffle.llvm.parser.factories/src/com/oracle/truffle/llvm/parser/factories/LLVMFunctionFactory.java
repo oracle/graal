@@ -142,7 +142,27 @@ final class LLVMFunctionFactory {
     }
 
     static LLVMExpressionNode createFunctionCall(LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType functionType, SourceSection sourceSection) {
-        return new LLVMCallNode(functionType, functionNode, argNodes, sourceSection);
+        LLVMExpressionNode callNode = new LLVMCallNode(functionType, functionNode, argNodes, sourceSection);
+        if (functionType.getReturnType() instanceof PrimitiveType) {
+            switch (((PrimitiveType) functionType.getReturnType()).getPrimitiveKind()) {
+                case I8:
+                    return LLVMI8ProfiledValueNodeGen.create(callNode);
+                case I32:
+                    return LLVMI32ProfiledValueNodeGen.create(callNode);
+                case I64:
+                    return LLVMI64ProfiledValueNodeGen.create(callNode);
+                case FLOAT:
+                    return LLVMFloatProfiledValueNodeGen.create(callNode);
+                case DOUBLE:
+                    return LLVMDoubleProfiledValueNodeGen.create(callNode);
+                default:
+                    return callNode;
+            }
+        } else if (functionType.getReturnType() instanceof PointerType) {
+            return LLVMAddressProfiledValueNodeGen.create(callNode);
+        } else {
+            return callNode;
+        }
     }
 
     static LLVMControlFlowNode createFunctionInvoke(FrameSlot resultLocation, LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type,

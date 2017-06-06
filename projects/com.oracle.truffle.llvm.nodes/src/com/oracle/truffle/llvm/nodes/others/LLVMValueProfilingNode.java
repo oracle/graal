@@ -42,10 +42,12 @@ import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public abstract class LLVMValueProfilingNode {
+@NodeChild
+public abstract class LLVMValueProfilingNode extends LLVMExpressionNode {
 
-    @NodeChild
-    public abstract static class LLVMI8ProfiledValueNode extends LLVMExpressionNode {
+    public abstract Object executeWithTarget(Object value);
+
+    public abstract static class LLVMI8ProfiledValueNode extends LLVMValueProfilingNode {
 
         private final ByteValueProfile profile = ByteValueProfile.createIdentityProfile();
 
@@ -56,8 +58,7 @@ public abstract class LLVMValueProfilingNode {
 
     }
 
-    @NodeChild
-    public abstract static class LLVMI32ProfiledValueNode extends LLVMExpressionNode {
+    public abstract static class LLVMI32ProfiledValueNode extends LLVMValueProfilingNode {
 
         private final IntValueProfile profile = IntValueProfile.createIdentityProfile();
 
@@ -67,8 +68,7 @@ public abstract class LLVMValueProfilingNode {
         }
     }
 
-    @NodeChild
-    public abstract static class LLVMI64ProfiledValueNode extends LLVMExpressionNode {
+    public abstract static class LLVMI64ProfiledValueNode extends LLVMValueProfilingNode {
 
         private final LongValueProfile profile = LongValueProfile.createIdentityProfile();
 
@@ -79,8 +79,7 @@ public abstract class LLVMValueProfilingNode {
 
     }
 
-    @NodeChild
-    public abstract static class LLVMFloatProfiledValueNode extends LLVMExpressionNode {
+    public abstract static class LLVMFloatProfiledValueNode extends LLVMValueProfilingNode {
 
         private final FloatValueProfile profile = FloatValueProfile.createRawIdentityProfile();
 
@@ -91,8 +90,7 @@ public abstract class LLVMValueProfilingNode {
 
     }
 
-    @NodeChild
-    public abstract static class LLVMDoubleProfiledValueNode extends LLVMExpressionNode {
+    public abstract static class LLVMDoubleProfiledValueNode extends LLVMValueProfilingNode {
 
         private final DoubleValueProfile profile = DoubleValueProfile.createRawIdentityProfile();
 
@@ -103,8 +101,7 @@ public abstract class LLVMValueProfilingNode {
 
     }
 
-    @NodeChild
-    public abstract static class LLVMAddressProfiledValueNode extends LLVMExpressionNode {
+    public abstract static class LLVMAddressProfiledValueNode extends LLVMValueProfilingNode {
 
         @Specialization
         public LLVMAddress executeAddress(LLVMAddress value, @Cached("createIdentityProfile()") LongValueProfile profile) {
