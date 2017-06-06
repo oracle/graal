@@ -37,12 +37,22 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNode;
+import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMAddressProfiledValueNodeGen;
+import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMDoubleProfiledValueNodeGen;
+import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMFloatProfiledValueNodeGen;
+import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI16ProfiledValueNodeGen;
+import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI1ProfiledValueNodeGen;
+import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI32ProfiledValueNodeGen;
+import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI64ProfiledValueNodeGen;
+import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI8ProfiledValueNodeGen;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.NeedsStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
@@ -51,6 +61,8 @@ import com.oracle.truffle.llvm.runtime.types.VoidType;
 public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
     @Child protected LLVMExpressionNode normalPhiNode;
     @Child protected LLVMExpressionNode unwindPhiNode;
+    @Child protected LLVMValueProfilingNode returnValueProfile;
+
     private final int normalSuccessor;
     private final int unwindSuccessor;
 
@@ -71,6 +83,43 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
         this.normalPhiNode = normalPhiNode;
         this.unwindPhiNode = unwindPhiNode;
         this.resultLocation = resultLocation;
+
+        initializeReturnValueProfileNode();
+    }
+
+    private void initializeReturnValueProfileNode() {
+        CompilerAsserts.neverPartOfCompilation();
+        if (type.getReturnType() instanceof PrimitiveType) {
+            switch (((PrimitiveType) type.getReturnType()).getPrimitiveKind()) {
+                case I8:
+                    this.returnValueProfile = LLVMI8ProfiledValueNodeGen.create(null);
+                    break;
+                case I32:
+                    this.returnValueProfile = LLVMI32ProfiledValueNodeGen.create(null);
+                    break;
+                case I64:
+                    this.returnValueProfile = LLVMI64ProfiledValueNodeGen.create(null);
+                    break;
+                case FLOAT:
+                    this.returnValueProfile = LLVMFloatProfiledValueNodeGen.create(null);
+                    break;
+                case DOUBLE:
+                    this.returnValueProfile = LLVMDoubleProfiledValueNodeGen.create(null);
+                    break;
+                case I1:
+                    this.returnValueProfile = LLVMI1ProfiledValueNodeGen.create(null);
+                    break;
+                case I16:
+                    this.returnValueProfile = LLVMI16ProfiledValueNodeGen.create(null);
+                    break;
+                default:
+                    this.returnValueProfile = null;
+            }
+        } else if (type.getReturnType() instanceof PointerType) {
+            this.returnValueProfile = LLVMAddressProfiledValueNodeGen.create(null);
+        } else {
+            this.returnValueProfile = null;
+        }
     }
 
     @Override
@@ -105,30 +154,31 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
         if (returnType instanceof PrimitiveType) {
             switch (((PrimitiveType) returnType).getPrimitiveKind()) {
                 case I1:
-                    frame.setBoolean(resultLocation, (boolean) value);
+                    frame.setBoolean(resultLocation, (boolean) returnValueProfile.executeWithTarget(value));
                     break;
                 case I8:
-                    frame.setByte(resultLocation, (byte) value);
+                    frame.setByte(resultLocation, (byte) returnValueProfile.executeWithTarget(value));
                     break;
                 case I16:
-                    frame.setInt(resultLocation, (int) value);
+                    frame.setInt(resultLocation, (short) returnValueProfile.executeWithTarget(value));
                     break;
                 case I32:
-                    frame.setInt(resultLocation, (int) value);
+                    frame.setInt(resultLocation, (int) returnValueProfile.executeWithTarget(value));
                     break;
                 case I64:
-                    frame.setLong(resultLocation, (long) value);
+                    frame.setLong(resultLocation, (long) returnValueProfile.executeWithTarget(value));
                     break;
                 case FLOAT:
-                    frame.setFloat(resultLocation, (float) value);
+                    frame.setFloat(resultLocation, (float) returnValueProfile.executeWithTarget(value));
                     break;
                 case DOUBLE:
-                    frame.setDouble(resultLocation, (double) value);
+                    frame.setDouble(resultLocation, (double) returnValueProfile.executeWithTarget(value));
                     break;
                 default:
                     frame.setObject(resultLocation, value);
             }
-
+        } else if (type.getReturnType() instanceof PointerType) {
+            frame.setObject(resultLocation, returnValueProfile.executeWithTarget(value));
         } else {
             frame.setObject(resultLocation, value);
         }

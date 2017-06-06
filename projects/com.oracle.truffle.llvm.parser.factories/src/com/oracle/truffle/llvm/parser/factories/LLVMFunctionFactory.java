@@ -53,6 +53,8 @@ import com.oracle.truffle.llvm.nodes.func.LLVMInvokeNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMAddressProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMDoubleProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMFloatProfiledValueNodeGen;
+import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI16ProfiledValueNodeGen;
+import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI1ProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI32ProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI64ProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI8ProfiledValueNodeGen;
@@ -131,6 +133,10 @@ final class LLVMFunctionFactory {
                     return LLVMFloatProfiledValueNodeGen.create(argNode);
                 case DOUBLE:
                     return LLVMDoubleProfiledValueNodeGen.create(argNode);
+                case I1:
+                    return LLVMI1ProfiledValueNodeGen.create(argNode);
+                case I16:
+                    return LLVMI16ProfiledValueNodeGen.create(argNode);
                 default:
                     return argNode;
             }
@@ -142,7 +148,31 @@ final class LLVMFunctionFactory {
     }
 
     static LLVMExpressionNode createFunctionCall(LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType functionType, SourceSection sourceSection) {
-        return new LLVMCallNode(functionType, functionNode, argNodes, sourceSection);
+        LLVMExpressionNode callNode = new LLVMCallNode(functionType, functionNode, argNodes, sourceSection);
+        if (functionType.getReturnType() instanceof PrimitiveType) {
+            switch (((PrimitiveType) functionType.getReturnType()).getPrimitiveKind()) {
+                case I8:
+                    return LLVMI8ProfiledValueNodeGen.create(callNode);
+                case I32:
+                    return LLVMI32ProfiledValueNodeGen.create(callNode);
+                case I64:
+                    return LLVMI64ProfiledValueNodeGen.create(callNode);
+                case FLOAT:
+                    return LLVMFloatProfiledValueNodeGen.create(callNode);
+                case DOUBLE:
+                    return LLVMDoubleProfiledValueNodeGen.create(callNode);
+                case I1:
+                    return LLVMI1ProfiledValueNodeGen.create(callNode);
+                case I16:
+                    return LLVMI16ProfiledValueNodeGen.create(callNode);
+                default:
+                    return callNode;
+            }
+        } else if (functionType.getReturnType() instanceof PointerType) {
+            return LLVMAddressProfiledValueNodeGen.create(callNode);
+        } else {
+            return callNode;
+        }
     }
 
     static LLVMControlFlowNode createFunctionInvoke(FrameSlot resultLocation, LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type,
