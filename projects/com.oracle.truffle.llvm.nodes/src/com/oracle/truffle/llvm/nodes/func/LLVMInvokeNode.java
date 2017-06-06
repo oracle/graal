@@ -41,6 +41,8 @@ import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMAddressProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMDoubleProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMFloatProfiledValueNodeGen;
+import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI16ProfiledValueNodeGen;
+import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI1ProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI32ProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI64ProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI8ProfiledValueNodeGen;
@@ -90,24 +92,25 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
         if (type.getReturnType() instanceof PrimitiveType) {
             switch (((PrimitiveType) type.getReturnType()).getPrimitiveKind()) {
                 case I8:
-                    this.returnValueProfile = LLVMAddressProfiledValueNodeGen.create(null);
-                    LLVMI8ProfiledValueNodeGen.create(null);
+                    this.returnValueProfile = LLVMI8ProfiledValueNodeGen.create(null);
                     break;
                 case I32:
-                    this.returnValueProfile = LLVMAddressProfiledValueNodeGen.create(null);
-                    LLVMI32ProfiledValueNodeGen.create(null);
+                    this.returnValueProfile = LLVMI32ProfiledValueNodeGen.create(null);
                     break;
                 case I64:
-                    this.returnValueProfile = LLVMAddressProfiledValueNodeGen.create(null);
-                    LLVMI64ProfiledValueNodeGen.create(null);
+                    this.returnValueProfile = LLVMI64ProfiledValueNodeGen.create(null);
                     break;
                 case FLOAT:
-                    this.returnValueProfile = LLVMAddressProfiledValueNodeGen.create(null);
-                    LLVMFloatProfiledValueNodeGen.create(null);
+                    this.returnValueProfile = LLVMFloatProfiledValueNodeGen.create(null);
                     break;
                 case DOUBLE:
-                    this.returnValueProfile = LLVMAddressProfiledValueNodeGen.create(null);
-                    LLVMDoubleProfiledValueNodeGen.create(null);
+                    this.returnValueProfile = LLVMDoubleProfiledValueNodeGen.create(null);
+                    break;
+                case I1:
+                    this.returnValueProfile = LLVMI1ProfiledValueNodeGen.create(null);
+                    break;
+                case I16:
+                    this.returnValueProfile = LLVMI16ProfiledValueNodeGen.create(null);
                     break;
                 default:
                     this.returnValueProfile = null;
@@ -151,13 +154,13 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
         if (returnType instanceof PrimitiveType) {
             switch (((PrimitiveType) returnType).getPrimitiveKind()) {
                 case I1:
-                    frame.setBoolean(resultLocation, (boolean) value);
+                    frame.setBoolean(resultLocation, (boolean) returnValueProfile.executeWithTarget(value));
                     break;
                 case I8:
                     frame.setByte(resultLocation, (byte) returnValueProfile.executeWithTarget(value));
                     break;
                 case I16:
-                    frame.setInt(resultLocation, (int) value);
+                    frame.setInt(resultLocation, (short) returnValueProfile.executeWithTarget(value));
                     break;
                 case I32:
                     frame.setInt(resultLocation, (int) returnValueProfile.executeWithTarget(value));

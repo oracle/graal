@@ -41,11 +41,24 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.profiling.BooleanValueProfile;
+import com.oracle.truffle.llvm.runtime.profiling.ShortValueProfile;
 
 @NodeChild
 public abstract class LLVMValueProfilingNode extends LLVMExpressionNode {
 
     public abstract Object executeWithTarget(Object value);
+
+    public abstract static class LLVMI1ProfiledValueNode extends LLVMValueProfilingNode {
+
+        private final BooleanValueProfile profile = BooleanValueProfile.create();
+
+        @Specialization
+        public boolean executeI1(boolean value) {
+            return profile.profile(value);
+        }
+
+    }
 
     public abstract static class LLVMI8ProfiledValueNode extends LLVMValueProfilingNode {
 
@@ -53,6 +66,17 @@ public abstract class LLVMValueProfilingNode extends LLVMExpressionNode {
 
         @Specialization
         public byte executeI8(byte value) {
+            return profile.profile(value);
+        }
+
+    }
+
+    public abstract static class LLVMI16ProfiledValueNode extends LLVMValueProfilingNode {
+
+        private final ShortValueProfile profile = ShortValueProfile.create();
+
+        @Specialization
+        public short executeI1(short value) {
             return profile.profile(value);
         }
 
