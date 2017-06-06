@@ -102,11 +102,6 @@ def checkLinks(javadocDir):
     if err:
         mx.abort('There are wrong references in Javadoc')
 
-def build(args, vm=None):
-    """build the Java sources"""
-    opts2 = mx.build(['--source', '1.7'] + args)
-    assert len(opts2.remainder) == 0
-
 def _path_args(depNames=None):
     """
     Gets the VM args for putting the dependencies named in `depNames` on the

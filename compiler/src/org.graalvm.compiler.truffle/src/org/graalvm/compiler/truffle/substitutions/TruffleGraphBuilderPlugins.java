@@ -28,7 +28,9 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleUseFram
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
+import java.util.Collections;
 import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
@@ -52,13 +54,16 @@ import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.PiArrayNode;
 import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.GuardedUnsafeLoadNode;
+import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
+import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
@@ -79,7 +84,9 @@ import org.graalvm.compiler.truffle.FrameWithBoxing;
 import org.graalvm.compiler.truffle.FrameWithoutBoxing;
 import org.graalvm.compiler.truffle.OptimizedAssumption;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.PartialEvaluator;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.nodes.AssumptionValidAssumption;
 import org.graalvm.compiler.truffle.nodes.IsCompilationConstantNode;
 import org.graalvm.compiler.truffle.nodes.ObjectLocationIdentity;
@@ -457,7 +464,7 @@ public class TruffleGraphBuilderPlugins {
         Registration r = new Registration(plugins, FrameWithoutBoxing.class);
         registerFrameMethods(r);
         registerUnsafeCast(r, canDelayIntrinsification);
-        registerUnsafeLoadStorePlugins(r, null, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Object);
+        registerUnsafeLoadStorePlugins(r, canDelayIntrinsification, null, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Object);
 
         if (TruffleCompilerOptions.getValue(Options.TruffleIntrinsifyFrameAccess)) {
             for (Map.Entry<JavaKind, Integer> kindAndTag : accessorKindToTag.entrySet()) {
@@ -620,23 +627,31 @@ public class TruffleGraphBuilderPlugins {
         });
     }
 
+    @Deprecated
     public static void registerUnsafeLoadStorePlugins(Registration r, JavaConstant anyConstant, JavaKind... kinds) {
+        registerUnsafeLoadStorePlugins(r, true, anyConstant, kinds);
+    }
+
+    public static void registerUnsafeLoadStorePlugins(Registration r, boolean canDelayIntrinsification, JavaConstant anyConstant, JavaKind... kinds) {
         for (JavaKind kind : kinds) {
             String kindName = kind.getJavaName();
             kindName = toUpperCase(kindName.charAt(0)) + kindName.substring(1);
             String getName = "unsafeGet" + kindName;
             String putName = "unsafePut" + kindName;
-            r.register4(getName, Object.class, long.class, boolean.class, Object.class, new CustomizedUnsafeLoadPlugin(kind));
-            r.register4(putName, Object.class, long.class, kind == JavaKind.Object ? Object.class : kind.toJavaClass(), Object.class, new CustomizedUnsafeStorePlugin(kind, anyConstant));
+            r.register4(getName, Object.class, long.class, boolean.class, Object.class, new CustomizedUnsafeLoadPlugin(kind, canDelayIntrinsification));
+            r.register4(putName, Object.class, long.class, kind == JavaKind.Object ? Object.class : kind.toJavaClass(), Object.class,
+                            new CustomizedUnsafeStorePlugin(kind, anyConstant, canDelayIntrinsification));
         }
     }
 
     static class CustomizedUnsafeLoadPlugin implements InvocationPlugin {
 
         private final JavaKind returnKind;
+        private final boolean canDelayIntrinsification;
 
-        CustomizedUnsafeLoadPlugin(JavaKind returnKind) {
+        CustomizedUnsafeLoadPlugin(JavaKind returnKind, boolean canDelayIntrinsification) {
             this.returnKind = returnKind;
+            this.canDelayIntrinsification = canDelayIntrinsification;
         }
 
         @Override
@@ -653,9 +668,13 @@ public class TruffleGraphBuilderPlugins {
                 ConditionAnchorNode anchor = b.add(new ConditionAnchorNode(compare));
                 b.addPush(returnKind, b.add(new GuardedUnsafeLoadNode(b.addNonNullCast(object), offset, returnKind, locationIdentity, anchor)));
                 return true;
+            } else if (canDelayIntrinsification) {
+                return false;
+            } else {
+                RawLoadNode load = b.addPush(returnKind, new RawLoadNode(object, offset, returnKind, LocationIdentity.any(), true));
+                logPerformanceWarningLocationNotConstant(location, targetMethod, load);
+                return true;
             }
-            // TODO: should we throw b.bailout() here?
-            return false;
         }
     }
 
@@ -663,10 +682,12 @@ public class TruffleGraphBuilderPlugins {
 
         private final JavaKind kind;
         private final JavaConstant anyConstant;
+        private final boolean canDelayIntrinsification;
 
-        CustomizedUnsafeStorePlugin(JavaKind kind, JavaConstant anyConstant) {
+        CustomizedUnsafeStorePlugin(JavaKind kind, JavaConstant anyConstant, boolean canDelayIntrinsification) {
             this.kind = kind;
             this.anyConstant = anyConstant;
+            this.canDelayIntrinsification = canDelayIntrinsification;
         }
 
         @Override
@@ -685,9 +706,32 @@ public class TruffleGraphBuilderPlugins {
                 }
                 b.add(new RawStoreNode(object, offset, value, kind, locationIdentity, true, null, forceAnyLocation));
                 return true;
+            } else if (canDelayIntrinsification) {
+                return false;
+            } else {
+                RawStoreNode store = b.add(new RawStoreNode(object, offset, value, kind, LocationIdentity.any(), true, null, true));
+                logPerformanceWarningLocationNotConstant(location, targetMethod, store);
+                return true;
             }
-            // TODO: should we throw b.bailout() here?
-            return false;
+        }
+    }
+
+    @SuppressWarnings("try")
+    static void logPerformanceWarningLocationNotConstant(ValueNode location, ResolvedJavaMethod targetMethod, UnsafeAccessNode access) {
+        if (!PartialEvaluator.PerformanceInformationHandler.isEnabled()) {
+            return;
+        }
+        StructuredGraph graph = location.graph();
+        try (Debug.Scope s = Debug.scope("TrufflePerformanceWarnings", graph)) {
+            TruffleDebugJavaMethod truffleMethod = Debug.contextLookup(TruffleDebugJavaMethod.class);
+            String callTargetName = truffleMethod != null ? truffleMethod.getName() : "";
+            Map<String, Object> properties = new LinkedHashMap<>();
+            properties.put("location", location);
+            properties.put("method", targetMethod.format("%h.%n"));
+            PartialEvaluator.PerformanceInformationHandler.logPerformanceWarning(callTargetName, Collections.singletonList(access), "location argument not PE-constant", properties);
+            Debug.dump(Debug.VERBOSE_LEVEL, graph, "perf warn: location argument not PE-constant: %s", location);
+        } catch (Throwable t) {
+            Debug.handle(t);
         }
     }
 }

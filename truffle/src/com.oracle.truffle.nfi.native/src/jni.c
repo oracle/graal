@@ -103,6 +103,11 @@ void releaseObjectRef(TruffleObject object) {
     (*env)->DeleteGlobalRef(env, (jobject) object);
 }
 
+int isSameObject(TruffleObject object1, TruffleObject object2) {
+    JNIEnv *env = getEnv();
+    return (*env)->IsSameObject(env, (jobject) object1, (jobject) object2);
+}
+
 TruffleObject releaseAndReturn(TruffleObject object) {
     JNIEnv *env = getEnv();
     jobject global = (jobject) object;

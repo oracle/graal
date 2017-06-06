@@ -369,7 +369,8 @@ public abstract class RootNode extends Node {
      *
      * @since 0.8 or earlier
      * @deprecated in 0.25 use {@link #getLanguage(Class) getLanguage(Language.class)}.
-     *             {@link TruffleLanguage#getCurrentContext(Class) getCurrentContext()} instead.
+     *             {@link TruffleLanguage#getCurrentContext(Class) getCurrentContext()} instead, and
+     *             {@link RootNode#getCompilerOptions()}.
      */
     @SuppressWarnings("deprecation")
     @Deprecated

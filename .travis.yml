@@ -17,13 +17,16 @@ env:
   global:
     - JVMCI_VERSION="jvmci-0.26"
     - JVMCI_BASE_JDK8="jdk1.8.0_121"
-    - JDK9_EA_BUILD="0x7fffffff"
+    - JDK9_EA_BUILD="168"
   matrix:
-    - JDK="jdk8" GATE="style,fullbuild"
-    - JDK="jdk8" GATE="build,test"
-    - JDK="jdk8" GATE="build,bootstraplite"
-#    - JDK="jdk9" GATE="build,test"
-#    - JDK="jdk9" GATE="build,bootstraplite"
+# Cannot build OpenJDK8 based JVMCI JDK until
+# https://github.com/travis-ci/travis-ci/issues/7337 is resolved
+#    - JDK="jdk8" GATE="style,fullbuild"
+#    - JDK="jdk8" GATE="build,test"
+#    - JDK="jdk8" GATE="build,bootstraplite"
+    - JDK="jdk9" GATE="style,fullbuild"
+    - JDK="jdk9" GATE="build,test"
+    - JDK="jdk9" GATE="build,bootstraplite"
 install:
   - |
       export MX_PATH=${TRAVIS_BUILD_DIR}/../mx
@@ -38,15 +41,19 @@ install:
         pip install pylint==1.1.0
 
         export ECLIPSE_TAR=${TRAVIS_BUILD_DIR}/../eclipse.tar.gz
-        wget http://lafo.ssw.uni-linz.ac.at/sulong-deps/eclipse-jdk8-linux-x86_64.tar.gz -O ${ECLIPSE_TAR}
-        tar -C ${TRAVIS_BUILD_DIR}/.. -xf ${ECLIPSE_TAR}
+        wget http://archive.eclipse.org/eclipse/downloads/drops4/R-4.5.2-201602121500/eclipse-SDK-4.5.2-linux-gtk-x86_64.tar.gz -O ${ECLIPSE_TAR}
+        tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${ECLIPSE_TAR}
         export ECLIPSE_EXE=${TRAVIS_BUILD_DIR}/../eclipse/eclipse
       fi
   - |
       if [[ ${GATE} == *fullbuild* ]]
       then
-        export JDT=${MX_PATH}/ecj.jar
-        wget http://archive.eclipse.org/eclipse/downloads/drops4/R-4.5.2-201602121500/ecj-4.5.2.jar -O ${JDT}
+        # JDT is not supported on JDK9
+        if [ "${JDK}" != "jdk9" ]
+        then
+          export JDT=${MX_PATH}/ecj.jar
+          wget http://archive.eclipse.org/eclipse/downloads/drops4/R-4.5.2-201602121500/ecj-4.5.2.jar -O ${JDT}
+        fi
       fi
   - |
       if [ "${JDK}" == "jdk8" ]
@@ -55,24 +62,19 @@ install:
         wget https://github.com/dougxc/openjdk8-jvmci-builder/releases/download/${JVMCI_VERSION}/${JVMCI_BASE_JDK8}-${JVMCI_VERSION}-linux-amd64.tar.gz -O ${JDK_TAR}
         tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${JDK_TAR}
         export JAVA_HOME=${TRAVIS_BUILD_DIR}/../${JVMCI_BASE_JDK8}-${JVMCI_VERSION}
-        export EXTRA_JAVA_HOMES=""
-        export MX_BINARY_SUITES="truffle"
       fi
   - |
       if [ "${JDK}" == "jdk9" ]
       then
         JDK_TAR=${TRAVIS_BUILD_DIR}/../jdk.tar.gz
-        wget https://github.com/dougxc/openjdk8-jvmci-builder/releases/download/${JVMCI_VERSION}/${JVMCI_BASE_JDK8}-${JVMCI_VERSION}-linux-amd64.tar.gz -O ${JDK_TAR}
+        wget http://download.java.net/java/jdk9/archive/${JDK9_EA_BUILD}/binaries/jdk-9-ea+${JDK9_EA_BUILD}_linux-x64_bin.tar.gz -O ${JDK_TAR}
         tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${JDK_TAR}
-        export EXTRA_JAVA_HOMES=${TRAVIS_BUILD_DIR}/../${JVMCI_BASE_JDK8}-${JVMCI_VERSION}
-        JDK_TAR=${TRAVIS_BUILD_DIR}/../jdk.tar.gz
-        wget http://www.java.net/download/java/jdk9/archive/${JDK9_EA_BUILD}/binaries/jdk-9-ea+${JDK9_EA_BUILD}_linux-x64_bin.tar.gz -O ${JDK_TAR}
-        tar -C ${TRAVIS_BUILD_DIR}/.. -xf ${JDK_TAR}
         export JAVA_HOME=${TRAVIS_BUILD_DIR}/../jdk-9
       fi
+
 script:
-  - echo ${EXTRA_JAVA_HOMES}
   - echo ${JAVA_HOME}
-  - mx --java-home=${JAVA_HOME} --extra-java-homes=${EXTRA_JAVA_HOMES} --strict-compliance gate --strict-mode --tags ${GATE}
+  - ${JAVA_HOME}/bin/java -version
+  - mx -v --primary-suite-path ${TRAVIS_BUILD_DIR}/compiler --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
 after_failure:
   - cat hs_err*

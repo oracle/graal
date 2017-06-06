@@ -35,6 +35,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.ReflectionUtils;
@@ -61,9 +62,13 @@ public class SourceSectionFilterTest {
 
     private static boolean isInstrumentedRoot(SourceSectionFilter filter, Node root) {
         try {
-            Method m = filter.getClass().getDeclaredMethod("isInstrumentedRoot", Set.class, SourceSection.class);
+            Method m = filter.getClass().getDeclaredMethod("isInstrumentedRoot", Set.class, SourceSection.class, RootNode.class);
             ReflectionUtils.setAccessible(m, true);
-            return (boolean) m.invoke(filter, ALL_TAGS, root != null ? root.getSourceSection() : null);
+            RootNode rootNode = null;
+            if (root instanceof RootNode) {
+                rootNode = (RootNode) root;
+            }
+            return (boolean) m.invoke(filter, ALL_TAGS, root != null ? root.getSourceSection() : null, rootNode);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

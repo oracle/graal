@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.103.0",
+  "mxversion" : "5.110.4",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -84,8 +84,8 @@ suite = {
     },
 
     "IDEALGRAPHVISUALIZER_DIST" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/idealgraphvisualizer/idealgraphvisualizer-f5dd0d4c69d7.zip"],
-      "sha1" : "d49ef14bd8c4effcd4fd4d2e02e7b0b417dc5be4",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/idealgraphvisualizer/idealgraphvisualizer-8820e1874bf7.zip"],
+      "sha1" : "7eb51f6d643ed7833268b6971e273826d44c22b1",
     },
 
     "JOL_INTERNALS" : {
@@ -662,15 +662,6 @@ suite = {
       "workingSets" : "Graal,LIR,SPARC",
     },
 
-    "org.graalvm.api.word" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "1.8",
-      "workingSets" : "API",
-    },
-
     "org.graalvm.compiler.word" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -918,7 +909,10 @@ suite = {
         "org.graalvm.compiler.virtual",
         "org.graalvm.compiler.loop.phases",
       ],
-      "uses" : ["org.graalvm.compiler.core.match.MatchStatementSet"],
+      "uses" : [
+        "org.graalvm.compiler.core.match.MatchStatementSet",
+        "org.graalvm.compiler.hotspot.HotSpotCodeCacheListener",
+      ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",
       "annotationProcessors" : [
@@ -1053,8 +1047,8 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.compiler.debug", 
-        "org.graalvm.api.word",
+        "org.graalvm.compiler.debug",
+        "sdk:WORD_API",
       ],
       "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -1306,12 +1300,12 @@ suite = {
     "GRAAL_API" : {
       "subDir" : "src",
       "dependencies" : [
-        "org.graalvm.api.word",
         "org.graalvm.compiler.api.replacements",
         "org.graalvm.compiler.api.runtime",
         "org.graalvm.compiler.graph",
       ],
       "distDependencies" : [
+        "sdk:WORD_API",
         "JVMCI_API",
         "GRAAL_NODEINFO",
         "GRAAL_OPTIONS",
@@ -1477,6 +1471,7 @@ suite = {
       "overlaps" : [
         "GRAAL_OPTIONS",
         "GRAAL_NODEINFO",
+        "sdk:WORD_API",
         "GRAAL_API",
         "GRAAL_COMPILER",
         "GRAAL_RUNTIME",

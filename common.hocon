@@ -1,5 +1,5 @@
 # overlay version
-overlay = b49a7fe745d35fb278f1e85e08d2f46629dd6525
+overlay = 2fa6fa642a6de2b8f07acc7940ce526193d9ab93
 
 jdk-downloads: {
   java7 : {name : oraclejdk, version : "7",    platformspecific: true}
@@ -138,7 +138,7 @@ deploy-binaries : ${java8} {
   targets : [post-merge, deploy]
   run : [
     ["mx", "--strict-compliance", "build"]
-    ["mx", "deploy-binary", "--skip-existing", ${binaries-repository}]
+    ["mx", "deploy-binary", "--all-suites", "--skip-existing", ${binaries-repository}]
   ]
 }
 

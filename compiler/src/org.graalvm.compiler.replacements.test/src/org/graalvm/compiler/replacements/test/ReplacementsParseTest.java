@@ -57,6 +57,16 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class ReplacementsParseTest extends ReplacementsTest {
 
     private static final String IN_COMPILED_HANDLER_MARKER = "*** in compiled handler ***";
+
+    /**
+     * Marker value to indicate an exception handler was interpreted. We cannot use a complex string
+     * expression in this context without risking non-deterministic behavior dependent on whether
+     * String intrinsics are applied or whether String expression evaluation hit an uncommon trap
+     * when executed by C1 or C2 (and thus potentially altering the profile such that the exception
+     * handler is *not* compiled by Graal even when we want it to be).
+     */
+    private static final String IN_INTERPRETED_HANDLER_MARKER = "*** in interpreted handler ***";
+
     private InlineInvokePlugin.InlineInfo inlineInvokeDecision;
 
     @SuppressWarnings("serial")
@@ -329,7 +339,7 @@ public class ReplacementsParseTest extends ReplacementsTest {
         // is executed before this test
         getResolvedJavaMethod("callStringize").reprofile();
         forceCompileOverride = true;
-        String standardReturnValue = new CustomError("ex").toString();
+        String standardReturnValue = IN_INTERPRETED_HANDLER_MARKER;
         String compiledReturnValue = IN_COMPILED_HANDLER_MARKER;
         testWithDifferentReturnValues(getInitialOptions(), standardReturnValue, compiledReturnValue, "callStringize", THROW_EXCEPTION_MARKER);
     }
@@ -339,7 +349,7 @@ public class ReplacementsParseTest extends ReplacementsTest {
         OptionValues options = new OptionValues(getInitialOptions(), InlinePartialIntrinsicExitDuringParsing, false);
         test(options, "callStringize", "a string");
         test(options, "callStringize", Boolean.TRUE);
-        String standardReturnValue = new CustomError("ex").toString();
+        String standardReturnValue = IN_INTERPRETED_HANDLER_MARKER;
         String compiledReturnValue = IN_COMPILED_HANDLER_MARKER;
         for (int i = 0; i < 1000; i++) {
             // Ensures 'exception seen' bit is set for call to stringize
@@ -357,7 +367,7 @@ public class ReplacementsParseTest extends ReplacementsTest {
         // is executed before this test
         getResolvedJavaMethod("callStringize").reprofile();
         forceCompileOverride = true;
-        String standardReturnValue = new CustomError("ex").toString();
+        String standardReturnValue = IN_INTERPRETED_HANDLER_MARKER;
         String compiledReturnValue = IN_COMPILED_HANDLER_MARKER;
         testWithDifferentReturnValues(getInitialOptions(), standardReturnValue, compiledReturnValue, "callStringizeId", new TestObject(THROW_EXCEPTION_MARKER));
     }
@@ -372,7 +382,7 @@ public class ReplacementsParseTest extends ReplacementsTest {
             // Ensures 'exception seen' bit is set for call to stringizeId
             callStringizeId(exceptionTestObject);
         }
-        String standardReturnValue = new CustomError("ex").toString();
+        String standardReturnValue = IN_INTERPRETED_HANDLER_MARKER;
         String compiledReturnValue = IN_COMPILED_HANDLER_MARKER;
         forceCompileOverride = true;
         testWithDifferentReturnValues(options, standardReturnValue, compiledReturnValue, "callStringizeId", exceptionTestObject);
@@ -385,7 +395,7 @@ public class ReplacementsParseTest extends ReplacementsTest {
             if (GraalDirectives.inCompiledCode()) {
                 return IN_COMPILED_HANDLER_MARKER;
             }
-            return e.toString();
+            return IN_INTERPRETED_HANDLER_MARKER;
         }
     }
 
@@ -396,7 +406,7 @@ public class ReplacementsParseTest extends ReplacementsTest {
             if (GraalDirectives.inCompiledCode()) {
                 return IN_COMPILED_HANDLER_MARKER;
             }
-            return e.toString();
+            return IN_INTERPRETED_HANDLER_MARKER;
         }
     }
 

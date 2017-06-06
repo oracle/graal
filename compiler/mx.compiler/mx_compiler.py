@@ -96,7 +96,7 @@ def _check_jvmci_version(jdk):
         mx.run([jdk.javac, '-d', binDir, javaSource])
     mx.run([jdk.java, '-cp', binDir, name])
 
-if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore': 
+if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore':
     _check_jvmci_version(jdk)
 
 class JVMCIClasspathEntry(object):
@@ -230,7 +230,7 @@ def _nodeCostDump(args, extraVMarguments=None):
 
 def _ctw_jvmci_export_args():
     """
-    Gets the VM args needed to export JVMCI API required by CTW. 
+    Gets the VM args needed to export JVMCI API required by CTW.
     """
     if isJDK8:
         return ['-XX:-UseJVMCIClassLoader']
@@ -243,7 +243,7 @@ def _ctw_jvmci_export_args():
 def _ctw_system_properties_suffix():
     out = mx.OutputCapture()
     out.data = 'System properties for CTW:\n\n'
-    args = ['-XX:+EnableJVMCI'] + _ctw_jvmci_export_args() 
+    args = ['-XX:+EnableJVMCI'] + _ctw_jvmci_export_args()
     args.extend(['-cp', mx.classpath('org.graalvm.compiler.hotspot.test', jdk=jdk),
             '-DCompileTheWorld.Help=true', 'org.graalvm.compiler.hotspot.test.CompileTheWorld'])
     run_vm(args, out=out)
@@ -347,8 +347,12 @@ def verify_jvmci_ci_versions(args):
             mx.abort("No JVMCI version found in {0} files!".format(msg))
         return version, dev
 
-    hocon_version, hocon_dev = _grep_version(glob.glob(join(mx.primary_suite().vc_dir, '*.hocon')) + glob.glob(join(mx.primary_suite().dir, 'ci*.hocon')) + glob.glob(join(mx.primary_suite().dir, 'ci*/*.hocon')), 'ci.hocon')
-    travis_version, travis_dev = _grep_version(glob.glob('.travis.yml'), 'TravisCI')
+    primary_suite = mx.primary_suite()
+    hocon_version, hocon_dev = _grep_version(
+        glob.glob(join(primary_suite.vc_dir, '*.hocon')) +
+        glob.glob(join(primary_suite.dir, 'ci*.hocon')) +
+        glob.glob(join(primary_suite.dir, 'ci*/*.hocon')), 'hocon')
+    travis_version, travis_dev = _grep_version([join(primary_suite.vc_dir, '.travis.yml')], 'TravisCI')
 
     if hocon_version != travis_version or hocon_dev != travis_dev:
         versions_ok = False

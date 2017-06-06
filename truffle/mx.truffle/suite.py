@@ -37,17 +37,11 @@ suite = {
     # ------------- Libraries -------------
 
     "JLINE" : {
-      "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jline-2.11.jar",
-        "https://search.maven.org/remotecontent?filepath=jline/jline/2.11/jline-2.11.jar",
-      ],
-      "sha1" : "9504d5e2da5d78237239c5226e8200ec21182040",
-      "sourceUrls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jline-2.11-sources.jar"],
-      "sourceSha1" : "ef2539b992e5605be966b6db7cfc83930f0da39b",
+      "sha1" : "5296978fd0c28c778ddbb6e1dc0c30cadb998eca",
       "maven" : {
         "groupId" : "jline",
         "artifactId" : "jline",
-        "version" : "2.11",
+        "version" : "2.14.3",
       }
     },
 
