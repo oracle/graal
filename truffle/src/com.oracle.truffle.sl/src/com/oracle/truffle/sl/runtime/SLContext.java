@@ -214,9 +214,9 @@ public final class SLContext {
      */
     public DynamicObject createObject() {
         DynamicObject object = null;
-        allocationReporter.onEnter(null, AllocationReporter.SIZE_UNKNOWN);
+        allocationReporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
         object = emptyShape.newInstance();
-        allocationReporter.onReturnValue(object, AllocationReporter.SIZE_UNKNOWN);
+        allocationReporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
         return object;
     }
 

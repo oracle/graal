@@ -67,7 +67,7 @@ public final class AllocationReporter {
      * @see #isActive()
      * @see #addPropertyChangeListener(java.beans.PropertyChangeListener)
      */
-    public static final String PROP_ACTIVE = "active";
+    public static final String PROPERTY_ACTIVE = "active";
 
     final LanguageInfo language;
     private final PropertyChangeSupport propSupport = new PropertyChangeSupport(this);
@@ -86,7 +86,7 @@ public final class AllocationReporter {
      * it to get notified when {@link #isActive()} changes.
      *
      * @since 0.27
-     * @see #PROP_ACTIVE
+     * @see #PROPERTY_ACTIVE
      */
     public void addPropertyChangeListener(PropertyChangeListener listener) {
         propSupport.addPropertyChangeListener(listener);
@@ -104,9 +104,9 @@ public final class AllocationReporter {
 
     /**
      * Test if the reporter instance is actually doing some reporting when notify methods are
-     * called. Methods {@link #onEnter(java.lang.Object, long)} and
-     * {@link #onReturnValue(java.lang.Object, long)} have no effect when this method returns false.
-     * A {@link PropertyChangeListener} can be
+     * called. Methods {@link #onEnter(java.lang.Object, long, long)} and
+     * {@link #onReturnValue(java.lang.Object, long, long)} have no effect when this method returns
+     * false. A {@link PropertyChangeListener} can be
      * {@link #addPropertyChangeListener(java.beans.PropertyChangeListener) added} to listen on
      * changes of this property.
      *
@@ -140,7 +140,7 @@ public final class AllocationReporter {
             assumption.invalidate();
         }
         if (!hadListeners) {
-            propSupport.firePropertyChange(PROP_ACTIVE, false, true);
+            propSupport.firePropertyChange(PROPERTY_ACTIVE, false, true);
         }
     }
 
@@ -176,7 +176,7 @@ public final class AllocationReporter {
             assumption.invalidate();
         }
         if (!hasListeners) {
-            propSupport.firePropertyChange(PROP_ACTIVE, true, false);
+            propSupport.firePropertyChange(PROPERTY_ACTIVE, true, false);
         }
     }
 
@@ -185,33 +185,37 @@ public final class AllocationReporter {
      * method delegates to all registered listeners
      * {@link AllocationListener#onEnter(com.oracle.truffle.api.instrumentation.AllocationEvent)}.
      * Only primitive types, String and {@link com.oracle.truffle.api.interop.TruffleObject} are
-     * accepted value types.
+     * accepted value types. The change in memory consumption caused by the allocation is going to
+     * be <code>newSizeEstimate - oldSize</code> when both old size and new size are known. The
+     * change can be either positive or negative.
      * <p>
      * A call to this method needs to be followed by a call to
-     * {@link #onReturnValue(java.lang.Object, long)} with the actual allocated value, or with the
-     * same (re-allocated) value.
+     * {@link #onReturnValue(java.lang.Object, long, long)} with the actual allocated value, or with
+     * the same (re-allocated) value.
      *
      * @param valueToReallocate <code>null</code> in case of a new allocation, or the value that is
      *            to be re-allocated.
-     * @param sizeChangeEstimate an estimate of the allocation size of the value which is to be
-     *            created, in bytes. In case of a new allocation it must be positive, or
-     *            {@link #SIZE_UNKNOWN} when the allocation size is not known.
+     * @param oldSize <code>0</code> in case of a new allocation, or the size in bytes of value to
+     *            be re-allocated. Can be {@link #SIZE_UNKNOWN} when the value size is not known.
+     * @param newSizeEstimate an estimate of the allocation size of the value which is to be created
+     *            or re-allocated, in bytes. Can be {@link #SIZE_UNKNOWN} when the allocation size
+     *            is not known.
      * @since 0.27
      */
-    public void onEnter(Object valueToReallocate, long sizeChangeEstimate) {
-        assert valueToReallocate != null || newSizeCheck(sizeChangeEstimate);
+    public void onEnter(Object valueToReallocate, long oldSize, long newSizeEstimate) {
+        assert enterSizeCheck(valueToReallocate, oldSize, newSizeEstimate);
         assert valueToReallocate == null || allocateValueCheck(valueToReallocate);
-        notifyAllocateOrReallocate(valueToReallocate, sizeChangeEstimate);
+        notifyAllocateOrReallocate(valueToReallocate, oldSize, newSizeEstimate);
     }
 
-    private void notifyAllocateOrReallocate(Object value, long sizeEstimate) {
+    private void notifyAllocateOrReallocate(Object value, long oldSize, long newSizeEstimate) {
         assert setValueCheck(value);
         if (!listenersNotChangedAssumption.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
         }
         AllocationListener[] ls = this.listeners;
         if (ls != null) {
-            AllocationEvent event = new AllocationEvent(language, value, sizeEstimate);
+            AllocationEvent event = new AllocationEvent(language, value, oldSize, newSizeEstimate);
             for (AllocationListener l : ls) {
                 l.onEnter(event);
             }
@@ -223,31 +227,38 @@ public final class AllocationReporter {
      * method notifies all registered listeners
      * {@link AllocationListener#onReturnValue(com.oracle.truffle.api.instrumentation.AllocationEvent)}
      * . Only primitive types, String and {@link com.oracle.truffle.api.interop.TruffleObject} are
-     * accepted value types.
+     * accepted value types. The change in memory consumption caused by the allocation is
+     * <code>newSize - oldSize</code> when both old size and new size are known. The change can be
+     * either positive or negative.
      * <p>
-     * A call to {@link #onEnter(java.lang.Object, long)} must precede this call. In case of
-     * re-allocation, the value object passed to {@link #onEnter(java.lang.Object, long)} must be
-     * the same instance as the value passed to this method.
+     * A call to {@link #onEnter(java.lang.Object, long, long)} must precede this call. In case of
+     * re-allocation, the value object passed to {@link #onEnter(java.lang.Object, long, long)} must
+     * be the same instance as the value passed to this method.
      *
      * @param value the value that was newly allocated, or the re-allocated value. Must not be
      *            <code>null</code>.
-     * @param sizeChange the size of the allocated value in bytes, or the change in size caused by
-     *            re-allocation. The re-allocation size change can also be negative.
+     * @param oldSize size in bytes of an old value, if any. Must be <code>0</code> for newly
+     *            allocated values. In case of re-allocation it's the size of the original value
+     *            before re-allocation. Can be {@link #SIZE_UNKNOWN} when not known.
+     * @param newSize the size of the allocated value in bytes. In case of re-allocation, it's the
+     *            size of the object after re-allocation. The <code>newSize</code> may be less than
+     *            <code>oldSize</code> when the object size shrinks. Can be {@link #SIZE_UNKNOWN}
+     *            when not known.
      * @since 0.27
      */
-    public void onReturnValue(Object value, long sizeChange) {
+    public void onReturnValue(Object value, long oldSize, long newSize) {
         assert allocateValueCheck(value);
-        assert allocatedCheck(value, sizeChange);
-        notifyAllocated(value, sizeChange);
+        assert allocatedCheck(value, oldSize, newSize);
+        notifyAllocated(value, oldSize, newSize);
     }
 
-    private void notifyAllocated(Object value, long sizeChange) {
+    private void notifyAllocated(Object value, long oldSize, long newSize) {
         if (!listenersNotChangedAssumption.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
         }
         AllocationListener[] ls = this.listeners;
         if (ls != null) {
-            AllocationEvent event = new AllocationEvent(language, value, sizeChange);
+            AllocationEvent event = new AllocationEvent(language, value, oldSize, newSize);
             for (AllocationListener l : ls) {
                 l.onReturnValue(event);
             }
@@ -255,8 +266,10 @@ public final class AllocationReporter {
     }
 
     @TruffleBoundary
-    private static boolean newSizeCheck(long sizeEstimate) {
-        assert (sizeEstimate == SIZE_UNKNOWN || sizeEstimate > 0) : "Wrong size estimate = " + sizeEstimate;
+    private static boolean enterSizeCheck(Object valueToReallocate, long oldSize, long newSizeEstimate) {
+        assert (newSizeEstimate == SIZE_UNKNOWN || newSizeEstimate > 0) : "Wrong new size estimate = " + newSizeEstimate;
+        assert valueToReallocate != null || oldSize == 0 : "Old size must be 0 for new allocations. Was: " + oldSize;
+        assert valueToReallocate == null || (oldSize > 0 || oldSize == SIZE_UNKNOWN) : "Old size of a re-allocated value must be positive or unknown. Was: " + oldSize;
         return true;
     }
 
@@ -288,12 +301,13 @@ public final class AllocationReporter {
     }
 
     @TruffleBoundary
-    private boolean allocatedCheck(Object value, long sizeChange) {
+    private boolean allocatedCheck(Object value, long oldSize, long newSize) {
         assert valueCheck.get() != null : "notifyWillAllocate/Reallocate was not called";
         Object orig = valueCheck.get().get();
         assert orig == null || orig == value : "A different reallocated value. Was: " + orig + " now is: " + value;
-        assert orig == null && (sizeChange == SIZE_UNKNOWN || sizeChange > 0) ||
-                        orig != null : "Size change of a newly allocated value must be positive or unknown. Was: " + sizeChange;
+        assert orig == null && oldSize == 0 || orig != null : "Old size must be 0 for new allocations. Was: " + oldSize;
+        assert orig != null && (oldSize > 0 || oldSize == SIZE_UNKNOWN) || orig == null : "Old size of a re-allocated value must be positive or unknown. Was: " + oldSize;
+        assert newSize == SIZE_UNKNOWN || newSize > 0 : "New value size must be positive or unknown. Was: " + newSize;
         valueCheck.remove();
         return true;
     }
@@ -317,7 +331,7 @@ class AllocationReporterSnippets extends TruffleLanguage<ContextObject> {
         // Test if the reporter is active, we should compute the size estimate
         if (reporter.isActive()) {
             long size = findSizeEstimate();
-            reporter.onEnter(null, size);
+            reporter.onEnter(null, 0, size);
         }
         // Do the allocation itself
         Object newObject = new MyTruffleObject();
@@ -325,7 +339,7 @@ class AllocationReporterSnippets extends TruffleLanguage<ContextObject> {
         // we should compute the allocated object size
         if (reporter.isActive()) {
             long size = findSize(newObject);
-            reporter.onReturnValue(newObject, size);
+            reporter.onReturnValue(newObject, 0, size);
         }
         return newObject;
     }
@@ -334,11 +348,11 @@ class AllocationReporterSnippets extends TruffleLanguage<ContextObject> {
         AllocationReporter reporter = getContextReference().get().getReporter();
         // If the allocated size is a constant, onEnter() and onReturnValue()
         // can be called without a fast-path performance penalty when not active
-        reporter.onEnter(null, 16);
+        reporter.onEnter(null, 0, 16);
         // Do the allocation itself
         Object newObject = createComplexObject();
         // Report the allocation
-        reporter.onReturnValue(newObject, 16);
+        reporter.onReturnValue(newObject, 0, 16);
         return newObject;
     }
     // END: AllocationReporterSnippets#example

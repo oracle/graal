@@ -112,68 +112,78 @@ public class AllocationReporterTest {
                         (info) -> {
                             assertTrue(info.will);
                             assertNull(info.value);
-                            assertEquals(estimatedSizes[0], info.size);
+                            assertEquals(0, info.oldSize);
+                            assertEquals(estimatedSizes[0], info.newSize);
                             consumerCalls.incrementAndGet();
                         },
                         (info) -> {
                             assertFalse(info.will);
                             assertEquals("NewObject", info.value.toString());
-                            assertEquals(computedSizes[0], info.size);
+                            assertEquals(0, info.oldSize);
+                            assertEquals(computedSizes[0], info.newSize);
                             consumerCalls.incrementAndGet();
                         },
                         // 10
                         (info) -> {
                             assertTrue(info.will);
                             assertNull(info.value);
-                            assertEquals(estimatedSizes[1], info.size);
+                            assertEquals(0, info.oldSize);
+                            assertEquals(estimatedSizes[1], info.newSize);
                             consumerCalls.incrementAndGet();
                         },
                         (info) -> {
                             assertFalse(info.will);
                             assertEquals("java.lang.Integer", info.value.getClass().getName());
                             assertEquals(10, info.value);
-                            assertEquals(computedSizes[1], info.size);
+                            assertEquals(0, info.oldSize);
+                            assertEquals(computedSizes[1], info.newSize);
                             consumerCalls.incrementAndGet();
                         },
                         // 12345678901234
                         (info) -> {
                             assertTrue(info.will);
                             assertNull(info.value);
-                            assertEquals(estimatedSizes[2], info.size);
+                            assertEquals(0, info.oldSize);
+                            assertEquals(estimatedSizes[2], info.newSize);
                             consumerCalls.incrementAndGet();
                         },
                         (info) -> {
                             assertFalse(info.will);
                             assertEquals("java.lang.Long", info.value.getClass().getName());
                             assertEquals(12345678901234L, info.value);
-                            assertEquals(computedSizes[2], info.size);
+                            assertEquals(0, info.oldSize);
+                            assertEquals(computedSizes[2], info.newSize);
                             consumerCalls.incrementAndGet();
                         },
                         // -1000
                         (info) -> {
                             assertTrue(info.will);
                             assertNull(info.value);
-                            assertEquals(estimatedSizes[3], info.size);
+                            assertEquals(0, info.oldSize);
+                            assertEquals(estimatedSizes[3], info.newSize);
                             consumerCalls.incrementAndGet();
                         },
                         (info) -> {
                             assertFalse(info.will);
                             assertEquals("java.lang.Integer", info.value.getClass().getName());
                             assertEquals(-1000, info.value);
-                            assertEquals(computedSizes[3], info.size);
+                            assertEquals(0, info.oldSize);
+                            assertEquals(computedSizes[3], info.newSize);
                             consumerCalls.incrementAndGet();
                         },
                         // 8767584273645748301282734657402983457843901293874657867582034875
                         (info) -> {
                             assertTrue(info.will);
                             assertNull(info.value);
-                            assertEquals(estimatedSizes[4], info.size);
+                            assertEquals(0, info.oldSize);
+                            assertEquals(estimatedSizes[4], info.newSize);
                             consumerCalls.incrementAndGet();
                         },
                         (info) -> {
                             assertFalse(info.will);
                             assertEquals(BigNumber.class, info.value.getClass());
-                            assertEquals(computedSizes[4], info.size);
+                            assertEquals(0, info.oldSize);
+                            assertEquals(computedSizes[4], info.newSize);
                             consumerCalls.incrementAndGet();
                         });
         engine.eval(source);
@@ -188,7 +198,8 @@ public class AllocationReporterTest {
                         (info) -> {
                             assertTrue(info.will);
                             assertNull(info.value);
-                            assertEquals(AllocationReporter.SIZE_UNKNOWN, info.size);
+                            assertEquals(0, info.oldSize);
+                            assertEquals(AllocationReporter.SIZE_UNKNOWN, info.newSize);
                             consumerCalls.incrementAndGet();
                         });
         try {
@@ -205,7 +216,8 @@ public class AllocationReporterTest {
                         (info) -> {
                             assertTrue(info.will);
                             assertNull(info.value);
-                            assertEquals(8, info.size);
+                            assertEquals(0, info.oldSize);
+                            assertEquals(8, info.newSize);
                             consumerCalls.incrementAndGet();
                             throw new OutOfMemoryError("Denied allocation of 8 bytes.");
                         },
@@ -229,7 +241,8 @@ public class AllocationReporterTest {
                         (info) -> {
                             assertTrue(info.will);
                             assertEquals(12345678901234L, info.value);
-                            assertEquals(AllocationReporter.SIZE_UNKNOWN, info.size);
+                            assertEquals(8, info.oldSize);
+                            assertEquals(AllocationReporter.SIZE_UNKNOWN, info.newSize);
                             consumerCalls.incrementAndGet();
                             throw new OutOfMemoryError("Denied an unknown reallocation.");
                         },
@@ -306,7 +319,7 @@ public class AllocationReporterTest {
     @Test
     public void testReallocationReport() {
         long u = AllocationReporter.SIZE_UNKNOWN;
-        doTestReallocationReport(new long[]{u, u}, new long[]{u, 6 - 13});
+        doTestReallocationReport(new long[]{u, 4, 13, u}, new long[]{u, 4, 13, 6});
     }
 
     private void doTestReallocationReport(long[] estimatedSizes, long[] computedSizes) {
@@ -319,26 +332,30 @@ public class AllocationReporterTest {
                         (info) -> {
                             assertTrue(info.will);
                             assertEquals("NewObject", info.value.toString());
-                            assertEquals(estimatedSizes[0], info.size);
+                            assertEquals(estimatedSizes[0], info.oldSize);
+                            assertEquals(estimatedSizes[1], info.newSize);
                             consumerCalls.incrementAndGet();
                         },
                         (info) -> {
                             assertFalse(info.will);
                             assertEquals("NewObject", info.value.toString());
-                            assertEquals(computedSizes[0], info.size);
+                            assertEquals(computedSizes[0], info.oldSize);
+                            assertEquals(computedSizes[1], info.newSize);
                             consumerCalls.incrementAndGet();
                         },
                         // BigNumber -> BigNumber
                         (info) -> {
                             assertTrue(info.will);
                             assertEquals(BigNumber.class, info.value.getClass());
-                            assertEquals(estimatedSizes[1], info.size);
+                            assertEquals(estimatedSizes[2], info.oldSize);
+                            assertEquals(estimatedSizes[3], info.newSize);
                             consumerCalls.incrementAndGet();
                         },
                         (info) -> {
                             assertFalse(info.will);
                             assertEquals(BigNumber.class, info.value.getClass());
-                            assertEquals(computedSizes[1], info.size);
+                            assertEquals(computedSizes[2], info.oldSize);
+                            assertEquals(computedSizes[3], info.newSize);
                             consumerCalls.incrementAndGet();
                         });
         engine.eval(source);
@@ -388,7 +405,7 @@ public class AllocationReporterTest {
         AllocationReporter reporter = (AllocationReporter) engine.findGlobalSymbol(AllocationReporter.class.getSimpleName()).get();
         AtomicInteger listenerCalls = new AtomicInteger(0);
         PropertyChangeListener activatedListener = (event) -> {
-            assertEquals(AllocationReporter.PROP_ACTIVE, event.getPropertyName());
+            assertEquals(AllocationReporter.PROPERTY_ACTIVE, event.getPropertyName());
             assertEquals(Boolean.FALSE, event.getOldValue());
             assertEquals(Boolean.TRUE, event.getNewValue());
             listenerCalls.incrementAndGet();
@@ -402,7 +419,7 @@ public class AllocationReporterTest {
         listenerCalls.set(0);
 
         PropertyChangeListener deactivatedListener = (event) -> {
-            assertEquals(AllocationReporter.PROP_ACTIVE, event.getPropertyName());
+            assertEquals(AllocationReporter.PROPERTY_ACTIVE, event.getPropertyName());
             assertEquals(Boolean.TRUE, event.getOldValue());
             assertEquals(Boolean.FALSE, event.getNewValue());
             listenerCalls.incrementAndGet();
@@ -557,52 +574,33 @@ public class AllocationReporterTest {
                     if (contextRef.get().isActive()) {
                         if (newValue.kind != AllocValue.Kind.WRONG) {
                             // Test that it's wrong not to report will allocate
-                            contextRef.get().onEnter(null, getAllocationSizeEstimate(newValue));
+                            contextRef.get().onEnter(null, 0, getAllocationSizeEstimate(newValue));
                         }
                     }
                     value = allocateValue(newValue);
                     if (contextRef.get().isActive()) {
-                        contextRef.get().onReturnValue(value, computeValueSize(newValue, value));
+                        contextRef.get().onReturnValue(value, 0, computeValueSize(newValue, value));
                     }
                 } else {
                     // re-allocation
                     value = allocateValue(oldValue);    // pretend that it was allocated already
-                    long sizeChange = AllocationReporter.SIZE_UNKNOWN;
+                    long oldSize = AllocationReporter.SIZE_UNKNOWN;
+                    long newSize = AllocationReporter.SIZE_UNKNOWN;
                     if (contextRef.get().isActive()) {
-                        if (AllocValue.Kind.BIG == oldValue.kind || AllocValue.Kind.BIG == newValue.kind) {
-                            sizeChange = AllocationReporter.SIZE_UNKNOWN;
-                        }
-                        long oldSize = getAllocationSizeEstimate(oldValue);
-                        long newSize = getAllocationSizeEstimate(newValue);
-                        if (oldSize == AllocationReporter.SIZE_UNKNOWN || newSize == AllocationReporter.SIZE_UNKNOWN) {
-                            sizeChange = AllocationReporter.SIZE_UNKNOWN;
-                        } else {
-                            sizeChange = newSize - oldSize;
-                        }
-                        contextRef.get().onEnter(value, sizeChange);
+                        oldSize = computeValueSize(oldValue, value);
+                        newSize = getAllocationSizeEstimate(newValue);
+                        contextRef.get().onEnter(value, oldSize, newSize);
                     }
                     // Re-allocate, oldValue -> newValue
                     if (contextRef.get().isActive()) {
-                        if (sizeChange == AllocationReporter.SIZE_UNKNOWN) {
-                            long oldSize;
-                            if (AllocValue.Kind.BIG == oldValue.kind) {
-                                oldSize = ((BigNumber) value).getSize();
-                            } else {
-                                oldSize = getAllocationSizeEstimate(oldValue);
-                            }
-                            long newSize;
+                        if (newSize == AllocationReporter.SIZE_UNKNOWN) {
                             if (AllocValue.Kind.BIG == newValue.kind) {
                                 newSize = ((BigNumber) allocateValue(newValue)).getSize();
                             } else {
                                 newSize = getAllocationSizeEstimate(newValue);
                             }
-                            if (oldSize == AllocationReporter.SIZE_UNKNOWN || newSize == AllocationReporter.SIZE_UNKNOWN) {
-                                sizeChange = AllocationReporter.SIZE_UNKNOWN;
-                            } else {
-                                sizeChange = newSize - oldSize;
-                            }
                         }
-                        contextRef.get().onReturnValue(value, sizeChange);
+                        contextRef.get().onReturnValue(value, oldSize, newSize);
                     }
                 }
                 if (children != null) {
@@ -692,12 +690,14 @@ public class AllocationReporterTest {
     private static final class AllocationInfo {
 
         private final Object value;
-        private final long size;
+        private final long oldSize;
+        private final long newSize;
         private final boolean will;
 
         private AllocationInfo(AllocationEvent event, boolean will) {
             this.value = event.getValue();
-            this.size = event.getSizeChange();
+            this.oldSize = event.getOldSize();
+            this.newSize = event.getNewSize();
             this.will = will;
         }
     }

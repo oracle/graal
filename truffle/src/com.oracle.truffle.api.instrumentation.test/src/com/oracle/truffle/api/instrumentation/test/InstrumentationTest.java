@@ -1403,13 +1403,13 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         @Override
         @TruffleBoundary
         public void onEnter(AllocationEvent event) {
-            allocations.add("W " + event.getSizeChange() + " " + event.getValue());
+            allocations.add("W " + event.getNewSize() + " " + event.getValue());
         }
 
         @Override
         @TruffleBoundary
         public void onReturnValue(AllocationEvent event) {
-            allocations.add("A " + event.getSizeChange() + " " + event.getValue());
+            allocations.add("A " + event.getNewSize() + " " + event.getValue());
         }
     }
 

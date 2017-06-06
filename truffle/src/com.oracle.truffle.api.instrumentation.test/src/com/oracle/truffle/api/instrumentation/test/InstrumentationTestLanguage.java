@@ -590,7 +590,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         public Object execute(VirtualFrame frame) {
             if (contextRef.get().allocationReporter.isActive()) {
                 // Pretend we're allocating the value, for tests
-                contextRef.get().allocationReporter.onEnter(null, getValueSize());
+                contextRef.get().allocationReporter.onEnter(null, 0, getValueSize());
             }
             if (slot == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -598,7 +598,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
             }
             frame.setObject(slot, value);
             if (contextRef.get().allocationReporter.isActive()) {
-                contextRef.get().allocationReporter.onReturnValue(value, getValueSize());
+                contextRef.get().allocationReporter.onReturnValue(value, 0, getValueSize());
             }
             super.execute(frame);
             return value;

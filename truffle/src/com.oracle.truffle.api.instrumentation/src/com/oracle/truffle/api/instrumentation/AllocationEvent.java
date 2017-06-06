@@ -35,12 +35,14 @@ public final class AllocationEvent {
 
     private final LanguageInfo language;
     private final Object value;
-    private final long sizeChange;
+    private final long oldSize;
+    private final long newSize;
 
-    AllocationEvent(LanguageInfo language, Object value, long sizeChange) {
+    AllocationEvent(LanguageInfo language, Object value, long oldSize, long newSize) {
         this.language = language;
         this.value = value;
-        this.sizeChange = sizeChange;
+        this.oldSize = oldSize;
+        this.newSize = newSize;
     }
 
     /**
@@ -53,20 +55,32 @@ public final class AllocationEvent {
     }
 
     /**
-     * Returns a size of the allocated value, or the size difference caused by re-allocation, in
-     * bytes. When called from
-     * {@link AllocationListener#onEnter(com.oracle.truffle.api.instrumentation.AllocationEvent)} an
-     * estimated size change caused by the upcoming allocation is provided. When called from
-     * {@link AllocationListener#onReturnValue(com.oracle.truffle.api.instrumentation.AllocationEvent)}
-     * a corrected size change can is provided, which might differ from the one reported in
-     * {@link AllocationListener#onEnter(com.oracle.truffle.api.instrumentation.AllocationEvent)
-     * onEnter}. When the size change is unknown, {@link AllocationReporter#SIZE_UNKNOWN} is
-     * returned. The size change of a re-allocation can be also negative.
+     * Returns an old size of the value prior to the allocation, in bytes. Returns <code>0</code>
+     * when a new value is to be allocated, or the size of the value prior to the re-allocation.
+     * When the old size is unknown, {@link AllocationReporter#SIZE_UNKNOWN} is returned.
      *
      * @since 0.27
      */
-    public long getSizeChange() {
-        return sizeChange;
+    public long getOldSize() {
+        return oldSize;
+    }
+
+    /**
+     * Returns a size of the allocated value in bytes. When called from
+     * {@link AllocationListener#onEnter(com.oracle.truffle.api.instrumentation.AllocationEvent)} an
+     * estimated size of the allocated value is provided. When called from
+     * {@link AllocationListener#onReturnValue(com.oracle.truffle.api.instrumentation.AllocationEvent)}
+     * a corrected size can be provided, which might differ from the one reported in
+     * {@link AllocationListener#onEnter(com.oracle.truffle.api.instrumentation.AllocationEvent)
+     * onEnter}. When the allocated size is unknown, {@link AllocationReporter#SIZE_UNKNOWN} is
+     * returned. The change in memory consumption caused by the allocation is
+     * <code>{@link #getNewSize()} - {@link #getOldSize()}</code> when both old size and new size
+     * are known. The change can be either positive or negative.
+     *
+     * @since 0.27
+     */
+    public long getNewSize() {
+        return newSize;
     }
 
     /**
