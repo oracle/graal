@@ -90,6 +90,18 @@ public enum CompareOperator {
     }
 
     /**
+     * Allows us to calculate llvm ir equivalent index of the enum.
+     */
+    public int getIrIndex() {
+        long fpops = FP_TRUE.ordinal() + 1;
+        if (this.ordinal() >= 0 && this.ordinal() < fpops) {
+            return this.ordinal();
+        } else {
+            return (int) (this.ordinal() + INTEGER_OPERATOR_FLAG - fpops);
+        }
+    }
+
+    /**
      * Useful to get the llvm ir equivalent string of the enum.
      */
     public String getIrString() {

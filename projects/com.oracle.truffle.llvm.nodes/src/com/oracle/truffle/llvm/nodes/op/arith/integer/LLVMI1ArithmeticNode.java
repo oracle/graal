@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.op.arith.integer;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -44,4 +45,67 @@ public abstract class LLVMI1ArithmeticNode extends LLVMExpressionNode {
         }
     }
 
+    public abstract static class LLVMI1MulNode extends LLVMI1ArithmeticNode {
+
+        @Specialization
+        public boolean mul(boolean left, boolean right) {
+            return left & right;
+        }
+    }
+
+    public abstract static class LLVMI1SubNode extends LLVMI1ArithmeticNode {
+
+        @Specialization
+        protected boolean sub(boolean left, boolean right) {
+            return left ^ right;
+        }
+    }
+
+    public abstract static class LLVMI1DivNode extends LLVMI1ArithmeticNode {
+
+        @Specialization
+        protected boolean div(boolean left, boolean right) {
+            if (!right) {
+                CompilerDirectives.transferToInterpreter();
+                throw new ArithmeticException("Division by zero!");
+            }
+            return left;
+        }
+    }
+
+    public abstract static class LLVMI1UDivNode extends LLVMI1ArithmeticNode {
+
+        @Specialization
+        protected boolean udiv(boolean left, boolean right) {
+            if (!right) {
+                CompilerDirectives.transferToInterpreter();
+                throw new ArithmeticException("Division by zero!");
+            }
+            return left;
+        }
+    }
+
+    public abstract static class LLVMI1RemNode extends LLVMI1ArithmeticNode {
+
+        @Specialization
+        protected boolean rem(@SuppressWarnings("unused") boolean left, boolean right) {
+            if (!right) {
+                CompilerDirectives.transferToInterpreter();
+                throw new ArithmeticException("Division by zero!");
+            }
+            return false;
+        }
+    }
+
+    public abstract static class LLVMI1URemNode extends LLVMI1ArithmeticNode {
+
+        @Specialization
+        protected boolean urem(@SuppressWarnings("unused") boolean left, boolean right) {
+            if (!right) {
+                CompilerDirectives.transferToInterpreter();
+                throw new ArithmeticException("Division by zero!");
+            }
+            return false;
+        }
+    }
 }

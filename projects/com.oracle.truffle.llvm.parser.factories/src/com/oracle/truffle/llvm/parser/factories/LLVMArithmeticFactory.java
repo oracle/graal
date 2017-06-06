@@ -52,6 +52,12 @@ import com.oracle.truffle.llvm.nodes.op.arith.integer.LLVMI16ArithmeticNodeFacto
 import com.oracle.truffle.llvm.nodes.op.arith.integer.LLVMI16ArithmeticNodeFactory.LLVMI16UDivNodeGen;
 import com.oracle.truffle.llvm.nodes.op.arith.integer.LLVMI16ArithmeticNodeFactory.LLVMI16URemNodeGen;
 import com.oracle.truffle.llvm.nodes.op.arith.integer.LLVMI1ArithmeticNodeFactory.LLVMI1AddNodeGen;
+import com.oracle.truffle.llvm.nodes.op.arith.integer.LLVMI1ArithmeticNodeFactory.LLVMI1DivNodeGen;
+import com.oracle.truffle.llvm.nodes.op.arith.integer.LLVMI1ArithmeticNodeFactory.LLVMI1MulNodeGen;
+import com.oracle.truffle.llvm.nodes.op.arith.integer.LLVMI1ArithmeticNodeFactory.LLVMI1RemNodeGen;
+import com.oracle.truffle.llvm.nodes.op.arith.integer.LLVMI1ArithmeticNodeFactory.LLVMI1SubNodeGen;
+import com.oracle.truffle.llvm.nodes.op.arith.integer.LLVMI1ArithmeticNodeFactory.LLVMI1UDivNodeGen;
+import com.oracle.truffle.llvm.nodes.op.arith.integer.LLVMI1ArithmeticNodeFactory.LLVMI1URemNodeGen;
 import com.oracle.truffle.llvm.nodes.op.arith.integer.LLVMI32ArithmeticNodeFactory.LLVMI32AddNodeGen;
 import com.oracle.truffle.llvm.nodes.op.arith.integer.LLVMI32ArithmeticNodeFactory.LLVMI32DivNodeGen;
 import com.oracle.truffle.llvm.nodes.op.arith.integer.LLVMI32ArithmeticNodeFactory.LLVMI32MulNodeGen;
@@ -98,6 +104,12 @@ import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI16VectorArithmeticNode
 import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI16VectorArithmeticNodeFactory.LLVMI16VectorUDivNodeGen;
 import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI16VectorArithmeticNodeFactory.LLVMI16VectorURemNodeGen;
 import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI1VectorArithmeticNodeFactory.LLVMI1VectorAddNodeGen;
+import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI1VectorArithmeticNodeFactory.LLVMI1VectorDivNodeGen;
+import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI1VectorArithmeticNodeFactory.LLVMI1VectorMulNodeGen;
+import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI1VectorArithmeticNodeFactory.LLVMI1VectorRemNodeGen;
+import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI1VectorArithmeticNodeFactory.LLVMI1VectorSubNodeGen;
+import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI1VectorArithmeticNodeFactory.LLVMI1VectorUDivNodeGen;
+import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI1VectorArithmeticNodeFactory.LLVMI1VectorURemNodeGen;
 import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI32VectorArithmeticNodeFactory.LLVMI32VectorAddNodeGen;
 import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI32VectorArithmeticNodeFactory.LLVMI32VectorDivNodeGen;
 import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI32VectorArithmeticNodeFactory.LLVMI32VectorMulNodeGen;
@@ -117,6 +129,8 @@ import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI8VectorArithmeticNodeF
 import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI8VectorArithmeticNodeFactory.LLVMI8VectorMulNodeGen;
 import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI8VectorArithmeticNodeFactory.LLVMI8VectorRemNodeGen;
 import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI8VectorArithmeticNodeFactory.LLVMI8VectorSubNodeGen;
+import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI8VectorArithmeticNodeFactory.LLVMI8VectorUDivNodeGen;
+import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI8VectorArithmeticNodeFactory.LLVMI8VectorURemNodeGen;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -214,6 +228,18 @@ final class LLVMArithmeticFactory {
         switch (type) {
             case ADDITION:
                 return LLVMI1VectorAddNodeGen.create(left, right);
+            case SUBTRACTION:
+                return LLVMI1VectorSubNodeGen.create(left, right);
+            case MULTIPLICATION:
+                return LLVMI1VectorMulNodeGen.create(left, right);
+            case DIVISION:
+                return LLVMI1VectorDivNodeGen.create(left, right);
+            case REMAINDER:
+                return LLVMI1VectorRemNodeGen.create(left, right);
+            case UNSIGNED_DIVISION:
+                return LLVMI1VectorUDivNodeGen.create(left, right);
+            case UNSIGNED_REMAINDER:
+                return LLVMI1VectorURemNodeGen.create(left, right);
             default:
                 throw new AssertionError(type);
         }
@@ -231,6 +257,10 @@ final class LLVMArithmeticFactory {
                 return LLVMI8VectorDivNodeGen.create(left, right);
             case REMAINDER:
                 return LLVMI8VectorRemNodeGen.create(left, right);
+            case UNSIGNED_DIVISION:
+                return LLVMI8VectorUDivNodeGen.create(left, right);
+            case UNSIGNED_REMAINDER:
+                return LLVMI8VectorURemNodeGen.create(left, right);
             default:
                 throw new AssertionError(type);
         }
@@ -337,6 +367,18 @@ final class LLVMArithmeticFactory {
         switch (type) {
             case ADDITION:
                 return LLVMI1AddNodeGen.create(left, right);
+            case SUBTRACTION:
+                return LLVMI1SubNodeGen.create(left, right);
+            case MULTIPLICATION:
+                return LLVMI1MulNodeGen.create(left, right);
+            case DIVISION:
+                return LLVMI1DivNodeGen.create(left, right);
+            case REMAINDER:
+                return LLVMI1RemNodeGen.create(left, right);
+            case UNSIGNED_REMAINDER:
+                return LLVMI1URemNodeGen.create(left, right);
+            case UNSIGNED_DIVISION:
+                return LLVMI1UDivNodeGen.create(left, right);
             default:
                 throw new AssertionError(type);
         }

@@ -82,6 +82,22 @@ import com.oracle.truffle.llvm.nodes.op.compare.LLVMI16CompareNodeFactory.LLVMI1
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMI16CompareNodeFactory.LLVMI16UgtNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMI16CompareNodeFactory.LLVMI16UleNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMI16CompareNodeFactory.LLVMI16UltNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI16VectorCompareNodeFactory.LLVMI16VectorEqNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI16VectorCompareNodeFactory.LLVMI16VectorNeNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI16VectorCompareNodeFactory.LLVMI16VectorSgeNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI16VectorCompareNodeFactory.LLVMI16VectorSgtNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI16VectorCompareNodeFactory.LLVMI16VectorSleNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI16VectorCompareNodeFactory.LLVMI16VectorSltNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI16VectorCompareNodeFactory.LLVMI16VectorUgeNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI16VectorCompareNodeFactory.LLVMI16VectorUgtNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI16VectorCompareNodeFactory.LLVMI16VectorUleNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI16VectorCompareNodeFactory.LLVMI16VectorUltNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI1VectorCompareNodeFactory.LLVMI1VectorEqNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI1VectorCompareNodeFactory.LLVMI1VectorNeNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI1VectorCompareNodeFactory.LLVMI1VectorUgeNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI1VectorCompareNodeFactory.LLVMI1VectorUgtNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI1VectorCompareNodeFactory.LLVMI1VectorUleNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI1VectorCompareNodeFactory.LLVMI1VectorUltNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMI32CompareNodeFactory.LLVMI32SgeNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMI32CompareNodeFactory.LLVMI32SgtNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMI32CompareNodeFactory.LLVMI32SleNodeGen;
@@ -108,6 +124,16 @@ import com.oracle.truffle.llvm.nodes.op.compare.LLVMI64CompareNodeFactory.LLVMI6
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMI64CompareNodeFactory.LLVMI64UgtNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMI64CompareNodeFactory.LLVMI64UleNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMI64CompareNodeFactory.LLVMI64UltNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI64VectorCompareNodeFactory.LLVMI64VectorEqNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI64VectorCompareNodeFactory.LLVMI64VectorNeNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI64VectorCompareNodeFactory.LLVMI64VectorSgeNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI64VectorCompareNodeFactory.LLVMI64VectorSgtNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI64VectorCompareNodeFactory.LLVMI64VectorSleNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI64VectorCompareNodeFactory.LLVMI64VectorSltNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI64VectorCompareNodeFactory.LLVMI64VectorUgeNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI64VectorCompareNodeFactory.LLVMI64VectorUgtNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI64VectorCompareNodeFactory.LLVMI64VectorUleNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI64VectorCompareNodeFactory.LLVMI64VectorUltNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMI8CompareNodeFactory.LLVMI8SgeNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMI8CompareNodeFactory.LLVMI8SgtNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMI8CompareNodeFactory.LLVMI8SleNodeGen;
@@ -116,6 +142,16 @@ import com.oracle.truffle.llvm.nodes.op.compare.LLVMI8CompareNodeFactory.LLVMI8U
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMI8CompareNodeFactory.LLVMI8UgtNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMI8CompareNodeFactory.LLVMI8UleNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMI8CompareNodeFactory.LLVMI8UltNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI8VectorCompareNodeFactory.LLVMI8VectorEqNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI8VectorCompareNodeFactory.LLVMI8VectorNeNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI8VectorCompareNodeFactory.LLVMI8VectorSgeNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI8VectorCompareNodeFactory.LLVMI8VectorSgtNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI8VectorCompareNodeFactory.LLVMI8VectorSleNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI8VectorCompareNodeFactory.LLVMI8VectorSltNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI8VectorCompareNodeFactory.LLVMI8VectorUgeNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI8VectorCompareNodeFactory.LLVMI8VectorUgtNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI8VectorCompareNodeFactory.LLVMI8VectorUleNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMI8VectorCompareNodeFactory.LLVMI8VectorUltNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMIVarCompareNodeFactory.LLVMIVarSignedGreaterOrEqualNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMIVarCompareNodeFactory.LLVMIVarSignedGreaterThanNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMIVarCompareNodeFactory.LLVMIVarSignedLessOrEqualNodeGen;
@@ -251,8 +287,22 @@ final class LLVMComparisonFactory {
     }
 
     private static LLVMExpressionNode createVectorComparison(LLVMExpressionNode left, LLVMExpressionNode right, Type llvmType, LLVMIntegerComparisonType condition) {
-        if (llvmType instanceof VectorType && ((VectorType) llvmType).getElementType() == PrimitiveType.I32) {
-            return visitI32VectorComparison(left, right, condition);
+        if (llvmType instanceof VectorType) {
+            final PrimitiveType elementType = ((VectorType) llvmType).getElementType();
+            switch (elementType.getPrimitiveKind()) {
+                case I1:
+                    return visitI1VectorComparison(left, right, condition);
+                case I8:
+                    return visitI8VectorComparison(left, right, condition);
+                case I16:
+                    return visitI16VectorComparison(left, right, condition);
+                case I32:
+                    return visitI32VectorComparison(left, right, condition);
+                case I64:
+                    return visitI64VectorComparison(left, right, condition);
+                default:
+                    throw new AssertionError(llvmType);
+            }
         } else {
             throw new AssertionError(llvmType);
         }
@@ -557,6 +607,79 @@ final class LLVMComparisonFactory {
         }
     }
 
+    private static LLVMExpressionNode visitI1VectorComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMIntegerComparisonType condition) {
+        switch (condition) {
+            case EQUALS:
+                return LLVMI1VectorEqNodeGen.create(left, right);
+            case NOT_EQUALS:
+                return LLVMI1VectorNeNodeGen.create(left, right);
+            case UNSIGNED_GREATER_THAN:
+                return LLVMI1VectorUgtNodeGen.create(left, right);
+            case UNSIGNED_GREATER_EQUALS:
+                return LLVMI1VectorUgeNodeGen.create(left, right);
+            case UNSIGNED_LESS_THAN:
+                return LLVMI1VectorUltNodeGen.create(left, right);
+            case UNSIGNED_LESS_EQUALS:
+                return LLVMI1VectorUleNodeGen.create(left, right);
+            default:
+                throw new AssertionError(condition);
+        }
+    }
+
+    private static LLVMExpressionNode visitI8VectorComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMIntegerComparisonType condition) {
+        switch (condition) {
+            case EQUALS:
+                return LLVMI8VectorEqNodeGen.create(left, right);
+            case NOT_EQUALS:
+                return LLVMI8VectorNeNodeGen.create(left, right);
+            case UNSIGNED_GREATER_THAN:
+                return LLVMI8VectorUgtNodeGen.create(left, right);
+            case UNSIGNED_GREATER_EQUALS:
+                return LLVMI8VectorUgeNodeGen.create(left, right);
+            case UNSIGNED_LESS_THAN:
+                return LLVMI8VectorUltNodeGen.create(left, right);
+            case UNSIGNED_LESS_EQUALS:
+                return LLVMI8VectorUleNodeGen.create(left, right);
+            case SIGNED_GREATER_THAN:
+                return LLVMI8VectorSgtNodeGen.create(left, right);
+            case SIGNED_GREATER_EQUALS:
+                return LLVMI8VectorSgeNodeGen.create(left, right);
+            case SIGNED_LESS_THAN:
+                return LLVMI8VectorSltNodeGen.create(left, right);
+            case SIGNED_LESS_EQUALS:
+                return LLVMI8VectorSleNodeGen.create(left, right);
+            default:
+                throw new AssertionError(condition);
+        }
+    }
+
+    private static LLVMExpressionNode visitI16VectorComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMIntegerComparisonType condition) {
+        switch (condition) {
+            case EQUALS:
+                return LLVMI16VectorEqNodeGen.create(left, right);
+            case NOT_EQUALS:
+                return LLVMI16VectorNeNodeGen.create(left, right);
+            case UNSIGNED_GREATER_THAN:
+                return LLVMI16VectorUgtNodeGen.create(left, right);
+            case UNSIGNED_GREATER_EQUALS:
+                return LLVMI16VectorUgeNodeGen.create(left, right);
+            case UNSIGNED_LESS_THAN:
+                return LLVMI16VectorUltNodeGen.create(left, right);
+            case UNSIGNED_LESS_EQUALS:
+                return LLVMI16VectorUleNodeGen.create(left, right);
+            case SIGNED_GREATER_THAN:
+                return LLVMI16VectorSgtNodeGen.create(left, right);
+            case SIGNED_GREATER_EQUALS:
+                return LLVMI16VectorSgeNodeGen.create(left, right);
+            case SIGNED_LESS_THAN:
+                return LLVMI16VectorSltNodeGen.create(left, right);
+            case SIGNED_LESS_EQUALS:
+                return LLVMI16VectorSleNodeGen.create(left, right);
+            default:
+                throw new AssertionError(condition);
+        }
+    }
+
     private static LLVMExpressionNode visitI32VectorComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMIntegerComparisonType condition) {
         switch (condition) {
             case EQUALS:
@@ -579,6 +702,33 @@ final class LLVMComparisonFactory {
                 return LLVMI32VectorSltNodeGen.create(left, right);
             case SIGNED_LESS_EQUALS:
                 return LLVMI32VectorSleNodeGen.create(left, right);
+            default:
+                throw new AssertionError(condition);
+        }
+    }
+
+    private static LLVMExpressionNode visitI64VectorComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMIntegerComparisonType condition) {
+        switch (condition) {
+            case EQUALS:
+                return LLVMI64VectorEqNodeGen.create(left, right);
+            case NOT_EQUALS:
+                return LLVMI64VectorNeNodeGen.create(left, right);
+            case UNSIGNED_GREATER_THAN:
+                return LLVMI64VectorUgtNodeGen.create(left, right);
+            case UNSIGNED_GREATER_EQUALS:
+                return LLVMI64VectorUgeNodeGen.create(left, right);
+            case UNSIGNED_LESS_THAN:
+                return LLVMI64VectorUltNodeGen.create(left, right);
+            case UNSIGNED_LESS_EQUALS:
+                return LLVMI64VectorUleNodeGen.create(left, right);
+            case SIGNED_GREATER_THAN:
+                return LLVMI64VectorSgtNodeGen.create(left, right);
+            case SIGNED_GREATER_EQUALS:
+                return LLVMI64VectorSgeNodeGen.create(left, right);
+            case SIGNED_LESS_THAN:
+                return LLVMI64VectorSltNodeGen.create(left, right);
+            case SIGNED_LESS_EQUALS:
+                return LLVMI64VectorSleNodeGen.create(left, right);
             default:
                 throw new AssertionError(condition);
         }
