@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.vector;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -88,6 +89,85 @@ public final class LLVMI1Vector {
         return create(result);
     }
 
+    public LLVMI1Vector add(LLVMI1Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public boolean eval(boolean a, boolean b) {
+                return a ^ b;
+            }
+        });
+    }
+
+    public LLVMI1Vector mul(LLVMI1Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public boolean eval(boolean a, boolean b) {
+                return a & b;
+            }
+        });
+    }
+
+    public LLVMI1Vector sub(LLVMI1Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public boolean eval(boolean a, boolean b) {
+                return a ^ b;
+            }
+        });
+    }
+
+    public LLVMI1Vector div(LLVMI1Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public boolean eval(boolean a, boolean b) {
+                if (!b) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new ArithmeticException("Division by zero!");
+                }
+                return a;
+            }
+        });
+    }
+
+    public LLVMI1Vector divUnsigned(LLVMI1Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public boolean eval(boolean a, boolean b) {
+                if (!b) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new ArithmeticException("Division by zero!");
+                }
+                return a;
+            }
+        });
+    }
+
+    public LLVMI1Vector rem(LLVMI1Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public boolean eval(boolean a, boolean b) {
+                if (!b) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new ArithmeticException("Division by zero!");
+                }
+                return false;
+            }
+        });
+    }
+
+    public LLVMI1Vector remUnsigned(LLVMI1Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public boolean eval(boolean a, boolean b) {
+                if (!b) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new ArithmeticException("Division by zero!");
+                }
+                return false;
+            }
+        });
+    }
+
     public LLVMI1Vector and(LLVMI1Vector rightValue) {
         return doOperation(this, rightValue, new Operation() {
             @Override
@@ -102,6 +182,33 @@ public final class LLVMI1Vector {
             @Override
             public boolean eval(boolean a, boolean b) {
                 return a | b;
+            }
+        });
+    }
+
+    public LLVMI1Vector leftShift(LLVMI1Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public boolean eval(boolean a, boolean b) {
+                return a & !b;
+            }
+        });
+    }
+
+    public LLVMI1Vector logicalRightShift(LLVMI1Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public boolean eval(boolean a, boolean b) {
+                return a & !b;
+            }
+        });
+    }
+
+    public LLVMI1Vector arithmeticRightShift(LLVMI1Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public boolean eval(boolean a, boolean b) {
+                return a;
             }
         });
     }

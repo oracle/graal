@@ -311,7 +311,7 @@ public final class Function implements ParserListener {
         } else {
             type = types.get(args[i]);
         }
-        instructionBlock.createResume(type);
+        instructionBlock.createResume(type, val);
         isLastBlockTerminated = true;
     }
 

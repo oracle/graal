@@ -124,11 +124,29 @@ public final class LLVMI8Vector {
         });
     }
 
+    public LLVMI8Vector divUnsigned(LLVMI8Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public byte eval(byte a, byte b) {
+                return (byte) (Byte.toUnsignedInt(a) / Byte.toUnsignedInt(b));
+            }
+        });
+    }
+
     public LLVMI8Vector rem(LLVMI8Vector rightValue) {
         return doOperation(this, rightValue, new Operation() {
             @Override
             public byte eval(byte a, byte b) {
                 return (byte) (a % b);
+            }
+        });
+    }
+
+    public LLVMI8Vector remUnsigned(LLVMI8Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public byte eval(byte a, byte b) {
+                return (byte) (Byte.toUnsignedInt(a) % Byte.toUnsignedInt(b));
             }
         });
     }
