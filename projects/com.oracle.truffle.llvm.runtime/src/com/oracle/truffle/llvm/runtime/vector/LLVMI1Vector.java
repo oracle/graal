@@ -190,7 +190,7 @@ public final class LLVMI1Vector {
         return doOperation(this, rightValue, new Operation() {
             @Override
             public boolean eval(boolean a, boolean b) {
-                return a && !b;
+                return a & !b;
             }
         });
     }
@@ -199,7 +199,7 @@ public final class LLVMI1Vector {
         return doOperation(this, rightValue, new Operation() {
             @Override
             public boolean eval(boolean a, boolean b) {
-                return a && !b;
+                return a & !b;
             }
         });
     }
