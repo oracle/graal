@@ -462,8 +462,18 @@ public class HotSpotGraalMBeanTest {
             throw new UnsupportedOperationException();
         }
 
+        @Override
+        public boolean isIntrinsicCandidate() {
+            return true;
+        }
+
         private static class MockResolvedObjectType implements HotSpotResolvedObjectType {
             MockResolvedObjectType() {
+            }
+
+            @Override
+            public long getFingerprint() {
+                return 0L;
             }
 
             @Override
