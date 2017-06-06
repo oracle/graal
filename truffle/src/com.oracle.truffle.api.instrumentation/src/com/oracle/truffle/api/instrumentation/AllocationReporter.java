@@ -38,7 +38,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 
 /**
@@ -75,7 +74,7 @@ public final class AllocationReporter {
     private ThreadLocal<Reference<Object>> valueCheck;
 
     @CompilationFinal private volatile Assumption listenersNotChangedAssumption = Truffle.getRuntime().createAssumption();
-    @CompilationFinal private volatile AllocationListener[] listeners = null;
+    @CompilationFinal(dimensions = 1) private volatile AllocationListener[] listeners = null;
 
     AllocationReporter(LanguageInfo language) {
         this.language = language;
@@ -205,7 +204,6 @@ public final class AllocationReporter {
         notifyAllocateOrReallocate(valueToReallocate, sizeChangeEstimate);
     }
 
-    @ExplodeLoop
     private void notifyAllocateOrReallocate(Object value, long sizeEstimate) {
         assert setValueCheck(value);
         if (!listenersNotChangedAssumption.isValid()) {
@@ -243,7 +241,6 @@ public final class AllocationReporter {
         notifyAllocated(value, sizeChange);
     }
 
-    @ExplodeLoop
     private void notifyAllocated(Object value, long sizeChange) {
         if (!listenersNotChangedAssumption.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
