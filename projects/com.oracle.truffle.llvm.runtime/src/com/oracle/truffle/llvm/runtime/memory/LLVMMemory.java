@@ -33,6 +33,7 @@ import java.lang.reflect.Field;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
@@ -54,9 +55,9 @@ public abstract class LLVMMemory {
     private static Unsafe getUnsafe() {
         CompilerAsserts.neverPartOfCompilation();
         try {
-            Field singleoneInstanceField = Unsafe.class.getDeclaredField("theUnsafe");
-            singleoneInstanceField.setAccessible(true);
-            return (Unsafe) singleoneInstanceField.get(null);
+            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+            theUnsafe.setAccessible(true);
+            return (Unsafe) theUnsafe.get(null);
         } catch (Exception e) {
             throw new AssertionError();
         }
@@ -394,6 +395,185 @@ public abstract class LLVMMemory {
 
     public static void putVector(LLVMAddress addr, LLVMI8Vector vector) {
         LLVMI8Vector.writeVectorToMemory(addr, vector);
+    }
+
+    @ValueType
+    public static final class CMPXCHGI32 {
+        private final int value;
+        private final boolean swap;
+
+        public CMPXCHGI32(int value, boolean swap) {
+            this.value = value;
+            this.swap = swap;
+        }
+
+        public int getValue() {
+            return value;
+        }
+
+        public boolean isSwap() {
+            return swap;
+        }
+    }
+
+    public static CMPXCHGI32 compareAndSwapI32(LLVMAddress p, int comparisonValue, int newValue) {
+        while (true) {
+            boolean b = UNSAFE.compareAndSwapInt(null, p.getVal(), comparisonValue, newValue);
+            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, b)) {
+                return new CMPXCHGI32(comparisonValue, b);
+            } else {
+                int t = UNSAFE.getIntVolatile(null, p.getVal());
+                if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, t == comparisonValue)) {
+                    continue;
+                } else {
+                    return new CMPXCHGI32(t, b);
+                }
+            }
+        }
+    }
+
+    @ValueType
+    public static final class CMPXCHGI64 {
+        private final long value;
+        private final boolean swap;
+
+        public CMPXCHGI64(long value, boolean swap) {
+            this.value = value;
+            this.swap = swap;
+        }
+
+        public long getValue() {
+            return value;
+        }
+
+        public boolean isSwap() {
+            return swap;
+        }
+    }
+
+    public static CMPXCHGI64 compareAndSwapI64(LLVMAddress p, long comparisonValue, long newValue) {
+        while (true) {
+            boolean b = UNSAFE.compareAndSwapLong(null, p.getVal(), comparisonValue, newValue);
+            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, b)) {
+                return new CMPXCHGI64(comparisonValue, b);
+            } else {
+                long t = UNSAFE.getLongVolatile(null, p.getVal());
+                if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, t == comparisonValue)) {
+                    continue;
+                } else {
+                    return new CMPXCHGI64(t, b);
+                }
+            }
+        }
+    }
+
+    @ValueType
+    public static final class CMPXCHGI8 {
+        private final byte value;
+        private final boolean swap;
+
+        public CMPXCHGI8(byte value, boolean swap) {
+            this.value = value;
+            this.swap = swap;
+        }
+
+        public byte getValue() {
+            return value;
+        }
+
+        public boolean isSwap() {
+            return swap;
+        }
+    }
+
+    private static long alignToI32(long address) {
+        long mask = 3;
+        return (address & ~mask);
+    }
+
+    private static int getI8Index(long address) {
+        long mask = 3;
+        return (int) (address & mask);
+    }
+
+    private static byte getI8At(int value, int index) {
+        return (byte) ((value >> (8 * index)) & 0xff);
+    }
+
+    private static int replaceI8(int index, int value, byte replaceByte) {
+        return (value & ~(0xFF << (index * 8))) | ((replaceByte & 0xFF) << (index * 8));
+    }
+
+    public static CMPXCHGI8 compareAndSwapI8(LLVMAddress p, byte comparisonValue, byte newValue) {
+        int byteIndex = getI8Index(p.getVal());
+        long address = alignToI32(p.getVal());
+        while (true) {
+            int t = UNSAFE.getIntVolatile(null, address);
+            byte b = getI8At(t, byteIndex);
+            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, b != comparisonValue)) {
+                return new CMPXCHGI8(b, false);
+            } else {
+                int newVal = replaceI8(byteIndex, t, newValue);
+                boolean c = UNSAFE.compareAndSwapInt(null, address, t, newVal);
+                if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, c)) {
+                    return new CMPXCHGI8(comparisonValue, true);
+                } else {
+                    continue;
+                }
+            }
+        }
+    }
+
+    @ValueType
+    public static final class CMPXCHGI16 {
+        private final short value;
+        private final boolean swap;
+
+        public CMPXCHGI16(short value, boolean swap) {
+            this.value = value;
+            this.swap = swap;
+        }
+
+        public short getValue() {
+            return value;
+        }
+
+        public boolean isSwap() {
+            return swap;
+        }
+    }
+
+    private static int getI16Index(long address) {
+        long mask = 3;
+        return (int) (address & mask) >> 1;
+    }
+
+    private static short getI16At(int value, int index) {
+        return (short) ((value >> (16 * index)) & 0xFFFF);
+    }
+
+    private static int replaceI16(int index, int value, short replace) {
+        return (value & ~(0xFFFF << (index * 16))) | ((replace & 0xFFFF) << (index * 16));
+    }
+
+    public static CMPXCHGI16 compareAndSwapI16(LLVMAddress p, short comparisonValue, short newValue) {
+        int idx = getI16Index(p.getVal());
+        long address = alignToI32(p.getVal());
+        while (true) {
+            int t = UNSAFE.getIntVolatile(null, address);
+            short b = getI16At(t, idx);
+            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, b != comparisonValue)) {
+                return new CMPXCHGI16(b, false);
+            } else {
+                int newVal = replaceI16(idx, t, newValue);
+                boolean c = UNSAFE.compareAndSwapInt(null, address, t, newVal);
+                if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, c)) {
+                    return new CMPXCHGI16(comparisonValue, true);
+                } else {
+                    continue;
+                }
+            }
+        }
     }
 
 }

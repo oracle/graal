@@ -5,6 +5,8 @@ c/5.c
 c/6.c
 c/address-to-function-ptr-call.c
 c/compareExchange.c
+c/compareExchangeVal.c
+c/compareExchangeVal2.c
 c/factorial.c
 c/fibonacci.c
 c/globalVar.c
