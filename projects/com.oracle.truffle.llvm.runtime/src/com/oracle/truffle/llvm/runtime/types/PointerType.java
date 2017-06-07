@@ -29,23 +29,35 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class PointerType extends AggregateType {
 
-    private Type pointeeType;
+    @CompilationFinal private Type pointeeType;
+    @CompilationFinal private Assumption assumption;
 
     public PointerType(Type pointeeType) {
+        this.assumption = Truffle.getRuntime().createAssumption();
         this.pointeeType = pointeeType;
     }
 
     public Type getPointeeType() {
+        if (!assumption.isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+        }
         return pointeeType;
     }
 
     public void setPointeeType(Type type) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        this.assumption.invalidate();
+        this.assumption = Truffle.getRuntime().createAssumption();
         this.pointeeType = type;
     }
 

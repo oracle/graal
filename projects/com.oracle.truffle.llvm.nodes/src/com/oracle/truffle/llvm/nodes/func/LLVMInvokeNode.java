@@ -47,8 +47,8 @@ import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI3
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI64ProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI8ProfiledValueNodeGen;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.NeedsStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -178,7 +178,8 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
                     frame.setObject(resultLocation, value);
             }
         } else if (type.getReturnType() instanceof PointerType) {
-            frame.setObject(resultLocation, returnValueProfile.executeWithTarget(value));
+            Object profiledValue = returnValueProfile.executeWithTarget(value);
+            frame.setObject(resultLocation, profiledValue);
         } else {
             frame.setObject(resultLocation, value);
         }
