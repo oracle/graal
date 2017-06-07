@@ -42,6 +42,10 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.CMPXCHGI16;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.CMPXCHGI32;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.CMPXCHGI64;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.CMPXCHGI8;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.NeedsStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -82,71 +86,46 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
 
         @Specialization
         public Object execute(VirtualFrame frame, LLVMAddress address, byte comparisonValue, byte newValue) {
-            byte value = LLVMMemory.getI8(address);
+            CMPXCHGI8 compareAndSwapI8 = LLVMMemory.compareAndSwapI8(address, comparisonValue, newValue);
             LLVMAddress allocation = LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), resultSize, 8));
-            LLVMMemory.putI8(allocation, value);
-            if (value == comparisonValue) {
-                LLVMMemory.putI8(address, newValue);
-                LLVMMemory.putI1(allocation.getVal() + secondValueOffset, true);
-            } else {
-                LLVMMemory.putI1(allocation.getVal() + secondValueOffset, false);
-            }
+            LLVMMemory.putI8(allocation, compareAndSwapI8.getValue());
+            LLVMMemory.putI1(allocation.getVal() + secondValueOffset, compareAndSwapI8.isSwap());
             return allocation;
         }
 
         @Specialization
         public Object execute(VirtualFrame frame, LLVMAddress address, short comparisonValue, short newValue) {
-            short value = LLVMMemory.getI16(address);
+            CMPXCHGI16 compareAndSwapI16 = LLVMMemory.compareAndSwapI16(address, comparisonValue, newValue);
             LLVMAddress allocation = LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), resultSize, 8));
-            LLVMMemory.putI16(allocation, value);
-            if (value == comparisonValue) {
-                LLVMMemory.putI16(address, newValue);
-                LLVMMemory.putI1(allocation.getVal() + secondValueOffset, true);
-            } else {
-                LLVMMemory.putI1(allocation.getVal() + secondValueOffset, false);
-            }
+            LLVMMemory.putI16(allocation, compareAndSwapI16.getValue());
+            LLVMMemory.putI1(allocation.getVal() + secondValueOffset, compareAndSwapI16.isSwap());
             return allocation;
         }
 
         @Specialization
         public Object execute(VirtualFrame frame, LLVMAddress address, int comparisonValue, int newValue) {
-            int value = LLVMMemory.getI32(address);
+            CMPXCHGI32 compareAndSwapI32 = LLVMMemory.compareAndSwapI32(address, comparisonValue, newValue);
             LLVMAddress allocation = LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), resultSize, 8));
-            LLVMMemory.putI32(allocation, value);
-            if (value == comparisonValue) {
-                LLVMMemory.putI32(address, newValue);
-                LLVMMemory.putI1(allocation.getVal() + secondValueOffset, true);
-            } else {
-                LLVMMemory.putI1(allocation.getVal() + secondValueOffset, false);
-            }
+            LLVMMemory.putI32(allocation, compareAndSwapI32.getValue());
+            LLVMMemory.putI1(allocation.getVal() + secondValueOffset, compareAndSwapI32.isSwap());
             return allocation;
         }
 
         @Specialization
         public Object execute(VirtualFrame frame, LLVMAddress address, long comparisonValue, long newValue) {
-            long value = LLVMMemory.getI64(address);
+            CMPXCHGI64 compareAndSwapI64 = LLVMMemory.compareAndSwapI64(address, comparisonValue, newValue);
             LLVMAddress allocation = LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), resultSize, 8));
-            LLVMMemory.putI64(allocation, value);
-            if (value == comparisonValue) {
-                LLVMMemory.putI64(address, newValue);
-                LLVMMemory.putI1(allocation.getVal() + secondValueOffset, true);
-            } else {
-                LLVMMemory.putI1(allocation.getVal() + secondValueOffset, false);
-            }
+            LLVMMemory.putI64(allocation, compareAndSwapI64.getValue());
+            LLVMMemory.putI1(allocation.getVal() + secondValueOffset, compareAndSwapI64.isSwap());
             return allocation;
         }
 
         @Specialization
         public Object execute(VirtualFrame frame, LLVMAddress address, LLVMAddress comparisonValue, LLVMAddress newValue) {
-            LLVMAddress value = LLVMMemory.getAddress(address);
+            CMPXCHGI64 compareAndSwapI64 = LLVMMemory.compareAndSwapI64(address, comparisonValue.getVal(), newValue.getVal());
             LLVMAddress allocation = LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), resultSize, 8));
-            LLVMMemory.putAddress(allocation, value);
-            if (value.getVal() == comparisonValue.getVal()) {
-                LLVMMemory.putAddress(address, newValue);
-                LLVMMemory.putI1(allocation.getVal() + secondValueOffset, true);
-            } else {
-                LLVMMemory.putI1(allocation.getVal() + secondValueOffset, false);
-            }
+            LLVMMemory.putI64(allocation, compareAndSwapI64.getValue());
+            LLVMMemory.putI1(allocation.getVal() + secondValueOffset, compareAndSwapI64.isSwap());
             return allocation;
         }
 
