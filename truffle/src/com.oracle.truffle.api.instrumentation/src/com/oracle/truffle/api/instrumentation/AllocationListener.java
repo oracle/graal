@@ -35,7 +35,10 @@ package com.oracle.truffle.api.instrumentation;
  * The listener gets called {@link #onEnter(com.oracle.truffle.api.instrumentation.AllocationEvent)
  * before} the actual allocation and right
  * {@link #onReturnValue(com.oracle.truffle.api.instrumentation.AllocationEvent) after} it. The
- * calls to these methods are always in pairs, unless the programs crashes in between.
+ * calls to these methods are always in pairs, unless the programs crashes in between. Nested
+ * allocations are supported, several calls to <code>onEnter</code> prior every sub-value allocation
+ * can be followed by the appropriate number of <code>onReturnValue</code> calls after the
+ * sub-values are allocated, in the opposite order.
  *
  * @since 0.27
  * @see Instrumenter#attachAllocationListener(com.oracle.truffle.api.instrumentation.AllocationEventFilter,

@@ -27,6 +27,7 @@ package com.oracle.truffle.api.instrumentation.test;
 import java.beans.PropertyChangeListener;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -269,7 +270,7 @@ public class AllocationReporterTest {
             engine.eval(source);
             fail();
         } catch (AssertionError err) {
-            assertEquals("notifyWillAllocate/Reallocate was not called", err.getMessage());
+            assertEquals("onEnter() was not called", err.getMessage());
         }
         assertEquals(0, consumerCalls.get());
 
@@ -363,6 +364,160 @@ public class AllocationReporterTest {
     }
 
     @Test
+    public void testNestedAllocations() {
+        Source source = Source.newBuilder(
+                        "NEW { NEW }\n" +
+                                        "10 { 20 30 { 1234567890123456789 } }\n" +
+                                        "12345678901234->897654123210445621235489 { 10->NEW { 20->NEW } 30->NEW }\n").name("NestedAllocations").mimeType(AllocationReporterLanguage.MIME_TYPE).build();
+        AtomicInteger consumerCalls = new AtomicInteger(0);
+        allocation.setAllocationConsumers(
+                        // NEW { NEW }
+                        (info) -> {
+                            assertTrue(info.will);
+                            assertNull(info.value);
+                            consumerCalls.incrementAndGet();
+                        },
+                        (info) -> {
+                            assertTrue(info.will);
+                            assertNull(info.value);
+                            consumerCalls.incrementAndGet();
+                        },
+                        (info) -> {
+                            assertFalse(info.will);
+                            assertEquals("NewObject", info.value.toString());
+                            consumerCalls.incrementAndGet();
+                        },
+                        (info) -> {
+                            assertFalse(info.will);
+                            assertEquals("NewObject", info.value.toString());
+                            consumerCalls.incrementAndGet();
+                        },
+                        // | 10 { 20 ...
+                        (info) -> {
+                            assertTrue(info.will);
+                            assertNull(info.value);
+                            assertEquals(0, info.oldSize);
+                            assertEquals(4, info.newSize);
+                            consumerCalls.incrementAndGet();
+                        },
+                        // 10 { | 20 ...
+                        (info) -> {
+                            assertTrue(info.will);
+                            assertNull(info.value);
+                            assertEquals(0, info.oldSize);
+                            assertEquals(4, info.newSize);
+                            consumerCalls.incrementAndGet();
+                        },
+                        // 10 { 20 | 30 ...
+                        (info) -> {
+                            assertFalse(info.will);
+                            assertEquals(20, info.value);
+                            assertEquals(0, info.oldSize);
+                            assertEquals(4, info.newSize);
+                            consumerCalls.incrementAndGet();
+                        },
+                        (info) -> {
+                            assertTrue(info.will);
+                            assertNull(info.value);
+                            assertEquals(0, info.oldSize);
+                            assertEquals(4, info.newSize);
+                            consumerCalls.incrementAndGet();
+                        },
+                        // 10 { 20 30 { | 1234567890123456789 } }
+                        (info) -> {
+                            assertTrue(info.will);
+                            assertNull(info.value);
+                            assertEquals(0, info.oldSize);
+                            assertEquals(8, info.newSize);
+                            consumerCalls.incrementAndGet();
+                        },
+                        // 10 { 20 30 { 1234567890123456789 | } }
+                        (info) -> {
+                            assertFalse(info.will);
+                            assertEquals(1234567890123456789L, info.value);
+                            assertEquals(0, info.oldSize);
+                            assertEquals(8, info.newSize);
+                            consumerCalls.incrementAndGet();
+                        },
+                        // 10 { 20 30 { 1234567890123456789 } | }
+                        (info) -> {
+                            assertFalse(info.will);
+                            assertEquals(30, info.value);
+                            assertEquals(0, info.oldSize);
+                            assertEquals(4, info.newSize);
+                            consumerCalls.incrementAndGet();
+                        },
+                        // 10 { 20 30 { 1234567890123456789 } } |
+                        (info) -> {
+                            assertFalse(info.will);
+                            assertEquals(10, info.value);
+                            assertEquals(0, info.oldSize);
+                            assertEquals(4, info.newSize);
+                            consumerCalls.incrementAndGet();
+                        },
+                        // | 12345678901234->897654123210445621235489 { 10->NEW { 20->NEW } 30->NEW
+                        // }
+                        (info) -> {
+                            assertTrue(info.will);
+                            assertEquals(12345678901234L, info.value);
+                            assertEquals(8, info.oldSize);
+                            assertEquals(AllocationReporter.SIZE_UNKNOWN, info.newSize);
+                            consumerCalls.incrementAndGet();
+                        },
+                        (info) -> {
+                            assertTrue(info.will);
+                            assertEquals(10, info.value);
+                            assertEquals(4, info.oldSize);
+                            assertEquals(AllocationReporter.SIZE_UNKNOWN, info.newSize);
+                            consumerCalls.incrementAndGet();
+                        },
+                        (info) -> {
+                            assertTrue(info.will);
+                            assertEquals(20, info.value);
+                            assertEquals(4, info.oldSize);
+                            assertEquals(AllocationReporter.SIZE_UNKNOWN, info.newSize);
+                            consumerCalls.incrementAndGet();
+                        },
+                        (info) -> {
+                            assertFalse(info.will);
+                            assertEquals(20, info.value);
+                            assertEquals(4, info.oldSize);
+                            assertEquals(AllocationReporter.SIZE_UNKNOWN, info.newSize);
+                            consumerCalls.incrementAndGet();
+                        },
+                        (info) -> {
+                            assertFalse(info.will);
+                            assertEquals(10, info.value);
+                            assertEquals(4, info.oldSize);
+                            assertEquals(AllocationReporter.SIZE_UNKNOWN, info.newSize);
+                            consumerCalls.incrementAndGet();
+                        },
+                        (info) -> {
+                            assertTrue(info.will);
+                            assertEquals(30, info.value);
+                            assertEquals(4, info.oldSize);
+                            assertEquals(AllocationReporter.SIZE_UNKNOWN, info.newSize);
+                            consumerCalls.incrementAndGet();
+                        },
+                        (info) -> {
+                            assertFalse(info.will);
+                            assertEquals(30, info.value);
+                            assertEquals(4, info.oldSize);
+                            assertEquals(AllocationReporter.SIZE_UNKNOWN, info.newSize);
+                            consumerCalls.incrementAndGet();
+                        },
+                        (info) -> {
+                            assertFalse(info.will);
+                            assertEquals(12345678901234L, info.value);
+                            assertEquals(8, info.oldSize);
+                            assertEquals(5, info.newSize);
+                            consumerCalls.incrementAndGet();
+                        });
+        engine.eval(source);
+        assertEquals(20, consumerCalls.get());
+    }
+
+    @Test
     public void testUnregister() {
         Source source = Source.newBuilder(
                         "NEW\n" +
@@ -440,7 +595,9 @@ public class AllocationReporterTest {
      * <li>&lt;long number&gt; - allocation of a long (8 bytes)</li>
      * <li>&lt;big number&gt; - allocation of a big number (unknown size in advance, computed from
      * BigInteger bit length afterwards)</li>
-     * <li>&lt;command&gt;-&gt;&lt;command&gt; - re-allocation
+     * <li>&lt;command&gt;-&gt;&lt;command&gt; - re-allocation</li>
+     * <li>{ &lt;command&gt; ... } allocations nested under the previous command</li>
+     * </ul>
      */
     @TruffleLanguage.Registration(mimeType = AllocationReporterLanguage.MIME_TYPE, name = "Allocation Reporter Language", version = "1.0")
     public static class AllocationReporterLanguage extends TruffleLanguage<AllocationReporter> {
@@ -488,19 +645,42 @@ public class AllocationReporterTest {
 
         private AllocNode parse(String code) {
             String[] allocations = code.split("\\s");
-            List<AllocNode> nodes = new ArrayList<>();
+            LinkedList<FutureNode> futures = new LinkedList<>();
+            FutureNode parent = new FutureNode(null, null);
+            FutureNode last = null;
+            futures.add(parent);
             for (String allocCommand : allocations) {
+                if ("{".equals(allocCommand)) {
+                    futures.add(last);
+                    parent = last;
+                    last = null;
+                    continue;
+                }
+                if (last != null) {
+                    parent.addChild(last.toNode(getContextReference()));
+                    last = null;
+                }
+                if ("}".equals(allocCommand)) {
+                    AllocNode node = parent.toNode(getContextReference());
+                    futures.removeLast(); // the "parent" removed
+                    parent = futures.getLast();
+                    parent.addChild(node);
+                    continue;
+                }
                 int reallocIndex = allocCommand.indexOf("->");
                 if (reallocIndex < 0) { // pure allocation
                     AllocValue newValue = parseValue(allocCommand);
-                    nodes.add(new AllocNode(null, newValue, getContextReference()));
+                    last = new FutureNode(null, newValue);
                 } else {
                     AllocValue oldValue = parseValue(allocCommand.substring(0, reallocIndex));
                     AllocValue newValue = parseValue(allocCommand.substring(reallocIndex + 2));
-                    nodes.add(new AllocNode(oldValue, newValue, getContextReference()));
+                    last = new FutureNode(oldValue, newValue);
                 }
             }
-            return new AllocNode(null, null, getContextReference(), nodes.toArray(new AllocNode[nodes.size()]));
+            if (last != null) {
+                parent.addChild(last.toNode(getContextReference()));
+            }
+            return futures.removeLast().toNode(getContextReference());
         }
 
         private static AllocValue parseValue(String allocCommand) {
@@ -547,6 +727,33 @@ public class AllocationReporterTest {
             }
         }
 
+        private static class FutureNode {
+
+            private final AllocValue oldValue;
+            private final AllocValue newValue;
+            private List<AllocNode> children;
+
+            FutureNode(AllocValue oldValue, AllocValue newValue) {
+                this.oldValue = oldValue;
+                this.newValue = newValue;
+            }
+
+            void addChild(AllocNode node) {
+                if (children == null) {
+                    children = new ArrayList<>();
+                }
+                children.add(node);
+            }
+
+            AllocNode toNode(ContextReference<AllocationReporter> contextRef) {
+                if (children == null) {
+                    return new AllocNode(oldValue, newValue, contextRef);
+                } else {
+                    return new AllocNode(oldValue, newValue, contextRef, children.toArray(new AllocNode[children.size()]));
+                }
+            }
+        }
+
         private static class AllocNode extends Node {
 
             private final AllocValue oldValue;
@@ -569,6 +776,7 @@ public class AllocationReporterTest {
                 Object value;
                 if (newValue == null) { // No allocation
                     value = null;
+                    execChildren(frame);
                 } else if (oldValue == null) {
                     // new allocation
                     if (contextRef.get().isActive()) {
@@ -577,6 +785,7 @@ public class AllocationReporterTest {
                             contextRef.get().onEnter(null, 0, getAllocationSizeEstimate(newValue));
                         }
                     }
+                    execChildren(frame);
                     value = allocateValue(newValue);
                     if (contextRef.get().isActive()) {
                         contextRef.get().onReturnValue(value, 0, computeValueSize(newValue, value));
@@ -591,6 +800,7 @@ public class AllocationReporterTest {
                         newSize = getAllocationSizeEstimate(newValue);
                         contextRef.get().onEnter(value, oldSize, newSize);
                     }
+                    execChildren(frame);
                     // Re-allocate, oldValue -> newValue
                     if (contextRef.get().isActive()) {
                         if (newSize == AllocationReporter.SIZE_UNKNOWN) {
@@ -603,12 +813,15 @@ public class AllocationReporterTest {
                         contextRef.get().onReturnValue(value, oldSize, newSize);
                     }
                 }
+                return value;
+            }
+
+            private void execChildren(VirtualFrame frame) {
                 if (children != null) {
                     for (AllocNode ch : children) {
                         ch.execute(frame);
                     }
                 }
-                return value;
             }
 
             private static long getAllocationSizeEstimate(AllocValue value) {

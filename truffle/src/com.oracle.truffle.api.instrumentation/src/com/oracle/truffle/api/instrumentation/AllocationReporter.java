@@ -29,6 +29,7 @@ import java.beans.PropertyChangeSupport;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
+import java.util.LinkedList;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -74,7 +75,7 @@ public final class AllocationReporter {
 
     final LanguageInfo language;
     private final PropertyChangeSupport propSupport = new PropertyChangeSupport(this);
-    private ThreadLocal<Reference<Object>> valueCheck;
+    private ThreadLocal<LinkedList<Reference<Object>>> valueCheck;
 
     @CompilationFinal private volatile Assumption listenersNotChangedAssumption = Truffle.getRuntime().createAssumption();
     @CompilationFinal(dimensions = 1) private volatile AllocationListener[] listeners = null;
@@ -194,7 +195,10 @@ public final class AllocationReporter {
      * <p>
      * A call to this method needs to be followed by a call to
      * {@link #onReturnValue(java.lang.Object, long, long)} with the actual allocated value, or with
-     * the same (re-allocated) value.
+     * the same (re-allocated) value. Nested allocations are supported, several calls to
+     * <code>onEnter</code> prior every sub-value allocation can be followed by the appropriate
+     * number of <code>onReturnValue</code> calls after the sub-values are allocated, in the
+     * opposite order.
      *
      * @param valueToReallocate <code>null</code> in case of a new allocation, or the value that is
      *            to be re-allocated.
@@ -282,7 +286,12 @@ public final class AllocationReporter {
 
     @TruffleBoundary
     private boolean setValueCheck(Object value) {
-        valueCheck.set(new WeakReference<>(value));
+        LinkedList<Reference<Object>> list = valueCheck.get();
+        if (list == null) {
+            list = new LinkedList<>();
+            valueCheck.set(list);
+        }
+        list.add(new WeakReference<>(value));
         return true;
     }
 
@@ -309,13 +318,13 @@ public final class AllocationReporter {
 
     @TruffleBoundary
     private boolean allocatedCheck(Object value, long oldSize, long newSize) {
-        assert valueCheck.get() != null : "notifyWillAllocate/Reallocate was not called";
-        Object orig = valueCheck.get().get();
+        LinkedList<Reference<Object>> list = valueCheck.get();
+        assert list != null && !list.isEmpty() : "onEnter() was not called";
+        Object orig = list.removeLast().get();
         assert orig == null || orig == value : "A different reallocated value. Was: " + orig + " now is: " + value;
         assert orig == null && oldSize == 0 || orig != null : "Old size must be 0 for new allocations. Was: " + oldSize;
         assert orig != null && (oldSize > 0 || oldSize == SIZE_UNKNOWN) || orig == null : "Old size of a re-allocated value must be positive or unknown. Was: " + oldSize;
         assert newSize == SIZE_UNKNOWN || newSize > 0 : "New value size must be positive or unknown. Was: " + newSize;
-        valueCheck.remove();
         return true;
     }
 }
