@@ -121,11 +121,16 @@ public final class LLVMFrameNullerUtil {
                 break;
             case Object:
                 CompilerAsserts.partialEvaluationConstant(frameSlot.getInfo());
+                CompilerAsserts.partialEvaluationConstant(frameSlot.getInfo() == null);
                 if (frameSlot.getInfo() == null) {
                     nullAddress(frame, frameSlot);
                     break;
                 } else {
                     Type type = (Type) frameSlot.getInfo();
+                    CompilerAsserts.partialEvaluationConstant(Type.isFunctionOrFunctionPointer(type));
+                    CompilerAsserts.partialEvaluationConstant(type instanceof VectorType);
+                    CompilerAsserts.partialEvaluationConstant(type instanceof VariableBitWidthType);
+                    CompilerAsserts.partialEvaluationConstant(type instanceof PrimitiveType && ((PrimitiveType) type).getPrimitiveKind() == PrimitiveKind.X86_FP80);
                     if (Type.isFunctionOrFunctionPointer(type)) {
                         nullFunction(frame, frameSlot);
                     } else if (type instanceof VectorType) {
