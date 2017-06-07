@@ -257,6 +257,7 @@ public final class AllocationReporter {
         notifyAllocated(value, oldSize, newSize);
     }
 
+    @ExplodeLoop
     private void notifyAllocated(Object value, long oldSize, long newSize) {
         CompilerAsserts.partialEvaluationConstant(this);
         if (!listenersNotChangedAssumption.isValid()) {
