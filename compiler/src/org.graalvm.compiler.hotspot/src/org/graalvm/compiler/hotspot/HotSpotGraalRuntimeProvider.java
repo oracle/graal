@@ -61,7 +61,7 @@ public interface HotSpotGraalRuntimeProvider extends GraalRuntime, RuntimeProvid
 
     /**
      * Gets the option values associated with this runtime that are applicable for given method.
-     * 
+     *
      * @param forMethod the method we are seeking for options for
      * @return the options - by default same as {@link #getOptions()}
      */
