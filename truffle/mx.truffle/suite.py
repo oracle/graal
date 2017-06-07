@@ -17,7 +17,7 @@ suite = {
   "repositories" : {
     "lafo-snapshots" : {
       "url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
-      "licenses" : ["GPLv2-CPE", "UPL"]
+      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new"]
     },
   },
   "defaultLicense" : "GPLv2-CPE",
