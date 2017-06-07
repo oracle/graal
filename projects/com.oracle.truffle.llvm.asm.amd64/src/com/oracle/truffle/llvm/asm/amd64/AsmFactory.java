@@ -802,7 +802,7 @@ class AsmFactory {
             } else {
                 kind = FrameSlotKind.Illegal;
             }
-            this.frameDescriptor.addFrameSlot(reg, kind);
+            this.frameDescriptor.addFrameSlot(reg, type, kind);
         }
     }
 
@@ -912,7 +912,7 @@ class AsmFactory {
 
         if (retType instanceof StructureType) {
             LLVMExpressionNode addrArg = LLVMArgNodeGen.create(1);
-            FrameSlot slot = frameDescriptor.addFrameSlot("returnValue", FrameSlotKind.Object);
+            FrameSlot slot = frameDescriptor.addFrameSlot("returnValue", null, FrameSlotKind.Object);
             LLVMWriteAddressNode writeAddr = LLVMWriteAddressNodeGen.create(addrArg, slot, null);
             statements.add(writeAddr);
             LLVMExpressionNode addr = LLVMAddressReadNodeGen.create(slot);

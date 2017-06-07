@@ -30,12 +30,25 @@
 package com.oracle.truffle.llvm.nodes.base;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
+import com.oracle.truffle.llvm.runtime.types.VectorType;
+import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
 public final class LLVMFrameNullerUtil {
     private LLVMFrameNullerUtil() {
@@ -107,12 +120,63 @@ public final class LLVMFrameNullerUtil {
                 nullDouble(frame, frameSlot);
                 break;
             case Object:
-                // TODO: this is inaccurate and needs to be addressed as well, see GR-4111
-                nullAddress(frame, frameSlot);
+                CompilerAsserts.partialEvaluationConstant(frameSlot.getInfo());
+                if (frameSlot.getInfo() == null) {
+                    nullAddress(frame, frameSlot);
+                    break;
+                } else {
+                    Type type = (Type) frameSlot.getInfo();
+                    if (Type.isFunctionOrFunctionPointer(type)) {
+                        nullFunction(frame, frameSlot);
+                    } else if (type instanceof VectorType) {
+                        nullVector(frame, frameSlot, ((VectorType) type).getElementType().getPrimitiveKind());
+                    } else if (type instanceof VariableBitWidthType) {
+                        nullIVarBit(frame, frameSlot);
+                    } else if (type instanceof PrimitiveType && ((PrimitiveType) type).getPrimitiveKind() == PrimitiveKind.X86_FP80) {
+                        null80BitFloat(frame, frameSlot);
+                    } else {
+                        /*
+                         * This is a best effort approach. It could still be that LLVMAddress and
+                         * LLVMGlobalVariable clash.
+                         */
+                        nullAddress(frame, frameSlot);
+                    }
+                }
                 break;
             case Illegal:
             default:
                 throw new UnsupportedOperationException("unexpected frameslot kind");
+        }
+    }
+
+    public static void nullVector(VirtualFrame frame, FrameSlot frameSlot, PrimitiveKind elementType) {
+        CompilerAsserts.partialEvaluationConstant(elementType);
+        switch (elementType) {
+            case DOUBLE:
+                frame.setObject(frameSlot, LLVMDoubleVector.create(null));
+                break;
+            case FLOAT:
+                frame.setObject(frameSlot, LLVMFloatVector.create(null));
+                break;
+            case I1:
+                frame.setObject(frameSlot, LLVMI1Vector.create(null));
+                break;
+            case I16:
+                frame.setObject(frameSlot, LLVMI16Vector.create(null));
+                break;
+            case I32:
+                frame.setObject(frameSlot, LLVMI32Vector.create(null));
+                break;
+            case I64:
+                frame.setObject(frameSlot, LLVMI64Vector.create(null));
+                break;
+            case I8:
+                frame.setObject(frameSlot, LLVMI8Vector.create(null));
+                break;
+            default:
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError();
+
         }
     }
 }
