@@ -154,7 +154,7 @@ public class AArch64AddressLoweringByUse extends AddressLoweringByUsePhase.Addre
                     if (disp != 0) {
                         // ok now set the displacement in place of an index
                         ret.setIndex(null);
-                        int scaleFactor = computeScaleFactor(kind, disp, mode);
+                        int scaleFactor = computeScaleFactor(kind, mode);
                         ret.setDisplacement(disp, scaleFactor, mode);
                     } else {
                         // reset to base register only
@@ -180,7 +180,7 @@ public class AArch64AddressLoweringByUse extends AddressLoweringByUsePhase.Addre
         return (AArch64Kind) lirKind.getPlatformKind();
     }
 
-    private AArch64Address.AddressingMode immediateMode(AArch64Kind kind, long value) {
+    private static AArch64Address.AddressingMode immediateMode(AArch64Kind kind, long value) {
         if (kind != null) {
             int size = kind.getSizeInBytes();
             // this next test should never really fail
@@ -203,7 +203,7 @@ public class AArch64AddressLoweringByUse extends AddressLoweringByUsePhase.Addre
         return AArch64Address.AddressingMode.REGISTER_OFFSET;
     }
 
-    private int computeScaleFactor(AArch64Kind kind, long disp, AArch64Address.AddressingMode mode) {
+    private static int computeScaleFactor(AArch64Kind kind, AArch64Address.AddressingMode mode) {
         if (mode == AArch64Address.AddressingMode.IMMEDIATE_SCALED) {
             return kind.getSizeInBytes();
         }
@@ -214,17 +214,7 @@ public class AArch64AddressLoweringByUse extends AddressLoweringByUsePhase.Addre
         return addressingMode == AArch64Address.AddressingMode.BASE_REGISTER_ONLY;
     }
 
-    private boolean isRegisterOffsetMode(AArch64Address.AddressingMode addressingMode) {
-        switch (addressingMode) {
-            case REGISTER_OFFSET:
-            case EXTENDED_REGISTER_OFFSET:
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    private boolean isDisplacementMode(AArch64Address.AddressingMode addressingMode) {
+    private static boolean isDisplacementMode(AArch64Address.AddressingMode addressingMode) {
         switch (addressingMode) {
             case IMMEDIATE_POST_INDEXED:
             case IMMEDIATE_PRE_INDEXED:

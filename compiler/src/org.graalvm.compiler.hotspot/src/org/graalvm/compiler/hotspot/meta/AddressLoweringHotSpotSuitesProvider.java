@@ -21,11 +21,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.sparc;
+package org.graalvm.compiler.hotspot.meta;
+
+import java.util.ListIterator;
 
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
-import org.graalvm.compiler.hotspot.meta.HotSpotSuitesProvider;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.AddressLoweringPhase;
@@ -35,16 +36,15 @@ import org.graalvm.compiler.phases.tiers.LowTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.tiers.SuitesCreator;
 
-import java.util.ListIterator;
-
 /**
  * Subclass to factor out management of address lowering.
  */
-public class SPARCHotSpotSuitesProvider extends HotSpotSuitesProvider {
+public class AddressLoweringHotSpotSuitesProvider extends HotSpotSuitesProvider {
 
     private final AddressLoweringPhase.AddressLowering addressLowering;
 
-    public SPARCHotSpotSuitesProvider(SuitesCreator defaultSuitesCreator, GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, AddressLoweringPhase.AddressLowering addressLowering) {
+    public AddressLoweringHotSpotSuitesProvider(SuitesCreator defaultSuitesCreator, GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime,
+                    AddressLoweringPhase.AddressLowering addressLowering) {
         super(defaultSuitesCreator, config, runtime);
         this.addressLowering = addressLowering;
     }
