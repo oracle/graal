@@ -82,6 +82,8 @@ public abstract class Accessor {
         public abstract boolean canHandle(Object foreignAccess, Object receiver);
 
         public abstract CallTarget canHandleTarget(Object access);
+
+        public abstract boolean isTruffleObject(Object value);
     }
 
     public abstract static class JavaInteropSupport {
@@ -258,6 +260,7 @@ public abstract class Accessor {
 
         conditionallyInitDebugger();
         conditionallyInitEngine();
+        conditionallyInitInterop();
         conditionallyInitJavaInterop();
         if (TruffleOptions.TraceASTJSON) {
             try {
@@ -285,6 +288,19 @@ public abstract class Accessor {
     private static void conditionallyInitEngine() throws IllegalStateException {
         try {
             Class.forName("com.oracle.truffle.api.vm.PolyglotEngine", true, Accessor.class.getClassLoader());
+        } catch (ClassNotFoundException ex) {
+            boolean assertOn = false;
+            assert assertOn = true;
+            if (!assertOn) {
+                throw new IllegalStateException(ex);
+            }
+        }
+    }
+
+    @SuppressWarnings("all")
+    private static void conditionallyInitInterop() throws IllegalStateException {
+        try {
+            Class.forName("com.oracle.truffle.api.interop.ForeignAccess", true, Accessor.class.getClassLoader());
         } catch (ClassNotFoundException ex) {
             boolean assertOn = false;
             assert assertOn = true;
