@@ -282,7 +282,7 @@ public final class Function implements ParserListener {
             if (calleeType instanceof PointerType) {
                 functionType = (FunctionType) ((PointerType) calleeType).getPointeeType();
             } else {
-                throw new AssertionError("Cannot find Type of invoked function!");
+                throw new AssertionError("Cannot find Type of invoked function: " + calleeType.toString());
             }
         }
 
