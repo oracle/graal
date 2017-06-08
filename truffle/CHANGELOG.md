@@ -5,6 +5,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 ## Version 0.27
 
 * Added [SourceSectionFilter.Builder](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/SourceSectionFilter.Builderhtml).`rootNameIs(Predicate<String>)` to filter for source sections based on the name of the RootNode.
+* Added [AllocationReporter](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/AllocationReporter.html) as a service for guest languages to report allocation of guest language values.
+* Added [Instrumenter.attachAllocationListener](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/Instrumenter.html#attachAllocationListener-com.oracle.truffle.api.instrumentation.AllocationEventFilter-T-), [AllocationEventFilter](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/AllocationEventFilter.html), [AllocationListener](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/AllocationListener.html) and [AllocationEvent](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/AllocationEvent.html) for profilers to be able to track creation and size of guest language values.
 
 ## Version 0.26
 18-May-2017
