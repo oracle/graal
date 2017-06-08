@@ -224,6 +224,10 @@ public final class Function implements ParserListener {
                 createLandingpad(args);
                 break;
 
+            case LANDINGPAD_OLD:
+                createLandingpadOld(args);
+                break;
+
             case RESUME:
                 createResume(args);
                 break;
@@ -320,6 +324,30 @@ public final class Function implements ParserListener {
     private void createLandingpad(long[] args) {
         int i = 0;
         final Type type = types.get(args[i++]);
+        final boolean isCleanup = args[i++] != 0;
+        final int numClauses = (int) args[i++];
+        long[] clauseKinds = new long[numClauses]; // catch = 0, filter = 1
+        long[] clauseTypes = new long[numClauses];
+        for (int j = 0; j < numClauses; j++) {
+            clauseKinds[j] = args[i++];
+            clauseTypes[j] = getIndex(args[i++]);
+            if (clauseTypes[j] >= symbols.size()) {
+                i++;
+            }
+        }
+        symbols.add(type);
+        instructionBlock.createLandingpad(type, isCleanup, clauseKinds, clauseTypes);
+    }
+
+    private void createLandingpadOld(long[] args) {
+        int i = 0;
+        final Type type = types.get(args[i++]);
+
+        long persFn = getIndex(args[i++]);
+        if (persFn >= symbols.size()) {
+            i++;
+        }
+
         final boolean isCleanup = args[i++] != 0;
         final int numClauses = (int) args[i++];
         long[] clauseKinds = new long[numClauses]; // catch = 0, filter = 1
