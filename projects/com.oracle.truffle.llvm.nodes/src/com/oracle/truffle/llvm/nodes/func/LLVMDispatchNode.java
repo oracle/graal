@@ -149,7 +149,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
 
     protected TruffleObject bindSymbol(VirtualFrame frame, LLVMFunctionDescriptor descriptor) {
         CompilerAsserts.neverPartOfCompilation();
-        assert descriptor.getNativeFunction() != null;
+        assert descriptor.getNativeFunction() != null : descriptor.getName();
         return LLVMNativeCallUtils.bindNativeSymbol(LLVMNativeCallUtils.getBindNode(), descriptor.getNativeFunction(), getSignature());
     }
 
