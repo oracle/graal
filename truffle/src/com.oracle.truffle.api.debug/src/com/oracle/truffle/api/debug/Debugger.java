@@ -72,16 +72,11 @@ public final class Debugger {
 
     static final boolean TRACE = Boolean.getBoolean("truffle.debug.trace");
 
-    /*
-     * The engine with this debugger was created.
-     */
-    private final PolyglotEngine sourceVM;
     private final Env env;
     private final ObjectStructures.MessageNodes msgNodes;
 
-    Debugger(PolyglotEngine sourceVM, Env env) {
+    Debugger(Env env) {
         this.env = env;
-        this.sourceVM = sourceVM;
         this.msgNodes = new ObjectStructures.MessageNodes();
     }
 
@@ -116,10 +111,6 @@ public final class Debugger {
         return Collections.unmodifiableList(sources);
     }
 
-    PolyglotEngine getSourceVM() {
-        return sourceVM;
-    }
-
     Env getEnv() {
         return env;
     }
@@ -148,11 +139,7 @@ public final class Debugger {
      * @since 0.9
      */
     public static Debugger find(PolyglotEngine engine) {
-        return DebuggerInstrument.getDebugger(engine, new DebuggerInstrument.DebuggerFactory() {
-            public Debugger create(PolyglotEngine e, Env env) {
-                return new Debugger(e, env);
-            }
-        });
+        return DebuggerInstrument.getDebugger(engine);
     }
 
     /**
@@ -197,12 +184,20 @@ public final class Debugger {
          * TODO I initially moved this to TruffleInstrument.Env but decided against as a new API for
          * inline parsing might replace it.
          */
-        protected Object evalInContext(Object sourceVM, Node node, MaterializedFrame frame, String code) {
-            return languageSupport().evalInContext(sourceVM, code, node, frame);
+        protected Object evalInContext(Node node, MaterializedFrame frame, String code) {
+            return languageSupport().evalInContext(code, node, frame);
         }
 
     }
 
     static final AccessorDebug ACCESSOR = new AccessorDebug();
+
+    static {
+        DebuggerInstrument.setFactory(new DebuggerInstrument.DebuggerFactory() {
+            public Debugger create(Env env) {
+                return new Debugger(env);
+            }
+        });
+    }
 
 }
