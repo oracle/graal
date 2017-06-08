@@ -36,6 +36,7 @@ import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.memory.address.RawAddressNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.Phase;
+
 /**
  * Created by adinn on 09/05/17.
  */
@@ -80,8 +81,8 @@ public class AddressLoweringByUsePhase extends Phase {
                 Stamp stamp = abstractWriteNode.value().stamp();
                 address = abstractWriteNode.getAddress();
                 lowered = lowering.lower(abstractWriteNode, stamp, address);
-            // TODO -- PrefetchAllocateNode is not yet implemented for AArch64
-            // } else if (node instanceof PrefetchAllocateNode) {
+                // TODO -- PrefetchAllocateNode is not yet implemented for AArch64
+                // } else if (node instanceof PrefetchAllocateNode) {
                 // PrefetchAllocateNode prefetchAllocateNode = (PrefetchAllocateNode) node;
                 // Stamp stamp = prefetchAllocateNode.value().stamp();
                 // n.b.this getter is not provided!

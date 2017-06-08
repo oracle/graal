@@ -22,6 +22,7 @@
  * questions.
  */
 package org.graalvm.compiler.hotspot.aarch64;
+
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotSuitesProvider;
@@ -43,7 +44,8 @@ public class AArch64HotSpotSuitesProvider extends HotSpotSuitesProvider {
 
     private final AddressLoweringByUsePhase.AddressLoweringByUse addressLoweringByUse;
 
-    public AArch64HotSpotSuitesProvider(SuitesCreator defaultSuitesCreator, GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, AddressLoweringByUsePhase.AddressLoweringByUse addressLoweringByUse) {
+    public AArch64HotSpotSuitesProvider(SuitesCreator defaultSuitesCreator, GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime,
+                    AddressLoweringByUsePhase.AddressLoweringByUse addressLoweringByUse) {
         super(defaultSuitesCreator, config, runtime);
         this.addressLoweringByUse = addressLoweringByUse;
     }

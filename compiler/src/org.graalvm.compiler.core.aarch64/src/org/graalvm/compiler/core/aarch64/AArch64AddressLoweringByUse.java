@@ -96,7 +96,7 @@ public class AArch64AddressLoweringByUse extends AddressLoweringByUsePhase.Addre
         // strictly we don't need the conditions on index
         // as we ought not to see two JavaConstant values
         if (base.isJavaConstant() && base.asJavaConstant().getJavaKind().isNumericInteger() &&
-                index != null && !index.isJavaConstant()) {
+                        index != null && !index.isJavaConstant()) {
             ret.setBase(index);
             ret.setIndex(base);
             return true;
@@ -165,7 +165,7 @@ public class AArch64AddressLoweringByUse extends AddressLoweringByUsePhase.Addre
                 }
             }
         }
-        // nope cannot  improve this any more
+        // nope cannot improve this any more
         return false;
     }
 
