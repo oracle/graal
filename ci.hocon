@@ -2,6 +2,14 @@ java8: {name: labsjdk, version: "8u121-jvmci-0.26", platformspecific: true}
 eclipse: {name: eclipse, version: "4.5.2", platformspecific: true}
 dragonegg: {name: dragonegg, version: "3.2", platformspecific: true}
 
+linux-amd64: {
+    capabilities: [linux, amd64]
+}
+
+darwin-amd64: {
+    capabilities: [darwin, amd64]
+}
+
 gateCommon: {
     targets: [gate]
     packages: {
@@ -12,12 +20,10 @@ gateCommon: {
     }
 
     timelimit: 1:30:00
-
-    capabilities: [linux, amd64]
 }
 
 
-gateStyle: ${gateCommon} {
+gateStyle: ${gateCommon} ${linux-amd64} {
     packages: {
         ruby: "==2.1.0" # for mdl
         llvm: "==3.4"
@@ -35,6 +41,12 @@ gateStyle: ${gateCommon} {
 }
 
 gateTest38: ${gateCommon} {
+    environment: {
+        SULONG_VERSION: "3.8"
+    }
+}
+
+gateTest38-linux: ${gateTest38} ${linux-amd64} {
     packages: {
         llvm: "==3.8"
     }
@@ -46,11 +58,14 @@ gateTest38: ${gateCommon} {
     environment: {
         CPPFLAGS: "-I$LIBGMP/include"
         LD_LIBRARY_PATH: "$LIBGMP/lib:$LD_LIBRARY_PATH"
-        SULONG_VERSION: "3.8"
     }
 }
 
-gateTest: ${gateCommon} {
+gateTest38-darwin: ${gateTest38} ${darwin-amd64} {
+    # on darwin, use system clang
+}
+
+gateTest: ${gateCommon} ${linux-amd64} {
     downloads: {
         LIBGMP: {name: libgmp, version: "6.1.0", platformspecific: true}
         LLVM: {name: "clang+llvm", version: "3.2", platformspecific: true}
@@ -80,13 +95,23 @@ requireJDT: {
     }
 }
 
+sulongSuite : {
+    run: [
+        [mx, su-suite, sulong38],
+        [mx, su-suite, nwcc38],
+        [mx, su-suite, llvm38],
+        [mx, -v, su-suite, sulongcpp38]
+    ]
+}
+
 builds = [
   ${gateStyle} { name: gate-style, run: [[mx, su-checks, --verbose, mdl, checkstyle, canonicalizeprojects, httpcheck, checkoverlap, clangformatcheck, pylint, eclipseformat ]] }
   ${gateTest} ${requireJDT} { name: gate-full-build, run: [[mx, su-checks, --verbose, ecj, findbugs]] }
   ${gateTest} ${requireGCC} { name: gate-suite-gcc, run: [[mx, su-suite, gcc]] }
   ${gateTest} ${requireGCC} { name: gate-travis1, run: [[mx, su-travis1]] }
   ${gateTest} ${requireGCC} { name: gate-travis2, run: [[mx, su-travis2]] }
-  ${gateTest38} { name: gate-sulong-v38, run: [[mx, su-suite, sulong38], [mx, su-suite, nwcc38], [mx, su-suite, llvm38],[mx, -v, su-suite, sulongcpp38]] }
-  ${gateTest38} { name: gate-gcc-v38, run: [[mx, su-suite, gcc38]] }
-  ${gateTest38} { name: gate-var-v38, run: [[mx, su-suite, interop], [mx, su-suite, tck], [mx, su-suite, assembly], [mx, su-suite, args], [mx, su-suite, callback], [mx, su-suite, vaargs]] }
+  ${gateTest38-linux} ${sulongSuite} { name: gate-sulong-v38-linux }
+  ${gateTest38-darwin} ${sulongSuite} { name: gate-sulong-v38-darwin }
+  ${gateTest38-linux} { name: gate-gcc-v38, run: [[mx, su-suite, gcc38]] }
+  ${gateTest38-linux} { name: gate-var-v38, run: [[mx, su-suite, interop], [mx, su-suite, tck], [mx, su-suite, assembly], [mx, su-suite, args], [mx, su-suite, callback], [mx, su-suite, vaargs]] }
 ]
