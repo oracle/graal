@@ -94,6 +94,7 @@ import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.nodes.spi.StampProvider;
+import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -686,6 +687,26 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         PEMethodScope inlineScope = new PEMethodScope(graph, methodScope, loopScope, graphToInline, inlineMethod, invokeData, methodScope.inliningDepth + 1,
                         loopExplosionPlugin, arguments);
+
+        if (!inlineMethod.isStatic()) {
+            if (StampTool.isPointerAlwaysNull(arguments[0])) {
+                /*
+                 * The receiver is null, so we can unconditionally throw a NullPointerException
+                 * instead of performing any inlining.
+                 */
+                DeoptimizeNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.NullCheckException));
+                predecessor.setNext(deoptimizeNode);
+                finishInlining(inlineScope);
+                /* Continue decoding in the caller. */
+                return loopScope;
+
+            } else if (!StampTool.isPointerNonNull(arguments[0])) {
+                /* The receiver might be null, so we need to insert a null check. */
+                PEAppendGraphBuilderContext graphBuilderContext = new PEAppendGraphBuilderContext(inlineScope, predecessor);
+                arguments[0] = graphBuilderContext.nullCheckedValue(arguments[0]);
+                predecessor = graphBuilderContext.lastInstr;
+            }
+        }
 
         /*
          * Do the actual inlining by returning the initial loop scope for the inlined method scope.
