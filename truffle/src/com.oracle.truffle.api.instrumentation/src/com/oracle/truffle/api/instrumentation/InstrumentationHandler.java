@@ -83,12 +83,14 @@ final class InstrumentationHandler {
 
     private final Collection<RootNode> loadedRoots = new WeakAsyncList<>(256);
     private final Collection<RootNode> executedRoots = new WeakAsyncList<>(64);
+    private final Collection<AllocationReporter> allocationReporters = new WeakAsyncList<>(16);
 
     private final Collection<EventBinding<?>> executionBindings = new EventBindingList(8);
     private final Collection<EventBinding<?>> sourceSectionBindings = new EventBindingList(8);
     private final Collection<EventBinding<?>> sourceBindings = new EventBindingList(8);
     private final Collection<EventBinding<?>> outputStdBindings = new EventBindingList(1);
     private final Collection<EventBinding<?>> outputErrBindings = new EventBindingList(1);
+    private final Collection<EventBinding<?>> allocationBindings = new EventBindingList(2);
 
     /*
      * Fast lookup of instrumenter instances based on a key provided by the accessor.
@@ -293,6 +295,24 @@ final class InstrumentationHandler {
         return binding;
     }
 
+    private <T extends AllocationListener> EventBinding<T> addAllocationBinding(EventBinding<T> binding) {
+        if (TRACE) {
+            trace("BEGIN: Adding allocation binding %s%n", binding.getElement());
+        }
+
+        this.allocationBindings.add(binding);
+        for (AllocationReporter allocationReporter : allocationReporters) {
+            if (binding.getAllocationFilter().contains(allocationReporter.language)) {
+                allocationReporter.addListener(binding.getElement());
+            }
+        }
+
+        if (TRACE) {
+            trace("END: Added allocation binding %s%n", binding.getElement());
+        }
+        return binding;
+    }
+
     /**
      * Initializes sources and sourcesList by populating them from loadedRoots.
      */
@@ -335,6 +355,13 @@ final class InstrumentationHandler {
                     AccessorInstrumentHandler.engineAccess().detachOutputConsumer(err, (OutputStream) elm);
                 } else if (outputStdBindings.contains(binding)) {
                     AccessorInstrumentHandler.engineAccess().detachOutputConsumer(out, (OutputStream) elm);
+                }
+            } else if (elm instanceof AllocationListener) {
+                AllocationListener l = (AllocationListener) elm;
+                for (AllocationReporter allocationReporter : allocationReporters) {
+                    if (binding.getAllocationFilter().contains(allocationReporter.language)) {
+                        allocationReporter.removeListener(l);
+                    }
                 }
             }
         }
@@ -517,6 +544,10 @@ final class InstrumentationHandler {
         return addOutputBinding(new EventBinding<>(instrumenter, null, stream, false), errorOutput);
     }
 
+    private <T extends AllocationListener> EventBinding<T> attachAllocationListener(AbstractInstrumenter instrumenter, AllocationEventFilter filter, T listener) {
+        return addAllocationBinding(new EventBinding<>(instrumenter, filter, listener, false));
+    }
+
     Set<Class<?>> getProvidedTags(LanguageInfo language) {
         Nodes nodesAccess = AccessorInstrumentHandler.nodesAccess();
         TruffleLanguage<?> lang = nodesAccess.getLanguageSpi(language);
@@ -615,6 +646,17 @@ final class InstrumentationHandler {
     private <T> T lookup(Object key, Class<T> type) {
         AbstractInstrumenter value = instrumenterMap.get(key);
         return value == null ? null : value.lookup(this, type);
+    }
+
+    private AllocationReporter getAllocationReporter(LanguageInfo info) {
+        AllocationReporter allocationReporter = new AllocationReporter(info);
+        allocationReporters.add(allocationReporter);
+        for (EventBinding<?> binding : allocationBindings) {
+            if (binding.getAllocationFilter().contains(info)) {
+                allocationReporter.addListener((AllocationListener) binding.getElement());
+            }
+        }
+        return allocationReporter;
     }
 
     private abstract static class AbstractNodeVisitor implements NodeVisitor {
@@ -1089,6 +1131,11 @@ final class InstrumentationHandler {
         }
 
         @Override
+        public <T extends AllocationListener> EventBinding<T> attachAllocationListener(AllocationEventFilter filter, T listener) {
+            return InstrumentationHandler.this.attachAllocationListener(this, filter, listener);
+        }
+
+        @Override
         public <T extends OutputStream> EventBinding<T> attachOutConsumer(T stream) {
             return InstrumentationHandler.this.attachOutputConsumer(this, stream, false);
         }
@@ -1328,9 +1375,17 @@ final class InstrumentationHandler {
             return ACCESSOR.engineSupport();
         }
 
+        static Accessor.InteropSupport interopAccess() {
+            return ACCESSOR.interopSupport();
+        }
+
         @Override
         protected InstrumentSupport instrumentSupport() {
             return new InstrumentImpl();
+        }
+
+        protected boolean isTruffleObject(Object value) {
+            return interopSupport().isTruffleObject(value);
         }
 
         static final class InstrumentImpl extends InstrumentSupport {
@@ -1355,6 +1410,8 @@ final class InstrumentationHandler {
                 InstrumentationHandler instrumentationHandler = (InstrumentationHandler) engineAccess().getInstrumentationHandler(languageShared);
                 Instrumenter instrumenter = instrumentationHandler.forLanguage(info);
                 collectTo.add(instrumenter);
+                AllocationReporter allocationReporter = instrumentationHandler.getAllocationReporter(info);
+                collectTo.add(allocationReporter);
             }
 
             @Override

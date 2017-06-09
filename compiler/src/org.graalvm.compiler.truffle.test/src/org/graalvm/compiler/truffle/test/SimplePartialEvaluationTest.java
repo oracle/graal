@@ -32,6 +32,8 @@ import org.graalvm.compiler.truffle.test.nodes.BlockTestNode;
 import org.graalvm.compiler.truffle.test.nodes.ConstantTestNode;
 import org.graalvm.compiler.truffle.test.nodes.ExplodeLoopUntilReturnNode;
 import org.graalvm.compiler.truffle.test.nodes.ExplodeLoopUntilReturnWithThrowNode;
+import org.graalvm.compiler.truffle.test.nodes.InliningNullCheckNode1;
+import org.graalvm.compiler.truffle.test.nodes.InliningNullCheckNode2;
 import org.graalvm.compiler.truffle.test.nodes.LambdaTestNode;
 import org.graalvm.compiler.truffle.test.nodes.LoadLocalTestNode;
 import org.graalvm.compiler.truffle.test.nodes.LoopTestNode;
@@ -294,5 +296,25 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new StringHashCodeNonFinalNode("*");
         assertPartialEvalNoInvokes(new RootTestNode(fd, "intrinsicStringHashCodeNonFinal", result));
+    }
+
+    @Test
+    public void inliningNullCheck1() {
+        FrameDescriptor fd = new FrameDescriptor();
+        AbstractTestNode result = new InliningNullCheckNode1();
+        RootNode rootNode = new RootTestNode(fd, "inliningNullCheck1", result);
+        OptimizedCallTarget compilable = compileHelper("inliningNullCheck1", rootNode, new Object[0]);
+
+        Assert.assertEquals(42, compilable.call(new Object[0]));
+    }
+
+    @Test
+    public void inliningNullCheck2() {
+        FrameDescriptor fd = new FrameDescriptor();
+        AbstractTestNode result = new InliningNullCheckNode2();
+        RootNode rootNode = new RootTestNode(fd, "inliningNullCheck2", result);
+        OptimizedCallTarget compilable = compileHelper("inliningNullCheck2", rootNode, new Object[0]);
+
+        Assert.assertEquals(42, compilable.call(new Object[0]));
     }
 }

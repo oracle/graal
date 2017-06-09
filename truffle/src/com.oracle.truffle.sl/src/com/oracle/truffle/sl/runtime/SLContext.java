@@ -52,6 +52,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -99,12 +100,14 @@ public final class SLContext {
     private final SLFunctionRegistry functionRegistry;
     private final Shape emptyShape;
     private final SLLanguage language;
+    private final AllocationReporter allocationReporter;
 
     public SLContext(SLLanguage language, TruffleLanguage.Env env) {
         this.env = env;
         this.input = new BufferedReader(new InputStreamReader(env.in()));
         this.output = new PrintWriter(env.out(), true);
         this.language = language;
+        this.allocationReporter = env.lookup(AllocationReporter.class);
         this.functionRegistry = new SLFunctionRegistry(language);
         installBuiltins();
 
@@ -201,12 +204,20 @@ public final class SLContext {
      * Methods for object creation / object property access.
      */
 
+    public AllocationReporter getAllocationReporter() {
+        return allocationReporter;
+    }
+
     /**
      * Allocate an empty object. All new objects initially have no properties. Properties are added
      * when they are first stored, i.e., the store triggers a shape change of the object.
      */
     public DynamicObject createObject() {
-        return emptyShape.newInstance();
+        DynamicObject object = null;
+        allocationReporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
+        object = emptyShape.newInstance();
+        allocationReporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
+        return object;
     }
 
     public static boolean isSLObject(TruffleObject value) {
@@ -258,4 +269,5 @@ public final class SLContext {
         Object slValue = fromForeignValue(object);
         return slValue;
     }
+
 }
