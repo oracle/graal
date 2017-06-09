@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.cast;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -40,6 +41,8 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -61,6 +64,11 @@ public abstract class LLVMToFunctionNode extends LLVMExpressionNode {
     @Specialization
     public LLVMFunction executeI64(LLVMAddress from) {
         return LLVMFunctionHandle.createHandle(from.getVal());
+    }
+
+    @Specialization
+    public LLVMFunction executeGlobal(LLVMGlobalVariable from, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
+        return LLVMFunctionHandle.createHandle(access.getNativeLocation(from).getVal());
     }
 
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();

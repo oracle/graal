@@ -405,8 +405,12 @@ def getSearchPathOption(lib_args=None):
     if index is None:
         mx.log_error("{0} not supported!".format(osStr))
 
+    # lgmp and lgfortran are needed for the gcc suite
     if lib_args is None:
-        lib_args = ['-lgmp', '-lgfortran']
+        if osStr == 'linux':
+            lib_args = ['-lgmp', '-lgfortran']
+        if osStr == 'darwin':
+            lib_args = [] # on darwin, lgmp and lgfortran are not available by default.
 
     lib_names = []
     libpath = join(mx.project('com.oracle.truffle.llvm.libraries').getOutput(), 'native')
