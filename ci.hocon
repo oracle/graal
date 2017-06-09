@@ -40,13 +40,7 @@ gateStyle: ${gateCommon} ${linux-amd64} {
     }
 }
 
-gateTest38: ${gateCommon} {
-    environment: {
-        SULONG_VERSION: "3.8"
-    }
-}
-
-gateTest38-linux: ${gateTest38} ${linux-amd64} {
+gateTest38-linux: ${gateCommon} ${linux-amd64} {
     packages: {
         llvm: "==3.8"
     }
@@ -61,11 +55,11 @@ gateTest38-linux: ${gateTest38} ${linux-amd64} {
     }
 }
 
-gateTest38-darwin: ${gateTest38} ${darwin-amd64} {
+gateTest38-darwin: ${gateCommon} ${darwin-amd64} {
     # on darwin, use system clang
 }
 
-gateTest: ${gateCommon} ${linux-amd64} {
+gateTest32: ${gateCommon} ${linux-amd64} {
     downloads: {
         LIBGMP: {name: libgmp, version: "6.1.0", platformspecific: true}
         LLVM: {name: "clang+llvm", version: "3.2", platformspecific: true}
@@ -75,7 +69,6 @@ gateTest: ${gateCommon} ${linux-amd64} {
         CPPFLAGS: "-I$LIBGMP/include"
         LD_LIBRARY_PATH: "$LIBGMP/lib:$LLVM/lib:$LD_LIBRARY_PATH"
         PATH: "$LLVM/bin:$PATH"
-        SULONG_VERSION: "3.2"
     }
 }
 
@@ -106,10 +99,10 @@ sulongSuite : {
 
 builds = [
   ${gateStyle} { name: gate-style, run: [[mx, su-checks, --verbose, mdl, checkstyle, canonicalizeprojects, httpcheck, checkoverlap, clangformatcheck, pylint, eclipseformat ]] }
-  ${gateTest} ${requireJDT} { name: gate-full-build, run: [[mx, su-checks, --verbose, ecj, findbugs]] }
-  ${gateTest} ${requireGCC} { name: gate-suite-gcc, run: [[mx, su-suite, gcc]] }
-  ${gateTest} ${requireGCC} { name: gate-travis1, run: [[mx, su-travis1]] }
-  ${gateTest} ${requireGCC} { name: gate-travis2, run: [[mx, su-travis2]] }
+  ${gateTest32} ${requireJDT} { name: gate-full-build, run: [[mx, su-checks, --verbose, ecj, findbugs]] }
+  ${gateTest32} ${requireGCC} { name: gate-suite-gcc, run: [[mx, su-suite, gcc]] }
+  ${gateTest32} ${requireGCC} { name: gate-travis1, run: [[mx, su-travis1]] }
+  ${gateTest32} ${requireGCC} { name: gate-travis2, run: [[mx, su-travis2]] }
   ${gateTest38-linux} ${sulongSuite} { name: gate-sulong-v38-linux }
   ${gateTest38-darwin} ${sulongSuite} { name: gate-sulong-v38-darwin }
   ${gateTest38-linux} { name: gate-gcc-v38, run: [[mx, su-suite, gcc38]] }

@@ -88,7 +88,6 @@ suite = {
       "subDir" : "projects",
       "native" : True,
       "vpath" : True,
-      "class" : "SulongNativeProject",
       "license" : "BSD-new",
     },
 
@@ -252,11 +251,26 @@ suite = {
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
     },
-    "com.oracle.truffle.llvm.libraries" : {
+    "com.oracle.truffle.llvm.libraries.bitcode" : {
       "subDir" : "projects",
       "native" : True,
       "vpath" : True,
-      "class" : "SulongNativeProject",
+      "results" : [
+        "bin/libsulong.bc",
+      ],
+      "license" : "BSD-new",
+    },
+    "com.oracle.truffle.llvm.libraries.native" : {
+      "subDir" : "projects",
+      "native" : True,
+      "vpath" : True,
+      "results" : [
+        "bin/<lib:sulong>",
+      ],
+      "buildEnv" : {
+        "LIBSULONG" : "<lib:sulong>",
+        "OS" : "<os>",
+      },
       "license" : "BSD-new",
     },
   },
@@ -273,6 +287,17 @@ suite = {
         "truffle:TRUFFLE_NFI",
         "SULONG_OPTIONS",
       ]
+    },
+
+    "SULONG_LIBS" : {
+      "native" : True,
+      "relpath" : False,
+      "platformDependent" : True,
+      "output" : "mxbuild/sulong-libs",
+      "dependencies" : [
+        "com.oracle.truffle.llvm.libraries.bitcode",
+        "com.oracle.truffle.llvm.libraries.native",
+      ],
     },
 
     "SULONG_OPTIONS" : {

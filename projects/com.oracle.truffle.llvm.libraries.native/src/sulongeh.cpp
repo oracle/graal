@@ -5,12 +5,16 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include <typeinfo>
 #include <stdio.h>
+
+
+#if LLVM_VERSION >= 308
+
+#include <typeinfo>
 #include <stdlib.h>
 
 #include "unwind.h"
-#include <exception>   
+#include <exception>
 
 typedef void (*destructorFunction)(void *);
 
@@ -195,12 +199,67 @@ void sulong_eh_setHandlerCount(void *ptr, int value) {
     eh->handlerCount = value;
 }
 
+#else // LLVM_VERSION >= 308
+
 extern "C"
-void *getNullPointer() {
+unsigned int sulong_eh_canCatch(void *ptr, void *excpType, void *catchType) {
+    fprintf(stderr, "Sulong exception handling not supported with LLVM v3.2; use LLVM v3.8 or higher.\n");
+    return 0;
+}
+
+extern "C"
+void *sulong_eh_unwindHeader(void *ptr) {
+    fprintf(stderr, "Sulong exception handling not supported with LLVM v3.2; use LLVM v3.8 or higher.\n");
     return (void*) 0;
 }
 
 extern "C"
-void *identity(void* p) {
-    return p;
+void *sulong_eh_getExceptionPointer(void *unwindHeader) {
+    fprintf(stderr, "Sulong exception handling not supported with LLVM v3.2; use LLVM v3.8 or higher.\n");
+    return (void*) 0;
 }
+
+extern "C"
+void *sulong_eh_getThrownObject(void *unwindHeader) {
+    fprintf(stderr, "Sulong exception handling not supported with LLVM v3.2; use LLVM v3.8 or higher.\n");
+    return (void*) 0;
+}
+
+extern "C"
+void sulong_eh_throw(void *ptr, void *type, void *destructor, void (*unexpectedHandler)(), void (*terminateHandler)()) {
+    fprintf(stderr, "Sulong exception handling not supported with LLVM v3.2; use LLVM v3.8 or higher.\n");
+}
+
+extern "C"
+void *sulong_eh_getDestructor(void *ptr) {
+    fprintf(stderr, "Sulong exception handling not supported with LLVM v3.2; use LLVM v3.8 or higher.\n");
+    return (void*) 0;
+}
+
+extern "C"
+void *sulong_eh_getType(void *ptr) {
+    fprintf(stderr, "Sulong exception handling not supported with LLVM v3.2; use LLVM v3.8 or higher.\n");
+    return (void*) 0;}
+
+extern "C"
+void sulong_eh_incrementHandlerCount(void *ptr) {
+    fprintf(stderr, "Sulong exception handling not supported with LLVM v3.2; use LLVM v3.8 or higher.\n");
+}
+
+extern "C"
+void sulong_eh_decrementHandlerCount(void *ptr) {
+    fprintf(stderr, "Sulong exception handling not supported with LLVM v3.2; use LLVM v3.8 or higher.\n");
+}
+
+extern "C"
+int sulong_eh_getHandlerCount(void *ptr) {
+    fprintf(stderr, "Sulong exception handling not supported with LLVM v3.2; use LLVM v3.8 or higher.\n");
+    return 0;
+}
+
+extern "C"
+void sulong_eh_setHandlerCount(void *ptr, int value) {
+    fprintf(stderr, "Sulong exception handling not supported with LLVM v3.2; use LLVM v3.8 or higher.\n");
+}
+
+#endif // LLVM_VERSION >= 308
