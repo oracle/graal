@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,25 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package org.graalvm.compiler.core.aarch64;
 
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.memory.address.AddressNode;
-import org.graalvm.compiler.phases.common.AddressLoweringPhase.AddressLowering;
+import org.graalvm.compiler.java.DefaultSuitesCreator;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 
-public class AArch64AddressLowering extends AddressLowering {
+public class AArch64SuitesCreator extends DefaultSuitesCreator {
 
-    @Override
-    public AddressNode lower(ValueNode address) {
-        return lower(address, null);
-    }
-
-    @Override
-    public AddressNode lower(ValueNode base, ValueNode offset) {
-        AArch64AddressNode ret = new AArch64AddressNode(base, offset);
-        // TODO improve
-        return base.graph().unique(ret);
+    public AArch64SuitesCreator(CompilerConfiguration compilerConfiguration, Plugins plugins) {
+        super(compilerConfiguration, plugins);
     }
 
 }
