@@ -89,6 +89,7 @@ public final class PolyglotRuntime {
     }
 
     PolyglotRuntime(DispatchOutputStream out, DispatchOutputStream err, InputStream in, boolean automaticDispose) {
+        this.engineProfile = PolyglotEngine.GLOBAL_PROFILE;
         this.instrumentationHandler = INSTRUMENT.createInstrumentationHandler(this, out, err, in);
         /*
          * TODO the engine profile needs to be shared between all engines that potentially share
@@ -97,7 +98,6 @@ public final class PolyglotRuntime {
          * as this deprecated API is removed and EngineImpl#findVM() can be removed as well, we can
          * allocate this context store profile for each shared vm.
          */
-        this.engineProfile = PolyglotEngine.GLOBAL_PROFILE;
         List<LanguageShared> languageList = new ArrayList<>();
         /* We want to create a language instance but per LanguageCache and not per mime type. */
         List<LanguageCache> convertedLanguages = new ArrayList<>(new HashSet<>(LanguageCache.languages().values()));

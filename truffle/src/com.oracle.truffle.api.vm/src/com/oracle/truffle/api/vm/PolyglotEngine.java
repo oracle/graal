@@ -957,15 +957,10 @@ public class PolyglotEngine {
 
     Env findEnv(Class<? extends TruffleLanguage> languageClazz, boolean failIfNotFound) {
         Language language = findLanguage(languageClazz, true, failIfNotFound);
-        if (language != null && language.env != null) {
-            return language.env;
-        } else {
-            Set<String> languageNames = new HashSet<>();
-            for (Language lang : languageArray) {
-                languageNames.add(lang.shared.cache.getClassName());
-            }
-            throw new IllegalStateException("Cannot find language " + languageClazz + " among " + languageNames);
+        if (language != null) {
+            return language.getEnv(false);
         }
+        return null;
     }
 
     /**
@@ -1459,7 +1454,7 @@ public class PolyglotEngine {
                         localEnv = LANGUAGE.createEnv(this, shared.getLanguageEnsureInitialized(), engine().out, engine().err, engine().in,
                                         getArgumentsForLanguage(), new OptionValuesImpl(null, shared.options));
                         context = LANGUAGE.getContext(localEnv);
-                        env = localEnv;
+                        this.env = localEnv;
                         LANGUAGE.postInitEnv(localEnv);
                     }
                 }
