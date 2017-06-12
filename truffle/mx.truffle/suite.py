@@ -110,7 +110,7 @@ suite = {
     "com.oracle.truffle.api.vm" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "uses" : ["com.oracle.truffle.api.impl.TruffleLocator"],
+      "uses" : ["com.oracle.truffle.api.impl.TruffleLocator", "org.graalvm.polyglot.impl.AbstractPolyglotImpl",],
       "dependencies" : [
         "sdk:GRAAL_SDK",
         "com.oracle.truffle.api.interop.java",
