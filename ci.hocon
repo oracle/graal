@@ -13,6 +13,14 @@ include "truffle/ci.hocon"
 compiler-suite-root = "./compiler"
 logPatterns = ["*.bgv"]
 
+#Examples
+#Examples gate also disabled.
+#include "examples/ci.hocon"
+
+#Integration Tests
+#Integration Test currently disabled
+#include "integration-tests/ci.hocon"
+
 jvm-config.default = "graal-core"
 
 include "compiler/ci_common/common.hocon"

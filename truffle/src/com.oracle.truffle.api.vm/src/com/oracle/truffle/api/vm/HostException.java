@@ -1,10 +1,12 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,34 +22,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.dsl.test.interop;
+package com.oracle.truffle.api.vm;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.nodes.Node;
 
-@TruffleLanguage.Registration(mimeType = "application/x-test", name = "InteropProcessorTest", version = "1.0")
-public final class TestTruffleLanguage extends TruffleLanguage<Object> {
+/**
+ * Exception wrapper for an error occured in the host language.
+ */
+@SuppressWarnings("serial")
+final class HostException extends RuntimeException implements TruffleException {
 
-    public TestTruffleLanguage() {
+    private final Throwable original;
+
+    HostException(Throwable original) {
+        this.original = original;
+        this.initCause(original);
+    }
+
+    Throwable getOriginal() {
+        return original;
     }
 
     @Override
-    protected Object createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
+    public synchronized Throwable fillInStackTrace() {
+        return this;
+    }
+
+    public Node getLocation() {
         return null;
     }
 
-    @Override
-    protected CallTarget parse(ParsingRequest env) {
-        return null;
+    public boolean isTimeout() {
+        return original instanceof InterruptedException;
     }
 
-    @Override
-    protected Object getLanguageGlobal(Object context) {
-        return null;
-    }
-
-    @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return false;
-    }
 }

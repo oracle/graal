@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,32 +24,32 @@
  */
 package com.oracle.truffle.api.vm;
 
-import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
-import static com.oracle.truffle.api.vm.VMAccessor.NODES;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.vm.PolyglotRuntime.LanguageShared;
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
 
-@SuppressWarnings("deprecation")
-final class FindContextNodeImpl<C> extends com.oracle.truffle.api.impl.FindContextNode<C> {
-    private final LanguageShared languageShared;
-    private final Env env;
+class OptionDescriptorsImpl implements OptionDescriptors {
 
-    FindContextNodeImpl(Env env) {
-        this.env = env;
-        this.languageShared = (LanguageShared) NODES.getEngineObject(LANGUAGE.getLanguageInfo(env));
+    final Map<String, OptionDescriptor> descriptors = new LinkedHashMap<>();
+
+    OptionDescriptorsImpl(List<OptionDescriptor> descriptorList) {
+        for (OptionDescriptor descriptor : descriptorList) {
+            descriptors.put(descriptor.getName(), descriptor);
+        }
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public C executeFindContext() {
-        return (C) languageShared.getCurrentContext();
+    public OptionDescriptor get(String optionName) {
+        return descriptors.get(optionName);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public TruffleLanguage<C> getTruffleLanguage() {
-        return (TruffleLanguage<C>) NODES.getLanguageSpi(LANGUAGE.getLanguageInfo(env));
+    public Iterator<OptionDescriptor> iterator() {
+        return descriptors.values().iterator();
     }
+
 }

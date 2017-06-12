@@ -24,6 +24,10 @@
  */
 package com.oracle.truffle.api.vm;
 
+import static com.oracle.truffle.api.vm.VMAccessor.INSTRUMENT;
+import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
+import static com.oracle.truffle.api.vm.VMAccessor.NODES;
+
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -35,6 +39,9 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -42,7 +49,6 @@ import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.vm.LanguageCache.LoadedLanguage;
-import com.oracle.truffle.api.vm.PolyglotEngine.Access;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 
 /**
@@ -83,7 +89,7 @@ public final class PolyglotRuntime {
     }
 
     PolyglotRuntime(DispatchOutputStream out, DispatchOutputStream err, InputStream in, boolean automaticDispose) {
-        this.instrumentationHandler = PolyglotEngine.SPIAccessor.instrumentAccess().createInstrumentationHandler(this, out, err, in);
+        this.instrumentationHandler = INSTRUMENT.createInstrumentationHandler(this, out, err, in);
         /*
          * TODO the engine profile needs to be shared between all engines that potentially share
          * code. Currently this is stored statically to be compatible with the legacy deprecated API
@@ -112,7 +118,7 @@ public final class PolyglotRuntime {
         this.languages = languageList;
         this.instruments = createInstruments(InstrumentCache.load());
         for (Instrument instrument : instruments.values()) {
-            instInfos.put(instrument.getId(), PolyglotEngine.Access.LANGS.createInstrument(instrument, instrument.getId(), instrument.getName(), instrument.getVersion()));
+            instInfos.put(instrument.getId(), LANGUAGE.createInstrument(instrument, instrument.getId(), instrument.getName(), instrument.getVersion()));
         }
         this.languageInfos = Collections.unmodifiableMap(langInfos);
         this.instrumentInfos = Collections.unmodifiableMap(instInfos);
@@ -208,6 +214,7 @@ public final class PolyglotRuntime {
         final int languageId;
         final LanguageInfo language;
 
+        OptionDescriptors options;
         volatile boolean initialized;
 
         LanguageShared(PolyglotRuntime engineShared, LanguageCache cache, int languageId) {
@@ -216,7 +223,7 @@ public final class PolyglotRuntime {
             assert engineProfile != null;
             this.cache = cache;
             this.languageId = languageId;
-            this.language = Access.NODES.createLanguage(this, cache.getName(), cache.getVersion(), cache.getMimeTypes());
+            this.language = NODES.createLanguage(this, cache.getId(), cache.getName(), cache.getVersion(), cache.getMimeTypes());
         }
 
         Language currentLanguage() {
@@ -248,7 +255,8 @@ public final class PolyglotRuntime {
                     if (!initialized) {
                         initialized = true;
                         LoadedLanguage loadedLanguage = cache.loadLanguage();
-                        Access.LANGS.initializeLanguage(language, loadedLanguage.getLanguage(), loadedLanguage.isSingleton());
+                        LANGUAGE.initializeLanguage(language, loadedLanguage.getLanguage(), loadedLanguage.isSingleton());
+                        options = new OptionDescriptorsImpl(LANGUAGE.describeOptions(loadedLanguage.getLanguage(), cache.getId()));
                     }
                 }
             }
@@ -318,15 +326,15 @@ public final class PolyglotRuntime {
          * @since 0.25
          */
         public PolyglotRuntime build() {
-            DispatchOutputStream realOut = PolyglotEngine.SPIAccessor.instrumentAccess().createDispatchOutput(out == null ? System.out : out);
-            DispatchOutputStream realErr = PolyglotEngine.SPIAccessor.instrumentAccess().createDispatchOutput(err == null ? System.err : err);
+            DispatchOutputStream realOut = INSTRUMENT.createDispatchOutput(out == null ? System.out : out);
+            DispatchOutputStream realErr = INSTRUMENT.createDispatchOutput(err == null ? System.err : err);
             InputStream realIn = in == null ? System.in : in;
             return new PolyglotRuntime(realOut, realErr, realIn, false);
         }
 
         PolyglotRuntime build(boolean autoDispose) {
-            DispatchOutputStream realOut = PolyglotEngine.SPIAccessor.instrumentAccess().createDispatchOutput(out == null ? System.out : out);
-            DispatchOutputStream realErr = PolyglotEngine.SPIAccessor.instrumentAccess().createDispatchOutput(err == null ? System.err : err);
+            DispatchOutputStream realOut = INSTRUMENT.createDispatchOutput(out == null ? System.out : out);
+            DispatchOutputStream realErr = INSTRUMENT.createDispatchOutput(err == null ? System.err : err);
             InputStream realIn = in == null ? System.in : in;
             return new PolyglotRuntime(realOut, realErr, realIn, autoDispose);
         }
@@ -352,6 +360,7 @@ public final class PolyglotRuntime {
         private final InstrumentCache cache;
         private final Object instrumentLock = new Object();
         private volatile boolean enabled;
+        OptionValues options;
 
         Instrument(InstrumentCache cache) {
             this.cache = cache;
@@ -424,7 +433,7 @@ public final class PolyglotRuntime {
             if (!isEnabled() && cache.supportsService(type)) {
                 setEnabled(true);
             }
-            return PolyglotEngine.Access.INSTRUMENT.getInstrumentationHandlerService(PolyglotRuntime.this.instrumentationHandler, this, type);
+            return INSTRUMENT.getInstrumentationHandlerService(PolyglotRuntime.this.instrumentationHandler, this, type);
         }
 
         /**
@@ -444,9 +453,15 @@ public final class PolyglotRuntime {
                         if (PolyglotRuntime.this.disposed) {
                             return;
                         }
-                        PolyglotEngine.Access.INSTRUMENT.addInstrument(PolyglotRuntime.this.instrumentationHandler, this, getCache().getInstrumentationClass(), cache.services());
+
+                        INSTRUMENT.initializeInstrument(PolyglotRuntime.this.instrumentationHandler, this, getCache().getInstrumentationClass());
+
+                        OptionDescriptors descriptors = new OptionDescriptorsImpl(INSTRUMENT.describeOptions(getRuntime().instrumentationHandler,
+                                        this, this.getId()));
+                        OptionValuesImpl values = new OptionValuesImpl(null, descriptors);
+                        INSTRUMENT.createInstrument(PolyglotRuntime.this.instrumentationHandler, this, cache.services(), values);
                     } else {
-                        PolyglotEngine.Access.INSTRUMENT.disposeInstrument(PolyglotRuntime.this.instrumentationHandler, this, cleanup);
+                        INSTRUMENT.disposeInstrument(PolyglotRuntime.this.instrumentationHandler, this, cleanup);
                     }
                     this.enabled = enabled;
                 }

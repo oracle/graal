@@ -39,6 +39,7 @@ import org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleOptionsOverrid
 import org.graalvm.compiler.truffle.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.TruffleInlining;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
@@ -143,6 +144,7 @@ public class TruffleToTruffleCallExceptionHandlerTest {
 
     @Test
     @SuppressWarnings("try")
+    @Ignore
     public void testExceptionOnceCompileExceptionHandler() {
         /*
          * call the function at least once so the exception profile will record an exception and the

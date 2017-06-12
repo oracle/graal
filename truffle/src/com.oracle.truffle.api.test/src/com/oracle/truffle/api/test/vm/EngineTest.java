@@ -545,11 +545,6 @@ public class EngineTest {
         }
 
         @Override
-        protected Object findExportedSymbol(CachingLanguageChannel context, String globalName, boolean onlyExplicit) {
-            return null;
-        }
-
-        @Override
         protected Object getLanguageGlobal(CachingLanguageChannel context) {
             return null;
         }
