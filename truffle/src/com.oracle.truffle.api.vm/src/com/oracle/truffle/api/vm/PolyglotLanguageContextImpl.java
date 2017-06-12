@@ -42,18 +42,22 @@ import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
 class PolyglotLanguageContextImpl implements VMObject {
 
+    private static final String[] EMPTY_STRING_ARRAY = new String[0];
+
     final PolyglotContextImpl context;
     final PolyglotLanguageImpl language;
     final Map<Object, CallTarget> sourceCache = new HashMap<>();
     final Map<Class<?>, PolyglotValueImpl> valueCache = new HashMap<>();
     final OptionValues optionValues;
     final Value nullValue;
+    final String[] applicationArguments;
     volatile Env env;
 
-    PolyglotLanguageContextImpl(PolyglotContextImpl context, PolyglotLanguageImpl language, OptionValues optionValues) {
+    PolyglotLanguageContextImpl(PolyglotContextImpl context, PolyglotLanguageImpl language, OptionValues optionValues, String[] applicationArguments) {
         this.context = context;
         this.language = language;
         this.optionValues = optionValues;
+        this.applicationArguments = applicationArguments == null ? EMPTY_STRING_ARRAY : null;
 
         PolyglotValueImpl.createDefaultValueCaches(this);
         nullValue = toHostValue(toGuestValue(null));
@@ -69,7 +73,7 @@ class PolyglotLanguageContextImpl implements VMObject {
                     env = LANGUAGE.createEnv(this, language.info,
                                     context.out,
                                     context.err,
-                                    context.in, new HashMap<>(), getOptionValues());
+                                    context.in, new HashMap<>(), getOptionValues(), applicationArguments);
                     LANGUAGE.postInitEnv(env);
                 }
             }

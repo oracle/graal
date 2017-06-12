@@ -71,13 +71,16 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
 
     final Map<Object, CallTarget> javaInteropCache;
     final PolyglotLanguageImpl singlePublicLanguage;
+    final Map<String, String[]> applicationArguments;
 
     PolyglotContextImpl(PolyglotEngineImpl engine, final OutputStream out,
-                    final OutputStream err,
-                    final InputStream in,
-                    final Map<String, String> options,
+                    OutputStream err,
+                    InputStream in,
+                    Map<String, String> options,
+                    Map<String, String[]> applicationArguments,
                     PolyglotLanguageImpl singlePublicLanguage) {
         super(engine.impl);
+        this.applicationArguments = applicationArguments;
         this.out = out;
         this.err = err;
         this.in = in;
@@ -93,7 +96,7 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
             OptionValuesImpl values = language.getOptionValues().copy();
             values.putAll(options);
 
-            PolyglotLanguageContextImpl languageContext = new PolyglotLanguageContextImpl(this, language, values);
+            PolyglotLanguageContextImpl languageContext = new PolyglotLanguageContextImpl(this, language, values, applicationArguments.get(language.getId()));
 
             this.contexts[language.index] = languageContext;
         }

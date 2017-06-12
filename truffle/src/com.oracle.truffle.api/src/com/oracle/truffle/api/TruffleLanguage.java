@@ -803,13 +803,14 @@ public abstract class TruffleLanguage<C> {
         private final OutputStream out;
         private final Map<String, Object> config;
         private final OptionValues options;
+        private final String[] applicationArguments;
         private List<Object> services;
         @CompilationFinal private Object context;
         @CompilationFinal private volatile boolean initialized = false;
         @CompilationFinal private volatile Assumption initializedUnchangedAssumption = Truffle.getRuntime().createAssumption("Language context initialized unchanged");
 
         @SuppressWarnings("unchecked")
-        private Env(Object vmObject, LanguageInfo language, OutputStream out, OutputStream err, InputStream in, Map<String, Object> config, OptionValues options) {
+        private Env(Object vmObject, LanguageInfo language, OutputStream out, OutputStream err, InputStream in, Map<String, Object> config, OptionValues options, String[] applicationArguments) {
             this.vmObject = vmObject;
             this.language = language;
             this.spi = (TruffleLanguage<Object>) API.nodes().getLanguageSpi(language);
@@ -818,6 +819,7 @@ public abstract class TruffleLanguage<C> {
             this.out = out;
             this.config = config;
             this.options = options;
+            this.applicationArguments = applicationArguments == null ? new String[0] : applicationArguments;
         }
 
         TruffleLanguage<Object> getSpi() {
@@ -839,6 +841,17 @@ public abstract class TruffleLanguage<C> {
          */
         public OptionValues getOptions() {
             return options;
+        }
+
+        /**
+         * Returns the application arguments that were provided for this context. The arguments
+         * array and its elements are never <code>null</code>. It is up to the language
+         * implementation whether and how they are accessible within the guest language scripts.
+         *
+         * @since 0.27
+         */
+        public String[] getApplicationArguments() {
+            return applicationArguments;
         }
 
         /**
@@ -1255,8 +1268,9 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public Env createEnv(Object vmObject, LanguageInfo language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options) {
-            Env env = new Env(vmObject, language, stdOut, stdErr, stdIn, config, options);
+        public Env createEnv(Object vmObject, LanguageInfo language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options,
+                        String[] applicationArguments) {
+            Env env = new Env(vmObject, language, stdOut, stdErr, stdIn, config, options, applicationArguments);
             LinkedHashSet<Object> collectedServices = new LinkedHashSet<>();
             AccessAPI.instrumentAccess().collectEnvServices(collectedServices, API.nodes().getEngineObject(language), language);
             env.services = new ArrayList<>(collectedServices);
