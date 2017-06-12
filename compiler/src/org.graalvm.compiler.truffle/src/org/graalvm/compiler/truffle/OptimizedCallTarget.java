@@ -76,7 +76,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 public class OptimizedCallTarget extends InstalledCode implements RootCallTarget, ReplaceObserver, com.oracle.truffle.api.LoopCountReceiver {
 
     private static final String NODE_REWRITING_ASSUMPTION_NAME = "nodeRewritingAssumption";
-    static final String CALL_BOUNARY_METHOD_NAME = "callProxy";
+    static final String CALL_BOUNDARY_METHOD_NAME = "callProxy";
 
     /** The AST to be executed when this call target is called. */
     private final RootNode rootNode;
@@ -180,11 +180,15 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     public final Object callDirect(Object... args) {
         getCompilationProfile().profileDirectCall(args);
-        Object result = doInvoke(args);
-        if (CompilerDirectives.inCompiledCode()) {
-            result = compilationProfile.injectReturnValueProfile(result);
+        try {
+            Object result = doInvoke(args);
+            if (CompilerDirectives.inCompiledCode()) {
+                result = compilationProfile.injectReturnValueProfile(result);
+            }
+            return result;
+        } catch (Throwable t) {
+            throw rethrow(compilationProfile.profileExceptionType(t));
         }
-        return result;
     }
 
     public final Object callInlined(Object... arguments) {
