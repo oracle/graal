@@ -10,8 +10,7 @@ darwin-amd64: {
     capabilities: [darwin, amd64]
 }
 
-gateCommon: {
-    targets: [gate]
+common: {
     packages: {
         git: ""
     }
@@ -22,6 +21,9 @@ gateCommon: {
     timelimit: 1:30:00
 }
 
+gateCommon: ${common} {
+    targets: [gate]
+}
 
 gateStyle: ${gateCommon} ${linux-amd64} {
     packages: {
@@ -107,6 +109,26 @@ sulongSuite : {
     ]
 }
 
+deploy-command: [
+    ["mx", "build"]
+    ["mx", "deploy-binary", "--skip-existing", "lafo-snapshots"]
+]
+
+deploy-binaries: ${common} {
+    targets: [post-merge, deploy]
+    run : ${deploy-command}
+}
+
+deploy-binaries-linux: ${deploy-binaries} ${linux-amd64} {
+    packages: {
+        llvm: "==3.8"
+        maven: ">=3.3.9"
+    }
+}
+
+deploy-binaries-darwin: ${deploy-binaries} ${darwin-amd64} ${darwin-llvm} {
+}
+
 builds = [
   ${gateStyle} { name: gate-style, run: [[mx, su-checks, --verbose, mdl, checkstyle, canonicalizeprojects, httpcheck, checkoverlap, clangformatcheck, pylint, eclipseformat ]] }
   ${gateTest32} ${requireJDT} { name: gate-full-build, run: [[mx, su-checks, --verbose, ecj, findbugs]] }
@@ -117,4 +139,7 @@ builds = [
   ${gateTest38-darwin} ${sulongSuite} { name: gate-sulong-v38-darwin }
   ${gateTest38-linux} { name: gate-gcc-v38, run: [[mx, su-suite, gcc38]] }
   ${gateTest38-linux} { name: gate-var-v38, run: [[mx, su-suite, interop], [mx, su-suite, tck], [mx, su-suite, assembly], [mx, su-suite, args], [mx, su-suite, callback], [mx, su-suite, vaargs]] }
+
+  ${deploy-binaries-linux} { name: postmerge-deploy-binaries-linux-amd64 }
+  ${deploy-binaries-darwin} { name: postmerge-deploy-binaries-darwin-amd64 }
 ]

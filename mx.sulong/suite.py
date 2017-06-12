@@ -286,7 +286,8 @@ suite = {
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_NFI",
         "SULONG_OPTIONS",
-      ]
+      ],
+      "license" : "BSD-new",
     },
 
     "SULONG_LIBS" : {
@@ -298,6 +299,7 @@ suite = {
         "com.oracle.truffle.llvm.libraries.bitcode",
         "com.oracle.truffle.llvm.libraries.native",
       ],
+      "license" : "BSD-new",
     },
 
     "SULONG_OPTIONS" : {
@@ -306,6 +308,7 @@ suite = {
       "javaCompliance" : "1.8",
       "dependencies" : ["com.oracle.truffle.llvm.option.processor"],
       "description" : "The Sulong Option Processor generates an option class declared using options annotations.",
+      "license" : "BSD-new",
     },
 
     "SULONG_TEST" : {
@@ -325,7 +328,8 @@ suite = {
         "truffle:TRUFFLE_TCK",
         "sulong:SULONG",
         "SULONG_TEST_NATIVE",
-      ]
+      ],
+      "license" : "BSD-new",
     },
 
     "SULONG_TEST_NATIVE" : {
@@ -335,6 +339,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.llvm.pipe.native",
       ],
+      "license" : "BSD-new",
     },
   }
 }
