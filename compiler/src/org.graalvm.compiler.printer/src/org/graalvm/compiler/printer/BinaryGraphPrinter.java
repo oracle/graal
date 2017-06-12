@@ -89,6 +89,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
     private static final int POOL_NODE_CLASS = 0x06;
     private static final int POOL_FIELD = 0x07;
     private static final int POOL_SIGNATURE = 0x08;
+    private static final int POOL_NODE_SOURCE_POSITION = 0x09;
 
     private static final int PROPERTY_POOL = 0x00;
     private static final int PROPERTY_INT = 0x01;
@@ -99,7 +100,6 @@ public class BinaryGraphPrinter implements GraphPrinter {
     private static final int PROPERTY_FALSE = 0x06;
     private static final int PROPERTY_ARRAY = 0x07;
     private static final int PROPERTY_SUBGRAPH = 0x08;
-    private static final int PROPERTY_NODE_SOURCE_POSITION = 0x09;
 
     private static final int KLASS = 0x00;
     private static final int ENUM_KLASS = 0x01;
@@ -343,6 +343,8 @@ public class BinaryGraphPrinter implements GraphPrinter {
                 writeByte(POOL_FIELD);
             } else if (object instanceof Signature) {
                 writeByte(POOL_SIGNATURE);
+            } else if (CURRENT_MAJOR_VERSION >= 4 && object instanceof NodeSourcePosition) {
+                writeByte(POOL_NODE_SOURCE_POSITION);
             } else {
                 writeByte(POOL_STRING);
             }
@@ -427,6 +429,21 @@ public class BinaryGraphPrinter implements GraphPrinter {
                 writePoolObject(signature.getParameterType(i, null).getName());
             }
             writePoolObject(signature.getReturnType(null).getName());
+        } else if (CURRENT_MAJOR_VERSION >= 4 && object instanceof NodeSourcePosition) {
+            writeByte(POOL_NODE_SOURCE_POSITION);
+            NodeSourcePosition pos = (NodeSourcePosition) object;
+            ResolvedJavaMethod method = pos.getMethod();
+            writePoolObject(method);
+            final int bci = pos.getBCI();
+            writeInt(bci);
+            StackTraceElement ste = method.asStackTraceElement(bci);
+            if (ste != null) {
+                writePoolObject(ste.getFileName());
+                writeInt(ste.getLineNumber());
+            } else {
+                writePoolObject(null);
+            }
+            writePoolObject(pos.getCaller());
         } else {
             writeByte(POOL_STRING);
             writeString(object.toString());
@@ -494,24 +511,6 @@ public class BinaryGraphPrinter implements GraphPrinter {
                     writePoolObject(o);
                 }
             }
-        } else if (CURRENT_MAJOR_VERSION >= 4 && obj instanceof NodeSourcePosition) {
-            writeByte(PROPERTY_NODE_SOURCE_POSITION);
-            NodeSourcePosition pos = (NodeSourcePosition) obj;
-            while (pos != null) {
-                ResolvedJavaMethod method = pos.getMethod();
-                writePoolObject(method);
-                final int bci = pos.getBCI();
-                writeInt(bci);
-                StackTraceElement ste = method.asStackTraceElement(bci);
-                if (ste != null) {
-                    writePoolObject(ste.getFileName());
-                    writeInt(ste.getLineNumber());
-                } else {
-                    writePoolObject(null);
-                }
-                pos = pos.getCaller();
-            }
-            writePoolObject(null);
         } else {
             writeByte(PROPERTY_POOL);
             writePoolObject(obj);
