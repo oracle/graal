@@ -48,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.TimeUnit;
 
 import org.graalvm.options.OptionDescriptor;
@@ -72,6 +73,9 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     static final int HOST_LANGUAGE_INDEX = 0;
     static final String HOST_LANGUAGE_ID = "java";
     private static final Set<String> RESERVED_IDS = new HashSet<>(Arrays.asList("graal", "truffle", "engine", "language", "instrument", "graalvm", "context", "polyglot", "compiler", "vm"));
+
+    private static final Map<PolyglotEngineImpl, Void> ENGINES = Collections.synchronizedMap(new WeakHashMap<>());
+    private static volatile boolean shutdownHookInitialized = false;
 
     Engine api; // effectively final
     final Object instrumentationHandler;
@@ -165,12 +169,15 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             getData(instrument).ensureCreated();
         }
 
-        Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
-            public void run() {
-                ensureClosed();
+        ENGINES.put(this, null);
+        if (!shutdownHookInitialized) {
+            synchronized (ENGINES) {
+                if (!shutdownHookInitialized) {
+                    shutdownHookInitialized = true;
+                    Runtime.getRuntime().addShutdownHook(new Thread(new PolyglotShutDownHook()));
+                }
             }
-        }));
-
+        }
     }
 
     private void parseOptions(Map<String, String> options, boolean useSystemProperties,
@@ -454,6 +461,18 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             }
         }
         return allOptions;
+    }
+
+    private static final class PolyglotShutDownHook implements Runnable {
+
+        public void run() {
+            for (PolyglotEngineImpl engine : ENGINES.keySet()) {
+                if (engine != null) {
+                    engine.ensureClosed();
+                }
+            }
+        }
+
     }
 
 }
