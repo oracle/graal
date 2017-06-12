@@ -37,6 +37,7 @@ import java.util.LinkedHashSet;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -157,6 +158,10 @@ final class JavaInteropReflect {
 
     @CompilerDirectives.TruffleBoundary
     static Method findMethod(JavaObject object, String name) {
+        if (TruffleOptions.AOT) {
+            return null;
+        }
+
         for (Method m : object.clazz.getMethods()) {
             if (m.getName().equals(name) && m.getDeclaringClass() != Object.class) {
                 return m;
@@ -643,6 +648,10 @@ final class JavaInteropReflect {
     }
 
     static String findFunctionalInterfaceMethodName(final Class<?> clazz) {
+        if (TruffleOptions.AOT) {
+            return null;
+        }
+
         for (final Class<?> iface : clazz.getInterfaces()) {
             if (iface.isAnnotationPresent(FunctionalInterface.class)) {
                 for (final Method m : iface.getMethods()) {

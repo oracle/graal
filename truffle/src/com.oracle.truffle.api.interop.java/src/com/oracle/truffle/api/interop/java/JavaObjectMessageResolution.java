@@ -336,7 +336,7 @@ class JavaObjectMessageResolution {
             if (TruffleOptions.AOT) {
                 return false;
             }
-            return receiver.obj != null && findFunctionalInterfaceMethod(receiver.obj.getClass()) != null;
+            return receiver.obj != null && JavaInteropReflect.findFunctionalInterfaceMethodName(receiver.obj.getClass()) != null;
         }
     }
 
@@ -353,9 +353,9 @@ class JavaObjectMessageResolution {
                 doExecute = insert(new ExecuteMethodNode(args.length));
             }
             Object obj = receiver.obj;
-            String functionalInterfaceMethodName = findFunctionalInterfaceMethod(obj);
+            String functionalInterfaceMethodName = JavaInteropReflect.findFunctionalInterfaceMethodName(obj.getClass());
             if (functionalInterfaceMethodName != null) {
-                Method method = findMethod(receiver, functionalInterfaceMethodName);
+                Method method = JavaInteropReflect.findMethod(receiver, functionalInterfaceMethodName);
                 if (method != null) {
                     if (method.getParameterCount() == args.length || method.isVarArgs()) {
                         return doExecute.execute(method, obj, args, receiver.languageContext);
@@ -366,21 +366,5 @@ class JavaObjectMessageResolution {
             }
             throw UnsupportedMessageException.raise(Message.createExecute(args.length));
         }
-
-        private static Method findMethod(JavaObject receiver, String functionalInterfaceMethodName) {
-            if (TruffleOptions.AOT) {
-                return null;
-            }
-            return JavaInteropReflect.findMethod(receiver, functionalInterfaceMethodName);
-        }
-
     }
-
-    private static String findFunctionalInterfaceMethod(Object obj) {
-        if (TruffleOptions.AOT) {
-            return null;
-        }
-        return JavaInteropReflect.findFunctionalInterfaceMethodName(obj.getClass());
-    }
-
 }
