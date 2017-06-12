@@ -28,7 +28,6 @@ import java.lang.reflect.Array;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
@@ -36,7 +35,7 @@ import com.oracle.truffle.api.nodes.Node;
 abstract class ArrayReadNode extends Node {
     @Child private ToPrimitiveNode primitive = ToPrimitiveNode.create();
 
-    protected abstract Object executeWithTarget(VirtualFrame frame, JavaObject receiver, Object index);
+    protected abstract Object executeWithTarget(JavaObject receiver, Object index);
 
     @SuppressWarnings("unchecked")
     @Specialization(guards = "index.getClass() == clazz")

@@ -28,13 +28,12 @@ import java.lang.reflect.Array;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 
 abstract class ArrayWriteNode extends Node {
     final ToJavaNode toJavaNode = ToJavaNodeGen.create();
 
-    protected abstract Object executeWithTarget(VirtualFrame frame, JavaObject receiver, Object index, Object value);
+    protected abstract Object executeWithTarget(JavaObject receiver, Object index, Object value);
 
     @SuppressWarnings("unchecked")
     @Specialization(guards = "index.getClass() == clazz")

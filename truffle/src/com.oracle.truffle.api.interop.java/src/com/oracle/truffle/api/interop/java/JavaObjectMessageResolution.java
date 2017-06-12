@@ -34,7 +34,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -191,8 +190,8 @@ class JavaObjectMessageResolution {
 
         @Child private ArrayReadNode read = ArrayReadNodeGen.create();
 
-        public Object access(VirtualFrame frame, JavaObject object, Number index) {
-            return read.executeWithTarget(frame, object, index);
+        public Object access(JavaObject object, Number index) {
+            return read.executeWithTarget(object, index);
         }
 
         @TruffleBoundary
@@ -217,6 +216,7 @@ class JavaObjectMessageResolution {
     abstract static class WriteFieldNode extends Node {
 
         @Child private ToJavaNode toJava = ToJavaNodeGen.create();
+        @Child private ArrayWriteNode write = ArrayWriteNodeGen.create();
 
         public Object access(JavaObject receiver, String name, Object value) {
             Object obj = receiver.obj;
@@ -238,10 +238,8 @@ class JavaObjectMessageResolution {
             return JavaObject.NULL;
         }
 
-        @Child private ArrayWriteNode write = ArrayWriteNodeGen.create();
-
-        public Object access(VirtualFrame frame, JavaObject receiver, Number index, Object value) {
-            return write.executeWithTarget(frame, receiver, index, value);
+        public Object access(JavaObject receiver, Number index, Object value) {
+            return write.executeWithTarget(receiver, index, value);
         }
 
     }
