@@ -32,10 +32,16 @@ import com.oracle.truffle.api.interop.TruffleObject;
 final class JavaFunctionObject implements TruffleObject {
     final Method method;
     final Object obj;
+    final Object languageContext;
 
     JavaFunctionObject(Method method, Object obj) {
+        this(method, obj, null);
+    }
+
+    JavaFunctionObject(Method method, Object obj, Object languageContext) {
         this.method = method;
         this.obj = obj;
+        this.languageContext = languageContext;
     }
 
     public static boolean isInstance(TruffleObject obj) {

@@ -95,7 +95,7 @@ final class JavaInteropReflect {
             }
             throw UnknownIdentifierException.raise(name);
         }
-        return JavaInterop.asTruffleObject(val);
+        return JavaInterop.toGuestValue(val, object.languageContext);
     }
 
     static boolean isField(JavaObject object, String name) {
@@ -155,6 +155,16 @@ final class JavaInteropReflect {
         return null;
     }
 
+    @CompilerDirectives.TruffleBoundary
+    static Method findMethod(JavaObject object, String name) {
+        for (Method m : object.clazz.getMethods()) {
+            if (m.getName().equals(name) && m.getDeclaringClass() != Object.class) {
+                return m;
+            }
+        }
+        return null;
+    }
+
     private JavaInteropReflect() {
     }
 
@@ -180,7 +190,7 @@ final class JavaInteropReflect {
         try {
             return receiver.clazz.getField(name);
         } catch (NoSuchFieldException ex) {
-            throw new RuntimeException(ex);
+            return null;
         }
     }
 
@@ -194,14 +204,15 @@ final class JavaInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static <T> T asJavaFunction(Class<T> functionalType, TruffleObject function) {
-        final SingleHandler handler = new SingleHandler(function);
+    static <T> T asJavaFunction(Class<T> functionalType, TruffleObject function, Object languageContext) {
+        assert JavaInterop.isJavaFunctionInterface(functionalType);
+        final SingleHandler handler = new SingleHandler(function, languageContext);
         Object obj = Proxy.newProxyInstance(functionalType.getClassLoader(), new Class<?>[]{functionalType}, handler);
         return functionalType.cast(obj);
     }
 
     @CompilerDirectives.TruffleBoundary
-    static TruffleObject asTruffleViaReflection(Object obj) throws IllegalArgumentException {
+    static TruffleObject asTruffleViaReflection(Object obj) {
         if (Proxy.isProxyClass(obj.getClass())) {
             InvocationHandler h = Proxy.getInvocationHandler(obj);
             if (h instanceof TruffleHandler) {
@@ -209,6 +220,17 @@ final class JavaInteropReflect {
             }
         }
         return new JavaObject(obj, obj.getClass());
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    static TruffleObject asTruffleViaReflection(Object obj, Object languageContext) {
+        if (Proxy.isProxyClass(obj.getClass())) {
+            InvocationHandler h = Proxy.getInvocationHandler(obj);
+            if (h instanceof TruffleHandler) {
+                return ((TruffleHandler) h).obj;
+            }
+        }
+        return new JavaObject(obj, obj.getClass(), languageContext);
     }
 
     static Object newProxyInstance(Class<?> clazz, TruffleObject obj) throws IllegalArgumentException {
@@ -255,10 +277,11 @@ final class JavaInteropReflect {
 
         private final TruffleObject symbol;
         private CallTarget target;
+        private final Object languageContext;
 
-        SingleHandler(TruffleObject obj) {
-            super();
+        SingleHandler(TruffleObject obj, Object languageContext) {
             this.symbol = obj;
+            this.languageContext = languageContext;
         }
 
         @Override
@@ -285,21 +308,22 @@ final class JavaInteropReflect {
             CompilerAsserts.neverPartOfCompilation();
             Object[] args = arguments == null ? EMPTY : arguments;
             if (target == null) {
-                target = JavaInterop.ACCESSOR.engine().lookupOrRegisterComputation(symbol, null, JavaInteropReflect.class);
+                target = JavaInterop.lookupOrRegisterComputation(symbol, null, JavaInteropReflect.class);
                 if (target == null) {
                     Node executeMain = Message.createExecute(args.length).createNode();
                     RootNode symbolNode = new ToJavaNode.TemporaryRoot(executeMain);
-                    target = JavaInterop.ACCESSOR.engine().lookupOrRegisterComputation(symbol, symbolNode, JavaInteropReflect.class);
+                    target = JavaInterop.lookupOrRegisterComputation(symbol, symbolNode, JavaInteropReflect.class);
                 }
             }
             for (int i = 0; i < args.length; i++) {
-                if (args[i] instanceof TruffleObject) {
+                Object arg = args[i];
+                if (arg instanceof TruffleObject) {
                     continue;
-                }
-                if (ToPrimitiveNode.temporary().isPrimitive(args[i])) {
+                } else if (ToPrimitiveNode.temporary().isPrimitive(arg)) {
                     continue;
+                } else {
+                    arguments[i] = JavaInterop.toGuestValue(arg, languageContext);
                 }
-                arguments[i] = JavaInterop.asTruffleObject(args[i]);
             }
             return target.call(symbol, TypeAndClass.forReturnType(method), args);
         }
@@ -326,12 +350,12 @@ final class JavaInteropReflect {
                 return method.invoke(obj, args);
             }
 
-            CallTarget call = JavaInterop.ACCESSOR.engine().lookupOrRegisterComputation(obj, null, method);
+            CallTarget call = JavaInterop.lookupOrRegisterComputation(obj, null, method);
             if (call == null) {
                 Message message = findMessage(method, method.getAnnotation(MethodMessage.class), args.length);
                 TypeAndClass<?> convertTo = TypeAndClass.forReturnType(method);
                 MethodNode methodNode = MethodNodeGen.create(method.getName(), message, convertTo);
-                call = JavaInterop.ACCESSOR.engine().lookupOrRegisterComputation(obj, methodNode, method);
+                call = JavaInterop.lookupOrRegisterComputation(obj, methodNode, method);
             }
 
             return call.call(obj, args);
@@ -361,7 +385,7 @@ final class JavaInteropReflect {
                 Object[] params = (Object[]) frame.getArguments()[1];
                 Object res = executeImpl(receiver, params);
                 if (!returnType.clazz.isInterface()) {
-                    res = JavaInterop.ACCESSOR.engine().findOriginalObject(res);
+                    res = JavaInterop.findOriginalObject(res);
                 }
                 return toJavaNode.execute(res, returnType);
             } catch (InteropException ex) {
@@ -616,5 +640,23 @@ final class JavaInteropReflect {
         }
         noUnderscore(sb.append('L'), type.getName());
         sb.append("_2");
+    }
+
+    static String findFunctionalInterfaceMethodName(final Class<?> clazz) {
+        for (final Class<?> iface : clazz.getInterfaces()) {
+            if (iface.isAnnotationPresent(FunctionalInterface.class)) {
+                for (final Method m : iface.getMethods()) {
+                    if (Modifier.isAbstract(m.getModifiers())) {
+                        return m.getName();
+                    }
+                }
+            }
+        }
+
+        Class<?> superclass = clazz.getSuperclass();
+        if (superclass != null) {
+            return findFunctionalInterfaceMethodName(superclass);
+        }
+        return null;
     }
 }

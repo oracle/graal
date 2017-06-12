@@ -51,7 +51,7 @@ abstract class ArrayWriteNode extends Node {
 
     private Object doArrayAccess(JavaObject receiver, int index, Object value) {
         Object obj = receiver.obj;
-        final Object javaValue = toJavaNode.execute(value, TypeAndClass.ANY);
+        final Object javaValue = toJavaNode.execute(value, TypeAndClass.ANY, receiver.languageContext);
         Array.set(obj, index, javaValue);
         return JavaObject.NULL;
     }
