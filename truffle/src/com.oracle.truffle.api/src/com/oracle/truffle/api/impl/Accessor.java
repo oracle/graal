@@ -156,7 +156,7 @@ public abstract class Accessor {
 
         public abstract void postInitEnv(Env env);
 
-        public abstract Object evalInContext(Object sourceVM, String code, Node node, MaterializedFrame frame);
+        public abstract Object evalInContext(String code, Node node, MaterializedFrame frame);
 
         public abstract Object findExportedSymbol(TruffleLanguage.Env env, String globalName, boolean onlyExplicit);
 

@@ -1147,7 +1147,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public Object evalInContext(Object sourceVM, String code, Node node, final MaterializedFrame mFrame) {
+        public Object evalInContext(String code, Node node, final MaterializedFrame mFrame) {
             RootNode rootNode = node.getRootNode();
             if (rootNode == null) {
                 throw new IllegalArgumentException("Cannot evaluate in context using a node that is not yet adopated using a RootNode.");
