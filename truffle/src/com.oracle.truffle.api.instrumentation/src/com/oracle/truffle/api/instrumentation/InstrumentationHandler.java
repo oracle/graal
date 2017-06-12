@@ -674,7 +674,6 @@ final class InstrumentationHandler {
         return value == null ? null : value.lookup(this, type);
     }
 
-
     private AllocationReporter getAllocationReporter(LanguageInfo info) {
         AllocationReporter allocationReporter = new AllocationReporter(info);
         allocationReporters.add(allocationReporter);
