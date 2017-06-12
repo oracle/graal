@@ -43,6 +43,7 @@ import java.util.logging.Level;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.vm.PolyglotEngine.LegacyEngineImpl;
 
 /**
  * Ahead-of-time initialization. If the JVM is started with {@link TruffleOptions#AOT}, it populates
@@ -53,6 +54,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private static final Map<String, LanguageCache> CACHE;
 
     private static volatile Map<String, LanguageCache> cache;
+    static {
+        if (VMAccessor.SPI == null) {
+            VMAccessor.initialize(new LegacyEngineImpl());
+        }
+    }
     static final Collection<ClassLoader> AOT_LOADERS = TruffleOptions.AOT ? VMAccessor.SPI.allLoaders() : null;
     private final String className;
     private final Set<String> mimeTypes;
