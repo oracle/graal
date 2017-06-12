@@ -26,6 +26,7 @@ import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.code.MemoryBarriers;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -69,8 +70,11 @@ public class AMD64OptimizedCallTargetInstrumentationFactory extends OptimizedCal
                  */
                 asm.movq(spillRegister, codeBlobAddress, true);
                 assert asm.position() - pos >= AMD64HotSpotBackend.PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
+                asm.membar(MemoryBarriers.JMM_POST_VOLATILE_READ);
                 asm.testq(spillRegister, spillRegister);
                 asm.jcc(ConditionFlag.Equal, doProlog);
+                asm.btrq(spillRegister, 0);
+                asm.jcc(ConditionFlag.CarryClear, doProlog);
                 asm.jmp(spillRegister);
 
                 asm.bind(doProlog);

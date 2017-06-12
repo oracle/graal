@@ -75,6 +75,15 @@ import jdk.vm.ci.meta.SpeculationLog;
 public class OptimizedCallTarget extends InstalledCode implements RootCallTarget, ReplaceObserver, com.oracle.truffle.api.LoopCountReceiver {
 
     private static final String NODE_REWRITING_ASSUMPTION_NAME = "nodeRewritingAssumption";
+    private static final long ENTRY_POINT_OFFSET;
+
+    static {
+        try {
+            ENTRY_POINT_OFFSET = UnsafeAccess.UNSAFE.objectFieldOffset(InstalledCode.class.getDeclaredField("entryPoint"));
+        } catch (NoSuchFieldException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     /** The AST to be executed when this call target is called. */
     private final RootNode rootNode;
@@ -555,6 +564,14 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             return options;
         }
         return DefaultCompilerOptions.INSTANCE;
+    }
+
+    public void releaseEntryPoint() {
+        long address = entryPoint;
+        if (address == 0) {
+            return;
+        }
+        UnsafeAccess.UNSAFE.compareAndSwapLong(this, ENTRY_POINT_OFFSET, address, address | 1);
     }
 
     private static final class NonTrivialNodeCountVisitor implements NodeVisitor {

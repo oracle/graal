@@ -31,6 +31,7 @@ import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
 
+import jdk.vm.ci.sparc.SPARC;
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.sparc.SPARCAddress;
@@ -66,6 +67,8 @@ public class SPARCOptimizedCallTargetInstumentationFactory extends OptimizedCall
 
                     asm.ldx(entryPointAddress, spillRegister);
                     asm.compareBranch(spillRegister, 0, Equal, Xcc, doProlog, PREDICT_NOT_TAKEN, null);
+                    asm.and(spillRegister, 1, SPARC.g0);
+                    asm.bz(doProlog);
                     asm.jmp(spillRegister);
                     asm.nop();
                     asm.bind(doProlog);

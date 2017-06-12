@@ -197,7 +197,7 @@ public abstract class TruffleCompiler {
     }
 
     @SuppressWarnings("try")
-    public CompilationResult compileMethodHelper(StructuredGraph graph, String name, PhaseSuite<HighTierContext> graphBuilderSuite, InstalledCode predefinedInstalledCode,
+    public CompilationResult compileMethodHelper(StructuredGraph graph, String name, PhaseSuite<HighTierContext> graphBuilderSuite, OptimizedCallTarget predefinedInstalledCode,
                     CompilationRequest compilationRequest) {
         try (Scope s = Debug.scope("TruffleFinal")) {
             Debug.dump(Debug.BASIC_LEVEL, graph, "After TruffleTier");
@@ -223,17 +223,21 @@ public abstract class TruffleCompiler {
             throw Debug.handle(e);
         }
 
-        compilationNotify.notifyCompilationGraalTierFinished((OptimizedCallTarget) predefinedInstalledCode, graph);
+        compilationNotify.notifyCompilationGraalTierFinished(predefinedInstalledCode, graph);
 
-        InstalledCode installedCode;
+        OptimizedCallTarget installedCode;
         try (DebugCloseable a = CodeInstallationTime.start(); DebugCloseable c = CodeInstallationMemUse.start()) {
-            installedCode = backend.createInstalledCode(graph.method(), compilationRequest, result, graph.getSpeculationLog(), predefinedInstalledCode, false);
+            installedCode = (OptimizedCallTarget) backend.createInstalledCode(graph.method(), compilationRequest, result, graph.getSpeculationLog(), predefinedInstalledCode, false);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
 
         for (AssumptionValidAssumption a : validAssumptions) {
             a.getAssumption().registerInstalledCode(installedCode);
+        }
+
+        if (!providers.getCodeCache().getTarget().arch.getName().equals("aarch64")) {
+            installedCode.releaseEntryPoint();
         }
 
         return result;

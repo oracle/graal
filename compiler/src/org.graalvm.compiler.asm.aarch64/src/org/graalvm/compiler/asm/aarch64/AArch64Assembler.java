@@ -111,6 +111,7 @@ import static jdk.vm.ci.aarch64.AArch64.zr;
 import java.util.Arrays;
 
 import org.graalvm.compiler.asm.Assembler;
+import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode;
 import org.graalvm.compiler.debug.GraalError;
