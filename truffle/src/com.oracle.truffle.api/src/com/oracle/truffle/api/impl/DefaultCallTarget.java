@@ -36,6 +36,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public final class DefaultCallTarget implements RootCallTarget {
 
+    public static final String CALL_BOUNDARY_METHOD_PREFIX = "call";
     private final RootNode rootNode;
     private volatile boolean initialized;
 
@@ -61,6 +62,9 @@ public final class DefaultCallTarget implements RootCallTarget {
         getRuntime().pushFrame(frame, this, callNode);
         try {
             return getRootNode().execute(frame);
+        } catch (Throwable t) {
+            ((DefaultTruffleRuntime) Truffle.getRuntime()).getTvmci().onThrowable(rootNode, t);
+            throw t;
         } finally {
             getRuntime().popFrame();
         }

@@ -27,6 +27,7 @@ package com.oracle.truffle.api.nodes;
 import java.util.Set;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
 
 /**
  * Represents public information about a language.
@@ -35,17 +36,29 @@ import com.oracle.truffle.api.TruffleLanguage;
  */
 public final class LanguageInfo {
 
+    private final String id;
     private final String name;
     private final String version;
     private final Set<String> mimeTypes;
     private final Object engineObject;
     volatile TruffleLanguage<?> spi;
 
-    LanguageInfo(Object engineObject, String name, String version, Set<String> mimeTypes) {
+    LanguageInfo(Object engineObject, String id, String name, String version, Set<String> mimeTypes) {
         this.engineObject = engineObject;
+        this.id = id;
         this.name = name;
         this.version = version;
         this.mimeTypes = mimeTypes;
+    }
+
+    /**
+     * Returns the unique id of the language. This id is equivalent to the id returned by
+     * {@link Registration#id()}.
+     *
+     * @since 0.27
+     */
+    public String getId() {
+        return id;
     }
 
     /**

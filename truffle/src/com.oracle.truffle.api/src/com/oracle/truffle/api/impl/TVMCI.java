@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api.impl;
 
+import org.graalvm.options.OptionDescriptors;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -156,6 +158,13 @@ public abstract class TVMCI {
         return Accessor.nodesAccess().isCloneUninitializedSupported(root);
     }
 
+    protected void onThrowable(RootNode root, Throwable e) {
+        final Accessor.LanguageSupport language = Accessor.languageAccess();
+        if (language != null) {
+            language.onThrowable(root, e);
+        }
+    }
+
     /**
      * Accessor for non-public API in {@link RootNode}.
      *
@@ -163,6 +172,25 @@ public abstract class TVMCI {
      */
     protected RootNode cloneUninitialized(RootNode root) {
         return Accessor.nodesAccess().cloneUninitialized(root);
+    }
+
+    /**
+     * Returns the compiler options specified available from the runtime.
+     *
+     * @since 0.27
+     */
+    protected OptionDescriptors getCompilerOptions() {
+        return OptionDescriptors.EMPTY;
+    }
+
+    /**
+     * Returns <code>true</code> if the java stack frame is a representing a guest language call.
+     * Needs to return <code>true</code> only once per java stack frame per guest language call.
+     *
+     * @since 0.27
+     */
+    protected boolean isGuestCallStackFrame(@SuppressWarnings("unused") StackTraceElement e) {
+        return false;
     }
 
     /**
@@ -191,4 +219,5 @@ public abstract class TVMCI {
             testTvmci.finishWarmup(callTarget);
         }
     }
+
 }
