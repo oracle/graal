@@ -67,7 +67,7 @@ public final class TruffleStackTraceElement {
      * no guest language frames are available. Guest language frames are automatically added by the
      * Truffle runtime the first time the exception is passed through a {@link CallTarget call
      * target} and the frames are not yet set. Therefore no guest language frames are available
-     * immediatly after the exception was constructed. The returned list is not modifiable. The
+     * immediately after the exception was constructed. The returned list is not modifiable. The
      * number stack trace elements that are filled in can be customized by implementing
      * {@link TruffleException#getStackTraceElementLimit()} .
      *

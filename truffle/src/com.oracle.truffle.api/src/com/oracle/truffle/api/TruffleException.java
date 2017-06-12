@@ -39,8 +39,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 public interface TruffleException {
 
     /**
-     * Returns a node indicating the location where this exception occured in the AST. This method
-     * returns <code>null</code> to indicate that the location is not available.
+     * Returns a node indicating the location where this exception occurred in the AST. This method
+     * may <code>null</code> to indicate that the location is not available.
      *
      * @since 0.27
      */
@@ -49,7 +49,7 @@ public interface TruffleException {
     /**
      * Returns an additional guest language object. The return object must be an interop type so it
      * must be either implementing TruffleObject or be a primitive value. The default implementation
-     * returns <code>null</code> to indicate that no object is availabe for this exception.
+     * returns <code>null</code> to indicate that no object is available for this exception.
      *
      * @since 0.27
      */

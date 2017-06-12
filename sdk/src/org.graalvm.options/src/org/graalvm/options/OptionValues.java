@@ -32,14 +32,14 @@ package org.graalvm.options;
 public interface OptionValues {
 
     /**
-     * Returns all option descriptors available to be set.
+     * Returns all available options.
      *
      * @since 1.0
      */
     OptionDescriptors getDescriptors();
 
     /**
-     * Sets an option using an optionKey and its object value.
+     * Sets the value of {@code optionKey} to {@code value}.
      *
      * @since 1.0
      */

@@ -17,10 +17,6 @@ logPatterns = ["*.bgv"]
 #Examples gate also disabled.
 #include "examples/ci.hocon"
 
-#Integration Tests
-#Integration Test currently disabled
-#include "integration-tests/ci.hocon"
-
 jvm-config.default = "graal-core"
 
 include "compiler/ci_common/common.hocon"
