@@ -289,6 +289,7 @@ public abstract class Accessor {
 
         conditionallyInitDebugger();
         conditionallyInitInterop();
+        conditionallyInitEngine();
         conditionallyInitJavaInterop();
         conditionallyInitInstrumentation();
         if (TruffleOptions.TraceASTJSON) {
@@ -402,9 +403,7 @@ public abstract class Accessor {
         } else if (this.getClass().getSimpleName().endsWith("AccessorDebug")) {
             // O.K.
         } else {
-            if (SPI == null) {
-                SPI = this.engineSupport();
-            }
+            SPI = this.engineSupport();
         }
     }
 

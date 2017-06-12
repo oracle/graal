@@ -43,7 +43,6 @@ import java.util.logging.Level;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.impl.TruffleLocator;
 
 /**
  * Ahead-of-time initialization. If the JVM is started with {@link TruffleOptions#AOT}, it populates
@@ -54,7 +53,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private static final Map<String, LanguageCache> CACHE;
 
     private static volatile Map<String, LanguageCache> cache;
-    static final Collection<ClassLoader> AOT_LOADERS = TruffleOptions.AOT ? TruffleLocator.loaders() : null;
+    static final Collection<ClassLoader> AOT_LOADERS = TruffleOptions.AOT ? VMAccessor.SPI.allLoaders() : null;
     private final String className;
     private final Set<String> mimeTypes;
     private final String id;
@@ -172,7 +171,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     private static Map<String, LanguageCache> createLanguages(ClassLoader additionalLoader) {
         List<LanguageCache> caches = new ArrayList<>();
-        for (ClassLoader loader : (AOT_LOADERS == null ? TruffleLocator.loaders() : AOT_LOADERS)) {
+        for (ClassLoader loader : (AOT_LOADERS == null ? VMAccessor.SPI.allLoaders() : AOT_LOADERS)) {
             collectLanguages(loader, caches);
         }
         if (additionalLoader != null) {

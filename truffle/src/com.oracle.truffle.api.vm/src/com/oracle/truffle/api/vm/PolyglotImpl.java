@@ -68,16 +68,13 @@ final class PolyglotImpl extends AbstractPolyglotImpl {
     static final String OPTION_GROUP_COMPILER = "compiler";
     static final String OPTION_GROUP_ENGINE = "engine";
 
-    static {
-        VMAccessor.initialize(new EngineImpl());
-    }
-
     private static final PolyglotContextProfile CURRENT_CONTEXT = new PolyglotContextProfile();
 
     private final PolyglotSourceImpl sourceImpl = new PolyglotSourceImpl(this);
     private final PolyglotSourceSectionImpl sourceSectionImpl = new PolyglotSourceSectionImpl(this);
 
-    private PolyglotImpl() {
+    PolyglotImpl() {
+        VMAccessor.initialize(new EngineImpl());
     }
 
     @Override
