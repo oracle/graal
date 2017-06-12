@@ -15,7 +15,7 @@ mx.imports/**/*
 /src/*/\.checkstyle
 /src/*/\.factorypath
 /src/*.dist/
-/src/SDK*dist/\.externalToolBuilders
+src/*.dist/\.externalToolBuilders/**
 src_gen/**/*
 hs_err_pid*.log
 workingsets.xml
