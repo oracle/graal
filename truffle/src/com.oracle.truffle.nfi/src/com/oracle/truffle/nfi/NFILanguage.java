@@ -35,7 +35,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.types.NativeLibraryDescriptor;
 import com.oracle.truffle.nfi.types.Parser;
 
-@TruffleLanguage.Registration(name = "TruffleNFI", version = "0.1", mimeType = NFILanguage.MIME_TYPE)
+@TruffleLanguage.Registration(name = "TruffleNFI", version = "0.1", mimeType = NFILanguage.MIME_TYPE, internal = true)
 public class NFILanguage extends TruffleLanguage<Env> {
 
     public static final String MIME_TYPE = "application/x-native";
@@ -118,11 +118,6 @@ public class NFILanguage extends TruffleLanguage<Env> {
             root = new LoadLibraryNode(descriptor.getFilename(), flags);
         }
         return Truffle.getRuntime().createCallTarget(root);
-    }
-
-    @Override
-    protected Object findExportedSymbol(Env context, String globalName, boolean onlyExplicit) {
-        return null;
     }
 
     @Override

@@ -58,11 +58,6 @@ public class LanguageRegistrationTest {
         }
 
         @Override
-        protected Object findExportedSymbol(Object context, String globalName, boolean onlyExplicit) {
-            return null;
-        }
-
-        @Override
         protected Object getLanguageGlobal(Object context) {
             return null;
         }
@@ -91,11 +86,6 @@ public class LanguageRegistrationTest {
         }
 
         @Override
-        protected Object findExportedSymbol(Object context, String globalName, boolean onlyExplicit) {
-            return null;
-        }
-
-        @Override
         protected Object getLanguageGlobal(Object context) {
             return null;
         }
@@ -120,11 +110,6 @@ public class LanguageRegistrationTest {
 
         @ExpectError("Using a singleton field is deprecated. Please provide a public no-argument constructor instead.") //
         public static final MyLangGood INSTANCE = new MyLangGood();
-
-        @Override
-        protected Object findExportedSymbol(Object context, String globalName, boolean onlyExplicit) {
-            return null;
-        }
 
         @Override
         protected Object getLanguageGlobal(Object context) {

@@ -120,9 +120,9 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
     }
 
     private static CallTarget initializeMapCall(TruffleObject obj, Message msg) {
-        CallTarget res = JavaInterop.ACCESSOR.engine().lookupOrRegisterComputation(obj, null, TruffleMap.class, msg);
+        CallTarget res = JavaInterop.lookupOrRegisterComputation(obj, null, TruffleMap.class, msg);
         if (res == null) {
-            res = JavaInterop.ACCESSOR.engine().lookupOrRegisterComputation(obj, new MapNode(msg), TruffleMap.class, msg);
+            res = JavaInterop.lookupOrRegisterComputation(obj, new MapNode(msg), TruffleMap.class, msg);
         }
         return res;
     }

@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.70.0",
+  "mxversion" : "5.90.02",
   "name" : "sdk",
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/graalvm/graal",
@@ -20,11 +20,12 @@ suite = {
       "licenses" : ["GPLv2-CPE", "UPL", "BSD-new"]
     },
   },
+  "snippetsPattern" : ".*(Snippets|doc-files).*",
   "defaultLicense" : "GPLv2-CPE",
   "imports": {},
   "libraries" : {},
   "projects" : {
-    "org.graalvm.polyglot" : {
+    "org.graalvm.options" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [],
@@ -32,11 +33,25 @@ suite = {
       "exports" : [
         "<package-info>",  # exports all packages containing package-info.java
       ],
-      "checkstyle" : "org.graalvm.polyglot",
+      "checkstyle" : "org.graalvm.api.word",
       "javaCompliance" : "1.8",
       "workingSets" : "API,SDK",
     },
-
+    "org.graalvm.polyglot" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : ["org.graalvm.options"],
+      "uses" : [],
+      "exports" : [
+        "<package-info>",  # exports all packages containing package-info.java
+        "org.graalvm.polyglot.impl", # exported to truffle
+        "org.graalvm.polyglot",
+        "org.graalvm.polyglot.proxy",
+      ],
+      "checkstyle" : "org.graalvm.api.word",
+      "javaCompliance" : "1.8",
+      "workingSets" : "API,SDK",
+    },
     "org.graalvm.api.word" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -56,12 +71,12 @@ suite = {
   "distributions" : {
     "GRAAL_SDK" : {
       "subDir" : "src",
+      "moduleName" : "org.graalvm.sdk",
       "dependencies" : [
         "org.graalvm.polyglot",
       ],
       "distDependencies" : [],
     },
-
     "WORD_API" : {
       "subDir" : "src",
       "dependencies" : [

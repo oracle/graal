@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.vm;
 
 import static com.oracle.truffle.api.vm.PolyglotEngine.LOG;
+import static com.oracle.truffle.api.vm.VMAccessor.SPI;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,13 +38,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
-import java.util.logging.Level;
-
-import com.oracle.truffle.api.vm.PolyglotEngine.Access;
 import java.util.TreeSet;
+import java.util.logging.Level;
 
 //TODO (chumer): maybe this class should share some code with LanguageCache?
 final class InstrumentCache {
+
+    static final boolean JDK8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
 
     static final boolean PRELOAD;
     private static final List<InstrumentCache> CACHE;
@@ -102,10 +103,10 @@ final class InstrumentCache {
         }
         List<InstrumentCache> list = new ArrayList<>();
         Set<String> classNamesUsed = new HashSet<>();
-        for (ClassLoader loader : (LanguageCache.AOT_LOADERS == null ? Access.loaders() : LanguageCache.AOT_LOADERS)) {
+        for (ClassLoader loader : (LanguageCache.AOT_LOADERS == null ? SPI.allLoaders() : LanguageCache.AOT_LOADERS)) {
             loadForOne(loader, list, classNamesUsed);
         }
-        if (!PolyglotEngine.JDK8OrEarlier) {
+        if (!JDK8OrEarlier) {
             loadForOne(ModuleResourceLocator.createLoader(), list, classNamesUsed);
         }
         return cache = list;
@@ -160,6 +161,10 @@ final class InstrumentCache {
 
     String getName() {
         return name;
+    }
+
+    String getClassName() {
+        return className;
     }
 
     String getVersion() {

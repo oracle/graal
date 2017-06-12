@@ -375,11 +375,6 @@ class AllocationReporterSnippets extends TruffleLanguage<ContextObject> {
     // @formatter:on
 
     @Override
-    protected Object findExportedSymbol(ContextObject context, String globalName, boolean onlyExplicit) {
-        return null;
-    }
-
-    @Override
     protected Object getLanguageGlobal(ContextObject context) {
         return null;
     }

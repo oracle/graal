@@ -198,6 +198,8 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     public <T> T getCapability(Class<T> capability) {
         if (capability == TVMCI.Test.class) {
             return capability.cast(testTvmci);
+        } else if (capability == TVMCI.class) {
+            return capability.cast(tvmci);
         }
 
         final Iterator<T> it = ServiceLoader.load(capability).iterator();

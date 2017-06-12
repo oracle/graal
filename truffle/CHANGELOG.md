@@ -4,9 +4,21 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 0.27
 
+* The Truffle API now depends on the Graal SDK jar to also be on the classpath. 
+* Added an implementation of org.graalvm.polyglot API in Truffle. 
+* API classes in com.oracle.truffe.api.vm package will soon be deprecated. Use the org.graalvm.polyglot API instead.
 * Added [SourceSectionFilter.Builder](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/SourceSectionFilter.Builderhtml).`rootNameIs(Predicate<String>)` to filter for source sections based on the name of the RootNode.
 * Added [AllocationReporter](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/AllocationReporter.html) as a service for guest languages to report allocation of guest language values.
 * Added [Instrumenter.attachAllocationListener](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/Instrumenter.html#attachAllocationListener-com.oracle.truffle.api.instrumentation.AllocationEventFilter-T-), [AllocationEventFilter](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/AllocationEventFilter.html), [AllocationListener](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/AllocationListener.html) and [AllocationEvent](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/AllocationEvent.html) for profilers to be able to track creation and size of guest language values.
+* Added [RootNode.getCurrentContext](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html), [TruffleLanguage.getCurrentLanguage(Class)](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html), [TruffleLanguage.getCurrentContext(Class)](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) to allow static lookups of the language and context.
+* Added an id property to [TruffleLanguage.Registration](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Registration#id) to specify a unique identifier for each language. If not specified getName().toLowerCase() will be used. The registration id will be mandatory in future releases.
+* Added an internal property to [TruffleLanguage.Registration](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Registration#internal) to specify whether a language is intended for internal use only. For example the Truffle Native Function Interface is a language that should be used from other languages only.
+* Added the ability to describe options for languages and instruments using [TruffleLanguage.describeOptions()](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) and [TruffleInstrument.describeOptions](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.html). User provided options are available to the language using TruffleLanguage.Env.getOptions() and TruffleInstrument.Env.getOptions().
+* Added JavaInterop.isJavaObject(TruffleObject) and JavaInterop.asJavaObject(TruffleObject) to check and convert back to host language object from a TruffleObject.
+* Added [TruffleException](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/TruffleException.html) to allow languages to throw standardized error information. 
+* [Guest language stack traces](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/TruffleStackTraceElement.html) are now collected automatically for each exception thrown and passed through a CallTarget. 
+* Added RootNode.isInternal to indicate if a RootNode is considered internal and should not be shown to the guest language programmer.
+* Added TruffleLanguage.lookupSymbol to be implemented by languages to support language agnostic lookups in the top-most scope.
 
 ## Version 0.26
 18-May-2017

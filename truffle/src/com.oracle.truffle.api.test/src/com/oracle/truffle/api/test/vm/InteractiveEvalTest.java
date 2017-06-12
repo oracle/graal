@@ -164,11 +164,6 @@ public class InteractiveEvalTest {
         }
 
         @Override
-        protected Object findExportedSymbol(InteractiveContext context, String globalName, boolean onlyExplicit) {
-            return null;
-        }
-
-        @Override
         protected Object getLanguageGlobal(InteractiveContext context) {
             return null;
         }
@@ -211,11 +206,6 @@ public class InteractiveEvalTest {
         @Override
         protected boolean isVisible(InteractiveContext context, Object value) {
             return false;
-        }
-
-        @Override
-        protected Object findExportedSymbol(InteractiveContext context, String globalName, boolean onlyExplicit) {
-            return null;
         }
 
         @Override

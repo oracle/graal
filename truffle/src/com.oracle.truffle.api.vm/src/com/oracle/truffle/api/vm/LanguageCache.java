@@ -43,7 +43,7 @@ import java.util.logging.Level;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.vm.PolyglotEngine.Access;
+import com.oracle.truffle.api.vm.PolyglotEngine.LegacyEngineImpl;
 
 /**
  * Ahead-of-time initialization. If the JVM is started with {@link TruffleOptions#AOT}, it populates
@@ -54,12 +54,19 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private static final Map<String, LanguageCache> CACHE;
 
     private static volatile Map<String, LanguageCache> cache;
-    static final Collection<ClassLoader> AOT_LOADERS = TruffleOptions.AOT ? Access.loaders() : null;
+    static {
+        if (VMAccessor.SPI == null) {
+            VMAccessor.initialize(new LegacyEngineImpl());
+        }
+    }
+    static final Collection<ClassLoader> AOT_LOADERS = TruffleOptions.AOT ? VMAccessor.SPI.allLoaders() : null;
     private final String className;
     private final Set<String> mimeTypes;
+    private final String id;
     private final String name;
     private final String version;
     private final boolean interactive;
+    private final boolean internal;
     private final ClassLoader loader;
     private final TruffleLanguage<?> singletonLanguage;
     private volatile Class<? extends TruffleLanguage<?>> languageClass;
@@ -87,16 +94,20 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.className = info.getProperty(prefix + "className");
         this.name = info.getProperty(prefix + "name");
         this.version = info.getProperty(prefix + "version");
-        TreeSet<String> ts = new TreeSet<>();
+        String resolvedId = info.getProperty(prefix + "id");
+
+        TreeSet<String> mimeTypesSet = new TreeSet<>();
         for (int i = 0;; i++) {
             String mt = info.getProperty(prefix + "mimeType." + i);
             if (mt == null) {
                 break;
             }
-            ts.add(mt);
+            mimeTypesSet.add(mt);
         }
-        this.mimeTypes = Collections.unmodifiableSet(ts);
+        this.mimeTypes = Collections.unmodifiableSet(mimeTypesSet);
+        this.id = resolvedId == null ? defaultId() : resolvedId;
         this.interactive = Boolean.valueOf(info.getProperty(prefix + "interactive"));
+        this.internal = Boolean.valueOf(info.getProperty(prefix + "internal"));
 
         if (PRELOAD) {
             this.languageClass = loadLanguageClass();
@@ -105,7 +116,36 @@ final class LanguageCache implements Comparable<LanguageCache> {
             this.languageClass = null;
             this.singletonLanguage = null;
         }
+    }
 
+    @SuppressWarnings("unchecked")
+    LanguageCache(String id, Set<String> mimeTypes, String name, String version, boolean interactive, boolean internal,
+                    TruffleLanguage<?> instance) {
+        this.id = id;
+        this.className = instance.getClass().getName();
+        this.mimeTypes = mimeTypes;
+        this.name = name;
+        this.version = version;
+        this.interactive = interactive;
+        this.internal = internal;
+        this.loader = instance.getClass().getClassLoader();
+        this.singletonLanguage = instance;
+        this.languageClass = (Class<? extends TruffleLanguage<?>>) instance.getClass();
+    }
+
+    private String defaultId() {
+        String resolvedId;
+        if (name.isEmpty() && !mimeTypes.isEmpty()) {
+            resolvedId = mimeTypes.iterator().next();
+        } else {
+            // TODO remove this hack for single character languages
+            if (name.length() == 1) {
+                resolvedId = name;
+            } else {
+                resolvedId = name.toLowerCase();
+            }
+        }
+        return resolvedId;
     }
 
     private static ClassLoader loader() {
@@ -137,7 +177,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     private static Map<String, LanguageCache> createLanguages(ClassLoader additionalLoader) {
         List<LanguageCache> caches = new ArrayList<>();
-        for (ClassLoader loader : (AOT_LOADERS == null ? Access.loaders() : AOT_LOADERS)) {
+        for (ClassLoader loader : (AOT_LOADERS == null ? VMAccessor.SPI.allLoaders() : AOT_LOADERS)) {
             collectLanguages(loader, caches);
         }
         if (additionalLoader != null) {
@@ -193,6 +233,10 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return className.compareTo(o.className);
     }
 
+    String getId() {
+        return id;
+    }
+
     Set<String> getMimeTypes() {
         return mimeTypes;
     }
@@ -207,6 +251,10 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     String getClassName() {
         return className;
+    }
+
+    public boolean isInternal() {
+        return internal;
     }
 
     boolean isInteractive() {

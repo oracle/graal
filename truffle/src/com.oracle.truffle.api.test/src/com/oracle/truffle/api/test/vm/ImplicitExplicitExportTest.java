@@ -246,6 +246,7 @@ public class ImplicitExplicitExportTest {
             return false;
         }
 
+        @SuppressWarnings("deprecation")
         @TruffleBoundary
         private Object importExport(Source code) {
             assertNotEquals("Should run asynchronously", Thread.currentThread(), mainThread);

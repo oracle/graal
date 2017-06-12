@@ -343,6 +343,16 @@ public class JavaInteropTest {
     }
 
     @Test
+    public void emptyArrayHasSize() {
+        data.arr = new String[]{};
+        Object arrObj = message(Message.READ, obj, "arr");
+        assertTrue("It's obj: " + arrObj, arrObj instanceof TruffleObject);
+        TruffleObject truffleArr = (TruffleObject) arrObj;
+        assertEquals("It has size", Boolean.TRUE, message(Message.HAS_SIZE, truffleArr));
+        assertEquals("Zero elements", 0, message(Message.GET_SIZE, truffleArr));
+    }
+
+    @Test
     public void arrayAsList() {
         data.arr = new String[]{"Hello", "World", "!"};
         List<String> list = xyp.arr();

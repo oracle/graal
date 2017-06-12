@@ -35,11 +35,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AccessorInstrumentHandler;
+import com.oracle.truffle.api.instrumentation.InstrumentationHandler.InstrumentClientInstrumenter;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -140,6 +144,22 @@ public abstract class TruffleInstrument {
     }
 
     /**
+     * Returns a list of option descriptors that are supported by this language. Option values are
+     * accessible using the {@link Env#getOptions() environment} when the instrument is
+     * {@link #onCreate(Env) created}. By default no options are available for an instrument.
+     * Options returned by this method must specifiy the {@link Registration#id() instrument id} as
+     * {@link OptionDescriptor#getName() name} prefix for each option. For example if the id of the
+     * instrument is "debugger" then a valid option name would be "debugger.enabled". The instrument
+     * will automatically be {@link #onCreate(Env) created} if one of the specified options was
+     * provided by the engine.
+     *
+     * @since 0.27
+     */
+    protected List<OptionDescriptor> describeOptions() {
+        return null;
+    }
+
+    /**
      * Access to instrumentation services as well as input, output, and error streams.
      *
      * @since 0.12
@@ -148,15 +168,15 @@ public abstract class TruffleInstrument {
     public static final class Env {
 
         private final Object vmObject; // PolyglotRuntime.Instrument
-        private final Instrumenter instrumenter;
         private final InputStream in;
         private final OutputStream err;
         private final OutputStream out;
+        OptionValues options;
+        InstrumentClientInstrumenter instrumenter;
         private List<Object> services;
 
-        Env(Object vm, Instrumenter instrumenter, OutputStream out, OutputStream err, InputStream in) {
+        Env(Object vm, OutputStream out, OutputStream err, InputStream in) {
             this.vmObject = vm;
-            this.instrumenter = instrumenter;
             this.in = in;
             this.err = err;
             this.out = out;
@@ -294,6 +314,17 @@ public abstract class TruffleInstrument {
                 services = null;
             }
             return arr.toArray();
+        }
+
+        /**
+         * Returns option values for the options described in
+         * {@link TruffleInstrument#describeOptions()}. The returned options are never
+         * <code>null</code>.
+         *
+         * @since 0.27
+         */
+        public OptionValues getOptions() {
+            return options;
         }
 
         /**
