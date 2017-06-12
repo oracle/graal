@@ -136,11 +136,6 @@ def travis2(args=None):
     with Task('TestGCCSuiteCompile', tasks) as t:
         if t: mx_testsuites.runSuite(['parserTorture'])
 
-def pullTools(args=None):
-    """pulls the LLVM and Dragonegg tools"""
-    pullLLVMBinaries()
-    pullInstallDragonEgg()
-
 # platform dependent
 def pullLLVMBinaries(args=None):
     """downloads the LLVM binaries"""
@@ -254,7 +249,6 @@ def pullInstallDragonEgg(args=None):
     os.environ['GCC'] = getGCC()
     os.environ['CXX'] = getGPP()
     os.environ['CC'] = getGCC()
-    pullLLVMBinaries()
     os.environ['LLVM_CONFIG'] = findLLVMProgram('llvm-config', ['3.2', '3.3'])
     mx.log(os.environ['LLVM_CONFIG'])
     compileCommand = ['make']
@@ -557,12 +551,7 @@ def findLLVMProgram(llvmProgram, version=None):
     installedProgram = findInstalledLLVMProgram(llvmProgram, version)
 
     if installedProgram is None:
-        if not os.path.exists(_clangPath):
-            pullLLVMBinaries()
-        programPath = _toolDir + 'llvm/bin/' + llvmProgram
-        if not os.path.exists(programPath):
-            exit(llvmProgram + ' is not a supported LLVM program!')
-        return programPath
+        exit('found no supported version of ' + llvmProgram)
     else:
         return installedProgram
 
@@ -812,8 +801,6 @@ mx.update_commands(_suite, {
     'su-suite' : [mx_testsuites.runSuite, ''],
     'su-clang' : [compileWithClang, ''],
     'su-options' : [printOptions, ''],
-    'su-pullllvmbinaries' : [pullLLVMBinaries, ''],
-    'su-pulltools' : [pullTools, ''],
     'su-pulldragonegg' : [pullInstallDragonEgg, ''],
     'su-run' : [runLLVM, ''],
     'su-clang++' : [compileWithClangPP, ''],

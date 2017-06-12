@@ -55,8 +55,18 @@ gateTest38-linux: ${gateCommon} ${linux-amd64} {
     }
 }
 
-gateTest38-darwin: ${gateCommon} ${darwin-amd64} {
-    # on darwin, use system clang
+darwin-llvm : {
+    packages: {
+        "llvm": ""
+    }
+
+    environment: {
+        # homebrew doesn't put llvm on the path by default
+        PATH: "/Users/graal/slave/buildlog/ci_executor/main/homebrew/opt/llvm/bin:$PATH"
+    }
+}
+
+gateTest38-darwin: ${gateCommon} ${darwin-amd64} ${darwin-llvm} {
 }
 
 gateTest32: ${gateCommon} ${linux-amd64} {
