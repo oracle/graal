@@ -26,10 +26,11 @@ package com.oracle.truffle.api.interop.java;
 
 import java.lang.reflect.Array;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
 
 abstract class ArrayReadNode extends Node {
@@ -38,24 +39,33 @@ abstract class ArrayReadNode extends Node {
     protected abstract Object executeWithTarget(JavaObject receiver, Object index);
 
     @SuppressWarnings("unchecked")
-    @Specialization(guards = "index.getClass() == clazz")
+    @Specialization(guards = {"receiver.isArray()", "index.getClass() == clazz"})
     protected Object doNumber(JavaObject receiver, Number index, @Cached("index.getClass()") Class<?> clazz) {
         Class<Number> numberClazz = (Class<Number>) clazz;
         return doArrayAccess(receiver, numberClazz.cast(index).intValue());
     }
 
-    @Specialization(replaces = "doNumber")
+    @Specialization(guards = {"receiver.isArray()"}, replaces = "doNumber")
     protected Object doNumberGeneric(JavaObject receiver, Number index) {
         return doArrayAccess(receiver, index.intValue());
     }
 
+    @SuppressWarnings("unused")
+    @TruffleBoundary
+    @Specialization(guards = {"!receiver.isArray()"})
+    protected static Object notArray(JavaObject receiver, Number index) {
+        throw UnknownIdentifierException.raise(String.valueOf(index));
+    }
+
     private Object doArrayAccess(JavaObject object, int index) {
         Object obj = object.obj;
+        assert object.isArray();
         Object val = null;
         try {
             val = Array.get(obj, index);
-        } catch (IllegalArgumentException notAnArr) {
-            throw UnsupportedMessageException.raise(Message.READ);
+        } catch (ArrayIndexOutOfBoundsException outOfBounds) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnknownIdentifierException.raise(String.valueOf(index));
         }
         if (primitive.isPrimitive(val)) {
             return val;
