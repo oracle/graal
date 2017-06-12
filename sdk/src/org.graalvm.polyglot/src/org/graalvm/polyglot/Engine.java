@@ -366,14 +366,6 @@ public final class Engine implements AutoCloseable {
 
                 // TODO remove temporary hack to load polyglot engine impl, until we can load it
                 // using the jvmci/truffle service loader
-                try {
-                    @SuppressWarnings("unchecked")
-                    Class<? extends AbstractPolyglotImpl> polyglotClass = (Class<? extends AbstractPolyglotImpl>) Class.forName("com.oracle.truffle.api.vm.PolyglotImpl");
-                    Constructor<? extends AbstractPolyglotImpl> constructor = polyglotClass.getDeclaredConstructor();
-                    constructor.setAccessible(true);
-                    engine = constructor.newInstance();
-                } catch (Exception e1) {
-                }
 
                 if (engine == null) {
                     boolean jdk8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
@@ -393,25 +385,6 @@ public final class Engine implements AutoCloseable {
                             servicesClass = Class.forName("jdk.vm.ci.services.Services");
                         } catch (ClassNotFoundException e) {
                         }
-                        if (servicesClass == null) {
-                            try {
-                                servicesClass = Class.forName("jdk.vm.ci.service.Services");
-                            } catch (ClassNotFoundException e) {
-                            }
-                        }
-                        if (servicesClass == null) {
-                            try {
-                                servicesClass = Class.forName("jdk.internal.jvmci.service.Services");
-                            } catch (ClassNotFoundException e) {
-                            }
-                        }
-                        if (servicesClass == null) {
-                            try {
-                                servicesClass = Class.forName("com.oracle.jvmci.service.Services");
-                            } catch (ClassNotFoundException e) {
-                                // JVMCI is unavailable
-                            }
-                        }
                         if (servicesClass != null) {
                             try {
                                 Method m = servicesClass.getDeclaredMethod("loadSingle", Class.class, boolean.class);
@@ -423,6 +396,18 @@ public final class Engine implements AutoCloseable {
                         }
                     }
                 }
+
+                if (engine == null) {
+                    try {
+                        @SuppressWarnings("unchecked")
+                        Class<? extends AbstractPolyglotImpl> polyglotClass = (Class<? extends AbstractPolyglotImpl>) Class.forName("com.oracle.truffle.api.vm.PolyglotImpl");
+                        Constructor<? extends AbstractPolyglotImpl> constructor = polyglotClass.getDeclaredConstructor();
+                        constructor.setAccessible(true);
+                        engine = constructor.newInstance();
+                    } catch (Exception e1) {
+                    }
+                }
+
                 if (engine != null) {
                     engine.setConstructors(new APIAccessImpl());
                 }
