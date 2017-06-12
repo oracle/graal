@@ -77,4 +77,4 @@ class VMAccessor extends Accessor {
         return super.isGuestCallStackElement(element);
     }
 
-} // end of SPIAccessor
+}

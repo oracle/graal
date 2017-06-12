@@ -205,10 +205,10 @@ public abstract class RootNode extends Node {
     }
 
     /**
-     * Returns the current context assocated with the root node {@link #getLanguage(Class) language}
-     * and {@link Thread thread}. The current context is <code>null</code> if the root node is
-     * associated with a <code>null</code> language. This is a short-cut for <code>this</code>.
-     * {@link #getLanguage(Class) getLanguage(languageClass)}.
+     * Returns the current context associated with the root node {@link #getLanguage(Class)
+     * language} and {@link Thread thread}. The current context is <code>null</code> if the root
+     * node is associated with a <code>null</code> language. This is a short-cut for
+     * <code>this</code>. {@link #getLanguage(Class) getLanguage(languageClass)}.
      * {@link TruffleLanguage#getContextReference() getContextReference()}.
      * {@link ContextReference#get() get()}. If invoked on the fast-path then
      * <code>languageClass</code> must be a compilation final value.
@@ -218,6 +218,7 @@ public abstract class RootNode extends Node {
      * @since 0.27
      */
     public final <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {
+        CompilerAsserts.partialEvaluationConstant(languageClass);
         return getLanguage(languageClass).getContextReference().get();
     }
 

@@ -131,7 +131,12 @@ final class TruffleStackTrace extends Exception {
             lastException = parentCause;
         }
         if (lastException != null) {
-            lastException.initCause(new TruffleStackTrace(frames));
+            try {
+                lastException.initCause(new TruffleStackTrace(frames));
+            } catch (IllegalStateException e) {
+                // if the cause is initialized to null we have no chance of attaching guest language
+                // stack traces
+            }
         }
     }
 

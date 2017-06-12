@@ -48,6 +48,7 @@ import com.oracle.truffle.api.vm.HostLanguage.HostContext;
  */
 class HostLanguage extends TruffleLanguage<HostContext> {
 
+    private static final String ALLOW_CLASS_LOADING_NAME = "java.allowClassLoading";
     private static final OptionKey<Boolean> ALLOW_CLASS_LOADING = new OptionKey<>(false);
 
     static class HostContext {
@@ -63,7 +64,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
 
         private Class<?> findClass(String clazz) {
             if (!this.env.getOptions().get(ALLOW_CLASS_LOADING)) {
-                throw new IllegalArgumentException("Java classes are not accessible. Enable access by setting the option 'java.allowClassLoading' to true.");
+                throw new IllegalArgumentException(String.format("Java classes are not accessible. Enable access by setting the option '%s' to true.", ALLOW_CLASS_LOADING_NAME));
             }
             try {
                 Class<?> loadedClass = classCache.get(clazz);
@@ -81,7 +82,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
 
     @Override
     protected boolean isObjectOfLanguage(Object object) {
-        if (object instanceof TruffleLanguage<?>) {
+        if (object instanceof TruffleObject) {
             return PolyglotProxyImpl.isProxyGuestObject((TruffleObject) object) || JavaInterop.isJavaObject((TruffleObject) object);
         } else {
             return false;
@@ -162,7 +163,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
     protected List<OptionDescriptor> describeOptions() {
         List<OptionDescriptor> descriptors = new ArrayList<>();
 
-        descriptors.add(OptionDescriptor.newBuilder(ALLOW_CLASS_LOADING, "java.allowClassLoading").category(OptionCategory.USER).//
+        descriptors.add(OptionDescriptor.newBuilder(ALLOW_CLASS_LOADING, ALLOW_CLASS_LOADING_NAME).category(OptionCategory.USER).//
                         help("Allow guest languages to load additional Java host language classes.").build());
 
         return descriptors;

@@ -51,7 +51,7 @@ final class FinalIntMap {
     void put(Object key, int value) {
         CompilerAsserts.neverPartOfCompilation();
         assert get(key) == -1 : "replace not supported by this map implementation";
-        assert value >= 0 : "only positivie integers supported";
+        assert value >= 0 : "only positive integers supported";
         Entry prev = null;
         Entry current = first;
         while (current != null) {

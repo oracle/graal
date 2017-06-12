@@ -156,13 +156,13 @@ public class ContextLookupTest {
         vm.getLanguages().get(LanguageLookup.MIME_TYPE).getGlobalObject();
 
         try {
-            TruffleLanguage.getCurrentContext(LanguageLookup.class);
+            LanguageLookup.getContext();
             fail();
         } catch (IllegalStateException e) {
         }
 
         try {
-            TruffleLanguage.getCurrentLanguage(LanguageLookup.class);
+            LanguageLookup.getLanguage();
             fail();
         } catch (IllegalStateException e) {
         }
@@ -234,6 +234,14 @@ public class ContextLookupTest {
         ContextReference<LanguageLookupContext> sharedChannelRef;
         LanguageLookupContext expectedContext;
         boolean expectedFinal = true;
+
+        static LanguageLookupContext getContext() {
+            return getCurrentContext(LanguageLookup.class);
+        }
+
+        static LanguageLookup getLanguage() {
+            return getCurrentLanguage(LanguageLookup.class);
+        }
 
         @Override
         protected LanguageLookupContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {

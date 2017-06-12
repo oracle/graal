@@ -33,15 +33,12 @@ import com.oracle.truffle.api.nodes.Node;
 @SuppressWarnings("serial")
 final class HostException extends RuntimeException implements TruffleException {
 
-    private final Throwable original;
-
     HostException(Throwable original) {
-        this.original = original;
         this.initCause(original);
     }
 
     Throwable getOriginal() {
-        return original;
+        return getCause();
     }
 
     @Override
@@ -54,7 +51,7 @@ final class HostException extends RuntimeException implements TruffleException {
     }
 
     public boolean isTimeout() {
-        return original instanceof InterruptedException;
+        return getCause() instanceof InterruptedException;
     }
 
 }

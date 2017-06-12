@@ -763,7 +763,7 @@ public abstract class TruffleLanguage<C> {
      * @param languageClass the exact language class needs to be provided for the lookup.
      * @since 0.27
      */
-    public static <T extends TruffleLanguage<?>> T getCurrentLanguage(Class<T> languageClass) {
+    protected static <T extends TruffleLanguage<?>> T getCurrentLanguage(Class<T> languageClass) {
         return AccessAPI.engineAccess().getCurrentLanguage(languageClass);
     }
 
@@ -781,7 +781,7 @@ public abstract class TruffleLanguage<C> {
      * @param languageClass the exact language class needs to be provided for the lookup.
      * @since 0.27
      */
-    public static <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {
+    protected static <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {
         return AccessAPI.engineAccess().getCurrentContext(languageClass);
     }
 
@@ -1290,7 +1290,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public Object evalInContext(Object sourceVM, String code, Node node, final MaterializedFrame mFrame) {
+        public Object evalInContext(String code, Node node, final MaterializedFrame mFrame) {
             RootNode rootNode = node.getRootNode();
             if (rootNode == null) {
                 throw new IllegalArgumentException("Cannot evaluate in context using a node that is not yet adopated using a RootNode.");

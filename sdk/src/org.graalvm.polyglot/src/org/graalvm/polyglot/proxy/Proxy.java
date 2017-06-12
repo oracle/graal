@@ -25,7 +25,7 @@
 package org.graalvm.polyglot.proxy;
 
 /**
- * Supports beeing passed as value to a guest language.
+ * Supports being passed as value to a guest language.
  */
 public interface Proxy {
 
