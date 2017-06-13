@@ -574,7 +574,8 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         // No need to retry, since a failure means that the entry point was reset to zero.
         // The reason is that the current thread is the only thread calling this method,
         // and the only other thread that is changing the entryPoint is the VM itself.
-        // Furthermore, no other thread will reinstall the call target until the current thread completes.
+        // Furthermore, no other thread will reinstall the call target until the current thread
+        // completes.
         UnsafeAccess.UNSAFE.compareAndSwapLong(this, ENTRY_POINT_OFFSET, seenEntryPoint, seenEntryPoint | 1);
     }
 

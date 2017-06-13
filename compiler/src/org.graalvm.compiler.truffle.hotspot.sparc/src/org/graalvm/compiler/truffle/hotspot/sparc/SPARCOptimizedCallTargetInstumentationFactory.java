@@ -69,7 +69,7 @@ public class SPARCOptimizedCallTargetInstumentationFactory extends OptimizedCall
                     asm.ldx(entryPointAddress, spillRegister);
                     asm.membar(SPARCAssembler.MEMBAR_LOAD_LOAD | SPARCAssembler.MEMBAR_LOAD_STORE);
                     asm.compareBranch(spillRegister, 0, Equal, Xcc, doProlog, PREDICT_NOT_TAKEN, null);
-                    asm.and(spillRegister, 1, SPARC.g0);
+                    asm.andcc(spillRegister, 1, SPARC.g0);
                     asm.bz(doProlog);
                     asm.xor(spillRegister, 1, spillRegister);
                     asm.jmp(spillRegister);
