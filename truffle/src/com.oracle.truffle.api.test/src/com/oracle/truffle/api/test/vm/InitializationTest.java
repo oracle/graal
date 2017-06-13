@@ -136,7 +136,9 @@ public class InitializationTest {
         @Override
         protected MyEnv createContext(Env env) {
             assertNull("Not defined symbol", env.importSymbol("unknown"));
-            return new MyEnv();
+            MyEnv myEnv = new MyEnv();
+            env.exportSymbol("MyEnv", myEnv);
+            return myEnv;
         }
 
         @Override
@@ -147,14 +149,6 @@ public class InitializationTest {
         @Override
         protected CallTarget parse(ParsingRequest env) {
             return Truffle.getRuntime().createCallTarget(new MMRootNode(this, env.getSource().createSection(1)));
-        }
-
-        @Override
-        protected Object findExportedSymbol(MyEnv context, String globalName, boolean onlyExplicit) {
-            if ("MyEnv".equals(globalName)) {
-                return context;
-            }
-            return null;
         }
 
         @Override

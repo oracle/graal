@@ -101,11 +101,6 @@ public class UnboxToIntObject implements TruffleObject {
         }
 
         @Override
-        protected Object findExportedSymbol(Object context, String globalName, boolean onlyExplicit) {
-            return null;
-        }
-
-        @Override
         protected Object getLanguageGlobal(Object context) {
             return null;
         }

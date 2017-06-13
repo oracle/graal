@@ -51,11 +51,6 @@ public class IsMimeTypeSupportedTestLanguage extends TruffleLanguage<Env> {
     }
 
     @Override
-    protected Object findExportedSymbol(Env context, String globalName, boolean onlyExplicit) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     protected Object getLanguageGlobal(Env context) {
         throw new UnsupportedOperationException();
     }

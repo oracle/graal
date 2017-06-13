@@ -45,7 +45,7 @@ public abstract class TruffleLocator {
      *
      * @return set of classloaders to search registrations in
      */
-    static Set<ClassLoader> loaders() {
+    public static Set<ClassLoader> loaders() {
         Iterable<TruffleLocator> allLocators;
         TruffleLocator locator = Truffle.getRuntime().getCapability(TruffleLocator.class);
         if (locator != null) {

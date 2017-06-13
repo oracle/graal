@@ -64,11 +64,6 @@ public final class TckLanguage extends TruffleLanguage<Env> {
     }
 
     @Override
-    protected Object findExportedSymbol(Env context, String globalName, boolean onlyExplicit) {
-        return null;
-    }
-
-    @Override
     protected Object getLanguageGlobal(Env context) {
         return null;
     }
