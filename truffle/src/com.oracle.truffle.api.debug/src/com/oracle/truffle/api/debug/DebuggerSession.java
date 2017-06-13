@@ -725,7 +725,7 @@ public final class DebuggerSession implements Closeable {
                 node = frameInstance.getCallNode();
                 frame = frameInstance.getFrame(FrameAccess.MATERIALIZE).materialize();
             }
-            return Debugger.ACCESSOR.evalInContext(ev.getSession().getDebugger().getSourceVM(), node, frame, code);
+            return Debugger.ACCESSOR.evalInContext(node, frame, code);
         } catch (KillException kex) {
             throw new IOException("Evaluation was killed.", kex);
         }

@@ -1,0 +1,20 @@
+examplesCommon: {
+  setup : [
+    [cd, "./examples"]
+  ]
+  timelimit : "30:00"
+}
+
+examplesGate : ${examplesCommon} {
+  targets : [ gate ],
+  run : [
+    ["mx", "gate"]
+  ]
+}
+
+builds += [
+  ${linux-amd64}     ${java8} ${examplesGate} ${eclipse} ${jdt} { name: "gate-examples-linux-8"   },
+  ${linux-amd64}     ${java9} ${examplesGate} ${eclipse}        { name: "gate-examples-linux-9"   },
+  ${solaris-sparcv9} ${java8} ${examplesGate}                   { name: "gate-examples-solaris-8" },
+  ${darwin-amd64}    ${java8} ${examplesGate}                   { name: "gate-examples-darwin-8"  },
+]

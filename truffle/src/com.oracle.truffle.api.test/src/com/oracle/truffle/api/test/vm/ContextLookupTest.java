@@ -156,6 +156,30 @@ public class ContextLookupTest {
         vm.getLanguages().get(LanguageLookup.MIME_TYPE).getGlobalObject();
 
         try {
+            LanguageLookup.getContext();
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        try {
+            LanguageLookup.getLanguage();
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        RootNode root = new RootNode(context.language) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return null;
+            }
+        };
+        try {
+            root.getCurrentContext(LanguageLookup.class);
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        try {
             // using an exposed context reference outside of PE does not work
             context.language.sharedChannelRef.get();
             fail();
@@ -211,6 +235,14 @@ public class ContextLookupTest {
         LanguageLookupContext expectedContext;
         boolean expectedFinal = true;
 
+        static LanguageLookupContext getContext() {
+            return getCurrentContext(LanguageLookup.class);
+        }
+
+        static LanguageLookup getLanguage() {
+            return getCurrentLanguage(LanguageLookup.class);
+        }
+
         @Override
         protected LanguageLookupContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
             LanguageLookupContext channel = (LanguageLookupContext) env.getConfig().get("channel");
@@ -227,6 +259,15 @@ public class ContextLookupTest {
             } catch (IllegalStateException e) {
                 // illegal state expected. context not yet initialized
             }
+
+            try {
+                TruffleLanguage.getCurrentContext(LanguageLookup.class);
+                fail();
+            } catch (IllegalStateException e) {
+                // illegal state expected. context not yet initialized
+            }
+
+            assertSame(this, TruffleLanguage.getCurrentLanguage(LanguageLookup.class));
 
             // create context reference alone should be fine.
             ContextReference<LanguageLookupContext> channelRef = getContextReference();
@@ -256,6 +297,8 @@ public class ContextLookupTest {
             }
             assertSame(expected, context);
             assertSame(expected, getContextReference().get());
+            assertSame(context, TruffleLanguage.getCurrentContext(LanguageLookup.class));
+            assertSame(this, TruffleLanguage.getCurrentLanguage(LanguageLookup.class));
             // assertEquals(expectedFinal, getContextReference().isFinal());
         }
 
@@ -307,12 +350,6 @@ public class ContextLookupTest {
                     }
                 }
             });
-        }
-
-        @Override
-        protected Object findExportedSymbol(LanguageLookupContext context, String globalName, boolean onlyExplicit) {
-            assertContext(context);
-            return null;
         }
 
         @Override

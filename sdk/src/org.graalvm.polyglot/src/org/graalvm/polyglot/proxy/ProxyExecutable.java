@@ -1,10 +1,12 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,25 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package org.graalvm.polyglot.proxy;
 
-package org.graalvm.compiler.core.aarch64;
+import org.graalvm.polyglot.Value;
 
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.memory.address.AddressNode;
-import org.graalvm.compiler.phases.common.AddressLoweringPhase.AddressLowering;
+@FunctionalInterface
+public interface ProxyExecutable extends Proxy {
 
-public class AArch64AddressLowering extends AddressLowering {
-
-    @Override
-    public AddressNode lower(ValueNode address) {
-        return lower(address, null);
-    }
-
-    @Override
-    public AddressNode lower(ValueNode base, ValueNode offset) {
-        AArch64AddressNode ret = new AArch64AddressNode(base, offset);
-        // TODO improve
-        return base.graph().unique(ret);
-    }
+    /**
+     * Can throw {@link IllegalArgumentException} if its not compatible.
+     *
+     * @param t
+     * @return
+     */
+    Object execute(Value... t);
 
 }

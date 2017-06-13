@@ -22,6 +22,11 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
+
+# 'make MX_VERBOSE=y' will report all lines executed.  The actual value doesn't
+# matter as long as it's not empty.
+QUIETLY$(MX_VERBOSE)  = @
+
 .PHONY: default
 
 NATIVE_CLASSES=com.oracle.truffle.nfi.ClosureNativePointer \
@@ -39,14 +44,14 @@ OBJECTS=closure.o \
 default: bin/${LIBTRUFFLENFI}
 
 src_gen/native.h: Makefile
-	@echo JAVAH $@
-	@rm -f $@
-	@${JAVA_HOME}/bin/javah -classpath ${MX_CLASSPATH} -o $@ ${NATIVE_CLASSES}
+	$(QUIETLY) echo JAVAH $@
+	$(QUIETLY) rm -f $@
+	$(QUIETLY) ${JAVA_HOME}/bin/javah -classpath ${MX_CLASSPATH} -o $@ ${NATIVE_CLASSES}
 
 bin/src-gen-deps: Makefile
-	@rm -f $@
-	@mkdir -p bin/
-	@${JAVA_HOME}/bin/javap -sysinfo -classpath ${MX_CLASSPATH} ${NATIVE_CLASSES} | grep "Classfile " | sed -e 's|Classfile |src_gen/native.h: |' >> $@
+	$(QUIETLY) rm -f $@
+	$(QUIETLY) mkdir -p bin/
+	$(QUIETLY) ${JAVA_HOME}/bin/javap -sysinfo -classpath ${MX_CLASSPATH} ${NATIVE_CLASSES} | grep "Classfile " | sed -e 's|Classfile |src_gen/native.h: |' >> $@
 
 OBJECTFILES=${OBJECTS:%.o=bin/%.o}
 CPPFLAGS=-I${VPATH}/include -Isrc_gen -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${OS} -Ilibffi-build/include
@@ -61,29 +66,30 @@ endif
 
 
 bin/${LIBTRUFFLENFI}: ${OBJECTFILES} ${LIBFFI_LIB}
-	@echo LINK $@
-	@gcc -shared ${LDFLAGS} $+ -o $@
+	$(QUIETLY) echo LINK $@
+	$(QUIETLY) gcc -shared ${LDFLAGS} $+ -o $@
 
 bin/%.d: src/%.c src_gen/native.h libffi-build/include/ffi.h
-	@gcc -MM ${CPPFLAGS} $< | sed 's|\($*\)\.o[ :]*|bin/\1.o $@ : |g' > $@
+	$(QUIETLY) gcc -MM ${CPPFLAGS} $< | sed 's|\($*\)\.o[ :]*|bin/\1.o $@ : |g' > $@
 
 bin/%.o: src/%.c
-	@echo CC $@
-	@gcc -c -Wall -Werror ${CFLAGS} ${CPPFLAGS} -o $@ $<
+	$(QUIETLY) echo CC $@
+	$(QUIETLY) gcc -c -Wall -Werror ${CFLAGS} ${CPPFLAGS} -o $@ $<
 
 ${LIBFFI_LIB}: libffi-build/Makefile
-	@echo MAKE libffi
-	@$(MAKE) -C libffi-build > libffi.build.log
+	$(QUIETLY) echo MAKE libffi
+	$(QUIETLY) $(MAKE) -C libffi-build > libffi.build.log
 
 # on the Mac /bin/sh is bash which will produce output if CDPATH is set which causes
 # this command to fail, so clear it out before running the command.
 libffi-build/Makefile libffi-build/include/ffi.h: libffi-3.2.1/configure
-	@echo CONFIGURE libffi
-	@mkdir -p libffi-build
-	@unset CDPATH && cd libffi-build && CFLAGS="${CFLAGS}" ../libffi-3.2.1/configure --enable-static > ../libffi.configure.log
+	$(QUIETLY) echo CONFIGURE libffi
+	$(QUIETLY) mkdir -p libffi-build
+	$(QUIETLY) unset CDPATH && cd libffi-build && CFLAGS="${CFLAGS}" ../libffi-3.2.1/configure --enable-static > ../libffi.configure.log
 
 libffi-3.2.1/configure: ${LIBFFI_SRC}
-	@tar xzf ${LIBFFI_SRC}
+	$(QUIETLY) tar xzf ${LIBFFI_SRC}
+	$(QUIETLY) touch $@
 
 -include ${OBJECTS:%.o=bin/%.d}
 -include bin/src-gen-deps

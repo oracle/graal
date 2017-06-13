@@ -132,6 +132,15 @@ public abstract class Instrumenter {
     public abstract <T extends OutputStream> EventBinding<T> attachErrConsumer(T stream);
 
     /**
+     * Attach an {@link AllocationListener listener} to be notified about allocations of guest
+     * language values. Be sure to {@link EventBinding#dispose() dispose} the binding when it's not
+     * used any more.
+     *
+     * @since 0.27
+     */
+    public abstract <T extends AllocationListener> EventBinding<T> attachAllocationListener(AllocationEventFilter filter, T listener);
+
+    /**
      * Returns a filtered list of loaded {@link SourceSection} instances.
      *
      * @param filter criterion for inclusion

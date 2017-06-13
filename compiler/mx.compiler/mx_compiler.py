@@ -860,6 +860,7 @@ def mx_post_parse_cmd_line(opts):
     mx.add_ide_envvar('JVMCI_VERSION_CHECK')
     for dist in _suite.dists:
         dist.set_archiveparticipant(GraalArchiveParticipant(dist, isTest=dist.name.endswith('_TEST')))
+    add_bootclasspath_append(mx.distribution('sdk:GRAAL_SDK'))
     add_bootclasspath_append(mx.distribution('truffle:TRUFFLE_API'))
     global _vm_prefix
     _vm_prefix = opts.vm_prefix

@@ -18,13 +18,13 @@ Software of the Johannes Kepler University Linz.
 
 ## Using Truffle
 
-Truffle official documentation is part of [Truffle javadoc](http://graalvm.github.io/truffle/javadoc/).
+Truffle official documentation is part of [Truffle javadoc](http://graalvm.github.io/graal/truffle/javadoc/).
 It includes description of common use-cases, references to various tutorials,
 code snippets and more. In case you want to embedded Truffle into your
 application or write your own high speed language interpreter, start by
 downloading [GraalVM](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/)
 (which contains all the necessary pre-built components) and then follow to the
-[javadoc overview](http://graalvm.github.io/truffle/javadoc/).
+[javadoc overview](http://graalvm.github.io/graal/truffle/javadoc/).
 
 Truffle bits are uploaded to Maven central. You can use them from your
 `pom.xml` file as:
@@ -47,7 +47,7 @@ If you want to implement your own Truffle guest language, a good way to start is
 SimpleLanguage is well documented and designed to demonstrate most of the Truffle features.
 
 Important links to resources that are available:
-  - [Truffle javadoc overview](http://graalvm.github.io/truffle/javadoc/)
+  - [Truffle javadoc overview](http://graalvm.github.io/graal/truffle/javadoc/)
   - [SimpleLanguage example](https://github.com/graalvm/simplelanguage)
   - [Tutorials and publications on Truffle and Graal](../docs/Publications.md)
   - [Graal VM download](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index-2301583.html) on the Oracle Technology Network

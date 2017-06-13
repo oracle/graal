@@ -28,12 +28,17 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Map;
 
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.Proxy;
+
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.KeyInfo;
@@ -164,6 +169,22 @@ public final class JavaInterop {
         return convertToJavaObject(type, foreignObject);
     }
 
+    /**
+     * Returns the java host representation of a {@link TruffleObject} if it is a Java host language
+     * object. Throws {@link ClassCastException} if the provided argument is not a
+     * {@link #isJavaObject(TruffleObject) java object}.
+     *
+     * @since 0.27
+     */
+    public static Object asJavaObject(TruffleObject foreignObject) {
+        JavaObject javaObject = (JavaObject) foreignObject;
+        Object object = javaObject.obj;
+        if (object == null && javaObject.clazz != null) {
+            return javaObject.clazz;
+        }
+        return object;
+    }
+
     @CompilerDirectives.TruffleBoundary
     @SuppressWarnings("unchecked")
     private static <T> T convertToJavaObject(Class<T> type, TruffleObject foreignObject) {
@@ -196,6 +217,17 @@ public final class JavaInterop {
             return type.isInstance(javaObject.obj);
         }
         return false;
+    }
+
+    /**
+     * Returns <code>true</code> if the argument is Java host language object wrapped using Truffle
+     * interop.
+     *
+     * @see #asJavaObject(TruffleObject)
+     * @since 0.27
+     */
+    public static boolean isJavaObject(TruffleObject foreignObject) {
+        return foreignObject instanceof JavaObject;
     }
 
     /**
@@ -262,6 +294,32 @@ public final class JavaInterop {
             throw new IllegalArgumentException();
         }
         return JavaInteropReflect.asTruffleViaReflection(obj);
+    }
+
+    /**
+     * Exports a Java object for use in any {@link TruffleLanguage}.
+     *
+     * @param obj a Java object to convert into one suitable for <em>Truffle</em> languages
+     * @param languageContext LanguageContextData
+     * @return converted object
+     */
+    static TruffleObject asTruffleObject(Object obj, Object languageContext) {
+        if (obj instanceof TruffleObject) {
+            return ((TruffleObject) obj);
+        }
+        if (obj instanceof Class) {
+            return new JavaObject(null, (Class<?>) obj, languageContext);
+        }
+        if (obj == null) {
+            return JavaObject.NULL;
+        }
+        if (obj.getClass().isArray()) {
+            return new JavaObject(obj, obj.getClass(), languageContext);
+        }
+        if (TruffleOptions.AOT) {
+            throw new IllegalArgumentException();
+        }
+        return JavaInteropReflect.asTruffleViaReflection(obj, languageContext);
     }
 
     /**
@@ -345,6 +403,14 @@ public final class JavaInterop {
             throw new IllegalArgumentException();
         }
         return new JavaFunctionObject(method, implementation);
+    }
+
+    static <T> TruffleObject asTruffleFunction(Class<T> functionalType, T implementation, Object languageContext) {
+        final Method method = functionalInterfaceMethod(functionalType);
+        if (method == null) {
+            throw new IllegalArgumentException();
+        }
+        return new JavaFunctionObject(method, implementation, languageContext);
     }
 
     /**
@@ -447,7 +513,7 @@ public final class JavaInterop {
      * <code>{@link java.util.Map}.class</code> as an argument. The view includes or excludes
      * {@link KeyInfo#isInternal(int) internal} elements based on <code>includeInternal</code>
      * parameter.
-     * 
+     *
      * @param map a map obtained by
      *            {@link #asJavaObject(java.lang.Class, com.oracle.truffle.api.interop.TruffleObject)}
      * @param includeInternal <code>true</code> to include internal elements in the map,
@@ -558,6 +624,38 @@ public final class JavaInterop {
             return true;
         }
         return type.getMethods().length == 1;
+    }
+
+    static CallTarget lookupOrRegisterComputation(Object truffleObject, RootNode symbolNode, Object... keyOrKeys) {
+        EngineSupport engine = ACCESSOR.engine();
+        if (engine == null) {
+            if (symbolNode == null) {
+                return null;
+            }
+            return Truffle.getRuntime().createCallTarget(symbolNode);
+        }
+        return engine.lookupOrRegisterComputation(truffleObject, symbolNode, keyOrKeys);
+    }
+
+    static Value toHostValue(Object obj, Object languageContext) {
+        return ACCESSOR.engine().toHostValue(obj, languageContext);
+    }
+
+    static Object toGuestValue(Object obj, Object languageContext) {
+        EngineSupport engine = ACCESSOR.engine();
+        if (engine == null) {
+            assert !(obj instanceof Value || obj instanceof Proxy);
+            return asTruffleObject(obj, languageContext);
+        }
+        return engine.toGuestValue(obj, languageContext);
+    }
+
+    static Object findOriginalObject(Object truffleObject) {
+        EngineSupport engine = ACCESSOR.engine();
+        if (engine == null) {
+            return truffleObject;
+        }
+        return engine.findOriginalObject(truffleObject);
     }
 
     static final JavaInteropAccessor ACCESSOR = new JavaInteropAccessor();

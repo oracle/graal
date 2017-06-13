@@ -116,11 +116,6 @@ public class AsyncExecutorTest {
         }
 
         @Override
-        protected Object findExportedSymbol(AsyncContext context, String globalName, boolean onlyExplicit) {
-            return null;
-        }
-
-        @Override
         protected Object getLanguageGlobal(AsyncContext context) {
             return null;
         }

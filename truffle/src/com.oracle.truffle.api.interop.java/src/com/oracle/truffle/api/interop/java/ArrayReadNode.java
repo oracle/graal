@@ -61,6 +61,6 @@ abstract class ArrayReadNode extends Node {
         if (primitive.isPrimitive(val)) {
             return val;
         }
-        return JavaInterop.asTruffleObject(val);
+        return JavaInterop.toGuestValue(val, object.languageContext);
     }
 }

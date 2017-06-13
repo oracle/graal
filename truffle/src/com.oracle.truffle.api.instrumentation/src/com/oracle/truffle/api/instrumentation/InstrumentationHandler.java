@@ -44,7 +44,10 @@ import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
-import com.oracle.truffle.api.nodes.LanguageInfo;
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionType;
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.Accessor;
@@ -53,6 +56,7 @@ import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode.EventChainNode;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
@@ -83,12 +87,14 @@ final class InstrumentationHandler {
 
     private final Collection<RootNode> loadedRoots = new WeakAsyncList<>(256);
     private final Collection<RootNode> executedRoots = new WeakAsyncList<>(64);
+    private final Collection<AllocationReporter> allocationReporters = new WeakAsyncList<>(16);
 
     private final Collection<EventBinding<?>> executionBindings = new EventBindingList(8);
     private final Collection<EventBinding<?>> sourceSectionBindings = new EventBindingList(8);
     private final Collection<EventBinding<?>> sourceBindings = new EventBindingList(8);
     private final Collection<EventBinding<?>> outputStdBindings = new EventBindingList(1);
     private final Collection<EventBinding<?>> outputErrBindings = new EventBindingList(1);
+    private final Collection<EventBinding<?>> allocationBindings = new EventBindingList(2);
 
     /*
      * Fast lookup of instrumenter instances based on a key provided by the accessor.
@@ -165,8 +171,31 @@ final class InstrumentationHandler {
         visitRoot(root, new InsertWrappersVisitor(executionBindings));
     }
 
-    void addInstrument(Object vmObject, Class<?> clazz, String[] expectedServices) {
-        addInstrumenter(vmObject, new InstrumentClientInstrumenter(vmObject, clazz, out, err, in), expectedServices);
+    void initializeInstrument(Object vmObject, Class<?> instrumentClass) {
+        Env env = new Env(vmObject, out, err, in);
+        env.instrumenter = new InstrumentClientInstrumenter(env, instrumentClass);
+
+        if (TRACE) {
+            trace("Initialize instrument class %s %n", instrumentClass);
+        }
+        try {
+            env.instrumenter.instrument = (TruffleInstrument) instrumentClass.newInstance();
+        } catch (InstantiationException | IllegalAccessException e) {
+            failInstrumentInitialization(env, String.format("Failed to create new instrumenter class %s", instrumentClass.getName()), e);
+            return;
+        }
+
+        if (TRACE) {
+            trace("Initialized instrument %s class %s %n", env.instrumenter.instrument, instrumentClass);
+        }
+
+        addInstrumenter(vmObject, env.instrumenter);
+    }
+
+    void createInstrument(Object vmObject, String[] expectedServices, OptionValues optionValues) {
+        InstrumentClientInstrumenter instrumenter = ((InstrumentClientInstrumenter) instrumenterMap.get(vmObject));
+        instrumenter.env.options = optionValues;
+        instrumenter.create(expectedServices);
     }
 
     void disposeInstrumenter(Object key, boolean cleanupRequired) {
@@ -293,6 +322,24 @@ final class InstrumentationHandler {
         return binding;
     }
 
+    private <T extends AllocationListener> EventBinding<T> addAllocationBinding(EventBinding<T> binding) {
+        if (TRACE) {
+            trace("BEGIN: Adding allocation binding %s%n", binding.getElement());
+        }
+
+        this.allocationBindings.add(binding);
+        for (AllocationReporter allocationReporter : allocationReporters) {
+            if (binding.getAllocationFilter().contains(allocationReporter.language)) {
+                allocationReporter.addListener(binding.getElement());
+            }
+        }
+
+        if (TRACE) {
+            trace("END: Added allocation binding %s%n", binding.getElement());
+        }
+        return binding;
+    }
+
     /**
      * Initializes sources and sourcesList by populating them from loadedRoots.
      */
@@ -335,6 +382,13 @@ final class InstrumentationHandler {
                     AccessorInstrumentHandler.engineAccess().detachOutputConsumer(err, (OutputStream) elm);
                 } else if (outputStdBindings.contains(binding)) {
                     AccessorInstrumentHandler.engineAccess().detachOutputConsumer(out, (OutputStream) elm);
+                }
+            } else if (elm instanceof AllocationListener) {
+                AllocationListener l = (AllocationListener) elm;
+                for (AllocationReporter allocationReporter : allocationReporters) {
+                    if (binding.getAllocationFilter().contains(allocationReporter.language)) {
+                        allocationReporter.removeListener(l);
+                    }
                 }
             }
         }
@@ -416,12 +470,11 @@ final class InstrumentationHandler {
         }
     }
 
-    private void addInstrumenter(Object key, AbstractInstrumenter instrumenter, String[] expectedServices) throws AssertionError {
+    private void addInstrumenter(Object key, AbstractInstrumenter instrumenter) throws AssertionError {
         Object previousKey = instrumenterMap.putIfAbsent(key, instrumenter);
         if (previousKey != null) {
             throw new AssertionError("Instrumenter already present.");
         }
-        instrumenter.initialize(expectedServices);
     }
 
     private static Collection<EventBinding<?>> filterBindingsForInstrumenter(Collection<EventBinding<?>> bindings, AbstractInstrumenter instrumenter) {
@@ -515,6 +568,10 @@ final class InstrumentationHandler {
 
     private <T extends OutputStream> EventBinding<T> attachOutputConsumer(AbstractInstrumenter instrumenter, T stream, boolean errorOutput) {
         return addOutputBinding(new EventBinding<>(instrumenter, null, stream, false), errorOutput);
+    }
+
+    private <T extends AllocationListener> EventBinding<T> attachAllocationListener(AbstractInstrumenter instrumenter, AllocationEventFilter filter, T listener) {
+        return addAllocationBinding(new EventBinding<>(instrumenter, filter, listener, false));
     }
 
     Set<Class<?>> getProvidedTags(LanguageInfo language) {
@@ -615,6 +672,23 @@ final class InstrumentationHandler {
     private <T> T lookup(Object key, Class<T> type) {
         AbstractInstrumenter value = instrumenterMap.get(key);
         return value == null ? null : value.lookup(this, type);
+    }
+
+    private AllocationReporter getAllocationReporter(LanguageInfo info) {
+        AllocationReporter allocationReporter = new AllocationReporter(info);
+        allocationReporters.add(allocationReporter);
+        for (EventBinding<?> binding : allocationBindings) {
+            if (binding.getAllocationFilter().contains(info)) {
+                allocationReporter.addListener((AllocationListener) binding.getElement());
+            }
+        }
+        return allocationReporter;
+    }
+
+    static void failInstrumentInitialization(Env env, String message, Throwable t) {
+        Exception exception = new Exception(message, t);
+        PrintStream stream = new PrintStream(env.err());
+        exception.printStackTrace(stream);
     }
 
     private abstract static class AbstractNodeVisitor implements NodeVisitor {
@@ -813,9 +887,9 @@ final class InstrumentationHandler {
         private TruffleInstrument instrument;
         private final Env env;
 
-        InstrumentClientInstrumenter(Object vm, Class<?> instrumentClass, OutputStream out, OutputStream err, InputStream in) {
+        InstrumentClientInstrumenter(Env env, Class<?> instrumentClass) {
             this.instrumentClass = instrumentClass;
-            this.env = new Env(vm, this, out, err, in);
+            this.env = env;
         }
 
         @Override
@@ -845,17 +919,9 @@ final class InstrumentationHandler {
             return env;
         }
 
-        @Override
-        void initialize(String[] expectedServices) {
+        void create(String[] expectedServices) {
             if (TRACE) {
-                trace("Initialize instrument %s class %s %n", instrument, instrumentClass);
-            }
-            assert instrument == null;
-            try {
-                this.instrument = (TruffleInstrument) instrumentClass.newInstance();
-            } catch (InstantiationException | IllegalAccessException e) {
-                failInstrumentInitialization(String.format("Failed to create new instrumenter class %s", instrumentClass.getName()), e);
-                return;
+                trace("Create instrument %s class %s %n", instrument, instrumentClass);
             }
             try {
                 services = env.onCreate(instrument);
@@ -863,11 +929,11 @@ final class InstrumentationHandler {
                     checkServices(expectedServices);
                 }
             } catch (Throwable e) {
-                failInstrumentInitialization(String.format("Failed calling onCreate of instrument class %s", instrumentClass.getName()), e);
+                failInstrumentInitialization(env, String.format("Failed calling onCreate of instrument class %s", instrumentClass.getName()), e);
                 return;
             }
             if (TRACE) {
-                trace("Initialized instrument %s class %s %n", instrument, instrumentClass);
+                trace("Created instrument %s class %s %n", instrument, instrumentClass);
             }
         }
 
@@ -878,7 +944,7 @@ final class InstrumentationHandler {
                         continue LOOP;
                     }
                 }
-                failInstrumentInitialization(String.format("%s declares service %s but doesn't register it", instrumentClass.getName(), name), null);
+                failInstrumentInitialization(env, String.format("%s declares service %s but doesn't register it", instrumentClass.getName(), name), null);
             }
             return true;
         }
@@ -899,12 +965,6 @@ final class InstrumentationHandler {
                 }
             }
             return false;
-        }
-
-        private void failInstrumentInitialization(String message, Throwable t) {
-            Exception exception = new Exception(message, t);
-            PrintStream stream = new PrintStream(env.err());
-            exception.printStackTrace(stream);
         }
 
         boolean isInitialized() {
@@ -999,11 +1059,6 @@ final class InstrumentationHandler {
         }
 
         @Override
-        void initialize(String[] expectedServices) {
-            // nothing to do
-        }
-
-        @Override
         void dispose() {
             // nothing to do
         }
@@ -1020,8 +1075,6 @@ final class InstrumentationHandler {
      * privileges may vary.
      */
     abstract class AbstractInstrumenter extends Instrumenter {
-
-        abstract void initialize(String[] expectedServices);
 
         abstract void dispose();
 
@@ -1086,6 +1139,11 @@ final class InstrumentationHandler {
         public <T extends LoadSourceSectionListener> EventBinding<T> attachLoadSourceSectionListener(SourceSectionFilter filter, T listener, boolean notifyLoaded) {
             verifyFilter(filter);
             return InstrumentationHandler.this.attachSourceSectionListener(this, filter, listener, notifyLoaded);
+        }
+
+        @Override
+        public <T extends AllocationListener> EventBinding<T> attachAllocationListener(AllocationEventFilter filter, T listener) {
+            return InstrumentationHandler.this.attachAllocationListener(this, filter, listener);
         }
 
         @Override
@@ -1328,9 +1386,17 @@ final class InstrumentationHandler {
             return ACCESSOR.engineSupport();
         }
 
+        static Accessor.InteropSupport interopAccess() {
+            return ACCESSOR.interopSupport();
+        }
+
         @Override
         protected InstrumentSupport instrumentSupport() {
             return new InstrumentImpl();
+        }
+
+        protected boolean isTruffleObject(Object value) {
+            return interopSupport().isTruffleObject(value);
         }
 
         static final class InstrumentImpl extends InstrumentSupport {
@@ -1341,8 +1407,37 @@ final class InstrumentationHandler {
             }
 
             @Override
-            public void addInstrument(Object instrumentationHandler, Object key, Class<?> instrumentClass, String[] expectedServices) {
-                ((InstrumentationHandler) instrumentationHandler).addInstrument(key, instrumentClass, expectedServices);
+            public void initializeInstrument(Object instrumentationHandler, Object key, Class<?> instrumentClass) {
+                ((InstrumentationHandler) instrumentationHandler).initializeInstrument(key, instrumentClass);
+            }
+
+            @Override
+            public void createInstrument(Object instrumentationHandler, Object key, String[] expectedServices, OptionValues options) {
+                ((InstrumentationHandler) instrumentationHandler).createInstrument(key, expectedServices, options);
+            }
+
+            @Override
+            public List<OptionDescriptor> describeOptions(Object instrumentationHandler, Object key, String requiredGroup) {
+                InstrumentClientInstrumenter instrumenter = (InstrumentClientInstrumenter) ((InstrumentationHandler) instrumentationHandler).instrumenterMap.get(key);
+                List<OptionDescriptor> descriptors = instrumenter.instrument.describeOptions();
+                if (descriptors == null) {
+                    descriptors = Collections.emptyList();
+                }
+                String groupPlusDot = requiredGroup + ".";
+                for (OptionDescriptor descriptor : descriptors) {
+                    if (!descriptor.getName().startsWith(groupPlusDot)) {
+                        throw new IllegalArgumentException(String.format("Illegal option prefix in name '%s' specified for option described by instrument '%s'. " +
+                                        "The option prefix must match the id of the instrument '%s'.",
+                                        descriptor.getName(), instrumenter.instrument.getClass().getName(), requiredGroup));
+                    }
+                    OptionType<?> type = descriptor.getKey().getType();
+                    if (type != OptionType.defaultType(type.getDefaultValue())) {
+                        throw new IllegalArgumentException(
+                                        String.format("Invalid option type used for option key %s. " +
+                                                        "Only default option types are supported for Truffle languages.", descriptor.getName()));
+                    }
+                }
+                return descriptors;
             }
 
             @Override
@@ -1355,6 +1450,8 @@ final class InstrumentationHandler {
                 InstrumentationHandler instrumentationHandler = (InstrumentationHandler) engineAccess().getInstrumentationHandler(languageShared);
                 Instrumenter instrumenter = instrumentationHandler.forLanguage(info);
                 collectTo.add(instrumenter);
+                AllocationReporter allocationReporter = instrumentationHandler.getAllocationReporter(info);
+                collectTo.add(allocationReporter);
             }
 
             @Override
@@ -1390,6 +1487,7 @@ final class InstrumentationHandler {
                 }
                 return (InstrumentationHandler) engineAccess().getInstrumentationHandler(languageShared);
             }
+
         }
     }
 

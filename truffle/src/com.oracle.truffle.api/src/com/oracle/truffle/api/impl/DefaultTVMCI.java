@@ -41,4 +41,10 @@ final class DefaultTVMCI extends TVMCI {
         super.onLoad(callTarget.getRootNode());
     }
 
+    @Override
+    protected boolean isGuestCallStackFrame(StackTraceElement e) {
+        String methodName = e.getMethodName();
+        return (methodName.startsWith(DefaultCallTarget.CALL_BOUNDARY_METHOD_PREFIX)) && e.getClassName().equals(DefaultCallTarget.class.getName());
+    }
+
 }
