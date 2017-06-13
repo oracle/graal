@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.source.impl;
 
+import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.ServiceLoader;
@@ -31,8 +32,43 @@ import java.util.ServiceLoader;
 public abstract class SourceAccessor {
     private static final SourceAccessor ACCESSOR;
     static {
-        final Iterator<SourceAccessor> it = ServiceLoader.load(SourceAccessor.class).iterator();
-        ACCESSOR = it.hasNext() ? it.next() : null;
+        SourceAccessor accessor = null;
+
+        if (accessor == null) {
+            boolean jdk8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
+            if (!jdk8OrEarlier) {
+                // As of JDK9, the JVMCI Services class should only be used for service
+                // types
+                // defined by JVMCI. Other services types should use ServiceLoader directly.
+                Iterator<SourceAccessor> providers = ServiceLoader.load(SourceAccessor.class).iterator();
+                if (providers.hasNext()) {
+                    accessor = providers.next();
+                    if (providers.hasNext()) {
+                        throw new InternalError(String.format("Multiple %s providers found", SourceAccessor.class.getName()));
+                    }
+                }
+            } else {
+                Class<?> servicesClass = null;
+                try {
+                    servicesClass = Class.forName("jdk.vm.ci.services.Services");
+                } catch (ClassNotFoundException e) {
+                }
+                if (servicesClass != null) {
+                    try {
+                        Method m = servicesClass.getDeclaredMethod("loadSingle", Class.class, boolean.class);
+                        accessor = (SourceAccessor) m.invoke(null, SourceAccessor.class, false);
+                    } catch (Throwable e) {
+                        // Fail fast for other errors
+                        throw (InternalError) new InternalError().initCause(e);
+                    }
+                }
+            }
+        }
+        if (accessor == null) {
+            Iterator<SourceAccessor> it = ServiceLoader.load(SourceAccessor.class).iterator();
+            accessor = it.hasNext() ? it.next() : null;
+        }
+        ACCESSOR = accessor;
     }
 
     protected SourceAccessor() {

@@ -37,6 +37,8 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.vm.LanguageCache.LoadedLanguage;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
@@ -61,6 +63,16 @@ class PolyglotLanguageImpl extends AbstractLanguageImpl implements VMObject {
         this.cache = cache;
         this.index = index;
         this.host = host;
+    }
+
+    Object getCurrentContext() {
+        Env env = PolyglotImpl.requireContext().contexts[index].env;
+        if (env == null) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException(
+                            "The language context is not yet initialized or already disposed. ");
+        }
+        return LANGUAGE.getContext(env);
     }
 
     @Override
