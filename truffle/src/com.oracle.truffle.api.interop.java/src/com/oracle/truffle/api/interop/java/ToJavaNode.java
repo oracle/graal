@@ -75,7 +75,7 @@ abstract class ToJavaNode extends Node {
                 return convertedValue;
             }
         }
-        if (languageContext != null && (targetType.clazz == Object.class || targetType.clazz == Value.class)) {
+        if (languageContext != null && targetType.clazz == Value.class) {
             convertedValue = value instanceof Value ? value : JavaInterop.toHostValue(value, languageContext);
         } else if (JavaObject.isJavaInstance(targetType.clazz, value)) {
             convertedValue = JavaObject.valueOf(value);
