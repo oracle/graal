@@ -24,6 +24,7 @@ package com.oracle.truffle.dsl.processor.interop;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.util.Collection;
 import java.util.List;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -37,7 +38,7 @@ import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
-public final class ExecuteGenerator extends MessageGenerator {
+final class ExecuteGenerator extends MessageGenerator {
 
     private final int numberOfArguments;
     // Execute: TruffleObject receiver, Object[] args
@@ -46,7 +47,7 @@ public final class ExecuteGenerator extends MessageGenerator {
     private final String targetableExecuteNode;
     private final String executeRootNode;
 
-    public ExecuteGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
+    ExecuteGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
                     ForeignAccessFactoryGenerator containingForeignAccessFactory) {
         super(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
         this.targetableExecuteNode = (new StringBuilder(messageName)).replace(0, 1, messageName.substring(0, 1).toUpperCase()).append("Node").insert(0, "Targetable").toString();
@@ -63,9 +64,9 @@ public final class ExecuteGenerator extends MessageGenerator {
     }
 
     @Override
-    void appendImports(Writer w) throws IOException {
-        super.appendImports(w);
-        w.append("import java.util.List;").append("\n");
+    public void addImports(Collection<String> imports) {
+        super.addImports(imports);
+        imports.add("java.util.List");
     }
 
     @Override
@@ -80,39 +81,39 @@ public final class ExecuteGenerator extends MessageGenerator {
 
     @Override
     void appendRootNode(Writer w) throws IOException {
-        w.append("    private static final class ").append(executeRootNode).append(" extends RootNode {\n");
-        w.append("        protected ").append(executeRootNode).append("() {\n");
-        w.append("            super(null);\n");
-        w.append("        }\n");
+        w.append(indent).append("    private static final class ").append(executeRootNode).append(" extends RootNode {\n");
+        w.append(indent).append("        protected ").append(executeRootNode).append("() {\n");
+        w.append(indent).append("            super(null);\n");
+        w.append(indent).append("        }\n");
         w.append("\n");
-        w.append("        @Child private ").append(clazzName).append(" node = ").append(packageName).append(".").append(clazzName).append("NodeGen.create();");
+        w.append(indent).append("        @Child private ").append(clazzName).append(" node = ").append(getGeneratedDSLNodeQualifiedName()).append(".create();");
         w.append("\n");
-        w.append("        @Override\n");
-        w.append("        public Object execute(VirtualFrame frame) {\n");
-        w.append("            try {\n");
-        w.append("              Object receiver = ForeignAccess.getReceiver(frame);\n");
+        w.append(indent).append("        @Override\n");
+        w.append(indent).append("        public Object execute(VirtualFrame frame) {\n");
+        w.append(indent).append("            try {\n");
+        w.append(indent).append("              Object receiver = ForeignAccess.getReceiver(frame);\n");
         if (Message.createInvoke(0).toString().equalsIgnoreCase(messageName)) {
-            w.append("              List<Object> arguments = ForeignAccess.getArguments(frame);\n");
-            w.append("              Object identifier = arguments.get(0);\n");
-            w.append("              Object[] args = new Object[arguments.size() - 1];\n");
-            w.append("              for (int i = 0; i < arguments.size() - 1; i++) {\n");
-            w.append("                args[i] = arguments.get(i + 1);\n");
-            w.append("              }\n");
-            w.append("              return node.executeWithTarget(frame, receiver, identifier, args);\n");
+            w.append(indent).append("              List<Object> arguments = ForeignAccess.getArguments(frame);\n");
+            w.append(indent).append("              Object identifier = arguments.get(0);\n");
+            w.append(indent).append("              Object[] args = new Object[arguments.size() - 1];\n");
+            w.append(indent).append("              for (int i = 0; i < arguments.size() - 1; i++) {\n");
+            w.append(indent).append("                args[i] = arguments.get(i + 1);\n");
+            w.append(indent).append("              }\n");
+            w.append(indent).append("              return node.executeWithTarget(frame, receiver, identifier, args);\n");
         } else {
-            w.append("              List<Object> arguments = ForeignAccess.getArguments(frame);\n");
-            w.append("              Object[] args = new Object[arguments.size()];\n");
-            w.append("              for (int i = 0; i < arguments.size(); i++) {\n");
-            w.append("                args[i] = arguments.get(i);\n");
-            w.append("              }\n");
-            w.append("              return node.executeWithTarget(frame, receiver, args);\n");
+            w.append(indent).append("              List<Object> arguments = ForeignAccess.getArguments(frame);\n");
+            w.append(indent).append("              Object[] args = new Object[arguments.size()];\n");
+            w.append(indent).append("              for (int i = 0; i < arguments.size(); i++) {\n");
+            w.append(indent).append("                args[i] = arguments.get(i);\n");
+            w.append(indent).append("              }\n");
+            w.append(indent).append("              return node.executeWithTarget(frame, receiver, args);\n");
         }
-        w.append("            } catch (UnsupportedSpecializationException e) {\n");
+        w.append(indent).append("            } catch (UnsupportedSpecializationException e) {\n");
         appendHandleUnsupportedTypeException(w);
-        w.append("            }\n");
-        w.append("        }\n");
+        w.append(indent).append("            }\n");
+        w.append(indent).append("        }\n");
         w.append("\n");
-        w.append("    }\n");
+        w.append(indent).append("    }\n");
     }
 
     @Override

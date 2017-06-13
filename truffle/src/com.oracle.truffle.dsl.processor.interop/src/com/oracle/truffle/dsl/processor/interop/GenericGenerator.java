@@ -33,12 +33,12 @@ import javax.lang.model.element.VariableElement;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 
-public final class GenericGenerator extends MessageGenerator {
+final class GenericGenerator extends MessageGenerator {
 
     private final String targetableExecuteNode;
     private final String executeRootNode;
 
-    public GenericGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
+    GenericGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
                     ForeignAccessFactoryGenerator containingForeignAccessFactory) {
         super(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
         String mName = messageName.substring(messageName.lastIndexOf('.') + 1);
@@ -63,17 +63,17 @@ public final class GenericGenerator extends MessageGenerator {
 
     @Override
     void appendRootNode(Writer w) throws IOException {
-        w.append("    private static final class ").append(executeRootNode).append(" extends RootNode {\n");
-        w.append("        protected ").append(executeRootNode).append("() {\n");
-        w.append("            super(null);\n");
-        w.append("        }\n");
+        w.append(indent).append("    private static final class ").append(executeRootNode).append(" extends RootNode {\n");
+        w.append(indent).append("        protected ").append(executeRootNode).append("() {\n");
+        w.append(indent).append("            super(null);\n");
+        w.append(indent).append("        }\n");
         w.append("\n");
-        w.append("        @Child private ").append(clazzName).append(" node = ").append(packageName).append(".").append(clazzName).append("NodeGen.create();");
+        w.append(indent).append("        @Child private ").append(clazzName).append(" node = ").append(getGeneratedDSLNodeQualifiedName()).append(".create();");
         w.append("\n");
-        w.append("        @Override\n");
-        w.append("        public Object execute(VirtualFrame frame) {\n");
-        w.append("            try {\n");
-        w.append("              Object receiver = ForeignAccess.getReceiver(frame);\n");
+        w.append(indent).append("        @Override\n");
+        w.append(indent).append("        public Object execute(VirtualFrame frame) {\n");
+        w.append(indent).append("            try {\n");
+        w.append(indent).append("              Object receiver = ForeignAccess.getReceiver(frame);\n");
         boolean listGenerated = false;
         for (int i = 0; i < getParameterCount() - 1; i++) {
             if (!listGenerated) {
@@ -81,21 +81,21 @@ public final class GenericGenerator extends MessageGenerator {
                 listGenerated = true;
             }
             String index = String.valueOf(i);
-            w.append("              Object arg").append(index).append(" = arguments.get(").append(index).append(");\n");
+            w.append(indent).append("              Object arg").append(index).append(" = arguments.get(").append(index).append(");\n");
         }
-        w.append("              return node.executeWithTarget(frame, receiver");
+        w.append(indent).append("              return node.executeWithTarget(frame, receiver");
         for (int i = 0; i < getParameterCount() - 1; i++) {
             String index = String.valueOf(i);
             w.append(", ").append("arg").append(index);
         }
         w.append(");\n");
 
-        w.append("            } catch (UnsupportedSpecializationException e) {\n");
+        w.append(indent).append("            } catch (UnsupportedSpecializationException e) {\n");
         appendHandleUnsupportedTypeException(w);
-        w.append("            }\n");
-        w.append("        }\n");
+        w.append(indent).append("            }\n");
+        w.append(indent).append("        }\n");
         w.append("\n");
-        w.append("    }\n");
+        w.append(indent).append("    }\n");
     }
 
     @Override

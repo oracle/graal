@@ -35,7 +35,7 @@ import com.oracle.truffle.api.nodes.Node;
 class VisibilityTestObjectMR4 {
 
     @Resolve(message = "READ")
-    abstract static class VisibilityTestReadNode4 extends Node {
+    abstract static class VisibilityTestReadNode extends Node {
 
         protected Object access(VirtualFrame frame, VisibilityTestObject receiver, Object name) {
             return 0;
@@ -43,7 +43,7 @@ class VisibilityTestObjectMR4 {
     }
 
     @CanResolve
-    abstract static class VisibilityTestLanguageCheck4 extends Node {
+    abstract static class VisibilityTestLanguageCheck extends Node {
 
         protected boolean test(VirtualFrame frame, TruffleObject receiver) {
             return receiver instanceof VisibilityTestObject;
