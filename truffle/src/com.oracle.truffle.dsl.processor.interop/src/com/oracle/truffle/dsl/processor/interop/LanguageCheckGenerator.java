@@ -160,11 +160,6 @@ final class LanguageCheckGenerator extends InteropNodeGenerator {
     }
 
     void appendRootNodeFactory(Writer w) throws IOException {
-        w.append(indent).append("    @Deprecated\n");
-        w.append(indent).append("    @SuppressWarnings(\"unused\")\n");
-        w.append(indent).append("    public static RootNode createRoot(Class<? extends TruffleLanguage<?>> language) {\n");
-        w.append(indent).append("        return createRoot();\n");
-        w.append(indent).append("    }\n");
         w.append(indent).append("    public static RootNode createRoot() {\n");
         w.append(indent).append("        return new LanguageCheckRootNode();\n");
         w.append(indent).append("    }\n");

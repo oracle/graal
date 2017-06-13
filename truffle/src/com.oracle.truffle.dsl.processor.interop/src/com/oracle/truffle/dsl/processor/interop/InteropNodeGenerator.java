@@ -51,7 +51,6 @@ abstract class InteropNodeGenerator {
     }
 
     public void addImports(Collection<String> imports) {
-        imports.add("com.oracle.truffle.api.TruffleLanguage");
         imports.add("com.oracle.truffle.api.dsl.Specialization");
         imports.add("com.oracle.truffle.api.dsl.UnsupportedSpecializationException");
         imports.add("com.oracle.truffle.api.frame.VirtualFrame");
