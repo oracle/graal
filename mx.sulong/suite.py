@@ -8,7 +8,7 @@ suite = {
       {
         "name" : "truffle",
         "subdir" : True,
-        "version" : "7fa5f2ee3380e78ef4027e71755035587914d796",
+        "version" : "5272b4e994d640183c52d802e17ce891dc972293",
         "urls" : [
           {"url" : "https://github.com/graalvm/graal", "kind" : "git"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -88,7 +88,6 @@ suite = {
       "subDir" : "projects",
       "native" : True,
       "vpath" : True,
-      "class" : "SulongNativeProject",
       "license" : "BSD-new",
     },
 
@@ -252,11 +251,26 @@ suite = {
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
     },
-    "com.oracle.truffle.llvm.libraries" : {
+    "com.oracle.truffle.llvm.libraries.bitcode" : {
       "subDir" : "projects",
       "native" : True,
       "vpath" : True,
-      "class" : "SulongNativeProject",
+      "results" : [
+        "bin/libsulong.bc",
+      ],
+      "license" : "BSD-new",
+    },
+    "com.oracle.truffle.llvm.libraries.native" : {
+      "subDir" : "projects",
+      "native" : True,
+      "vpath" : True,
+      "results" : [
+        "bin/<lib:sulong>",
+      ],
+      "buildEnv" : {
+        "LIBSULONG" : "<lib:sulong>",
+        "OS" : "<os>",
+      },
       "license" : "BSD-new",
     },
   },
@@ -272,7 +286,20 @@ suite = {
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_NFI",
         "SULONG_OPTIONS",
-      ]
+      ],
+      "license" : "BSD-new",
+    },
+
+    "SULONG_LIBS" : {
+      "native" : True,
+      "relpath" : False,
+      "platformDependent" : True,
+      "output" : "mxbuild/sulong-libs",
+      "dependencies" : [
+        "com.oracle.truffle.llvm.libraries.bitcode",
+        "com.oracle.truffle.llvm.libraries.native",
+      ],
+      "license" : "BSD-new",
     },
 
     "SULONG_OPTIONS" : {
@@ -281,6 +308,7 @@ suite = {
       "javaCompliance" : "1.8",
       "dependencies" : ["com.oracle.truffle.llvm.option.processor"],
       "description" : "The Sulong Option Processor generates an option class declared using options annotations.",
+      "license" : "BSD-new",
     },
 
     "SULONG_TEST" : {
@@ -300,7 +328,8 @@ suite = {
         "truffle:TRUFFLE_TCK",
         "sulong:SULONG",
         "SULONG_TEST_NATIVE",
-      ]
+      ],
+      "license" : "BSD-new",
     },
 
     "SULONG_TEST_NATIVE" : {
@@ -310,6 +339,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.llvm.pipe.native",
       ],
+      "license" : "BSD-new",
     },
   }
 }

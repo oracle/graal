@@ -6,6 +6,7 @@ import subprocess
 
 import mx
 import mx_findbugs
+import mx_subst
 import re
 import argparse
 import mx_benchmark
@@ -21,7 +22,7 @@ os.environ["LC_NUMERIC"] = "C"  # required for some testcases
 _suite = mx.suite('sulong')
 _mx = join(_suite.dir, "mx.sulong/")
 _root = join(_suite.dir, "projects/")
-_libPath = join(_root, "com.oracle.truffle.llvm.libraries/src")
+_libPath = join(_root, "com.oracle.truffle.llvm.libraries.bitcode/src")
 _testDir = join(_suite.dir, "tests/")
 _toolDir = join(_suite.dir, "cache/tools/")
 _clangPath = _toolDir + 'llvm/bin/clang'
@@ -134,11 +135,6 @@ def travis2(args=None):
         if t: mx_testsuites.runSuite(['nwcc'])
     with Task('TestGCCSuiteCompile', tasks) as t:
         if t: mx_testsuites.runSuite(['parserTorture'])
-
-def pullTools(args=None):
-    """pulls the LLVM and Dragonegg tools"""
-    pullLLVMBinaries()
-    pullInstallDragonEgg()
 
 # platform dependent
 def pullLLVMBinaries(args=None):
@@ -253,7 +249,6 @@ def pullInstallDragonEgg(args=None):
     os.environ['GCC'] = getGCC()
     os.environ['CXX'] = getGPP()
     os.environ['CC'] = getGCC()
-    pullLLVMBinaries()
     os.environ['LLVM_CONFIG'] = findLLVMProgram('llvm-config', ['3.2', '3.3'])
     mx.log(os.environ['LLVM_CONFIG'])
     compileCommand = ['make']
@@ -392,12 +387,12 @@ def compileWithEcjStrict(args=None):
     else:
         exit('JDT environment variable not set. Cannot execute BuildJavaWithEcj task.')
 
-def getCommonOptions(lib_args=None, versionFolder=None):
+def getCommonOptions(lib_args=None):
     return [
         '-Dgraal.TruffleCompilationExceptionsArePrinted=true',
         '-Dgraal.ExitVMOnException=true',
         getSearchPathOption(lib_args)
-    ] + getBitcodeLibrariesOption(versionFolder)
+    ] + getBitcodeLibrariesOption()
 
 def getSearchPathOption(lib_args=None):
     osStr = mx.get_os()
@@ -412,14 +407,7 @@ def getSearchPathOption(lib_args=None):
         if osStr == 'darwin':
             lib_args = [] # on darwin, lgmp and lgfortran are not available by default.
 
-    lib_names = []
-    libpath = join(mx.project('com.oracle.truffle.llvm.libraries').getOutput(), 'native')
-    for path, _, files in os.walk(libpath):
-        for f in files:
-            if f.endswith('.so') and osStr == 'linux':
-                lib_names.append(join(path, f))
-            if f.endswith('.dylib') and osStr == 'darwin':
-                lib_names.append(join(path, f))
+    lib_names = [mx_subst.path_substitutions.substitute('<path:SULONG_LIBS>/<lib:sulong>')]
 
     lib_aliases = {
         '-lc': ['libc.so.6', 'libc.dylib'],
@@ -444,8 +432,8 @@ def getSearchPathOption(lib_args=None):
 
     return '-Dsulong.DynamicNativeLibraryPath=' + ':'.join(lib_names)
 
-def getCommonUnitTestOptions(versionFolder=None):
-    return getCommonOptions(versionFolder=versionFolder) + ['-Xss56m', '-Xms2g', '-Xmx2g', getLLVMRootOption(), '-ea', '-esa']
+def getCommonUnitTestOptions():
+    return getCommonOptions() + ['-Xss56m', '-Xms2g', '-Xmx2g', getLLVMRootOption(), '-ea', '-esa']
 
 # PE does not work yet for all test cases
 def compilationSucceedsOption():
@@ -558,49 +546,12 @@ def findInstalledProgram(program, supportedVersions, testSupportedVersion):
     return None
 
 
-class SulongNativeProject(mx.NativeProject):
-    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
-        d = join(suite.dir, subDir, name)
-        mx.NativeProject.__init__(self, suite, name, subDir, [], deps, workingSets, results, output, d)
-
-    def getBuildEnv(self, replaceVar=mx._replacePathVar):
-        ret = super(SulongNativeProject, self).getBuildEnv(replaceVar=replaceVar)
-        if os.environ.get('SULONG_VERSION') == '3.2':
-            exportMxClang32(ret)
-        elif os.environ.get('SULONG_VERSION') == '3.8':
-            exportMxClang38(ret)
-        else:
-            exportMxClang32(ret)
-            exportMxClang38(ret)
-        return ret
-
-def exportMxClang32(ret):
-    exp = findLLVMProgram('clang', ['3.2', '3.3'])
-    if not exp is None:
-        ret['MX_CLANG_V32'] = exp
-    exp = findLLVMProgram('opt', ['3.2', '3.3'])
-    if not exp is None:
-        ret['MX_OPT_V32'] = exp
-
-def exportMxClang38(ret):
-    exp = findLLVMProgram('clang', ['3.8', '3.9', '4.0'])
-    if not exp is None:
-        ret['MX_CLANG_V38'] = exp
-    exp = findLLVMProgram('opt', ['3.8', '3.9', '4.0'])
-    if not exp is None:
-        ret['MX_OPT_V38'] = exp
-
 def findLLVMProgram(llvmProgram, version=None):
     """tries to find a supported version of an installed LLVM program; if the program is not found it downloads the LLVM binaries and checks there"""
     installedProgram = findInstalledLLVMProgram(llvmProgram, version)
 
     if installedProgram is None:
-        if not os.path.exists(_clangPath):
-            pullLLVMBinaries()
-        programPath = _toolDir + 'llvm/bin/' + llvmProgram
-        if not os.path.exists(programPath):
-            exit(llvmProgram + ' is not a supported LLVM program!')
-        return programPath
+        exit('found no supported version of ' + llvmProgram)
     else:
         return installedProgram
 
@@ -775,17 +726,11 @@ def mdlCheck(args=None):
     if error:
         exit(-1)
 
-def getBitcodeLibrariesOption(versionFolder=None):
-    libraries = []
+def getBitcodeLibrariesOption():
     if 'SULONG_NO_LIBRARY' not in os.environ:
-        libpath = join(mx.project('com.oracle.truffle.llvm.libraries').getOutput(), 'bin')
-        if not versionFolder is None:
-            libpath = join(libpath, versionFolder)
-        for path, _, files in os.walk(libpath):
-            for f in files:
-                if f.endswith('.bc'):
-                    libraries.append(join(path, f))
-    return ['-Dsulong.DynamicBitcodeLibraries=' + ':'.join(libraries)] if libraries else []
+        return [mx_subst.path_substitutions.substitute('-Dsulong.DynamicBitcodeLibraries=<path:SULONG_LIBS>/libsulong.bc')]
+    else:
+        return []
 
 def clangformatcheck(args=None):
     """ Performs a format check on the include/truffle.h file """
@@ -856,8 +801,6 @@ mx.update_commands(_suite, {
     'su-suite' : [mx_testsuites.runSuite, ''],
     'su-clang' : [compileWithClang, ''],
     'su-options' : [printOptions, ''],
-    'su-pullllvmbinaries' : [pullLLVMBinaries, ''],
-    'su-pulltools' : [pullTools, ''],
     'su-pulldragonegg' : [pullInstallDragonEgg, ''],
     'su-run' : [runLLVM, ''],
     'su-clang++' : [compileWithClangPP, ''],

@@ -36,7 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
 - sulongeh.cpp, which depends on libc++abi (located at
-projects/com.oracle.truffle.llvm.libraries/lib), is licensed as follows:
+projects/com.oracle.truffle.llvm.libraries.native/src), is licensed as follows:
 
 """
 
