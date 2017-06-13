@@ -24,7 +24,7 @@ package org.graalvm.compiler.truffle.nodes;
 
 import java.util.Objects;
 
-import org.graalvm.api.word.LocationIdentity;
+import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;

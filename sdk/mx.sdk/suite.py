@@ -33,7 +33,7 @@ suite = {
       "exports" : [
         "<package-info>",  # exports all packages containing package-info.java
       ],
-      "checkstyle" : "org.graalvm.api.word",
+      "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "1.8",
       "workingSets" : "API,SDK",
     },
@@ -48,15 +48,16 @@ suite = {
         "org.graalvm.polyglot",
         "org.graalvm.polyglot.proxy",
       ],
-      "checkstyle" : "org.graalvm.api.word",
+      "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "1.8",
       "workingSets" : "API,SDK",
     },
-    "org.graalvm.api.word" : {
+
+    "org.graalvm.word" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [],
-      "checkstyle" : "org.graalvm.api.word",
+      "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "1.8",
       "workingSets" : "API,SDK",
     },
@@ -80,7 +81,7 @@ suite = {
     "WORD_API" : {
       "subDir" : "src",
       "dependencies" : [
-        "org.graalvm.api.word",
+        "org.graalvm.word",
       ],
       "distDependencies" : [
       ],
