@@ -19,6 +19,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * [Guest language stack traces](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/TruffleStackTraceElement.html) are now collected automatically for each exception thrown and passed through a CallTarget. 
 * Added RootNode.isInternal to indicate if a RootNode is considered internal and should not be shown to the guest language programmer.
 * Added TruffleLanguage.lookupSymbol to be implemented by languages to support language agnostic lookups in the top-most scope.
+* Added TruffleLanguage.Env.getApplicationArguments() to access application arguments specified by the user.
 
 ## Version 0.26
 18-May-2017

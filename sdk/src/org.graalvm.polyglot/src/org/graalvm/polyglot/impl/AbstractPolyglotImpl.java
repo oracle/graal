@@ -236,7 +236,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Language detectLanguage(Object sourceImpls);
 
-        public abstract PolyglotContext createPolyglotContext(OutputStream out, OutputStream err, InputStream in, Map<String, String> options);
+        public abstract PolyglotContext createPolyglotContext(OutputStream out, OutputStream err, InputStream in, Map<String, String[]> arguments, Map<String, String> options);
 
         public abstract OptionDescriptors getOptions();
 
@@ -324,7 +324,7 @@ public abstract class AbstractPolyglotImpl {
             Objects.requireNonNull(engineImpl);
         }
 
-        public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, Map<String, String> options);
+        public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, Map<String, String> options, Map<String, String[]> arguments);
 
         public abstract String getName();
 
