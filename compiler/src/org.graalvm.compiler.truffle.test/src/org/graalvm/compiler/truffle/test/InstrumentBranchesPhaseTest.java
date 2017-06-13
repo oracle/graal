@@ -110,8 +110,8 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
         Assert.assertTrue(target.isValid());
         target.call();
         String stackOutput = instrumentation.accessTableToList(getOptions()).get(0);
-        Assert.assertTrue(stackOutput.contains("org.graalvm.compiler.truffle.test.InstrumentBranchesPhaseTest$SimpleIfTestNode.execute(InstrumentBranchesPhaseTest.java"));
-        Assert.assertTrue(stackOutput.contains("[bci: 4]\n[0] state = ELSE(if=0#, else=1#)"));
+        Assert.assertTrue(stackOutput, stackOutput.contains("org.graalvm.compiler.truffle.test.InstrumentBranchesPhaseTest$SimpleIfTestNode.execute(InstrumentBranchesPhaseTest.java"));
+        Assert.assertTrue(stackOutput, stackOutput.contains("[bci: 4]\n[0] state = ELSE(if=0#, else=1#)"));
         String histogramOutput = instrumentation.accessTableToHistogram().get(0);
         Assert.assertEquals("  0: ********************************************************************************", histogramOutput);
     }
@@ -128,10 +128,10 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
         target.call();
         target.call();
         String stackOutput1 = instrumentation.accessTableToList(getOptions()).get(0);
-        Assert.assertTrue(stackOutput1.contains("org.graalvm.compiler.truffle.test.InstrumentBranchesPhaseTest$TwoIfsTestNode.execute(InstrumentBranchesPhaseTest.java"));
-        Assert.assertTrue(stackOutput1.contains("[bci: 4]\n[1] state = ELSE(if=0#, else=2#)"));
+        Assert.assertTrue(stackOutput1, stackOutput1.contains("org.graalvm.compiler.truffle.test.InstrumentBranchesPhaseTest$TwoIfsTestNode.execute(InstrumentBranchesPhaseTest.java"));
+        Assert.assertTrue(stackOutput1, stackOutput1.contains("[bci: 4]\n[1] state = ELSE(if=0#, else=2#)"));
         String stackOutput2 = instrumentation.accessTableToList(getOptions()).get(1);
-        Assert.assertTrue(stackOutput2.contains("org.graalvm.compiler.truffle.test.InstrumentBranchesPhaseTest$TwoIfsTestNode.execute(InstrumentBranchesPhaseTest.java"));
-        Assert.assertTrue(stackOutput2.contains("[bci: 18]\n[2] state = IF(if=2#, else=0#)"));
+        Assert.assertTrue(stackOutput2, stackOutput2.contains("org.graalvm.compiler.truffle.test.InstrumentBranchesPhaseTest$TwoIfsTestNode.execute(InstrumentBranchesPhaseTest.java"));
+        Assert.assertTrue(stackOutput2, stackOutput2.contains("[bci: 18]\n[2] state = IF(if=2#, else=0#)"));
     }
 }

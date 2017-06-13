@@ -24,6 +24,8 @@ package org.graalvm.compiler.truffle.hotspot.aarch64;
 
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
 import static jdk.vm.ci.meta.JavaKind.Object;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.BarrierKind.LOAD_LOAD;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.BarrierKind.LOAD_STORE;
 
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.Label;
@@ -62,7 +64,11 @@ public class AArch64OptimizedCallTargetInstumentationFactory extends OptimizedCa
                     AArch64Address entryPointAddress = AArch64Address.createPairUnscaledImmediateAddress(thisRegister, getFieldOffset("entryPoint", InstalledCode.class));
 
                     masm.ldr(64, spillRegister, entryPointAddress);
+                    masm.dmb(LOAD_LOAD);
+                    masm.dmb(LOAD_STORE);
                     masm.cbz(64, spillRegister, doProlog);
+                    masm.tbz(64, spillRegister, 0, doProlog);
+                    masm.eor(64, spillRegister, spillRegister, 1);
                     masm.jmp(spillRegister);
                     masm.nop();
                     masm.bind(doProlog);

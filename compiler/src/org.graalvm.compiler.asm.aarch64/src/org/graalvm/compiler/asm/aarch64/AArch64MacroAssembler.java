@@ -1295,6 +1295,26 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
+     * Test a single bit and branch if the bit is zero.
+     *
+     * @param cmp general purpose register. May not be null, zero-register or stackpointer.
+     * @param size Instruction size in bits. Should be either 32 or 64.
+     * @param uimm6 Unsigned 6-bit bit index.
+     * @param label Can only handle 21-bit word-aligned offsets for now. May be unbound. Non null.
+     */
+    public void tbz(int size, Register cmp, int uimm6, Label label) {
+        if (label.isBound()) {
+            int offset = label.position() - position();
+            super.tbz(size, cmp, uimm6, offset);
+        } else {
+            label.addPatchAt(position());
+            int regEncoding = cmp.encoding << (PatchLabelKind.INFORMATION_OFFSET + 1);
+            int sizeEncoding = (size == 64 ? 1 : 0) << PatchLabelKind.INFORMATION_OFFSET;
+            emitInt(PatchLabelKind.BRANCH_CONDITIONALLY.encoding | regEncoding | sizeEncoding);
+        }
+    }
+
+    /**
      * Branches to label if condition is true.
      *
      * @param condition any condition value allowed. Non null.

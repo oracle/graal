@@ -94,6 +94,7 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.STR;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.STXR;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.SUB;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.SUBS;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.TBZ;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.UBFM;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.UDIV;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.InstructionType.FP32;
@@ -475,6 +476,7 @@ public abstract class AArch64Assembler extends Assembler {
         BCOND(0x54000000),
         CBNZ(0x01000000),
         CBZ(0x00000000),
+        TBZ(0x36000000),
 
         B(0x00000000),
         BL(0x80000000),
@@ -806,6 +808,25 @@ public abstract class AArch64Assembler extends Assembler {
      */
     protected void cbz(int size, Register reg, int imm21, int pos) {
         conditionalBranchInstruction(reg, imm21, generalFromSize(size), Instruction.CBZ, pos);
+    }
+
+    /**
+     * Test a single bit and branch if the bit is zero.
+     *
+     * @param reg general purpose register. May not be null, zero-register or stackpointer.
+     * @param size Instruction size in bits. Should be either 32 or 64.
+     * @param uimm6 Unsigned 6-bit bit index.
+     * @param pos Position at which instruction is inserted into buffer. -1 means insert at end.
+     */
+    protected void tbz(int size, Register reg, int uimm6, int pos) {
+        assert reg.getRegisterCategory().equals(CPU);
+        InstructionType type = generalFromSize(size);
+        int encoding = type.encoding | TBZ.encoding | (uimm6 << 18) | rd(reg);
+        if (pos == -1) {
+            emitInt(encoding);
+        } else {
+            emitInt(encoding, pos);
+        }
     }
 
     private void conditionalBranchInstruction(Register reg, int imm21, InstructionType type, Instruction instr, int pos) {
