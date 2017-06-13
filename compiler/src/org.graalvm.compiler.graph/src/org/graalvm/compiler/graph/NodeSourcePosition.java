@@ -41,9 +41,9 @@ public class NodeSourcePosition extends BytecodePosition {
     public NodeSourcePosition(JavaConstant receiver, NodeSourcePosition caller, ResolvedJavaMethod method, int bci) {
         super(caller, method, bci);
         if (caller == null) {
-            this.hashCode = bci;
+            this.hashCode = 31 * bci + method.hashCode();
         } else {
-            this.hashCode = caller.hashCode * 7 + bci;
+            this.hashCode = caller.hashCode * 7 + 31 * bci + method.hashCode();
         }
         this.receiver = receiver;
         assert receiver == null || method.getDeclaringClass().isInstance(receiver);
