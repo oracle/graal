@@ -67,8 +67,8 @@ public class AArch64OptimizedCallTargetInstumentationFactory extends OptimizedCa
                     masm.dmb(LOAD_LOAD);
                     masm.dmb(LOAD_STORE);
                     masm.cbz(64, spillRegister, doProlog);
-                    // TODO(alexpro): Implement and test.
-                    // masm.tbz(64, spillRegister, 0, doProlog);
+                    masm.tbz(64, spillRegister, 0, doProlog);
+                    masm.eor(64, spillRegister, spillRegister, 1);
                     masm.jmp(spillRegister);
                     masm.nop();
                     masm.bind(doProlog);
