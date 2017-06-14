@@ -249,10 +249,23 @@ def pullInstallDragonEgg(args=None):
     os.environ['GCC'] = getGCC()
     os.environ['CXX'] = getGPP()
     os.environ['CC'] = getGCC()
-    os.environ['LLVM_CONFIG'] = findLLVMProgram('llvm-config', ['3.2', '3.3'])
+    pullLLVMBinaries()
+    os.environ['LLVM_CONFIG'] = findLLVMProgramForDragonegg()
     mx.log(os.environ['LLVM_CONFIG'])
     compileCommand = ['make']
     return mx.run(compileCommand, cwd=_toolDir + 'dragonegg/dragonegg-3.2.src')
+
+def findLLVMProgramForDragonegg():
+    """tries to find a supported version of an installed LLVM program; if the program is not found it downloads the LLVM binaries and checks there"""
+    installedProgram = findInstalledLLVMProgram('llvm-config', ['3.2', '3.3'])
+
+    if installedProgram is None:
+        if not os.path.exists(_clangPath):
+            pullLLVMBinaries()
+        programPath = _toolDir + 'llvm/bin/llvm-config'
+        return programPath
+    else:
+        return installedProgram
 
 def tar(tarFile, currentDir, subDirInsideTar=None, stripLevels=None):
     with tarfile.open(tarFile) as tar:
@@ -544,7 +557,6 @@ def findInstalledProgram(program, supportedVersions, testSupportedVersion):
                     assert testSupportedVersion(alternativeProgramPath, supportedVersions)
                     return alternativeProgramPath
     return None
-
 
 def findLLVMProgram(llvmProgram, version=None):
     """tries to find a supported version of an installed LLVM program; if the program is not found it downloads the LLVM binaries and checks there"""
