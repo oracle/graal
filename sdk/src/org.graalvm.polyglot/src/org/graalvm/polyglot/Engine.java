@@ -273,7 +273,11 @@ public final class Engine implements AutoCloseable {
         }
 
         public Engine build() {
-            return getImpl().buildEngine(out, err, in, options, 0, null,
+            AbstractPolyglotImpl loadedImpl = getImpl();
+            if (loadedImpl == null) {
+                throw new IllegalStateException("The Polyglot API implementation failed to load.");
+            }
+            return loadedImpl.buildEngine(out, err, in, options, 0, null,
                             false, 0, useSystemProperties);
         }
 
