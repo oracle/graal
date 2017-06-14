@@ -156,6 +156,16 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
     }
 
     /**
+     * @see #createInstalledCode(ResolvedJavaMethod, CompilationRequest, CompilationResult,
+     *      SpeculationLog, InstalledCode, boolean, Object[])
+     */
+    @SuppressWarnings("try")
+    public InstalledCode createInstalledCode(ResolvedJavaMethod method, CompilationRequest compilationRequest, CompilationResult compilationResult,
+                    SpeculationLog speculationLog, InstalledCode predefinedInstalledCode, boolean isDefault) {
+        return createInstalledCode(method, compilationRequest, compilationResult, speculationLog, predefinedInstalledCode, isDefault, null);
+    }
+
+    /**
      * Installs code based on a given compilation result.
      *
      * @param method the method compiled to produce {@code compiledCode} or {@code null} if the
@@ -170,13 +180,15 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
      *            {@code compRequest.getMethod()}. The default implementation for a method is the
      *            code executed for standard calls to the method. This argument is ignored if
      *            {@code compRequest == null}.
+     * @param context a custom debug context to use for the code installation.
      * @return a reference to the compiled and ready-to-run installed code
      * @throws BailoutException if the code installation failed
      */
     @SuppressWarnings("try")
     public InstalledCode createInstalledCode(ResolvedJavaMethod method, CompilationRequest compilationRequest, CompilationResult compilationResult,
-                    SpeculationLog speculationLog, InstalledCode predefinedInstalledCode, boolean isDefault) {
-        try (Scope s2 = Debug.scope("CodeInstall", getProviders().getCodeCache(), compilationResult)) {
+                    SpeculationLog speculationLog, InstalledCode predefinedInstalledCode, boolean isDefault, Object[] context) {
+        Object[] debugContext = context != null ? context : new Object[]{getProviders().getCodeCache(), method, compilationResult};
+        try (Scope s = Debug.scope("CodeInstall", debugContext)) {
             CompiledCode compiledCode = createCompiledCode(method, compilationRequest, compilationResult);
             return getProviders().getCodeCache().installCode(method, compiledCode, predefinedInstalledCode, speculationLog, isDefault);
         } catch (Throwable e) {
