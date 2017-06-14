@@ -953,7 +953,7 @@ final class InstrumentationHandler {
             if (type == null) {
                 return false;
             }
-            if (type.getName().equals(name)) {
+            if (type.getName().equals(name) || type.getCanonicalName().equals(name)) {
                 return true;
             }
             if (findType(name, type.getSuperclass())) {
