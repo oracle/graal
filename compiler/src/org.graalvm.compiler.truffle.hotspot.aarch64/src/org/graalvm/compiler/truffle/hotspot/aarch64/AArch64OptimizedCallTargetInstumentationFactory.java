@@ -40,6 +40,7 @@ import org.graalvm.compiler.lir.asm.FrameContext;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
+import org.graalvm.compiler.truffle.TruffleCompiler;
 import org.graalvm.compiler.truffle.hotspot.OptimizedCallTargetInstrumentation;
 import org.graalvm.compiler.truffle.hotspot.OptimizedCallTargetInstrumentationFactory;
 
@@ -67,8 +68,11 @@ public class AArch64OptimizedCallTargetInstumentationFactory extends OptimizedCa
                     masm.dmb(LOAD_LOAD);
                     masm.dmb(LOAD_STORE);
                     masm.cbz(64, spillRegister, doProlog);
-                    masm.tbz(64, spillRegister, 0, doProlog);
-                    masm.eor(64, spillRegister, spillRegister, 1);
+                    // TODO(alexpro): Temporarily disable this fix for GR-4454 until this is tested.
+                    if (TruffleCompiler.Options.AArch64EntryPointTagging.getValue(options)) {
+                        masm.tbz(64, spillRegister, 0, doProlog);
+                        masm.eor(64, spillRegister, spillRegister, 1);
+                    }
                     masm.jmp(spillRegister);
                     masm.nop();
                     masm.bind(doProlog);
