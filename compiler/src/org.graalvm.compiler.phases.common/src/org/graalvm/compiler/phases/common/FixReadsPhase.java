@@ -517,4 +517,8 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
             return result.toString();
         }
     }
+
+    public void setReplaceInputsWithConstants(boolean replaceInputsWithConstants) {
+        this.replaceInputsWithConstants = replaceInputsWithConstants;
+    }
 }
