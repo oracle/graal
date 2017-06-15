@@ -30,9 +30,12 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrum
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBranches;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.Assumptions.Assumption;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -209,9 +212,8 @@ public abstract class TruffleCompiler {
         }
 
         CompilationResult result = null;
-        List<AssumptionValidAssumption> validAssumptions = new ArrayList<>();
 
-        TruffleCompilationResultBuilderFactory factory = new TruffleCompilationResultBuilderFactory(graph, validAssumptions);
+        TruffleCompilationResultBuilderFactory factory = new TruffleCompilationResultBuilderFactory();
         try (DebugCloseable a = CompilationTime.start();
                         Scope s = Debug.scope("TruffleGraal.GraalCompiler", graph, providers.getCodeCache());
                         DebugCloseable c = CompilationMemUse.start()) {
@@ -228,19 +230,10 @@ public abstract class TruffleCompiler {
 
         compilationNotify.notifyCompilationGraalTierFinished(predefinedInstalledCode, graph);
 
-        OptimizedCallTarget installedCode;
         try (DebugCloseable a = CodeInstallationTime.start(); DebugCloseable c = CodeInstallationMemUse.start()) {
-            installedCode = (OptimizedCallTarget) backend.createInstalledCode(graph.method(), compilationRequest, result, graph.getSpeculationLog(), predefinedInstalledCode, false);
+            backend.createInstalledCode(graph.method(), compilationRequest, result, graph.getSpeculationLog(), predefinedInstalledCode, false);
         } catch (Throwable e) {
             throw Debug.handle(e);
-        }
-
-        for (AssumptionValidAssumption a : validAssumptions) {
-            a.getAssumption().registerInstalledCode(installedCode);
-        }
-
-        if (!providers.getCodeCache().getTarget().arch.getName().equals("aarch64")) {
-            installedCode.releaseEntryPoint();
         }
 
         return result;
@@ -264,14 +257,40 @@ public abstract class TruffleCompiler {
 
         @Override
         public void preProcess(CompilationResult result) {
+            if (result == null || result.getAssumptions() == null) {
+                return;
+            }
+            Set<Assumption> newAssumptions = new HashSet<>();
+            for (Assumption assumption : result.getAssumptions()) {
+                if (assumption != null) {
+                    if (assumption instanceof AssumptionValidAssumption) {
+                        AssumptionValidAssumption assumptionValidAssumption = (AssumptionValidAssumption) assumption;
+                        validAssumptions.add(assumptionValidAssumption);
+                    } else {
+                        newAssumptions.add(assumption);
+                    }
+                }
+                TruffleCompilationResultBuilderFactory.processAssumption(newAssumptions, assumption, validAssumptions);
+            }
+            result.setAssumptions(newAssumptions.toArray(new Assumption[newAssumptions.size()]));
         }
 
         @Override
         public void postProcess(InstalledCode installedCode) {
+            if (installedCode instanceof OptimizedCallTarget) {
+                for (AssumptionValidAssumption assumption : validAssumptions) {
+                    assumption.getAssumption().registerInstalledCode(installedCode);
+                }
+            }
         }
 
         @Override
         public void releaseInstallation(InstalledCode installedCode) {
+            if (!providers.getCodeCache().getTarget().arch.getName().equals("aarch64")) {
+                if (installedCode instanceof OptimizedCallTarget) {
+                    ((OptimizedCallTarget) installedCode).releaseEntryPoint();
+                }
+            }
         }
     }
 

@@ -293,13 +293,15 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
         /**
          * Task to run after the code is installed.
          */
+        @SuppressWarnings("unused")
         public void postProcess(InstalledCode installedCode) {
         }
 
         /**
-         * Task to run after all the post-code installation tasks are complete,
-         * used to release the installed code.
+         * Task to run after all the post-code installation tasks are complete, used to release the
+         * installed code.
          */
+        @SuppressWarnings("unused")
         public void releaseInstallation(InstalledCode installedCode) {
         }
     }

@@ -22,13 +22,8 @@
  */
 package org.graalvm.compiler.truffle;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.meta.Assumptions.Assumption;
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -37,12 +32,11 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.asm.DataBuilder;
 import org.graalvm.compiler.lir.asm.FrameContext;
 import org.graalvm.compiler.lir.framemap.FrameMap;
-import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.nodes.AssumptionValidAssumption;
 
-import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.meta.Assumptions.Assumption;
+import java.util.List;
+import java.util.Set;
 
 /**
  * A mechanism for Truffle to update a {@link CompilationResult} before it is
@@ -50,48 +44,15 @@ import jdk.vm.ci.meta.Assumptions.Assumption;
  */
 class TruffleCompilationResultBuilderFactory implements CompilationResultBuilderFactory {
 
-    /**
-     * The graph being compiled.
-     */
-    private final StructuredGraph graph;
-
-    /**
-     * List into which {@link AssumptionValidAssumption}s are added.
-     */
-    private final List<AssumptionValidAssumption> validAssumptions;
-
-    TruffleCompilationResultBuilderFactory(StructuredGraph graph, List<AssumptionValidAssumption> validAssumptions) {
-        this.graph = graph;
-        this.validAssumptions = validAssumptions;
+    TruffleCompilationResultBuilderFactory() {
     }
 
     @Override
     public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
                     OptionValues options, CompilationResult compilationResult) {
-        return new CompilationResultBuilder(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, compilationResult) {
-            @Override
-            protected void closeCompilationResult() {
-                CompilationResult result = this.compilationResult;
-
-                Set<Assumption> newAssumptions = new HashSet<>();
-                for (Assumption assumption : result.getAssumptions()) {
-                    TruffleCompilationResultBuilderFactory.processAssumption(newAssumptions, assumption, validAssumptions);
-                }
-
-                result.setAssumptions(newAssumptions.toArray(new Assumption[newAssumptions.size()]));
-                super.closeCompilationResult();
-            }
-        };
+        return new CompilationResultBuilder(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, compilationResult);
     }
 
     static void processAssumption(Set<Assumption> newAssumptions, Assumption assumption, List<AssumptionValidAssumption> manual) {
-        if (assumption != null) {
-            if (assumption instanceof AssumptionValidAssumption) {
-                AssumptionValidAssumption assumptionValidAssumption = (AssumptionValidAssumption) assumption;
-                manual.add(assumptionValidAssumption);
-            } else {
-                newAssumptions.add(assumption);
-            }
-        }
     }
 }
