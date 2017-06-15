@@ -2,35 +2,33 @@
 
 builds += [
   # Darwin AMD64
-# ${gateTest8}                 ${gateDarwinAMD64}  {name: "gate-compiler-test-8-darwin-amd64"}
-  ${gateTest9}                 ${gateDarwinAMD64}  {name: "gate-compiler-test-9-darwin-amd64"}
-  ${gateTest9EA}               ${gateDarwinAMD64}  {name: "gate-compiler-test-9EA-darwin-amd64"}
-# ${gateTest8Debug}            ${gateDarwinAMD64}  {name: "gate-compiler-test-8-darwin-amd64-fastdebug"}
-# ${gateTestBenchmark8}        ${gateDarwinAMD64}  {name: "gate-compiler-benchmarktest-8-darwin-amd64"}
-# ${gateTestBenchmark8Debug}   ${gateDarwinAMD64}  {name: "gate-compiler-benchmarktest-8-darwin-amd64-fastdebug"}
+  ${gateTest8}                 ${gateDarwinAMD64}  {name: "gate-compiler-test-8-darwin-amd64", targets : [weekly]}
+  ${gateTest9}                 ${gateDarwinAMD64}  {name: "gate-compiler-test-9-darwin-amd64", targets : [weekly]}
+  ${gateTest9EA}               ${gateDarwinAMD64}  {name: "gate-compiler-test-9EA-darwin-amd64", targets : [weekly]}
+# ${gateTestBenchmark8}        ${gateDarwinAMD64}  {name: "gate-compiler-benchmarktest-8-darwin-amd64", targets : [weekly]}
 
   # Linux AMD64
   ${gateTest8}                 ${gateLinuxAMD64}   {name: "gate-compiler-test-8-linux-amd64"}
   ${gateTest9}                 ${gateLinuxAMD64}   {name: "gate-compiler-test-9-linux-amd64"}
   ${gateTest9EA}               ${gateLinuxAMD64}   {name: "gate-compiler-test-9EA-linux-amd64"}
   ${gateTestCTW8}              ${gateLinuxAMD64}   {name: "gate-compiler-ctw-8-linux-amd64"}
-  ${gateTestCTW9}              ${gateLinuxAMD64}   {name: "gate-compiler-ctw-9-linux-amd64"}
-# ${gateTest8Debug}            ${gateLinuxAMD64}   {name: "gate-compiler-test-8-linux-amd64-fastdebug"}
+  ${gateTestCTW9}              ${gateLinuxAMD64}   {name: "gate-compiler-ctw-9-linux-amd64", targets : [weekly]}
+  ${gateTest8Debug}            ${gateLinuxAMD64}   {name: "gate-compiler-test-8-linux-amd64-fastdebug", targets : [weekly]}
   ${gateTestBenchmark8}        ${gateLinuxAMD64}   {name: "gate-compiler-benchmarktest-8-linux-amd64"}
-# ${gateTestBenchmark8Debug}   ${gateLinuxAMD64}   {name: "gate-compiler-benchmarktest-8-linux-amd64-fastdebug"}
+  ${gateTestBenchmark8Debug}   ${gateLinuxAMD64}   {name: "gate-compiler-benchmarktest-8-linux-amd64-fastdebug", targets : [weekly]}
   ${gateStyle}                 ${gateLinuxAMD64}   {name: "gate-compiler-style-linux-amd64"}
 
   # Solaris SPARC
   ${gateTest8}                 ${gateSolarisSPARC} {name: "gate-compiler-test-8-solaris-sparcv9",                    timelimit: "1:00:00"}
   ${gateTest9}                 ${gateSolarisSPARC} {name: "gate-compiler-test-9-solaris-sparcv9",                    timelimit: "1:00:00"}
   ${gateTestCTW8}              ${gateSolarisSPARC} {name: "gate-compiler-ctw-8-solaris-sparcv9",                     timelimit: "1:00:00"}
-  ${gateTestCTW9}              ${gateSolarisSPARC} {name: "gate-compiler-ctw-9-solaris-sparcv9",                     timelimit: "1:00:00"}
-# ${gateTest8Debug}            ${gateSolarisSPARC} {name: "gate-compiler-test-8-solaris-sparcv9-fastdebug",          timelimit: "1:00:00"}
+  ${gateTestCTW9}              ${gateSolarisSPARC} {name: "gate-compiler-ctw-9-solaris-sparcv9",                     timelimit: "1:00:00", targets : [weekly]}
+  ${gateTest8Debug}            ${gateSolarisSPARC} {name: "gate-compiler-test-8-solaris-sparcv9-fastdebug",          timelimit: "1:00:00", targets : [weekly]}
   ${gateTestBenchmark8}        ${gateSolarisSPARC} {name: "gate-compiler-benchmarktest-8-solaris-sparcv9",           timelimit: "1:00:00"}
 # ${gateTestBenchmark8Debug}   ${gateSolarisSPARC} {name: "gate-compiler-benchmarktest-8-solaris-sparcv9-fastdebug", timelimit: "1:00:00"}
 
 
   # TraceRA
-  ${gateTest8}                 ${gateLinuxAMD64TraceRA} {name: "gate-compiler-test-8-linux-amd64-tracera"}
-  ${gateTest8}                 ${gateLinuxAMD64TraceRABU} {name: "gate-compiler-test-8-linux-amd64-tracera-bu"}
+  ${gateTest8}                 ${gateLinuxAMD64TraceRA} {name: "gate-compiler-test-8-linux-amd64-tracera", targets : [weekly]}
+  ${gateTest8}                 ${gateLinuxAMD64TraceRABU} {name: "gate-compiler-test-8-linux-amd64-tracera-bu", targets : [weekly]}
 ]
