@@ -80,7 +80,7 @@ public abstract class TruffleCompiler {
     protected final Backend backend;
     protected final SnippetReflectionProvider snippetReflection;
     protected final GraalTruffleCompilationListener compilationNotify;
-    protected final Backend.PostCodeInstallationTask postCodeInstallationTask;
+    protected final Backend.CodeInstallationTaskFactory codeInstallationTaskFactory;
 
     // @formatter:off
     private static final Class<?>[] SKIPPED_EXCEPTION_CLASSES = new Class<?>[]{
@@ -105,7 +105,8 @@ public abstract class TruffleCompiler {
         this.providers = backend.getProviders();
         this.suites = suites;
         this.lirSuites = lirSuites;
-        this.postCodeInstallationTask = new TrufflePostCodeInstallationTask();
+        this.codeInstallationTaskFactory = new TrufflePostCodeInstallationTaskFactory();
+        backend.addCodeInstallationTask(codeInstallationTaskFactory);
 
         ResolvedJavaType[] skippedExceptionTypes = getSkippedExceptionTypes(providers.getMetaAccess());
 
@@ -258,14 +259,26 @@ public abstract class TruffleCompiler {
         return partialEvaluator;
     }
 
-    private class TrufflePostCodeInstallationTask extends Backend.PostCodeInstallationTask {
+    private class TrufflePostCodeInstallationTask extends Backend.CodeInstallationTask {
+        private List<AssumptionValidAssumption> validAssumptions = new ArrayList<>();
+
+        @Override
+        public void preProcess(CompilationResult result) {
+        }
+
         @Override
         public void postProcess(InstalledCode installedCode) {
         }
 
         @Override
         public void releaseInstallation(InstalledCode installedCode) {
-            super.releaseInstallation(installedCode);
+        }
+    }
+
+    private class TrufflePostCodeInstallationTaskFactory extends Backend.CodeInstallationTaskFactory {
+        @Override
+        public Backend.CodeInstallationTask create() {
+            return new TrufflePostCodeInstallationTask();
         }
     }
 }
