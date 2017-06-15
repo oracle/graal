@@ -22,10 +22,13 @@
  */
 package org.graalvm.compiler.truffle;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -69,18 +72,10 @@ class TruffleCompilationResultBuilderFactory implements CompilationResultBuilder
             @Override
             protected void closeCompilationResult() {
                 CompilationResult result = this.compilationResult;
-                result.setMethods(graph.method(), graph.getMethods());
-                result.setBytecodeSize(graph.getBytecodeSize());
 
                 Set<Assumption> newAssumptions = new HashSet<>();
-                for (Assumption assumption : graph.getAssumptions()) {
+                for (Assumption assumption : result.getAssumptions()) {
                     TruffleCompilationResultBuilderFactory.processAssumption(newAssumptions, assumption, validAssumptions);
-                }
-
-                if (result.getAssumptions() != null) {
-                    for (Assumption assumption : result.getAssumptions()) {
-                        TruffleCompilationResultBuilderFactory.processAssumption(newAssumptions, assumption, validAssumptions);
-                    }
                 }
 
                 result.setAssumptions(newAssumptions.toArray(new Assumption[newAssumptions.size()]));
