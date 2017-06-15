@@ -336,13 +336,21 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     @Override
     public Language getLanguage(String id) {
         checkEngine(this);
-        return idToPublicLanguage.get(id);
+        Language language = idToPublicLanguage.get(id);
+        if (language == null) {
+            throw new IllegalArgumentException(String.format("A language with id '%s' is not installed. Installed languages are: %s.", id, getLanguages().keySet()));
+        }
+        return language;
     }
 
     @Override
     public Instrument getInstrument(String id) {
         checkEngine(this);
-        return idToInstrument.get(id);
+        Instrument instrument = idToInstrument.get(id);
+        if (instrument == null) {
+            throw new IllegalArgumentException(String.format("An instruments with id '%s' is not installed. Installed instruments are: %s.", id, getInstruments().keySet()));
+        }
+        return instrument;
     }
 
     @Override
