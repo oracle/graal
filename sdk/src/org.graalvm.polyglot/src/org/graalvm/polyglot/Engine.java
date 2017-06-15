@@ -51,12 +51,14 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
 
 public final class Engine implements AutoCloseable {
 
-    private static volatile AbstractPolyglotImpl IMPL;
-
     final AbstractEngineImpl impl;
 
     Engine(AbstractEngineImpl impl) {
         this.impl = impl;
+    }
+
+    private static final class ImplHolder {
+        private static final AbstractPolyglotImpl IMPL = initEngineImpl();
     }
 
     /**
@@ -163,14 +165,7 @@ public final class Engine implements AutoCloseable {
     }
 
     static AbstractPolyglotImpl getImpl() {
-        if (IMPL == null) {
-            synchronized (Engine.class) {
-                if (IMPL == null) {
-                    IMPL = initEngineImpl();
-                }
-            }
-        }
-        return IMPL;
+        return ImplHolder.IMPL;
     }
 
     public static final class Builder {
@@ -362,6 +357,8 @@ public final class Engine implements AutoCloseable {
 
     }
 
+    private static final boolean JDK8_OR_EARLIER = System.getProperty("java.specification.version").compareTo("1.9") < 0;
+
     private static AbstractPolyglotImpl initEngineImpl() {
         return AccessController.doPrivileged(new PrivilegedAction<AbstractPolyglotImpl>() {
             public AbstractPolyglotImpl run() {
@@ -372,19 +369,7 @@ public final class Engine implements AutoCloseable {
                 // using the jvmci/truffle service loader
 
                 if (engine == null) {
-                    boolean jdk8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
-                    if (!jdk8OrEarlier) {
-                        // As of JDK9, the JVMCI Services class should only be used for service
-                        // types
-                        // defined by JVMCI. Other services types should use ServiceLoader directly.
-                        Iterator<AbstractPolyglotImpl> providers = ServiceLoader.load(AbstractPolyglotImpl.class).iterator();
-                        if (providers.hasNext()) {
-                            engine = providers.next();
-                            if (providers.hasNext()) {
-                                throw new InternalError(String.format("Multiple %s providers found", AbstractPolyglotImpl.class.getName()));
-                            }
-                        }
-                    } else {
+                    if (JDK8_OR_EARLIER) {
                         try {
                             servicesClass = Class.forName("jdk.vm.ci.services.Services");
                         } catch (ClassNotFoundException e) {
@@ -395,7 +380,19 @@ public final class Engine implements AutoCloseable {
                                 engine = (AbstractPolyglotImpl) m.invoke(null, AbstractPolyglotImpl.class, false);
                             } catch (Throwable e) {
                                 // Fail fast for other errors
-                                throw (InternalError) new InternalError().initCause(e);
+                                throw new InternalError(e);
+                            }
+                        }
+                    } else {
+                        // As of JDK9, the JVMCI Services class should only be used for service
+                        // types
+                        // defined by JVMCI. Other services types should use ServiceLoader directly.
+                        Iterator<AbstractPolyglotImpl> providers = ServiceLoader.load(AbstractPolyglotImpl.class).iterator();
+                        if (providers.hasNext()) {
+                            engine = providers.next();
+                            if (providers.hasNext()) {
+
+                                throw new InternalError(String.format("Multiple %s providers found", AbstractPolyglotImpl.class.getName()));
                             }
                         }
                     }
@@ -409,6 +406,7 @@ public final class Engine implements AutoCloseable {
                         constructor.setAccessible(true);
                         engine = constructor.newInstance();
                     } catch (Exception e1) {
+                        throw new InternalError(e1);
                     }
                 }
 
