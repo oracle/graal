@@ -26,17 +26,14 @@ import static org.graalvm.compiler.graph.Edges.Type.Inputs;
 import static org.graalvm.compiler.graph.Edges.Type.Successors;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
-import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
@@ -45,7 +42,6 @@ import org.graalvm.compiler.debug.GraalDebugConfig.Options;
 import org.graalvm.compiler.graph.CachedGraph;
 import org.graalvm.compiler.graph.Edges;
 import org.graalvm.compiler.graph.Graph;
-import org.graalvm.compiler.graph.InputEdges;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeList;
@@ -66,12 +62,6 @@ import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.Signature;
-import org.graalvm.compiler.graph.NodeSourcePosition;
-
 public class BinaryGraphPrinter extends AbstractGraphPrinter implements GraphPrinter {
     private SnippetReflectionProvider snippetReflection;
 
@@ -87,6 +77,28 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter implements GraphPri
     @Override
     public SnippetReflectionProvider getSnippetReflectionProvider() {
         return snippetReflection;
+    }
+
+    @Override
+    ResolvedJavaMethod findMethod(Object object) {
+        if (object instanceof Bytecode) {
+            return ((Bytecode) object).getMethod();
+        } else if (object instanceof ResolvedJavaMethod) {
+            return ((ResolvedJavaMethod) object);
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    final Graph findGraph(Object obj) {
+        if (obj instanceof Graph) {
+            return (Graph) obj;
+        } else if (obj instanceof CachedGraph) {
+            return ((CachedGraph<?>) obj).getReadonlyCopy();
+        } else {
+            return null;
+        }
     }
 
     @Override

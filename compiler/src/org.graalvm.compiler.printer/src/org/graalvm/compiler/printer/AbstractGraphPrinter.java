@@ -33,8 +33,6 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
-import org.graalvm.compiler.bytecode.Bytecode;
-import org.graalvm.compiler.graph.CachedGraph;
 import org.graalvm.compiler.graph.Edges;
 import static org.graalvm.compiler.graph.Edges.Type.Inputs;
 import static org.graalvm.compiler.graph.Edges.Type.Successors;
@@ -134,6 +132,10 @@ abstract class AbstractGraphPrinter implements GraphPrinter {
             throw new Error(ex);
         }
     }
+
+    abstract Graph findGraph(Object obj);
+
+    abstract ResolvedJavaMethod findMethod(Object obj);
 
     abstract void writeGraph(Graph graph, Map<Object, Object> properties) throws IOException;
 
@@ -260,8 +262,6 @@ abstract class AbstractGraphPrinter implements GraphPrinter {
                 writeByte(POOL_CLASS);
             } else if (object instanceof NodeClass) {
                 writeByte(POOL_NODE_CLASS);
-            } else if (object instanceof ResolvedJavaMethod || object instanceof Bytecode) {
-                writeByte(POOL_METHOD);
             } else if (object instanceof ResolvedJavaField) {
                 writeByte(POOL_FIELD);
             } else if (object instanceof Signature) {
@@ -269,7 +269,11 @@ abstract class AbstractGraphPrinter implements GraphPrinter {
             } else if (CURRENT_MAJOR_VERSION >= 4 && object instanceof NodeSourcePosition) {
                 writeByte(POOL_NODE_SOURCE_POSITION);
             } else {
-                writeByte(POOL_STRING);
+                if (findMethod(object) != null) {
+                    writeByte(POOL_METHOD);
+                } else {
+                    writeByte(POOL_STRING);
+                }
             }
             writeShort(id.charValue());
         }
@@ -335,19 +339,6 @@ abstract class AbstractGraphPrinter implements GraphPrinter {
             }
             writeEdgesInfo(nodeClass, Inputs);
             writeEdgesInfo(nodeClass, Successors);
-        } else if (object instanceof ResolvedJavaMethod || object instanceof Bytecode) {
-            writeByte(POOL_METHOD);
-            ResolvedJavaMethod method;
-            if (object instanceof Bytecode) {
-                method = ((Bytecode) object).getMethod();
-            } else {
-                method = ((ResolvedJavaMethod) object);
-            }
-            writePoolObject(method.getDeclaringClass());
-            writePoolObject(method.getName());
-            writePoolObject(method.getSignature());
-            writeInt(method.getModifiers());
-            writeBytes(method.getCode());
         } else if (object instanceof ResolvedJavaField) {
             writeByte(POOL_FIELD);
             ResolvedJavaField field = ((ResolvedJavaField) object);
@@ -380,8 +371,18 @@ abstract class AbstractGraphPrinter implements GraphPrinter {
             }
             writePoolObject(pos.getCaller());
         } else {
-            writeByte(POOL_STRING);
-            writeString(object.toString());
+            ResolvedJavaMethod method = findMethod(object);
+            if (method == null) {
+                writeByte(POOL_STRING);
+                writeString(object.toString());
+                return;
+            }
+            writeByte(POOL_METHOD);
+            writePoolObject(method.getDeclaringClass());
+            writePoolObject(method.getName());
+            writePoolObject(method.getSignature());
+            writeInt(method.getModifiers());
+            writeBytes(method.getCode());
         }
     }
 
@@ -404,12 +405,6 @@ abstract class AbstractGraphPrinter implements GraphPrinter {
             } else {
                 writeByte(PROPERTY_FALSE);
             }
-        } else if (obj instanceof Graph) {
-            writeByte(PROPERTY_SUBGRAPH);
-            writeGraph((Graph) obj, null);
-        } else if (obj instanceof CachedGraph) {
-            writeByte(PROPERTY_SUBGRAPH);
-            writeGraph(((CachedGraph<?>) obj).getReadonlyCopy(), null);
         } else if (obj != null && obj.getClass().isArray()) {
             Class<?> componentType = obj.getClass().getComponentType();
             if (componentType.isPrimitive()) {
@@ -435,8 +430,14 @@ abstract class AbstractGraphPrinter implements GraphPrinter {
                 }
             }
         } else {
-            writeByte(PROPERTY_POOL);
-            writePoolObject(obj);
+            Graph g = findGraph(obj);
+            if (g == null) {
+                writeByte(PROPERTY_POOL);
+                writePoolObject(obj);
+            } else {
+                writeByte(PROPERTY_SUBGRAPH);
+                writeGraph(g, null);
+            }
         }
     }
 
