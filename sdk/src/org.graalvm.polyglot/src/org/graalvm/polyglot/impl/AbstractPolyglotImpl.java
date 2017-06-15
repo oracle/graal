@@ -110,7 +110,7 @@ public abstract class AbstractPolyglotImpl {
     }
 
     public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                    long maximumAllowedAllocationBytes, boolean useSystemProperties, ClassLoader contextClassLoader);
+                    long maximumAllowedAllocationBytes, boolean useSystemProperties);
 
     public abstract AbstractSourceImpl getSourceImpl();
 
