@@ -26,20 +26,19 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
-import org.graalvm.compiler.graph.Edges;
-import static org.graalvm.compiler.graph.Edges.Type.Inputs;
-import static org.graalvm.compiler.graph.Edges.Type.Successors;
 import org.graalvm.compiler.graph.Graph;
-import org.graalvm.compiler.graph.InputEdges;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.nodeinfo.InputType;
 
 abstract class AbstractGraphPrinter implements GraphPrinter {
     private static final Charset utf8 = Charset.forName("UTF-8");
@@ -136,6 +135,8 @@ abstract class AbstractGraphPrinter implements GraphPrinter {
     abstract Graph findGraph(Object obj);
 
     abstract ResolvedJavaMethod findMethod(Object obj);
+
+    abstract void findEdges(NodeClass<?> nodeClass, boolean dumpInputs, List<String> names, List<Boolean> direct, List<InputType> types);
 
     abstract void writeGraph(Graph graph, Map<Object, Object> properties) throws IOException;
 
@@ -286,14 +287,17 @@ abstract class AbstractGraphPrinter implements GraphPrinter {
         return getClassName(klass.getComponentType()) + "[]";
     }
 
-    private void writeEdgesInfo(NodeClass<?> nodeClass, Edges.Type type) throws IOException {
-        Edges edges = nodeClass.getEdges(type);
-        writeShort((char) edges.getCount());
-        for (int i = 0; i < edges.getCount(); i++) {
-            writeByte(i < edges.getDirectCount() ? 0 : 1);
-            writePoolObject(edges.getName(i));
-            if (type == Inputs) {
-                writePoolObject(((InputEdges) edges).getInputType(i));
+    private void writeEdgesInfo(NodeClass<?> nodeClass, boolean dumpInputs) throws IOException {
+        List<String> names = new ArrayList<>();
+        List<Boolean> direct = new ArrayList<>();
+        List<InputType> types = new ArrayList<>();
+        findEdges(nodeClass, dumpInputs, names, direct, types);
+        writeShort((char) names.size());
+        for (int i = 0; i < names.size(); i++) {
+            writeByte(direct.get(i) ? 0 : 1);
+            writePoolObject(names.get(i));
+            if (dumpInputs) {
+                writePoolObject(types.get(i));
             }
         }
     }
@@ -337,8 +341,8 @@ abstract class AbstractGraphPrinter implements GraphPrinter {
                 String nameTemplate = nodeClass.getNameTemplate();
                 writeString(nameTemplate.isEmpty() ? nodeClass.shortName() : nameTemplate);
             }
-            writeEdgesInfo(nodeClass, Inputs);
-            writeEdgesInfo(nodeClass, Successors);
+            writeEdgesInfo(nodeClass, true);
+            writeEdgesInfo(nodeClass, false);
         } else if (object instanceof ResolvedJavaField) {
             writeByte(POOL_FIELD);
             ResolvedJavaField field = ((ResolvedJavaField) object);

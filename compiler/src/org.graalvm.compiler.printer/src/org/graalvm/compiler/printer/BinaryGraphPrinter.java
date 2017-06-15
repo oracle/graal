@@ -42,10 +42,12 @@ import org.graalvm.compiler.debug.GraalDebugConfig.Options;
 import org.graalvm.compiler.graph.CachedGraph;
 import org.graalvm.compiler.graph.Edges;
 import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.graph.InputEdges;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeList;
 import org.graalvm.compiler.graph.NodeMap;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
@@ -98,6 +100,21 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter implements GraphPri
             return ((CachedGraph<?>) obj).getReadonlyCopy();
         } else {
             return null;
+        }
+    }
+
+    @Override
+    final void findEdges(
+                    NodeClass<?> nodeClass,
+                    boolean dumpInputs,
+                    List<String> names, List<Boolean> direct, List<InputType> types) {
+        Edges edges = nodeClass.getEdges(dumpInputs ? Inputs : Successors);
+        for (int i = 0; i < edges.getCount(); i++) {
+            direct.add(i < edges.getDirectCount());
+            names.add(edges.getName(i));
+            if (dumpInputs) {
+                types.add(((InputEdges) edges).getInputType(i));
+            }
         }
     }
 
