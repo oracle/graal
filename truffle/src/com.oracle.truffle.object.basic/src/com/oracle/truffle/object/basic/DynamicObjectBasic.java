@@ -34,7 +34,7 @@ import java.lang.annotation.RetentionPolicy;
 
 public class DynamicObjectBasic extends DynamicObjectImpl {
     @Retention(RetentionPolicy.RUNTIME)
-    protected @interface DynamicField {
+    public @interface DynamicField {
     }
 
     @DynamicField private long primitive1;

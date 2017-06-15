@@ -53,6 +53,7 @@ class TruffleCompilationResultBuilderFactory implements CompilationResultBuilder
         return new CompilationResultBuilder(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, compilationResult);
     }
 
+    @SuppressWarnings("unused")
     static void processAssumption(Set<Assumption> newAssumptions, Assumption assumption, List<AssumptionValidAssumption> manual) {
     }
 }

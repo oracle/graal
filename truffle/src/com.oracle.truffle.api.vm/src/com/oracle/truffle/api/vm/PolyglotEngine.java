@@ -796,7 +796,15 @@ public class PolyglotEngine {
 
             SymbolIterator(Collection<? extends Language> uniqueLang, Object first) {
                 this.uniqueLang = uniqueLang;
-                this.next = (needsValue && first != null) ? new DirectValue(null, first) : first;
+                if (first instanceof DirectValue) {
+                    if (needsValue) {
+                        this.next = first;
+                    } else {
+                        this.next = ((DirectValue) first).value;
+                    }
+                } else {
+                    this.next = (needsValue && first != null) ? new DirectValue(null, first) : first;
+                }
             }
 
             @Override
@@ -1640,7 +1648,7 @@ public class PolyglotEngine {
             if (value == null) {
                 global.remove(symbolName);
             } else {
-                global.put(symbolName, value);
+                global.put(symbolName, language.engine().new DirectValue(language, value));
             }
         }
 
