@@ -32,6 +32,7 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrum
 import java.util.ArrayList;
 import java.util.List;
 
+import jdk.vm.ci.code.InstalledCode;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -79,6 +80,7 @@ public abstract class TruffleCompiler {
     protected final Backend backend;
     protected final SnippetReflectionProvider snippetReflection;
     protected final GraalTruffleCompilationListener compilationNotify;
+    protected final Backend.PostCodeInstallationTask postCodeInstallationTask;
 
     // @formatter:off
     private static final Class<?>[] SKIPPED_EXCEPTION_CLASSES = new Class<?>[]{
@@ -103,6 +105,7 @@ public abstract class TruffleCompiler {
         this.providers = backend.getProviders();
         this.suites = suites;
         this.lirSuites = lirSuites;
+        this.postCodeInstallationTask = new TrufflePostCodeInstallationTask();
 
         ResolvedJavaType[] skippedExceptionTypes = getSkippedExceptionTypes(providers.getMetaAccess());
 
@@ -253,5 +256,16 @@ public abstract class TruffleCompiler {
 
     public PartialEvaluator getPartialEvaluator() {
         return partialEvaluator;
+    }
+
+    private class TrufflePostCodeInstallationTask extends Backend.PostCodeInstallationTask {
+        @Override
+        public void postProcess(InstalledCode installedCode) {
+        }
+
+        @Override
+        public void releaseInstallation(InstalledCode installedCode) {
+            super.releaseInstallation(installedCode);
+        }
     }
 }

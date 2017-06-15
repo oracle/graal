@@ -60,18 +60,26 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
+import java.util.ArrayList;
+
 /**
  * Represents a compiler backend for Graal.
  */
 public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKind> {
 
     private final Providers providers;
+    private final ArrayList<PostCodeInstallationTask> postCodeInstallationTasks;
 
     public static final ForeignCallDescriptor ARITHMETIC_FREM = new ForeignCallDescriptor("arithmeticFrem", float.class, float.class, float.class);
     public static final ForeignCallDescriptor ARITHMETIC_DREM = new ForeignCallDescriptor("arithmeticDrem", double.class, double.class, double.class);
 
     protected Backend(Providers providers) {
         this.providers = providers;
+        this.postCodeInstallationTasks = new ArrayList<>();
+    }
+
+    public void addPostCodeInstallationTask(PostCodeInstallationTask task) {
+        this.postCodeInstallationTasks.add(task);
     }
 
     public Providers getProviders() {
@@ -190,7 +198,21 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
         Object[] debugContext = context != null ? context : new Object[]{getProviders().getCodeCache(), method, compilationResult};
         try (Scope s = Debug.scope("CodeInstall", debugContext)) {
             CompiledCode compiledCode = createCompiledCode(method, compilationRequest, compilationResult);
-            return getProviders().getCodeCache().installCode(method, compiledCode, predefinedInstalledCode, speculationLog, isDefault);
+            InstalledCode installedCode = getProviders().getCodeCache().installCode(method, compiledCode, predefinedInstalledCode, speculationLog, isDefault);
+
+            // Run post-code installation tasks.
+            try {
+                for (PostCodeInstallationTask task : postCodeInstallationTasks) {
+                    task.postProcess(installedCode);
+                }
+                for (PostCodeInstallationTask task : postCodeInstallationTasks) {
+                    task.releaseInstallation(installedCode);
+                }
+            } catch (Throwable t) {
+                installedCode.invalidate();
+                throw t;
+            }
+            return installedCode;
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -247,5 +269,20 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
      */
     public CompilationIdentifier getCompilationIdentifier(ResolvedJavaMethod resolvedJavaMethod) {
         return CompilationIdentifier.INVALID_COMPILATION_ID;
+    }
+
+    public abstract static class PostCodeInstallationTask {
+        /**
+         * Task to run after the code is installed.
+         */
+        public void postProcess(InstalledCode installedCode) {
+        }
+
+        /**
+         * Task to run after all the post-code installation tasks are complete,
+         * used to release the installed code.
+         */
+        public void releaseInstallation(InstalledCode installedCode) {
+        }
     }
 }
