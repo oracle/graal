@@ -28,6 +28,7 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleEnableI
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleExcludeAssertions;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBoundaries;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBranches;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.getOptions;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,6 +50,8 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -61,7 +64,6 @@ import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 import jdk.vm.ci.code.CompilationRequest;
-import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -92,6 +94,13 @@ public abstract class TruffleCompiler {
         ClassCastException.class
     };
     // @formatter:on
+
+    public static class Options {
+        //@formatter:off
+        @Option(help = "Enable the entry point tagging on AArch64, used for safe publishing of Truffle entry points.")
+        public static final OptionKey<Boolean> AArch64EntryPointTagging = new OptionKey<>(false);
+        //@formatter:on
+    }
 
     public static final OptimisticOptimizations Optimizations = OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.UseExceptionProbability,
                     OptimisticOptimizations.Optimization.RemoveNeverExecutedCode, OptimisticOptimizations.Optimization.UseTypeCheckedInlining, OptimisticOptimizations.Optimization.UseTypeCheckHints);
@@ -197,7 +206,7 @@ public abstract class TruffleCompiler {
     }
 
     @SuppressWarnings("try")
-    public CompilationResult compileMethodHelper(StructuredGraph graph, String name, PhaseSuite<HighTierContext> graphBuilderSuite, InstalledCode predefinedInstalledCode,
+    public CompilationResult compileMethodHelper(StructuredGraph graph, String name, PhaseSuite<HighTierContext> graphBuilderSuite, OptimizedCallTarget predefinedInstalledCode,
                     CompilationRequest compilationRequest) {
         try (Scope s = Debug.scope("TruffleFinal")) {
             Debug.dump(Debug.BASIC_LEVEL, graph, "After TruffleTier");
@@ -223,17 +232,21 @@ public abstract class TruffleCompiler {
             throw Debug.handle(e);
         }
 
-        compilationNotify.notifyCompilationGraalTierFinished((OptimizedCallTarget) predefinedInstalledCode, graph);
+        compilationNotify.notifyCompilationGraalTierFinished(predefinedInstalledCode, graph);
 
-        InstalledCode installedCode;
+        OptimizedCallTarget installedCode;
         try (DebugCloseable a = CodeInstallationTime.start(); DebugCloseable c = CodeInstallationMemUse.start()) {
-            installedCode = backend.createInstalledCode(graph.method(), compilationRequest, result, graph.getSpeculationLog(), predefinedInstalledCode, false);
+            installedCode = (OptimizedCallTarget) backend.createInstalledCode(graph.method(), compilationRequest, result, graph.getSpeculationLog(), predefinedInstalledCode, false);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
 
         for (AssumptionValidAssumption a : validAssumptions) {
             a.getAssumption().registerInstalledCode(installedCode);
+        }
+
+        if (!providers.getCodeCache().getTarget().arch.getName().equals("aarch64") || Options.AArch64EntryPointTagging.getValue(getOptions())) {
+            installedCode.releaseEntryPoint();
         }
 
         return result;

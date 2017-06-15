@@ -81,6 +81,10 @@ final class JavaObject implements TruffleObject {
         return NULL != this && obj == null;
     }
 
+    public boolean isArray() {
+        return obj != null && obj.getClass().isArray();
+    }
+
     @Override
     public boolean equals(Object other) {
         if (other instanceof JavaObject) {

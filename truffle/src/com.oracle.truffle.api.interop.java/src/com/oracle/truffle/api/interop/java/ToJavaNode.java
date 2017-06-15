@@ -75,7 +75,7 @@ abstract class ToJavaNode extends Node {
                 return convertedValue;
             }
         }
-        if (languageContext != null && (targetType.clazz == Object.class || targetType.clazz == Value.class)) {
+        if (languageContext != null && targetType.clazz == Value.class) {
             convertedValue = value instanceof Value ? value : JavaInterop.toHostValue(value, languageContext);
         } else if (JavaObject.isJavaInstance(targetType.clazz, value)) {
             convertedValue = JavaObject.valueOf(value);
@@ -84,9 +84,13 @@ abstract class ToJavaNode extends Node {
         } else if (value == JavaObject.NULL) {
             return null;
         } else if (value instanceof TruffleObject) {
-            boolean hasSize = primitive.hasSize((TruffleObject) value);
-            boolean isNull = primitive.isNull((TruffleObject) value);
-            convertedValue = asJavaObject(targetType.clazz, targetType, (TruffleObject) value, hasSize, isNull);
+            if (languageContext != null && targetType.clazz == Object.class) {
+                convertedValue = JavaInterop.toHostValue(value, languageContext);
+            } else {
+                boolean hasSize = primitive.hasSize((TruffleObject) value);
+                boolean isNull = primitive.isNull((TruffleObject) value);
+                convertedValue = asJavaObject(targetType.clazz, targetType, (TruffleObject) value, hasSize, isNull);
+            }
         } else {
             assert targetType.clazz.isAssignableFrom(value.getClass()) : value.getClass().getName() + " is not assignable to " + targetType;
             convertedValue = value;
