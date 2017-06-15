@@ -70,7 +70,7 @@ public class AArch64OptimizedCallTargetInstumentationFactory extends OptimizedCa
                     masm.cbz(64, spillRegister, doProlog);
                     // TODO(alexpro): Temporarily disable this fix for GR-4454 until this is tested.
                     if (TruffleCompiler.Options.AArch64EntryPointTagging.getValue(options)) {
-                        masm.tbz(64, spillRegister, 0, doProlog);
+                        masm.tbz(spillRegister, 0, doProlog);
                         masm.eor(64, spillRegister, spillRegister, 1);
                     }
                     masm.jmp(spillRegister);
