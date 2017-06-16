@@ -39,7 +39,6 @@ import java.util.Map;
 import java.util.Objects;
 
 import org.graalvm.options.OptionDescriptor;
-import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -1501,15 +1500,10 @@ public abstract class TruffleLanguage<C> {
             }
             String groupPlusDot = requiredGroup + ".";
             for (OptionDescriptor descriptor : descriptors) {
-                if (!descriptor.getName().startsWith(groupPlusDot)) {
+                if (!descriptor.getName().equals(requiredGroup) && !descriptor.getName().startsWith(groupPlusDot)) {
                     throw new IllegalArgumentException(String.format("Illegal option prefix in name '%s' specified for option described by language '%s'. " +
                                     "The option prefix must match the id of the language '%s'.",
                                     descriptor.getName(), language.getClass().getName(), requiredGroup));
-                }
-                OptionType<?> type = descriptor.getKey().getType();
-                if (type != OptionType.defaultType(type.getDefaultValue())) {
-                    throw new IllegalArgumentException(
-                                    String.format("Invalid option type used for option key %s. Only default option types are supported for Truffle languages.", descriptor.getName()));
                 }
             }
             return descriptors;

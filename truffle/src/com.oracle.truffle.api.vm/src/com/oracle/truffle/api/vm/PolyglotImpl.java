@@ -78,13 +78,19 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     private final PolyglotSourceImpl sourceImpl = new PolyglotSourceImpl(this);
     private final PolyglotSourceSectionImpl sourceSectionImpl = new PolyglotSourceSectionImpl(this);
 
+    private static void ensureInitialized() {
+        if (VMAccessor.SPI == null || !(VMAccessor.SPI.engineSupport() instanceof EngineImpl)) {
+            VMAccessor.initialize(new EngineImpl());
+        }
+    }
+
     /**
      * Internal method do not use.
      *
      * @since 0.27
      */
     public PolyglotImpl() {
-        VMAccessor.initialize(new EngineImpl());
+        ensureInitialized();
     }
 
     /**
@@ -114,14 +120,16 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @Override
     public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                    long maximumAllowedAllocationBytes, boolean useSystemProperties) {
+                    long maximumAllowedAllocationBytes, boolean useSystemProperties, ClassLoader contextClassLoader) {
+        ensureInitialized();
         OutputStream resolvedOut = out == null ? System.out : out;
         OutputStream resolvedErr = out == null ? System.err : err;
         InputStream resolvedIn = in == null ? System.in : in;
 
         DispatchOutputStream dispatchOut = INSTRUMENT.createDispatchOutput(resolvedOut);
         DispatchOutputStream dispatchErr = INSTRUMENT.createDispatchOutput(resolvedErr);
-        PolyglotEngineImpl impl = new PolyglotEngineImpl(this, dispatchOut, dispatchErr, resolvedIn, arguments, timeout, timeoutUnit, sandbox, useSystemProperties);
+        PolyglotEngineImpl impl = new PolyglotEngineImpl(this, dispatchOut, dispatchErr, resolvedIn, arguments, timeout, timeoutUnit, sandbox, useSystemProperties,
+                        contextClassLoader);
         Engine engine = getAPIAccess().newEngine(impl);
         impl.api = engine;
         return engine;
