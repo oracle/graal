@@ -49,9 +49,17 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
 
+/**
+ * An engine represents an the execution environment for polyglot applications. Using an engine
+ * contexts can be created. Contexts can either be single language contexts that are
+ * {@link Language#createContext() created} using a {@link Language language} or polyglot contexts
+ * that are {@link Engine#createPolyglotContext() created} from the engine. Contexts allow to
+ * {@link Context#eval(Source) evaluate} guest language code directly and polylgot contexts require
+ * to evaluate code code should be run in.
+ *
+ */
+// TODO document that the current context class loader is captured when the engine is created.
 public final class Engine implements AutoCloseable {
-
-    private static volatile AbstractPolyglotImpl IMPL;
 
     final AbstractEngineImpl impl;
 
@@ -59,14 +67,19 @@ public final class Engine implements AutoCloseable {
         this.impl = impl;
     }
 
+    private static final class ImplHolder {
+        private static final AbstractPolyglotImpl IMPL = initEngineImpl();
+    }
+
     /**
      * Returns an installed language by looking it up using its unique id. Shortcut for
      * <code>engine.getLanguages().get(languageId)</code>. Returns <code>null</code> if the language
      * was not found. Examples for language ids are: <code>"js"</code>, <code>"r"</code> or
-     * <code>"ruby"</code>.
+     * <code>"ruby"</code>. Throws {@link IllegalArgumentException} if an invalid languageId was
+     * provided. Use the map returned by {@link #getLanguages()} to find out whether a language is
+     * installed.
      *
      * @param languageId the unique of the language
-     *
      * @since 1.0
      */
     public Language getLanguage(String languageId) {
@@ -163,14 +176,7 @@ public final class Engine implements AutoCloseable {
     }
 
     static AbstractPolyglotImpl getImpl() {
-        if (IMPL == null) {
-            synchronized (Engine.class) {
-                if (IMPL == null) {
-                    IMPL = initEngineImpl();
-                }
-            }
-        }
-        return IMPL;
+        return ImplHolder.IMPL;
     }
 
     public static final class Builder {
@@ -278,7 +284,7 @@ public final class Engine implements AutoCloseable {
                 throw new IllegalStateException("The Polyglot API implementation failed to load.");
             }
             return loadedImpl.buildEngine(out, err, in, options, 0, null,
-                            false, 0, useSystemProperties);
+                            false, 0, useSystemProperties, Thread.currentThread().getContextClassLoader());
         }
 
     }
@@ -362,6 +368,8 @@ public final class Engine implements AutoCloseable {
 
     }
 
+    private static final boolean JDK8_OR_EARLIER = System.getProperty("java.specification.version").compareTo("1.9") < 0;
+
     private static AbstractPolyglotImpl initEngineImpl() {
         return AccessController.doPrivileged(new PrivilegedAction<AbstractPolyglotImpl>() {
             public AbstractPolyglotImpl run() {
@@ -372,19 +380,7 @@ public final class Engine implements AutoCloseable {
                 // using the jvmci/truffle service loader
 
                 if (engine == null) {
-                    boolean jdk8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
-                    if (!jdk8OrEarlier) {
-                        // As of JDK9, the JVMCI Services class should only be used for service
-                        // types
-                        // defined by JVMCI. Other services types should use ServiceLoader directly.
-                        Iterator<AbstractPolyglotImpl> providers = ServiceLoader.load(AbstractPolyglotImpl.class).iterator();
-                        if (providers.hasNext()) {
-                            engine = providers.next();
-                            if (providers.hasNext()) {
-                                throw new InternalError(String.format("Multiple %s providers found", AbstractPolyglotImpl.class.getName()));
-                            }
-                        }
-                    } else {
+                    if (JDK8_OR_EARLIER) {
                         try {
                             servicesClass = Class.forName("jdk.vm.ci.services.Services");
                         } catch (ClassNotFoundException e) {
@@ -395,7 +391,19 @@ public final class Engine implements AutoCloseable {
                                 engine = (AbstractPolyglotImpl) m.invoke(null, AbstractPolyglotImpl.class, false);
                             } catch (Throwable e) {
                                 // Fail fast for other errors
-                                throw (InternalError) new InternalError().initCause(e);
+                                throw new InternalError(e);
+                            }
+                        }
+                    } else {
+                        // As of JDK9, the JVMCI Services class should only be used for service
+                        // types
+                        // defined by JVMCI. Other services types should use ServiceLoader directly.
+                        Iterator<AbstractPolyglotImpl> providers = ServiceLoader.load(AbstractPolyglotImpl.class).iterator();
+                        if (providers.hasNext()) {
+                            engine = providers.next();
+                            if (providers.hasNext()) {
+
+                                throw new InternalError(String.format("Multiple %s providers found", AbstractPolyglotImpl.class.getName()));
                             }
                         }
                     }
@@ -409,6 +417,7 @@ public final class Engine implements AutoCloseable {
                         constructor.setAccessible(true);
                         engine = constructor.newInstance();
                     } catch (Exception e1) {
+                        throw new InternalError(e1);
                     }
                 }
 

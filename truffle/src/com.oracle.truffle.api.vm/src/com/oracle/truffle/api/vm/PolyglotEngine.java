@@ -208,7 +208,13 @@ public class PolyglotEngine {
     static final PolyglotEngine UNUSABLE_ENGINE = new PolyglotEngine();
 
     static {
-        VMAccessor.initialize(new LegacyEngineImpl());
+        ensureInitialized();
+    }
+
+    private static void ensureInitialized() {
+        if (VMAccessor.SPI == null || !(VMAccessor.SPI.engineSupport() instanceof LegacyEngineImpl)) {
+            VMAccessor.initialize(new LegacyEngineImpl());
+        }
     }
 
     /**
@@ -250,6 +256,7 @@ public class PolyglotEngine {
      */
     PolyglotEngine() {
         assertNoCompilation();
+        ensureInitialized();
         this.initThread = null;
         this.runtime = null;
         this.cachedTargets = null;
@@ -269,6 +276,7 @@ public class PolyglotEngine {
      */
     PolyglotEngine(PolyglotRuntime runtime, Executor executor, InputStream in, DispatchOutputStream out, DispatchOutputStream err, Map<String, Object> globals, List<Object[]> config) {
         assertNoCompilation();
+
         this.initThread = Thread.currentThread();
         this.runtime = runtime;
         this.languageArray = new Language[runtime.getLanguages().size()];

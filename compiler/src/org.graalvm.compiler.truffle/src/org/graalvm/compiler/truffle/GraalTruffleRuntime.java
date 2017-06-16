@@ -140,7 +140,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     private final List<GraalTruffleCompilationListener> compilationListeners = new ArrayList<>();
     private final GraalTruffleCompilationListener compilationNotify = new DispatchTruffleCompilationListener();
 
-    protected TruffleCompiler truffleCompiler;
+    protected volatile TruffleCompiler truffleCompiler;
     protected LoopNodeFactory loopNodeFactory;
     protected CallMethods callMethods;
 

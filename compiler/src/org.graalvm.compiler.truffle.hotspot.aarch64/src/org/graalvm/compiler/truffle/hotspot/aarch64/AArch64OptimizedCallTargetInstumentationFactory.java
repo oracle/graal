@@ -40,7 +40,6 @@ import org.graalvm.compiler.lir.asm.FrameContext;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
-import org.graalvm.compiler.truffle.TruffleCompiler;
 import org.graalvm.compiler.truffle.hotspot.OptimizedCallTargetInstrumentation;
 import org.graalvm.compiler.truffle.hotspot.OptimizedCallTargetInstrumentationFactory;
 

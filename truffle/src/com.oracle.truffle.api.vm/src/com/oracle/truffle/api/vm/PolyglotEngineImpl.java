@@ -99,13 +99,14 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
     final OptionValuesImpl engineOptionValues;
     final OptionValuesImpl compilerOptionValues;
+    final ClassLoader contextClassLoader;
 
     volatile OptionDescriptors allOptions;
 
     volatile boolean closed;
 
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options, long timeout, TimeUnit timeoutUnit,
-                    boolean sandbox, boolean useSystemProperties) {
+                    boolean sandbox, boolean useSystemProperties, ClassLoader contextClassLoader) {
         super(impl);
         this.instrumentationHandler = INSTRUMENT.createInstrumentationHandler(this, out, err, in);
         this.impl = impl;
@@ -114,6 +115,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         this.in = in;
         this.timeout = timeout;
         this.timeoutUnit = timeoutUnit;
+        this.contextClassLoader = contextClassLoader;
         this.sandbox = sandbox;
         Map<String, LanguageInfo> languageInfos = new LinkedHashMap<>();
         this.idToLanguage = Collections.unmodifiableMap(initializeLanguages(languageInfos));
@@ -336,13 +338,21 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     @Override
     public Language getLanguage(String id) {
         checkEngine(this);
-        return idToPublicLanguage.get(id);
+        Language language = idToPublicLanguage.get(id);
+        if (language == null) {
+            throw new IllegalArgumentException(String.format("A language with id '%s' is not installed. Installed languages are: %s.", id, getLanguages().keySet()));
+        }
+        return language;
     }
 
     @Override
     public Instrument getInstrument(String id) {
         checkEngine(this);
-        return idToInstrument.get(id);
+        Instrument instrument = idToInstrument.get(id);
+        if (instrument == null) {
+            throw new IllegalArgumentException(String.format("An instruments with id '%s' is not installed. Installed instruments are: %s.", id, getInstruments().keySet()));
+        }
+        return instrument;
     }
 
     @Override

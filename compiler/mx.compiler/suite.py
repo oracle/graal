@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.110.4",
+  "mxversion" : "5.113.0",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -610,6 +610,7 @@ suite = {
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,LIR",
       "findbugs" : "false",
+      "isTestProject" : True,
     },
 
     "org.graalvm.compiler.lir.test" : {
@@ -848,6 +849,7 @@ suite = {
       "annotationProcessors" : ["mx:JMH_1_18"],
       "findbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Bench",
+      "isTestProject" : True,
     },
 
     "org.graalvm.compiler.microbenchmarks" : {
@@ -865,6 +867,7 @@ suite = {
       "annotationProcessors" : ["mx:JMH_1_18"],
       "findbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Bench",
+      "isTestProject" : True,
     },
 
     "org.graalvm.compiler.loop" : {
@@ -1117,6 +1120,7 @@ suite = {
       "workingSets" : "Graal,Test",
       "jacoco" : "exclude",
       "findbugs" : "false",
+      "isTestProject" : True,
     },
 
     # ------------- GraalTruffle -------------
