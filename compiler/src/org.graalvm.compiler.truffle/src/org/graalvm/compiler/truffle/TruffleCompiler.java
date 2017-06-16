@@ -95,13 +95,6 @@ public abstract class TruffleCompiler {
     };
     // @formatter:on
 
-    public static class Options {
-        //@formatter:off
-        @Option(help = "Enable the entry point tagging on AArch64, used for safe publishing of Truffle entry points.")
-        public static final OptionKey<Boolean> AArch64EntryPointTagging = new OptionKey<>(false);
-        //@formatter:on
-    }
-
     public static final OptimisticOptimizations Optimizations = OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.UseExceptionProbability,
                     OptimisticOptimizations.Optimization.RemoveNeverExecutedCode, OptimisticOptimizations.Optimization.UseTypeCheckedInlining, OptimisticOptimizations.Optimization.UseTypeCheckHints);
 
@@ -245,9 +238,7 @@ public abstract class TruffleCompiler {
             a.getAssumption().registerInstalledCode(installedCode);
         }
 
-        if (!providers.getCodeCache().getTarget().arch.getName().equals("aarch64") || Options.AArch64EntryPointTagging.getValue(getOptions())) {
-            installedCode.releaseEntryPoint();
-        }
+        installedCode.releaseEntryPoint();
 
         return result;
     }
