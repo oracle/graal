@@ -56,7 +56,7 @@ import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 @TruffleLanguage.Registration(name = "Sulong", version = "0.01", mimeType = {Sulong.LLVM_BITCODE_MIME_TYPE, Sulong.LLVM_BITCODE_BASE64_MIME_TYPE,
-                Sulong.SULONG_LIBRARY_MIME_TYPE})
+                Sulong.SULONG_LIBRARY_MIME_TYPE}, internal = false, interactive = false)
 public final class Sulong extends LLVMLanguage {
 
     public interface LLVMLanguageProvider {
