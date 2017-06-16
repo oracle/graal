@@ -120,7 +120,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @Override
     public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                    long maximumAllowedAllocationBytes, boolean useSystemProperties, ClassLoader contextClassLoader) {
+                    long maximumAllowedAllocationBytes, boolean useSystemProperties) {
         ensureInitialized();
         OutputStream resolvedOut = out == null ? System.out : out;
         OutputStream resolvedErr = out == null ? System.err : err;
@@ -128,6 +128,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         DispatchOutputStream dispatchOut = INSTRUMENT.createDispatchOutput(resolvedOut);
         DispatchOutputStream dispatchErr = INSTRUMENT.createDispatchOutput(resolvedErr);
+        ClassLoader contextClassLoader = TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader();
         PolyglotEngineImpl impl = new PolyglotEngineImpl(this, dispatchOut, dispatchErr, resolvedIn, arguments, timeout, timeoutUnit, sandbox, useSystemProperties,
                         contextClassLoader);
         Engine engine = getAPIAccess().newEngine(impl);
