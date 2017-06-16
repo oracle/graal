@@ -28,7 +28,6 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleEnableI
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleExcludeAssertions;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBoundaries;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBranches;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.getOptions;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,8 +52,6 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -98,13 +95,6 @@ public abstract class TruffleCompiler {
         ClassCastException.class
     };
     // @formatter:on
-
-    public static class Options {
-        //@formatter:off
-        @Option(help = "Enable the entry point tagging on AArch64, used for safe publishing of Truffle entry points.")
-        public static final OptionKey<Boolean> AArch64EntryPointTagging = new OptionKey<>(false);
-        //@formatter:on
-    }
 
     public static final OptimisticOptimizations Optimizations = OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.UseExceptionProbability,
                     OptimisticOptimizations.Optimization.RemoveNeverExecutedCode, OptimisticOptimizations.Optimization.UseTypeCheckedInlining, OptimisticOptimizations.Optimization.UseTypeCheckHints);
@@ -292,10 +282,8 @@ public abstract class TruffleCompiler {
 
         @Override
         public void releaseInstallation(InstalledCode installedCode) {
-            if (!providers.getCodeCache().getTarget().arch.getName().equals("aarch64") || Options.AArch64EntryPointTagging.getValue(getOptions())) {
-                if (installedCode instanceof OptimizedCallTarget) {
-                    ((OptimizedCallTarget) installedCode).releaseEntryPoint();
-                }
+            if (installedCode instanceof OptimizedCallTarget) {
+                ((OptimizedCallTarget) installedCode).releaseEntryPoint();
             }
         }
     }
