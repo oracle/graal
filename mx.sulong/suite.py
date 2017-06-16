@@ -8,7 +8,7 @@ suite = {
       {
         "name" : "truffle",
         "subdir" : True,
-        "version" : "5272b4e994d640183c52d802e17ce891dc972293",
+        "version" : "343588a760902169386b0ef2a32756e3d64578a4",
         "urls" : [
           {"url" : "https://github.com/graalvm/graal", "kind" : "git"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -150,7 +150,7 @@ suite = {
     "com.oracle.truffle.llvm" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
-      "generatedDependencies" : [
+      "dependencies" : [
         "com.oracle.truffle.llvm.parser.factories",
        ],
       "checkstyle" : "com.oracle.truffle.llvm",
