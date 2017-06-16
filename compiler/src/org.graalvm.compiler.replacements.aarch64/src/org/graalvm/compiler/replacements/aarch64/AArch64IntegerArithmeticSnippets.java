@@ -206,6 +206,7 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         protected SafeSignedDivNode(ValueNode x, ValueNode y) {
             super(TYPE, x, y);
         }
+
         @Override
         public void generate(NodeLIRBuilderTool gen) {
             // override to ensure we always pass a null frame state
@@ -221,6 +222,7 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         protected SafeSignedRemNode(ValueNode x, ValueNode y) {
             super(TYPE, x, y);
         }
+
         @Override
         public void generate(NodeLIRBuilderTool gen) {
             // override to ensure we always pass a null frame state
@@ -236,6 +238,7 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         protected SafeUnsignedDivNode(ValueNode x, ValueNode y) {
             super(TYPE, x, y);
         }
+
         @Override
         public void generate(NodeLIRBuilderTool gen) {
             // override to ensure we always pass a null frame state
@@ -251,6 +254,7 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         protected SafeUnsignedRemNode(ValueNode x, ValueNode y) {
             super(TYPE, x, y);
         }
+
         @Override
         public void generate(NodeLIRBuilderTool gen) {
             // override to ensure we always pass a null frame state
