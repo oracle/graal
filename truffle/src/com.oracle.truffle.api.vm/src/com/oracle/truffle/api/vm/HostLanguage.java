@@ -69,7 +69,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
             try {
                 Class<?> loadedClass = classCache.get(clazz);
                 if (loadedClass == null) {
-                    loadedClass = Thread.currentThread().getContextClassLoader().loadClass(clazz);
+                    loadedClass = internalContext.getEngine().contextClassLoader.loadClass(clazz);
                     classCache.put(clazz, loadedClass);
                 }
                 return loadedClass;

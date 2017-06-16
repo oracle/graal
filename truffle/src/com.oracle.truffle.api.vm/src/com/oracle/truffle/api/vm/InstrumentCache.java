@@ -78,7 +78,11 @@ final class InstrumentCache {
         String loadedId = info.getProperty(prefix + "id");
         if (loadedId.equals("")) {
             /* use class name default id */
-            this.id = className;
+            int lastIndex = className.lastIndexOf('$');
+            if (lastIndex == -1) {
+                lastIndex = className.lastIndexOf('.');
+            }
+            this.id = className.substring(lastIndex + 1, className.length());
         } else {
             this.id = loadedId;
         }
