@@ -437,6 +437,10 @@ public class FloatStamp extends PrimitiveStamp {
                         }
                     },
 
+                    null,
+
+                    null,
+
                     new BinaryOp.Div(false, false) {
 
                         @Override
