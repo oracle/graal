@@ -48,6 +48,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.SulongNodeFactory;
+import com.oracle.truffle.llvm.parser.factories.BasicSulongNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -132,12 +133,12 @@ public final class Sulong extends LLVMLanguage {
         for (SulongNodeFactory f : ServiceLoader.load(SulongNodeFactory.class)) {
             cachedNodeFactories.add(f);
         }
+        if (cachedNodeFactories.isEmpty()) {
+            cachedNodeFactories.add(new BasicSulongNodeFactory());
+        }
     }
 
     private static SulongNodeFactory getNodeFactory() {
-        if (cachedNodeFactories.isEmpty()) {
-            throw new AssertionError("Could not find a " + SulongNodeFactory.class.getSimpleName() + " for the creation of the Truffle nodes");
-        }
         SulongNodeFactory factory = null;
         String expectedConfigName = LLVMOptions.ENGINE.nodeConfiguration();
         for (SulongNodeFactory prov : cachedNodeFactories) {
