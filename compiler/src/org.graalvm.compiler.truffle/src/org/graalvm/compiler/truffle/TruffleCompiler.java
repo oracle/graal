@@ -28,11 +28,10 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleEnableI
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleExcludeAssertions;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBoundaries;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBranches;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.getOptions;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.Assumptions.Assumption;
@@ -47,6 +46,7 @@ import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugEnvironment;
 import org.graalvm.compiler.debug.DebugMemUseTracker;
 import org.graalvm.compiler.debug.DebugTimer;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -222,7 +222,6 @@ public abstract class TruffleCompiler {
 
         CompilationResult result = null;
 
-        TruffleCompilationResultBuilderFactory factory = new TruffleCompilationResultBuilderFactory();
         try (DebugCloseable a = CompilationTime.start();
                         Scope s = Debug.scope("TruffleGraal.GraalCompiler", graph, providers.getCodeCache());
                         DebugCloseable c = CompilationMemUse.start()) {
@@ -232,7 +231,8 @@ public abstract class TruffleCompiler {
             }
 
             CompilationResult compilationResult = createCompilationResult(name, graph.compilationId());
-            result = compileGraph(graph, graph.method(), providers, backend, graphBuilderSuite, Optimizations, graph.getProfilingInfo(), suites, lirSuites, compilationResult, factory);
+            result = compileGraph(graph, graph.method(), providers, backend, graphBuilderSuite, Optimizations, graph.getProfilingInfo(), suites, lirSuites, compilationResult,
+                            CompilationResultBuilderFactory.Default);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -261,7 +261,7 @@ public abstract class TruffleCompiler {
         return partialEvaluator;
     }
 
-    private class TrufflePostCodeInstallationTask extends Backend.CodeInstallationTask {
+    private class TruffleCodeInstallationTask extends Backend.CodeInstallationTask {
         private List<AssumptionValidAssumption> validAssumptions = new ArrayList<>();
 
         @Override
@@ -269,17 +269,14 @@ public abstract class TruffleCompiler {
             if (result == null || result.getAssumptions() == null) {
                 return;
             }
-            Set<Assumption> newAssumptions = new HashSet<>();
+            ArrayList<Assumption> newAssumptions = new ArrayList<>();
             for (Assumption assumption : result.getAssumptions()) {
-                if (assumption != null) {
-                    if (assumption instanceof AssumptionValidAssumption) {
-                        AssumptionValidAssumption assumptionValidAssumption = (AssumptionValidAssumption) assumption;
-                        validAssumptions.add(assumptionValidAssumption);
-                    } else {
-                        newAssumptions.add(assumption);
-                    }
+                if (assumption != null && assumption instanceof AssumptionValidAssumption) {
+                    AssumptionValidAssumption assumptionValidAssumption = (AssumptionValidAssumption) assumption;
+                    validAssumptions.add(assumptionValidAssumption);
+                } else {
+                    newAssumptions.add(assumption);
                 }
-                TruffleCompilationResultBuilderFactory.processAssumption(newAssumptions, assumption, validAssumptions);
             }
             result.setAssumptions(newAssumptions.toArray(new Assumption[newAssumptions.size()]));
         }
@@ -295,7 +292,7 @@ public abstract class TruffleCompiler {
 
         @Override
         public void releaseInstallation(InstalledCode installedCode) {
-            if (!providers.getCodeCache().getTarget().arch.getName().equals("aarch64")) {
+            if (!providers.getCodeCache().getTarget().arch.getName().equals("aarch64") || Options.AArch64EntryPointTagging.getValue(getOptions())) {
                 if (installedCode instanceof OptimizedCallTarget) {
                     ((OptimizedCallTarget) installedCode).releaseEntryPoint();
                 }
@@ -306,7 +303,7 @@ public abstract class TruffleCompiler {
     private class TrufflePostCodeInstallationTaskFactory extends Backend.CodeInstallationTaskFactory {
         @Override
         public Backend.CodeInstallationTask create() {
-            return new TrufflePostCodeInstallationTask();
+            return new TruffleCodeInstallationTask();
         }
     }
 }
