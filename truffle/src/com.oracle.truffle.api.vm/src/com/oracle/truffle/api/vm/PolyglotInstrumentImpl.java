@@ -97,14 +97,14 @@ class PolyglotInstrumentImpl extends AbstractInstrumentImpl implements VMObject 
             synchronized (engine) {
                 if (!created) {
                     if (!initialized) {
-                        throw new AssertionError();
+                        ensureInitialized();
                     }
                     try {
                         INSTRUMENT.createInstrument(engine.instrumentationHandler, this, cache.services(), getOptionValues());
                     } catch (Exception e) {
                         throw new IllegalStateException(String.format("Error initializing language '%s' using class '%s'.", cache.getId(), cache.getClassName()), e);
                     }
-                    initialized = true;
+                    created = true;
                 }
             }
         }
