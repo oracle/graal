@@ -28,7 +28,6 @@ import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.alloc.Trace;
 import org.graalvm.compiler.core.common.alloc.TraceBuilderResult;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
-import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.lir.alloc.trace.TraceAllocationPhase.TraceAllocationContext;
 import org.graalvm.compiler.lir.alloc.trace.TraceRegisterAllocationPolicy.AllocationStrategy;
 import org.graalvm.compiler.lir.alloc.trace.bu.BottomUpAllocator;
@@ -274,20 +273,16 @@ public final class DefaultTraceRegisterAllocationPolicy {
 
     public static final class BottomUpFrequencyBudgetStrategy extends BottomUpStrategy {
 
-        private final double sumMethodProbability;
-        private final double[] sumTraceProbability;
-        private double budget;
-        private final double sumBudget;
+        private final double[] cumulativeTraceProbability;
+        private final double budget;
 
         public BottomUpFrequencyBudgetStrategy(TraceRegisterAllocationPolicy plan) {
             // explicitly specify the enclosing instance for the superclass constructor call
             super(plan);
             ArrayList<Trace> traces = getTraceBuilderResult().getTraces();
-            double[] sumTraces = new double[traces.size()];
-            this.sumMethodProbability = init(traces, sumTraces);
-            this.sumTraceProbability = sumTraces;
-            this.budget = this.sumMethodProbability;
-            this.sumBudget = Options.TraceRAsumBudget.getValue(plan.getOptions());
+            this.cumulativeTraceProbability = new double[traces.size()];
+            double sumMethodProbability = init(traces, this.cumulativeTraceProbability);
+            this.budget = sumMethodProbability * Options.TraceRAsumBudget.getValue(plan.getOptions());
         }
 
         private static double init(ArrayList<Trace> traces, double[] sumTraces) {
@@ -297,28 +292,20 @@ public final class DefaultTraceRegisterAllocationPolicy {
                 for (AbstractBlockBase<?> block : trace.getBlocks()) {
                     traceSum += block.probability();
                 }
-                sumTraces[trace.getId()] = traceSum;
                 sumMethod += traceSum;
+                // store cumulative sum for trace
+                sumTraces[trace.getId()] = sumMethod;
             }
             return sumMethod;
         }
 
         @Override
         public boolean shouldApplyTo(Trace trace) {
-            Debug.log(1, "Trace%d: budget %f", (Object) trace.getId(), budget);
-            double traceCost = sumTraceProbability[trace.getId()];
-            double oldBudget = budget;
-            budget -= traceCost;
-            Debug.log(1, "Trace%d: budget %f", (Object) trace.getId(), budget);
             if (!super.shouldApplyTo(trace)) {
                 return false;
             }
-            double d = oldBudget / sumMethodProbability;
-            Debug.log(1, "Trace%d: ratio %f", (Object) trace.getId(), d);
-            if (d > sumBudget) {
-                return false;
-            }
-            return true;
+            double cumTraceProb = cumulativeTraceProbability[trace.getId()];
+            return cumTraceProb > budget;
         }
 
     }
