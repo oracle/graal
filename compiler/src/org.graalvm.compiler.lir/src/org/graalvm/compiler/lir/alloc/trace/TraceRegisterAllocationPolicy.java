@@ -78,6 +78,9 @@ public final class TraceRegisterAllocationPolicy {
 
         /**
          * Returns {@code true} if the allocation strategy should be used for {@code trace}.
+         *
+         * This method must not alter any state of the strategy, nor rely on being called in a
+         * specific trace order.
          */
         public abstract boolean shouldApplyTo(Trace trace);
 

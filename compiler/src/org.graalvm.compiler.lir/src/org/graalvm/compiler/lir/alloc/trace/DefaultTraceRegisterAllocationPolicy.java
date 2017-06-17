@@ -211,7 +211,34 @@ public final class DefaultTraceRegisterAllocationPolicy {
 
     }
 
-    public static final class BottomUpLoopStrategy extends BottomUpStrategy {
+    public abstract static class BottomUpLoopStrategyBase extends BottomUpStrategy {
+
+        public BottomUpLoopStrategyBase(TraceRegisterAllocationPolicy plan) {
+            // explicitly specify the enclosing instance for the superclass constructor call
+            super(plan);
+        }
+
+        @Override
+        public final boolean shouldApplyTo(Trace trace) {
+            if (!super.shouldApplyTo(trace)) {
+                return false;
+            }
+            if (getLIR().getControlFlowGraph().getLoops().isEmpty()) {
+                return shouldApplyToNoLoop(trace);
+            }
+            for (AbstractBlockBase<?> block : trace.getBlocks()) {
+                if (block.getLoopDepth() > 0) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        protected abstract boolean shouldApplyToNoLoop(Trace trace);
+
+    }
+
+    public static final class BottomUpLoopStrategy extends BottomUpLoopStrategyBase {
 
         public BottomUpLoopStrategy(TraceRegisterAllocationPolicy plan) {
             // explicitly specify the enclosing instance for the superclass constructor call
@@ -219,21 +246,26 @@ public final class DefaultTraceRegisterAllocationPolicy {
         }
 
         @Override
-        public boolean shouldApplyTo(Trace trace) {
-            if (!super.shouldApplyTo(trace)) {
-                return false;
-            }
-            if (getLIR().getControlFlowGraph().getLoops().isEmpty()) {
-                // no loops at all -> use LSRA
-                return false;
-            }
-            for (AbstractBlockBase<?> block : trace.getBlocks()) {
-                if (block.getLoopDepth() > 0) {
-                    // do not use bottom up for traces with loops
-                    return false;
-                }
-            }
-            return true;
+        protected boolean shouldApplyToNoLoop(Trace trace) {
+            // no loops at all -> use LSRA
+            return false;
+        }
+
+    }
+
+    public static final class BottomUpDelegatingLoopStrategy extends BottomUpLoopStrategyBase {
+
+        private final BottomUpStrategy delegate;
+
+        public BottomUpDelegatingLoopStrategy(TraceRegisterAllocationPolicy plan, BottomUpStrategy delegate) {
+            // explicitly specify the enclosing instance for the superclass constructor call
+            super(plan);
+            this.delegate = delegate;
+        }
+
+        @Override
+        protected boolean shouldApplyToNoLoop(Trace trace) {
+            return delegate.shouldApplyTo(trace);
         }
 
     }
