@@ -22,13 +22,12 @@
  */
 package org.graalvm.compiler.virtual.phases.ea;
 
-import static org.graalvm.api.word.LocationIdentity.any;
 import static org.graalvm.compiler.core.common.GraalOptions.ReadEliminationMaxLoopVisits;
+import static org.graalvm.word.LocationIdentity.any;
 
 import java.util.Iterator;
 import java.util.List;
 
-import org.graalvm.api.word.LocationIdentity;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.Debug;
@@ -63,6 +62,7 @@ import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
 import org.graalvm.util.MapCursor;
+import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
 
