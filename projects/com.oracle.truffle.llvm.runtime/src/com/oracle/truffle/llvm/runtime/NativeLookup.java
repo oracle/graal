@@ -58,7 +58,7 @@ public final class NativeLookup {
 
     NativeLookup(Env env) {
         this.env = env;
-        this.libraryHandles = loadLibraries(env, LLVMOptions.ENGINE.dynamicNativeLibraryPath());
+        this.libraryHandles = loadLibraries(env);
         this.defaultLibrary = loadDefaultLibrary(env);
     }
 
@@ -66,9 +66,10 @@ public final class NativeLookup {
      * PRIVATE
      */
 
-    private static List<TruffleObject> loadLibraries(TruffleLanguage.Env env, String[] dynamicLibraryPaths) {
+    private static List<TruffleObject> loadLibraries(TruffleLanguage.Env env) {
         CompilerAsserts.neverPartOfCompilation();
         List<TruffleObject> handles = new ArrayList<>();
+        String[] dynamicLibraryPaths = LLVMOptions.getNativeLibraries();
         for (String library : dynamicLibraryPaths) {
             try {
                 TruffleObject lib = loadLibrary(env, library);

@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.options;
 
+import java.nio.file.Paths;
 import java.util.ServiceLoader;
 
 import com.oracle.truffle.llvm.option.OptionSummary;
@@ -52,6 +53,39 @@ public final class LLVMOptions {
 
     public static void main(String[] args) {
         OptionSummary.printOptions();
+    }
+
+    public static String[] getNativeLibraries() {
+        String graalHome = System.getProperty("graalvm.home");
+        String[] userLibraries = LLVMOptions.ENGINE.dynamicNativeLibraryPath();
+        if (graalHome != null) {
+            String defaultPath;
+            if (System.getProperty("os.name").toLowerCase().contains("mac")) {
+                defaultPath = Paths.get(graalHome, "language", "llvm", "libsulong.so").toAbsolutePath().toString();
+            } else {
+                defaultPath = Paths.get(graalHome, "language", "llvm", "libsulong.dylib").toAbsolutePath().toString();
+            }
+            String[] prependedUserLibraries = new String[userLibraries.length + 1];
+            System.arraycopy(userLibraries, 0, prependedUserLibraries, 1, userLibraries.length);
+            prependedUserLibraries[0] = defaultPath;
+            return prependedUserLibraries;
+        } else {
+            return userLibraries;
+        }
+    }
+
+    public static String[] getBitcodeLibraries() {
+        String graalHome = System.getProperty("graalvm.home");
+        String[] userLibraries = LLVMOptions.ENGINE.dynamicBitcodeLibraries();
+        if (graalHome != null) {
+            String defaultPath = Paths.get(graalHome, "language", "llvm", "libsulong.bc").toAbsolutePath().toString();
+            String[] prependedUserLibraries = new String[userLibraries.length + 1];
+            System.arraycopy(userLibraries, 0, prependedUserLibraries, 1, userLibraries.length);
+            prependedUserLibraries[0] = defaultPath;
+            return prependedUserLibraries;
+        } else {
+            return userLibraries;
+        }
     }
 
 }
