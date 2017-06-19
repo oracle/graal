@@ -844,7 +844,7 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * Returns option values for the options described in
-         * {@link TruffleLanguage#describeOptions()}. The returned options are never
+         * {@link TruffleLanguage#getOptionDescriptors()}. The returned options are never
          * <code>null</code>.
          *
          * @since 0.27
