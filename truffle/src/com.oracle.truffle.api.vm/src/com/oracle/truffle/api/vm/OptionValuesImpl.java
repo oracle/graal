@@ -69,6 +69,10 @@ class OptionValuesImpl implements OptionValues {
         this.descriptors = copy.descriptors;
     }
 
+    public boolean hasBeenSet(OptionKey<?> optionKey) {
+        return values.containsKey(optionKey);
+    }
+
     OptionValuesImpl copy() {
         return new OptionValuesImpl(this);
     }

@@ -92,4 +92,8 @@ public final class OptionKey<T> {
         return values.get(this);
     }
 
+    public boolean hasBeenSet(OptionValues values) {
+        return values.hasBeenSet(this);
+    }
+
 }
