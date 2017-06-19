@@ -104,7 +104,7 @@ class PolyglotLanguageImpl extends AbstractLanguageImpl implements VMObject {
                     try {
                         LoadedLanguage loadedLanguage = cache.loadLanguage();
                         LANGUAGE.initializeLanguage(info, loadedLanguage.getLanguage(), loadedLanguage.isSingleton());
-                        this.options = new OptionDescriptorsImpl(LANGUAGE.describeOptions(loadedLanguage.getLanguage(), cache.getId()));
+                        this.options = LANGUAGE.describeOptions(loadedLanguage.getLanguage(), cache.getId());
                     } catch (Exception e) {
                         throw new IllegalStateException(String.format("Error initializing language '%s' using class '%s'.", cache.getId(), cache.getClassName()), e);
                     }

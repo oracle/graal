@@ -257,7 +257,7 @@ public final class PolyglotRuntime {
                         initialized = true;
                         LoadedLanguage loadedLanguage = cache.loadLanguage();
                         LANGUAGE.initializeLanguage(language, loadedLanguage.getLanguage(), loadedLanguage.isSingleton());
-                        options = new OptionDescriptorsImpl(LANGUAGE.describeOptions(loadedLanguage.getLanguage(), cache.getId()));
+                        options = LANGUAGE.describeOptions(loadedLanguage.getLanguage(), cache.getId());
                     }
                 }
             }
@@ -456,9 +456,7 @@ public final class PolyglotRuntime {
                         }
 
                         INSTRUMENT.initializeInstrument(PolyglotRuntime.this.instrumentationHandler, this, getCache().getInstrumentationClass());
-
-                        OptionDescriptors descriptors = new OptionDescriptorsImpl(INSTRUMENT.describeOptions(getRuntime().instrumentationHandler,
-                                        this, this.getId()));
+                        OptionDescriptors descriptors = INSTRUMENT.describeOptions(getRuntime().instrumentationHandler, this, this.getId());
                         OptionValuesImpl values = new OptionValuesImpl(null, descriptors);
                         INSTRUMENT.createInstrument(PolyglotRuntime.this.instrumentationHandler, this, cache.services(), values);
                     } else {

@@ -27,11 +27,9 @@ package com.oracle.truffle.api.impl;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Value;
@@ -213,7 +211,7 @@ public abstract class Accessor {
 
         public abstract boolean isContextInitialized(Env env);
 
-        public abstract List<OptionDescriptor> describeOptions(TruffleLanguage<?> language, String requiredGroup);
+        public abstract OptionDescriptors describeOptions(TruffleLanguage<?> language, String requiredGroup);
 
         public abstract void onThrowable(RootNode root, Throwable e);
 
@@ -245,7 +243,7 @@ public abstract class Accessor {
             return new DispatchOutputStream(out);
         }
 
-        public abstract List<OptionDescriptor> describeOptions(Object instrumentationHandler, Object key, String requiredGroup);
+        public abstract OptionDescriptors describeOptions(Object instrumentationHandler, Object key, String requiredGroup);
 
     }
 
