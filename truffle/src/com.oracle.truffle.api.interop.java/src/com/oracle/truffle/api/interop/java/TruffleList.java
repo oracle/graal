@@ -79,9 +79,9 @@ final class TruffleList<T> extends AbstractList<T> {
     }
 
     private static CallTarget initializeListCall(TruffleObject obj, Message msg) {
-        CallTarget res = JavaInterop.ACCESSOR.engine().lookupOrRegisterComputation(obj, null, TruffleList.class, msg);
+        CallTarget res = JavaInterop.lookupOrRegisterComputation(obj, null, TruffleList.class, msg);
         if (res == null) {
-            res = JavaInterop.ACCESSOR.engine().lookupOrRegisterComputation(obj, new ListNode(msg), TruffleList.class, msg);
+            res = JavaInterop.lookupOrRegisterComputation(obj, new ListNode(msg), TruffleList.class, msg);
         }
         return res;
     }

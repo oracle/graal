@@ -101,11 +101,7 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
         if (root == null) {
             return true;
         }
-        SourceSection section = root.getSourceSection();
-        if (section == null) {
-            return true;
-        }
-        return section.getSource().isInternal();
+        return root.isInternal();
     }
 
     /**

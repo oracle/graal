@@ -186,6 +186,7 @@ class DebugValueBenchmarkMixin(object):
 
 class DebugValueRule(mx_benchmark.CSVFixedFileRule):
     def __init__(self, debug_value_file, benchmark, bench_suite, metric_name, filter_fn, vm_flags, metric_unit=("<unit>", str)):
+        # pylint: disable=expression-not-assigned
         super(DebugValueRule, self).__init__(
             filename=debug_value_file,
             colnames=['scope', 'name', 'value', 'unit'],

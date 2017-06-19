@@ -30,7 +30,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
-@TruffleLanguage.Registration(name = "Hash", mimeType = "application/x-test-hash", version = "1.0")
+@TruffleLanguage.Registration(name = "HashLanguage", mimeType = "application/x-test-hash", version = "1.0")
 public class HashLanguage extends TruffleLanguage<Env> {
 
     @Override
@@ -41,11 +41,6 @@ public class HashLanguage extends TruffleLanguage<Env> {
     @Override
     protected CallTarget parse(ParsingRequest env) {
         return Truffle.getRuntime().createCallTarget(new HashNode(this, env.getSource()));
-    }
-
-    @Override
-    protected Object findExportedSymbol(Env context, String globalName, boolean onlyExplicit) {
-        return null;
     }
 
     @Override

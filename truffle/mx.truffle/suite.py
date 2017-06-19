@@ -17,7 +17,7 @@ suite = {
   "repositories" : {
     "lafo-snapshots" : {
       "url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
-      "licenses" : ["GPLv2-CPE", "UPL"]
+      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new"]
     },
   },
   "defaultLicense" : "GPLv2-CPE",
@@ -79,7 +79,8 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.api.source"
+        "com.oracle.truffle.api.source",
+        "sdk:GRAAL_SDK",
       ],
       "uses" : [
         "com.oracle.truffle.api.TruffleRuntimeAccess",
@@ -109,8 +110,9 @@ suite = {
     "com.oracle.truffle.api.vm" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "uses" : ["com.oracle.truffle.api.impl.TruffleLocator"],
+      "uses" : ["com.oracle.truffle.api.impl.TruffleLocator", "org.graalvm.polyglot.impl.AbstractPolyglotImpl",],
       "dependencies" : [
+        "sdk:GRAAL_SDK",
         "com.oracle.truffle.api.interop.java",
         "com.oracle.truffle.api.profiles",
         "com.oracle.truffle.api.instrumentation",
@@ -654,6 +656,7 @@ suite = {
         "com.oracle.truffle.api.object.dsl",
       ],
       "distDependencies" : [
+	    "sdk:GRAAL_SDK"
       ],
       "description" : """Truffle is a multi-language framework for executing dynamic languages
         that achieves high performance when combined with Graal.""",
@@ -707,7 +710,7 @@ suite = {
       "subDir" : "src",
       "javaCompliance" : "1.8",
       "dependencies" : ["com.oracle.truffle.dsl.processor"],
-      "distDependencies" : [],
+      "distDependencies" : ["sdk:GRAAL_SDK"],
       "maven" : False,
     },
 
@@ -716,7 +719,7 @@ suite = {
       "subDir" : "src",
       "javaCompliance" : "1.8",
       "dependencies" : ["com.oracle.truffle.dsl.processor", "com.oracle.truffle.dsl.processor.interop"],
-      "distDependencies" : [],
+      "distDependencies" : ["sdk:GRAAL_SDK"],
       "maven" : False,
     },
 

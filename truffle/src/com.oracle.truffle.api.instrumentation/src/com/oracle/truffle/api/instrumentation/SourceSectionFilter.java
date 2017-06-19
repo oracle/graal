@@ -30,8 +30,10 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -76,6 +78,7 @@ public final class SourceSectionFilter {
      * @see Builder#indexIn(int, int)
      * @see Builder#lineIn(int, int)
      * @see Builder#lineIs(int)
+     * @see Builder#rootNameIs(Predicate)
      * @see Builder#build()
      *
      * @return a new builder to create new {@link SourceSectionFilter} instances
@@ -120,9 +123,9 @@ public final class SourceSectionFilter {
         return true;
     }
 
-    boolean isInstrumentedRoot(Set<Class<?>> providedTags, SourceSection rootSourceSection) {
+    boolean isInstrumentedRoot(Set<Class<?>> providedTags, SourceSection rootSourceSection, RootNode rootNode) {
         for (EventFilterExpression exp : expressions) {
-            if (!exp.isRootIncluded(providedTags, rootSourceSection)) {
+            if (!exp.isRootIncluded(providedTags, rootSourceSection, rootNode)) {
                 return false;
             }
         }
@@ -190,6 +193,25 @@ public final class SourceSectionFilter {
                 throw new IllegalArgumentException("SourcePredicate must not be null.");
             }
             expressions.add(new EventFilterExpression.SourceFilterIs(predicate));
+            return this;
+        }
+
+        /**
+         * Adds custom predicate to filter inclusion for {@link RootNode#getName() root names}. The
+         * root name might be <code>null</code> if not provided by the guest language. If the
+         * language returns a changing value it is unspecified which root name is going to be
+         * matched. The predicate must always return the same result for a {@link String} instance
+         * otherwise the behavior is undefined. The predicate should be able run on multiple threads
+         * at the same time.
+         *
+         * @param predicate a test for inclusion
+         * @since 0.27
+         */
+        public Builder rootNameIs(Predicate<String> predicate) {
+            if (predicate == null) {
+                throw new IllegalArgumentException("Predicate must not be null.");
+            }
+            expressions.add(new EventFilterExpression.RootNameIs(predicate));
             return this;
         }
 
@@ -523,7 +545,7 @@ public final class SourceSectionFilter {
 
         abstract boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection sourceSection);
 
-        abstract boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSection);
+        abstract boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSection, RootNode rootNode);
 
         boolean isSourceOnly() {
             return false;
@@ -563,7 +585,7 @@ public final class SourceSectionFilter {
             }
 
             @Override
-            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSourceSection) {
+            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSourceSection, RootNode rootNode) {
                 if (rootSourceSection == null) {
                     return true;
                 }
@@ -583,6 +605,48 @@ public final class SourceSectionFilter {
             @Override
             public String toString() {
                 return String.format("source is included by custom filter %s", predicate.toString());
+            }
+        }
+
+        private static final class RootNameIs extends EventFilterExpression {
+
+            private final Predicate<String> predicate;
+
+            RootNameIs(Predicate<String> predicate) {
+                this.predicate = predicate;
+            }
+
+            @Override
+            boolean isSourceOnly() {
+                return false;
+            }
+
+            @Override
+            boolean isSourceIncluded(Source src) {
+                return true;
+            }
+
+            @Override
+            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSourceSection, RootNode rootNode) {
+                if (rootSourceSection == null) {
+                    return true;
+                }
+                return predicate.test(rootNode.getName());
+            }
+
+            @Override
+            boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection sourceSection) {
+                return true;
+            }
+
+            @Override
+            protected int getOrder() {
+                return 3;
+            }
+
+            @Override
+            public String toString() {
+                return String.format("root name is included by custom filter %s", predicate.toString());
             }
         }
 
@@ -610,7 +674,7 @@ public final class SourceSectionFilter {
             }
 
             @Override
-            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSourceSection) {
+            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSourceSection, RootNode rootNode) {
                 if (rootSourceSection == null) {
                     return true;
                 }
@@ -642,7 +706,7 @@ public final class SourceSectionFilter {
             }
 
             @Override
-            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSourceSection) {
+            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSourceSection, RootNode rootNode) {
                 if (rootSourceSection == null) {
                     return true;
                 }
@@ -720,7 +784,7 @@ public final class SourceSectionFilter {
             }
 
             @Override
-            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSection) {
+            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSection, RootNode rootNode) {
                 for (Class<?> tag : tags) {
                     if (providedTags.contains(tag)) {
                         return true;
@@ -763,7 +827,7 @@ public final class SourceSectionFilter {
             }
 
             @Override
-            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSection) {
+            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSection, RootNode rootNode) {
                 if (rootSection == null) {
                     return true;
                 }
@@ -808,7 +872,7 @@ public final class SourceSectionFilter {
             }
 
             @Override
-            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSection) {
+            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSection, RootNode rootNode) {
                 if (rootSection == null) {
                     return false;
                 }
@@ -842,7 +906,7 @@ public final class SourceSectionFilter {
             }
 
             @Override
-            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSourceSection) {
+            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSourceSection, RootNode rootNode) {
                 if (rootSourceSection == null) {
                     return true;
                 }
@@ -887,7 +951,7 @@ public final class SourceSectionFilter {
             }
 
             @Override
-            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSection) {
+            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSection, RootNode rootNode) {
                 if (rootSection == null) {
                     return true;
                 }
@@ -934,7 +998,7 @@ public final class SourceSectionFilter {
             }
 
             @Override
-            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSection) {
+            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSection, RootNode rootNode) {
                 if (rootSection == null) {
                     return true;
                 }
@@ -984,7 +1048,7 @@ public final class SourceSectionFilter {
             }
 
             @Override
-            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSourceSection) {
+            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSourceSection, RootNode rootNode) {
                 if (rootSourceSection == null) {
                     return true;
                 }
@@ -1058,7 +1122,7 @@ public final class SourceSectionFilter {
         }
 
         @Override
-        boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSection) {
+        boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSection, RootNode rootNode) {
             return true;
         }
 

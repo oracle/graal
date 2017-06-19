@@ -130,6 +130,11 @@ public final class SLLanguage extends TruffleLanguage<SLContext> implements Scop
     }
 
     @Override
+    protected Object lookupSymbol(SLContext context, String symbolName) {
+        return context.getFunctionRegistry().lookup(symbolName, false);
+    }
+
+    @Override
     protected Object getLanguageGlobal(SLContext context) {
         /*
          * The context itself is the global function registry. SL does not have global variables.

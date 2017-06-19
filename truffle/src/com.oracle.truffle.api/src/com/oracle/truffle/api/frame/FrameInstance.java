@@ -29,6 +29,12 @@ import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
+ * Represents a current frame instance on the stack. Please note that any frame instance must not be
+ * used after the {@link TruffleRuntime#iterateFrames(FrameInstanceVisitor) iterateFrames()} method
+ * returned.
+ *
+ * @see TruffleRuntime#iterateFrames(FrameInstanceVisitor) To iterate the current frame instances on
+ *      the stack.
  * @since 0.8 or earlier
  */
 public interface FrameInstance {
@@ -132,4 +138,5 @@ public interface FrameInstance {
      * @since 0.8 or earlier
      **/
     CallTarget getCallTarget();
+
 }

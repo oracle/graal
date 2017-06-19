@@ -145,7 +145,7 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
         // get UnsafeAccessImpl.unsafeGetInt intrinsified
         Registration r = new Registration(invocationPlugins, MyUnsafeAccess.class);
-        TruffleGraphBuilderPlugins.registerUnsafeLoadStorePlugins(r, null, JavaKind.Int);
+        TruffleGraphBuilderPlugins.registerUnsafeLoadStorePlugins(r, false, null, JavaKind.Int);
         super.registerInvocationPlugins(invocationPlugins);
     }
 

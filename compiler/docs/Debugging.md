@@ -112,7 +112,7 @@ The flat time is the amount of time spent within the declared scope minus the ti
 * DebugMemUseTracker: An auto-closable memory tracker that tracks the memory usage in its `try` block. For example:
 ```java
 // declaration: if the name of DebugMemUseTracker is known at compile time it should be declared as a constant
-private static final DebugMemUseTracker myOptimizationMemoryUsage = Debug.timer("MyOptimizationMemory");
+private static final DebugMemUseTracker myOptimizationMemoryUsage = Debug.memUseTracker("MyOptimizationMemory");
 // usage
 try(DebugCloseable a = myOptimizationMemoryUsage.start()){
     // do your optimization

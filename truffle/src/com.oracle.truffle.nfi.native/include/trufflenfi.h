@@ -66,6 +66,10 @@ void releaseObjectRef(TruffleObject object);
  */
 TruffleObject releaseAndReturn(TruffleObject object);
 
+/**
+ * Returns 1 iff object1 references the same underlying object as object2, 0 otherwise.
+ */
+int isSameObject(TruffleObject object1, TruffleObject object2);
 
 /**
  * Increase the reference count of a callback closure.

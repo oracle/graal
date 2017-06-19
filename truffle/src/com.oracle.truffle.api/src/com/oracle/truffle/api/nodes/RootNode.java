@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
 import com.oracle.truffle.api.TruffleRuntime;
@@ -201,7 +202,24 @@ public abstract class RootNode extends Node {
             }
         }
         return (C) language;
+    }
 
+    /**
+     * Returns the current context associated with the root node {@link #getLanguage(Class)
+     * language} and {@link Thread thread}. The current context is <code>null</code> if the root
+     * node is associated with a <code>null</code> language. This is a short-cut for
+     * <code>this</code>. {@link #getLanguage(Class) getLanguage(languageClass)}.
+     * {@link TruffleLanguage#getContextReference() getContextReference()}.
+     * {@link ContextReference#get() get()}. If invoked on the fast-path then
+     * <code>languageClass</code> must be a compilation final value.
+     *
+     * @see #getLanguage(Class)
+     * @see TruffleLanguage#getContextReference()
+     * @since 0.27
+     */
+    public final <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {
+        CompilerAsserts.partialEvaluationConstant(languageClass);
+        return getLanguage(languageClass).getContextReference().get();
     }
 
     /**
@@ -257,6 +275,26 @@ public abstract class RootNode extends Node {
      */
     public String getName() {
         return null;
+    }
+
+    /**
+     * Returns <code>true</code> if this root node should be considered internal and not be shown to
+     * a guest language programmer. This method has effect on tools and guest language stack traces.
+     * By default a {@link RootNode} is internal if no language was passed in the constructor or if
+     * the {@link #getSourceSection() root source section} is set and points to an internal source.
+     * This method is intended to be overwritten by guest languages.
+     *
+     * @since 0.27
+     */
+    public boolean isInternal() {
+        if (getLanguageInfo() == null) {
+            return true;
+        }
+        SourceSection sc = getSourceSection();
+        if (sc != null) {
+            return sc.getSource().isInternal();
+        }
+        return false;
     }
 
     /**
@@ -369,7 +407,8 @@ public abstract class RootNode extends Node {
      *
      * @since 0.8 or earlier
      * @deprecated in 0.25 use {@link #getLanguage(Class) getLanguage(Language.class)}.
-     *             {@link TruffleLanguage#getCurrentContext(Class) getCurrentContext()} instead.
+     *             {@link TruffleLanguage#getCurrentContext(Class) getCurrentContext()} instead, and
+     *             {@link RootNode#getCompilerOptions()}.
      */
     @SuppressWarnings("deprecation")
     @Deprecated

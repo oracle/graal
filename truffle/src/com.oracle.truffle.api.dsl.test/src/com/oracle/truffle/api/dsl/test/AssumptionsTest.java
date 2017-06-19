@@ -25,10 +25,12 @@ package com.oracle.truffle.api.dsl.test;
 import static com.oracle.truffle.api.dsl.test.TestHelper.createCallTarget;
 import static com.oracle.truffle.api.dsl.test.TestHelper.getNode;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.fail;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -61,6 +63,7 @@ import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.StaticFieldTestFac
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.dsl.test.examples.ExampleNode;
 import com.oracle.truffle.api.dsl.test.examples.ExampleTypes;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 
 public class AssumptionsTest {
@@ -496,10 +499,10 @@ public class AssumptionsTest {
     }
 
     @NodeChild
-    static class AssumptionArraysAreCompilationFinalCached extends ValueNode {
+    static class AssumptionArraysAreCompilationFinal extends ValueNode {
 
-        @Specialization(guards = "value == cachedValue", assumptions = "createAssumptions()")
-        static int do1(int value, @SuppressWarnings("unused") @Cached("value") int cachedValue) {
+        @Specialization(assumptions = "createAssumptions()")
+        static int do1(int value) {
             return value;
         }
 
@@ -521,11 +524,18 @@ public class AssumptionsTest {
         assertEquals(1, compilationFinal.dimensions());
     }
 
-    @NodeChild
-    static class AssumptionArraysAreCompilationFinal extends ValueNode {
+    @Test
+    public void testAssumptionArraysCheckUseExplodeLoop() throws SecurityException, IllegalArgumentException, NoSuchMethodException {
+        AssumptionArraysAreCompilationFinalCached node = TestHelper.createNode(AssumptionArraysAreCompilationFinalCachedFactory.getInstance(), false);
+        Method isValidMethod = node.getClass().getDeclaredMethod("isValid_", Assumption[].class);
+        assertNotNull(isValidMethod.getAnnotation(ExplodeLoop.class));
+    }
 
-        @Specialization(assumptions = "createAssumptions()")
-        static int do1(int value) {
+    @NodeChild
+    static class AssumptionArraysAreCompilationFinalCached extends ValueNode {
+
+        @Specialization(guards = "value == cachedValue", assumptions = "createAssumptions()")
+        static int do1(int value, @SuppressWarnings("unused") @Cached("value") int cachedValue) {
             return value;
         }
 

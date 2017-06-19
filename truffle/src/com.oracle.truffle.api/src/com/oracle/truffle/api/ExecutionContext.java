@@ -25,13 +25,14 @@
 package com.oracle.truffle.api;
 
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
+import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Access to information and basic services in the runtime context for a Truffle-implemented guest
  * language.
  *
  * @since 0.8 or earlier
- * @deprecated in 0.25 without replacement
+ * @deprecated in 0.25. Use {@link RootNode#getCompilerOptions()}
  */
 @Deprecated
 public abstract class ExecutionContext {

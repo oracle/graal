@@ -2,9 +2,9 @@ mxbuild/**/*
 javadoc/**/*
 virtualenv/**/*
 downloads/**/*
-mx.vm/*.pyc
-mx.vm/env
-mx.vm/eclipse-launches/**
+mx.sdk/*.pyc
+mx.sdk/env
+mx.sdk/eclipse-launches/**
 mx.imports/**/*
 /src/*/nbproject/
 /src/*/build.xml
@@ -14,7 +14,8 @@ mx.imports/**/*
 /src/*/\bin
 /src/*/\.checkstyle
 /src/*/\.factorypath
-/src/SDK*dist/\.externalToolBuilders
+/src/*.dist/
+src/*.dist/\.externalToolBuilders/**
 src_gen/**/*
 hs_err_pid*.log
 workingsets.xml

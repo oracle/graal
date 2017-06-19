@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.103.0",
+  "mxversion" : "5.113.0",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -84,8 +84,8 @@ suite = {
     },
 
     "IDEALGRAPHVISUALIZER_DIST" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/idealgraphvisualizer/idealgraphvisualizer-f5dd0d4c69d7.zip"],
-      "sha1" : "d49ef14bd8c4effcd4fd4d2e02e7b0b417dc5be4",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/idealgraphvisualizer/idealgraphvisualizer-21.zip"],
+      "sha1" : "8d4721a223ad1b6a6d2d2b7e40f2000a856e589d",
     },
 
     "JOL_INTERNALS" : {
@@ -610,6 +610,7 @@ suite = {
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,LIR",
       "findbugs" : "false",
+      "isTestProject" : True,
     },
 
     "org.graalvm.compiler.lir.test" : {
@@ -660,15 +661,6 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,LIR,SPARC",
-    },
-
-    "org.graalvm.api.word" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "1.8",
-      "workingSets" : "API",
     },
 
     "org.graalvm.compiler.word" : {
@@ -857,6 +849,7 @@ suite = {
       "annotationProcessors" : ["mx:JMH_1_18"],
       "findbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Bench",
+      "isTestProject" : True,
     },
 
     "org.graalvm.compiler.microbenchmarks" : {
@@ -874,6 +867,7 @@ suite = {
       "annotationProcessors" : ["mx:JMH_1_18"],
       "findbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Bench",
+      "isTestProject" : True,
     },
 
     "org.graalvm.compiler.loop" : {
@@ -918,7 +912,10 @@ suite = {
         "org.graalvm.compiler.virtual",
         "org.graalvm.compiler.loop.phases",
       ],
-      "uses" : ["org.graalvm.compiler.core.match.MatchStatementSet"],
+      "uses" : [
+        "org.graalvm.compiler.core.match.MatchStatementSet",
+        "org.graalvm.compiler.hotspot.HotSpotCodeCacheListener",
+      ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",
       "annotationProcessors" : [
@@ -1053,8 +1050,8 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.compiler.debug", 
-        "org.graalvm.api.word",
+        "org.graalvm.compiler.debug",
+        "sdk:WORD_API",
       ],
       "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -1123,6 +1120,7 @@ suite = {
       "workingSets" : "Graal,Test",
       "jacoco" : "exclude",
       "findbugs" : "false",
+      "isTestProject" : True,
     },
 
     # ------------- GraalTruffle -------------
@@ -1306,12 +1304,12 @@ suite = {
     "GRAAL_API" : {
       "subDir" : "src",
       "dependencies" : [
-        "org.graalvm.api.word",
         "org.graalvm.compiler.api.replacements",
         "org.graalvm.compiler.api.runtime",
         "org.graalvm.compiler.graph",
       ],
       "distDependencies" : [
+        "sdk:WORD_API",
         "JVMCI_API",
         "GRAAL_NODEINFO",
         "GRAAL_OPTIONS",
@@ -1477,6 +1475,7 @@ suite = {
       "overlaps" : [
         "GRAAL_OPTIONS",
         "GRAAL_NODEINFO",
+        "sdk:WORD_API",
         "GRAAL_API",
         "GRAAL_COMPILER",
         "GRAAL_RUNTIME",

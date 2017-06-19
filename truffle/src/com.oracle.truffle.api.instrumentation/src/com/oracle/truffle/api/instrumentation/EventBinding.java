@@ -59,16 +59,18 @@ import com.oracle.truffle.api.source.SourceSection;
 public final class EventBinding<T> {
 
     private final AbstractInstrumenter instrumenter;
-    private final SourceSectionFilter filter;
+    private final AllocationEventFilter filterAllocation;
+    private final SourceSectionFilter filterSourceSection;
     private final T element;
     private final boolean isExecutionEvent;
 
     /* language bindings needs special treatment. */
     private volatile boolean disposed;
 
-    EventBinding(AbstractInstrumenter instrumenter, SourceSectionFilter query, T element, boolean isExecutionEvent) {
+    <F> EventBinding(AbstractInstrumenter instrumenter, F query, T element, boolean isExecutionEvent) {
         this.instrumenter = instrumenter;
-        this.filter = query;
+        this.filterAllocation = (query instanceof AllocationEventFilter) ? (AllocationEventFilter) query : null;
+        this.filterSourceSection = (query instanceof SourceSectionFilter) ? (SourceSectionFilter) query : null;
         this.element = element;
         this.isExecutionEvent = isExecutionEvent;
     }
@@ -89,7 +91,11 @@ public final class EventBinding<T> {
      * @since 0.12
      */
     public SourceSectionFilter getFilter() {
-        return filter;
+        return filterSourceSection;
+    }
+
+    AllocationEventFilter getAllocationFilter() {
+        return filterAllocation;
     }
 
     /**
@@ -125,7 +131,7 @@ public final class EventBinding<T> {
     }
 
     boolean isInstrumentedRoot(Set<Class<?>> providedTags, RootNode rootNode, SourceSection rootSourceSection) {
-        return getInstrumenter().isInstrumentableRoot(rootNode) && getFilter().isInstrumentedRoot(providedTags, rootSourceSection);
+        return getInstrumenter().isInstrumentableRoot(rootNode) && getFilter().isInstrumentedRoot(providedTags, rootSourceSection, rootNode);
     }
 
     boolean isInstrumentedLeaf(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection section) {
