@@ -483,7 +483,7 @@ public class FallbackTest {
         Assert.assertEquals("f0", node3.execute(3.14));
         Assert.assertEquals("f0", node3.execute(3.14));
         // This will stay in fallback if we assume a null assumption is "invalid"
-        Assert.assertEquals("s0", node3.execute(0));
+        Assert.assertEquals("f0", node3.execute(0));
 
         FallbackWithAssumption node4 = FallbackWithAssumptionNodeGen.create();
         Assert.assertEquals("f0", node4.execute(3.14));
@@ -536,7 +536,7 @@ public class FallbackTest {
         Assert.assertEquals("f0", node3.execute(3.14));
         Assert.assertEquals("f0", node3.execute(3.14));
         // This will stay in fallback if we assume a null assumptions array is "invalid"
-        Assert.assertEquals("s0", node3.execute(0));
+        Assert.assertEquals("f0", node3.execute(0));
 
         FallbackWithAssumptionArray node4 = FallbackWithAssumptionArrayNodeGen.create();
         Assert.assertEquals("f0", node4.execute(3.14));
