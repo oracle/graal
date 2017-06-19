@@ -133,7 +133,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             }
         }
 
-        this.engineOptions = new OptionDescriptorsImpl(describeEngineOptions());
+        this.engineOptions = OptionDescriptors.create(describeEngineOptions());
         this.compilerOptions = VMAccessor.SPI.getCompilerOptions();
         this.allEngineOptions = OptionDescriptors.createUnion(engineOptions, compilerOptions);
         this.engineOptionValues = new OptionValuesImpl(this, this.engineOptions);
