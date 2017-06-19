@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.parser.model.blocks;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.AllocateInstruction;
@@ -128,11 +129,11 @@ public final class InstructionBlock implements ValueSymbol {
         addInstruction(ConditionalBranchInstruction.fromSymbols(function.getSymbols(), condition, function.getBlock(blockTrue), function.getBlock(blockFalse)));
     }
 
-    public void createCall(Type type, int target, int[] arguments) {
+    public void createCall(Type type, int target, int[] arguments, AttributesCodeEntry paramAttr) {
         if (type == VoidType.INSTANCE) {
-            addInstruction(VoidCallInstruction.fromSymbols(function.getSymbols(), target, arguments));
+            addInstruction(VoidCallInstruction.fromSymbols(function.getSymbols(), target, arguments, paramAttr));
         } else {
-            addInstruction(CallInstruction.fromSymbols(function.getSymbols(), type, target, arguments));
+            addInstruction(CallInstruction.fromSymbols(function.getSymbols(), type, target, arguments, paramAttr));
         }
     }
 
@@ -140,11 +141,11 @@ public final class InstructionBlock implements ValueSymbol {
         addInstruction(CompareExchangeInstruction.fromSymbols(function.getSymbols(), type, ptr, cmp, replace, isVolatile, successOrdering, synchronizationScope, failureOrdering, isWeak));
     }
 
-    public void createInvoke(Type type, int target, int[] arguments, int regularSuccessorBlock, int unwindSuccessorBlock) {
+    public void createInvoke(Type type, int target, int[] arguments, int regularSuccessorBlock, int unwindSuccessorBlock, AttributesCodeEntry paramAttr) {
         if (type instanceof VoidType) {
-            addInstruction(VoidInvokeInstruction.fromSymbols(function.getSymbols(), target, arguments, function.getBlock(regularSuccessorBlock), function.getBlock(unwindSuccessorBlock)));
+            addInstruction(VoidInvokeInstruction.fromSymbols(function.getSymbols(), target, arguments, function.getBlock(regularSuccessorBlock), function.getBlock(unwindSuccessorBlock), paramAttr));
         } else {
-            addInstruction(InvokeInstruction.fromSymbols(function.getSymbols(), type, target, arguments, function.getBlock(regularSuccessorBlock), function.getBlock(unwindSuccessorBlock)));
+            addInstruction(InvokeInstruction.fromSymbols(function.getSymbols(), type, target, arguments, function.getBlock(regularSuccessorBlock), function.getBlock(unwindSuccessorBlock), paramAttr));
         }
     }
 

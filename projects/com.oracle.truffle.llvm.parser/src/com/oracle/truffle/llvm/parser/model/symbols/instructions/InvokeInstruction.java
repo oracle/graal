@@ -32,6 +32,8 @@ package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
+import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
@@ -49,10 +51,13 @@ public final class InvokeInstruction extends ValueInstruction implements Invoke 
 
     private final InstructionBlock unwindSuccessor;
 
-    private InvokeInstruction(Type type, InstructionBlock normalSuccessor, InstructionBlock unwindSuccessor) {
+    private final AttributesCodeEntry paramAttr;
+
+    private InvokeInstruction(Type type, InstructionBlock normalSuccessor, InstructionBlock unwindSuccessor, AttributesCodeEntry paramAttr) {
         super(type);
         this.normalSuccessor = normalSuccessor;
         this.unwindSuccessor = unwindSuccessor;
+        this.paramAttr = paramAttr;
     }
 
     @Override
@@ -76,6 +81,21 @@ public final class InvokeInstruction extends ValueInstruction implements Invoke 
     }
 
     @Override
+    public AttributesGroup getFunctionAttributesGroup() {
+        return paramAttr.getFunctionAttributesGroup();
+    }
+
+    @Override
+    public AttributesGroup getReturnAttributesGroup() {
+        return paramAttr.getReturnAttributesGroup();
+    }
+
+    @Override
+    public AttributesGroup getParameterAttributesGroup(int idx) {
+        return paramAttr.getParameterAttributesGroup(idx);
+    }
+
+    @Override
     public void replace(Symbol original, Symbol replacement) {
         if (target == original) {
             target = replacement;
@@ -88,8 +108,8 @@ public final class InvokeInstruction extends ValueInstruction implements Invoke 
     }
 
     public static InvokeInstruction fromSymbols(Symbols symbols, Type type, int targetIndex, int[] arguments, InstructionBlock normalSuccessor,
-                    InstructionBlock unwindSuccessor) {
-        final InvokeInstruction inst = new InvokeInstruction(type, normalSuccessor, unwindSuccessor);
+                    InstructionBlock unwindSuccessor, AttributesCodeEntry paramAttr) {
+        final InvokeInstruction inst = new InvokeInstruction(type, normalSuccessor, unwindSuccessor, paramAttr);
         inst.target = symbols.getSymbol(targetIndex, inst);
         for (int argument : arguments) {
             inst.arguments.add(symbols.getSymbol(argument, inst));

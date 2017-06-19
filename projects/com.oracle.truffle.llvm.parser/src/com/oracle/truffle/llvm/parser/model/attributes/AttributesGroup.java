@@ -40,8 +40,8 @@ public final class AttributesGroup {
 
     private final List<Attribute> attributes = new LinkedList<>();
 
-    public static final int RETURN_VALUE_IDX = 0;
-    public static final int FUNCTION_ATTRIBUTE_IDX = 0xFFFFFFFF;
+    public static final long RETURN_VALUE_IDX = 0;
+    public static final long FUNCTION_ATTRIBUTE_IDX = 0xFFFFFFFFL;
 
     public AttributesGroup(long groupId, long paramIdx) {
         this.groupId = groupId;

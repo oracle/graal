@@ -178,7 +178,7 @@ public final class Module implements ParserListener {
                     sym.add(arg);
                 }
 
-                return new Function(types, sym, gen, mode);
+                return new Function(types, sym, gen, mode, paramAttributes);
             }
 
             case TYPE:
