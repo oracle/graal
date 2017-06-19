@@ -17,6 +17,9 @@ from mx_gate import Task, add_gate_runner
 
 import mx_testsuites
 
+# re-export SulongTestSuite class so it can be used from suite.py
+from mx_testsuites import SulongTestSuite #pylint: disable=unused-import
+
 os.environ["LC_NUMERIC"] = "C"  # required for some testcases
 
 _suite = mx.suite('sulong')

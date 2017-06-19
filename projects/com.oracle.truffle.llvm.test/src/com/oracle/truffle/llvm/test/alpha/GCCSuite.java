@@ -69,11 +69,6 @@ public final class GCCSuite extends BaseSuiteHarness {
         return s -> !s.endsWith("clangcpp_O0.bc");
     }
 
-    @Override
-    protected Path getSuiteDirectory() {
-        return GCC_SUITE_DIR;
-    }
-
     @AfterClass
     public static void printStatistics() {
         HashSet<Path> ignoredFolders = new HashSet<>();

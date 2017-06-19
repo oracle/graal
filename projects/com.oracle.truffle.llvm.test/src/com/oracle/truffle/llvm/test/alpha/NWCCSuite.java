@@ -61,11 +61,6 @@ public final class NWCCSuite extends BaseSuiteHarness {
         return path;
     }
 
-    @Override
-    protected Path getSuiteDirectory() {
-        return NWCC_SUITE_DIR;
-    }
-
     @AfterClass
     public static void printStatistics() {
         printStatistics("NWCC", NWCC_SOURCE_DIR, NWCC_CONFIG_DIR, f -> true);

@@ -61,11 +61,6 @@ public final class LLVMSuite extends BaseSuiteHarness {
         return path;
     }
 
-    @Override
-    protected Path getSuiteDirectory() {
-        return LLVM_SUITE_DIR;
-    }
-
     @AfterClass
     public static void printStatistics() {
         printStatistics("LLVM", LLVM_SOURCE_DIR, LLVM_CONFIG_DIR, f -> true);

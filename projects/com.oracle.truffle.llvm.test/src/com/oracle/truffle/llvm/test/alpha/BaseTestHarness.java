@@ -57,8 +57,6 @@ public abstract class BaseTestHarness {
     public static final Predicate<? super Path> isSulong = f -> f.getFileName().toString().endsWith(".bc");
     public static final Predicate<? super Path> isFile = f -> f.toFile().isFile();
 
-    protected abstract Path getSuiteDirectory();
-
     protected abstract Path getTestDirectory();
 
     protected abstract String getTestName();
