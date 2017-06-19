@@ -81,7 +81,7 @@ public interface OptionDescriptors extends Iterable<OptionDescriptor> {
     }
 
     /**
-     * Create an {@link OptionDescriptors} instance from a list. The opion descriptors
+     * Create an {@link OptionDescriptors} instance from a list. The option descriptors
      * implementation is backed by a {@link LinkedHashMap} that preserves ordering.
      *
      * @since 1.0
