@@ -29,6 +29,7 @@ import static com.oracle.truffle.api.vm.VMAccessor.INSTRUMENT;
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 import static com.oracle.truffle.api.vm.VMAccessor.NODES;
 import static com.oracle.truffle.api.vm.VMAccessor.SPI;
+import static com.oracle.truffle.api.vm.VMAccessor.engine;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -359,8 +360,20 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     @Override
     public PolyglotContext createPolyglotContext(OutputStream providedOut, OutputStream providedErr, InputStream providedIn, Map<String, String[]> arguments, Map<String, String> options) {
         checkEngine(this);
-        OutputStream useOut = providedOut == null ? out : providedOut;
-        OutputStream useErr = providedErr == null ? err : providedErr;
+        DispatchOutputStream useOut;
+        if (providedOut == null) {
+            useOut = out;
+        } else {
+            useOut = INSTRUMENT.createDispatchOutput(providedOut);
+            engine().attachOutputConsumer(useOut, out);
+        }
+        DispatchOutputStream useErr;
+        if (providedErr == null) {
+            useErr = err;
+        } else {
+            useErr = INSTRUMENT.createDispatchOutput(providedErr);
+            engine().attachOutputConsumer(useErr, err);
+        }
         InputStream useIn = providedIn == null ? in : providedIn;
         PolyglotContextImpl contextImpl = new PolyglotContextImpl(this, useOut, useErr, useIn, options, arguments, null);
         return impl.getAPIAccess().newPolyglotContext(api, contextImpl);

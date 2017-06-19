@@ -123,7 +123,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                     long maximumAllowedAllocationBytes, boolean useSystemProperties) {
         ensureInitialized();
         OutputStream resolvedOut = out == null ? System.out : out;
-        OutputStream resolvedErr = out == null ? System.err : err;
+        OutputStream resolvedErr = err == null ? System.err : err;
         InputStream resolvedIn = in == null ? System.in : in;
 
         DispatchOutputStream dispatchOut = INSTRUMENT.createDispatchOutput(resolvedOut);
