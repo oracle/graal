@@ -182,6 +182,7 @@ public class PartialEvaluator {
         return new ResolvedJavaMethod[]{callSiteProxyMethod, callDirectMethod};
     }
 
+    @SuppressWarnings("unused")
     public StructuredGraph createGraph(final OptimizedCallTarget callTarget, TruffleInlining inliningDecision, ResolvedJavaMethod rootMethod, AllowAssumptions allowAssumptions,
                     CompilationIdentifier compilationId, CancellableCompileTask task) {
         return createGraph(callTarget, inliningDecision, rootForCallTarget(callTarget), allowAssumptions, compilationId, callTarget.getSpeculationLog(), task);

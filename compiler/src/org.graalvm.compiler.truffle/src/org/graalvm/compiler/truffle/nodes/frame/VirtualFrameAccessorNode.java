@@ -34,6 +34,7 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import com.oracle.truffle.api.frame.FrameSlot;
 
@@ -43,7 +44,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public abstract class VirtualFrameAccessorNode extends FixedWithNextNode {
+public abstract class VirtualFrameAccessorNode extends FixedWithNextNode implements ControlFlowAnchored {
     public static final NodeClass<VirtualFrameAccessorNode> TYPE = NodeClass.create(VirtualFrameAccessorNode.class);
 
     @Input protected NewFrameNode frame;
