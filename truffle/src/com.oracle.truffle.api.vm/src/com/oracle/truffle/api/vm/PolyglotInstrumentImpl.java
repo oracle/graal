@@ -84,7 +84,7 @@ class PolyglotInstrumentImpl extends AbstractInstrumentImpl implements VMObject 
                         INSTRUMENT.initializeInstrument(engine.instrumentationHandler, this, loadedInstrument);
                         this.options = INSTRUMENT.describeOptions(engine.instrumentationHandler, this, cache.getId());
                     } catch (Exception e) {
-                        throw new IllegalStateException(String.format("Error initializing language '%s' using class '%s'.", cache.getId(), cache.getClassName()), e);
+                        throw new IllegalStateException(String.format("Error initializing instrument '%s' using class '%s'.", cache.getId(), cache.getClassName()), e);
                     }
                     initialized = true;
                 }
@@ -102,7 +102,7 @@ class PolyglotInstrumentImpl extends AbstractInstrumentImpl implements VMObject 
                     try {
                         INSTRUMENT.createInstrument(engine.instrumentationHandler, this, cache.services(), getOptionValues());
                     } catch (Exception e) {
-                        throw new IllegalStateException(String.format("Error initializing language '%s' using class '%s'.", cache.getId(), cache.getClassName()), e);
+                        throw new IllegalStateException(String.format("Error initializing instrument '%s' using class '%s'.", cache.getId(), cache.getClassName()), e);
                     }
                     created = true;
                 }
