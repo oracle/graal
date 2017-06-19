@@ -211,7 +211,7 @@ public final class Sulong extends LLVMLanguage {
             }
 
             private void visitBitcodeLibraries(Consumer<Source> sharedLibraryConsumer) throws IOException {
-                String[] dynamicLibraryPaths = LLVMOptions.ENGINE.dynamicBitcodeLibraries();
+                String[] dynamicLibraryPaths = LLVMOptions.getBitcodeLibraries();
                 if (dynamicLibraryPaths != null && dynamicLibraryPaths.length != 0) {
                     for (String s : dynamicLibraryPaths) {
                         addLibrary(s, sharedLibraryConsumer);
