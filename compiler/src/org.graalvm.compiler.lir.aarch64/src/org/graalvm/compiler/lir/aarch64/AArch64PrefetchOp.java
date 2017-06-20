@@ -25,6 +25,7 @@ package org.graalvm.compiler.lir.aarch64;
 
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
 
+import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
@@ -43,7 +44,7 @@ public final class AArch64PrefetchOp extends AArch64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        // TODO implement prefetch
-        masm.nop();
+        // instr gets ignored!
+        masm.prfm(address.toAddress(), instr);
     }
 }

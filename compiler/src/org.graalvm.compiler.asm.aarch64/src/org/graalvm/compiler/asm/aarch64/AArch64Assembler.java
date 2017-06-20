@@ -22,6 +22,8 @@
  */
 package org.graalvm.compiler.asm.aarch64;
 
+import static jdk.vm.ci.aarch64.AArch64.cpuRegisters;
+import static jdk.vm.ci.aarch64.AArch64.r16;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.ADD;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.ADDS;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.ADR;
@@ -1008,6 +1010,29 @@ public abstract class AArch64Assembler extends Assembler {
         assert (srcSize == 8 || srcSize == 16 || srcSize == 32) && srcSize != targetSize;
         int transferSize = NumUtil.log2Ceil(srcSize / 8);
         loadStoreInstruction(LDRS, rt, address, generalFromSize(targetSize), transferSize);
+    }
+
+    /*
+     * implements a prefetch at a 64-bit aligned address using a
+     * scaled 12 bit or unscaled 9 bit displacement addressing mode
+     * @param rt general purpose register. May not be null, zr or stackpointer.
+     * @param address only displacement addressing modes allowed. May not be null.
+     */
+    public void prfm(AArch64Address address, int mode) {
+        assert (address.getAddressingMode() == AddressingMode.IMMEDIATE_SCALED ||
+                address.getAddressingMode() == AddressingMode.IMMEDIATE_UNSCALED);
+        final int srcSize = 64;
+        final int transferSize = NumUtil.log2Ceil(srcSize / 8);
+        final Register rt = cpuRegisters.get(mode);
+        // this looks weird but that's because loadStoreInstruction is weird
+        // instruction select fields are size [31:30], v [26] and opc [25:24]
+        // prfm requires size == 0b11, v == 0b0 and opc == 0b11
+        // passing LDRS ensures opc[1] == 0b1
+        // (n.b. passing LDR/STR makes no difference to opc[1:0]!!)
+        // passing General64 ensures opc[0] == 0b1 and v = 0b0
+        // (n.b. passing General32 ensures opc[0] == 0b0 and v = 0b0)
+        // srcSize 64 ensures size == 0b11
+        loadStoreInstruction(LDRS, rt, address, General64, transferSize);
     }
 
     /**
