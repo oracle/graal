@@ -305,6 +305,9 @@ class JavaObjectMessageResolution {
             if (JavaInteropReflect.isField(receiver, name)) {
                 return 0b111;
             }
+            if (JavaInteropReflect.isMemberType(receiver, name)) {
+                return 0b11;
+            }
             if (JavaInteropReflect.isMethod(receiver, name)) {
                 return 0b1111;
             }
