@@ -858,10 +858,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return speculationLog;
     }
 
-    public void setSpeculationLog(SpeculationLog speculationLog) {
-        this.speculationLog = speculationLog;
-    }
-
     public void clearAllStateAfter() {
         for (Node node : getNodes()) {
             if (node instanceof StateSplit) {

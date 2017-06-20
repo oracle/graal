@@ -132,6 +132,10 @@ public abstract class TruffleCompiler {
         return config;
     }
 
+    public Backend getBackend() {
+        return backend;
+    }
+
     protected abstract PartialEvaluator createPartialEvaluator();
 
     public static ResolvedJavaType[] getSkippedExceptionTypes(MetaAccessProvider metaAccess) {
