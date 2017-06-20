@@ -1,6 +1,6 @@
 struct str {
   char a;
-  int b[];
+  int b[2];
 } a3 = { 'o', { 1, 2 } };
 
 int main() {
