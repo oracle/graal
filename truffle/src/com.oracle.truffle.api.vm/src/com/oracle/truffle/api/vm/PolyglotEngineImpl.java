@@ -358,24 +358,10 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     }
 
     @Override
-    public PolyglotContext createPolyglotContext(OutputStream providedOut, OutputStream providedErr, InputStream providedIn, Map<String, String[]> arguments, Map<String, String> options) {
+    @SuppressWarnings("hiding")
+    public PolyglotContext createPolyglotContext(OutputStream out, OutputStream err, InputStream in, Map<String, String[]> arguments, Map<String, String> options) {
         checkEngine(this);
-        DispatchOutputStream useOut;
-        if (providedOut == null) {
-            useOut = out;
-        } else {
-            useOut = INSTRUMENT.createDispatchOutput(providedOut);
-            engine().attachOutputConsumer(useOut, out);
-        }
-        DispatchOutputStream useErr;
-        if (providedErr == null) {
-            useErr = err;
-        } else {
-            useErr = INSTRUMENT.createDispatchOutput(providedErr);
-            engine().attachOutputConsumer(useErr, err);
-        }
-        InputStream useIn = providedIn == null ? in : providedIn;
-        PolyglotContextImpl contextImpl = new PolyglotContextImpl(this, useOut, useErr, useIn, options, arguments, null);
+        PolyglotContextImpl contextImpl = new PolyglotContextImpl(this, out, err, in, options, arguments, null);
         return impl.getAPIAccess().newPolyglotContext(api, contextImpl);
     }
 

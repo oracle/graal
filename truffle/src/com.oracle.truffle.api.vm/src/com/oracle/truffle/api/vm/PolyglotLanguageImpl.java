@@ -25,7 +25,6 @@
 package com.oracle.truffle.api.vm;
 
 import static com.oracle.truffle.api.vm.PolyglotImpl.checkEngine;
-import static com.oracle.truffle.api.vm.VMAccessor.INSTRUMENT;
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 
 import java.io.InputStream;
@@ -40,7 +39,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.vm.LanguageCache.LoadedLanguage;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
@@ -134,24 +132,9 @@ class PolyglotLanguageImpl extends AbstractLanguageImpl implements VMObject {
 
     @Override
     @SuppressWarnings("hiding")
-    public Context createContext(OutputStream providedOut, OutputStream providedErr, InputStream providedIn, Map<String, String> optionValues, Map<String, String[]> arguments) {
+    public Context createContext(OutputStream out, OutputStream err, InputStream in, Map<String, String> optionValues, Map<String, String[]> arguments) {
         checkEngine(engine);
-
-        DispatchOutputStream useOut;
-        if (providedOut == null) {
-            useOut = engine.out;
-        } else {
-            useOut = INSTRUMENT.createDispatchOutput(providedOut);
-        }
-        DispatchOutputStream useErr;
-        if (providedErr == null) {
-            useErr = engine.err;
-        } else {
-            useErr = INSTRUMENT.createDispatchOutput(providedErr);
-        }
-
-        InputStream useIn = providedIn == null ? engine.in : providedIn;
-        PolyglotContextImpl contextImpl = new PolyglotContextImpl(engine, useOut, useErr, useIn, optionValues, arguments, this);
+        PolyglotContextImpl contextImpl = new PolyglotContextImpl(engine, out, err, in, optionValues, arguments, this);
         return engine.impl.getAPIAccess().newContext(contextImpl, api);
     }
 

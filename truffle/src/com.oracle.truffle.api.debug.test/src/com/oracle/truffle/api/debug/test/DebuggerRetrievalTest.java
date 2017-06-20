@@ -25,8 +25,12 @@
 package com.oracle.truffle.api.debug.test;
 
 import java.util.Collections;
-import java.util.List;
 
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -34,10 +38,6 @@ import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import org.graalvm.options.OptionDescriptor;
-import org.graalvm.options.OptionKey;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.Value;
 
 /**
  * Test that languages and other instruments are able to retrieve the Debugger instance.
@@ -104,8 +104,8 @@ public class DebuggerRetrievalTest {
         }
 
         @Override
-        protected List<OptionDescriptor> describeOptions() {
-            return Collections.singletonList(OptionDescriptor.newBuilder(debuggerKey, ID + ".dbg").build());
+        protected OptionDescriptors getOptionDescriptors() {
+            return OptionDescriptors.create(Collections.singletonList(OptionDescriptor.newBuilder(debuggerKey, ID + ".dbg").build()));
         }
 
     }

@@ -243,6 +243,11 @@ public abstract class Accessor {
             return new DispatchOutputStream(out);
         }
 
+        @SuppressWarnings("static-method")
+        public final DelegatingOutputStream createDelegatingOutput(OutputStream out, DispatchOutputStream delegate) {
+            return new DelegatingOutputStream(out, delegate);
+        }
+
         public abstract OptionDescriptors describeOptions(Object instrumentationHandler, Object key, String requiredGroup);
 
     }

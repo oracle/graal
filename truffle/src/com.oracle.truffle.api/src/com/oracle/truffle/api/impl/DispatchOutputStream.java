@@ -76,7 +76,7 @@ public final class DispatchOutputStream extends OutputStream {
         changed.invalidate();
     }
 
-    private OutputStreamList getOutList() {
+    OutputStreamList getOutList() {
         if (outListUnchanged.isValid()) {
             return outList;
         } else {
@@ -130,7 +130,7 @@ public final class DispatchOutputStream extends OutputStream {
         out.close();
     }
 
-    private class OutputStreamList {
+    class OutputStreamList {
 
         private final List<OutputStream> outs = new CopyOnWriteArrayList<>();
         @CompilationFinal private boolean seenException;
