@@ -107,7 +107,7 @@ final class InstrumentCache {
         }
         List<InstrumentCache> list = new ArrayList<>();
         Set<String> classNamesUsed = new HashSet<>();
-        for (ClassLoader loader : (LanguageCache.AOT_LOADERS == null ? SPI.allLoaders() : LanguageCache.AOT_LOADERS)) {
+        for (ClassLoader loader : LanguageCache.allLoaders(SPI)) {
             loadForOne(loader, list, classNamesUsed);
         }
         if (!JDK8OrEarlier) {

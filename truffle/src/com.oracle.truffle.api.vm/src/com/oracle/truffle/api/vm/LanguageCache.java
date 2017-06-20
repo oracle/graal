@@ -54,12 +54,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private static final Map<String, LanguageCache> CACHE;
 
     private static volatile Map<String, LanguageCache> cache;
-    static {
-        if (VMAccessor.SPI == null) {
-            VMAccessor.initialize(new LegacyEngineImpl());
-        }
-    }
-    static final Collection<ClassLoader> AOT_LOADERS = TruffleOptions.AOT ? VMAccessor.SPI.allLoaders() : null;
+    private static final Collection<ClassLoader> AOT_LOADERS;
     private final String className;
     private final Set<String> mimeTypes;
     private final String id;
@@ -72,8 +67,23 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private volatile Class<? extends TruffleLanguage<?>> languageClass;
 
     static {
+        if (VMAccessor.SPI == null) {
+            VMAccessor.initialize(new LegacyEngineImpl());
+        }
+
+        if (TruffleOptions.AOT) {
+            Collection<ClassLoader> loaders = VMAccessor.SPI.allLoaders();
+            /* native-image uses special class loaders */
+            if (ClassLoader.getSystemClassLoader() != Thread.currentThread().getContextClassLoader()) {
+                loaders.add(Thread.currentThread().getContextClassLoader());
+            }
+            AOT_LOADERS = loaders;
+        } else {
+            AOT_LOADERS = null;
+        }
+
         CACHE = TruffleOptions.AOT ? initializeLanguages(loader()) : null;
-        PRELOAD = CACHE != null;
+        PRELOAD = CACHE != null && AOT_LOADERS != null;
     }
 
     /**
@@ -181,7 +191,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     private static Map<String, LanguageCache> createLanguages(ClassLoader additionalLoader) {
         List<LanguageCache> caches = new ArrayList<>();
-        for (ClassLoader loader : (AOT_LOADERS == null ? VMAccessor.SPI.allLoaders() : AOT_LOADERS)) {
+        for (ClassLoader loader : allLoaders(VMAccessor.SPI)) {
             collectLanguages(loader, caches);
         }
         if (additionalLoader != null) {
@@ -315,6 +325,10 @@ final class LanguageCache implements Comparable<LanguageCache> {
         } catch (Exception ex) {
             return null;
         }
+    }
+
+    public static Collection<ClassLoader> allLoaders(VMAccessor spi) {
+        return LanguageCache.PRELOAD ? LanguageCache.AOT_LOADERS : spi.allLoaders();
     }
 
     static final class LoadedLanguage {
