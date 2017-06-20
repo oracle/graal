@@ -153,7 +153,7 @@ public final class Debugger {
      * @since 0.17
      */
     public static Debugger find(TruffleLanguage.Env env) {
-        return find((PolyglotEngine) ACCESSOR.findVM(env));
+        return env.lookup(env.getInstruments().get("debugger"), Debugger.class);
     }
 
     static final class AccessorDebug extends Accessor {
@@ -171,13 +171,6 @@ public final class Debugger {
         protected CallTarget parse(Source code, Node context, String... argumentNames) {
             RootNode rootNode = context.getRootNode();
             return languageSupport().parse(engineSupport().getEnvForInstrument(rootNode.getLanguageInfo()), code, context, argumentNames);
-        }
-
-        /*
-         * TODO we should have a better way to publish services from instruments to languages.
-         */
-        protected Object findVM(com.oracle.truffle.api.TruffleLanguage.Env env) {
-            return nodes().getEngineObject(languageSupport().getLanguageInfo(env));
         }
 
         /*
