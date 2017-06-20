@@ -34,7 +34,7 @@ public class AddNodeTest {
     public void checkTemplateAndName() {
         AddNode add = new AddNode(ConstantNode.forInt(30), ConstantNode.forInt(12));
         NodeClass<? extends Node> addClass = add.getNodeClass();
-        assertEquals("empty", "", addClass.getNameTemplate());
         assertEquals("+", addClass.shortName());
+        assertEquals("Using short name as template", "+", addClass.getNameTemplate());
     }
 }
