@@ -40,6 +40,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
@@ -286,6 +287,11 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
         } finally {
             PolyglotImpl.leaveGuest(prev);
         }
+    }
+
+    @Override
+    public Engine getEngineImpl() {
+        return engine.api;
     }
 
     @Override

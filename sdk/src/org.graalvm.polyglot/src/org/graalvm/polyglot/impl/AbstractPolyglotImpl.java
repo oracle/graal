@@ -125,7 +125,7 @@ public abstract class AbstractPolyglotImpl {
             this.engineImpl = engineImpl;
         }
 
-        public abstract Source build(Object origin, URI uri, String name, boolean interactive);
+        public abstract Source build(Object origin, URI uri, String name, boolean interactive, boolean internal);
 
         public abstract String getName(Object impl);
 
@@ -162,6 +162,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract int hashCode(Object impl);
 
         public abstract boolean equals(Object impl, Object otherImpl);
+
+        public abstract boolean isInternal(Object impl);
     }
 
     public abstract static class AbstractSourceSectionImpl {
@@ -211,6 +213,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract void initializeLanguage(AbstractLanguageImpl languageImpl);
 
         public abstract Value eval(Object languageImpl, Object sourceImpl);
+
+        public abstract Engine getEngineImpl();
 
     }
 
@@ -315,6 +319,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract OptionDescriptors getOptions();
 
         public abstract String getVersion();
+
+        public abstract <T> T lookup(Class<T> type);
 
     }
 

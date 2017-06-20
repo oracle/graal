@@ -27,7 +27,6 @@ package com.oracle.truffle.api.vm;
 import static com.oracle.truffle.api.vm.PolyglotImpl.checkEngine;
 import static com.oracle.truffle.api.vm.VMAccessor.INSTRUMENT;
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
-import static com.oracle.truffle.api.vm.VMAccessor.engine;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -143,14 +142,12 @@ class PolyglotLanguageImpl extends AbstractLanguageImpl implements VMObject {
             useOut = engine.out;
         } else {
             useOut = INSTRUMENT.createDispatchOutput(providedOut);
-            engine().attachOutputConsumer(useOut, engine.out);
         }
         DispatchOutputStream useErr;
         if (providedErr == null) {
             useErr = engine.err;
         } else {
             useErr = INSTRUMENT.createDispatchOutput(providedErr);
-            engine().attachOutputConsumer(useErr, engine.err);
         }
 
         InputStream useIn = providedIn == null ? engine.in : providedIn;
