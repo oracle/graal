@@ -1088,7 +1088,8 @@ public abstract class AArch64Assembler extends Assembler {
      */
     public void prfm(AArch64Address address, PrefetchMode mode) {
         assert (address.getAddressingMode() == AddressingMode.IMMEDIATE_SCALED ||
-                        address.getAddressingMode() == AddressingMode.IMMEDIATE_UNSCALED);
+                        address.getAddressingMode() == AddressingMode.IMMEDIATE_UNSCALED ||
+                        address.getAddressingMode() == AddressingMode.REGISTER_OFFSET);
         assert mode != null;
         final int srcSize = 64;
         final int transferSize = NumUtil.log2Ceil(srcSize / 8);
