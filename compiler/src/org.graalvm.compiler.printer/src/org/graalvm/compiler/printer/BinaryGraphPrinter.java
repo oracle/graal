@@ -112,9 +112,13 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.
     }
 
     @Override
-    final Edges findEdges(
-                    NodeClass<?> nodeClass,
-                    boolean dumpInputs) {
+    final Edges findEdges(Node node, boolean dumpInputs) {
+        NodeClass<?> nodeClass = node.getNodeClass();
+        return findEdges(nodeClass, dumpInputs);
+    }
+
+    @Override
+    final Edges findEdges(NodeClass<?> nodeClass, boolean dumpInputs) {
         return nodeClass.getEdges(dumpInputs ? Inputs : Successors);
     }
 
