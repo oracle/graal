@@ -51,6 +51,10 @@ public final class DispatchOutputStream extends OutputStream {
         outListUnchanged = Truffle.getRuntime().createAssumption("Unchanged list");
     }
 
+    OutputStream getOut() {
+        return out;
+    }
+
     synchronized void attach(OutputStream outConsumer) {
         if (outList == null) {
             outList = new OutputStreamList();
