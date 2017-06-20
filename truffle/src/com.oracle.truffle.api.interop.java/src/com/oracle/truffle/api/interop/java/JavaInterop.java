@@ -291,7 +291,7 @@ public final class JavaInterop {
             return new JavaObject(obj, obj.getClass());
         }
         if (TruffleOptions.AOT) {
-            throw new IllegalArgumentException();
+            return new JavaObject(obj, obj.getClass());
         }
         return JavaInteropReflect.asTruffleViaReflection(obj);
     }
@@ -317,7 +317,7 @@ public final class JavaInterop {
             return new JavaObject(obj, obj.getClass(), languageContext);
         }
         if (TruffleOptions.AOT) {
-            throw new IllegalArgumentException();
+            return new JavaObject(obj, obj.getClass(), languageContext);
         }
         return JavaInteropReflect.asTruffleViaReflection(obj, languageContext);
     }
