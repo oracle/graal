@@ -71,6 +71,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
 import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
 
 public class BinaryGraphPrinter implements GraphPrinter {
 
@@ -392,7 +393,13 @@ public class BinaryGraphPrinter implements GraphPrinter {
             writeByte(POOL_NODE_CLASS);
             if (CURRENT_MAJOR_VERSION >= 3) {
                 writePoolObject(nodeClass.getJavaClass());
-                writeString(nodeClass.getNameTemplate());
+                String nameTemplate = nodeClass.getNameTemplate();
+                if (nameTemplate.isEmpty()) {
+                    NodeInfo info = nodeClass.getClazz().getAnnotation(NodeInfo.class);
+                    writeString(info == null ? "" : info.shortName());
+                } else {
+                    writeString(nameTemplate);
+                }
             } else {
                 writeString(nodeClass.getJavaClass().getSimpleName());
                 String nameTemplate = nodeClass.getNameTemplate();
