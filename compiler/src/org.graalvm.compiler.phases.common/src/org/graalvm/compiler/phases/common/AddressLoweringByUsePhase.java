@@ -87,7 +87,7 @@ public class AddressLoweringByUsePhase extends Phase {
             } else if (node instanceof PrefetchAllocateNode) {
                 PrefetchAllocateNode prefetchAllocateNode = (PrefetchAllocateNode) node;
                 Stamp stamp = StampFactory.forKind(JavaKind.Object);
-                address = (AddressNode)prefetchAllocateNode.inputs().first();
+                address = (AddressNode) prefetchAllocateNode.inputs().first();
                 lowered = lowering.lower(prefetchAllocateNode, stamp, address);
             } else {
                 continue;

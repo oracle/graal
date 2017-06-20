@@ -1040,32 +1040,32 @@ public abstract class AArch64Assembler extends Assembler {
         }
 
         private static PrefetchMode[] modes = {
-                PLDL1KEEP,
-                PLDL1STRM,
-                PLDL2KEEP,
-                PLDL2STRM,
-                PLDL3KEEP,
-                PLDL3STRM,
+                        PLDL1KEEP,
+                        PLDL1STRM,
+                        PLDL2KEEP,
+                        PLDL2STRM,
+                        PLDL3KEEP,
+                        PLDL3STRM,
 
-                null,
-                null,
+                        null,
+                        null,
 
-                PLIL1KEEP,
-                PLIL1STRM,
-                PLIL2KEEP,
-                PLIL2STRM,
-                PLIL3KEEP,
-                PLIL3STRM,
+                        PLIL1KEEP,
+                        PLIL1STRM,
+                        PLIL2KEEP,
+                        PLIL2STRM,
+                        PLIL3KEEP,
+                        PLIL3STRM,
 
-                null,
-                null,
+                        null,
+                        null,
 
-                PSTL1KEEP,
-                PSTL1STRM,
-                PSTL2KEEP,
-                PSTL2STRM,
-                PSTL3KEEP,
-                PSTL3STRM
+                        PSTL1KEEP,
+                        PSTL1STRM,
+                        PSTL2KEEP,
+                        PSTL2STRM,
+                        PSTL3KEEP,
+                        PSTL3STRM
         };
 
         public PrefetchMode lookup(int encoding) {
@@ -1079,14 +1079,16 @@ public abstract class AArch64Assembler extends Assembler {
     }
 
     /*
-     * implements a prefetch at a 64-bit aligned address using a
-     * scaled 12 bit or unscaled 9 bit displacement addressing mode
+     * implements a prefetch at a 64-bit aligned address using a scaled 12 bit or unscaled 9 bit
+     * displacement addressing mode
+     * 
      * @param rt general purpose register. May not be null, zr or stackpointer.
+     * 
      * @param address only displacement addressing modes allowed. May not be null.
      */
     public void prfm(AArch64Address address, PrefetchMode mode) {
         assert (address.getAddressingMode() == AddressingMode.IMMEDIATE_SCALED ||
-                address.getAddressingMode() == AddressingMode.IMMEDIATE_UNSCALED);
+                        address.getAddressingMode() == AddressingMode.IMMEDIATE_UNSCALED);
         assert mode != null;
         final int srcSize = 64;
         final int transferSize = NumUtil.log2Ceil(srcSize / 8);
