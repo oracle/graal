@@ -27,6 +27,7 @@ package com.oracle.truffle.api.vm;
 import static com.oracle.truffle.api.vm.VMAccessor.INSTRUMENT;
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 import static com.oracle.truffle.api.vm.VMAccessor.NODES;
+import static com.oracle.truffle.api.vm.VMAccessor.SPI;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -116,7 +117,7 @@ public final class PolyglotRuntime {
         }
         this.automaticDispose = automaticDispose;
         this.languages = languageList;
-        this.instruments = createInstruments(InstrumentCache.load());
+        this.instruments = createInstruments(InstrumentCache.load(SPI.allLoaders()));
         for (Instrument instrument : instruments.values()) {
             instInfos.put(instrument.getId(), LANGUAGE.createInstrument(instrument, instrument.getId(), instrument.getName(), instrument.getVersion()));
         }

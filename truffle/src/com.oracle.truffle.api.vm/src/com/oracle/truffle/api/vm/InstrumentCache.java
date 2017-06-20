@@ -25,12 +25,12 @@
 package com.oracle.truffle.api.vm;
 
 import static com.oracle.truffle.api.vm.PolyglotEngine.LOG;
-import static com.oracle.truffle.api.vm.VMAccessor.SPI;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
@@ -41,14 +41,15 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.TruffleOptions;
+
 //TODO (chumer): maybe this class should share some code with LanguageCache?
 final class InstrumentCache {
 
-    static final boolean JDK8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
+    private static final boolean JDK8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
 
-    static final boolean PRELOAD;
-    private static final List<InstrumentCache> CACHE;
-    private static List<InstrumentCache> cache;
+    private static final List<InstrumentCache> nativeImageCache = TruffleOptions.AOT ? new ArrayList<>() : null;
+    private static List<InstrumentCache> runtimeCache;
 
     private Class<?> instrumentClass;
     private final String className;
@@ -58,19 +59,29 @@ final class InstrumentCache {
     private final ClassLoader loader;
     private final Set<String> services;
 
-    static {
-        List<InstrumentCache> instruments = null;
-        if (Boolean.getBoolean("com.oracle.truffle.aot")) { // NOI18N
-            instruments = load();
-            for (InstrumentCache info : instruments) {
-                info.loadClass();
-            }
-        }
-        CACHE = instruments;
-        PRELOAD = CACHE != null;
+    /**
+     * Initializes state for native image generation.
+     *
+     * NOTE: this method is called reflectively by downstream projects.
+     *
+     * @param imageClassLoader class loader passed by the image builder.
+     */
+    @SuppressWarnings("unused")
+    private static void initializeNativeImageState(ClassLoader imageClassLoader) {
+        nativeImageCache.addAll(load(Collections.singletonList(imageClassLoader)));
     }
 
-    InstrumentCache(String prefix, Properties info, ClassLoader loader) {
+    /**
+     * Initializes state for native image generation.
+     *
+     * NOTE: this method is called reflectively by downstream projects.
+     */
+    @SuppressWarnings("unused")
+    private static void resetNativeImageState() {
+        nativeImageCache.clear();
+    }
+
+    private InstrumentCache(String prefix, Properties info, ClassLoader loader) {
         this.loader = loader;
         this.className = info.getProperty(prefix + "className");
         this.name = info.getProperty(prefix + "name");
@@ -98,22 +109,22 @@ final class InstrumentCache {
         }
     }
 
-    static List<InstrumentCache> load() {
-        if (PRELOAD) {
-            return CACHE;
+    static List<InstrumentCache> load(Collection<ClassLoader> loaders) {
+        if (TruffleOptions.AOT) {
+            return nativeImageCache;
         }
-        if (cache != null) {
-            return cache;
+        if (runtimeCache != null) {
+            return runtimeCache;
         }
         List<InstrumentCache> list = new ArrayList<>();
         Set<String> classNamesUsed = new HashSet<>();
-        for (ClassLoader loader : LanguageCache.allLoaders(SPI)) {
+        for (ClassLoader loader : loaders) {
             loadForOne(loader, list, classNamesUsed);
         }
         if (!JDK8OrEarlier) {
             loadForOne(ModuleResourceLocator.createLoader(), list, classNamesUsed);
         }
-        return cache = list;
+        return runtimeCache = list;
     }
 
     private static void loadForOne(ClassLoader loader, List<InstrumentCache> list, Set<String> classNamesUsed) {
@@ -176,7 +187,7 @@ final class InstrumentCache {
     }
 
     Class<?> getInstrumentationClass() {
-        if (!PRELOAD && instrumentClass == null) {
+        if (!TruffleOptions.AOT && instrumentClass == null) {
             loadClass();
         }
         return instrumentClass;

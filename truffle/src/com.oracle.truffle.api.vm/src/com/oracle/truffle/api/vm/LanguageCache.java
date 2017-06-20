@@ -47,14 +47,11 @@ import com.oracle.truffle.api.vm.PolyglotEngine.LegacyEngineImpl;
 
 /**
  * Ahead-of-time initialization. If the JVM is started with {@link TruffleOptions#AOT}, it populates
- * cache with languages found in application classloader.
+ * runtimeCache with languages found in application classloader.
  */
 final class LanguageCache implements Comparable<LanguageCache> {
-    private static final boolean PRELOAD;
-    private static final Map<String, LanguageCache> CACHE;
-
-    private static volatile Map<String, LanguageCache> cache;
-    private static final Collection<ClassLoader> AOT_LOADERS;
+    private static final Map<String, LanguageCache> nativeImageCache = TruffleOptions.AOT ? new HashMap<>() : null;
+    private static volatile Map<String, LanguageCache> runtimeCache;
     private final String className;
     private final Set<String> mimeTypes;
     private final String id;
@@ -70,33 +67,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
         if (VMAccessor.SPI == null) {
             VMAccessor.initialize(new LegacyEngineImpl());
         }
-
-        if (TruffleOptions.AOT) {
-            Collection<ClassLoader> loaders = VMAccessor.SPI.allLoaders();
-            /* native-image uses special class loaders */
-            if (ClassLoader.getSystemClassLoader() != Thread.currentThread().getContextClassLoader()) {
-                loaders.add(Thread.currentThread().getContextClassLoader());
-            }
-            AOT_LOADERS = loaders;
-        } else {
-            AOT_LOADERS = null;
-        }
-
-        CACHE = TruffleOptions.AOT ? initializeLanguages(loader()) : null;
-        PRELOAD = CACHE != null && AOT_LOADERS != null;
-    }
-
-    /**
-     * This method initializes all languages under the provided classloader.
-     *
-     * NOTE: Method's signature should not be changed as it is reflectively invoked from AOT
-     * compilation.
-     *
-     * @param loader The classloader to be used for finding languages.
-     * @return A map of initialized languages.
-     */
-    private static Map<String, LanguageCache> initializeLanguages(final ClassLoader loader) {
-        return createLanguages(loader);
     }
 
     private LanguageCache(String prefix, Properties info, ClassLoader loader) {
@@ -119,7 +89,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.interactive = Boolean.valueOf(info.getProperty(prefix + "interactive"));
         this.internal = Boolean.valueOf(info.getProperty(prefix + "internal"));
 
-        if (PRELOAD) {
+        if (TruffleOptions.AOT) {
             this.languageClass = loadLanguageClass();
             this.singletonLanguage = readSingleton(languageClass);
         } else {
@@ -162,44 +132,27 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return resolvedId;
     }
 
-    private static ClassLoader loader() {
-        ClassLoader l;
-        if (PolyglotEngine.JDK8OrEarlier) {
-            l = PolyglotEngine.class.getClassLoader();
-            if (l == null) {
-                l = ClassLoader.getSystemClassLoader();
-            }
-        } else {
-            l = ModuleResourceLocator.createLoader();
-        }
-        return l;
-    }
-
     static Map<String, LanguageCache> languages() {
-        if (PRELOAD) {
-            return CACHE;
+        if (TruffleOptions.AOT) {
+            return nativeImageCache;
         }
-        if (cache == null) {
+        if (runtimeCache == null) {
             synchronized (LanguageCache.class) {
-                if (cache == null) {
-                    cache = createLanguages(null);
+                if (runtimeCache == null) {
+                    runtimeCache = createLanguages(null);
                 }
             }
         }
-        return cache;
+        return runtimeCache;
     }
 
     private static Map<String, LanguageCache> createLanguages(ClassLoader additionalLoader) {
         List<LanguageCache> caches = new ArrayList<>();
-        for (ClassLoader loader : allLoaders(VMAccessor.SPI)) {
+        for (ClassLoader loader : VMAccessor.SPI.allLoaders()) {
             collectLanguages(loader, caches);
         }
         if (additionalLoader != null) {
             collectLanguages(additionalLoader, caches);
-        }
-        Map<String, LanguageCache> seenClasses = new HashMap<>();
-        for (LanguageCache languageCache : caches) {
-            seenClasses.put(languageCache.className, languageCache);
         }
         Map<String, LanguageCache> cacheToMimeType = new HashMap<>();
         for (LanguageCache languageCache : caches) {
@@ -279,7 +232,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         TruffleLanguage<?> instance;
         boolean singleton = true;
         try {
-            if (PRELOAD) {
+            if (TruffleOptions.AOT) {
                 instance = singletonLanguage;
                 if (instance == null) {
                     instance = this.languageClass.newInstance();
@@ -287,14 +240,10 @@ final class LanguageCache implements Comparable<LanguageCache> {
                 }
             } else {
                 Class<? extends TruffleLanguage<?>> clazz = loadLanguageClass();
-                try {
-                    instance = readSingleton(clazz);
-                    if (instance == null) {
-                        instance = clazz.newInstance();
-                        singleton = false;
-                    }
-                } catch (Exception e) {
-                    throw e;
+                instance = readSingleton(clazz);
+                if (instance == null) {
+                    instance = clazz.newInstance();
+                    singleton = false;
                 }
             }
         } catch (Exception e) {
@@ -327,10 +276,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
     }
 
-    public static Collection<ClassLoader> allLoaders(VMAccessor spi) {
-        return LanguageCache.PRELOAD ? LanguageCache.AOT_LOADERS : spi.allLoaders();
-    }
-
     static final class LoadedLanguage {
 
         private final TruffleLanguage<?> language;
@@ -349,6 +294,57 @@ final class LanguageCache implements Comparable<LanguageCache> {
             return singleton;
         }
 
+    }
+
+    /**
+     * Initializes state for native image generation.
+     *
+     * NOTE: this method is called reflectively by downstream projects.
+     *
+     * @param imageClassLoader class loader passed by the image builder.
+     */
+    @SuppressWarnings("unused")
+    private static void initializeNativeImageState(ClassLoader imageClassLoader) {
+        assert TruffleOptions.AOT : "Only supported during image generation";
+        nativeImageCache.putAll(createLanguages(imageClassLoader));
+    }
+
+    /**
+     * Resets the state for native image generation.
+     *
+     * NOTE: this method is called reflectively by downstream projects.
+     */
+    @SuppressWarnings("unused")
+    private static void resetNativeImageState() {
+        assert TruffleOptions.AOT : "Only supported during image generation";
+        nativeImageCache.clear();
+    }
+
+    /**
+     * Allows removal of loaded languages during native image generation.
+     *
+     * NOTE: this method is called reflectively by downstream projects.
+     */
+    @SuppressWarnings("unused")
+    private static void removeLanguageFromNativeImage(String languageMime) {
+        assert TruffleOptions.AOT : "Only supported during image generation";
+        assert nativeImageCache.containsKey(languageMime);
+        nativeImageCache.remove(languageMime);
+    }
+
+    /**
+     * Fetches all active language classes.
+     *
+     * NOTE: this method is called reflectively by downstream projects.
+     */
+    @SuppressWarnings("unused")
+    private static Collection<Class<?>> getLanguageClasses() {
+        assert TruffleOptions.AOT : "Only supported during image generation";
+        ArrayList<Class<?>> list = new ArrayList<>();
+        for (LanguageCache cache : nativeImageCache.values()) {
+            list.add(cache.languageClass);
+        }
+        return list;
     }
 
 }
