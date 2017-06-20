@@ -26,6 +26,7 @@ package org.graalvm.polyglot;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PrintStream;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -91,6 +92,24 @@ public final class Context {
 
         Builder(AbstractLanguageImpl languageImpl) {
             this.languageImpl = languageImpl;
+        }
+
+        /**
+         * @deprecated use {@link #setOut(OutputStream)} instead
+         */
+        @Deprecated
+        public Builder setOut(PrintStream out) {
+            this.out = out;
+            return this;
+        }
+
+        /**
+         * @deprecated use {@link #setErr(OutputStream)} instead
+         */
+        @Deprecated
+        public Builder setErr(PrintStream err) {
+            this.err = err;
+            return this;
         }
 
         public Builder setOut(OutputStream out) {
