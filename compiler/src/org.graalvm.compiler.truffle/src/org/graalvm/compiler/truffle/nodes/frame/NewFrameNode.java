@@ -127,7 +127,8 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
          * evaluation.
          */
         this.intrinsifyAccessorsSpeculation = new IntrinsifyFrameAccessorsSpeculationReason(frameDescriptor);
-        this.intrinsifyAccessors = !GraalTruffleRuntime.getRuntime().getFrameMaterializeCalled(frameDescriptor) && graph.getSpeculationLog().maySpeculate(intrinsifyAccessorsSpeculation);
+        boolean maySpeculate = graph.getSpeculationLog() != null ? graph.getSpeculationLog().maySpeculate(intrinsifyAccessorsSpeculation) : false;
+        this.intrinsifyAccessors = !GraalTruffleRuntime.getRuntime().getFrameMaterializeCalled(frameDescriptor) && maySpeculate;
 
         this.frameDefaultValue = ConstantNode.forConstant(snippetReflection.forObject(frameDescriptor.getDefaultValue()), metaAccess, graph);
         this.frameSlots = frameDescriptor.getSlots().toArray(new FrameSlot[0]);
