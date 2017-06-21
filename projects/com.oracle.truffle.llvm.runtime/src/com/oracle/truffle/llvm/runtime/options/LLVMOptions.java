@@ -61,9 +61,9 @@ public final class LLVMOptions {
         if (graalHome != null) {
             String defaultPath;
             if (System.getProperty("os.name").toLowerCase().contains("mac")) {
-                defaultPath = Paths.get(graalHome, "language", "llvm", "libsulong.so").toAbsolutePath().toString();
-            } else {
                 defaultPath = Paths.get(graalHome, "language", "llvm", "libsulong.dylib").toAbsolutePath().toString();
+            } else {
+                defaultPath = Paths.get(graalHome, "language", "llvm", "libsulong.so").toAbsolutePath().toString();
             }
             String[] prependedUserLibraries = new String[userLibraries.length + 1];
             System.arraycopy(userLibraries, 0, prependedUserLibraries, 1, userLibraries.length);
