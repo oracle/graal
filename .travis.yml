@@ -17,7 +17,7 @@ env:
   global:
     - JVMCI_VERSION="jvmci-0.28"
     - JVMCI_BASE_JDK8="jdk1.8.0_121"
-    - JDK9_EA_BUILD="168"
+    - JDK9_EA_BUILD="174"
   matrix:
 # Cannot build OpenJDK8 based JVMCI JDK until
 # https://github.com/travis-ci/travis-ci/issues/7337 is resolved
