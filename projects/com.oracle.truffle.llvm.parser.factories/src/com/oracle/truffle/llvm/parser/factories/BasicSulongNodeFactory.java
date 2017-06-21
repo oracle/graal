@@ -48,13 +48,13 @@ import com.oracle.truffle.llvm.nodes.control.LLVMBrUnconditionalNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMConditionalBranchNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMDispatchBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMIndirectBranchNode;
-import com.oracle.truffle.llvm.nodes.control.LLVMWritePhisNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMIndirectBranchNode.LLVMBasicBranchAddressNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMRetNodeFactory.LLVMVoidReturnNodeGen;
 import com.oracle.truffle.llvm.nodes.control.LLVMSwitchNode.LLVMI16SwitchNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMSwitchNode.LLVMI32SwitchNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMSwitchNode.LLVMI64SwitchNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMSwitchNode.LLVMI8SwitchNode;
+import com.oracle.truffle.llvm.nodes.control.LLVMWritePhisNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMFunctionStartNode;
@@ -128,6 +128,7 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableRegistry;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
@@ -438,7 +439,8 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
             descriptor = LLVMGlobalVariable.create(name, nativeResolver, resolvedType);
         } else {
             final LLVMContext context = runtime.getContext();
-            descriptor = context.getGlobalVariableRegistry().lookupOrAdd(name, nativeResolver, resolvedType);
+            LLVMGlobalVariableRegistry registry = context.getGlobalVariableRegistry();
+            descriptor = (LLVMGlobalVariable) registry.lookupOrCreate(name, () -> LLVMGlobalVariable.create(name, nativeResolver, resolvedType));
         }
 
         if ((globalVariable.getInitialiser() > 0 || !globalVariable.isExtern()) && descriptor.isUninitialized()) {

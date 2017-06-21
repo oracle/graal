@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,19 +27,45 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.global;
+package com.oracle.truffle.llvm.runtime;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 
-import com.oracle.truffle.llvm.runtime.NativeResolver;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 
 public final class LLVMGlobalVariableRegistry {
+    private final Map<String, Object> globals = new HashMap<>();
 
-    private final Map<String, LLVMGlobalVariable> descriptors = new HashMap<>();
+    public synchronized boolean exists(String name) {
+        return globals.containsKey(name);
+    }
 
-    public synchronized LLVMGlobalVariable lookupOrAdd(String name, NativeResolver nativeResolver, Type type) {
-        return descriptors.computeIfAbsent(name, k -> LLVMGlobalVariable.create(name, nativeResolver, type));
+    public synchronized void add(String name, Object global) {
+        if (global instanceof LLVMGlobalVariable) {
+            System.err.println();
+        }
+        if (exists(name)) {
+            throw new IllegalStateException("Global " + name + " already added.");
+        }
+        globals.put(name, global);
+    }
+
+    public synchronized Object lookup(String name) {
+        if (exists(name)) {
+            return globals.get(name);
+        }
+        throw new IllegalStateException("Global " + name + " does not exist.");
+    }
+
+    public synchronized Object lookupOrCreate(String name, Supplier<Object> generator) {
+        if (exists(name)) {
+            return lookup(name);
+        } else {
+            Object variable = generator.get();
+            add(name, variable);
+            return variable;
+        }
     }
 }
