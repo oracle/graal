@@ -252,15 +252,6 @@ public abstract class Shape {
     public abstract Layout getLayout();
 
     /**
-     * Get the shape's custom data.
-     *
-     * @since 0.8 or earlier
-     * @deprecated without replacement
-     */
-    @Deprecated
-    public abstract Object getData();
-
-    /**
      * Get the shape's shared data.
      *
      * @since 0.8 or earlier

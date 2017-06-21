@@ -29,12 +29,7 @@ public final class ObjectStorageOptions {
     private ObjectStorageOptions() {
     }
 
-    // Shape configuration
-    /**
-     * Primitive location switch.
-     * 
-     * @since 0.17 or earlier
-     */
+    /** @since 0.17 or earlier */
     public static final boolean PrimitiveLocations = booleanOption(OPTION_PREFIX + "PrimitiveLocations", true);
     /** @since 0.17 or earlier */
     public static final boolean IntegerLocations = booleanOption(OPTION_PREFIX + "IntegerLocations", true);
@@ -49,7 +44,7 @@ public final class ObjectStorageOptions {
 
     /**
      * Allocation of in-object fields.
-     * 
+     *
      * @since 0.17 or earlier
      */
     public static final boolean InObjectFields = booleanOption(OPTION_PREFIX + "InObjectFields", true);
@@ -68,9 +63,9 @@ public final class ObjectStorageOptions {
     static final String DumpShapesPath = System.getProperty(OPTION_PREFIX + "DumpShapesPath", "");
 
     /** @since 0.17 or earlier */
-    public static final boolean Profile = booleanOption(OPTION_PREFIX + "Profile", false);
+    @Deprecated public static final boolean Profile = booleanOption(OPTION_PREFIX + "Profile", false);
     /** @since 0.17 or earlier */
-    public static final int ProfileTopResults = Integer.getInteger(OPTION_PREFIX + "ProfileTopResults", -1);
+    @Deprecated public static final int ProfileTopResults = Integer.getInteger(OPTION_PREFIX + "ProfileTopResults", -1);
 
     /** @since 0.17 or earlier */
     public static boolean booleanOption(String name, boolean defaultValue) {
