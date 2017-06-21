@@ -247,7 +247,6 @@ import static org.graalvm.compiler.core.common.GraalOptions.StressInvokeWithExce
 import static org.graalvm.compiler.core.common.type.StampFactory.objectNonNull;
 import static org.graalvm.compiler.debug.GraalError.guarantee;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
-import static org.graalvm.compiler.java.BytecodeParserOptions.DumpWithInfopoints;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlinePartialIntrinsicExitDuringParsing;
 import static org.graalvm.compiler.java.BytecodeParserOptions.TraceBytecodeParserLevel;
 import static org.graalvm.compiler.java.BytecodeParserOptions.TraceInlineDuringParsing;
@@ -2808,7 +2807,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private DebugCloseable openNodeContext() {
-        if ((graphBuilderConfig.trackNodeSourcePosition() || (Debug.isDumpEnabledForMethod() && DumpWithInfopoints.getValue(options))) && !parsingIntrinsic()) {
+        if ((graphBuilderConfig.trackNodeSourcePosition() || Debug.isDumpEnabledForMethod()) && !parsingIntrinsic()) {
             return graph.withNodeSourcePosition(createBytecodePosition());
         }
         return null;
