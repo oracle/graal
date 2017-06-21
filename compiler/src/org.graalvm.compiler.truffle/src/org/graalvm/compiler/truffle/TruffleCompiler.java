@@ -32,6 +32,7 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrum
 import java.util.ArrayList;
 import java.util.List;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.Assumptions.Assumption;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -129,6 +130,10 @@ public abstract class TruffleCompiler {
 
     public GraphBuilderConfiguration getGraphBuilderConfiguration() {
         return config;
+    }
+
+    public Backend getBackend() {
+        return backend;
     }
 
     protected abstract PartialEvaluator createPartialEvaluator();
@@ -249,6 +254,10 @@ public abstract class TruffleCompiler {
 
     public PartialEvaluator getPartialEvaluator() {
         return partialEvaluator;
+    }
+
+    public OptimizedCallTarget asOptimizedCallTarget(JavaConstant constant) {
+        return snippetReflection.asObject(OptimizedCallTarget.class, constant);
     }
 
     private class TruffleCodeInstallationTask extends Backend.CodeInstallationTask {
