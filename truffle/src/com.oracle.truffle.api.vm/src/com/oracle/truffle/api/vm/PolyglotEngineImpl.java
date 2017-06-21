@@ -28,6 +28,7 @@ import static com.oracle.truffle.api.vm.PolyglotImpl.checkEngine;
 import static com.oracle.truffle.api.vm.VMAccessor.INSTRUMENT;
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 import static com.oracle.truffle.api.vm.VMAccessor.NODES;
+import static com.oracle.truffle.api.vm.VMAccessor.SPI;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -250,7 +251,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
     private Map<String, Instrument> initializeInstruments(Map<String, InstrumentInfo> infos) {
         Map<String, Instrument> instruments = new LinkedHashMap<>();
-        List<InstrumentCache> cachedInstruments = InstrumentCache.load();
+        List<InstrumentCache> cachedInstruments = InstrumentCache.load(SPI.allLoaders());
         for (InstrumentCache instrumentCache : cachedInstruments) {
             PolyglotInstrumentImpl instrumentImpl = new PolyglotInstrumentImpl(this, instrumentCache);
             instrumentImpl.info = LANGUAGE.createInstrument(instrumentImpl, instrumentCache.getId(), instrumentCache.getName(), instrumentCache.getVersion());

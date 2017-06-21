@@ -86,6 +86,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -113,6 +114,14 @@ import jdk.vm.ci.meta.SpeculationLog;
 public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     private final Map<RootCallTarget, Void> callTargets = Collections.synchronizedMap(new WeakHashMap<RootCallTarget, Void>());
+
+    /**
+     * Used only to reset state for native image compilation.
+     */
+    protected void clearCallTargets() {
+        assert TruffleOptions.AOT : "Must be called only in AOT mode.";
+        callTargets.clear();
+    }
 
     protected abstract static class BackgroundCompileQueue implements CompilerThreadFactory.DebugConfigAccess {
         private final ExecutorService compileQueue;
