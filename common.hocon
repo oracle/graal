@@ -4,8 +4,8 @@ overlay = 2fa6fa642a6de2b8f07acc7940ce526193d9ab93
 jdk-downloads: {
   java7 : {name : oraclejdk, version : "7",    platformspecific: true}
   java8 : {name : labsjdk, version : "8u121-jvmci-0.28", platformspecific: true}
-  java9 : {name : labsjdk, version : "9-20170429-102349", platformspecific: true}
-  java9EA : {name : labsjdk, version : "9-ea+168", platformspecific: true}
+  java9 : {name : labsjdk, version : "9-20170621-080948", platformspecific: true}
+  java9EA : {name : labsjdk, version : "9-ea+174", platformspecific: true}
   java8Debug : {name : labsjdk, version : "8u121-jvmci-0.28-fastdebug", platformspecific: true}
 }
 
