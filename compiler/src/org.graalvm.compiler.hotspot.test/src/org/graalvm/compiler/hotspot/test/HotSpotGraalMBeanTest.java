@@ -22,10 +22,18 @@
  */
 package org.graalvm.compiler.hotspot.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+
 import java.lang.annotation.Annotation;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Field;
 import java.lang.reflect.Type;
+
 import javax.management.Attribute;
 import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanInfo;
@@ -33,6 +41,15 @@ import javax.management.MBeanOperationInfo;
 import javax.management.MBeanServer;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
+
+import org.graalvm.compiler.debug.GraalDebugConfig;
+import org.graalvm.compiler.hotspot.HotSpotGraalMBean;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.test.GraalTest;
+import org.graalvm.util.EconomicMap;
+import org.junit.Assume;
+import org.junit.Test;
+
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.Assumptions;
@@ -49,19 +66,16 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
-import org.graalvm.compiler.debug.GraalDebugConfig;
-import org.graalvm.compiler.hotspot.HotSpotGraalMBean;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.util.EconomicMap;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import org.junit.Test;
 
 public class HotSpotGraalMBeanTest {
+
+    public HotSpotGraalMBeanTest() {
+        // No support for registering Graal MBean yet on JDK9 (GR-4025). We cannot
+        // rely on an exception being thrown when accessing ManagementFactory.platformMBeanServer
+        // via reflection as recent JDK9 changes now allow this and issue a warning instead.
+        Assume.assumeTrue(GraalTest.Java8OrEarlier);
+    }
+
     @Test
     public void registration() throws Exception {
         ObjectName name;
