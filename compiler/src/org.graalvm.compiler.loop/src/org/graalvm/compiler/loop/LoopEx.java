@@ -46,7 +46,6 @@ import org.graalvm.compiler.nodes.FullInfopointNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
-import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -287,7 +286,7 @@ public class LoopEx {
                 default:
                     throw GraalError.shouldNotReachHere();
             }
-            counted = new CountedLoopInfo(this, iv, limit, oneOff, negated ? ifNode.falseSuccessor() : ifNode.trueSuccessor());
+            counted = new CountedLoopInfo(this, iv, ifNode, limit, oneOff, negated ? ifNode.falseSuccessor() : ifNode.trueSuccessor());
             return true;
         }
         return false;
@@ -299,7 +298,7 @@ public class LoopEx {
 
     public void nodesInLoopBranch(NodeBitMap branchNodes, AbstractBeginNode branch) {
         EconomicSet<AbstractBeginNode> blocks = EconomicSet.create();
-        Collection<LoopExitNode> exits = new LinkedList<>();
+        Collection<AbstractBeginNode> exits = new LinkedList<>();
         Queue<Block> work = new LinkedList<>();
         ControlFlowGraph cfg = loopsData().getCFG();
         work.add(cfg.blockFor(branch));
@@ -307,7 +306,7 @@ public class LoopEx {
             Block b = work.remove();
             if (loop().getExits().contains(b)) {
                 assert !exits.contains(b.getBeginNode());
-                exits.add((LoopExitNode) b.getBeginNode());
+                exits.add(b.getBeginNode());
             } else if (blocks.add(b.getBeginNode())) {
                 Block d = b.getDominatedSibling();
                 while (d != null) {
