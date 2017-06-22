@@ -40,6 +40,7 @@ public class DirectByteBufferTest extends GraalCompilerTest {
         byte byteValue = 0;
         short shortValue = 0;
         int intValue = 0;
+        long longValue = 0;
         float floatValue = 0.0f;
         double doubleValue = 0.0d;
 
@@ -59,6 +60,9 @@ public class DirectByteBufferTest extends GraalCompilerTest {
             if (this.intValue != other.intValue) {
                 return false;
             }
+            if (this.longValue != other.longValue) {
+                return false;
+            }
             if (Float.floatToRawIntBits(this.floatValue) != Float.floatToRawIntBits(other.floatValue)) {
                 return false;
             }
@@ -76,7 +80,7 @@ public class DirectByteBufferTest extends GraalCompilerTest {
 
         @Override
         public String toString() {
-            return String.format("0x%02x, 0x%04x, 0x%08x, 0x%04x, 0x%08x", byteValue, shortValue, intValue, Float.floatToRawIntBits(floatValue), Double.doubleToRawLongBits(doubleValue));
+            return String.format("0x%02x, 0x%04x, 0x%08x, 0x%016x,0x%08x, 0x%016x", byteValue, shortValue, intValue, Float.floatToRawIntBits(floatValue), Double.doubleToRawLongBits(doubleValue));
         }
     }
 
@@ -98,6 +102,7 @@ public class DirectByteBufferTest extends GraalCompilerTest {
         ret.byteValue += buffer.get();
         ret.shortValue = buffer.getShort();
         ret.intValue = buffer.getInt();
+        ret.longValue = buffer.getLong();
         ret.doubleValue = buffer.getDouble();
         ret.floatValue = buffer.getFloat();
 
@@ -106,21 +111,67 @@ public class DirectByteBufferTest extends GraalCompilerTest {
 
     @Test
     public void testReadAligned() {
-        byte[] input = new byte[20];
-        for (int i = 0; i < 20; i++) {
+        byte[] input = new byte[28];
+        for (int i = 0; i < 28; i++) {
             input[i] = (byte) (7 * (i + 42));
         }
         test("alignedReadSnippet", input);
     }
 
-    byte[] alignedWriteSnippet(byte a, byte b, short c, int d, double e, float f) {
-        byte[] ret = new byte[20];
-        ByteBuffer buffer = makeDirect(20, byteOrder);
+    byte[] alignedWriteSnippet(byte a, byte b, short c, int d, long e, double f, float g) {
+        byte[] ret = new byte[28];
+        ByteBuffer buffer = makeDirect(28, byteOrder);
 
         buffer.put(a);
         buffer.put(b);
         buffer.putShort(c);
         buffer.putInt(d);
+        buffer.putLong(e);
+        buffer.putDouble(f);
+        buffer.putFloat(g);
+
+        buffer.position(0);
+        buffer.get(ret);
+
+        return ret;
+    }
+
+    @Test
+    public void testWriteAligned() {
+        test("alignedWriteSnippet", (byte) 5, (byte) -3, (short) 17, 42, 0x3FC30A25644B7130L, 84.72, 1.23f);
+    }
+
+    Ret unalignedReadSnippet(byte[] arg) {
+        ByteBuffer buffer = makeDirect(arg, byteOrder);
+
+        Ret ret = new Ret();
+        ret.byteValue = buffer.get();
+        ret.shortValue = buffer.getShort();
+        ret.intValue = buffer.getInt();
+        ret.longValue = buffer.getLong();
+        ret.doubleValue = buffer.getDouble();
+        ret.floatValue = buffer.getFloat();
+
+        return ret;
+    }
+
+    @Test
+    public void testReadUnaligned() {
+        byte[] input = new byte[27];
+        for (int i = 0; i < 27; i++) {
+            input[i] = (byte) (7 * (i + 42));
+        }
+        test("unalignedReadSnippet", input);
+    }
+
+    byte[] unalignedWriteSnippet(byte a, short b, int c, long d, double e, float f) {
+        byte[] ret = new byte[27];
+        ByteBuffer buffer = makeDirect(27, byteOrder);
+
+        buffer.put(a);
+        buffer.putShort(b);
+        buffer.putInt(c);
+        buffer.putLong(d);
         buffer.putDouble(e);
         buffer.putFloat(f);
 
@@ -131,51 +182,8 @@ public class DirectByteBufferTest extends GraalCompilerTest {
     }
 
     @Test
-    public void testWriteAligned() {
-        test("alignedWriteSnippet", (byte) 5, (byte) -3, (short) 17, 42, 84.72, 1.23f);
-    }
-
-    Ret unalignedReadSnippet(byte[] arg) {
-        ByteBuffer buffer = makeDirect(arg, byteOrder);
-
-        Ret ret = new Ret();
-        ret.byteValue = buffer.get();
-        ret.shortValue = buffer.getShort();
-        ret.intValue = buffer.getInt();
-        ret.doubleValue = buffer.getDouble();
-        ret.floatValue = buffer.getFloat();
-
-        return ret;
-    }
-
-    @Test
-    public void testReadUnaligned() {
-        byte[] input = new byte[19];
-        for (int i = 0; i < 19; i++) {
-            input[i] = (byte) (7 * (i + 42));
-        }
-        test("unalignedReadSnippet", input);
-    }
-
-    byte[] unalignedWriteSnippet(byte a, short b, int c, double d, float e) {
-        byte[] ret = new byte[20];
-        ByteBuffer buffer = makeDirect(20, byteOrder);
-
-        buffer.put(a);
-        buffer.putShort(b);
-        buffer.putInt(c);
-        buffer.putDouble(d);
-        buffer.putFloat(e);
-
-        buffer.position(0);
-        buffer.get(ret);
-
-        return ret;
-    }
-
-    @Test
     public void testWriteUnaligned() {
-        test("unalignedWriteSnippet", (byte) -3, (short) 17, 42, 84.72, 1.23f);
+        test("unalignedWriteSnippet", (byte) -3, (short) 17, 42, 0x3FC30A25644B7130L, 84.72, 1.23f);
     }
 
     private ByteBuffer makeDirect(byte[] bytes, ByteOrder byteOrder) {
