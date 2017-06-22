@@ -328,6 +328,12 @@ class SulongTestSuite(mx.NativeProject):
         mx.NativeProject.__init__(self, suite, name, subDir, [], deps, workingSets, results, output, d)
         self.vpath = True
 
+    @staticmethod
+    def haveDragonegg():
+        if not hasattr(SulongTestSuite, '_haveDragonegg'):
+            SulongTestSuite._haveDragonegg = os.path.exists(mx_sulong.dragonEggPath()) and mx_sulong.getGCC(optional=True) is not None
+        return SulongTestSuite._haveDragonegg
+
     def getTests(self):
         if not hasattr(self, '_tests'):
             self._tests = []
@@ -341,12 +347,26 @@ class SulongTestSuite(mx.NativeProject):
                         self._tests.append(test)
         return self._tests
 
+    def getVariants(self):
+        if not hasattr(self, '_variants'):
+            self._variants = []
+            for v in self.variants:
+                if 'gcc' in v and not SulongTestSuite.haveDragonegg():
+                    mx.warn('Could not find dragonegg, not building test variant "%s"' % v)
+                    continue
+                self._variants.append(v)
+        return self._variants
+
     def getBuildEnv(self, replaceVar=mx_subst.path_substitutions):
         env = super(SulongTestSuite, self).getBuildEnv(replaceVar=replaceVar)
         env['VPATH'] = os.path.join(self.dir, self.name)
         env['PROJECT'] = self.name
         env['TESTS'] = ' '.join(self.getTests())
-        env['VARIANTS'] = ' '.join(self.variants)
+        env['VARIANTS'] = ' '.join(self.getVariants())
+        if SulongTestSuite.haveDragonegg():
+            env['DRAGONEGG'] = mx_sulong.dragonEggPath()
+            env['DRAGONEGG_GCC'] = mx_sulong.getGCC()
+            env['DRAGONEGG_LLVMAS'] = mx_sulong.findLLVMProgramForDragonegg("llvm-as")
         return env
 
     def getResults(self, replaceVar=mx_subst.results_substitutions):
@@ -354,6 +374,6 @@ class SulongTestSuite(mx.NativeProject):
             self.results = []
             for t in self.getTests():
                 self.results.append(os.path.join(t, 'ref.out'))
-                for v in self.variants:
+                for v in self.getVariants():
                     self.results.append(os.path.join(t, v + '.bc'))
         return super(SulongTestSuite, self).getResults(replaceVar=replaceVar)

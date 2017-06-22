@@ -212,26 +212,26 @@ def getCommand(envVariable):
         else:
             return command
 
-def getGCC():
+def getGCC(optional=False):
     """tries to locate a gcc version suitable to execute Dragonegg"""
     specifiedGCC = getCommand('SULONG_GCC')
     if specifiedGCC is not None:
         return specifiedGCC
-    return findGCCProgram('gcc')
+    return findGCCProgram('gcc', optional=optional)
 
-def getGFortran():
+def getGFortran(optional=False):
     """tries to locate a gfortran version suitable to execute Dragonegg"""
     specifiedGFortran = getCommand('SULONG_GFORTRAN')
     if specifiedGFortran is not None:
         return specifiedGFortran
-    return findGCCProgram('gfortran')
+    return findGCCProgram('gfortran', optional=optional)
 
-def getGPP():
+def getGPP(optional=False):
     """tries to locate a g++ version suitable to execute Dragonegg"""
     specifiedCPP = getCommand('SULONG_GPP')
     if specifiedCPP is not None:
         return specifiedCPP
-    return findGCCProgram('g++')
+    return findGCCProgram('g++', optional=optional)
 
 # platform independent
 def pullInstallDragonEgg(args=None):
@@ -253,20 +253,22 @@ def pullInstallDragonEgg(args=None):
     os.environ['CXX'] = getGPP()
     os.environ['CC'] = getGCC()
     pullLLVMBinaries()
-    os.environ['LLVM_CONFIG'] = findLLVMProgramForDragonegg()
-    mx.log(os.environ['LLVM_CONFIG'])
+    os.environ['LLVM_CONFIG'] = findLLVMProgramForDragonegg('llvm-config')
     compileCommand = ['make']
     return mx.run(compileCommand, cwd=_toolDir + 'dragonegg/dragonegg-3.2.src')
 
-def findLLVMProgramForDragonegg():
+def findLLVMProgramForDragonegg(program):
     """tries to find a supported version of an installed LLVM program; if the program is not found it downloads the LLVM binaries and checks there"""
-    installedProgram = findInstalledLLVMProgram('llvm-config', ['3.2', '3.3'])
+    installedProgram = findInstalledLLVMProgram(program, ['3.2', '3.3'])
 
     if installedProgram is None:
-        if not os.path.exists(_clangPath):
-            pullLLVMBinaries()
-        programPath = _toolDir + 'llvm/bin/llvm-config'
-        return programPath
+        if 'DRAGONEGG_LLVM' in os.environ:
+            path = os.environ['DRAGONEGG_LLVM']
+        else:
+            if not os.path.exists(_clangPath):
+                pullLLVMBinaries()
+            path = os.path.join(_toolDir, 'llvm')
+        return os.path.join(path, 'bin', program)
     else:
         return installedProgram
 
@@ -570,10 +572,10 @@ def findLLVMProgram(llvmProgram, version=None):
     else:
         return installedProgram
 
-def findGCCProgram(gccProgram):
+def findGCCProgram(gccProgram, optional=False):
     """tries to find a supported version of an installed GCC program"""
     installedProgram = findInstalledGCCProgram(gccProgram)
-    if installedProgram is None:
+    if installedProgram is None and not optional:
         exit('found no supported version ' + str(supportedGCCVersions) + ' of ' + gccProgram)
     else:
         return installedProgram

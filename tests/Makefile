@@ -12,6 +12,8 @@ default: $(REF_TARGETS) $(BC_TARGETS)
 	@mkdir -p $(shell dirname $@)
 	clang++ $(LDFLAGS) -o $@ $<
 
+%.bc: %.ll
+	$(DRAGONEGG_LLVMAS) -o $@ $<
 
 define OPT_RULES
 %/$(1).bc: %.c
@@ -21,6 +23,10 @@ define OPT_RULES
 %/$(1).bc: %.cpp
 	@mkdir -p $$(shell dirname $$@)
 	clang++ -c -emit-llvm -$(1) -o $$@ $$<
+
+%/gcc_$(1).ll: %.c
+	@mkdir -p $$(shell dirname $$@)
+	$(DRAGONEGG_GCC) -S --std=gnu99 -fplugin=$(DRAGONEGG) -fplugin-arg-dragonegg-emit-ir -$(1) -o $$@ $$<
 endef
 
 $(eval $(call OPT_RULES,O0))
