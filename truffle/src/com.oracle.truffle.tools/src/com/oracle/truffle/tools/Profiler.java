@@ -87,29 +87,11 @@ public final class Profiler {
      * @since 0.15
      */
     public static Profiler find(PolyglotEngine engine) {
-        return find(engine, true);
-    }
-
-    private static final ProfilerInstrument.Factory FACTORY = new ProfilerInstrument.Factory() {
-        @Override
-        public Profiler create(Instrumenter instrumenter) {
-            return new Profiler(instrumenter);
-        }
-    };
-
-    static Profiler find(PolyglotEngine engine, boolean create) {
         PolyglotRuntime.Instrument instrument = engine.getRuntime().getInstruments().get(ProfilerInstrument.ID);
         if (instrument == null) {
             throw new IllegalStateException();
         }
-        if (create) {
-            instrument.setEnabled(true);
-        }
-        final ProfilerInstrument profilerInstrument = instrument.lookup(ProfilerInstrument.class);
-        if (profilerInstrument == null) {
-            return null;
-        }
-        return profilerInstrument.getProfiler(create ? FACTORY : null);
+        return instrument.lookup(Profiler.class);
     }
 
     private final Instrumenter instrumenter;
