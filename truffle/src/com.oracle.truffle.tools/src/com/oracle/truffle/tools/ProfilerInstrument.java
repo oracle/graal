@@ -24,21 +24,19 @@
  */
 package com.oracle.truffle.tools;
 
-import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 
-@Registration(id = ProfilerInstrument.ID)
+@Registration(id = ProfilerInstrument.ID, services = Profiler.class)
 public class ProfilerInstrument extends TruffleInstrument {
     static final String ID = "profiler";
 
     private Profiler profiler;
-    private Instrumenter instrumenter;
 
     @Override
     protected void onCreate(Env env) {
-        this.instrumenter = env.getInstrumenter();
-        env.registerService(this);
+        this.profiler = new Profiler(env.getInstrumenter());
+        env.registerService(this.profiler);
     }
 
     @Override
@@ -48,17 +46,4 @@ public class ProfilerInstrument extends TruffleInstrument {
         }
     }
 
-    Profiler getProfiler(Factory factory) {
-        if (profiler == null && factory != null) {
-            profiler = factory.create(instrumenter);
-            if (profiler == null) {
-                throw new NullPointerException();
-            }
-        }
-        return profiler;
-    }
-
-    interface Factory {
-        Profiler create(Instrumenter instrumenter);
-    }
 }
