@@ -53,6 +53,7 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
+import com.oracle.truffle.api.impl.TruffleLocator;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -134,6 +135,17 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         Engine engine = getAPIAccess().newEngine(impl);
         impl.api = engine;
         return engine;
+    }
+
+    @Override
+    public Class<?> loadLanguageClass(String className) {
+        for (ClassLoader loader : TruffleLocator.loaders()) {
+            try {
+                loader.loadClass(className);
+            } catch (ClassNotFoundException e) {
+            }
+        }
+        return null;
     }
 
     static PolyglotContextImpl requireContext() {
