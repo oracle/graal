@@ -45,6 +45,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.TruffleLanguage;
@@ -952,7 +953,7 @@ final class InstrumentationHandler {
             if (type == null) {
                 return false;
             }
-            if (type.getName().equals(name) || type.getCanonicalName().equals(name)) {
+            if (type.getName().equals(name) || (type.getCanonicalName() != null && type.getCanonicalName().equals(name))) {
                 return true;
             }
             if (findType(name, type.getSuperclass())) {
@@ -1416,11 +1417,11 @@ final class InstrumentationHandler {
             }
 
             @Override
-            public List<OptionDescriptor> describeOptions(Object instrumentationHandler, Object key, String requiredGroup) {
+            public OptionDescriptors describeOptions(Object instrumentationHandler, Object key, String requiredGroup) {
                 InstrumentClientInstrumenter instrumenter = (InstrumentClientInstrumenter) ((InstrumentationHandler) instrumentationHandler).instrumenterMap.get(key);
-                List<OptionDescriptor> descriptors = instrumenter.instrument.describeOptions();
+                OptionDescriptors descriptors = instrumenter.instrument.getOptionDescriptors();
                 if (descriptors == null) {
-                    descriptors = Collections.emptyList();
+                    descriptors = OptionDescriptors.EMPTY;
                 }
                 String groupPlusDot = requiredGroup + ".";
                 for (OptionDescriptor descriptor : descriptors) {

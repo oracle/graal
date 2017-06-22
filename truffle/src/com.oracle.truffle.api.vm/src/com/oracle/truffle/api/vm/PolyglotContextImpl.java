@@ -28,6 +28,7 @@ import static com.oracle.truffle.api.vm.PolyglotImpl.checkEngine;
 import static com.oracle.truffle.api.vm.PolyglotImpl.checkStateForGuest;
 import static com.oracle.truffle.api.vm.PolyglotImpl.isGuestInteropValue;
 import static com.oracle.truffle.api.vm.PolyglotImpl.wrapGuestException;
+import static com.oracle.truffle.api.vm.VMAccessor.INSTRUMENT;
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 import static com.oracle.truffle.api.vm.VMAccessor.NODES;
 
@@ -40,6 +41,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
@@ -81,9 +83,19 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
                     PolyglotLanguageImpl singlePublicLanguage) {
         super(engine.impl);
         this.applicationArguments = applicationArguments;
-        this.out = out;
-        this.err = err;
-        this.in = in;
+
+        if (out == null || out == INSTRUMENT.getOut(engine.out)) {
+            this.out = engine.out;
+        } else {
+            this.out = INSTRUMENT.createDelegatingOutput(out, engine.out);
+        }
+        if (err == null || err == INSTRUMENT.getOut(engine.err)) {
+            this.err = engine.err;
+        } else {
+            this.err = INSTRUMENT.createDelegatingOutput(err, engine.err);
+        }
+        this.in = in == null ? engine.in : in;
+
         this.options = options;
         this.singlePublicLanguage = singlePublicLanguage;
         this.engine = engine;
@@ -286,6 +298,11 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
         } finally {
             PolyglotImpl.leaveGuest(prev);
         }
+    }
+
+    @Override
+    public Engine getEngineImpl() {
+        return engine.api;
     }
 
     @Override

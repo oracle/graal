@@ -29,15 +29,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.truffle.api.TruffleOptions;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
@@ -164,13 +165,11 @@ class HostLanguage extends TruffleLanguage<HostContext> {
     }
 
     @Override
-    protected List<OptionDescriptor> describeOptions() {
+    protected OptionDescriptors getOptionDescriptors() {
         List<OptionDescriptor> descriptors = new ArrayList<>();
-
         descriptors.add(OptionDescriptor.newBuilder(ALLOW_CLASS_LOADING, ALLOW_CLASS_LOADING_NAME).category(OptionCategory.USER).//
                         help("Allow guest languages to load additional Java host language classes.").build());
-
-        return descriptors;
+        return OptionDescriptors.create(descriptors);
     }
 
 }

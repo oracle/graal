@@ -25,9 +25,11 @@
 package com.oracle.truffle.api.vm;
 
 import java.util.Collection;
+import java.util.Collections;
 
 import org.graalvm.options.OptionDescriptors;
 
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.Accessor;
 
 class VMAccessor extends Accessor {
@@ -50,7 +52,7 @@ class VMAccessor extends Accessor {
     }
 
     Collection<ClassLoader> allLoaders() {
-        return loaders();
+        return TruffleOptions.AOT ? Collections.emptyList() : loaders();
     }
 
     @Override

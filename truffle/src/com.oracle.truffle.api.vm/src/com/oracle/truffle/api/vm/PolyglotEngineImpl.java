@@ -28,6 +28,7 @@ import static com.oracle.truffle.api.vm.PolyglotImpl.checkEngine;
 import static com.oracle.truffle.api.vm.VMAccessor.INSTRUMENT;
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 import static com.oracle.truffle.api.vm.VMAccessor.NODES;
+import static com.oracle.truffle.api.vm.VMAccessor.SPI;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -132,7 +133,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             }
         }
 
-        this.engineOptions = new OptionDescriptorsImpl(describeEngineOptions());
+        this.engineOptions = OptionDescriptors.create(describeEngineOptions());
         this.compilerOptions = VMAccessor.SPI.getCompilerOptions();
         this.allEngineOptions = OptionDescriptors.createUnion(engineOptions, compilerOptions);
         this.engineOptionValues = new OptionValuesImpl(this, this.engineOptions);
@@ -250,7 +251,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
     private Map<String, Instrument> initializeInstruments(Map<String, InstrumentInfo> infos) {
         Map<String, Instrument> instruments = new LinkedHashMap<>();
-        List<InstrumentCache> cachedInstruments = InstrumentCache.load();
+        List<InstrumentCache> cachedInstruments = InstrumentCache.load(SPI.allLoaders());
         for (InstrumentCache instrumentCache : cachedInstruments) {
             PolyglotInstrumentImpl instrumentImpl = new PolyglotInstrumentImpl(this, instrumentCache);
             instrumentImpl.info = LANGUAGE.createInstrument(instrumentImpl, instrumentCache.getId(), instrumentCache.getName(), instrumentCache.getVersion());
@@ -356,12 +357,10 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     }
 
     @Override
-    public PolyglotContext createPolyglotContext(OutputStream providedOut, OutputStream providedErr, InputStream providedIn, Map<String, String[]> arguments, Map<String, String> options) {
+    @SuppressWarnings("hiding")
+    public PolyglotContext createPolyglotContext(OutputStream out, OutputStream err, InputStream in, Map<String, String[]> arguments, Map<String, String> options) {
         checkEngine(this);
-        OutputStream useOut = providedOut == null ? out : providedOut;
-        OutputStream useErr = providedErr == null ? err : providedErr;
-        InputStream useIn = providedIn == null ? in : providedIn;
-        PolyglotContextImpl contextImpl = new PolyglotContextImpl(this, useOut, useErr, useIn, options, arguments, null);
+        PolyglotContextImpl contextImpl = new PolyglotContextImpl(this, out, err, in, options, arguments, null);
         return impl.getAPIAccess().newPolyglotContext(api, contextImpl);
     }
 
