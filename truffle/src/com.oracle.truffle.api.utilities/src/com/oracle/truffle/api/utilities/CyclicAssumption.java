@@ -24,26 +24,44 @@
  */
 package com.oracle.truffle.api.utilities;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Holds an {@link Assumption}, and knows how to recreate it with the same properties on
- * invalidation. Used so that mutability is isolated in this class, and all other classes that need
- * an assumption that may be recreated can have a final reference to an object of this class. Note
- * that you should be careful that repeated invalidations do not cause a deoptimization loop in that
- * same way that you would with any other assumption.
- * 
+ * invalidation. Used as an Assumption factory that safely invalidates the previous Assumption and
+ * creates a new Assumption on invalidation.
+ * <p>
+ * Note that you should be careful that repeated invalidations do not cause a deoptimization loop in
+ * that same way that you would with any other assumption.
+ * <p>
+ * The Assumption instance should be obtained before doing the operation depending on it. In other
+ * words:
+ * <ol>
+ * <li>Obtain the current Assumption with {@link CyclicAssumption#getAssumption()}</li>
+ * <li>Perform the operation/lookup which depends on the assumption</li>
+ * <li>Cache the result and the Assumption</li>
+ * </ol>
+ * On the fast-path, first check if the assumption is valid and in that case return the cached
+ * result. When invalidating, first write the new value, then invalidate the CyclicAssumption.
+ *
+ * {@codesnippet cyclicassumption}
+ *
  * @since 0.8 or earlier
  */
 public class CyclicAssumption {
 
     private final String name;
-    @CompilerDirectives.CompilationFinal private volatile Assumption assumption;
+    private volatile Assumption assumption;
 
     private static final AtomicReferenceFieldUpdater<CyclicAssumption, Assumption> ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(CyclicAssumption.class, Assumption.class, "assumption");
 
@@ -63,7 +81,62 @@ public class CyclicAssumption {
 
     /** @since 0.8 or earlier */
     public Assumption getAssumption() {
+        CompilerAsserts.neverPartOfCompilation("Cache the Assumption and do not call getAssumption() on the fast path");
         return assumption;
     }
 
+}
+
+class CyclicAssumptionSnippets {
+    // BEGIN: cyclicassumption
+    class MyContext {
+        CyclicAssumption symbolsRedefined = new CyclicAssumption("symbols");
+        Map<String, Object> symbols = new ConcurrentHashMap<>();
+
+        public void redefineSymbol(String symbol, Object value) {
+            symbols.put(symbol, value);
+            symbolsRedefined.invalidate();
+        }
+    }
+
+    class SymbolLookupNode extends Node {
+        final MyContext context;
+        final String symbol;
+
+        @CompilationFinal volatile LookupResult cachedLookup;
+
+        SymbolLookupNode(MyContext context, String symbol) {
+            this.context = context;
+            this.symbol = symbol;
+        }
+
+        public Object execute() {
+            LookupResult lookup = cachedLookup;
+            if (lookup == null || !lookup.assumption.isValid()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                cachedLookup = doLookup(symbol);
+            }
+            return cachedLookup.value;
+        }
+
+        private LookupResult doLookup(String name) {
+            // First get the Assumption
+            CyclicAssumption symbolsRedefined = context.symbolsRedefined;
+            Assumption assumption = symbolsRedefined.getAssumption();
+            // Then lookup the value
+            Object value = context.symbols.get(name);
+            return new LookupResult(assumption, value);
+        }
+    }
+
+    class LookupResult {
+        final Assumption assumption;
+        final Object value;
+
+        LookupResult(Assumption assumption, Object value) {
+            this.assumption = assumption;
+            this.value = value;
+        }
+    }
+    // END: cyclicassumption
 }
