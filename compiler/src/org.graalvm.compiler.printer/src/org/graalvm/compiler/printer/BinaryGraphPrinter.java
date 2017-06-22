@@ -61,7 +61,7 @@ import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 
-public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.GraphInfo, Node, Edges, Block>
+public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.GraphInfo, Node, NodeClass<?>, Edges, Block>
                 implements GraphPrinter {
     private SnippetReflectionProvider snippetReflection;
 
@@ -96,6 +96,28 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.
     }
 
     @Override
+    NodeClass<?> findNodeClass(Object obj) {
+        if (obj instanceof NodeClass<?>) {
+            return (NodeClass<?>) obj;
+        }
+        if (obj instanceof Node) {
+            return ((Node) obj).getNodeClass();
+        }
+        return null;
+    }
+
+    @Override
+    Class<?> findJavaClass(NodeClass<?> node) {
+        return node.getJavaClass();
+    }
+
+    @Override
+    String findNameTemplate(NodeClass<?> nodeClass) {
+        String template = nodeClass.getNameTemplate();
+        return template.isEmpty() ? nodeClass.shortName() : template;
+    }
+
+    @Override
     final GraphInfo findGraph(Object obj) {
         if (obj instanceof Graph) {
             return new GraphInfo((Graph) obj);
@@ -114,11 +136,11 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.
     @Override
     final Edges findEdges(Node node, boolean dumpInputs) {
         NodeClass<?> nodeClass = node.getNodeClass();
-        return findEdges(nodeClass, dumpInputs);
+        return findClassEdges(nodeClass, dumpInputs);
     }
 
     @Override
-    final Edges findEdges(NodeClass<?> nodeClass, boolean dumpInputs) {
+    final Edges findClassEdges(NodeClass<?> nodeClass, boolean dumpInputs) {
         return nodeClass.getEdges(dumpInputs ? Inputs : Successors);
     }
 
@@ -240,11 +262,6 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.
     @Override
     List<Block> findBlocks(GraphInfo graph) {
         return graph.blocks;
-    }
-
-    @Override
-    NodeClass<?> findNodeClass(Node node) {
-        return node.getNodeClass();
     }
 
     @Override

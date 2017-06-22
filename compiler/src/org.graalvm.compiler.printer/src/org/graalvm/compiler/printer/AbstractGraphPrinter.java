@@ -36,11 +36,10 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
-import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodeinfo.InputType;
 
-abstract class AbstractGraphPrinter<Graph, Node, Edges, Block> {
+abstract class AbstractGraphPrinter<Graph, Node, NodeClass, Edges, Block> {
     private static final Charset UTF8 = Charset.forName("UTF-8");
 
     private static final int CONSTANT_POOL_MAX_SIZE = 8000;
@@ -143,9 +142,15 @@ abstract class AbstractGraphPrinter<Graph, Node, Edges, Block> {
 
     abstract ResolvedJavaMethod findMethod(Object obj);
 
+    abstract NodeClass findNodeClass(Object obj);
+
+    abstract Class<?> findJavaClass(NodeClass clazz);
+
+    abstract String findNameTemplate(NodeClass clazz);
+
     abstract Edges findEdges(Node node, boolean dumpInputs);
 
-    abstract Edges findEdges(NodeClass<?> nodeClass, boolean dumpInputs);
+    abstract Edges findClassEdges(NodeClass nodeClass, boolean dumpInputs);
 
     abstract int findNodeId(Node n);
 
@@ -168,8 +173,6 @@ abstract class AbstractGraphPrinter<Graph, Node, Edges, Block> {
     abstract List<Block> findBlockSuccessors(Block block);
 
     abstract String formatTitle(int id, String format, Object... args);
-
-    abstract NodeClass<?> findNodeClass(Node node);
 
     abstract int findSize(Edges edges);
 
@@ -304,8 +307,6 @@ abstract class AbstractGraphPrinter<Graph, Node, Edges, Block> {
                 writeByte(POOL_ENUM);
             } else if (object instanceof Class<?> || object instanceof JavaType) {
                 writeByte(POOL_CLASS);
-            } else if (object instanceof NodeClass) {
-                writeByte(POOL_NODE_CLASS);
             } else if (object instanceof ResolvedJavaField) {
                 writeByte(POOL_FIELD);
             } else if (object instanceof Signature) {
@@ -313,7 +314,9 @@ abstract class AbstractGraphPrinter<Graph, Node, Edges, Block> {
             } else if (versionMajor >= 4 && object instanceof NodeSourcePosition) {
                 writeByte(POOL_NODE_SOURCE_POSITION);
             } else {
-                if (findMethod(object) != null) {
+                if (findNodeClass(object) != null) {
+                    writeByte(POOL_NODE_CLASS);
+                } else if (findMethod(object) != null) {
                     writeByte(POOL_METHOD);
                 } else {
                     writeByte(POOL_STRING);
@@ -342,7 +345,7 @@ abstract class AbstractGraphPrinter<Graph, Node, Edges, Block> {
         writeInt(findNodesCount(info));
 
         for (Node node : findNodes(info)) {
-            NodeClass<?> nodeClass = findNodeClass(node);
+            NodeClass nodeClass = findNodeClass(node);
             findNodeProperties(node, props, info);
 
             writeInt(findNodeId(node));
@@ -418,8 +421,8 @@ abstract class AbstractGraphPrinter<Graph, Node, Edges, Block> {
         }
     }
 
-    private void writeEdgesInfo(NodeClass<?> nodeClass, boolean dumpInputs) throws IOException {
-        Edges edges = findEdges(nodeClass, dumpInputs);
+    private void writeEdgesInfo(NodeClass nodeClass, boolean dumpInputs) throws IOException {
+        Edges edges = findClassEdges(nodeClass, dumpInputs);
         int size = findSize(edges);
         writeShort((char) size);
         for (int i = 0; i < size; i++) {
@@ -459,19 +462,6 @@ abstract class AbstractGraphPrinter<Graph, Node, Edges, Block> {
             writeByte(POOL_CLASS);
             writeString(type.toJavaName());
             writeByte(KLASS);
-        } else if (object instanceof NodeClass) {
-            NodeClass<?> nodeClass = (NodeClass<?>) object;
-            writeByte(POOL_NODE_CLASS);
-            if (versionMajor >= 3) {
-                writePoolObject(nodeClass.getJavaClass());
-                writeString(nodeClass.getNameTemplate());
-            } else {
-                writeString(nodeClass.getJavaClass().getSimpleName());
-                String nameTemplate = nodeClass.getNameTemplate();
-                writeString(nameTemplate.isEmpty() ? nodeClass.shortName() : nameTemplate);
-            }
-            writeEdgesInfo(nodeClass, true);
-            writeEdgesInfo(nodeClass, false);
         } else if (object instanceof ResolvedJavaField) {
             writeByte(POOL_FIELD);
             ResolvedJavaField field = ((ResolvedJavaField) object);
@@ -504,6 +494,22 @@ abstract class AbstractGraphPrinter<Graph, Node, Edges, Block> {
             }
             writePoolObject(pos.getCaller());
         } else {
+            NodeClass nodeClass = findNodeClass(object);
+            if (nodeClass != null) {
+                writeByte(POOL_NODE_CLASS);
+                final Class<?> clazz = findJavaClass(nodeClass);
+                if (versionMajor >= 3) {
+                    writePoolObject(clazz);
+                    writeString(findNameTemplate(nodeClass));
+                } else {
+                    writeString(clazz.getSimpleName());
+                    String nameTemplate = findNameTemplate(nodeClass);
+                    writeString(nameTemplate);
+                }
+                writeEdgesInfo(nodeClass, true);
+                writeEdgesInfo(nodeClass, false);
+                return;
+            }
             ResolvedJavaMethod method = findMethod(object);
             if (method == null) {
                 writeByte(POOL_STRING);
