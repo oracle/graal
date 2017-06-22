@@ -185,8 +185,7 @@ public final class InteropDSLProcessor extends AbstractProcessor {
         }
     }
 
-    private boolean processLanguageCheck(MessageResolution messageResolutionAnnotation, TypeElement element, ForeignAccessFactoryGenerator factoryGenerator)
-                    throws IOException {
+    private boolean processLanguageCheck(MessageResolution messageResolutionAnnotation, TypeElement element, ForeignAccessFactoryGenerator factoryGenerator) {
         LanguageCheckGenerator generator = new LanguageCheckGenerator(processingEnv, messageResolutionAnnotation, element, factoryGenerator);
 
         if (!ElementUtils.typeEquals(element.getSuperclass(), Utils.getTypeMirror(processingEnv, com.oracle.truffle.api.nodes.Node.class))) {
@@ -222,18 +221,11 @@ public final class InteropDSLProcessor extends AbstractProcessor {
             return false;
         }
 
-        try {
-            generator.generate();
-        } catch (FilerException ex) {
-            emitError("Language check class with same name already exists", element);
-            return false;
-        }
-        factoryGenerator.addLanguageCheckHandler(generator.getRootNodeFactoryInvokation());
+        factoryGenerator.addLanguageCheckHandler(generator);
         return true;
     }
 
-    private boolean processResolveClass(Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element, ForeignAccessFactoryGenerator factoryGenerator)
-                    throws IOException {
+    private boolean processResolveClass(Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element, ForeignAccessFactoryGenerator factoryGenerator) {
         MessageGenerator currentGenerator = MessageGenerator.getGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, factoryGenerator);
 
         if (currentGenerator == null) {
@@ -295,14 +287,8 @@ public final class InteropDSLProcessor extends AbstractProcessor {
             }
         }
 
-        try {
-            currentGenerator.generate();
-        } catch (FilerException ex) {
-            emitError("Message resolution class with same name already exists", element);
-            return false;
-        }
         Object currentMessage = Utils.getMessage(processingEnv, resolveAnnotation.message());
-        factoryGenerator.addMessageHandler(currentMessage, currentGenerator.getRootNodeFactoryInvokation());
+        factoryGenerator.addMessageHandler(currentMessage, currentGenerator);
         return true;
     }
 
