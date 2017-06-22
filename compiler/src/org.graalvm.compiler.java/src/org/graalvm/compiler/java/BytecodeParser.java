@@ -3686,9 +3686,9 @@ public class BytecodeParser implements GraphBuilderContext {
         ResolvedJavaType resolvedType = (ResolvedJavaType) type;
 
         ClassInitializationPlugin classInitializationPlugin = this.graphBuilderConfig.getPlugins().getClassInitializationPlugin();
-        if (classInitializationPlugin != null && classInitializationPlugin.shouldApply(this, resolvedType)) {
+        if (classInitializationPlugin != null && classInitializationPlugin.shouldApply(this, resolvedType.getArrayClass())) {
             FrameState stateBefore = frameState.create(bci(), getNonIntrinsicAncestor(), false, null, null);
-            classInitializationPlugin.apply(this, resolvedType, stateBefore);
+            classInitializationPlugin.apply(this, resolvedType.getArrayClass(), stateBefore);
         }
 
         ValueNode length = frameState.pop(JavaKind.Int);
