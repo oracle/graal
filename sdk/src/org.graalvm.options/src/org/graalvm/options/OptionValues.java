@@ -39,11 +39,12 @@ public interface OptionValues {
     OptionDescriptors getDescriptors();
 
     /**
-     * Sets the value of {@code optionKey} to {@code value}. Throws {@link IllegalArgumentException}
-     * if the given value is not {@link OptionType#validate(Object) validated} by the
-     * {@link OptionKey#getType() option type} of the key. Please note that the operation does not
-     * fail if the option key is not described by any of the associated {@link #getDescriptors()
-     * descriptors}.
+     * Sets the value of {@code optionKey} to {@code value}.
+     *
+     * @throws IllegalArgumentException if the given value is not {@link OptionType#validate(Object)
+     *             validated} by the {@link OptionKey#getType() option type} of the key. Please note
+     *             that the operation does not fail if the option key is not described by any of the
+     *             associated {@link #getDescriptors() descriptors}.
      *
      * @since 1.0
      */
@@ -59,8 +60,8 @@ public interface OptionValues {
     <T> T get(OptionKey<T> optionKey);
 
     /**
-     * Returns <code>true</code> if a value for this key has been set for these option values or
-     * <code>false</code> if no value has been set.
+     * Determines if a value for {@code optionKey} has been {@link #set} in this set of option
+     * values.
      *
      * @since 1.0
      */
