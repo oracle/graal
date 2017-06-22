@@ -29,7 +29,6 @@ import static com.oracle.truffle.api.vm.VMAccessor.INSTRUMENT;
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 import static com.oracle.truffle.api.vm.VMAccessor.NODES;
 import static com.oracle.truffle.api.vm.VMAccessor.SPI;
-import static com.oracle.truffle.api.vm.VMAccessor.engine;
 
 import java.io.IOException;
 import java.io.InputStream;
