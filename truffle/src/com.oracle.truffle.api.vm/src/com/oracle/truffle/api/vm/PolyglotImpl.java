@@ -137,11 +137,16 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         return engine;
     }
 
+    /**
+     * Internal method do not use.
+     *
+     * @since 0.27
+     */
     @Override
     public Class<?> loadLanguageClass(String className) {
         for (ClassLoader loader : TruffleLocator.loaders()) {
             try {
-                loader.loadClass(className);
+                return loader.loadClass(className);
             } catch (ClassNotFoundException e) {
             }
         }
