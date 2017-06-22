@@ -224,6 +224,10 @@ public final class Source {
         return IMPL.getLineLength(impl, lineNumber);
     }
 
+    public boolean isInternal() {
+        return IMPL.isInternal(impl);
+    }
+
     @Override
     public String toString() {
         return IMPL.toString(impl);
@@ -251,6 +255,7 @@ public final class Source {
         private URI uri;
         private String name;
         private boolean interactive;
+        private boolean internal;
 
         private Builder(Object origin) {
             this.origin = origin;
@@ -289,6 +294,19 @@ public final class Source {
         }
 
         /**
+         * Marks the source as internal. Internal sources are those that aren't created by user, but
+         * rather inherently present by the language system. Calling this method influences result
+         * of create {@link Source#isInternal()}
+         *
+         * @return the instance of this builder
+         * @since 1.0
+         */
+        public Builder internal() {
+            this.internal = true;
+            return this;
+        }
+
+        /**
          * Assigns new {@link URI} to the {@link #build() to-be-created} {@link Source}. Each source
          * provides {@link Source#getURI()} as a persistent identification of its location. A
          * default value for the method is deduced from the location or content, but one can change
@@ -308,7 +326,7 @@ public final class Source {
          * @since 1.0
          */
         public Source build() {
-            return getImpl().build(origin, uri, name, interactive);
+            return getImpl().build(origin, uri, name, interactive, internal);
         }
 
     }

@@ -51,4 +51,17 @@ public final class Instrument {
         return impl.getVersion();
     }
 
+    /**
+     * Returns an additional internal service provided by this instrument, specified by type. Please
+     * note that services returned by this method are subject to change without notice.
+     *
+     * @param <T> the type of the internal service
+     * @param type class of the service that is being requested
+     * @return instance of requested type, <code>null</code> if no such service is available
+     * @since 1.0
+     */
+    public <T> T lookup(Class<T> type) {
+        return impl.lookup(type);
+    }
+
 }

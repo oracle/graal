@@ -25,6 +25,7 @@
 package org.graalvm.polyglot;
 
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.Collections;
 import java.util.HashMap;
@@ -52,8 +53,20 @@ public final class Context {
         return impl.eval(language.impl, Source.create(source).impl);
     }
 
+    public Value importSymbol(String key) {
+        return impl.importSymbol(key);
+    }
+
+    public void exportSymbol(String key, Object value) {
+        impl.exportSymbol(key, value);
+    }
+
     void initializeLanguage() {
         impl.initializeLanguage(language.impl);
+    }
+
+    public Engine getEngine() {
+        return impl.getEngineImpl();
     }
 
     /**
@@ -71,8 +84,8 @@ public final class Context {
 
         private final AbstractLanguageImpl languageImpl;
 
-        private PrintStream out;
-        private PrintStream err;
+        private OutputStream out;
+        private OutputStream err;
         private InputStream in;
         private Map<String, String> options;
         private String[] arguments;
@@ -81,12 +94,30 @@ public final class Context {
             this.languageImpl = languageImpl;
         }
 
+        /**
+         * @deprecated use {@link #setOut(OutputStream)} instead
+         */
+        @Deprecated
         public Builder setOut(PrintStream out) {
             this.out = out;
             return this;
         }
 
+        /**
+         * @deprecated use {@link #setErr(OutputStream)} instead
+         */
+        @Deprecated
         public Builder setErr(PrintStream err) {
+            this.err = err;
+            return this;
+        }
+
+        public Builder setOut(OutputStream out) {
+            this.out = out;
+            return this;
+        }
+
+        public Builder setErr(OutputStream err) {
             this.err = err;
             return this;
         }

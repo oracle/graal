@@ -105,7 +105,7 @@ public final class PolyglotContext {
     }
 
     public Engine getEngine() {
-        return this.engine;
+        return engine;
     }
 
     public static class Builder {

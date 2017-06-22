@@ -133,7 +133,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             }
         }
 
-        this.engineOptions = new OptionDescriptorsImpl(describeEngineOptions());
+        this.engineOptions = OptionDescriptors.create(describeEngineOptions());
         this.compilerOptions = VMAccessor.SPI.getCompilerOptions();
         this.allEngineOptions = OptionDescriptors.createUnion(engineOptions, compilerOptions);
         this.engineOptionValues = new OptionValuesImpl(this, this.engineOptions);
@@ -357,12 +357,10 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     }
 
     @Override
-    public PolyglotContext createPolyglotContext(OutputStream providedOut, OutputStream providedErr, InputStream providedIn, Map<String, String[]> arguments, Map<String, String> options) {
+    @SuppressWarnings("hiding")
+    public PolyglotContext createPolyglotContext(OutputStream out, OutputStream err, InputStream in, Map<String, String[]> arguments, Map<String, String> options) {
         checkEngine(this);
-        OutputStream useOut = providedOut == null ? out : providedOut;
-        OutputStream useErr = providedErr == null ? err : providedErr;
-        InputStream useIn = providedIn == null ? in : providedIn;
-        PolyglotContextImpl contextImpl = new PolyglotContextImpl(this, useOut, useErr, useIn, options, arguments, null);
+        PolyglotContextImpl contextImpl = new PolyglotContextImpl(this, out, err, in, options, arguments, null);
         return impl.getAPIAccess().newPolyglotContext(api, contextImpl);
     }
 
