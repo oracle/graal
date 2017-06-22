@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,18 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.api.word;
+package org.graalvm.compiler.nodes.test;
 
-public interface WordBase {
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.calc.AddNode;
+import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
-    long rawValue();
-
-    /**
-     * This is deprecated because of the easy to mistype name collision between {@link #equals} and
-     * the other word based equality routines. In general you should never be statically calling
-     * this method anyway.
-     */
-    @Override
-    @Deprecated
-    boolean equals(Object o);
+public class AddNodeTest {
+    @Test
+    public void checkTemplateAndName() {
+        AddNode add = new AddNode(ConstantNode.forInt(30), ConstantNode.forInt(12));
+        NodeClass<? extends Node> addClass = add.getNodeClass();
+        assertEquals("+", addClass.shortName());
+        assertEquals("Using short name as template", "+", addClass.getNameTemplate());
+    }
 }

@@ -307,8 +307,8 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             if (task != null) {
                 Future<?> submitted = task.getFuture();
                 if (submitted != null) {
-                    boolean allowBackgroundCompilation = !(TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal) &&
-                                    !TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreThrown));
+                    boolean allowBackgroundCompilation = !TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal) &&
+                                    !TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreThrown);
                     boolean mayBeAsynchronous = TruffleCompilerOptions.getValue(TruffleBackgroundCompilation) && allowBackgroundCompilation;
                     runtime().finishCompilation(this, submitted, mayBeAsynchronous);
                 }

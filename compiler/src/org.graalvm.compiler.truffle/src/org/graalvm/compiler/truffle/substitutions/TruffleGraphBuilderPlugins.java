@@ -34,7 +34,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
-import org.graalvm.api.word.LocationIdentity;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -97,6 +96,7 @@ import org.graalvm.compiler.truffle.nodes.frame.NewFrameNode;
 import org.graalvm.compiler.truffle.nodes.frame.VirtualFrameGetNode;
 import org.graalvm.compiler.truffle.nodes.frame.VirtualFrameIsNode;
 import org.graalvm.compiler.truffle.nodes.frame.VirtualFrameSetNode;
+import org.graalvm.word.LocationIdentity;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;

@@ -67,6 +67,10 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
             }
             String prefix = "language" + ++cnt + ".";
             String className = processingEnv.getElementUtils().getBinaryName(l).toString();
+            String id = annotation.id();
+            if (id != null && !id.isEmpty()) {
+                p.setProperty(prefix + "id", id);
+            }
             p.setProperty(prefix + "name", annotation.name());
             p.setProperty(prefix + "version", annotation.version());
             p.setProperty(prefix + "className", className);

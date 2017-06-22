@@ -91,7 +91,11 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
             // Expected verification error occurred.
             StackTraceElement[] trace = t.getStackTrace();
             assertStack(trace[0], "org.graalvm.compiler.truffle.test.nodes.NeverPartOfCompilationTestNode", "execute", "NeverPartOfCompilationTestNode.java");
-            assertStack(trace[1], "org.graalvm.compiler.truffle.test.nodes.RootTestNode", "execute", "RootTestNode.java");
+            if (!truffleCompiler.getPartialEvaluator().getConfigForParsing().trackNodeSourcePosition()) {
+                assertStack(trace[1], "org.graalvm.compiler.truffle.test.nodes.RootTestNode", "execute", "RootTestNode.java");
+            } else {
+                // When NodeSourcePosition tracking is enabled, a smaller stack trace is produced
+            }
         }
     }
 

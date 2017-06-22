@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.api.TruffleOptions;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionKey;
@@ -63,13 +64,16 @@ class HostLanguage extends TruffleLanguage<HostContext> {
         }
 
         private Class<?> findClass(String clazz) {
+            if (TruffleOptions.AOT) {
+                throw new IllegalArgumentException(String.format("Java classes are not accessible in AOT mode."));
+            }
             if (!this.env.getOptions().get(ALLOW_CLASS_LOADING)) {
                 throw new IllegalArgumentException(String.format("Java classes are not accessible. Enable access by setting the option '%s' to true.", ALLOW_CLASS_LOADING_NAME));
             }
             try {
                 Class<?> loadedClass = classCache.get(clazz);
                 if (loadedClass == null) {
-                    loadedClass = Thread.currentThread().getContextClassLoader().loadClass(clazz);
+                    loadedClass = internalContext.getEngine().contextClassLoader.loadClass(clazz);
                     classCache.put(clazz, loadedClass);
                 }
                 return loadedClass;

@@ -57,7 +57,7 @@ class PolyglotLanguageContextImpl implements VMObject {
         this.context = context;
         this.language = language;
         this.optionValues = optionValues;
-        this.applicationArguments = applicationArguments == null ? EMPTY_STRING_ARRAY : null;
+        this.applicationArguments = applicationArguments == null ? EMPTY_STRING_ARRAY : applicationArguments;
 
         PolyglotValueImpl.createDefaultValueCaches(this);
         nullValue = toHostValue(toGuestValue(null));
