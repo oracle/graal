@@ -113,8 +113,7 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.
 
     @Override
     String findNameTemplate(NodeClass<?> nodeClass) {
-        String template = nodeClass.getNameTemplate();
-        return template.isEmpty() ? nodeClass.shortName() : template;
+        return nodeClass.getNameTemplate();
     }
 
     @Override
