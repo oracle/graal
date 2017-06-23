@@ -179,6 +179,13 @@ public final class Engine implements AutoCloseable {
         return ImplHolder.IMPL;
     }
 
+    /*
+     * Used internally to load language specific classes.
+     */
+    static Class<?> loadLanguageClass(String className) {
+        return getImpl().loadLanguageClass(className);
+    }
+
     public static final class Builder {
 
         private OutputStream out = System.out;
