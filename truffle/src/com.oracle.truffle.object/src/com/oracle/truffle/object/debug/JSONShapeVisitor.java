@@ -72,12 +72,6 @@ public class JSONShapeVisitor extends com.oracle.truffle.object.DebugShapeVisito
     public JSONObjectBuilder dumpLocation(Location location) {
         JSONObjectBuilder obj = JSONHelper.object();
         obj.add("type", (location instanceof TypedLocation ? ((TypedLocation) location).getType() : Object.class).getName());
-        // if (location instanceof Locations.FieldLocation) {
-        // obj.add("offset", ((Locations.FieldLocation) location).getOffset());
-        // }
-        // if (location instanceof Locations.ArrayLocation) {
-        // obj.add("index", ((Locations.ArrayLocation) location).getIndex());
-        // }
         if (location instanceof Locations.ValueLocation) {
             obj.add("value", String.valueOf(((Locations.ValueLocation) location).get(null, false)));
         }

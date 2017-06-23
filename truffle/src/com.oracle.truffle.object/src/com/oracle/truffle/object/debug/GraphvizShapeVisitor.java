@@ -28,7 +28,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.object.ShapeImpl;
 import com.oracle.truffle.object.Transition;
 
 @SuppressWarnings("deprecation")
@@ -64,7 +63,7 @@ public class GraphvizShapeVisitor extends com.oracle.truffle.object.DebugShapeVi
 
         for (Entry<? extends Transition, ? extends Shape> entry : transitions.entrySet()) {
             Shape dst = entry.getValue();
-            ((ShapeImpl) dst).accept(this);
+            this.visitShape(dst);
             assert drawn.contains(dst);
 
             sb.append(prefix).append(getId(shape)).append("->").append(prefix).append(getId(dst));

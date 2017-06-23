@@ -75,7 +75,6 @@ import com.oracle.truffle.object.Transition.ShareShapeTransition;
  * @see Locations
  * @since 0.17 or earlier
  */
-@SuppressWarnings("deprecation")
 public abstract class ShapeImpl extends Shape {
     private final int id;
 
@@ -88,7 +87,6 @@ public abstract class ShapeImpl extends Shape {
     /** @since 0.17 or earlier */
     protected final PropertyMap propertyMap;
 
-    private final Object extraData;
     private final Object sharedData;
     private final ShapeImpl root;
 
@@ -177,7 +175,6 @@ public abstract class ShapeImpl extends Shape {
         this.id = id;
         this.transitionFromParent = transitionFromParent;
         this.sharedData = sharedData;
-        this.extraData = objectType.createShapeData(this);
 
         shapeCount.inc();
         if (ObjectStorageOptions.DumpShapes) {
@@ -824,13 +821,6 @@ public abstract class ShapeImpl extends Shape {
     }
 
     /** @since 0.17 or earlier */
-    @Deprecated
-    @Override
-    public final Object getData() {
-        return extraData;
-    }
-
-    /** @since 0.17 or earlier */
     @Override
     public final Object getSharedData() {
         return sharedData;
@@ -939,6 +929,8 @@ public abstract class ShapeImpl extends Shape {
     }
 
     /** @since 0.17 or earlier */
+    @SuppressWarnings("all")
+    @Deprecated
     public <R> R accept(ShapeVisitor<R> visitor) {
         return visitor.visitShape(this);
     }
