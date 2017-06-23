@@ -29,15 +29,12 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
-
 public interface MetadataVisitor {
     /**
      * We normally don't need to implement all visitors, but want to have a default implementation
      * for those visitors which are not handled explicitly. This little method allows us to do so.
      */
-    default void ifVisitNotOverwritten(MDBaseNode alias) {
-        LLVMLogger.info(String.format("Ignored Visit to %s: %s", alias.getClass().getSimpleName(), alias));
+    default void ifVisitNotOverwritten(@SuppressWarnings("unused") MDBaseNode alias) {
     }
 
     default void visit(MDAttachment alias) {

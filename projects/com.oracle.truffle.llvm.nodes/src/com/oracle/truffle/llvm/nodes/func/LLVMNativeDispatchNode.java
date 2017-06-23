@@ -123,10 +123,11 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
                     @Cached("identityFunction()") TruffleObject identity,
                     @Cached("dispatchIdentity(identity, cachedFunction.getFunctionPointer())") TruffleObject nativeFunctionHandle,
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
-                    @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative) {
+                    @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative,
+                    @Cached("nativeCallStatisticsEnabled(context)") boolean statistics) {
         Object[] nativeArgs = prepareNativeArguments(frame, arguments, toNative);
         getThreadingStack(context).getStack().setStackPointer((long) arguments[0]);
-        Object returnValue = LLVMNativeCallUtils.callNativeFunction(context, nativeCallNode, nativeFunctionHandle, nativeArgs, null);
+        Object returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCallNode, nativeFunctionHandle, nativeArgs, null);
         getThreadingStack(context).getStack().setStackPointer((long) arguments[0]);
         return fromNative.executeConvert(frame, returnValue);
     }
@@ -136,10 +137,11 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
                     @Cached("getContext()") LLVMContext context,
                     @Cached("identityFunction()") TruffleObject identity,
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
-                    @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative) {
+                    @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative,
+                    @Cached("nativeCallStatisticsEnabled(context)") boolean statistics) {
         Object[] nativeArgs = prepareNativeArguments(frame, arguments, toNative);
         getThreadingStack(context).getStack().setStackPointer((long) arguments[0]);
-        Object returnValue = LLVMNativeCallUtils.callNativeFunction(context, nativeCallNode, dispatchIdentity(identity, function.getFunctionPointer()), nativeArgs, null);
+        Object returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCallNode, dispatchIdentity(identity, function.getFunctionPointer()), nativeArgs, null);
         getThreadingStack(context).getStack().setStackPointer((long) arguments[0]);
         return fromNative.executeConvert(frame, returnValue);
     }

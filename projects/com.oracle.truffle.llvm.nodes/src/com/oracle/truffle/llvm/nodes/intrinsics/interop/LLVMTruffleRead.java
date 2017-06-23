@@ -42,7 +42,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMPerformance;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -102,7 +101,6 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
         @Specialization
         public Object executeIntrinsic(LLVMTruffleObject value, LLVMAddress id) {
             checkLLVMTruffleObject(value);
-            LLVMPerformance.warn(this);
             return doRead(value.getObject(), id, foreignRead, toLLVM);
         }
 
@@ -115,7 +113,6 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
 
         @Specialization
         public Object executeIntrinsic(TruffleObject value, LLVMAddress id) {
-            LLVMPerformance.warn(this);
             return doRead(value, id, foreignRead, toLLVM);
         }
     }

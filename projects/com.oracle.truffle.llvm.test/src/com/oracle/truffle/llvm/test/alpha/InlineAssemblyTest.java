@@ -41,12 +41,12 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.test.options.TestOptions;
 
 @RunWith(Parameterized.class)
 public final class InlineAssemblyTest extends BaseSuiteHarness {
 
-    private static final Path ASSEMBLY_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../cache/tests/inlineassemblytests").toPath();
+    private static final Path ASSEMBLY_SUITE_DIR = new File(TestOptions.PROJECT_ROOT + "/../cache/tests/inlineassemblytests").toPath();
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public String testName;

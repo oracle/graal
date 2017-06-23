@@ -445,7 +445,7 @@ def getSearchPathOption(lib_args=None):
             lib_arg = mx.add_lib_suffix(mx.add_lib_prefix(lib_arg[2:]))
         lib_names.append(lib_arg)
 
-    return '-Dsulong.DynamicNativeLibraryPath=' + ':'.join(lib_names)
+    return '-Dpolyglot.sulong.dynamicNativeLibraryPath=' + ':'.join(lib_names)
 
 def getCommonUnitTestOptions(extraLibs=None):
     libs = [mx_subst.path_substitutions.substitute('<path:SULONG_TEST_NATIVE>/<lib:sulongtest>')]
@@ -460,14 +460,13 @@ def compilationSucceedsOption():
 def getBenchmarkOptions():
     return [
         '-Dgraal.TruffleBackgroundCompilation=false',
-        '-Dsulong.PerformanceWarningsAreFatal=true',
         '-Dgraal.TruffleTimeThreshold=1000000',
         '-Xms4g',
         '-Xmx4g'
     ]
 
 def getLLVMRootOption():
-    return "-Dsulong.ProjectRoot=" + _root
+    return "-Dsulongtest.projectRoot=" + _root
 
 def pullsuite(suiteDir, urls):
     name = os.path.basename(urls[0])
@@ -749,7 +748,7 @@ def mdlCheck(args=None):
 
 def getBitcodeLibrariesOption():
     if 'SULONG_NO_LIBRARY' not in os.environ:
-        return [mx_subst.path_substitutions.substitute('-Dsulong.DynamicBitcodeLibraries=<path:SULONG_LIBS>/libsulong.bc')]
+        return [mx_subst.path_substitutions.substitute('-Dpolyglot.sulong.dynamicBitcodeLibraries=<path:SULONG_LIBS>/libsulong.bc')]
     else:
         return []
 

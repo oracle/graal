@@ -29,9 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.listeners;
 
-import com.oracle.truffle.llvm.parser.records.Records;
 import com.oracle.truffle.llvm.parser.scanner.Block;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
 public interface ParserListener {
 
@@ -44,5 +42,6 @@ public interface ParserListener {
 
     void record(long id, long[] args);
 
-    ParserListener DEFAULT = (id, args) -> LLVMLogger.info("Unknown Record: " + Records.describe(id, args));
+    ParserListener DEFAULT = (id, args) -> {
+    };
 }

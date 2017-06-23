@@ -48,13 +48,12 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMPerformance;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.ToLLVMNode;
-import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.NeedsStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -135,7 +134,6 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
 
     @Specialization
     public Object doIntrinsicTruffleObject(VirtualFrame frame, TruffleObject value, LLVMAddress id, @Cached("getContext()") LLVMContext context) {
-        LLVMPerformance.warn(this);
         return doInvoke(frame, value, id, context);
     }
 
@@ -159,7 +157,6 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
 
     @Specialization
     public Object doIntrinsicLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, @Cached("getContext()") LLVMContext context) {
-        LLVMPerformance.warn(this);
         checkLLVMTruffleObject(value);
         return doInvoke(frame, value.getObject(), id, context);
     }

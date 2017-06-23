@@ -35,7 +35,6 @@ import com.oracle.truffle.llvm.parser.model.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public interface ModelVisitor {
@@ -43,8 +42,7 @@ public interface ModelVisitor {
      * We normally don't need to implement all visitors, but want to have a default implementation
      * for those visitors which are not handled explicitly. This little method allows us to do so.
      */
-    default void ifVisitNotOverwritten(Object obj) {
-        LLVMLogger.info("Ignored Visit to " + obj.getClass().getSimpleName() + ": " + obj);
+    default void ifVisitNotOverwritten(@SuppressWarnings("unused") Object obj) {
     }
 
     default void visit(GlobalAlias alias) {

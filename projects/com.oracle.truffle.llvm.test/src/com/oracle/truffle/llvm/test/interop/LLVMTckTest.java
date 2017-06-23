@@ -41,12 +41,12 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.llvm.Sulong;
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.test.options.TestOptions;
 import com.oracle.truffle.tck.TruffleTCK;
 
 public class LLVMTckTest extends TruffleTCK {
     private static final String FILENAME = "tck";
-    private static final Path TEST_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../cache/tests/interoptests").toPath();
+    private static final Path TEST_DIR = new File(TestOptions.PROJECT_ROOT + "/../cache/tests/interoptests").toPath();
     private static final String FILE_SUFFIX = "_clang_v38_O0_MEM2REG.bc";
 
     @Test

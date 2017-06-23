@@ -79,6 +79,6 @@ public abstract class BaseSingleTestHarness extends BaseTestHarness {
         }
     }
 
-    protected abstract Object[] getArguments(Path testCandidate);
+    protected abstract String[] getArguments(Path testCandidate);
 
 }

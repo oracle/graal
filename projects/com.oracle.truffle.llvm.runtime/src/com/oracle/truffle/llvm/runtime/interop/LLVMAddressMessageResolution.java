@@ -85,6 +85,10 @@ public class LLVMAddressMessageResolution {
 
         @Child private LLVMAddressReadMessageResolutionNode node;
 
+        protected Object access(VirtualFrame frame, LLVMTruffleAddress receiver, long index) {
+            return access(frame, receiver, (int) index);
+        }
+
         protected Object access(VirtualFrame frame, LLVMTruffleAddress receiver, int index) {
             if (isNull(receiver)) {
                 CompilerDirectives.transferToInterpreter();
@@ -102,6 +106,10 @@ public class LLVMAddressMessageResolution {
     public abstract static class ForeignWrite extends Node {
 
         @Child private LLVMAddressWriteMessageResolutionNode node;
+
+        protected Object access(VirtualFrame frame, LLVMTruffleAddress receiver, long index, Object value) {
+            return access(frame, receiver, (int) index, value);
+        }
 
         protected Object access(VirtualFrame frame, LLVMTruffleAddress receiver, int index, Object value) {
             if (isNull(receiver)) {

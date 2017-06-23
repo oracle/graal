@@ -40,11 +40,11 @@ import org.junit.Test;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.test.options.TestOptions;
 
 public class TestPolyglotEngine {
 
-    private static final Path PATH = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/polyglot/").toPath();
+    private static final Path PATH = new File(TestOptions.PROJECT_ROOT + "/../tests/polyglot/").toPath();
 
     @Test
     public void testExecute() throws IOException {

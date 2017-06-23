@@ -37,7 +37,6 @@ import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.attributes.KnownAttribute;
 import com.oracle.truffle.llvm.parser.model.attributes.StringAttribute;
 import com.oracle.truffle.llvm.parser.records.ParameterAttributeGroupRecord;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
 public class ParameterAttributes implements ParserListener {
 
@@ -88,7 +87,6 @@ public class ParameterAttributes implements ParserListener {
                 break;
 
             default:
-                LLVMLogger.info("unknow Parameter Attribute Id: " + id);
                 break;
         }
     }

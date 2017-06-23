@@ -36,7 +36,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMPerformance;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
@@ -124,7 +123,6 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
 
         @Specialization(replaces = {"doCachedTypeCachedOffset", "doCachedType"})
         public Object doRegular(LLVMTruffleAddress receiver, int index) {
-            LLVMPerformance.warn(this);
             if (receiver.getType() instanceof PointerType && ((PointerType) receiver.getType()).getPointeeType() instanceof PrimitiveType) {
                 return LLVMDataEscapeNode.slowConvert(doRead(receiver, (PrimitiveType) ((PointerType) receiver.getType()).getPointeeType(), index), getPointeeType(receiver), receiver.getContext());
             } else {
@@ -215,7 +213,6 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
 
         @Specialization(replaces = {"doCachedTypeCachedOffset", "doCachedType"})
         public Object doRegular(LLVMTruffleAddress receiver, int index, Object value) {
-            LLVMPerformance.warn(this);
             if (slowConvert == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 this.slowConvert = insert(ToLLVMNode.createNode(null));
@@ -364,7 +361,6 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("Index must be 0 for globals!");
             }
-            LLVMPerformance.warn(this);
             if (slowConvert == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 this.slowConvert = insert(ToLLVMNode.createNode(null));

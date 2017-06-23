@@ -49,6 +49,7 @@ public final class BitStream {
     public static BitStream create(Source source) {
         byte[] bytes;
         switch (source.getMimeType()) {
+            case "x-unknown":
             case LLVMLanguage.LLVM_BITCODE_MIME_TYPE:
                 bytes = read(source.getPath());
                 break;

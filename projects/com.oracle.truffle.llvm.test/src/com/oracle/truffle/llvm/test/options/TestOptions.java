@@ -29,21 +29,10 @@
  */
 package com.oracle.truffle.llvm.test.options;
 
-import com.oracle.truffle.llvm.option.Option;
-import com.oracle.truffle.llvm.option.OptionCategory;
-
-@OptionCategory(name = "Test Options")
-abstract class TestOptions {
-    @Option(commandLineName = "IgnoreFortran", help = "Ignores all Fortran tests.", name = "ignoreFortran") //
-    protected static final Boolean IGNORE_FORTRAN = false;
-
-    @Option(commandLineName = "TestDiscoveryPath", help = "Looks for newly supported test cases in the specified path. E.g., when executing the GCC test cases you can use /gcc.c-torture/execute to discover newly working torture test cases.", //
-                    name = "testDiscoveryPath") //
-    protected static final String TEST_DISCOVERY_PATH = null;
-
-    @Option(commandLineName = "TestSuitesPath", help = "Path to the compiled test suites.", name = "testSuitesPath") //
-    protected static final String TEST_SUITES_PATH = null;
-
-    @Option(commandLineName = "TestAOTImage", help = "Test an AOT compiled Sulong image. The value of this option should point to the compiled Sulong binary.", name = "testAOTImage") //
-    protected static final String TEST_AOT_IMAGE = null;
+public final class TestOptions {
+    public static final Boolean IGNORE_FORTRAN = Boolean.valueOf(System.getProperty("sulongtest.ignoreFortran"));
+    public static final String TEST_DISCOVERY_PATH = System.getProperty("sulongtest.testDiscoveryPath");
+    public static final String TEST_AOT_IMAGE = System.getProperty("sulongtest.testAOTImage");
+    public static final String PROJECT_ROOT = System.getProperty("sulongtest.projectRoot");
+    public static final String TEST_SUITE_PATH = System.getProperty("sulongtest.testSuitePath");
 }

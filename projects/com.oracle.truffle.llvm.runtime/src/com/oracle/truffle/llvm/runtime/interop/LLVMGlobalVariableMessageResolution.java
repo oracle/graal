@@ -48,6 +48,10 @@ public class LLVMGlobalVariableMessageResolution {
 
         @Child private LLVMAddressReadMessageResolutionNode node;
 
+        protected Object access(VirtualFrame frame, LLVMSharedGlobalVariable receiver, long index) {
+            return access(frame, receiver, (int) index);
+        }
+
         protected Object access(VirtualFrame frame, LLVMSharedGlobalVariable receiver, int index) {
             if (node == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -61,6 +65,10 @@ public class LLVMGlobalVariableMessageResolution {
     public abstract static class ForeignGlobalWrite extends Node {
 
         @Child private LLVMAddressWriteMessageResolutionNode node;
+
+        protected Object access(VirtualFrame frame, LLVMSharedGlobalVariable receiver, long index, Object value) {
+            return access(frame, receiver, (int) index, value);
+        }
 
         protected Object access(VirtualFrame frame, LLVMSharedGlobalVariable receiver, int index, Object value) {
             if (node == null) {

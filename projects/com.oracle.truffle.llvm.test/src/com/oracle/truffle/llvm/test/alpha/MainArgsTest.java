@@ -41,12 +41,12 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.test.options.TestOptions;
 
 @RunWith(Parameterized.class)
 public final class MainArgsTest extends BaseSulongOnlyHarness {
 
-    private static final Path OTHER_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../cache/tests/other/main-args").toPath();
+    private static final Path OTHER_DIR = new File(TestOptions.PROJECT_ROOT + "/../cache/tests/other/main-args").toPath();
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public RunConfiguration configuration;
@@ -57,10 +57,10 @@ public final class MainArgsTest extends BaseSulongOnlyHarness {
 
         List<RunConfiguration> configs = new ArrayList<>();
         configs.add(new RunConfiguration(1, null));
-        configs.add(new RunConfiguration(194, null, "test"));
-        configs.add(new RunConfiguration(96, null, "hello", "world!"));
-        configs.add(new RunConfiguration(154, null, "1", "2", "3"));
-        configs.add(new RunConfiguration(193, null, "a", "b", "cd", "efg"));
+        configs.add(new RunConfiguration(194, null, new String[]{"test"}));
+        configs.add(new RunConfiguration(96, null, new String[]{"hello", "world!"}));
+        configs.add(new RunConfiguration(154, null, new String[]{"1", "2", "3"}));
+        configs.add(new RunConfiguration(193, null, new String[]{"a", "b", "cd", "efg"}));
         return configs.stream().map(c -> new Object[]{new File(OTHER_DIR + "/main-args_clang_v38_O0.bc").toPath(), c, String.valueOf(configs.indexOf(c))}).collect(Collectors.toList());
     }
 

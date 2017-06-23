@@ -44,7 +44,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMPerformance;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeGen;
@@ -104,7 +103,6 @@ public final class LLVMTruffleWrite {
 
         @Specialization
         public Object executeIntrinsic(LLVMTruffleObject value, LLVMAddress id, Object v, @Cached("getContext()") LLVMContext context) {
-            LLVMPerformance.warn(this);
             checkLLVMTruffleObject(value);
             doWrite(foreignWrite, value.getObject(), id, prepareValueForEscape.executeWithTarget(v, context));
             return null;
@@ -120,7 +118,6 @@ public final class LLVMTruffleWrite {
 
         @Specialization
         public Object executeIntrinsicTruffleObject(TruffleObject value, LLVMAddress id, Object v, @Cached("getContext()") LLVMContext context) {
-            LLVMPerformance.warn(this);
             doWrite(foreignWrite, value, id, prepareValueForEscape.executeWithTarget(v, context));
             return null;
         }

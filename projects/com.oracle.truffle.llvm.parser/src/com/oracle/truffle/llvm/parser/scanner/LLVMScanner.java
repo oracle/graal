@@ -42,7 +42,6 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.listeners.Module;
 import com.oracle.truffle.llvm.parser.listeners.ParserListener;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
 public final class LLVMScanner {
 
@@ -272,7 +271,6 @@ public final class LLVMScanner {
 
         final Block subBlock = Block.lookup(blockId);
         if (subBlock == null) {
-            LLVMLogger.info("Skipping unsupported Block: " + blockId);
             offset += numWords * Integer.SIZE;
 
         } else {

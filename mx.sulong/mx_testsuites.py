@@ -82,7 +82,7 @@ def runGCCSuite(vmArgs):
 def runGCCSuite38(vmArgs):
     """runs the LLVM test suite"""
     compileSuite(['gcc38'])
-    return run(vmArgs + ['-Dsulong.IgnoreFortran=true'], "com.oracle.truffle.llvm.test.alpha.GCCSuite")
+    return run(vmArgs + ['-Dsulongtest.ignoreFortran=true'], "com.oracle.truffle.llvm.test.alpha.GCCSuite")
 
 def compileInteropTests38():
     print("Compiling Interop with clang -O0 and mem2reg", end='')

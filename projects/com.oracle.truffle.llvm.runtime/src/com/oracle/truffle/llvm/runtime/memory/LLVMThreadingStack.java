@@ -49,9 +49,12 @@ public final class LLVMThreadingStack {
 
     private final ReferenceQueue<Thread> threadsQueue = new ReferenceQueue<>();
 
-    public LLVMThreadingStack() {
+    private final int stackSize;
+
+    public LLVMThreadingStack(int stackSize) {
+        this.stackSize = stackSize;
         this.defaultThread = Thread.currentThread();
-        this.defaultStack = new LLVMStack();
+        this.defaultStack = new LLVMStack(stackSize);
     }
 
     private class ReferenceWithCleanup extends WeakReference<Thread> {
@@ -125,7 +128,7 @@ public final class LLVMThreadingStack {
     @SuppressWarnings("unused")
     @TruffleBoundary
     private LLVMStack addNewThread(Thread currentThread) {
-        LLVMStack newStack = new LLVMStack();
+        LLVMStack newStack = new LLVMStack(stackSize);
         threadToStack.put(currentThread.getId(), newStack);
         new ReferenceWithCleanup(currentThread);
         return newStack;

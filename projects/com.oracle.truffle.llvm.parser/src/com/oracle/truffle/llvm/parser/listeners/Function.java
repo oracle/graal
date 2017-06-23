@@ -34,20 +34,19 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.truffle.llvm.parser.metadata.MDLocation;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.generators.FunctionGenerator;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
 import com.oracle.truffle.llvm.parser.records.FunctionRecord;
 import com.oracle.truffle.llvm.parser.records.Records;
 import com.oracle.truffle.llvm.parser.scanner.Block;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
-import com.oracle.truffle.llvm.parser.metadata.MDLocation;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
@@ -93,7 +92,6 @@ public final class Function implements ParserListener {
                 return new Metadata(types, generator);
 
             default:
-                LLVMLogger.info("Entering Unknown Block inside Function: " + block);
                 return ParserListener.DEFAULT;
         }
     }
@@ -579,7 +577,6 @@ public final class Function implements ParserListener {
             // this we have to add an extractelvalue instruction. llvm does the same thing
             createExtractValue(new long[]{1, 0});
             implicitIndices.add(symbols.size() - 1); // register the implicit index
-            LLVMLogger.info("cmpxchg implicitly inserted an extractelement instruction.");
         }
     }
 

@@ -79,7 +79,6 @@ import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolResolver;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMException;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -734,9 +733,6 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     }
 
     private LLVMExpressionNode createInlineAssemblerNode(InlineAsmConstant inlineAsmConstant, LLVMExpressionNode[] argNodes, Type[] argsType, Type retType, SourceSection sourceSection) {
-        if (inlineAsmConstant.hasSideEffects()) {
-            LLVMLogger.info("Parsing Inline Assembly Constant with Sideeffects!");
-        }
         if (inlineAsmConstant.needsAlignedStack()) {
             throw new UnsupportedOperationException("Assembly Expressions that require an aligned Stack are not supported yet!");
         }

@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
@@ -39,23 +38,15 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleReleaseHandle extends LLVMIntrinsic {
 
-    private static final boolean TRACE = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.debug());
-
     @Specialization
     public Object executeIntrinsic(LLVMAddress handle, @Cached("getContext()") LLVMContext context) {
-        if (TRACE) {
-            trace(handle);
-        }
         context.releaseHandle(handle);
         return null;
-
     }
 
     @Specialization(guards = "!isLLVMAddress(handle)")
@@ -63,11 +54,4 @@ public abstract class LLVMTruffleReleaseHandle extends LLVMIntrinsic {
         CompilerDirectives.transferToInterpreter();
         throw new UnsupportedOperationException(handle + " not supported.");
     }
-
-    @TruffleBoundary
-    private static void trace(LLVMAddress address) {
-        LLVMLogger.print(LLVMOptions.DEBUG.debug()).accept(
-                        String.format("[sulong] Native handle (%s) released.", String.valueOf(address)));
-    }
-
 }

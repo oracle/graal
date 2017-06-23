@@ -79,7 +79,6 @@ suite = {
         "mx:JUNIT",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.test",
-      "annotationProcessors" : ["SULONG_OPTIONS_PROCESSOR"],
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
@@ -114,13 +113,11 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.llvm.option",
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_NFI",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
-      "annotationProcessors" : ["SULONG_OPTIONS_PROCESSOR",
-        "truffle:TRUFFLE_DSL_PROCESSOR"],
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
@@ -236,27 +233,6 @@ suite = {
       "checkstyle" : "com.oracle.truffle.llvm.test",
       "license" : "BSD-new",
     },
-
-    "com.oracle.truffle.llvm.option" : {
-      "subDir" : "projects",
-      "sourceDirs" : ["src"],
-      "checkstyle" : "com.oracle.truffle.llvm",
-      "javaCompliance" : "1.8",
-      "workingSets" : "Truffle, LLVM",
-      "license" : "BSD-new",
-    },
-
-    "com.oracle.truffle.llvm.option.processor" : {
-      "subDir" : "projects",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.truffle.llvm.option",
-      ],
-      "checkstyle" : "com.oracle.truffle.llvm",
-      "javaCompliance" : "1.8",
-      "workingSets" : "Truffle, LLVM",
-      "license" : "BSD-new",
-    },
     "com.oracle.truffle.llvm.libraries.bitcode" : {
       "subDir" : "projects",
       "native" : True,
@@ -310,7 +286,6 @@ suite = {
       "distDependencies" : [
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_NFI",
-        "SULONG_OPTIONS",
         "SULONG_LIBS",
       ],
       "license" : "BSD-new",
@@ -325,26 +300,6 @@ suite = {
         "com.oracle.truffle.llvm.libraries.bitcode",
         "com.oracle.truffle.llvm.libraries.native",
       ],
-      "license" : "BSD-new",
-    },
-
-    "SULONG_OPTIONS" : {
-      "path" : "build/sulong_options.jar",
-      "subDir" : "graal",
-      "javaCompliance" : "1.8",
-      "dependencies" : ["com.oracle.truffle.llvm.option"],
-      "description" : "The Sulong Option interface.",
-      "license" : "BSD-new",
-    },
-    "SULONG_OPTIONS_PROCESSOR" : {
-      "path" : "build/sulong_options_processor.jar",
-      "subDir" : "graal",
-      "javaCompliance" : "1.8",
-      "dependencies" : ["com.oracle.truffle.llvm.option.processor"],
-      "distDependencies" : [
-        "SULONG_OPTIONS",
-      ],
-      "description" : "The Sulong Option Processor generates an option class declared using options annotations.",
       "license" : "BSD-new",
     },
 
@@ -367,7 +322,7 @@ suite = {
         "SULONG_TEST_NATIVE",
       ],
       "javaProperties" : {
-        "sulong.TestSuitesPath" : "<path:SULONG_TEST_SUITES>"
+        "sulongtest.testSuitePath" : "<path:SULONG_TEST_SUITES>"
       },
       "license" : "BSD-new",
     },

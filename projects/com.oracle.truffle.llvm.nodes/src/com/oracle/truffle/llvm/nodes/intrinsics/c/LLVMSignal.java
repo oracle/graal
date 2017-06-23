@@ -52,7 +52,6 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMThread;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -78,7 +77,7 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
             return setSignalHandler(context, decodedSignal.signal(), function);
         } catch (NoSuchElementException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            LLVMLogger.error(e.getMessage());
+            System.err.println(e.getMessage());
             return context.getSigErr();
         }
     }
@@ -118,7 +117,7 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
                 registeredSignals.put(signalId, newSignalHandler);
             }
         } catch (IllegalArgumentException e) {
-            LLVMLogger.error("could not register signal with id " + signalId + " (" + signal + ")");
+            System.err.println("could not register signal with id " + signalId + " (" + signal + ")");
             return context.getSigErr();
         }
 
@@ -202,7 +201,7 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
         public void handle(Signal arg0) {
             try {
                 if (!globalSignalHandlerLock.tryLock(HANDLE_MAX_WAITING_TIME, TimeUnit.MILLISECONDS)) {
-                    LLVMLogger.error("could not execute signal handler. Sulong can currently only execute one signal at once!");
+                    System.err.println("could not execute signal handler. Sulong can currently only execute one signal at once!");
                     return;
                 }
             } catch (InterruptedException e) {

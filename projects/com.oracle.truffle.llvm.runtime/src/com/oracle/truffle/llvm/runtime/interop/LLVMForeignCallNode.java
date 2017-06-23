@@ -42,7 +42,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMPerformance;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
@@ -145,7 +144,6 @@ abstract class LLVMForeignCallNode extends LLVMNode {
     public Object callIndirect(LLVMFunctionDescriptor function, Object[] arguments,
                     @Cached("create()") IndirectCallNode callNode, @Cached("createSlowPackArguments()") SlowPackForeignArgumentsNode slowPack) {
         assert !(function.getType().getReturnType() instanceof StructureType);
-        LLVMPerformance.warn(this);
         function.getContext().getThreadingStack().checkThread();
         long stackPointer = function.getContext().getThreadingStack().getStack().getStackPointer();
         Object result = callNode.call(getCallTarget(function), slowPack.pack(function, arguments, stackPointer));

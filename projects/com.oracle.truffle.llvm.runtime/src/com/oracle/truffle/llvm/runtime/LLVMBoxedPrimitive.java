@@ -29,25 +29,12 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
-
 public final class LLVMBoxedPrimitive {
 
     private final Object value;
-    private static final boolean TRACE = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.debug());
 
     public LLVMBoxedPrimitive(Object value) {
-        if (TRACE) {
-            trace(value);
-        }
         this.value = value;
-    }
-
-    @TruffleBoundary
-    private static void trace(Object value) {
-        LLVMLogger.print(LLVMOptions.DEBUG.debug()).accept(
-                        String.format("[sulong] Convert a foreign primitive (%s) into an address value", String.valueOf(value)));
     }
 
     public Object getValue() {

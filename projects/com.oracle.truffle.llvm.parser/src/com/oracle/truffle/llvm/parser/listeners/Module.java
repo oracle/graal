@@ -43,7 +43,6 @@ import com.oracle.truffle.llvm.parser.model.target.TargetTriple;
 import com.oracle.truffle.llvm.parser.records.ModuleRecord;
 import com.oracle.truffle.llvm.parser.records.Records;
 import com.oracle.truffle.llvm.parser.scanner.Block;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -193,7 +192,6 @@ public final class Module implements ParserListener {
                 return new Metadata(types, generator);
 
             default:
-                LLVMLogger.info("Entering Unknown Block inside Module: " + block);
                 return ParserListener.DEFAULT;
         }
     }
@@ -237,7 +235,6 @@ public final class Module implements ParserListener {
                 break;
 
             default:
-                LLVMLogger.info("Unknown Top-Level Record: " + Records.describe(id, args));
                 break;
         }
     }
