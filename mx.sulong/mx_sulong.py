@@ -787,6 +787,32 @@ def checkNoHttp(args=None):
                 exit(-1)
             line_number += 1
 
+# Project classes
+
+import glob
+
+class ArchiveProject(mx.ArchivableProject):
+    def __init__(self, suite, name, deps, workingSets, theLicense, **args):
+        mx.ArchivableProject.__init__(self, suite, name, deps, workingSets, theLicense)
+        assert 'prefix' in args
+        assert 'outputDir' in args
+
+    def output_dir(self):
+        return join(self.dir, self.outputDir)
+
+    def archive_prefix(self):
+        return self.prefix
+
+    def getResults(self):
+        return mx.ArchivableProject.walk(self.output_dir())
+
+class SulongDocsProject(ArchiveProject):
+    doc_files = (glob.glob(join(_suite.dir, 'LICENSE')) +
+        glob.glob(join(_suite.dir, '*.md')))
+
+    def getResults(self):
+        return [join(_suite.dir, f) for f in self.doc_files]
+
 
 mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite())
 
