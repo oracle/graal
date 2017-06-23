@@ -68,7 +68,7 @@ final class InstrumentCache {
      */
     @SuppressWarnings("unused")
     private static void initializeNativeImageState(ClassLoader imageClassLoader) {
-        nativeImageCache.addAll(load(Collections.singletonList(imageClassLoader)));
+        nativeImageCache.addAll(doLoad(Collections.singletonList(imageClassLoader)));
     }
 
     /**
@@ -116,6 +116,10 @@ final class InstrumentCache {
         if (runtimeCache != null) {
             return runtimeCache;
         }
+        return doLoad(loaders);
+    }
+
+    private static List<InstrumentCache> doLoad(Collection<ClassLoader> loaders) {
         List<InstrumentCache> list = new ArrayList<>();
         Set<String> classNamesUsed = new HashSet<>();
         for (ClassLoader loader : loaders) {
