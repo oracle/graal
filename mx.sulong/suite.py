@@ -273,6 +273,11 @@ suite = {
       },
       "license" : "BSD-new",
     },
+    "sulong-doc": {
+      "class": "SulongDocsProject",
+      "outputDir": "",
+      "prefix": "",
+    },
   },
 
   "distributions" : {
@@ -351,6 +356,16 @@ suite = {
         "com.oracle.truffle.llvm.pipe.native",
       ],
       "license" : "BSD-new",
+    },
+
+    "SULONG_DOC": {
+        "native": True, # Not Java
+        "relpath": True,
+        "dependencies": [
+            "sulong-doc",
+        ],
+        "description": "Sulong documentation, license",
+        "license" : "BSD-new",
     },
   }
 }
