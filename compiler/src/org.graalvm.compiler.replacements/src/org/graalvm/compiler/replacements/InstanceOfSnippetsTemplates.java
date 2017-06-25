@@ -28,6 +28,7 @@ import java.util.List;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ConditionAnchorNode;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -70,8 +71,8 @@ import jdk.vm.ci.code.TargetDescription;
  */
 public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
 
-    public InstanceOfSnippetsTemplates(OptionValues options, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
-        super(options, providers, snippetReflection, target);
+    public InstanceOfSnippetsTemplates(OptionValues options, Iterable<DebugConfigCustomizer> customizers, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
+        super(options, customizers, providers, snippetReflection, target);
     }
 
     /**

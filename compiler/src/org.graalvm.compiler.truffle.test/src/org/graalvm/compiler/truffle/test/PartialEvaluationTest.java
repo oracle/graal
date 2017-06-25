@@ -25,8 +25,13 @@ package org.graalvm.compiler.truffle.test;
 import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 import static org.graalvm.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.nodes.FrameState;
@@ -45,6 +50,7 @@ import org.graalvm.compiler.truffle.TruffleCompiler;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.TruffleInlining;
+import org.graalvm.compiler.truffle.TruffleTreeDebugConfigCustomizer;
 import org.junit.Assert;
 
 import com.oracle.truffle.api.Truffle;
@@ -66,6 +72,13 @@ public class PartialEvaluationTest extends GraalCompilerTest {
      * Executed before initialization. This hook can be used to override specific flags.
      */
     protected void beforeInitialization() {
+    }
+
+    @Override
+    protected Collection<DebugConfigCustomizer> getDebugCustomizers() {
+        List<DebugConfigCustomizer> c = new ArrayList<>(super.getDebugCustomizers());
+        c.add(new TruffleTreeDebugConfigCustomizer());
+        return c;
     }
 
     protected OptimizedCallTarget assertPartialEvalEquals(String methodName, RootNode root) {
@@ -116,7 +129,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         compilable.call(arguments);
 
         OptionValues options = TruffleCompilerOptions.getOptions();
-        DebugContext debug = DebugContext.create(options);
+        DebugContext debug = getDebugContext(options);
         try (DebugContext.Scope s = debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
             return truffleCompiler.getPartialEvaluator().createGraph(debug, compilable, new TruffleInlining(compilable, new DefaultInliningPolicy()), allowAssumptions, compilationId, null);
         } catch (Throwable e) {

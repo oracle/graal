@@ -58,7 +58,7 @@ public class DebugContextTest {
         final ByteArrayOutputStream logOutput = new ByteArrayOutputStream();
         DebugConfigCustomizer handlers = new DebugConfigCustomizer() {
             @Override
-            public void addDumpHandlersTo(OptionValues opts, Collection<DebugDumpHandler> dumpHandlers, Object... handlerArgs) {
+            public void addDumpHandlersTo(OptionValues opts, Collection<DebugDumpHandler> dumpHandlers) {
                 dumpHandlers.add(new DebugDumpHandler() {
                     @Override
                     public void dump(DebugContext ignore, Object object, String format, Object... arguments) {

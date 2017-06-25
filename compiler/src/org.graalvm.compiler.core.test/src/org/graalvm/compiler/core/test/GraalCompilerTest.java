@@ -37,6 +37,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -55,6 +56,7 @@ import org.graalvm.compiler.core.GraalCompiler.Request;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.target.Backend;
+import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpHandler;
 import org.graalvm.compiler.debug.DebugDumpScope;
@@ -111,6 +113,7 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.tiers.TargetProvider;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.printer.GraalDebugConfigCustomizer;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.test.AddExports;
 import org.graalvm.compiler.test.GraalTest;
@@ -388,8 +391,8 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     @Override
-    protected Object[] getDumpHandlerCapabilities() {
-        return new Object[]{getSnippetReflection()};
+    protected Collection<DebugConfigCustomizer> getDebugCustomizers() {
+        return Collections.singletonList(new GraalDebugConfigCustomizer(getSnippetReflection()));
     }
 
     protected void assertEquals(StructuredGraph expected, StructuredGraph graph) {

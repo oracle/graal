@@ -49,6 +49,7 @@ import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
@@ -406,8 +407,9 @@ public class WriteBarrierSnippets implements Snippets {
         private final CompressEncoding oopEncoding;
         private final Counters counters;
 
-        public Templates(OptionValues options, SnippetCounter.Group.Factory factory, HotSpotProviders providers, TargetDescription target, CompressEncoding oopEncoding) {
-            super(options, providers, providers.getSnippetReflection(), target);
+        public Templates(OptionValues options, Iterable<DebugConfigCustomizer> customizers, SnippetCounter.Group.Factory factory, HotSpotProviders providers, TargetDescription target,
+                        CompressEncoding oopEncoding) {
+            super(options, customizers, providers, providers.getSnippetReflection(), target);
             this.oopEncoding = oopEncoding;
             this.counters = new Counters(factory);
         }

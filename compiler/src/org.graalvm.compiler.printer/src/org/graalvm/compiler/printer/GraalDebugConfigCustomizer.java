@@ -64,20 +64,18 @@ import org.graalvm.compiler.serviceprovider.ServiceProvider;
 @ServiceProvider(DebugConfigCustomizer.class)
 public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
 
-    private static SnippetReflectionProvider extractSnippetReflection(Object... capabilites) {
-        if (capabilites != null) {
-            for (Object capability : capabilites) {
-                if (capability instanceof SnippetReflectionProvider) {
-                    return (SnippetReflectionProvider) capability;
-                }
-            }
-        }
-        return null;
+    private final SnippetReflectionProvider snippetReflection;
+
+    public GraalDebugConfigCustomizer() {
+        this.snippetReflection = null;
+    }
+
+    public GraalDebugConfigCustomizer(SnippetReflectionProvider snippetReflection) {
+        this.snippetReflection = snippetReflection;
     }
 
     @Override
-    public void addDumpHandlersTo(OptionValues options, Collection<DebugDumpHandler> dumpHandlers, Object... capabilites) {
-        SnippetReflectionProvider snippetReflection = extractSnippetReflection(capabilites);
+    public void addDumpHandlersTo(OptionValues options, Collection<DebugDumpHandler> dumpHandlers) {
         if (Options.PrintGraphFile.getValue(options)) {
             dumpHandlers.add(new GraphPrinterDumpHandler((graph) -> createFilePrinter(graph, options, snippetReflection)));
         } else {

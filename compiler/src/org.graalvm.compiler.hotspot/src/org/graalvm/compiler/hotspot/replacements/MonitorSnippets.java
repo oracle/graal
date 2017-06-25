@@ -80,6 +80,7 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
+import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
@@ -723,8 +724,9 @@ public class MonitorSnippets implements Snippets {
         private final boolean useFastLocking;
         public final Counters counters;
 
-        public Templates(OptionValues options, SnippetCounter.Group.Factory factory, HotSpotProviders providers, TargetDescription target, boolean useFastLocking) {
-            super(options, providers, providers.getSnippetReflection(), target);
+        public Templates(OptionValues options, Iterable<DebugConfigCustomizer> customizers, SnippetCounter.Group.Factory factory, HotSpotProviders providers, TargetDescription target,
+                        boolean useFastLocking) {
+            super(options, customizers, providers, providers.getSnippetReflection(), target);
             this.useFastLocking = useFastLocking;
 
             this.counters = new Counters(factory);

@@ -74,6 +74,7 @@ import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.Snippet.VarargsParameter;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
@@ -590,8 +591,9 @@ public class NewObjectSnippets implements Snippets {
         private final GraalHotSpotVMConfig config;
         private final Counters counters;
 
-        public Templates(OptionValues options, SnippetCounter.Group.Factory factory, HotSpotProviders providers, TargetDescription target, GraalHotSpotVMConfig config) {
-            super(options, providers, providers.getSnippetReflection(), target);
+        public Templates(OptionValues options, Iterable<DebugConfigCustomizer> customizers, SnippetCounter.Group.Factory factory, HotSpotProviders providers, TargetDescription target,
+                        GraalHotSpotVMConfig config) {
+            super(options, customizers, providers, providers.getSnippetReflection(), target);
             this.config = config;
             counters = new Counters(factory);
         }

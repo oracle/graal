@@ -28,6 +28,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -54,8 +55,9 @@ public class AArch64FloatArithmeticSnippets extends SnippetTemplate.AbstractTemp
     private final SnippetTemplate.SnippetInfo drem;
     private final SnippetTemplate.SnippetInfo frem;
 
-    public AArch64FloatArithmeticSnippets(OptionValues options, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
-        super(options, providers, snippetReflection, target);
+    public AArch64FloatArithmeticSnippets(OptionValues options, Iterable<DebugConfigCustomizer> customizers, Providers providers, SnippetReflectionProvider snippetReflection,
+                    TargetDescription target) {
+        super(options, customizers, providers, snippetReflection, target);
         drem = snippet(AArch64FloatArithmeticSnippets.class, "dremSnippet");
         frem = snippet(AArch64FloatArithmeticSnippets.class, "fremSnippet");
     }

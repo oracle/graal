@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.hotspot.meta;
 
+import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.options.OptionValues;
@@ -31,5 +32,5 @@ import org.graalvm.compiler.options.OptionValues;
  */
 public interface HotSpotLoweringProvider extends LoweringProvider {
 
-    void initialize(OptionValues options, HotSpotProviders providers, GraalHotSpotVMConfig config);
+    void initialize(OptionValues options, Iterable<DebugConfigCustomizer> customizers, HotSpotProviders providers, GraalHotSpotVMConfig config);
 }

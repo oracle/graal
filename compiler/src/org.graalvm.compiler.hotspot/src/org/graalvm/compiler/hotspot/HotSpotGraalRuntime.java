@@ -27,7 +27,6 @@ import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.core.common.GraalOptions.HotSpotPrintInlining;
-import static org.graalvm.compiler.debug.DebugContext.DEFAULT_CONFIG_CUSTOMIZERS;
 import static org.graalvm.compiler.debug.DebugContext.DEFAULT_LOG_STREAM;
 
 import java.io.File;
@@ -53,6 +52,7 @@ import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.target.Backend;
+import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.GlobalMetrics;
@@ -208,14 +208,13 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     }
 
     @Override
-    public DebugContext openDebugContext(OptionValues compilationOptions, CompilationIdentifier compilationId, Object compilable) {
+    public DebugContext openDebugContext(OptionValues compilationOptions, CompilationIdentifier compilationId, Object compilable, Iterable<DebugConfigCustomizer> customizers) {
         Description description = new Description(compilable, compilationId.toString(CompilationIdentifier.Verbosity.ID));
         return new DebugContext(compilationOptions,
                         description,
                         metricValues,
                         DEFAULT_LOG_STREAM,
-                        DEFAULT_CONFIG_CUSTOMIZERS,
-                        getHostProviders().getSnippetReflection());
+                        customizers);
     }
 
     @Override

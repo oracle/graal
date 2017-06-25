@@ -35,6 +35,7 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.printer.GraalDebugConfigCustomizer;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -48,7 +49,7 @@ public class SimpleCFGTest extends GraalCompilerTest {
     @Test
     public void testImplies() {
         OptionValues options = getInitialOptions();
-        DebugContext debug = DebugContext.create(options, getSnippetReflection());
+        DebugContext debug = DebugContext.create(options, new GraalDebugConfigCustomizer(getSnippetReflection()));
         StructuredGraph graph = new StructuredGraph.Builder(options, debug, AllowAssumptions.YES).build();
 
         EndNode trueEnd = graph.add(new EndNode());

@@ -83,7 +83,7 @@ public abstract class AssemblerTest extends GraalTest {
     protected InstalledCode assembleMethod(Method m, CodeGenTest test) {
         ResolvedJavaMethod method = getMetaAccess().lookupJavaMethod(m);
         OptionValues options = getInitialOptions();
-        DebugContext debug = DebugContext.create(options);
+        DebugContext debug = getDebugContext(options);
         try (DebugContext.Scope s = debug.scope("assembleMethod", method, codeCache)) {
             RegisterConfig registerConfig = codeCache.getRegisterConfig();
             CompilationIdentifier compilationId = backend.getCompilationIdentifier(method);

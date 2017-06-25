@@ -22,10 +22,10 @@
  */
 package org.graalvm.compiler.hotspot.stubs;
 
+import static java.util.Collections.singletonList;
 import static org.graalvm.compiler.core.GraalCompiler.emitBackEnd;
 import static org.graalvm.compiler.core.GraalCompiler.emitFrontEnd;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
-import static org.graalvm.compiler.debug.DebugContext.DEFAULT_CONFIG_CUSTOMIZERS;
 import static org.graalvm.compiler.debug.DebugContext.DEFAULT_LOG_STREAM;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.DebugStubsAndSnippets;
 import static org.graalvm.compiler.hotspot.HotSpotHostBackend.UNCOMMON_TRAP_HANDLER;
@@ -53,6 +53,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.Suites;
+import org.graalvm.compiler.printer.GraalDebugConfigCustomizer;
 import org.graalvm.util.EconomicSet;
 
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -182,8 +183,7 @@ public abstract class Stub {
                             description,
                             outer.getGlobalMetrics(),
                             DEFAULT_LOG_STREAM,
-                            DEFAULT_CONFIG_CUSTOMIZERS,
-                            providers.getSnippetReflection());
+                            singletonList(new GraalDebugConfigCustomizer(providers.getSnippetReflection())));
         }
         return DebugContext.DISABLED;
     }

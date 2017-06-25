@@ -29,6 +29,7 @@ import java.util.EnumMap;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
+import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.PiNode;
@@ -184,8 +185,9 @@ public class BoxingSnippets implements Snippets {
         private final SnippetCounter valueOfCounter;
         private final SnippetCounter valueCounter;
 
-        public Templates(OptionValues options, SnippetCounter.Group.Factory factory, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
-            super(options, providers, snippetReflection, target);
+        public Templates(OptionValues options, Iterable<DebugConfigCustomizer> customizers, SnippetCounter.Group.Factory factory, Providers providers, SnippetReflectionProvider snippetReflection,
+                        TargetDescription target) {
+            super(options, customizers, providers, snippetReflection, target);
             for (JavaKind kind : new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Double, JavaKind.Float, JavaKind.Int, JavaKind.Long, JavaKind.Short}) {
                 boxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "ValueOf"));
                 unboxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "Value"));

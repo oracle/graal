@@ -93,7 +93,7 @@ public abstract class HotSpotRetryableCompilation<T> extends DebugRetryableTask<
                         MethodFilter, null,
                         DumpPath, dumpPath.getPath());
         SnippetReflectionProvider snippetReflection = runtime.getHostProviders().getSnippetReflection();
-        return DebugContext.create(retryOptions, snippetReflection);
+        return DebugContext.create(retryOptions, new GraalDebugConfigCustomizer(snippetReflection));
     }
 
     private String retryLogPath;

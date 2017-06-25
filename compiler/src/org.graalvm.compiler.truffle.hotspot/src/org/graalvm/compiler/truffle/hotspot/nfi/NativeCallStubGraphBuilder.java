@@ -54,6 +54,7 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
+import org.graalvm.compiler.printer.GraalDebugConfigCustomizer;
 import org.graalvm.compiler.replacements.ConstantBindingParameterPlugin;
 
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
@@ -132,7 +133,7 @@ public class NativeCallStubGraphBuilder {
         LIRSuites lirSuites = providers.getSuites().getDefaultLIRSuites(options);
 
         SnippetReflectionProvider snippetReflection = providers.getSnippetReflection();
-        DebugContext debug = DebugContext.create(options, snippetReflection);
+        DebugContext debug = DebugContext.create(options, new GraalDebugConfigCustomizer(snippetReflection));
         StructuredGraph g = new StructuredGraph.Builder(options, debug).method(callStubMethod).compilationId(backend.getCompilationIdentifier(callStubMethod)).build();
         CompilationResult compResult = GraalCompiler.compileGraph(g, callStubMethod, providers, backend, graphBuilder, OptimisticOptimizations.ALL, DefaultProfilingInfo.get(TriState.UNKNOWN), suites,
                         lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);

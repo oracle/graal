@@ -34,6 +34,7 @@ import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsin
 
 import java.util.List;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.CounterKey;
@@ -47,6 +48,7 @@ import org.graalvm.compiler.debug.TimeSource;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.printer.GraalDebugConfigCustomizer;
 import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.BailoutException;
@@ -279,7 +281,8 @@ public class CompilationTask {
     public static final TimerKey CodeInstallationTime = DebugContext.timer("CodeInstallation");
 
     public HotSpotCompilationRequestResult runCompilation() {
-        try (DebugContext debug = DebugContext.create(options, compiler.getGraalRuntime().getHostProviders().getSnippetReflection())) {
+        SnippetReflectionProvider snippetReflection = compiler.getGraalRuntime().getHostProviders().getSnippetReflection();
+        try (DebugContext debug = DebugContext.create(options, new GraalDebugConfigCustomizer(snippetReflection))) {
             return runCompilation(debug);
         }
     }

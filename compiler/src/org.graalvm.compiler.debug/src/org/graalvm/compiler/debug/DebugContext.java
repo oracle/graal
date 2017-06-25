@@ -53,6 +53,7 @@ import java.util.Collections;
 import java.util.Formatter;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
@@ -332,30 +333,34 @@ public final class DebugContext implements AutoCloseable {
     }
 
     /**
-     * Creates a {@link DebugContext} based only on options and optional dump handler capabilities.
-     *
-     * This is a factory method as opposed to a constructor to avoid a call site calling a 2 arg
-     * constructor accidentally due to ambiguity caused by varargs.
+     * Creates a {@link DebugContext} based on a given set of option values and {@code customizer}.
      */
-    public static DebugContext create(OptionValues options, Object... dumpHandlerCapabilities) {
-        return new DebugContext(NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, DEFAULT_LOG_STREAM, Immutable.create(options), DEFAULT_CONFIG_CUSTOMIZERS, dumpHandlerCapabilities);
+    public static DebugContext create(OptionValues options, DebugConfigCustomizer customizer) {
+        return new DebugContext(NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, DEFAULT_LOG_STREAM, Immutable.create(options), Collections.singletonList(customizer));
+    }
+
+    /**
+     * Creates a {@link DebugContext} based on a given set of option values. If the option values
+     * specify that a scopes are active, then {@link DebugConfigCustomizer}s are looked up via
+     * {@link ServiceLoader}.
+     */
+    public static DebugContext create(OptionValues options) {
+        return new DebugContext(NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, DEFAULT_LOG_STREAM, Immutable.create(options), null);
     }
 
     public DebugContext(OptionValues options,
                     Description description,
                     GlobalMetrics globalMetrics,
                     PrintStream logStream,
-                    Iterable<DebugConfigCustomizer> customizers,
-                    Object... dumpHandlerCapabilities) {
-        this(description, globalMetrics, logStream, Immutable.create(options), customizers, dumpHandlerCapabilities);
+                    Iterable<DebugConfigCustomizer> customizers) {
+        this(description, globalMetrics, logStream, Immutable.create(options), customizers);
     }
 
-    private static Iterable<DebugConfigCustomizer> loadConfigCustomizers() {
+    private static Iterable<DebugConfigCustomizer> lookupConfigCustomizers() {
         return GraalServices.load(DebugConfigCustomizer.class);
     }
 
-    private DebugContext(Description description, GlobalMetrics globalMetrics, PrintStream logStream, Immutable immutable, Iterable<DebugConfigCustomizer> customizers,
-                    Object... dumpHandlerCapabilities) {
+    private DebugContext(Description description, GlobalMetrics globalMetrics, PrintStream logStream, Immutable immutable, Iterable<DebugConfigCustomizer> customizers) {
         this.immutable = immutable;
         this.description = description;
         this.globalMetrics = globalMetrics;
@@ -363,8 +368,8 @@ public final class DebugContext implements AutoCloseable {
             OptionValues options = immutable.options;
             List<DebugDumpHandler> dumpHandlers = new ArrayList<>();
             List<DebugVerifyHandler> verifyHandlers = new ArrayList<>();
-            for (DebugConfigCustomizer customizer : customizers != null ? customizers : loadConfigCustomizers()) {
-                customizer.addDumpHandlersTo(options, dumpHandlers, dumpHandlerCapabilities);
+            for (DebugConfigCustomizer customizer : customizers != null ? customizers : lookupConfigCustomizers()) {
+                customizer.addDumpHandlersTo(options, dumpHandlers);
                 customizer.addVerifyHandlersTo(options, verifyHandlers);
             }
             currentConfig = new GraalDebugConfig(
@@ -1061,7 +1066,7 @@ public final class DebugContext implements AutoCloseable {
         } else {
             OptionValues options = getOptions();
             dumpHandlers = new ArrayList<>();
-            for (DebugConfigCustomizer customizer : loadConfigCustomizers()) {
+            for (DebugConfigCustomizer customizer : lookupConfigCustomizers()) {
                 customizer.addDumpHandlersTo(options, dumpHandlers);
             }
             closeAfterDump = true;

@@ -24,6 +24,7 @@ package org.graalvm.compiler.hotspot;
 
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.options.OptionValues;
@@ -64,7 +65,7 @@ public interface HotSpotGraalRuntimeProvider extends GraalRuntime, RuntimeProvid
      * @param compilationId a system wide unique compilation id
      * @param compilable the input to the compilation
      */
-    DebugContext openDebugContext(OptionValues compilationOptions, CompilationIdentifier compilationId, Object compilable);
+    DebugContext openDebugContext(OptionValues compilationOptions, CompilationIdentifier compilationId, Object compilable, Iterable<DebugConfigCustomizer> customizers);
 
     /**
      * Gets the option values associated with this runtime.

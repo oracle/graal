@@ -117,7 +117,7 @@ public abstract class GraalCompilerState {
         this.options = Graal.getRequiredCapability(OptionValues.class);
         this.backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         this.providers = backend.getProviders();
-        this.debug = DebugContext.create(options, Graal.getRequiredCapability(SnippetReflectionProvider.class));
+        this.debug = DebugContext.create(options);
     }
 
     protected boolean useProfilingInfo() {

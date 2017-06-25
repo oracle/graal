@@ -22,14 +22,21 @@
  */
 package org.graalvm.compiler.test;
 
+import static org.graalvm.compiler.debug.DebugContext.DEFAULT_LOG_STREAM;
+import static org.graalvm.compiler.debug.DebugContext.NO_DESCRIPTION;
+import static org.graalvm.compiler.debug.DebugContext.NO_GLOBAL_METRIC_VALUES;
+
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
+import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpHandler;
 import org.graalvm.compiler.options.OptionValues;
@@ -373,11 +380,10 @@ public class GraalTest {
     }
 
     /**
-     * Gets the capabilities available to any {@link DebugDumpHandler}s created by
-     * {@link #getDebugContext(OptionValues)}.
+     * Gets the {@link DebugConfigCustomizer}s available for a {@link DebugContext}.
      */
-    protected Object[] getDumpHandlerCapabilities() {
-        return new Object[0];
+    protected Collection<DebugConfigCustomizer> getDebugCustomizers() {
+        return Collections.emptyList();
     }
 
     /**
@@ -396,7 +402,7 @@ public class GraalTest {
                 return debug;
             }
         }
-        DebugContext debug = DebugContext.create(options, getDumpHandlerCapabilities());
+        DebugContext debug = new DebugContext(options, NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, DEFAULT_LOG_STREAM, getDebugCustomizers());
         cached.add(debug);
         return debug;
     }

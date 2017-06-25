@@ -23,7 +23,6 @@
 package org.graalvm.compiler.replacements;
 
 import static java.util.FormattableFlags.ALTERNATE;
-import static org.graalvm.compiler.debug.DebugContext.DEFAULT_CONFIG_CUSTOMIZERS;
 import static org.graalvm.compiler.debug.DebugContext.DEFAULT_LOG_STREAM;
 import static org.graalvm.compiler.debug.DebugContext.applyFormattingFlagsAndWidth;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.DebugStubsAndSnippets;
@@ -60,6 +59,7 @@ import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.GraalError;
@@ -582,14 +582,16 @@ public class SnippetTemplate {
         protected final OptionValues options;
         protected final Providers providers;
         protected final SnippetReflectionProvider snippetReflection;
+        protected final Iterable<DebugConfigCustomizer> customizers;
         protected final TargetDescription target;
         private final Map<CacheKey, SnippetTemplate> templates;
 
-        protected AbstractTemplates(OptionValues options, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
+        protected AbstractTemplates(OptionValues options, Iterable<DebugConfigCustomizer> customizers, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
             this.options = options;
             this.providers = providers;
             this.snippetReflection = snippetReflection;
             this.target = target;
+            this.customizers = customizers;
             if (Options.UseSnippetTemplateCache.getValue(options)) {
                 int size = Options.MaxTemplatesPerSnippet.getValue(options);
                 this.templates = Collections.synchronizedMap(new LRUCache<>(size, size));
@@ -637,8 +639,7 @@ public class SnippetTemplate {
                                 description,
                                 outer.getGlobalMetrics(),
                                 DEFAULT_LOG_STREAM,
-                                DEFAULT_CONFIG_CUSTOMIZERS,
-                                snippetReflection);
+                                customizers);
             }
             return DebugContext.DISABLED;
         }

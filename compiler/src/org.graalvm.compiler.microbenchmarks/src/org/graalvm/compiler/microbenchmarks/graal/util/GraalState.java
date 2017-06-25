@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.microbenchmarks.graal.util;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
@@ -49,7 +48,7 @@ public class GraalState {
 
     public GraalState() {
         options = Graal.getRequiredCapability(OptionValues.class);
-        debug = DebugContext.create(options, Graal.getRequiredCapability(SnippetReflectionProvider.class));
+        debug = DebugContext.create(options);
         backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         providers = backend.getProviders();
         metaAccess = providers.getMetaAccess();

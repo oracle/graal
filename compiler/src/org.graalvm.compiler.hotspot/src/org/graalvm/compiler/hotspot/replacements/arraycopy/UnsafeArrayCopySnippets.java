@@ -40,6 +40,7 @@ import static org.graalvm.word.LocationIdentity.any;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.phases.WriteBarrierAdditionPhase;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
@@ -285,8 +286,8 @@ public class UnsafeArrayCopySnippets implements Snippets {
         private final SnippetInfo[] arraycopySnippets;
         private final SnippetInfo genericPrimitiveSnippet;
 
-        public Templates(OptionValues options, HotSpotProviders providers, TargetDescription target) {
-            super(options, providers, providers.getSnippetReflection(), target);
+        public Templates(OptionValues options, Iterable<DebugConfigCustomizer> customizers, HotSpotProviders providers, TargetDescription target) {
+            super(options, customizers, providers, providers.getSnippetReflection(), target);
 
             arraycopySnippets = new SnippetInfo[JavaKind.values().length];
             arraycopySnippets[JavaKind.Boolean.ordinal()] = snippet(UnsafeArrayCopySnippets.class, "arraycopyBoolean");

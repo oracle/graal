@@ -23,7 +23,6 @@
 package org.graalvm.compiler.replacements;
 
 import static org.graalvm.compiler.core.common.GraalOptions.UseSnippetGraphCache;
-import static org.graalvm.compiler.debug.DebugContext.DEFAULT_CONFIG_CUSTOMIZERS;
 import static org.graalvm.compiler.debug.DebugContext.DEFAULT_LOG_STREAM;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineIntrinsicsDuringParsing;
@@ -31,6 +30,8 @@ import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.Inl
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -46,6 +47,7 @@ import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.GraalError;
@@ -95,6 +97,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     public final SnippetReflectionProvider snippetReflection;
     public final TargetDescription target;
     private GraphBuilderConfiguration.Plugins graphBuilderPlugins;
+    private final DebugConfigCustomizer debugConfigCustomizer;
 
     @Override
     public OptionValues getOptions() {
@@ -183,7 +186,8 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     // it is stable across VM executions (in support of replay compilation).
     private final EconomicMap<String, SnippetTemplateCache> snippetTemplateCache;
 
-    public ReplacementsImpl(OptionValues options, Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider, TargetDescription target) {
+    public ReplacementsImpl(OptionValues options, DebugConfigCustomizer debugConfigCustomizer, Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider,
+                    TargetDescription target) {
         this.options = options;
         this.providers = providers.copyWith(this);
         this.snippetReflection = snippetReflection;
@@ -191,6 +195,8 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         this.graphs = new ConcurrentHashMap<>();
         this.snippetTemplateCache = EconomicMap.create(Equivalence.DEFAULT);
         this.defaultBytecodeProvider = bytecodeProvider;
+        this.debugConfigCustomizer = debugConfigCustomizer;
+
     }
 
     private static final TimerKey SnippetPreparationTime = DebugContext.timer("SnippetPreparationTime");
@@ -205,11 +211,11 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     protected DebugContext openDebugContext(String idPrefix, ResolvedJavaMethod method) {
         DebugContext outer = DebugContext.forCurrentThread();
         Description description = new Description(method, idPrefix + nextDebugContextId.incrementAndGet());
+        List<DebugConfigCustomizer> customizers = debugConfigCustomizer == null ? Collections.emptyList() : Collections.singletonList(debugConfigCustomizer);
         return new DebugContext(options, description,
                         outer.getGlobalMetrics(),
                         DEFAULT_LOG_STREAM,
-                        DEFAULT_CONFIG_CUSTOMIZERS,
-                        snippetReflection);
+                        customizers);
     }
 
     @Override

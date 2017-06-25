@@ -27,8 +27,10 @@ import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.Compi
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.util.Collections;
 import java.util.Formattable;
 import java.util.Formatter;
+import java.util.List;
 
 import org.graalvm.compiler.api.runtime.GraalJVMCICompiler;
 import org.graalvm.compiler.bytecode.Bytecode;
@@ -36,6 +38,7 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
+import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Activation;
 import org.graalvm.compiler.debug.GraalDebugConfig;
@@ -57,6 +60,7 @@ import org.graalvm.compiler.phases.OptimisticOptimizations.Optimization;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
+import org.graalvm.compiler.printer.GraalDebugConfigCustomizer;
 
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompilationRequestResult;
@@ -77,6 +81,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
     private final HotSpotGraalRuntimeProvider graalRuntime;
     private final CompilationCounters compilationCounters;
     private final BootstrapWatchDog bootstrapWatchDog;
+    private final List<DebugConfigCustomizer> customizers;
 
     HotSpotGraalCompiler(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalRuntimeProvider graalRuntime, OptionValues options) {
         this.jvmciRuntime = jvmciRuntime;
@@ -84,6 +89,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         // It is sufficient to have one compilation counter object per Graal compiler object.
         this.compilationCounters = Options.CompilationCountLimit.getValue(options) > 0 ? new CompilationCounters(options) : null;
         this.bootstrapWatchDog = graalRuntime.isBootstrapping() && !GraalDebugConfig.Options.BootstrapInitializeOnly.getValue(options) ? BootstrapWatchDog.maybeCreate(graalRuntime) : null;
+        this.customizers = Collections.singletonList(new GraalDebugConfigCustomizer(graalRuntime.getHostProviders().getSnippetReflection()));
     }
 
     @Override
@@ -125,7 +131,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
             }
             CompilationTask task = new CompilationTask(jvmciRuntime, this, hsRequest, true, installAsDefault, options);
             CompilationRequestResult r = null;
-            try (DebugContext debug = graalRuntime.openDebugContext(options, task.getCompilationIdentifier(), method);
+            try (DebugContext debug = graalRuntime.openDebugContext(options, task.getCompilationIdentifier(), method, customizers);
                             Activation a = debug.activate()) {
                 r = task.runCompilation(debug);
             }

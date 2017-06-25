@@ -33,7 +33,7 @@ import org.graalvm.compiler.serviceprovider.ServiceProvider;
 public class TruffleTreeDebugConfigCustomizer implements DebugConfigCustomizer {
 
     @Override
-    public void addDumpHandlersTo(OptionValues options, Collection<DebugDumpHandler> dumpHandlers, Object... capabilites) {
+    public void addDumpHandlersTo(OptionValues options, Collection<DebugDumpHandler> dumpHandlers) {
         dumpHandlers.add(new TruffleTreeDumpHandler(options));
     }
 }

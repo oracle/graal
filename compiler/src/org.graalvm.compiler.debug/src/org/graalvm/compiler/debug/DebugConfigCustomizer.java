@@ -36,9 +36,8 @@ public interface DebugConfigCustomizer {
      *
      * @param options options that may be used to configure any handlers created by this method
      * @param dumpHandlers the list to which the new handlers should be added
-     * @param handlerArgs extra parameters that may be used to configure the new handlers
      */
-    default void addDumpHandlersTo(OptionValues options, Collection<DebugDumpHandler> dumpHandlers, Object... handlerArgs) {
+    default void addDumpHandlersTo(OptionValues options, Collection<DebugDumpHandler> dumpHandlers) {
     }
 
     /**

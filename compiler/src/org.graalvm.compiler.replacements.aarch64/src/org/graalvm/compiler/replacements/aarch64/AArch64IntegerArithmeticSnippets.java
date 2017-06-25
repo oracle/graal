@@ -25,6 +25,7 @@ package org.graalvm.compiler.replacements.aarch64;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.graph.NodeClass;
@@ -68,8 +69,9 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
     private final SnippetTemplate.SnippetInfo uirem;
     private final SnippetTemplate.SnippetInfo ulrem;
 
-    public AArch64IntegerArithmeticSnippets(OptionValues options, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
-        super(options, providers, snippetReflection, target);
+    public AArch64IntegerArithmeticSnippets(OptionValues options, Iterable<DebugConfigCustomizer> customizers, Providers providers, SnippetReflectionProvider snippetReflection,
+                    TargetDescription target) {
+        super(options, customizers, providers, snippetReflection, target);
         idiv = snippet(AArch64IntegerArithmeticSnippets.class, "idivSnippet");
         ldiv = snippet(AArch64IntegerArithmeticSnippets.class, "ldivSnippet");
         irem = snippet(AArch64IntegerArithmeticSnippets.class, "iremSnippet");

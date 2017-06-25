@@ -33,15 +33,18 @@ import static org.graalvm.compiler.truffle.hotspot.UnsafeAccess.UNSAFE;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.List;
 import java.util.ListIterator;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompilationRequestIdentifier;
 import org.graalvm.compiler.core.target.Backend;
+import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Activation;
 import org.graalvm.compiler.debug.GraalError;
@@ -70,6 +73,7 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.printer.GraalDebugConfigCustomizer;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.CancellableCompileTask;
@@ -79,6 +83,7 @@ import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.TruffleCallBoundary;
 import org.graalvm.compiler.truffle.TruffleCompiler;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.TruffleTreeDebugConfigCustomizer;
 import org.graalvm.compiler.truffle.hotspot.nfi.HotSpotNativeFunctionInterface;
 import org.graalvm.compiler.truffle.hotspot.nfi.RawNativeCallNodeFactory;
 
@@ -130,10 +135,21 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         return HotSpotGraalOptionValues.HOTSPOT_OPTIONS;
     }
 
+    List<DebugConfigCustomizer> customizers;
+
+    private List<DebugConfigCustomizer> getCustomizers() {
+        if (customizers == null) {
+            // Multiple initialization by racing threads is harmless
+            SnippetReflectionProvider snippetReflection = getRequiredGraalCapability(SnippetReflectionProvider.class);
+            customizers = Arrays.asList(new GraalDebugConfigCustomizer(snippetReflection), new TruffleTreeDebugConfigCustomizer());
+        }
+        return customizers;
+    }
+
     @Override
     protected DebugContext openDebugContext(OptionValues options, CompilationIdentifier compilationId, OptimizedCallTarget callTarget) {
         HotSpotGraalRuntimeProvider runtime = (HotSpotGraalRuntimeProvider) getRequiredGraalCapability(RuntimeProvider.class);
-        return runtime.openDebugContext(options, compilationId, callTarget);
+        return runtime.openDebugContext(options, compilationId, callTarget, getCustomizers());
     }
 
     @Override
@@ -236,7 +252,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
                 HotSpotGraalRuntimeProvider runtime = (HotSpotGraalRuntimeProvider) getRequiredGraalCapability(RuntimeProvider.class);
                 HotSpotCompilationIdentifier compilationId = (HotSpotCompilationIdentifier) getHotSpotBackend().getCompilationIdentifier(method);
                 OptionValues options = getOptions();
-                try (DebugContext debug = DebugStubsAndSnippets.getValue(options) ? runtime.openDebugContext(options, compilationId, method) : DebugContext.DISABLED;
+                try (DebugContext debug = DebugStubsAndSnippets.getValue(options) ? runtime.openDebugContext(options, compilationId, method, getCustomizers()) : DebugContext.DISABLED;
                                 Activation a = debug.activate();
                                 DebugContext.Scope d = debug.scope("InstallingTruffleStub")) {
                     CompilationResult compResult = compileTruffleCallBoundaryMethod(method, compilationId, debug);
