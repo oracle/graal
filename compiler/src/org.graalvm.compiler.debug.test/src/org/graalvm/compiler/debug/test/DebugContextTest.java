@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.debug.test;
 
-import static org.graalvm.compiler.debug.DebugContext.DEFAULT_CONFIG_CUSTOMIZERS;
 import static org.graalvm.compiler.debug.DebugContext.NO_DESCRIPTION;
 import static org.graalvm.compiler.debug.DebugContext.NO_GLOBAL_METRIC_VALUES;
 
@@ -80,11 +79,7 @@ public class DebugContextTest {
         };
 
         DebugContext openDebugContext(OptionValues options) {
-            return new DebugContext(options,
-                            NO_DESCRIPTION,
-                            NO_GLOBAL_METRIC_VALUES,
-                            new PrintStream(logOutput),
-                            Collections.singletonList(handlers));
+            return DebugContext.create(options, NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, new PrintStream(logOutput), Collections.singletonList(handlers));
 
         }
     }
@@ -181,7 +176,7 @@ public class DebugContextTest {
         map.put(GraalDebugConfig.Options.DumpOnError, true);
         OptionValues options = new OptionValues(map);
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        DebugContext debug = new DebugContext(options, NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, new PrintStream(baos), DEFAULT_CONFIG_CUSTOMIZERS);
+        DebugContext debug = DebugContext.create(options, NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, new PrintStream(baos), DebugConfigCustomizer.LOADER);
         Exception e = new Exception();
         String scopeName = "";
         try {
@@ -209,7 +204,7 @@ public class DebugContextTest {
         // Configure with an option that enables scopes
         map.put(GraalDebugConfig.Options.DumpOnError, true);
         OptionValues options = new OptionValues(map);
-        DebugContext debug = DebugContext.create(options);
+        DebugContext debug = DebugContext.create(options, DebugConfigCustomizer.LOADER);
         Exception e = new Exception();
         try {
             // Test a disabled sandbox scope
@@ -238,7 +233,7 @@ public class DebugContextTest {
         // Configure with an option that enables counters
         map.put(GraalDebugConfig.Options.Counters, "");
         OptionValues options = new OptionValues(map);
-        DebugContext debug = DebugContext.create(options);
+        DebugContext debug = DebugContext.create(options, DebugConfigCustomizer.LOADER);
         CounterKey counter = DebugContext.counter("DebugContextTestCounter");
         AssertionError[] result = {null};
         Thread thread = new Thread() {

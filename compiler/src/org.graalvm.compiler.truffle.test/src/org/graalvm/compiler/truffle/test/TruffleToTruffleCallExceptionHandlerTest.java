@@ -24,6 +24,7 @@ package org.graalvm.compiler.truffle.test;
 
 import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 
+import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -124,7 +125,7 @@ public class TruffleToTruffleCallExceptionHandlerTest {
         compilable.call(arguments);
         compilable.call(arguments);
         OptionValues options = TruffleCompilerOptions.getOptions();
-        DebugContext debug = DebugContext.create(options);
+        DebugContext debug = DebugContext.create(options, DebugConfigCustomizer.LOADER);
         try (DebugContext.Scope s = debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
             return truffleCompiler.getPartialEvaluator().createGraph(debug, compilable, new TruffleInlining(compilable, new DefaultInliningPolicy()), allowAssumptions, INVALID_COMPILATION_ID, null);
         } catch (Throwable e) {

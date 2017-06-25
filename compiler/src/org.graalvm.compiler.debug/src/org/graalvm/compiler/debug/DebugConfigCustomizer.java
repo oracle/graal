@@ -23,8 +23,10 @@
 package org.graalvm.compiler.debug;
 
 import java.util.Collection;
+import java.util.Iterator;
 
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 /**
  * Service for specifying {@link DebugDumpHandler}s and {@link DebugVerifyHandler}s when
@@ -48,4 +50,14 @@ public interface DebugConfigCustomizer {
      */
     default void addVerifyHandlersTo(OptionValues options, Collection<DebugVerifyHandler> verifyHandlers) {
     }
+
+    /**
+     * Loads {@link DebugConfigCustomizer}s on demand via {@link GraalServices#load(Class)}.
+     */
+    static Iterable<DebugConfigCustomizer> LOADER = new Iterable<DebugConfigCustomizer>() {
+        @Override
+        public Iterator<DebugConfigCustomizer> iterator() {
+            return GraalServices.load(DebugConfigCustomizer.class).iterator();
+        }
+    };
 }

@@ -210,11 +210,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     @Override
     public DebugContext openDebugContext(OptionValues compilationOptions, CompilationIdentifier compilationId, Object compilable, Iterable<DebugConfigCustomizer> customizers) {
         Description description = new Description(compilable, compilationId.toString(CompilationIdentifier.Verbosity.ID));
-        return new DebugContext(compilationOptions,
-                        description,
-                        metricValues,
-                        DEFAULT_LOG_STREAM,
-                        customizers);
+        return DebugContext.create(compilationOptions, description, metricValues, DEFAULT_LOG_STREAM, customizers);
     }
 
     @Override

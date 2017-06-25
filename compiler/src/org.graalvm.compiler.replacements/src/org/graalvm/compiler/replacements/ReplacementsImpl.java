@@ -212,10 +212,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         DebugContext outer = DebugContext.forCurrentThread();
         Description description = new Description(method, idPrefix + nextDebugContextId.incrementAndGet());
         List<DebugConfigCustomizer> customizers = debugConfigCustomizer == null ? Collections.emptyList() : Collections.singletonList(debugConfigCustomizer);
-        return new DebugContext(options, description,
-                        outer.getGlobalMetrics(),
-                        DEFAULT_LOG_STREAM,
-                        customizers);
+        return DebugContext.create(options, description, outer.getGlobalMetrics(), DEFAULT_LOG_STREAM, customizers);
     }
 
     @Override

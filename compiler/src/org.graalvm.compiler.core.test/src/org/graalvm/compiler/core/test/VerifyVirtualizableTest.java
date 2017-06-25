@@ -32,6 +32,7 @@ import java.lang.reflect.Modifier;
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.java.GraphBuilderPhase;
@@ -271,7 +272,7 @@ public class VerifyVirtualizableTest {
         graphBuilderSuite.appendPhase(new GraphBuilderPhase(config));
         HighTierContext context = new HighTierContext(providers, graphBuilderSuite, OptimisticOptimizations.NONE);
         OptionValues options = getInitialOptions();
-        DebugContext debug = DebugContext.create(options);
+        DebugContext debug = DebugContext.create(options, DebugConfigCustomizer.LOADER);
         for (Method m : c.getDeclaredMethods()) {
             if (!Modifier.isNative(m.getModifiers()) && !Modifier.isAbstract(m.getModifiers())) {
                 ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);

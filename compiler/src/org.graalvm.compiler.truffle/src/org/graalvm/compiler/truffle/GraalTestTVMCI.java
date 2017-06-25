@@ -25,6 +25,7 @@ package org.graalvm.compiler.truffle;
 import static org.graalvm.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -68,7 +69,7 @@ final class GraalTestTVMCI extends TVMCI.Test<GraalTestTVMCI.TestCallTarget> {
     @Override
     public void finishWarmup(TestCallTarget callTarget) {
         OptionValues options = TruffleCompilerOptions.getOptions();
-        DebugContext debug = DebugContext.create(options);
+        DebugContext debug = DebugContext.create(options, DebugConfigCustomizer.LOADER);
         TruffleCompiler compiler = truffleRuntime.getTruffleCompiler();
         ResolvedJavaMethod rootMethod = compiler.getPartialEvaluator().rootForCallTarget(callTarget.optimizedCallTarget);
         CompilationIdentifier compilationId = truffleRuntime.getCompilationIdentifier(callTarget.optimizedCallTarget, rootMethod, compiler.backend);

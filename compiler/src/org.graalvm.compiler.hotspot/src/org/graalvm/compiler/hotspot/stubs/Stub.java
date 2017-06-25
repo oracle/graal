@@ -179,11 +179,7 @@ public abstract class Stub {
     private DebugContext openDebugContext(DebugContext outer) {
         if (DebugStubsAndSnippets.getValue(options)) {
             Description description = new Description(linkage, "Stub_" + nextStubId.incrementAndGet());
-            return new DebugContext(options,
-                            description,
-                            outer.getGlobalMetrics(),
-                            DEFAULT_LOG_STREAM,
-                            singletonList(new GraalDebugConfigCustomizer(providers.getSnippetReflection())));
+            return DebugContext.create(options, description, outer.getGlobalMetrics(), DEFAULT_LOG_STREAM, singletonList(new GraalDebugConfigCustomizer(providers.getSnippetReflection())));
         }
         return DebugContext.DISABLED;
     }

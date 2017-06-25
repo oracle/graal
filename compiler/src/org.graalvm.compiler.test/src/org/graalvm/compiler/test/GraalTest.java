@@ -402,7 +402,7 @@ public class GraalTest {
                 return debug;
             }
         }
-        DebugContext debug = new DebugContext(options, NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, DEFAULT_LOG_STREAM, getDebugCustomizers());
+        DebugContext debug = DebugContext.create(options, NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, DEFAULT_LOG_STREAM, getDebugCustomizers());
         cached.add(debug);
         return debug;
     }

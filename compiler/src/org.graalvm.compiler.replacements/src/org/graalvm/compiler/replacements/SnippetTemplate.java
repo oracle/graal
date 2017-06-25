@@ -635,11 +635,7 @@ public class SnippetTemplate {
         private DebugContext openDebugContext(DebugContext outer, Arguments args) {
             if (DebugStubsAndSnippets.getValue(options)) {
                 Description description = new Description(args.cacheKey.method, "SnippetTemplate_" + nextSnippetTemplateId.incrementAndGet());
-                return new DebugContext(options,
-                                description,
-                                outer.getGlobalMetrics(),
-                                DEFAULT_LOG_STREAM,
-                                customizers);
+                return DebugContext.create(options, description, outer.getGlobalMetrics(), DEFAULT_LOG_STREAM, customizers);
             }
             return DebugContext.DISABLED;
         }

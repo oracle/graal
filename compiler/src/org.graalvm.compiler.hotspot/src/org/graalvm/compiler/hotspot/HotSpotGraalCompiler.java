@@ -81,7 +81,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
     private final HotSpotGraalRuntimeProvider graalRuntime;
     private final CompilationCounters compilationCounters;
     private final BootstrapWatchDog bootstrapWatchDog;
-    private final List<DebugConfigCustomizer> customizers;
+    private List<DebugConfigCustomizer> customizers;
 
     HotSpotGraalCompiler(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalRuntimeProvider graalRuntime, OptionValues options) {
         this.jvmciRuntime = jvmciRuntime;
@@ -89,7 +89,13 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         // It is sufficient to have one compilation counter object per Graal compiler object.
         this.compilationCounters = Options.CompilationCountLimit.getValue(options) > 0 ? new CompilationCounters(options) : null;
         this.bootstrapWatchDog = graalRuntime.isBootstrapping() && !GraalDebugConfig.Options.BootstrapInitializeOnly.getValue(options) ? BootstrapWatchDog.maybeCreate(graalRuntime) : null;
-        this.customizers = Collections.singletonList(new GraalDebugConfigCustomizer(graalRuntime.getHostProviders().getSnippetReflection()));
+    }
+
+    public List<DebugConfigCustomizer> getCustomizers() {
+        if (customizers == null) {
+            customizers = Collections.singletonList(new GraalDebugConfigCustomizer(graalRuntime.getHostProviders().getSnippetReflection()));
+        }
+        return customizers;
     }
 
     @Override
@@ -131,7 +137,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
             }
             CompilationTask task = new CompilationTask(jvmciRuntime, this, hsRequest, true, installAsDefault, options);
             CompilationRequestResult r = null;
-            try (DebugContext debug = graalRuntime.openDebugContext(options, task.getCompilationIdentifier(), method, customizers);
+            try (DebugContext debug = graalRuntime.openDebugContext(options, task.getCompilationIdentifier(), method, getCustomizers());
                             Activation a = debug.activate()) {
                 r = task.runCompilation(debug);
             }

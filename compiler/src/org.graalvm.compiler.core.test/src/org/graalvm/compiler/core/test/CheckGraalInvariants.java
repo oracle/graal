@@ -49,6 +49,7 @@ import org.graalvm.compiler.core.CompilerThreadFactory;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -205,7 +206,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
 
         for (Method m : BadUsageWithEquals.class.getDeclaredMethods()) {
             ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
-            try (DebugContext debug = DebugContext.create(options)) {
+            try (DebugContext debug = DebugContext.create(options, DebugConfigCustomizer.LOADER)) {
                 StructuredGraph graph = new StructuredGraph.Builder(options, debug, AllowAssumptions.YES).method(method).build();
                 try (DebugCloseable s = debug.disableIntercept(); DebugContext.Scope ds = debug.scope("CheckingGraph", graph, method)) {
                     graphBuilderSuite.apply(graph, context);
@@ -242,7 +243,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                         String methodName = className + "." + m.getName();
                         if (matches(filters, methodName)) {
                             executor.execute(() -> {
-                                try (DebugContext debug = DebugContext.create(options)) {
+                                try (DebugContext debug = DebugContext.create(options, DebugConfigCustomizer.LOADER)) {
                                     ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
                                     StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(method).build();
                                     try (DebugCloseable s = debug.disableIntercept(); DebugContext.Scope ds = debug.scope("CheckingGraph", graph, method)) {
