@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Set;
 
 import javax.annotation.processing.AbstractProcessor;
+import javax.annotation.processing.FilerException;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
@@ -78,7 +79,7 @@ import com.oracle.truffle.dsl.processor.java.transform.GenerateOverrideVisitor;
  * of the generated class for top level class {@code com.foo.Bar} is
  * {@code com.foo.Bar_OptionDescriptors}.
  */
-@SupportedAnnotationTypes({"com.oracle.truffle.api.Option", "com.oracle.truffle.api.Option.Prefix"})
+@SupportedAnnotationTypes({"com.oracle.truffle.api.Option", "com.oracle.truffle.api.Option.Group"})
 public class OptionProcessor extends AbstractProcessor {
 
     @Override
@@ -174,16 +175,16 @@ public class OptionProcessor extends AbstractProcessor {
             return false;
         }
 
-        String[] prefixStrings = null;
+        String[] groupPrefixStrings = null;
         Option.Group prefix = info.type.getAnnotation(Option.Group.class);
 
         if (prefix != null) {
-            prefixStrings = prefix.value();
+            groupPrefixStrings = prefix.value();
         } else if (ElementUtils.isAssignable(info.type.asType(), context.getType(TruffleLanguage.class))) {
             TruffleLanguage.Registration registration = info.type.getAnnotation(TruffleLanguage.Registration.class);
             if (registration != null) {
-                prefixStrings = new String[]{registration.id()};
-                if (prefixStrings[0].isEmpty()) {
+                groupPrefixStrings = new String[]{registration.id()};
+                if (groupPrefixStrings[0].isEmpty()) {
                     error(element, elementAnnotation, "%s must specify an id such that Truffle options can infer their prefix.", TruffleLanguage.Registration.class.getSimpleName());
                     return false;
                 }
@@ -192,20 +193,16 @@ public class OptionProcessor extends AbstractProcessor {
         } else if (ElementUtils.isAssignable(info.type.asType(), context.getType(TruffleInstrument.class))) {
             TruffleInstrument.Registration registration = info.type.getAnnotation(TruffleInstrument.Registration.class);
             if (registration != null) {
-                prefixStrings = new String[]{registration.id()};
-                if (prefixStrings[0].isEmpty()) {
+                groupPrefixStrings = new String[]{registration.id()};
+                if (groupPrefixStrings[0].isEmpty()) {
                     error(element, elementAnnotation, "%s must specify an id such that Truffle options can infer their prefix.", TruffleInstrument.Registration.class.getSimpleName());
                     return false;
                 }
             }
         }
 
-        if (prefixStrings == null || prefixStrings.length == 0) {
-            error(element, elementAnnotation, "Type %s must specify an option prefix with %s. " +
-                            "Alternatively options can also be declared in subclasses of %s and %s." +
-                            "There the prefix is inherited from the id.",
-                            info.type.getSimpleName().toString(), Option.Group.class.getCanonicalName(), TruffleLanguage.class.getSimpleName(), TruffleInstrument.class.getSimpleName());
-            return false;
+        if (groupPrefixStrings == null || groupPrefixStrings.length == 0) {
+            groupPrefixStrings = new String[]{""};
         }
 
         Option annotation = element.getAnnotation(Option.class);
@@ -268,12 +265,19 @@ public class OptionProcessor extends AbstractProcessor {
             category = OptionCategory.DEBUG;
         }
 
-        for (String p : prefixStrings) {
+        for (String group : groupPrefixStrings) {
             String name;
-            if (optionName.isEmpty()) {
-                name = p;
+            if (group.isEmpty() && optionName.isEmpty()) {
+                error(element, elementAnnotation, "Both group and option name cannot be empty");
+                continue;
+            } else if (optionName.isEmpty()) {
+                name = group;
             } else {
-                name = p + "." + optionName;
+                if (group.isEmpty()) {
+                    name = optionName;
+                } else {
+                    name = group + "." + optionName;
+                }
             }
             info.options.add(new OptionInfo(name, help, field, elementAnnotation, deprecated, category));
         }
@@ -298,7 +302,16 @@ public class OptionProcessor extends AbstractProcessor {
         DeclaredType unusedType = (DeclaredType) context.getType(SuppressWarnings.class);
         unit.accept(new GenerateOverrideVisitor(overrideType), null);
         unit.accept(new FixWarningsVisitor(context.getEnvironment(), unusedType, overrideType), null);
-        unit.accept(new CodeWriter(context.getEnvironment(), element), null);
+        try {
+            unit.accept(new CodeWriter(context.getEnvironment(), element), null);
+        } catch (RuntimeException e) {
+            if (e.getCause() instanceof FilerException) {
+                // ignore spurious errors of source file already created in Eclipse.
+                if (e.getCause().getMessage().startsWith("Source file already created")) {
+                    return;
+                }
+            }
+        }
 
     }
 

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.dsl.test.processor;
+package com.oracle.truffle.api.test.option;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -41,8 +41,8 @@ import org.junit.Test;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.dsl.test.ExpectError;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.test.ExpectError;
 
 public class OptionProcessorTest {
 
@@ -118,27 +118,6 @@ public class OptionProcessorTest {
         OptionErrorOptionDescriptors descriptors = new OptionErrorOptionDescriptors();
 
         assertNotNull(descriptors.get("foobar"));
-    }
-
-    public static class OptionPrefixMissingError1 {
-
-        @ExpectError("Type OptionPrefixMissingError1 must specify an option prefix with " +
-                        "com.oracle.truffle.api.Option.Group. Alternatively options can " +
-                        "also be declared in subclasses of TruffleLanguage and TruffleInstrument." +
-                        "There the prefix is inherited from the id.") //
-        @Option(help = "", deprecated = true, category = OptionCategory.USER) //
-        static final OptionKey<String> StringOption1 = new OptionKey<>("defaultValue");
-
-    }
-
-    @Option.Group({})
-    public static class OptionPrefixMissingError2 {
-        @ExpectError("Type OptionPrefixMissingError2 must specify an option prefix with " +
-                        "com.oracle.truffle.api.Option.Group. Alternatively options can " +
-                        "also be declared in subclasses of TruffleLanguage and TruffleInstrument." +
-                        "There the prefix is inherited from the id.") //
-        @Option(help = "", deprecated = true, category = OptionCategory.USER) //
-        static final OptionKey<String> Error1 = new OptionKey<>("defaultValue");
     }
 
     @Option.Group("foobar")
