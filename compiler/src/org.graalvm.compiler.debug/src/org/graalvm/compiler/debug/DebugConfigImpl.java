@@ -38,7 +38,7 @@ import org.graalvm.compiler.options.OptionValues;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.JavaMethod;
 
-public class GraalDebugConfig implements DebugConfig {
+final class DebugConfigImpl implements DebugConfig {
 
     private final OptionValues options;
 
@@ -53,11 +53,11 @@ public class GraalDebugConfig implements DebugConfig {
     private final List<DebugVerifyHandler> verifyHandlers;
     private final PrintStream output;
 
-    public GraalDebugConfig(OptionValues options) {
+    DebugConfigImpl(OptionValues options) {
         this(options, TTY.out, Collections.emptyList(), Collections.emptyList());
     }
 
-    public GraalDebugConfig(OptionValues options, PrintStream output,
+    DebugConfigImpl(OptionValues options, PrintStream output,
                     List<DebugDumpHandler> dumpHandlers,
                     List<DebugVerifyHandler> verifyHandlers) {
         this(options, DebugOptions.Log.getValue(options),
@@ -70,7 +70,7 @@ public class GraalDebugConfig implements DebugConfig {
                         output, dumpHandlers, verifyHandlers);
     }
 
-    public GraalDebugConfig(OptionValues options,
+    DebugConfigImpl(OptionValues options,
                     String logFilter,
                     String countFilter,
                     String trackMemUseFilter,
@@ -176,21 +176,6 @@ public class GraalDebugConfig implements DebugConfig {
         return filter != null && checkMethodFilter(scope);
     }
 
-    /**
-     * Extracts a {@link JavaMethod} from an opaque debug context.
-     *
-     * @return the {@link JavaMethod} represented by {@code context} or null
-     */
-    public static JavaMethod asJavaMethod(Object context) {
-        if (context instanceof JavaMethodContext) {
-            return ((JavaMethodContext) context).asJavaMethod();
-        }
-        if (context instanceof JavaMethod) {
-            return (JavaMethod) context;
-        }
-        return null;
-    }
-
     private boolean checkMethodFilter(DebugContext.Scope scope) {
         if (methodFilter == null) {
             return true;
@@ -199,7 +184,7 @@ public class GraalDebugConfig implements DebugConfig {
             Iterable<Object> context = scope.getCurrentContext();
             for (Object o : context) {
                 if (methodFilter != null) {
-                    JavaMethod method = asJavaMethod(o);
+                    JavaMethod method = DebugConfig.asJavaMethod(o);
                     if (method != null) {
                         if (!DebugOptions.MethodFilterRootOnly.getValue(options)) {
                             if (org.graalvm.compiler.debug.MethodFilter.matches(methodFilter, method)) {
@@ -261,7 +246,7 @@ public class GraalDebugConfig implements DebugConfig {
                         DebugOptions.Verify, null,
                         DebugOptions.Dump, ":" + BASIC_LEVEL,
                         DebugOptions.Log, ":" + BASIC_LEVEL);
-        GraalDebugConfig config = new GraalDebugConfig(interceptOptions, output, dumpHandlers, verifyHandlers);
+        DebugConfigImpl config = new DebugConfigImpl(interceptOptions, output, dumpHandlers, verifyHandlers);
         ScopeImpl scope = debug.currentScope;
         scope.updateFlags(config);
         try {

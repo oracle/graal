@@ -363,7 +363,7 @@ public final class DebugContext implements AutoCloseable {
                 customizer.addDumpHandlersTo(options, dumpHandlers);
                 customizer.addVerifyHandlersTo(options, verifyHandlers);
             }
-            currentConfig = new GraalDebugConfig(
+            currentConfig = new DebugConfigImpl(
                             options,
                             Log.getValue(options),
                             Count.getValue(options),
@@ -747,7 +747,7 @@ public final class DebugContext implements AutoCloseable {
             for (Object obj : context()) {
                 context.add(obj);
             }
-            GraalDebugConfig config = new GraalDebugConfig(new OptionValues(currentConfig.getOptions(), DebugOptions.Log, ":1000"));
+            DebugConfigImpl config = new DebugConfigImpl(new OptionValues(currentConfig.getOptions(), DebugOptions.Log, ":1000"));
             return sandbox("forceLog", config, context.toArray());
         }
         return null;
@@ -1048,7 +1048,7 @@ public final class DebugContext implements AutoCloseable {
      * force a graph dump from IDEs that support invoking a Java method while at a breakpoint.
      */
     public void forceDump(Object object, String format, Object... args) {
-        DebugConfig config = getConfig();
+        DebugConfig config = currentConfig;
         Collection<DebugDumpHandler> dumpHandlers;
         boolean closeAfterDump;
         if (config != null) {

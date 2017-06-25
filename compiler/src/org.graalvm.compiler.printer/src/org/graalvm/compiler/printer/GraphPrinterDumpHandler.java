@@ -22,7 +22,7 @@
  */
 package org.graalvm.compiler.printer;
 
-import static org.graalvm.compiler.debug.GraalDebugConfig.asJavaMethod;
+import static org.graalvm.compiler.debug.DebugConfig.asJavaMethod;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;

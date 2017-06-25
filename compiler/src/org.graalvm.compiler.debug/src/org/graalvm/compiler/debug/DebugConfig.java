@@ -122,4 +122,19 @@ public interface DebugConfig {
             }
         }
     }
+
+    /**
+     * Extracts a {@link JavaMethod} from an opaque debug context.
+     *
+     * @return the {@link JavaMethod} represented by {@code context} or null
+     */
+    static JavaMethod asJavaMethod(Object context) {
+        if (context instanceof JavaMethodContext) {
+            return ((JavaMethodContext) context).asJavaMethod();
+        }
+        if (context instanceof JavaMethod) {
+            return (JavaMethod) context;
+        }
+        return null;
+    }
 }
