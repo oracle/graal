@@ -389,7 +389,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public Object getCurrentVM() {
-            return CURRENT_CONTEXT.get().getEngine();
+            PolyglotContextImpl current = CURRENT_CONTEXT.get();
+            return current != null ? current.getEngine() : null;
         }
 
         @Override
