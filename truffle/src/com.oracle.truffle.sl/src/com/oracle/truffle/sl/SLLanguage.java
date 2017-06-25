@@ -62,7 +62,7 @@ import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLNull;
 
-@TruffleLanguage.Registration(name = "SL", version = "0.12", mimeType = SLLanguage.MIME_TYPE)
+@TruffleLanguage.Registration(id = "sl", name = "SL", version = "0.12", mimeType = SLLanguage.MIME_TYPE)
 @ProvidedTags({StandardTags.CallTag.class, StandardTags.StatementTag.class, StandardTags.RootTag.class, DebuggerTags.AlwaysHalt.class})
 public final class SLLanguage extends TruffleLanguage<SLContext> implements ScopeProvider<SLContext> {
     public static volatile int counter;
@@ -198,6 +198,10 @@ public final class SLLanguage extends TruffleLanguage<SLContext> implements Scop
     @Override
     public AbstractScope findScope(SLContext context, Node node, Frame frame) {
         return SLLexicalScope.createScope(node);
+    }
+
+    public static SLContext getCurrentContext() {
+        return getCurrentContext(SLLanguage.class);
     }
 
 }
