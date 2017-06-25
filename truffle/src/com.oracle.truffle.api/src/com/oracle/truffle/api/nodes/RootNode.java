@@ -41,6 +41,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
+import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -111,6 +112,7 @@ public abstract class RootNode extends Node {
      * TruffleLanguage for languages that are not yet migrated. We use this env reference instead
      * for compatibility.
      */
+    final Object sourceVM;
     private final LanguageInfo languageInfo;
     private RootCallTarget callTarget;
     @CompilationFinal private FrameDescriptor frameDescriptor;
@@ -129,8 +131,8 @@ public abstract class RootNode extends Node {
         if (!TruffleLanguage.class.isAssignableFrom(language)) {
             throw new IllegalStateException();
         }
-
-        this.languageInfo = Node.ACCESSOR.languageSupport().getLegacyLanguageInfo(language);
+        this.sourceVM = getCurrentVM();
+        this.languageInfo = Node.ACCESSOR.languageSupport().getLegacyLanguageInfo(sourceVM, language);
         this.sourceSection = sourceSection;
         if (frameDescriptor == null) {
             this.frameDescriptor = new FrameDescriptor();
@@ -172,11 +174,22 @@ public abstract class RootNode extends Node {
             if (languageInfo == null) {
                 throw new IllegalArgumentException("Truffle language instance is not initialized.");
             }
+            this.sourceVM = Node.ACCESSOR.engineSupport().getVMFromLanguageObject(this.languageInfo.getEngineObject());
         } else {
+            this.sourceVM = getCurrentVM();
             this.languageInfo = null;
         }
         this.frameDescriptor = frameDescriptor == null ? new FrameDescriptor() : frameDescriptor;
         this.sourceSection = null;
+    }
+
+    private static Object getCurrentVM() {
+        EngineSupport engine = Node.ACCESSOR.engineSupport();
+        if (engine != null) {
+            return engine.getCurrentVM();
+        } else {
+            return null;
+        }
     }
 
     /**

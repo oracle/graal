@@ -65,7 +65,7 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 @TypeSystemReference(SLTypes.class)
 public abstract class SLDispatchNode extends Node {
 
-    protected static final int INLINE_CACHE_SIZE = 2;
+    public static final int INLINE_CACHE_SIZE = 2;
 
     public abstract Object executeDispatch(Object function, Object[] arguments);
 

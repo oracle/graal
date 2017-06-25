@@ -24,6 +24,8 @@
  */
 package org.graalvm.options;
 
+import java.util.Objects;
+
 /**
  * Represents meta-data for a single option.
  *
@@ -92,11 +94,52 @@ public final class OptionDescriptor {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * @since 1.0
      */
     @Override
     public String toString() {
         return "OptionDescriptor [key=" + key + ", help=" + help + ", kind=" + kind + ", deprecated=" + deprecated + "]";
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 1.0
+     */
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + (deprecated ? 1231 : 1237);
+        result = prime * result + ((help == null) ? 0 : help.hashCode());
+        result = prime * result + ((key == null) ? 0 : key.hashCode());
+        result = prime * result + ((kind == null) ? 0 : kind.hashCode());
+        result = prime * result + ((name == null) ? 0 : name.hashCode());
+        return result;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 1.0
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        } else if (obj == null) {
+            return false;
+        } else if (getClass() != obj.getClass()) {
+            return false;
+        }
+        OptionDescriptor other = (OptionDescriptor) obj;
+        return Objects.equals(name, other.name) &&
+                        Objects.equals(deprecated, other.deprecated) &&
+                        Objects.equals(help, other.help) &&
+                        Objects.equals(key, other.key) &&
+                        Objects.equals(kind, other.kind);
     }
 
     /**

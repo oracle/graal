@@ -76,6 +76,8 @@ public abstract class Accessor {
         public abstract void setLanguageSpi(LanguageInfo languageInfo, TruffleLanguage<?> spi);
 
         public abstract LanguageInfo createLanguage(Object vmObject, String id, String name, String version, Set<String> mimeTypes);
+
+        public abstract Object getSourceVM(RootNode rootNode);
     }
 
     public abstract static class DumpSupport {
@@ -164,6 +166,10 @@ public abstract class Accessor {
 
         public abstract Object toGuestValue(Object obj, Object languageContext);
 
+        public abstract Object getVMFromLanguageObject(Object engineObject);
+
+        public abstract OptionValues getCompilerOptionValues(RootNode rootNode);
+
     }
 
     public abstract static class LanguageSupport {
@@ -189,7 +195,7 @@ public abstract class Accessor {
 
         public abstract LanguageInfo getLanguageInfo(TruffleLanguage<?> language);
 
-        public abstract LanguageInfo getLegacyLanguageInfo(@SuppressWarnings("rawtypes") Class<? extends TruffleLanguage> languageClass);
+        public abstract LanguageInfo getLegacyLanguageInfo(Object vm, @SuppressWarnings("rawtypes") Class<? extends TruffleLanguage> languageClass);
 
         public abstract CallTarget parse(Env env, Source code, Node context, String... argumentNames);
 
@@ -482,7 +488,7 @@ public abstract class Accessor {
         if (SUPPORT == null) {
             return OptionDescriptors.EMPTY;
         }
-        return SUPPORT.getCompilerOptions();
+        return SUPPORT.getCompilerOptionDescriptors();
     }
 
     protected boolean isGuestCallStackElement(StackTraceElement element) {

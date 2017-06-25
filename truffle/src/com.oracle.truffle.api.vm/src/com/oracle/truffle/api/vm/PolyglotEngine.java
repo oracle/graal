@@ -50,6 +50,8 @@ import java.util.concurrent.Executor;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -1519,6 +1521,17 @@ public class PolyglotEngine {
         @Override
         public Env getEnvForLanguage(Object vmObject, String mimeType) {
             return ((Language) vmObject).engine().findLanguage(mimeType, true).getEnv(true);
+        }
+
+        @Override
+        public OptionValues getCompilerOptionValues(RootNode rootNode) {
+            // not supported for PolyglotEngine
+            return null;
+        }
+
+        @Override
+        public Object getVMFromLanguageObject(Object engineObject) {
+            return ((LanguageShared) engineObject).runtime;
         }
 
         @Override
