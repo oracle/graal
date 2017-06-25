@@ -115,8 +115,14 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
             this.guestObject = languageContext.context.getHostContext().nullValue;
         }
 
-        if (!getGuestObject().isNull() && !isInternalError()) {
-            this.message = getGuestObject().toString();
+        if (!isInternalError() && guestObject != languageContext.context.getHostContext().nullValue) {
+            String msg;
+            try {
+                msg = getGuestObject().toString();
+            } catch (PolyglotException e) {
+                msg = exception.getMessage();
+            }
+            this.message = msg;
         } else if (isHostException()) {
             this.message = asHostException().getMessage();
         } else {
