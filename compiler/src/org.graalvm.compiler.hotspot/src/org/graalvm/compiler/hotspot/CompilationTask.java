@@ -48,7 +48,7 @@ import org.graalvm.compiler.debug.TimeSource;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.printer.GraalDebugConfigCustomizer;
+import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.BailoutException;
@@ -282,7 +282,7 @@ public class CompilationTask {
 
     public HotSpotCompilationRequestResult runCompilation() {
         SnippetReflectionProvider snippetReflection = compiler.getGraalRuntime().getHostProviders().getSnippetReflection();
-        try (DebugContext debug = DebugContext.create(options, new GraalDebugConfigCustomizer(snippetReflection))) {
+        try (DebugContext debug = DebugContext.create(options, new GraalDebugHandlersFactory(snippetReflection))) {
             return runCompilation(debug);
         }
     }

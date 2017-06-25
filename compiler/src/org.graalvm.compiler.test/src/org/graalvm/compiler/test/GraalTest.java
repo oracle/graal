@@ -36,7 +36,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.compiler.debug.DebugConfigCustomizer;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpHandler;
 import org.graalvm.compiler.options.OptionValues;
@@ -380,9 +380,9 @@ public class GraalTest {
     }
 
     /**
-     * Gets the {@link DebugConfigCustomizer}s available for a {@link DebugContext}.
+     * Gets the {@link DebugHandlersFactory}s available for a {@link DebugContext}.
      */
-    protected Collection<DebugConfigCustomizer> getDebugCustomizers() {
+    protected Collection<DebugHandlersFactory> getDebugHandlersFactories() {
         return Collections.emptyList();
     }
 
@@ -402,7 +402,7 @@ public class GraalTest {
                 return debug;
             }
         }
-        DebugContext debug = DebugContext.create(options, NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, DEFAULT_LOG_STREAM, getDebugCustomizers());
+        DebugContext debug = DebugContext.create(options, NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, DEFAULT_LOG_STREAM, getDebugHandlersFactories());
         cached.add(debug);
         return debug;
     }

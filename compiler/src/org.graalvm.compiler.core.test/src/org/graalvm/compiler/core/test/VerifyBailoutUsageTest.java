@@ -31,7 +31,7 @@ import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.debug.DebugCloseable;
-import org.graalvm.compiler.debug.DebugConfigCustomizer;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.java.GraphBuilderPhase;
@@ -127,7 +127,7 @@ public class VerifyBailoutUsageTest {
         graphBuilderSuite.appendPhase(new GraphBuilderPhase(config));
         HighTierContext context = new HighTierContext(providers, graphBuilderSuite, OptimisticOptimizations.NONE);
         OptionValues options = getInitialOptions();
-        DebugContext debug = DebugContext.create(options, DebugConfigCustomizer.LOADER);
+        DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
         for (Method m : c.getDeclaredMethods()) {
             if (!Modifier.isNative(m.getModifiers()) && !Modifier.isAbstract(m.getModifiers())) {
                 ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);

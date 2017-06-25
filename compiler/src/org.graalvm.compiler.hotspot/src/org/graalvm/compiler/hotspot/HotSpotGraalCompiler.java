@@ -38,7 +38,7 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
-import org.graalvm.compiler.debug.DebugConfigCustomizer;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Activation;
 import org.graalvm.compiler.debug.DebugOptions;
@@ -60,7 +60,7 @@ import org.graalvm.compiler.phases.OptimisticOptimizations.Optimization;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
-import org.graalvm.compiler.printer.GraalDebugConfigCustomizer;
+import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompilationRequestResult;
@@ -81,7 +81,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
     private final HotSpotGraalRuntimeProvider graalRuntime;
     private final CompilationCounters compilationCounters;
     private final BootstrapWatchDog bootstrapWatchDog;
-    private List<DebugConfigCustomizer> customizers;
+    private List<DebugHandlersFactory> factories;
 
     HotSpotGraalCompiler(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalRuntimeProvider graalRuntime, OptionValues options) {
         this.jvmciRuntime = jvmciRuntime;
@@ -91,11 +91,11 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         this.bootstrapWatchDog = graalRuntime.isBootstrapping() && !DebugOptions.BootstrapInitializeOnly.getValue(options) ? BootstrapWatchDog.maybeCreate(graalRuntime) : null;
     }
 
-    public List<DebugConfigCustomizer> getCustomizers() {
-        if (customizers == null) {
-            customizers = Collections.singletonList(new GraalDebugConfigCustomizer(graalRuntime.getHostProviders().getSnippetReflection()));
+    public List<DebugHandlersFactory> getDebugHandlersFactories() {
+        if (factories == null) {
+            factories = Collections.singletonList(new GraalDebugHandlersFactory(graalRuntime.getHostProviders().getSnippetReflection()));
         }
-        return customizers;
+        return factories;
     }
 
     @Override
@@ -137,7 +137,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
             }
             CompilationTask task = new CompilationTask(jvmciRuntime, this, hsRequest, true, installAsDefault, options);
             CompilationRequestResult r = null;
-            try (DebugContext debug = graalRuntime.openDebugContext(options, task.getCompilationIdentifier(), method, getCustomizers());
+            try (DebugContext debug = graalRuntime.openDebugContext(options, task.getCompilationIdentifier(), method, getDebugHandlersFactories());
                             Activation a = debug.activate()) {
                 r = task.runCompilation(debug);
             }

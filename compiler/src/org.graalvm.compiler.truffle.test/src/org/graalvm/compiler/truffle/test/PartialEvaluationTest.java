@@ -31,7 +31,7 @@ import java.util.List;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
-import org.graalvm.compiler.debug.DebugConfigCustomizer;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.nodes.FrameState;
@@ -50,7 +50,7 @@ import org.graalvm.compiler.truffle.TruffleCompiler;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.TruffleInlining;
-import org.graalvm.compiler.truffle.TruffleTreeDebugConfigCustomizer;
+import org.graalvm.compiler.truffle.TruffleTreeDebugHandlersFactory;
 import org.junit.Assert;
 
 import com.oracle.truffle.api.Truffle;
@@ -75,9 +75,9 @@ public class PartialEvaluationTest extends GraalCompilerTest {
     }
 
     @Override
-    protected Collection<DebugConfigCustomizer> getDebugCustomizers() {
-        List<DebugConfigCustomizer> c = new ArrayList<>(super.getDebugCustomizers());
-        c.add(new TruffleTreeDebugConfigCustomizer());
+    protected Collection<DebugHandlersFactory> getDebugHandlersFactories() {
+        List<DebugHandlersFactory> c = new ArrayList<>(super.getDebugHandlersFactories());
+        c.add(new TruffleTreeDebugHandlersFactory());
         return c;
     }
 

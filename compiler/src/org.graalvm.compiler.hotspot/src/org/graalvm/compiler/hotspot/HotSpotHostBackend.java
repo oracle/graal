@@ -30,7 +30,7 @@ import java.util.Collections;
 
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.debug.DebugConfigCustomizer;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotLoweringProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
@@ -39,7 +39,7 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.framemap.ReferenceMapBuilder;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.printer.GraalDebugConfigCustomizer;
+import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.common.InitTimer;
@@ -81,8 +81,8 @@ public abstract class HotSpotHostBackend extends HotSpotBackend {
             foreignCalls.initialize(providers, options);
         }
         try (InitTimer st = timer("lowerer.initialize")) {
-            Iterable<DebugConfigCustomizer> customizers = Collections.singletonList(new GraalDebugConfigCustomizer(providers.getSnippetReflection()));
-            lowerer.initialize(options, customizers, providers, config);
+            Iterable<DebugHandlersFactory> factories = Collections.singletonList(new GraalDebugHandlersFactory(providers.getSnippetReflection()));
+            lowerer.initialize(options, factories, providers, config);
         }
     }
 

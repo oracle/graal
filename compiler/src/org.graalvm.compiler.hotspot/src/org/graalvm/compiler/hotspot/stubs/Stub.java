@@ -53,7 +53,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.Suites;
-import org.graalvm.compiler.printer.GraalDebugConfigCustomizer;
+import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.util.EconomicSet;
 
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -179,7 +179,7 @@ public abstract class Stub {
     private DebugContext openDebugContext(DebugContext outer) {
         if (DebugStubsAndSnippets.getValue(options)) {
             Description description = new Description(linkage, "Stub_" + nextStubId.incrementAndGet());
-            return DebugContext.create(options, description, outer.getGlobalMetrics(), DEFAULT_LOG_STREAM, singletonList(new GraalDebugConfigCustomizer(providers.getSnippetReflection())));
+            return DebugContext.create(options, description, outer.getGlobalMetrics(), DEFAULT_LOG_STREAM, singletonList(new GraalDebugHandlersFactory(providers.getSnippetReflection())));
         }
         return DebugContext.DISABLED;
     }

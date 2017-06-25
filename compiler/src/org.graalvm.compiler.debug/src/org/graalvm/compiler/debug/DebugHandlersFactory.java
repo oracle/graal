@@ -22,41 +22,29 @@
  */
 package org.graalvm.compiler.debug;
 
-import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
 /**
- * Factory for creating {@link DebugDumpHandler}s and {@link DebugVerifyHandler}s.
+ * Factory for creating {@link DebugHandler}s.
  */
-public interface DebugConfigCustomizer {
-    /**
-     * Adds {@link DebugDumpHandler}s to {@code dumpHandlers}.
-     *
-     * @param options options that may be used to configure any handlers created by this method
-     * @param dumpHandlers the list to which the new handlers should be added
-     */
-    default void addDumpHandlersTo(OptionValues options, Collection<DebugDumpHandler> dumpHandlers) {
-    }
+public interface DebugHandlersFactory {
 
     /**
-     * Adds {@link DebugVerifyHandler}s to {@code verifyHandlers}.
-     *
-     * @param options options that may be used to configure any handlers created by this method
-     * @param verifyHandlers the list to which the new handlers should be added
+     * Creates {@link DebugHandler}s based on {@code options}.
      */
-    default void addVerifyHandlersTo(OptionValues options, Collection<DebugVerifyHandler> verifyHandlers) {
-    }
+    List<DebugHandler> createHandlers(OptionValues options);
 
     /**
-     * Loads {@link DebugConfigCustomizer}s on demand via {@link GraalServices#load(Class)}.
+     * Loads {@link DebugHandlersFactory}s on demand via {@link GraalServices#load(Class)}.
      */
-    Iterable<DebugConfigCustomizer> LOADER = new Iterable<DebugConfigCustomizer>() {
+    Iterable<DebugHandlersFactory> LOADER = new Iterable<DebugHandlersFactory>() {
         @Override
-        public Iterator<DebugConfigCustomizer> iterator() {
-            return GraalServices.load(DebugConfigCustomizer.class).iterator();
+        public Iterator<DebugHandlersFactory> iterator() {
+            return GraalServices.load(DebugHandlersFactory.class).iterator();
         }
     };
 }

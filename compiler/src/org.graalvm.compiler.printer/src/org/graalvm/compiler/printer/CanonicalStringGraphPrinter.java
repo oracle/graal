@@ -26,7 +26,7 @@ import static org.graalvm.compiler.debug.DebugOptions.CanonicalGraphStringsCheck
 import static org.graalvm.compiler.debug.DebugOptions.CanonicalGraphStringsExcludeVirtuals;
 import static org.graalvm.compiler.debug.DebugOptions.CanonicalGraphStringsRemoveIdentities;
 import static org.graalvm.compiler.debug.DebugOptions.PrintCanonicalGraphStringFlavor;
-import static org.graalvm.compiler.printer.GraalDebugConfigCustomizer.sanitizedFileName;
+import static org.graalvm.compiler.printer.GraalDebugHandlersFactory.sanitizedFileName;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -262,9 +262,9 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
         if (graph instanceof StructuredGraph) {
             OptionValues options = graph.getOptions();
             StructuredGraph structuredGraph = (StructuredGraph) graph;
-            Path outDirectory = GraalDebugConfigCustomizer.createDumpFilePath(options, structuredGraph, "graph-strings", true);
+            Path outDirectory = GraalDebugHandlersFactory.createDumpFilePath(options, structuredGraph, "graph-strings", true);
             if (!outDirectory.endsWith("graph-strings")) {
-                GraalDebugConfigCustomizer.createDumpFilePath(options, structuredGraph, "graph-strings", true);
+                GraalDebugHandlersFactory.createDumpFilePath(options, structuredGraph, "graph-strings", true);
             }
 
             String title = String.format("%03d-%s.txt", id, String.format(format, simplifyClassArgs(args)));

@@ -78,7 +78,7 @@ public final class DebugContext implements AutoCloseable {
 
     public static final Description NO_DESCRIPTION = null;
     public static final GlobalMetrics NO_GLOBAL_METRIC_VALUES = null;
-    public static final Iterable<DebugConfigCustomizer> NO_CONFIG_CUSTOMIZERS = Collections.emptyList();
+    public static final Iterable<DebugHandlersFactory> NO_CONFIG_CUSTOMIZERS = Collections.emptyList();
 
     public static final PrintStream DEFAULT_LOG_STREAM = TTY.out;
 
@@ -329,29 +329,28 @@ public final class DebugContext implements AutoCloseable {
     }
 
     /**
-     * Creates a {@link DebugContext} based on a given set of option values and {@code customizer}.
+     * Creates a {@link DebugContext} based on a given set of option values and {@code factory}.
      */
-    public static DebugContext create(OptionValues options, DebugConfigCustomizer customizer) {
-        return new DebugContext(NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, DEFAULT_LOG_STREAM, Immutable.create(options), Collections.singletonList(customizer));
+    public static DebugContext create(OptionValues options, DebugHandlersFactory factory) {
+        return new DebugContext(NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, DEFAULT_LOG_STREAM, Immutable.create(options), Collections.singletonList(factory));
     }
 
     /**
-     * Creates a {@link DebugContext} based on a given set of option values an object providing
-     * {@code customizer}s via an iterator. The {@link DebugConfigCustomizer#LOADER} can be used for
-     * the latter.
+     * Creates a {@link DebugContext} based on a given set of option values and {@code factories}.
+     * The {@link DebugHandlersFactory#LOADER} can be used for the latter.
      */
-    public static DebugContext create(OptionValues options, Iterable<DebugConfigCustomizer> customizers) {
-        return new DebugContext(NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, DEFAULT_LOG_STREAM, Immutable.create(options), customizers);
+    public static DebugContext create(OptionValues options, Iterable<DebugHandlersFactory> factories) {
+        return new DebugContext(NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, DEFAULT_LOG_STREAM, Immutable.create(options), factories);
     }
 
     /**
      * Creates a {@link DebugContext}.
      */
-    public static DebugContext create(OptionValues options, Description description, GlobalMetrics globalMetrics, PrintStream logStream, Iterable<DebugConfigCustomizer> customizers) {
-        return new DebugContext(description, globalMetrics, logStream, Immutable.create(options), customizers);
+    public static DebugContext create(OptionValues options, Description description, GlobalMetrics globalMetrics, PrintStream logStream, Iterable<DebugHandlersFactory> factories) {
+        return new DebugContext(description, globalMetrics, logStream, Immutable.create(options), factories);
     }
 
-    private DebugContext(Description description, GlobalMetrics globalMetrics, PrintStream logStream, Immutable immutable, Iterable<DebugConfigCustomizer> customizers) {
+    private DebugContext(Description description, GlobalMetrics globalMetrics, PrintStream logStream, Immutable immutable, Iterable<DebugHandlersFactory> factories) {
         this.immutable = immutable;
         this.description = description;
         this.globalMetrics = globalMetrics;
@@ -359,9 +358,15 @@ public final class DebugContext implements AutoCloseable {
             OptionValues options = immutable.options;
             List<DebugDumpHandler> dumpHandlers = new ArrayList<>();
             List<DebugVerifyHandler> verifyHandlers = new ArrayList<>();
-            for (DebugConfigCustomizer customizer : customizers) {
-                customizer.addDumpHandlersTo(options, dumpHandlers);
-                customizer.addVerifyHandlersTo(options, verifyHandlers);
+            for (DebugHandlersFactory factory : factories) {
+                for (DebugHandler handler : factory.createHandlers(options)) {
+                    if (handler instanceof DebugDumpHandler) {
+                        dumpHandlers.add((DebugDumpHandler) handler);
+                    } else {
+                        assert handler instanceof DebugVerifyHandler;
+                        verifyHandlers.add((DebugVerifyHandler) handler);
+                    }
+                }
             }
             currentConfig = new DebugConfigImpl(
                             options,
@@ -1057,8 +1062,12 @@ public final class DebugContext implements AutoCloseable {
         } else {
             OptionValues options = getOptions();
             dumpHandlers = new ArrayList<>();
-            for (DebugConfigCustomizer customizer : DebugConfigCustomizer.LOADER) {
-                customizer.addDumpHandlersTo(options, dumpHandlers);
+            for (DebugHandlersFactory factory : DebugHandlersFactory.LOADER) {
+                for (DebugHandler handler : factory.createHandlers(options)) {
+                    if (handler instanceof DebugDumpHandler) {
+                        dumpHandlers.add((DebugDumpHandler) handler);
+                    }
+                }
             }
             closeAfterDump = true;
         }

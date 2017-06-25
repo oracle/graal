@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,20 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle;
+package org.graalvm.compiler.debug;
 
-import java.util.Collection;
+/**
+ * Service that does something of interest to a given object in an enabled
+ * {@linkplain DebugContext.Scope debug scope}.
+ */
+public interface DebugHandler {
 
-import org.graalvm.compiler.debug.DebugConfigCustomizer;
-import org.graalvm.compiler.debug.DebugDumpHandler;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.serviceprovider.ServiceProvider;
-
-@ServiceProvider(DebugConfigCustomizer.class)
-public class TruffleTreeDebugConfigCustomizer implements DebugConfigCustomizer {
-
-    @Override
-    public void addDumpHandlersTo(OptionValues options, Collection<DebugDumpHandler> dumpHandlers) {
-        dumpHandlers.add(new TruffleTreeDumpHandler(options));
-    }
+    void apply(DebugContext debug, Object object, String format, Object... arguments);
 }

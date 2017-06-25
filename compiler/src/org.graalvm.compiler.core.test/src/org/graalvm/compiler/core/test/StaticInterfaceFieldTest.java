@@ -28,7 +28,7 @@ import java.lang.reflect.Method;
 
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.debug.DebugCloseable;
-import org.graalvm.compiler.debug.DebugConfigCustomizer;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -91,7 +91,7 @@ public class StaticInterfaceFieldTest extends GraalTest {
         final Method m = getMethod(clazz, methodName);
         ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
         OptionValues options = getInitialOptions();
-        DebugContext debug = DebugContext.create(options, DebugConfigCustomizer.LOADER);
+        DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
         StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(method).build();
         try (DebugCloseable s = debug.disableIntercept(); DebugContext.Scope ds = debug.scope("GraphBuilding", graph, method)) {
             graphBuilderSuite.apply(graph, context);

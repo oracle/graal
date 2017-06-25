@@ -43,7 +43,7 @@ import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.debug.DebugConfigCustomizer;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
@@ -412,8 +412,8 @@ public class ArrayCopySnippets implements Snippets {
 
     public static class Templates extends SnippetTemplate.AbstractTemplates {
 
-        public Templates(OptionValues options, Iterable<DebugConfigCustomizer> customizers, SnippetCounter.Group.Factory factory, HotSpotProviders providers, TargetDescription target) {
-            super(options, customizers, providers, providers.getSnippetReflection(), target);
+        public Templates(OptionValues options, Iterable<DebugHandlersFactory> factories, SnippetCounter.Group.Factory factory, HotSpotProviders providers, TargetDescription target) {
+            super(options, factories, providers, providers.getSnippetReflection(), target);
             this.counters = new Counters(factory);
         }
 

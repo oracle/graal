@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,17 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.meta;
+package org.graalvm.compiler.truffle;
 
+import java.util.Collections;
+import java.util.List;
+
+import org.graalvm.compiler.debug.DebugHandler;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
-import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
-import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
-/**
- * HotSpot implementation of {@link LoweringProvider}.
- */
-public interface HotSpotLoweringProvider extends LoweringProvider {
+@ServiceProvider(DebugHandlersFactory.class)
+public class TruffleTreeDebugHandlersFactory implements DebugHandlersFactory {
 
-    void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config);
+    @Override
+    public List<DebugHandler> createHandlers(OptionValues options) {
+        return Collections.singletonList(new TruffleTreeDumpHandler(options));
+    }
 }

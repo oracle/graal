@@ -24,9 +24,14 @@ package org.graalvm.compiler.debug;
 
 import java.io.Closeable;
 
-public interface DebugDumpHandler extends Closeable {
+public interface DebugDumpHandler extends Closeable, DebugHandler {
 
     void dump(DebugContext debug, Object object, String format, Object... arguments);
+
+    @Override
+    default void apply(DebugContext debug, Object object, String format, Object... arguments) {
+        dump(debug, object, format, arguments);
+    }
 
     /**
      * Flushes and releases resources managed by this dump handler. A subsequent call to

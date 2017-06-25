@@ -32,7 +32,7 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.target.Backend;
-import org.graalvm.compiler.debug.DebugConfigCustomizer;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
@@ -86,7 +86,7 @@ public class InvokeGraal {
         /* Create a unique compilation identifier, visible in IGV. */
         CompilationIdentifier compilationId = backend.getCompilationIdentifier(method);
         OptionValues options = getInitialOptions();
-        DebugContext debug = DebugContext.create(options, DebugConfigCustomizer.LOADER);
+        DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
         try (DebugContext.Scope s = debug.scope("compileAndInstallMethod", new DebugDumpScope(String.valueOf(compilationId), true))) {
 
             /*

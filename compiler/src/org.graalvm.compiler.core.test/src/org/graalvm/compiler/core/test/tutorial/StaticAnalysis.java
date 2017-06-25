@@ -32,7 +32,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.graalvm.compiler.debug.DebugConfigCustomizer;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -242,7 +242,7 @@ public class StaticAnalysis {
                  */
 
                 OptionValues options = getInitialOptions();
-                DebugContext debug = DebugContext.create(options, DebugConfigCustomizer.LOADER);
+                DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
                 StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(method).build();
                 /*
                  * Support for graph dumping, IGV uses this information to show the method name of a

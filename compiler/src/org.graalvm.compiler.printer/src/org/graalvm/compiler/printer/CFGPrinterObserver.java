@@ -23,7 +23,7 @@
 package org.graalvm.compiler.printer;
 
 import static org.graalvm.compiler.debug.DebugOptions.PrintCFG;
-import static org.graalvm.compiler.printer.GraalDebugConfigCustomizer.createDumpFilePath;
+import static org.graalvm.compiler.printer.GraalDebugHandlersFactory.createDumpFilePath;
 
 import java.io.BufferedOutputStream;
 import java.io.File;

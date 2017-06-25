@@ -47,7 +47,7 @@ import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.debug.DebugCloseable;
-import org.graalvm.compiler.debug.DebugConfigCustomizer;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.GraalError;
@@ -97,7 +97,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     public final SnippetReflectionProvider snippetReflection;
     public final TargetDescription target;
     private GraphBuilderConfiguration.Plugins graphBuilderPlugins;
-    private final DebugConfigCustomizer debugConfigCustomizer;
+    private final DebugHandlersFactory debugHandlersFactory;
 
     @Override
     public OptionValues getOptions() {
@@ -186,7 +186,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     // it is stable across VM executions (in support of replay compilation).
     private final EconomicMap<String, SnippetTemplateCache> snippetTemplateCache;
 
-    public ReplacementsImpl(OptionValues options, DebugConfigCustomizer debugConfigCustomizer, Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider,
+    public ReplacementsImpl(OptionValues options, DebugHandlersFactory debugHandlersFactory, Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider,
                     TargetDescription target) {
         this.options = options;
         this.providers = providers.copyWith(this);
@@ -195,7 +195,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         this.graphs = new ConcurrentHashMap<>();
         this.snippetTemplateCache = EconomicMap.create(Equivalence.DEFAULT);
         this.defaultBytecodeProvider = bytecodeProvider;
-        this.debugConfigCustomizer = debugConfigCustomizer;
+        this.debugHandlersFactory = debugHandlersFactory;
 
     }
 
@@ -211,8 +211,8 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     protected DebugContext openDebugContext(String idPrefix, ResolvedJavaMethod method) {
         DebugContext outer = DebugContext.forCurrentThread();
         Description description = new Description(method, idPrefix + nextDebugContextId.incrementAndGet());
-        List<DebugConfigCustomizer> customizers = debugConfigCustomizer == null ? Collections.emptyList() : Collections.singletonList(debugConfigCustomizer);
-        return DebugContext.create(options, description, outer.getGlobalMetrics(), DEFAULT_LOG_STREAM, customizers);
+        List<DebugHandlersFactory> factories = debugHandlersFactory == null ? Collections.emptyList() : Collections.singletonList(debugHandlersFactory);
+        return DebugContext.create(options, description, outer.getGlobalMetrics(), DEFAULT_LOG_STREAM, factories);
     }
 
     @Override

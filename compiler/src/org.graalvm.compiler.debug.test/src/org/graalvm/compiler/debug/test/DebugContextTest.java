@@ -29,15 +29,17 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.Collection;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Formatter;
+import java.util.List;
 
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.CounterKey;
-import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpHandler;
+import org.graalvm.compiler.debug.DebugHandler;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.DebugVerifyHandler;
 import org.graalvm.compiler.options.OptionKey;
@@ -54,21 +56,15 @@ public class DebugContextTest {
         final Formatter dumpOutput = new Formatter();
         final Formatter verifyOutput = new Formatter();
         final ByteArrayOutputStream logOutput = new ByteArrayOutputStream();
-        DebugConfigCustomizer handlers = new DebugConfigCustomizer() {
+        DebugHandlersFactory handlers = new DebugHandlersFactory() {
             @Override
-            public void addDumpHandlersTo(OptionValues opts, Collection<DebugDumpHandler> dumpHandlers) {
-                dumpHandlers.add(new DebugDumpHandler() {
+            public List<DebugHandler> createHandlers(OptionValues options) {
+                return Arrays.asList(new DebugDumpHandler() {
                     @Override
                     public void dump(DebugContext ignore, Object object, String format, Object... arguments) {
                         dumpOutput.format("Dumping %s with label \"%s\"%n", object, String.format(format, arguments));
                     }
-                });
-            }
-
-            @Override
-            public void addVerifyHandlersTo(OptionValues opts, Collection<DebugVerifyHandler> verifyHandlers) {
-                verifyHandlers.add(new DebugVerifyHandler() {
-
+                }, new DebugVerifyHandler() {
                     @Override
                     public void verify(DebugContext ignore, Object object, String format, Object... args) {
                         verifyOutput.format("Verifying %s with label \"%s\"%n", object, String.format(format, args));
@@ -175,7 +171,7 @@ public class DebugContextTest {
         map.put(DebugOptions.DumpOnError, true);
         OptionValues options = new OptionValues(map);
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        DebugContext debug = DebugContext.create(options, NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, new PrintStream(baos), DebugConfigCustomizer.LOADER);
+        DebugContext debug = DebugContext.create(options, NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, new PrintStream(baos), DebugHandlersFactory.LOADER);
         Exception e = new Exception();
         String scopeName = "";
         try {
@@ -203,7 +199,7 @@ public class DebugContextTest {
         // Configure with an option that enables scopes
         map.put(DebugOptions.DumpOnError, true);
         OptionValues options = new OptionValues(map);
-        DebugContext debug = DebugContext.create(options, DebugConfigCustomizer.LOADER);
+        DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
         Exception e = new Exception();
         try {
             // Test a disabled sandbox scope
@@ -232,7 +228,7 @@ public class DebugContextTest {
         // Configure with an option that enables counters
         map.put(DebugOptions.Counters, "");
         OptionValues options = new OptionValues(map);
-        DebugContext debug = DebugContext.create(options, DebugConfigCustomizer.LOADER);
+        DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
         CounterKey counter = DebugContext.counter("DebugContextTestCounter");
         AssertionError[] result = {null};
         Thread thread = new Thread() {

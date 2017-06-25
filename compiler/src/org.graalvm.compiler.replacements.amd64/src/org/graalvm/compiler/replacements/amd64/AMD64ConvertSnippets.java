@@ -28,7 +28,7 @@ import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugConfigCustomizer;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -155,8 +155,8 @@ public class AMD64ConvertSnippets implements Snippets {
         private final SnippetInfo d2i;
         private final SnippetInfo d2l;
 
-        public Templates(OptionValues options, Iterable<DebugConfigCustomizer> customizers, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
-            super(options, customizers, providers, snippetReflection, target);
+        public Templates(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
+            super(options, factories, providers, snippetReflection, target);
 
             f2i = snippet(AMD64ConvertSnippets.class, "f2i");
             f2l = snippet(AMD64ConvertSnippets.class, "f2l");

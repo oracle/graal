@@ -45,7 +45,7 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.alloc.ComputeBlockOrder;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.target.Backend;
-import org.graalvm.compiler.debug.DebugConfigCustomizer;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
@@ -118,7 +118,7 @@ public abstract class GraalCompilerState {
         this.options = Graal.getRequiredCapability(OptionValues.class);
         this.backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         this.providers = backend.getProviders();
-        this.debug = DebugContext.create(options, DebugConfigCustomizer.LOADER);
+        this.debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
     }
 
     protected boolean useProfilingInfo() {

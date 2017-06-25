@@ -22,7 +22,7 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import org.graalvm.compiler.debug.DebugConfigCustomizer;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.DefaultTruffleCompiler;
@@ -64,7 +64,7 @@ public class TransferToInterpreterTest {
         target.call(0);
         Assert.assertFalse(target.isValid());
         OptionValues options = TruffleCompilerOptions.getOptions();
-        DebugContext debug = DebugContext.create(options, DebugConfigCustomizer.LOADER);
+        DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
         DefaultTruffleCompiler.create(runtime).compileMethod(debug, target, runtime);
         Assert.assertTrue(target.isValid());
         target.call(0);

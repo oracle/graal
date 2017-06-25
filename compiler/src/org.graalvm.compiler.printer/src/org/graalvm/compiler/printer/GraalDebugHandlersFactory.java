@@ -40,16 +40,17 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.Collection;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpHandler;
+import org.graalvm.compiler.debug.DebugHandler;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DebugOptions;
-import org.graalvm.compiler.debug.DebugVerifyHandler;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
@@ -60,41 +61,39 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.UniquePathUtilities;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
-@ServiceProvider(DebugConfigCustomizer.class)
-public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
+@ServiceProvider(DebugHandlersFactory.class)
+public class GraalDebugHandlersFactory implements DebugHandlersFactory {
 
     private final SnippetReflectionProvider snippetReflection;
 
-    public GraalDebugConfigCustomizer() {
+    public GraalDebugHandlersFactory() {
         this.snippetReflection = null;
     }
 
-    public GraalDebugConfigCustomizer(SnippetReflectionProvider snippetReflection) {
+    public GraalDebugHandlersFactory(SnippetReflectionProvider snippetReflection) {
         this.snippetReflection = snippetReflection;
     }
 
     @Override
-    public void addDumpHandlersTo(OptionValues options, Collection<DebugDumpHandler> dumpHandlers) {
+    public List<DebugHandler> createHandlers(OptionValues options) {
+        List<DebugHandler> handlers = new ArrayList<>();
         if (DebugOptions.PrintGraphFile.getValue(options)) {
-            dumpHandlers.add(new GraphPrinterDumpHandler((graph) -> createFilePrinter(graph, options, snippetReflection)));
+            handlers.add(new GraphPrinterDumpHandler((graph) -> createFilePrinter(graph, options, snippetReflection)));
         } else {
-            dumpHandlers.add(new GraphPrinterDumpHandler((graph) -> createNetworkPrinter(graph, options, snippetReflection)));
+            handlers.add(new GraphPrinterDumpHandler((graph) -> createNetworkPrinter(graph, options, snippetReflection)));
         }
         if (DebugOptions.PrintCanonicalGraphStrings.getValue(options)) {
-            dumpHandlers.add(new GraphPrinterDumpHandler((graph) -> createStringPrinter(snippetReflection)));
+            handlers.add(new GraphPrinterDumpHandler((graph) -> createStringPrinter(snippetReflection)));
         }
-        dumpHandlers.add(new NodeDumper());
+        handlers.add(new NodeDumper());
         if (DebugOptions.PrintCFG.getValue(options) || DebugOptions.PrintBackendCFG.getValue(options)) {
             if (DebugOptions.PrintBinaryGraphs.getValue(options) && DebugOptions.PrintCFG.getValue(options)) {
                 TTY.out.println("Complete C1Visualizer dumping slows down PrintBinaryGraphs: use -Dgraal.PrintCFG=false to disable it");
             }
-            dumpHandlers.add(new CFGPrinterObserver());
+            handlers.add(new CFGPrinterObserver());
         }
-    }
-
-    @Override
-    public void addVerifyHandlersTo(OptionValues options, Collection<DebugVerifyHandler> verifyHandlers) {
-        verifyHandlers.add(new NoDeadCodeVerifyHandler());
+        handlers.add(new NoDeadCodeVerifyHandler());
+        return handlers;
     }
 
     private static class NodeDumper implements DebugDumpHandler {

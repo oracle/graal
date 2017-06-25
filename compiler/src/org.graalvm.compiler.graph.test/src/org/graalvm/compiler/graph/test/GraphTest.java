@@ -23,7 +23,7 @@
 package org.graalvm.compiler.graph.test;
 
 import org.graalvm.compiler.api.test.Graal;
-import org.graalvm.compiler.debug.DebugConfigCustomizer;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.OptionValues;
 import org.junit.After;
@@ -44,7 +44,7 @@ public abstract class GraphTest {
             }
             throw new AssertionError("At most one " + DebugContext.class.getName() + " object should be created per test");
         }
-        DebugContext debug = DebugContext.create(options, DebugConfigCustomizer.LOADER);
+        DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
         cachedDebug.set(debug);
         return debug;
     }

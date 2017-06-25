@@ -38,7 +38,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugRetryableTask;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.printer.GraalDebugConfigCustomizer;
+import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 
 import jdk.vm.ci.code.BailoutException;
 
@@ -77,7 +77,7 @@ public abstract class HotSpotRetryableCompilation<T> extends DebugRetryableTask<
         if (outputDirectory == null) {
             return null;
         }
-        String dumpName = GraalDebugConfigCustomizer.sanitizedFileName(toString());
+        String dumpName = GraalDebugHandlersFactory.sanitizedFileName(toString());
         File dumpPath = new File(outputDirectory, dumpName);
         dumpPath.mkdirs();
         if (!dumpPath.exists()) {
@@ -93,7 +93,7 @@ public abstract class HotSpotRetryableCompilation<T> extends DebugRetryableTask<
                         MethodFilter, null,
                         DumpPath, dumpPath.getPath());
         SnippetReflectionProvider snippetReflection = runtime.getHostProviders().getSnippetReflection();
-        return DebugContext.create(retryOptions, new GraalDebugConfigCustomizer(snippetReflection));
+        return DebugContext.create(retryOptions, new GraalDebugHandlersFactory(snippetReflection));
     }
 
     private String retryLogPath;

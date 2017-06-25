@@ -59,7 +59,7 @@ import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
-import org.graalvm.compiler.debug.DebugConfigCustomizer;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.GraalError;
@@ -582,16 +582,16 @@ public class SnippetTemplate {
         protected final OptionValues options;
         protected final Providers providers;
         protected final SnippetReflectionProvider snippetReflection;
-        protected final Iterable<DebugConfigCustomizer> customizers;
+        protected final Iterable<DebugHandlersFactory> factories;
         protected final TargetDescription target;
         private final Map<CacheKey, SnippetTemplate> templates;
 
-        protected AbstractTemplates(OptionValues options, Iterable<DebugConfigCustomizer> customizers, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
+        protected AbstractTemplates(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
             this.options = options;
             this.providers = providers;
             this.snippetReflection = snippetReflection;
             this.target = target;
-            this.customizers = customizers;
+            this.factories = factories;
             if (Options.UseSnippetTemplateCache.getValue(options)) {
                 int size = Options.MaxTemplatesPerSnippet.getValue(options);
                 this.templates = Collections.synchronizedMap(new LRUCache<>(size, size));
@@ -635,7 +635,7 @@ public class SnippetTemplate {
         private DebugContext openDebugContext(DebugContext outer, Arguments args) {
             if (DebugStubsAndSnippets.getValue(options)) {
                 Description description = new Description(args.cacheKey.method, "SnippetTemplate_" + nextSnippetTemplateId.incrementAndGet());
-                return DebugContext.create(options, description, outer.getGlobalMetrics(), DEFAULT_LOG_STREAM, customizers);
+                return DebugContext.create(options, description, outer.getGlobalMetrics(), DEFAULT_LOG_STREAM, factories);
             }
             return DebugContext.DISABLED;
         }
