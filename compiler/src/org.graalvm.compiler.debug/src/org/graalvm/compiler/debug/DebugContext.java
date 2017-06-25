@@ -24,19 +24,19 @@ package org.graalvm.compiler.debug;
 
 import static java.util.FormattableFlags.LEFT_JUSTIFY;
 import static java.util.FormattableFlags.UPPERCASE;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Count;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Counters;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Dump;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.DumpOnError;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.DumpOnPhaseChange;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.ListMetrics;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Log;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.MemUseTrackers;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.MethodFilter;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Time;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Timers;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.TrackMemUse;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Verify;
+import static org.graalvm.compiler.debug.DebugOptions.Count;
+import static org.graalvm.compiler.debug.DebugOptions.Counters;
+import static org.graalvm.compiler.debug.DebugOptions.Dump;
+import static org.graalvm.compiler.debug.DebugOptions.DumpOnError;
+import static org.graalvm.compiler.debug.DebugOptions.DumpOnPhaseChange;
+import static org.graalvm.compiler.debug.DebugOptions.ListMetrics;
+import static org.graalvm.compiler.debug.DebugOptions.Log;
+import static org.graalvm.compiler.debug.DebugOptions.MemUseTrackers;
+import static org.graalvm.compiler.debug.DebugOptions.MethodFilter;
+import static org.graalvm.compiler.debug.DebugOptions.Time;
+import static org.graalvm.compiler.debug.DebugOptions.Timers;
+import static org.graalvm.compiler.debug.DebugOptions.TrackMemUse;
+import static org.graalvm.compiler.debug.DebugOptions.Verify;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -56,7 +56,6 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import org.graalvm.compiler.debug.GraalDebugConfig.Options;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.util.EconomicMap;
@@ -208,9 +207,9 @@ public final class DebugContext implements AutoCloseable {
             this.scopesEnabled = DumpOnError.getValue(options) ||
                             Dump.getValue(options) != null ||
                             Log.getValue(options) != null ||
-                            isNotEmpty(Options.Count, options) ||
-                            isNotEmpty(Options.Time, options) ||
-                            isNotEmpty(Options.TrackMemUse, options) ||
+                            isNotEmpty(DebugOptions.Count, options) ||
+                            isNotEmpty(DebugOptions.Time, options) ||
+                            isNotEmpty(DebugOptions.TrackMemUse, options) ||
                             DumpOnPhaseChange.getValue(options) != null;
             this.listMetrics = ListMetrics.getValue(options);
         }
@@ -748,7 +747,7 @@ public final class DebugContext implements AutoCloseable {
             for (Object obj : context()) {
                 context.add(obj);
             }
-            GraalDebugConfig config = new GraalDebugConfig(new OptionValues(currentConfig.getOptions(), Options.Log, ":1000"));
+            GraalDebugConfig config = new GraalDebugConfig(new OptionValues(currentConfig.getOptions(), DebugOptions.Log, ":1000"));
             return sandbox("forceLog", config, context.toArray());
         }
         return null;
@@ -1885,13 +1884,13 @@ public final class DebugContext implements AutoCloseable {
 
     /**
      * Prints metric values in this object to the file (if any) specified by
-     * {@link Options#MetricsFile}.
+     * {@link DebugOptions#MetricsFile}.
      */
     public void printMetrics(Description desc) {
         if (metricValues == null) {
             return;
         }
-        String metricsFile = Options.MetricsFile.getValue(getOptions());
+        String metricsFile = DebugOptions.MetricsFile.getValue(getOptions());
         if (metricsFile != null) {
             // Use identity to distinguish methods that have been redefined
             // or loaded by different class loaders.
@@ -1943,7 +1942,7 @@ public final class DebugContext implements AutoCloseable {
     }
 
     /**
-     * Lock to serialize writes to {@link Options#MetricsFile}.
+     * Lock to serialize writes to {@link DebugOptions#MetricsFile}.
      */
     private static final Object PRINT_METRICS_LOCK = new Object();
 

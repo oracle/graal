@@ -36,12 +36,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 
-import org.graalvm.compiler.debug.DebugConfig;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpHandler;
 import org.graalvm.compiler.debug.DebugDumpScope;
-import org.graalvm.compiler.debug.GraalDebugConfig;
-import org.graalvm.compiler.debug.GraalDebugConfig.Options;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Graph;
@@ -116,7 +114,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     @SuppressWarnings("try")
     public void dump(DebugContext debug, Object object, final String format, Object... arguments) {
         OptionValues options = debug.getOptions();
-        if (object instanceof Graph && Options.PrintGraph.getValue(options)) {
+        if (object instanceof Graph && DebugOptions.PrintGraph.getValue(options)) {
             final Graph graph = (Graph) object;
             ensureInitialized(graph);
             if (printer == null) {
@@ -130,7 +128,6 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                 Map<Object, Object> properties = new HashMap<>();
                 properties.put("graph", graph.toString());
                 addCompilationId(properties, graph);
-                addCFGFileName(debug, properties);
                 if (inlineContext.equals(previousInlineContext)) {
                     /*
                      * two different graphs have the same inline context, so make sure they appear
@@ -178,7 +175,6 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                         properties.put("node-cost-exception", t.getMessage());
                     }
                 }
-                addCFGFileName(debug, properties);
                 printer.print(debug, graph, properties, nextDumpId(), format, arguments);
             } catch (IOException e) {
                 handleException(debug, e);
@@ -189,7 +185,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     }
 
     void handleException(DebugContext debug, IOException e) {
-        if (debug != null && GraalDebugConfig.Options.DumpingErrorsAreFatal.getValue(debug.getOptions())) {
+        if (debug != null && DebugOptions.DumpingErrorsAreFatal.getValue(debug.getOptions())) {
             throw new GraalError(e);
         }
         if (e instanceof ClosedByInterruptException) {
@@ -212,22 +208,6 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     private static void addCompilationId(Map<Object, Object> properties, final Graph graph) {
         if (graph instanceof StructuredGraph) {
             properties.put("compilationId", ((StructuredGraph) graph).compilationId());
-        }
-    }
-
-    private static void addCFGFileName(DebugContext debug, Map<Object, Object> properties) {
-        DebugConfig config = debug.getConfig();
-        if (config != null) {
-            for (DebugDumpHandler dumpHandler : config.dumpHandlers()) {
-                if (dumpHandler instanceof CFGPrinterObserver) {
-                    CFGPrinterObserver cfg = (CFGPrinterObserver) dumpHandler;
-                    String path = cfg.getDumpPath();
-                    if (path != null) {
-                        properties.put("PrintCFGFileName", path);
-                    }
-                    return;
-                }
-            }
         }
     }
 

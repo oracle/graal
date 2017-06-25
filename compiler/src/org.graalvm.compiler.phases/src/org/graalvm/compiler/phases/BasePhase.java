@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalDebugConfig;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.MemUseTrackerKey;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.Graph;
@@ -242,7 +242,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     @SuppressWarnings("try")
     private boolean shouldDump(StructuredGraph graph, C context) {
         DebugContext debug = graph.getDebug();
-        String phaseChange = GraalDebugConfig.Options.DumpOnPhaseChange.getValue(graph.getOptions());
+        String phaseChange = DebugOptions.DumpOnPhaseChange.getValue(graph.getOptions());
         if (phaseChange != null && getClass().getSimpleName().contains(phaseChange)) {
             StructuredGraph graphCopy = (StructuredGraph) graph.copy(graph.getDebug());
             GraphChangeListener listener = new GraphChangeListener(graphCopy);

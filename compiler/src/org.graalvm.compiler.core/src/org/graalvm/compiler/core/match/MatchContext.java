@@ -22,7 +22,7 @@
  */
 package org.graalvm.compiler.core.match;
 
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.LogVerbose;
+import static org.graalvm.compiler.debug.DebugOptions.LogVerbose;
 
 import java.util.ArrayList;
 import java.util.Arrays;

@@ -27,7 +27,7 @@ import static org.graalvm.compiler.core.GraalCompiler.emitBackEnd;
 import static org.graalvm.compiler.core.GraalCompiler.emitFrontEnd;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.debug.DebugContext.DEFAULT_LOG_STREAM;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.DebugStubsAndSnippets;
+import static org.graalvm.compiler.debug.DebugOptions.DebugStubsAndSnippets;
 import static org.graalvm.compiler.hotspot.HotSpotHostBackend.UNCOMMON_TRAP_HANDLER;
 import static org.graalvm.util.CollectionsUtil.allMatch;
 

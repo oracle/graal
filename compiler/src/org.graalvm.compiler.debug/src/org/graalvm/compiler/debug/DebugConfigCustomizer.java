@@ -29,8 +29,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
 /**
- * Service for specifying {@link DebugDumpHandler}s and {@link DebugVerifyHandler}s when
- * constructing a {@link GraalDebugConfig}.
+ * Factory for creating {@link DebugDumpHandler}s and {@link DebugVerifyHandler}s.
  */
 public interface DebugConfigCustomizer {
     /**
@@ -54,7 +53,7 @@ public interface DebugConfigCustomizer {
     /**
      * Loads {@link DebugConfigCustomizer}s on demand via {@link GraalServices#load(Class)}.
      */
-    static Iterable<DebugConfigCustomizer> LOADER = new Iterable<DebugConfigCustomizer>() {
+    Iterable<DebugConfigCustomizer> LOADER = new Iterable<DebugConfigCustomizer>() {
         @Override
         public Iterator<DebugConfigCustomizer> iterator() {
             return GraalServices.load(DebugConfigCustomizer.class).iterator();

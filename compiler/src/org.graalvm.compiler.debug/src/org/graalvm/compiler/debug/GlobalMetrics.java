@@ -29,7 +29,6 @@ import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.compiler.debug.GraalDebugConfig.Options;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.MapCursor;
@@ -76,14 +75,14 @@ public class GlobalMetrics {
 
     /**
      * Prints the values in the object to the file specified by
-     * {@link Options#AggregatedMetricsFile} if present otherwise to
+     * {@link DebugOptions#AggregatedMetricsFile} if present otherwise to
      * {@link DebugContext#DEFAULT_LOG_STREAM}.
      */
     public void print(OptionValues options) {
         long[] vals = values;
         if (vals != null) {
             EconomicMap<MetricKey, Long> map = asKeyValueMap();
-            String metricsFile = GraalDebugConfig.Options.AggregatedMetricsFile.getValue(options);
+            String metricsFile = DebugOptions.AggregatedMetricsFile.getValue(options);
             boolean csv = metricsFile != null && (metricsFile.endsWith(".csv") || metricsFile.endsWith(".CSV"));
             try (PrintStream p = metricsFile == null ? DebugContext.DEFAULT_LOG_STREAM : new PrintStream(Files.newOutputStream(Paths.get(metricsFile)))) {
                 if (!csv) {
@@ -112,7 +111,7 @@ public class GlobalMetrics {
             }
         }
 
-        if (GraalDebugConfig.Options.ListMetrics.getValue(options)) {
+        if (DebugOptions.ListMetrics.getValue(options)) {
             PrintStream p = System.out;
             p.println("++ Metric Keys ++");
             List<MetricKey> keys = KeyRegistry.getKeys();

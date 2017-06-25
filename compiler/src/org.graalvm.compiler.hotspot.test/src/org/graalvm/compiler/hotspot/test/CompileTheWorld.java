@@ -70,7 +70,7 @@ import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.bytecode.Bytecodes;
 import org.graalvm.compiler.core.CompilerThreadFactory;
 import org.graalvm.compiler.core.test.ReflectionOptionDescriptors;
-import org.graalvm.compiler.debug.GraalDebugConfig;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.debug.TTY;
@@ -217,7 +217,7 @@ public final class CompileTheWorld {
         PrintStackTraceOnException.putIfAbsent(compilationOptionsCopy, true);
 
         // By default only report statistics for the CTW threads themselves
-        GraalDebugConfig.Options.MetricsThreadFilter.putIfAbsent(compilationOptionsCopy, "^CompileTheWorld");
+        DebugOptions.MetricsThreadFilter.putIfAbsent(compilationOptionsCopy, "^CompileTheWorld");
         this.compilationOptions = compilationOptionsCopy;
     }
 

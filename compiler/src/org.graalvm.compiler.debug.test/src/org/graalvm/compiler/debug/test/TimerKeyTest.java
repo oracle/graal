@@ -32,7 +32,7 @@ import java.lang.management.ThreadMXBean;
 
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalDebugConfig;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.Management;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.options.OptionKey;
@@ -76,7 +76,7 @@ public class TimerKeyTest {
     @Test
     public void test2() {
         EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
-        map.put(GraalDebugConfig.Options.Time, "");
+        map.put(DebugOptions.Time, "");
         OptionValues options = new OptionValues(map);
         DebugContext debug = DebugContext.create(options, NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, DEFAULT_LOG_STREAM, NO_CONFIG_CUSTOMIZERS);
 

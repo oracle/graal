@@ -41,7 +41,7 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalDebugConfig.Options;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.graph.CachedGraph;
 import org.graalvm.compiler.graph.Edges;
 import org.graalvm.compiler.graph.Graph;
@@ -186,7 +186,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
     }
 
     private void writeGraph(DebugContext debug, Graph graph, Map<Object, Object> properties) throws IOException {
-        boolean needSchedule = Options.PrintGraphWithSchedule.getValue(graph.getOptions()) || debug.contextLookup(Throwable.class) != null;
+        boolean needSchedule = DebugOptions.PrintGraphWithSchedule.getValue(graph.getOptions()) || debug.contextLookup(Throwable.class) != null;
         ScheduleResult scheduleResult = needSchedule ? GraphPrinter.getScheduleOrNull(graph) : null;
         ControlFlowGraph cfg = scheduleResult == null ? debug.contextLookup(ControlFlowGraph.class) : scheduleResult.getCFG();
         BlockMap<List<Node>> blockToNodes = scheduleResult == null ? null : scheduleResult.getBlockToNodesMap();
@@ -521,7 +521,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         for (Node node : graph.getNodes()) {
             NodeClass<?> nodeClass = node.getNodeClass();
             node.getDebugProperties(props);
-            if (cfg != null && Options.PrintGraphProbabilities.getValue(graph.getOptions()) && node instanceof FixedNode) {
+            if (cfg != null && DebugOptions.PrintGraphProbabilities.getValue(graph.getOptions()) && node instanceof FixedNode) {
                 try {
                     props.put("probability", cfg.blockFor(node).probability());
                 } catch (Throwable t) {

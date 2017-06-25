@@ -38,9 +38,8 @@ import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpHandler;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.DebugVerifyHandler;
-import org.graalvm.compiler.debug.GraalDebugConfig;
-import org.graalvm.compiler.debug.GraalDebugConfig.Options;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.util.EconomicMap;
@@ -108,7 +107,7 @@ public class DebugContextTest {
     public void testDumping() {
         for (int level = DebugContext.BASIC_LEVEL; level <= DebugContext.VERY_DETAILED_LEVEL; level++) {
             OptionValues options = new OptionValues(EconomicMap.create());
-            options = new OptionValues(options, Options.Dump, "Scope" + level + ":" + level);
+            options = new OptionValues(options, DebugOptions.Dump, "Scope" + level + ":" + level);
             DebugContextSetup setup = new DebugContextSetup();
             try (DebugContext debug = setup.openDebugContext(options);
                             DebugContext.Scope s0 = debug.scope("TestDumping")) {
@@ -135,7 +134,7 @@ public class DebugContextTest {
     @Test
     public void testLogging() throws IOException {
         OptionValues options = new OptionValues(EconomicMap.create());
-        options = new OptionValues(options, Options.Log, ":5");
+        options = new OptionValues(options, DebugOptions.Log, ":5");
         DebugContextSetup setup = new DebugContextSetup();
         try (DebugContext debug = setup.openDebugContext(options)) {
             for (int level = DebugContext.BASIC_LEVEL; level <= DebugContext.VERY_DETAILED_LEVEL; level++) {
@@ -173,7 +172,7 @@ public class DebugContextTest {
     public void testEnabledSandbox() {
         EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
         // Configure with an option that enables scopes
-        map.put(GraalDebugConfig.Options.DumpOnError, true);
+        map.put(DebugOptions.DumpOnError, true);
         OptionValues options = new OptionValues(map);
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         DebugContext debug = DebugContext.create(options, NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, new PrintStream(baos), DebugConfigCustomizer.LOADER);
@@ -202,7 +201,7 @@ public class DebugContextTest {
     public void testDisabledSandbox() {
         EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
         // Configure with an option that enables scopes
-        map.put(GraalDebugConfig.Options.DumpOnError, true);
+        map.put(DebugOptions.DumpOnError, true);
         OptionValues options = new OptionValues(map);
         DebugContext debug = DebugContext.create(options, DebugConfigCustomizer.LOADER);
         Exception e = new Exception();
@@ -231,7 +230,7 @@ public class DebugContextTest {
 
         EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
         // Configure with an option that enables counters
-        map.put(GraalDebugConfig.Options.Counters, "");
+        map.put(DebugOptions.Counters, "");
         OptionValues options = new OptionValues(map);
         DebugContext debug = DebugContext.create(options, DebugConfigCustomizer.LOADER);
         CounterKey counter = DebugContext.counter("DebugContextTestCounter");

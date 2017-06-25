@@ -23,7 +23,7 @@
 package org.graalvm.compiler.truffle.hotspot;
 
 import static org.graalvm.compiler.core.GraalCompiler.compileGraph;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.DebugStubsAndSnippets;
+import static org.graalvm.compiler.debug.DebugOptions.DebugStubsAndSnippets;
 import static org.graalvm.compiler.hotspot.meta.HotSpotSuitesProvider.withNodeSourcePosition;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleStackTraceLimit;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleTransferToInterpreter;

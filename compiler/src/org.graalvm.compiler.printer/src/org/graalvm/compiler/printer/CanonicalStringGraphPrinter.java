@@ -22,10 +22,10 @@
  */
 package org.graalvm.compiler.printer;
 
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.CanonicalGraphStringsCheckConstants;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.CanonicalGraphStringsExcludeVirtuals;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.CanonicalGraphStringsRemoveIdentities;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintCanonicalGraphStringFlavor;
+import static org.graalvm.compiler.debug.DebugOptions.CanonicalGraphStringsCheckConstants;
+import static org.graalvm.compiler.debug.DebugOptions.CanonicalGraphStringsExcludeVirtuals;
+import static org.graalvm.compiler.debug.DebugOptions.CanonicalGraphStringsRemoveIdentities;
+import static org.graalvm.compiler.debug.DebugOptions.PrintCanonicalGraphStringFlavor;
 import static org.graalvm.compiler.printer.GraalDebugConfigCustomizer.sanitizedFileName;
 
 import java.io.BufferedWriter;

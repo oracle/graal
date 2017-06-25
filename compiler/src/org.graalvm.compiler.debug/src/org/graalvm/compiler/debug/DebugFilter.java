@@ -26,17 +26,16 @@ import java.util.Arrays;
 import java.util.regex.Pattern;
 
 import org.graalvm.compiler.debug.DebugContext.Scope;
-import org.graalvm.compiler.debug.GraalDebugConfig.Options;
 
 /**
- * Implements the filter specified by the {@link Options#Dump}, {@link Options#Log},
- * {@link Options#Count} and {@link Options#Time} options.
+ * Implements the filter specified by the {@link DebugOptions#Dump}, {@link DebugOptions#Log},
+ * {@link DebugOptions#Count} and {@link DebugOptions#Time} options.
  * <p>
  * These options enable the associated debug facility if their filter matches the
- * {@linkplain Scope#getQualifiedName() name} of the current scope. For the {@link Options#Dump} and
- * {@link Options#Log} options, the log or dump level is set. The {@link Options#Count} and
- * {@link Options#Time} options don't have a level, for them {@code level = 0} means disabled and a
- * {@code level > 0} means enabled.
+ * {@linkplain Scope#getQualifiedName() name} of the current scope. For the
+ * {@link DebugOptions#Dump} and {@link DebugOptions#Log} options, the log or dump level is set. The
+ * {@link DebugOptions#Count} and {@link DebugOptions#Time} options don't have a level, for them
+ * {@code level = 0} means disabled and a {@code level > 0} means enabled.
  * <p>
  * A filter is a list of comma-separated terms of the form {@code <pattern>[:<level>]}. {@code
  * <pattern>} is interpreted as a glob pattern if it contains a "*" or "?" character. Otherwise, it

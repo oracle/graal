@@ -27,7 +27,7 @@ import java.util.List;
 
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalDebugConfig;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.CompiledCode;
@@ -72,7 +72,7 @@ public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {
     @Override
     public void notifyBootstrapFinished() {
         runtime.notifyBootstrapFinished();
-        if (GraalDebugConfig.Options.ClearMetricsAfterBootstrap.getValue(runtime.getOptions())) {
+        if (DebugOptions.ClearMetricsAfterBootstrap.getValue(runtime.getOptions())) {
             runtime.clearMetrics();
         }
     }

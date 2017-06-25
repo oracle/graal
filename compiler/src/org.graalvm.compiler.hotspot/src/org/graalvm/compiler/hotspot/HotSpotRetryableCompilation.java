@@ -23,9 +23,9 @@
 package org.graalvm.compiler.hotspot;
 
 import static org.graalvm.compiler.debug.DebugContext.VERBOSE_LEVEL;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Dump;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.DumpPath;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.MethodFilter;
+import static org.graalvm.compiler.debug.DebugOptions.Dump;
+import static org.graalvm.compiler.debug.DebugOptions.DumpPath;
+import static org.graalvm.compiler.debug.DebugOptions.MethodFilter;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;

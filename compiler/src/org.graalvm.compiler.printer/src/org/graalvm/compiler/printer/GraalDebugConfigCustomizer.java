@@ -22,11 +22,11 @@
  */
 package org.graalvm.compiler.printer;
 
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintBinaryGraphPort;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintBinaryGraphs;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintGraphHost;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintXmlGraphPort;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.ShowDumpFiles;
+import static org.graalvm.compiler.debug.DebugOptions.PrintBinaryGraphPort;
+import static org.graalvm.compiler.debug.DebugOptions.PrintBinaryGraphs;
+import static org.graalvm.compiler.debug.DebugOptions.PrintGraphHost;
+import static org.graalvm.compiler.debug.DebugOptions.PrintXmlGraphPort;
+import static org.graalvm.compiler.debug.DebugOptions.ShowDumpFiles;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -48,9 +48,8 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpHandler;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.DebugVerifyHandler;
-import org.graalvm.compiler.debug.GraalDebugConfig;
-import org.graalvm.compiler.debug.GraalDebugConfig.Options;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
@@ -76,17 +75,17 @@ public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
 
     @Override
     public void addDumpHandlersTo(OptionValues options, Collection<DebugDumpHandler> dumpHandlers) {
-        if (Options.PrintGraphFile.getValue(options)) {
+        if (DebugOptions.PrintGraphFile.getValue(options)) {
             dumpHandlers.add(new GraphPrinterDumpHandler((graph) -> createFilePrinter(graph, options, snippetReflection)));
         } else {
             dumpHandlers.add(new GraphPrinterDumpHandler((graph) -> createNetworkPrinter(graph, options, snippetReflection)));
         }
-        if (Options.PrintCanonicalGraphStrings.getValue(options)) {
+        if (DebugOptions.PrintCanonicalGraphStrings.getValue(options)) {
             dumpHandlers.add(new GraphPrinterDumpHandler((graph) -> createStringPrinter(snippetReflection)));
         }
         dumpHandlers.add(new NodeDumper());
-        if (Options.PrintCFG.getValue(options) || Options.PrintBackendCFG.getValue(options)) {
-            if (Options.PrintBinaryGraphs.getValue(options) && Options.PrintCFG.getValue(options)) {
+        if (DebugOptions.PrintCFG.getValue(options) || DebugOptions.PrintBackendCFG.getValue(options)) {
+            if (DebugOptions.PrintBinaryGraphs.getValue(options) && DebugOptions.PrintCFG.getValue(options)) {
                 TTY.out.println("Complete C1Visualizer dumping slows down PrintBinaryGraphs: use -Dgraal.PrintCFG=false to disable it");
             }
             dumpHandlers.add(new CFGPrinterObserver());
@@ -144,7 +143,7 @@ public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
         int port = PrintBinaryGraphs.getValue(options) ? PrintBinaryGraphPort.getValue(options) : PrintXmlGraphPort.getValue(options);
         try {
             GraphPrinter printer;
-            if (Options.PrintBinaryGraphs.getValue(options)) {
+            if (DebugOptions.PrintBinaryGraphs.getValue(options)) {
                 printer = new BinaryGraphPrinter(SocketChannel.open(new InetSocketAddress(host, port)), snippetReflection);
             } else {
                 printer = new IdealGraphPrinter(new Socket(host, port).getOutputStream(), true, snippetReflection);
@@ -159,7 +158,7 @@ public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
              */
             return null;
         } catch (IOException e) {
-            if (!Options.PrintGraphFile.hasBeenSet(options)) {
+            if (!DebugOptions.PrintGraphFile.hasBeenSet(options)) {
                 return createFilePrinter(graph, options, snippetReflection);
             } else {
                 throw new IOException(String.format("Could not connect to the IGV on %s:%d", host, port), e);
@@ -215,7 +214,7 @@ public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
         }
         String ext = UniquePathUtilities.formatExtension(extension);
         baseName = sanitizedFileName(baseName);
-        Path dumpDir = GraalDebugConfig.getDumpDirectory(options);
+        Path dumpDir = DebugOptions.getDumpDirectory(options);
         Path result = dumpDir.resolve(baseName + ext);
         if (Files.exists(result)) {
             if (isDirectory) {
@@ -236,7 +235,7 @@ public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
         Path path = createDumpFilePath(options, graph, PrintBinaryGraphs.getValue(options) ? "bgv" : "gv.xml", false);
         try {
             GraphPrinter printer;
-            if (Options.PrintBinaryGraphs.getValue(options)) {
+            if (DebugOptions.PrintBinaryGraphs.getValue(options)) {
                 printer = new BinaryGraphPrinter(FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW), snippetReflection);
             } else {
                 printer = new IdealGraphPrinter(Files.newOutputStream(path), true, snippetReflection);

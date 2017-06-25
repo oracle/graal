@@ -25,7 +25,7 @@ package org.graalvm.compiler.replacements;
 import static java.util.FormattableFlags.ALTERNATE;
 import static org.graalvm.compiler.debug.DebugContext.DEFAULT_LOG_STREAM;
 import static org.graalvm.compiler.debug.DebugContext.applyFormattingFlagsAndWidth;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.DebugStubsAndSnippets;
+import static org.graalvm.compiler.debug.DebugOptions.DebugStubsAndSnippets;
 import static org.graalvm.compiler.graph.iterators.NodePredicates.isNotA;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;

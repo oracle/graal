@@ -33,7 +33,7 @@ import java.util.Set;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeDisassembler;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalDebugConfig.Options;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
@@ -121,7 +121,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
             schedule = structuredGraph.getLastSchedule();
             if (schedule == null && tryToSchedule) {
                 OptionValues options = graph.getOptions();
-                if (Options.PrintGraphWithSchedule.getValue(options)) {
+                if (DebugOptions.PrintGraphWithSchedule.getValue(options)) {
                     try {
                         SchedulePhase schedulePhase = new SchedulePhase(options);
                         schedulePhase.apply(structuredGraph);

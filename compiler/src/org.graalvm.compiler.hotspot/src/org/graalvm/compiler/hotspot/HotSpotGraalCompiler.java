@@ -41,7 +41,7 @@ import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.DebugConfigCustomizer;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Activation;
-import org.graalvm.compiler.debug.GraalDebugConfig;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.hotspot.CompilationCounters.Options;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.phases.OnStackReplacementPhase;
@@ -88,7 +88,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         this.graalRuntime = graalRuntime;
         // It is sufficient to have one compilation counter object per Graal compiler object.
         this.compilationCounters = Options.CompilationCountLimit.getValue(options) > 0 ? new CompilationCounters(options) : null;
-        this.bootstrapWatchDog = graalRuntime.isBootstrapping() && !GraalDebugConfig.Options.BootstrapInitializeOnly.getValue(options) ? BootstrapWatchDog.maybeCreate(graalRuntime) : null;
+        this.bootstrapWatchDog = graalRuntime.isBootstrapping() && !DebugOptions.BootstrapInitializeOnly.getValue(options) ? BootstrapWatchDog.maybeCreate(graalRuntime) : null;
     }
 
     public List<DebugConfigCustomizer> getCustomizers() {
@@ -118,8 +118,8 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         OptionValues options = graalRuntime.getOptions(method);
 
         if (graalRuntime.isBootstrapping()) {
-            if (GraalDebugConfig.Options.BootstrapInitializeOnly.getValue(options)) {
-                return HotSpotCompilationRequestResult.failure(String.format("Skip compilation because %s is enabled", GraalDebugConfig.Options.BootstrapInitializeOnly.getName()), true);
+            if (DebugOptions.BootstrapInitializeOnly.getValue(options)) {
+                return HotSpotCompilationRequestResult.failure(String.format("Skip compilation because %s is enabled", DebugOptions.BootstrapInitializeOnly.getName()), true);
             }
             if (bootstrapWatchDog != null) {
                 if (bootstrapWatchDog.hitCriticalCompilationRateOrTimeout()) {

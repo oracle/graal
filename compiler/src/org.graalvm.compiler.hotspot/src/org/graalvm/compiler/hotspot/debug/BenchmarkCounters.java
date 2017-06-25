@@ -38,7 +38,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.debug.CSVUtil;
-import org.graalvm.compiler.debug.GraalDebugConfig;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
@@ -439,7 +439,7 @@ public class BenchmarkCounters {
     private static PrintStream getPrintStream(OptionValues options) {
         if (Options.BenchmarkCountersFile.getValue(options) != null) {
             try {
-                Path path = UniquePathUtilities.getPathGlobal(options, Options.BenchmarkCountersFile, GraalDebugConfig.Options.DumpPath, "csv");
+                Path path = UniquePathUtilities.getPathGlobal(options, Options.BenchmarkCountersFile, DebugOptions.DumpPath, "csv");
                 TTY.println("Writing benchmark counters to '%s'", path);
                 return new PrintStream(path.toFile());
             } catch (IOException e) {
