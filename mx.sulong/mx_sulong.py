@@ -115,7 +115,7 @@ def travis1(args=None):
     """executes a Travis job"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac', '--dependencies', 'SULONG_TEST'])
     with Task('TestBenchmarks', tasks) as t:
         if t: mx_testsuites.runSuite(['shootout'])
     with Task('TestPolglot', tasks) as t:
@@ -126,14 +126,12 @@ def travis1(args=None):
         if t: mx_testsuites.runSuite(['pipe'])
     with Task('TestLLVM', tasks) as t:
         if t: mx_testsuites.runSuite(['llvm'])
-    with Task('TestSulong', tasks) as t:
-        if t: mx_testsuites.runSuite(['sulong'])
 
 def travis2(args=None):
     """executes the third Travis job (Javac build, NWCC, GCC compilation test cases)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac', '--dependencies', 'SULONG_TEST'])
     with Task('TestNWCC', tasks) as t:
         if t: mx_testsuites.runSuite(['nwcc'])
     with Task('TestGCCSuiteCompile', tasks) as t:
@@ -167,8 +165,11 @@ def pullLLVMBinaries(args=None):
 def dragonEggPath():
     if 'DRAGONEGG' in os.environ:
         return join(os.environ['DRAGONEGG'], 'dragonegg.so')
-    else:
-        return _dragonEggPath
+    if 'DRAGONEGG_GCC' in os.environ:
+        path = join(os.environ['DRAGONEGG_GCC'], 'lib', 'dragonegg.so')
+        if os.path.exists(path):
+            return path
+    return _dragonEggPath
 
 def dragonEgg(args=None):
     """executes GCC with dragonegg"""
@@ -185,7 +186,7 @@ def dragonEggGPP(args=None):
     executeCommand = [getGPP(), "-fplugin=" + dragonEggPath(), '-fplugin-arg-dragonegg-emit-ir']
     return mx.run(executeCommand + args)
 
-def which(program):
+def which(program, searchPath=None):
     def is_exe(fpath):
         return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
@@ -194,7 +195,9 @@ def which(program):
         if is_exe(program):
             return program
     else:
-        for path in os.environ["PATH"].split(os.pathsep):
+        if searchPath is None:
+            searchPath = os.environ["PATH"].split(os.pathsep)
+        for path in searchPath:
             path = path.strip('"')
             exe_file = os.path.join(path, program)
             if is_exe(exe_file):
@@ -531,9 +534,12 @@ def findInstalledLLVMProgram(llvmProgram, supportedVersions=None):
 
 def findInstalledGCCProgram(gccProgram):
     """tries to find a supported version of a GCC program by checking for the argument string (e.g., gfortran) and appending version numbers (e.g., gfortran-4.9)"""
-    return findInstalledProgram(gccProgram, supportedGCCVersions, isSupportedGCCVersion)
+    path = None
+    if 'DRAGONEGG_GCC' in os.environ:
+        path = [os.path.join(os.environ['DRAGONEGG_GCC'], 'bin')]
+    return findInstalledProgram(gccProgram, supportedGCCVersions, isSupportedGCCVersion, searchPath=path)
 
-def findInstalledProgram(program, supportedVersions, testSupportedVersion):
+def findInstalledProgram(program, supportedVersions, testSupportedVersion, searchPath=None):
     """tries to find a supported version of a program
 
     The function takes program argument, and checks if it has the supported version.
@@ -546,9 +552,10 @@ def findInstalledProgram(program, supportedVersions, testSupportedVersion):
     program -- the program to find, e.g., clang or gcc
     supportedVersions -- the supported versions, e.g., 3.4 or 4.9
     testSupportedVersion(path, supportedVersions) -- the test function to be called to ensure that the found program is supported
+    searchPath -- search path to find binaries (defaults to PATH environment variable)
     """
     assert program is not None
-    programPath = which(program)
+    programPath = which(program, searchPath=searchPath)
     if programPath is not None and testSupportedVersion(programPath, supportedVersions):
         return programPath
     else:
@@ -557,7 +564,7 @@ def findInstalledProgram(program, supportedVersions, testSupportedVersion):
             alternativeProgram2 = program + re.sub(r"\D", "", version)
             alternativePrograms = [alternativeProgram1, alternativeProgram2]
             for alternativeProgram in alternativePrograms:
-                alternativeProgramPath = which(alternativeProgram)
+                alternativeProgramPath = which(alternativeProgram, searchPath=searchPath)
                 if alternativeProgramPath is not None:
                     assert testSupportedVersion(alternativeProgramPath, supportedVersions)
                     return alternativeProgramPath

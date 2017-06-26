@@ -269,9 +269,6 @@ def runSuite(args=None):
     parsedArgs = parser.parse_args(otherArgs)
 
     tasks = []
-    with mx_gate.Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
-
     for testSuiteName in parsedArgs.suite:
         with mx_gate.Task('Test%s' % testSuiteName.capitalize(), tasks) as t:
             if t:

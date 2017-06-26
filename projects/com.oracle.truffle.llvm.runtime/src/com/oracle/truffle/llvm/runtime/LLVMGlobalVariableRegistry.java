@@ -33,8 +33,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-
 public final class LLVMGlobalVariableRegistry {
     private final Map<String, Object> globals = new HashMap<>();
 
@@ -43,9 +41,6 @@ public final class LLVMGlobalVariableRegistry {
     }
 
     public synchronized void add(String name, Object global) {
-        if (global instanceof LLVMGlobalVariable) {
-            System.err.println();
-        }
         if (exists(name)) {
             throw new IllegalStateException("Global " + name + " already added.");
         }
