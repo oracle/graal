@@ -24,8 +24,11 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import java.util.Map;
 
 final class LibFFILibrary implements TruffleObject {
 
@@ -40,6 +43,8 @@ final class LibFFILibrary implements TruffleObject {
         return ret;
     }
 
+    private Map<String, TruffleObject> symbols;
+
     private LibFFILibrary(long handle) {
         this.handle = handle;
     }
@@ -51,6 +56,21 @@ final class LibFFILibrary implements TruffleObject {
     @Override
     public ForeignAccess getForeignAccess() {
         return LibFFILibraryMessageResolutionForeign.ACCESS;
+    }
+
+    LibFFILibrary register(Map<String, TruffleObject> symbols) {
+        assert this.symbols == null;
+        this.symbols = symbols;
+        return this;
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    TruffleObject findSymbol(String name) {
+        TruffleObject obj = symbols == null ? null : symbols.get(name);
+        if (obj == null) {
+            throw UnknownIdentifierException.raise(name);
+        }
+        return obj;
     }
 
     private static final class Destructor extends NativeAllocation.Destructor {

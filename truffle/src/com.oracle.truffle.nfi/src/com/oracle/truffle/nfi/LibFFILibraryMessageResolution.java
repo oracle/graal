@@ -24,9 +24,13 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.CanResolve;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -67,6 +71,33 @@ class LibFFILibraryMessageResolution {
 
         public LibFFISymbol access(LibFFILibrary receiver, String symbol) {
             return cached.executeLookup(receiver, symbol);
+        }
+    }
+
+    @Resolve(message = "INVOKE")
+    abstract static class ExecuteSymbolNode extends Node {
+        @CompilerDirectives.CompilationFinal private String cachedSymbol;
+        @CompilerDirectives.CompilationFinal private TruffleObject cachedObj;
+        private Node execute;
+
+        public Object access(LibFFILibrary receiver, String symbol, Object[] args) {
+            TruffleObject obj;
+            if (symbol.equals(cachedSymbol)) {
+                obj = cachedObj;
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                obj = receiver.findSymbol(symbol);
+                if (cachedObj == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    cachedObj = obj;
+                    execute = insert(Message.createExecute(args.length).createNode());
+                }
+            }
+            try {
+                return ForeignAccess.sendExecute(execute, obj, args);
+            } catch (InteropException ex) {
+                throw ex.raise();
+            }
         }
     }
 
