@@ -24,47 +24,46 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.nfi.types.NativeSignature;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 final class LookupAndBind extends RootNode {
     @Child private RootNode libraryNode;
     @Child Node lookupSymbol = Message.READ.createNode();
     @Child Node bind = Message.createInvoke(1).createNode();
-    private final List<String> functions;
+    @CompilerDirectives.CompilationFinal private LibFFILibrary cached;
+    private final Map<String, NativeSignature> bindings;
 
-    LookupAndBind(RootNode root, List<String> functions) {
+    LookupAndBind(RootNode root, Map<String, NativeSignature> functions) {
         super(null);
         this.libraryNode = root;
-        this.functions = functions;
+        this.bindings = functions;
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        Map<String, TruffleObject> libraryWrapper = new HashMap<>();
+        if (cached != null) {
+            return cached;
+        }
         LibFFILibrary library = (LibFFILibrary) libraryNode.execute(frame);
-        LibFFISymbol[] symbols = new LibFFISymbol[functions.size()];
-        for (int i = 0; i < symbols.length; i++) {
-            String nameAndSignature = functions.get(i);
-            int at = nameAndSignature.indexOf("(");
-            String symbolName = nameAndSignature.substring(0, at).trim();
-            String signature = nameAndSignature.substring(at);
-            try {
-                TruffleObject symbol = (TruffleObject) ForeignAccess.sendRead(lookupSymbol, library, symbolName);
-                TruffleObject bound = (TruffleObject) ForeignAccess.sendInvoke(bind, symbol, "bind", signature);
-                libraryWrapper.put(symbolName, bound);
-            } catch (InteropException e) {
-                throw UnknownIdentifierException.raise(nameAndSignature);
-            }
+        return cached = initializeLib(library);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private LibFFILibrary initializeLib(LibFFILibrary library) {
+        Map<String, LibFFIFunction> libraryWrapper = new HashMap<>();
+        for (Map.Entry<String, NativeSignature> entry : bindings.entrySet()) {
+            String symbolName = entry.getKey();
+            NativeSignature signature = entry.getValue();
+            LibFFISymbol symbol = library.lookupSymbol(symbolName);
+            LibFFIFunction fun = new LibFFIFunction(symbol, LibFFISignature.create(signature));
+            libraryWrapper.put(symbolName, fun);
         }
         return library.register(libraryWrapper);
     }

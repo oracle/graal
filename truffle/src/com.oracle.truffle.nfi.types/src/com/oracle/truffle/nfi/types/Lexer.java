@@ -31,6 +31,9 @@ final class Lexer {
         CLOSEPAREN(")"),
         OPENBRACKET("["),
         CLOSEBRACKET("]"),
+        OPENBRACE("{"),
+        CLOSEBRACE("}"),
+        SEMICOLON(";"),
         COLON(":"),
         COMMA(","),
         OR("|"),
@@ -147,8 +150,14 @@ final class Lexer {
                     return Token.OPENBRACKET;
                 case ']':
                     return Token.CLOSEBRACKET;
+                case '{':
+                    return Token.OPENBRACE;
+                case '}':
+                    return Token.CLOSEBRACE;
                 case ':':
                     return Token.COLON;
+                case ';':
+                    return Token.SEMICOLON;
                 case ',':
                     return Token.COMMA;
                 case '|':

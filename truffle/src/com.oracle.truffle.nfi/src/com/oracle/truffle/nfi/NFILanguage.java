@@ -34,7 +34,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.types.NativeLibraryDescriptor;
 import com.oracle.truffle.nfi.types.Parser;
-import java.util.Arrays;
 
 @TruffleLanguage.Registration(name = "TruffleNFI", version = "0.1", mimeType = NFILanguage.MIME_TYPE, internal = true)
 public class NFILanguage extends TruffleLanguage<Env> {
@@ -84,11 +83,7 @@ public class NFILanguage extends TruffleLanguage<Env> {
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
         String library = request.getSource().getCode();
-        String[] lines = library.split("\n");
         RootNode root;
-        if (lines.length > 1) {
-            library = lines[0];
-        }
         NativeLibraryDescriptor descriptor = Parser.parseLibraryDescriptor(library);
 
         if (descriptor.isDefaultLibrary()) {
@@ -123,8 +118,8 @@ public class NFILanguage extends TruffleLanguage<Env> {
             root = new LoadLibraryNode(descriptor.getFilename(), flags);
         }
 
-        if (lines.length > 1) {
-            root = new LookupAndBind(root, Arrays.asList(lines).subList(1, lines.length));
+        if (!descriptor.getBindings().isEmpty()) {
+            root = new LookupAndBind(root, descriptor.getBindings());
         }
 
         return Truffle.getRuntime().createCallTarget(root);

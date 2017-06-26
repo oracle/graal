@@ -38,11 +38,11 @@ public class StringAsInterfaceNFITest {
     @BeforeClass
     public static void loadLibraries() {
         engine = PolyglotEngine.newBuilder().build();
-        stdlib = engine.eval(Source.newBuilder("default\n" + //
-                        "  strdup(string):string\n" + //
-                        "  malloc(UINT32):pointer\n" + //
-                        "  free(pointer):void\n" + //
-                        "" //
+        stdlib = engine.eval(Source.newBuilder("default {\n" + //
+                        "  strdup(string):string;\n" + //
+                        "  malloc(UINT32):pointer;\n" + //
+                        "  free(pointer):void;\n" + //
+                        "}" //
         ).name("(load default)").mimeType("application/x-native").build()).as(StdLib.class);
     }
 
