@@ -37,6 +37,8 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.vm.LanguageCache.LoadedLanguage;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
@@ -61,6 +63,16 @@ class PolyglotLanguageImpl extends AbstractLanguageImpl implements VMObject {
         this.cache = cache;
         this.index = index;
         this.host = host;
+    }
+
+    Object getCurrentContext() {
+        Env env = PolyglotImpl.requireContext().contexts[index].env;
+        if (env == null) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException(
+                            "The language context is not yet initialized or already disposed. ");
+        }
+        return LANGUAGE.getContext(env);
     }
 
     @Override
@@ -92,7 +104,7 @@ class PolyglotLanguageImpl extends AbstractLanguageImpl implements VMObject {
                     try {
                         LoadedLanguage loadedLanguage = cache.loadLanguage();
                         LANGUAGE.initializeLanguage(info, loadedLanguage.getLanguage(), loadedLanguage.isSingleton());
-                        this.options = new OptionDescriptorsImpl(LANGUAGE.describeOptions(loadedLanguage.getLanguage(), cache.getId()));
+                        this.options = LANGUAGE.describeOptions(loadedLanguage.getLanguage(), cache.getId());
                     } catch (Exception e) {
                         throw new IllegalStateException(String.format("Error initializing language '%s' using class '%s'.", cache.getId(), cache.getClassName()), e);
                     }
@@ -120,9 +132,9 @@ class PolyglotLanguageImpl extends AbstractLanguageImpl implements VMObject {
 
     @Override
     @SuppressWarnings("hiding")
-    public Context createContext(OutputStream out, OutputStream err, InputStream in, Map<String, String> optionValues) {
+    public Context createContext(OutputStream out, OutputStream err, InputStream in, Map<String, String> optionValues, Map<String, String[]> arguments) {
         checkEngine(engine);
-        PolyglotContextImpl contextImpl = new PolyglotContextImpl(engine, out, err, in, optionValues, this);
+        PolyglotContextImpl contextImpl = new PolyglotContextImpl(engine, out, err, in, optionValues, arguments, this);
         return engine.impl.getAPIAccess().newContext(contextImpl, api);
     }
 

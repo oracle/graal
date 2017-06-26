@@ -39,7 +39,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import org.graalvm.options.OptionDescriptor;
-import org.graalvm.options.OptionType;
+import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -362,14 +362,24 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Returns a list of option descriptors that are supported by this language. Option values are
+     * @since 0.27
+     * @deprecated in 0.27 implement {@link #getOptionDescriptors()} instead.
+     */
+    @Deprecated
+    protected List<OptionDescriptor> describeOptions() {
+        return null;
+    }
+
+    /**
+     * Returns a set of option descriptors that are supported by this language. Option values are
      * accessible using the {@link Env#getOptions() environment} when the context is
-     * {@link #createContext(Env) created}.
+     * {@link #createContext(Env) created}. To construct option descriptors from a list then
+     * {@link OptionDescriptors#create(List)} can be used.
      *
      * @since 0.27
      */
-    protected List<OptionDescriptor> describeOptions() {
-        return null;
+    protected OptionDescriptors getOptionDescriptors() {
+        return OptionDescriptors.create(describeOptions());
     }
 
     /**
@@ -803,13 +813,14 @@ public abstract class TruffleLanguage<C> {
         private final OutputStream out;
         private final Map<String, Object> config;
         private final OptionValues options;
+        private final String[] applicationArguments;
         private List<Object> services;
         @CompilationFinal private Object context;
         @CompilationFinal private volatile boolean initialized = false;
         @CompilationFinal private volatile Assumption initializedUnchangedAssumption = Truffle.getRuntime().createAssumption("Language context initialized unchanged");
 
         @SuppressWarnings("unchecked")
-        private Env(Object vmObject, LanguageInfo language, OutputStream out, OutputStream err, InputStream in, Map<String, Object> config, OptionValues options) {
+        private Env(Object vmObject, LanguageInfo language, OutputStream out, OutputStream err, InputStream in, Map<String, Object> config, OptionValues options, String[] applicationArguments) {
             this.vmObject = vmObject;
             this.language = language;
             this.spi = (TruffleLanguage<Object>) API.nodes().getLanguageSpi(language);
@@ -818,6 +829,7 @@ public abstract class TruffleLanguage<C> {
             this.out = out;
             this.config = config;
             this.options = options;
+            this.applicationArguments = applicationArguments == null ? new String[0] : applicationArguments;
         }
 
         TruffleLanguage<Object> getSpi() {
@@ -832,13 +844,24 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * Returns option values for the options described in
-         * {@link TruffleLanguage#describeOptions()}. The returned options are never
+         * {@link TruffleLanguage#getOptionDescriptors()}. The returned options are never
          * <code>null</code>.
          *
          * @since 0.27
          */
         public OptionValues getOptions() {
             return options;
+        }
+
+        /**
+         * Returns the application arguments that were provided for this context. The arguments
+         * array and its elements are never <code>null</code>. It is up to the language
+         * implementation whether and how they are accessible within the guest language scripts.
+         *
+         * @since 0.27
+         */
+        public String[] getApplicationArguments() {
+            return applicationArguments;
         }
 
         /**
@@ -1255,8 +1278,9 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public Env createEnv(Object vmObject, LanguageInfo language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options) {
-            Env env = new Env(vmObject, language, stdOut, stdErr, stdIn, config, options);
+        public Env createEnv(Object vmObject, LanguageInfo language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options,
+                        String[] applicationArguments) {
+            Env env = new Env(vmObject, language, stdOut, stdErr, stdIn, config, options, applicationArguments);
             LinkedHashSet<Object> collectedServices = new LinkedHashSet<>();
             AccessAPI.instrumentAccess().collectEnvServices(collectedServices, API.nodes().getEngineObject(language), language);
             env.services = new ArrayList<>(collectedServices);
@@ -1480,22 +1504,17 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public List<OptionDescriptor> describeOptions(TruffleLanguage<?> language, String requiredGroup) {
-            List<OptionDescriptor> descriptors = language.describeOptions();
+        public OptionDescriptors describeOptions(TruffleLanguage<?> language, String requiredGroup) {
+            OptionDescriptors descriptors = language.getOptionDescriptors();
             if (descriptors == null) {
-                return Collections.emptyList();
+                return OptionDescriptors.EMPTY;
             }
             String groupPlusDot = requiredGroup + ".";
             for (OptionDescriptor descriptor : descriptors) {
-                if (!descriptor.getName().startsWith(groupPlusDot)) {
+                if (!descriptor.getName().equals(requiredGroup) && !descriptor.getName().startsWith(groupPlusDot)) {
                     throw new IllegalArgumentException(String.format("Illegal option prefix in name '%s' specified for option described by language '%s'. " +
                                     "The option prefix must match the id of the language '%s'.",
                                     descriptor.getName(), language.getClass().getName(), requiredGroup));
-                }
-                OptionType<?> type = descriptor.getKey().getType();
-                if (type != OptionType.defaultType(type.getDefaultValue())) {
-                    throw new IllegalArgumentException(
-                                    String.format("Invalid option type used for option key %s. Only default option types are supported for Truffle languages.", descriptor.getName()));
                 }
             }
             return descriptors;

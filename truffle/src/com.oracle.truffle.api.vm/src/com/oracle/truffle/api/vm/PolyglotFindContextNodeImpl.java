@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.api.word;
+package com.oracle.truffle.api.vm;
 
-public interface ComparableWord extends WordBase {
+import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
+import static com.oracle.truffle.api.vm.VMAccessor.NODES;
 
-    /**
-     * Compares this word with the specified value.
-     *
-     * @param val value to which this word is to be compared.
-     * @return {@code this == val}
-     */
-    boolean equal(ComparableWord val);
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Env;
 
-    /**
-     * Compares this word with the specified value.
-     *
-     * @param val value to which this word is to be compared.
-     * @return {@code this != val}
-     */
-    boolean notEqual(ComparableWord val);
+@SuppressWarnings("deprecation")
+final class PolyglotFindContextNodeImpl<C> extends com.oracle.truffle.api.impl.FindContextNode<C> {
+    private final PolyglotLanguageImpl polyglotLanguage;
+    private final Env env;
+
+    PolyglotFindContextNodeImpl(Env env) {
+        this.env = env;
+        this.polyglotLanguage = (PolyglotLanguageImpl) NODES.getEngineObject(LANGUAGE.getLanguageInfo(env));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public C executeFindContext() {
+        return (C) polyglotLanguage.getCurrentContext();
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public TruffleLanguage<C> getTruffleLanguage() {
+        return (TruffleLanguage<C>) NODES.getLanguageSpi(LANGUAGE.getLanguageInfo(env));
+    }
 }

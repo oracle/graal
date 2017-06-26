@@ -52,7 +52,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class PartialEvaluationTest extends GraalCompilerTest {
-    private final TruffleCompiler truffleCompiler;
+    protected final TruffleCompiler truffleCompiler;
 
     public PartialEvaluationTest() {
         beforeInitialization();

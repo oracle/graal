@@ -37,6 +37,7 @@ import java.util.LinkedHashSet;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -93,6 +94,18 @@ final class JavaInteropReflect {
                     }
                 }
             }
+            if (onlyStatic) {
+                // no support for nonstatic type members now
+                for (Class<?> t : object.clazz.getClasses()) {
+                    final boolean isStatic = isStaticTypeOrInterface(t);
+                    if (!isStatic) {
+                        continue;
+                    }
+                    if (t.getSimpleName().equals(name)) {
+                        return new JavaObject(null, t);
+                    }
+                }
+            }
             throw UnknownIdentifierException.raise(name);
         }
         return JavaInterop.toGuestValue(val, object.languageContext);
@@ -128,6 +141,21 @@ final class JavaInteropReflect {
         return false;
     }
 
+    static boolean isMemberType(JavaObject object, String name) {
+        Object obj = object.obj;
+        final boolean onlyStatic = obj == null;
+        if (!onlyStatic) {
+            // no support for nonstatic members now
+            return false;
+        }
+        for (Class<?> c : object.clazz.getClasses()) {
+            if (isStaticTypeOrInterface(c) && name.equals(c.getSimpleName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     static boolean isJNIMethod(JavaObject object, String name) {
         Object obj = object.obj;
         final boolean onlyStatic = obj == null;
@@ -157,6 +185,10 @@ final class JavaInteropReflect {
 
     @CompilerDirectives.TruffleBoundary
     static Method findMethod(JavaObject object, String name) {
+        if (TruffleOptions.AOT) {
+            return null;
+        }
+
         for (Method m : object.clazz.getMethods()) {
             if (m.getName().equals(name) && m.getDeclaringClass() != Object.class) {
                 return m;
@@ -237,6 +269,11 @@ final class JavaInteropReflect {
         return Proxy.newProxyInstance(clazz.getClassLoader(), new Class<?>[]{clazz}, new TruffleHandler(obj));
     }
 
+    static boolean isStaticTypeOrInterface(Class<?> t) {
+        // anonymous classes are private, they should be eliminated elsewhere
+        return t.isInterface() || t.isEnum() || ((t.getModifiers() & Modifier.STATIC) > 0);
+    }
+
     @CompilerDirectives.TruffleBoundary
     static String[] findUniquePublicMemberNames(Class<?> c, boolean onlyInstance, boolean includeInternal) throws SecurityException {
         Class<?> clazz = c;
@@ -262,6 +299,15 @@ final class JavaInteropReflect {
             names.add(method.getName());
             if (includeInternal) {
                 names.add(jniName(method));
+            }
+        }
+        if (!onlyInstance) {
+            // no support for nonstatic member types now
+            for (Class<?> t : clazz.getClasses()) {
+                if (!isStaticTypeOrInterface(t)) {
+                    continue;
+                }
+                names.add(t.getSimpleName());
             }
         }
         return names.toArray(new String[0]);
@@ -643,6 +689,10 @@ final class JavaInteropReflect {
     }
 
     static String findFunctionalInterfaceMethodName(final Class<?> clazz) {
+        if (TruffleOptions.AOT) {
+            return null;
+        }
+
         for (final Class<?> iface : clazz.getInterfaces()) {
             if (iface.isAnnotationPresent(FunctionalInterface.class)) {
                 for (final Method m : iface.getMethods()) {

@@ -26,6 +26,7 @@ package org.graalvm.polyglot;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -104,7 +105,7 @@ public final class PolyglotContext {
     }
 
     public Engine getEngine() {
-        return this.engine;
+        return engine;
     }
 
     public static class Builder {
@@ -114,7 +115,8 @@ public final class PolyglotContext {
         OutputStream out;
         OutputStream err;
         InputStream in;
-        final Map<String, String> options = new HashMap<>();
+        Map<String, String> options;
+        Map<String, String[]> arguments;
 
         Builder(Engine engine) {
             this.engine = engine;
@@ -136,6 +138,58 @@ public final class PolyglotContext {
         }
 
         /**
+         * Sets the guest language application arguments for a language {@link Context context}.
+         * Application arguments are typcially made available to guest language implementations. It
+         * depends on the language whether and how they are accessible within the
+         * {@link Context#eval(Source) evaluated} guest language scripts. Passing no arguments to a
+         * language then it is equivalent to providing an empty arguments array.
+         *
+         * @param languageId the languageId available in the engine.
+         * @param args an array of arguments passed to the guest language program
+         * @throws IllegalArgumentException if an invalid language id was specified.
+         * @since 1.0
+         */
+        public Builder setArguments(String languageId, String[] args) {
+            Objects.requireNonNull(args);
+            Language language = engine.getLanguage(languageId);
+            if (language == null) {
+                throw new IllegalArgumentException("Invalid language id specified.");
+            }
+            return setArguments(language, args);
+        }
+
+        /**
+         * Sets the guest language application arguments for a language {@link Context context}.
+         * Application arguments are typcially made available to guest language implementations. It
+         * depends on the language whether and how they are accessible within the
+         * {@link Context#eval(Source) evaluated} guest language scripts. Passing no arguments to a
+         * language then it is equivalent to providing an empty arguments array.
+         *
+         * @param languageId the languageId available in the engine.
+         * @param args an array of arguments passed to the guest language program
+         * @since 1.0
+         */
+        public Builder setArguments(Language language, String[] args) {
+            Objects.requireNonNull(language);
+            Objects.requireNonNull(args);
+            String[] newArgs = args;
+            if (args.length > 0) {
+                newArgs = new String[args.length];
+                for (int i = 0; i < args.length; i++) { // defensive copy
+                    newArgs[i] = Objects.requireNonNull(args[i]);
+                }
+            }
+            if (language.getEngine() != engine) {
+                throw new IllegalArgumentException("Invalid language from another engine provided.");
+            }
+            if (arguments == null) {
+                arguments = new HashMap<>();
+            }
+            arguments.put(language.getId(), newArgs);
+            return this;
+        }
+
+        /**
          * Set an option for this polyglot {@link Context context}. If one of the set option keys or
          * values is invalid then an {@link IllegalArgumentException} is thrown when the context is
          * {@link #build() built}. The given key and value must not be <code>null</code>. Options
@@ -147,6 +201,11 @@ public final class PolyglotContext {
          * @since 1.0
          */
         public Builder setOption(String key, String value) {
+            Objects.requireNonNull(key);
+            Objects.requireNonNull(value);
+            if (this.options == null) {
+                this.options = new HashMap<>();
+            }
             options.put(key, value);
             return this;
         }
@@ -161,14 +220,15 @@ public final class PolyglotContext {
          */
         public Builder setOptions(Map<String, String> options) {
             for (String key : options.keySet()) {
-                Objects.requireNonNull(options.get(key), "All option values must be non-null.");
+                setOption(key, options.get(key));
             }
-            this.options.putAll(options);
             return this;
         }
 
         public PolyglotContext build() {
-            return engine.impl.createPolyglotContext(out, err, in, options);
+            return engine.impl.createPolyglotContext(out, err, in,
+                            arguments == null ? Collections.emptyMap() : arguments,
+                            options == null ? Collections.emptyMap() : options);
         }
 
     }

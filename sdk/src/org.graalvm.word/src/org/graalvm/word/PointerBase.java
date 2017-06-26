@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,34 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.vm;
+package org.graalvm.word;
 
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.graalvm.options.OptionDescriptor;
-import org.graalvm.options.OptionDescriptors;
-
-class OptionDescriptorsImpl implements OptionDescriptors {
-
-    final Map<String, OptionDescriptor> descriptors = new LinkedHashMap<>();
-
-    OptionDescriptorsImpl(List<OptionDescriptor> descriptorList) {
-        for (OptionDescriptor descriptor : descriptorList) {
-            descriptors.put(descriptor.getName(), descriptor);
-        }
-    }
-
-    @Override
-    public OptionDescriptor get(String optionName) {
-        return descriptors.get(optionName);
-    }
-
-    @Override
-    public Iterator<OptionDescriptor> iterator() {
-        return descriptors.values().iterator();
-    }
-
+/**
+ * Marker interface for all {@link WordBase word types} that have the semantic of a pointer (but not
+ * necessarily all the memory access methods defined in {@link Pointer}).
+ */
+public interface PointerBase extends ComparableWord {
 }

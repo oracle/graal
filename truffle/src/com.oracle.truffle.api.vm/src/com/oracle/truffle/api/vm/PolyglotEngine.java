@@ -208,7 +208,13 @@ public class PolyglotEngine {
     static final PolyglotEngine UNUSABLE_ENGINE = new PolyglotEngine();
 
     static {
-        VMAccessor.initialize(new LegacyEngineImpl());
+        ensureInitialized();
+    }
+
+    private static void ensureInitialized() {
+        if (VMAccessor.SPI == null || !(VMAccessor.SPI.engineSupport() instanceof LegacyEngineImpl)) {
+            VMAccessor.initialize(new LegacyEngineImpl());
+        }
     }
 
     /**
@@ -250,6 +256,7 @@ public class PolyglotEngine {
      */
     PolyglotEngine() {
         assertNoCompilation();
+        ensureInitialized();
         this.initThread = null;
         this.runtime = null;
         this.cachedTargets = null;
@@ -269,6 +276,7 @@ public class PolyglotEngine {
      */
     PolyglotEngine(PolyglotRuntime runtime, Executor executor, InputStream in, DispatchOutputStream out, DispatchOutputStream err, Map<String, Object> globals, List<Object[]> config) {
         assertNoCompilation();
+
         this.initThread = Thread.currentThread();
         this.runtime = runtime;
         this.languageArray = new Language[runtime.getLanguages().size()];
@@ -796,7 +804,15 @@ public class PolyglotEngine {
 
             SymbolIterator(Collection<? extends Language> uniqueLang, Object first) {
                 this.uniqueLang = uniqueLang;
-                this.next = (needsValue && first != null) ? new DirectValue(null, first) : first;
+                if (first instanceof DirectValue) {
+                    if (needsValue) {
+                        this.next = first;
+                    } else {
+                        this.next = ((DirectValue) first).value;
+                    }
+                } else {
+                    this.next = (needsValue && first != null) ? new DirectValue(null, first) : first;
+                }
             }
 
             @Override
@@ -1452,7 +1468,7 @@ public class PolyglotEngine {
                     localEnv = env;
                     if (localEnv == null && create) {
                         localEnv = LANGUAGE.createEnv(this, shared.getLanguageEnsureInitialized(), engine().out, engine().err, engine().in,
-                                        getArgumentsForLanguage(), new OptionValuesImpl(null, shared.options));
+                                        getArgumentsForLanguage(), new OptionValuesImpl(null, shared.options), new String[0]);
                         context = LANGUAGE.getContext(localEnv);
                         this.env = localEnv;
                         LANGUAGE.postInitEnv(localEnv);
@@ -1640,7 +1656,7 @@ public class PolyglotEngine {
             if (value == null) {
                 global.remove(symbolName);
             } else {
-                global.put(symbolName, value);
+                global.put(symbolName, language.engine().new DirectValue(language, value));
             }
         }
 

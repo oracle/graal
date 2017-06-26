@@ -31,12 +31,14 @@ import java.util.Map;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
@@ -63,13 +65,16 @@ class HostLanguage extends TruffleLanguage<HostContext> {
         }
 
         private Class<?> findClass(String clazz) {
+            if (TruffleOptions.AOT) {
+                throw new IllegalArgumentException(String.format("Java classes are not accessible in AOT mode."));
+            }
             if (!this.env.getOptions().get(ALLOW_CLASS_LOADING)) {
                 throw new IllegalArgumentException(String.format("Java classes are not accessible. Enable access by setting the option '%s' to true.", ALLOW_CLASS_LOADING_NAME));
             }
             try {
                 Class<?> loadedClass = classCache.get(clazz);
                 if (loadedClass == null) {
-                    loadedClass = Thread.currentThread().getContextClassLoader().loadClass(clazz);
+                    loadedClass = internalContext.getEngine().contextClassLoader.loadClass(clazz);
                     classCache.put(clazz, loadedClass);
                 }
                 return loadedClass;
@@ -160,13 +165,11 @@ class HostLanguage extends TruffleLanguage<HostContext> {
     }
 
     @Override
-    protected List<OptionDescriptor> describeOptions() {
+    protected OptionDescriptors getOptionDescriptors() {
         List<OptionDescriptor> descriptors = new ArrayList<>();
-
         descriptors.add(OptionDescriptor.newBuilder(ALLOW_CLASS_LOADING, ALLOW_CLASS_LOADING_NAME).category(OptionCategory.USER).//
                         help("Allow guest languages to load additional Java host language classes.").build());
-
-        return descriptors;
+        return OptionDescriptors.create(descriptors);
     }
 
 }

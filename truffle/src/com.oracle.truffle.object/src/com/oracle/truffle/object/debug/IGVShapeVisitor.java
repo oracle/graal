@@ -29,10 +29,9 @@ import com.oracle.truffle.api.nodes.GraphPrintVisitor;
 import com.oracle.truffle.api.nodes.GraphPrintVisitor.GraphPrintAdapter;
 import com.oracle.truffle.api.nodes.GraphPrintVisitor.GraphPrintHandler;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.object.ShapeImpl;
 import com.oracle.truffle.object.Transition;
 
-@SuppressWarnings("deprecation")
+@SuppressWarnings("all")
 @Deprecated
 public class IGVShapeVisitor extends com.oracle.truffle.object.DebugShapeVisitor<IGVShapeVisitor> {
     private final GraphPrintVisitor graphPrinter;
@@ -56,7 +55,7 @@ public class IGVShapeVisitor extends com.oracle.truffle.object.DebugShapeVisitor
 
                     for (Entry<? extends Transition, ? extends Shape> entry : transitions.entrySet()) {
                         Shape dst = entry.getValue();
-                        ((ShapeImpl) dst).accept(IGVShapeVisitor.this);
+                        IGVShapeVisitor.this.visitShape((dst));
                         assert printer.visited(dst);
                         printer.connectNodes(s, dst, entry.getKey().toString());
                     }

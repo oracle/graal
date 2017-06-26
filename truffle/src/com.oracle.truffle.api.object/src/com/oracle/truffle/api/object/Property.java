@@ -203,6 +203,7 @@ public abstract class Property {
     public abstract boolean isHidden();
 
     /** @since 0.8 or earlier */
+    @Deprecated
     public abstract boolean isShadow();
 
     /**

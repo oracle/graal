@@ -22,20 +22,23 @@
  */
 package com.oracle.truffle.dsl.processor.interop;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import java.io.IOException;
 import java.io.Writer;
+import java.util.Collection;
 import java.util.List;
+
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeKind;
 
-final class KeysGenerator extends MessageGenerator {
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+
+class KeysGenerator extends MessageGenerator {
 
     private static final String TARGETABLE_KEYS_NODE = "TargetableKeysNode";
     private static final String KEYS_ROOT_NODE = "KeysRootNode";
@@ -52,41 +55,41 @@ final class KeysGenerator extends MessageGenerator {
     }
 
     @Override
-    void appendImports(Writer w) throws IOException {
-        super.appendImports(w);
+    public void addImports(Collection<String> imports) {
+        super.addImports(imports);
         if (parameterCount == 2) {
-            w.append("import java.util.List;").append("\n");
+            imports.add("java.util.List");
         }
     }
 
     @Override
     void appendRootNode(Writer w) throws IOException {
-        w.append("    private static final class ").append(KEYS_ROOT_NODE).append(" extends RootNode {\n");
-        w.append("        protected ").append(KEYS_ROOT_NODE).append("() {\n");
-        w.append("            super(null);\n");
-        w.append("        }\n");
+        w.append(indent).append("    private static final class ").append(KEYS_ROOT_NODE).append(" extends RootNode {\n");
+        w.append(indent).append("        protected ").append(KEYS_ROOT_NODE).append("() {\n");
+        w.append(indent).append("            super(null);\n");
+        w.append(indent).append("        }\n");
         w.append("\n");
-        w.append("        @Child private ").append(clazzName).append(" node = ").append(packageName).append(".").append(clazzName).append("NodeGen.create();");
+        w.append(indent).append("        @Child private ").append(clazzName).append(" node = ").append(getGeneratedDSLNodeQualifiedName()).append(".create();");
         w.append("\n");
-        w.append("        @Override\n");
-        w.append("        public Object execute(VirtualFrame frame) {\n");
-        w.append("            Object receiver = ForeignAccess.getReceiver(frame);\n");
+        w.append(indent).append("        @Override\n");
+        w.append(indent).append("        public Object execute(VirtualFrame frame) {\n");
+        w.append(indent).append("            Object receiver = ForeignAccess.getReceiver(frame);\n");
         if (parameterCount == 2) {
-            w.append("            List<Object> arguments = ForeignAccess.getArguments(frame);\n");
-            w.append("            Object internal = (arguments.isEmpty()) ? false : arguments.get(0);\n");
+            w.append(indent).append("            List<Object> arguments = ForeignAccess.getArguments(frame);\n");
+            w.append(indent).append("            Object internal = (arguments.isEmpty()) ? false : arguments.get(0);\n");
         }
-        w.append("            try {\n");
+        w.append(indent).append("            try {\n");
         if (parameterCount == 2) {
-            w.append("                return node.executeWithTarget(frame, receiver, internal);\n");
+            w.append(indent).append("                return node.executeWithTarget(frame, receiver, internal);\n");
         } else {
-            w.append("                return node.executeWithTarget(frame, receiver);\n");
+            w.append(indent).append("                return node.executeWithTarget(frame, receiver);\n");
         }
-        w.append("            } catch (UnsupportedSpecializationException e) {\n");
+        w.append(indent).append("            } catch (UnsupportedSpecializationException e) {\n");
         appendHandleUnsupportedTypeException(w);
-        w.append("            }\n");
-        w.append("        }\n");
+        w.append(indent).append("            }\n");
+        w.append(indent).append("        }\n");
         w.append("\n");
-        w.append("    }\n");
+        w.append(indent).append("    }\n");
     }
 
     @Override

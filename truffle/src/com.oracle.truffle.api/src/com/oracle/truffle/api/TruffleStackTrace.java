@@ -81,6 +81,11 @@ final class TruffleStackTrace extends Exception {
     static void fillIn(Throwable t) {
         TruffleStackTrace stack = findImpl(t);
         if (stack == null) {
+            Throwable insertCause = findInsertCause(t);
+            if (insertCause == null) {
+                return;
+            }
+
             int stackFrameLimit;
             final Node topCallSite;
             if (t instanceof TruffleException) {
@@ -117,11 +122,11 @@ final class TruffleStackTrace extends Exception {
                     return null;
                 }
             });
-            insert(t, Collections.unmodifiableList(frames));
+            insert(insertCause, Collections.unmodifiableList(frames));
         }
     }
 
-    private static void insert(Throwable t, List<TruffleStackTraceElement> frames) {
+    private static Throwable findInsertCause(Throwable t) {
         Throwable lastException = t;
         while (lastException != null) {
             Throwable parentCause = lastException.getCause();
@@ -130,13 +135,18 @@ final class TruffleStackTrace extends Exception {
             }
             lastException = parentCause;
         }
-        if (lastException != null) {
-            try {
-                lastException.initCause(new TruffleStackTrace(frames));
-            } catch (IllegalStateException e) {
-                // if the cause is initialized to null we have no chance of attaching guest language
-                // stack traces
-            }
+        if (lastException != null && !(lastException instanceof StackOverflowError)) {
+            return lastException;
+        }
+        return null;
+    }
+
+    private static void insert(Throwable t, List<TruffleStackTraceElement> frames) {
+        try {
+            t.initCause(new TruffleStackTrace(frames));
+        } catch (IllegalStateException e) {
+            // if the cause is initialized to null we have no chance of attaching guest language
+            // stack traces
         }
     }
 

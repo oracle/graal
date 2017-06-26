@@ -36,40 +36,40 @@ import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
-public final class WriteGenerator extends MessageGenerator {
+final class WriteGenerator extends MessageGenerator {
 
     private static final int NUMBER_OF_WRITE = 3; // TruffleObject receiver,
                                                   // Object identifier, Object value
     private static final String TARGETABLE_WRITE_NODE = "TargetableWriteNode";
     private static final String WRITE_ROOT_NODE = "WriteRootNode";
 
-    public WriteGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
+    WriteGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
                     ForeignAccessFactoryGenerator containingForeignAccessFactory) {
         super(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
     }
 
     @Override
     void appendRootNode(Writer w) throws IOException {
-        w.append("    private static final class ").append(WRITE_ROOT_NODE).append(" extends RootNode {\n");
-        w.append("        protected ").append(WRITE_ROOT_NODE).append("() {\n");
-        w.append("            super(null);\n");
-        w.append("        }\n");
+        w.append(indent).append("    private static final class ").append(WRITE_ROOT_NODE).append(" extends RootNode {\n");
+        w.append(indent).append("        protected ").append(WRITE_ROOT_NODE).append("() {\n");
+        w.append(indent).append("            super(null);\n");
+        w.append(indent).append("        }\n");
         w.append("\n");
-        w.append("        @Child private ").append(clazzName).append(" node = ").append(packageName).append(".").append(clazzName).append("NodeGen.create();");
+        w.append(indent).append("        @Child private ").append(clazzName).append(" node = ").append(getGeneratedDSLNodeQualifiedName()).append(".create();");
         w.append("\n");
-        w.append("        @Override\n");
-        w.append("        public Object execute(VirtualFrame frame) {\n");
-        w.append("            Object receiver = ForeignAccess.getReceiver(frame);\n");
-        w.append("            Object identifier = ForeignAccess.getArguments(frame).get(0);\n");
-        w.append("            Object value = ForeignAccess.getArguments(frame).get(1);\n");
-        w.append("            try {\n");
-        w.append("                return node.executeWithTarget(frame, receiver, identifier, value);\n");
-        w.append("            } catch (UnsupportedSpecializationException e) {\n");
+        w.append(indent).append("        @Override\n");
+        w.append(indent).append("        public Object execute(VirtualFrame frame) {\n");
+        w.append(indent).append("            Object receiver = ForeignAccess.getReceiver(frame);\n");
+        w.append(indent).append("            Object identifier = ForeignAccess.getArguments(frame).get(0);\n");
+        w.append(indent).append("            Object value = ForeignAccess.getArguments(frame).get(1);\n");
+        w.append(indent).append("            try {\n");
+        w.append(indent).append("                return node.executeWithTarget(frame, receiver, identifier, value);\n");
+        w.append(indent).append("            } catch (UnsupportedSpecializationException e) {\n");
         appendHandleUnsupportedTypeException(w);
-        w.append("            }\n");
-        w.append("        }\n");
+        w.append(indent).append("            }\n");
+        w.append(indent).append("        }\n");
         w.append("\n");
-        w.append("    }\n");
+        w.append(indent).append("    }\n");
     }
 
     @Override

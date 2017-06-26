@@ -185,8 +185,6 @@ meth public com.oracle.truffle.api.interop.ForeignAccess getForeignAccessFactory
  anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.interop.ForeignAccess getForeignAccessFactory(com.oracle.truffle.api.object.DynamicObject)
 meth public int hashCode(com.oracle.truffle.api.object.DynamicObject)
-meth public java.lang.Object createShapeData(com.oracle.truffle.api.object.Shape)
- anno 0 java.lang.Deprecated()
 meth public java.lang.String toString(com.oracle.truffle.api.object.DynamicObject)
 supr java.lang.Object
 
@@ -248,8 +246,6 @@ meth public abstract int getId()
 meth public abstract int getPropertyCount()
 meth public abstract java.lang.Iterable<com.oracle.truffle.api.object.Property> getProperties()
 meth public abstract java.lang.Iterable<java.lang.Object> getKeys()
-meth public abstract java.lang.Object getData()
- anno 0 java.lang.Deprecated()
 meth public abstract java.lang.Object getMutex()
 meth public abstract java.lang.Object getSharedData()
 meth public abstract java.util.List<com.oracle.truffle.api.object.Property> getPropertyList()

@@ -125,7 +125,7 @@ public abstract class AbstractPolyglotImpl {
             this.engineImpl = engineImpl;
         }
 
-        public abstract Source build(Object origin, URI uri, String name, boolean interactive);
+        public abstract Source build(Object origin, URI uri, String name, boolean interactive, boolean internal);
 
         public abstract String getName(Object impl);
 
@@ -162,6 +162,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract int hashCode(Object impl);
 
         public abstract boolean equals(Object impl, Object otherImpl);
+
+        public abstract boolean isInternal(Object impl);
     }
 
     public abstract static class AbstractSourceSectionImpl {
@@ -212,6 +214,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Value eval(Object languageImpl, Object sourceImpl);
 
+        public abstract Engine getEngineImpl();
+
     }
 
     public abstract static class AbstractEngineImpl {
@@ -236,7 +240,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Language detectLanguage(Object sourceImpls);
 
-        public abstract PolyglotContext createPolyglotContext(OutputStream out, OutputStream err, InputStream in, Map<String, String> options);
+        public abstract PolyglotContext createPolyglotContext(OutputStream out, OutputStream err, InputStream in, Map<String, String[]> arguments, Map<String, String> options);
 
         public abstract OptionDescriptors getOptions();
 
@@ -316,6 +320,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract String getVersion();
 
+        public abstract <T> T lookup(Class<T> type);
+
     }
 
     public abstract static class AbstractLanguageImpl {
@@ -324,7 +330,7 @@ public abstract class AbstractPolyglotImpl {
             Objects.requireNonNull(engineImpl);
         }
 
-        public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, Map<String, String> options);
+        public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, Map<String, String> options, Map<String, String[]> arguments);
 
         public abstract String getName();
 
@@ -479,5 +485,7 @@ public abstract class AbstractPolyglotImpl {
         }
 
     }
+
+    public abstract Class<?> loadLanguageClass(String className);
 
 }

@@ -53,6 +53,7 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
+import com.oracle.truffle.api.impl.TruffleLocator;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -61,7 +62,12 @@ import com.oracle.truffle.api.nodes.RootNode;
 /*
  * This class is exported to the Graal SDK. Keep that in mind when changing its class or package name.
  */
-final class PolyglotImpl extends AbstractPolyglotImpl {
+/**
+ * Internal service implementation of the polyglot API.
+ *
+ * @since 0.27
+ */
+public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     static final Object[] EMPTY_ARGS = new Object[0];
 
@@ -73,38 +79,84 @@ final class PolyglotImpl extends AbstractPolyglotImpl {
     private final PolyglotSourceImpl sourceImpl = new PolyglotSourceImpl(this);
     private final PolyglotSourceSectionImpl sourceSectionImpl = new PolyglotSourceSectionImpl(this);
 
-    PolyglotImpl() {
-        VMAccessor.initialize(new EngineImpl());
+    private static void ensureInitialized() {
+        if (VMAccessor.SPI == null || !(VMAccessor.SPI.engineSupport() instanceof EngineImpl)) {
+            VMAccessor.initialize(new EngineImpl());
+        }
     }
 
+    /**
+     * Internal method do not use.
+     *
+     * @since 0.27
+     */
+    public PolyglotImpl() {
+        ensureInitialized();
+    }
+
+    /**
+     * Internal method do not use.
+     *
+     * @since 0.27
+     */
     @Override
     public AbstractSourceImpl getSourceImpl() {
         return sourceImpl;
     }
 
+    /**
+     * Internal method do not use.
+     *
+     * @since 0.27
+     */
     @Override
     public AbstractSourceSectionImpl getSourceSectionImpl() {
         return sourceSectionImpl;
     }
 
+    /**
+     * Internal method do not use.
+     *
+     * @since 0.27
+     */
     @Override
     public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
                     long maximumAllowedAllocationBytes, boolean useSystemProperties) {
+        ensureInitialized();
         OutputStream resolvedOut = out == null ? System.out : out;
-        OutputStream resolvedErr = out == null ? System.err : err;
+        OutputStream resolvedErr = err == null ? System.err : err;
         InputStream resolvedIn = in == null ? System.in : in;
 
         DispatchOutputStream dispatchOut = INSTRUMENT.createDispatchOutput(resolvedOut);
         DispatchOutputStream dispatchErr = INSTRUMENT.createDispatchOutput(resolvedErr);
-        PolyglotEngineImpl impl = new PolyglotEngineImpl(this, dispatchOut, dispatchErr, resolvedIn, arguments, timeout, timeoutUnit, sandbox, useSystemProperties);
+        ClassLoader contextClassLoader = TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader();
+        PolyglotEngineImpl impl = new PolyglotEngineImpl(this, dispatchOut, dispatchErr, resolvedIn, arguments, timeout, timeoutUnit, sandbox, useSystemProperties,
+                        contextClassLoader);
         Engine engine = getAPIAccess().newEngine(impl);
         impl.api = engine;
         return engine;
     }
 
+    /**
+     * Internal method do not use.
+     *
+     * @since 0.27
+     */
+    @Override
+    public Class<?> loadLanguageClass(String className) {
+        for (ClassLoader loader : TruffleLocator.loaders()) {
+            try {
+                return loader.loadClass(className);
+            } catch (ClassNotFoundException e) {
+            }
+        }
+        return null;
+    }
+
     static PolyglotContextImpl requireContext() {
         PolyglotContextImpl context = CURRENT_CONTEXT.get();
         if (context == null) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("No current context found.");
         }
         return context;
@@ -342,7 +394,11 @@ final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         @SuppressWarnings("rawtypes")
         public Env findEnv(Object vmObject, Class<? extends TruffleLanguage> languageClass, boolean failIfNotFound) {
-            return CURRENT_CONTEXT.get().findLanguageContext(languageClass, failIfNotFound).env;
+            PolyglotLanguageContextImpl findLanguageContext = requireContext().findLanguageContext(languageClass, failIfNotFound);
+            if (findLanguageContext != null) {
+                return findLanguageContext.env;
+            }
+            return null;
         }
 
         @Override
@@ -382,7 +438,7 @@ final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public <C> com.oracle.truffle.api.impl.FindContextNode<C> createFindContextNode(TruffleLanguage<C> lang) {
             PolyglotContextImpl context = requireContext();
-            return new FindContextNodeImpl<>(context.findLanguageContext(lang.getClass(), true).env);
+            return new PolyglotFindContextNodeImpl<>(context.findLanguageContext(lang.getClass(), true).env);
         }
 
         @Override

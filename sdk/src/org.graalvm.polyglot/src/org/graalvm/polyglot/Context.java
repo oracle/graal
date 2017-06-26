@@ -25,7 +25,9 @@
 package org.graalvm.polyglot;
 
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.PrintStream;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -51,8 +53,20 @@ public final class Context {
         return impl.eval(language.impl, Source.create(source).impl);
     }
 
+    public Value importSymbol(String key) {
+        return impl.importSymbol(key);
+    }
+
+    public void exportSymbol(String key, Object value) {
+        impl.exportSymbol(key, value);
+    }
+
     void initializeLanguage() {
         impl.initializeLanguage(language.impl);
+    }
+
+    public Engine getEngine() {
+        return impl.getEngineImpl();
     }
 
     /**
@@ -70,21 +84,40 @@ public final class Context {
 
         private final AbstractLanguageImpl languageImpl;
 
-        private PrintStream out;
-        private PrintStream err;
+        private OutputStream out;
+        private OutputStream err;
         private InputStream in;
-        private Map<String, String> options = new HashMap<>();
+        private Map<String, String> options;
+        private String[] arguments;
 
         Builder(AbstractLanguageImpl languageImpl) {
             this.languageImpl = languageImpl;
         }
 
+        /**
+         * @deprecated use {@link #setOut(OutputStream)} instead
+         */
+        @Deprecated
         public Builder setOut(PrintStream out) {
             this.out = out;
             return this;
         }
 
+        /**
+         * @deprecated use {@link #setErr(OutputStream)} instead
+         */
+        @Deprecated
         public Builder setErr(PrintStream err) {
+            this.err = err;
+            return this;
+        }
+
+        public Builder setOut(OutputStream out) {
+            this.out = out;
+            return this;
+        }
+
+        public Builder setErr(OutputStream err) {
             this.err = err;
             return this;
         }
@@ -106,7 +139,35 @@ public final class Context {
          * @since 1.0
          */
         public Builder setOption(String key, String value) {
+            Objects.requireNonNull(key);
+            Objects.requireNonNull(value);
+            if (this.options == null) {
+                this.options = new HashMap<>();
+            }
             this.options.put(key, value);
+            return this;
+        }
+
+        /**
+         * Sets the guest language application arguments for a language {@link Context context}.
+         * Application arguments are typcially made available to guest language implementations. It
+         * depends on the language whether and how they are accessible within the
+         * {@link Context#eval(Source) evaluated} guest language scripts. Passing no arguments to a
+         * language then it is equivalent to providing an empty arguments array.
+         *
+         * @param args an array of arguments passed to the guest language program
+         * @since 1.0
+         */
+        public Builder setArguments(String[] args) {
+            Objects.requireNonNull(args);
+            String[] newArgs = args;
+            if (args.length > 0) {
+                newArgs = new String[args.length];
+                for (int i = 0; i < args.length; i++) { // defensive copy
+                    newArgs[i] = Objects.requireNonNull(args[i]);
+                }
+            }
+            this.arguments = newArgs;
             return this;
         }
 
@@ -120,14 +181,21 @@ public final class Context {
          */
         public Builder setOptions(Map<String, String> options) {
             for (String key : options.keySet()) {
-                Objects.requireNonNull(options.get(key), "All option values must be non-null.");
+                setOption(key, options.get(key));
             }
-            this.options.putAll(options);
             return this;
         }
 
         public Context build() {
-            Context context = languageImpl.createContext(out, err, in, options);
+            Map<String, String[]> argumentMap;
+            if (arguments != null) {
+                argumentMap = new HashMap<>();
+                argumentMap.put(languageImpl.getId(), arguments);
+            } else {
+                argumentMap = Collections.emptyMap();
+            }
+
+            Context context = languageImpl.createContext(out, err, in, options == null ? Collections.emptyMap() : options, argumentMap);
             context.initializeLanguage();
             return context;
         }

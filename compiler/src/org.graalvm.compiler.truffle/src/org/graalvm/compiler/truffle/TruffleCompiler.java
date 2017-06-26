@@ -32,6 +32,9 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrum
 import java.util.ArrayList;
 import java.util.List;
 
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.Assumptions.Assumption;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -43,6 +46,7 @@ import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugEnvironment;
 import org.graalvm.compiler.debug.DebugMemUseTracker;
 import org.graalvm.compiler.debug.DebugTimer;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -61,7 +65,6 @@ import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 import jdk.vm.ci.code.CompilationRequest;
-import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -80,6 +83,7 @@ public abstract class TruffleCompiler {
     protected final Backend backend;
     protected final SnippetReflectionProvider snippetReflection;
     protected final GraalTruffleCompilationListener compilationNotify;
+    protected final Backend.CodeInstallationTaskFactory codeInstallationTaskFactory;
 
     // @formatter:off
     private static final Class<?>[] SKIPPED_EXCEPTION_CLASSES = new Class<?>[]{
@@ -104,6 +108,8 @@ public abstract class TruffleCompiler {
         this.providers = backend.getProviders();
         this.suites = suites;
         this.lirSuites = lirSuites;
+        this.codeInstallationTaskFactory = new TrufflePostCodeInstallationTaskFactory();
+        backend.addCodeInstallationTask(codeInstallationTaskFactory);
 
         ResolvedJavaType[] skippedExceptionTypes = getSkippedExceptionTypes(providers.getMetaAccess());
 
@@ -124,6 +130,10 @@ public abstract class TruffleCompiler {
 
     public GraphBuilderConfiguration getGraphBuilderConfiguration() {
         return config;
+    }
+
+    public Backend getBackend() {
+        return backend;
     }
 
     protected abstract PartialEvaluator createPartialEvaluator();
@@ -197,7 +207,7 @@ public abstract class TruffleCompiler {
     }
 
     @SuppressWarnings("try")
-    public CompilationResult compileMethodHelper(StructuredGraph graph, String name, PhaseSuite<HighTierContext> graphBuilderSuite, InstalledCode predefinedInstalledCode,
+    public CompilationResult compileMethodHelper(StructuredGraph graph, String name, PhaseSuite<HighTierContext> graphBuilderSuite, OptimizedCallTarget predefinedInstalledCode,
                     CompilationRequest compilationRequest) {
         try (Scope s = Debug.scope("TruffleFinal")) {
             Debug.dump(Debug.BASIC_LEVEL, graph, "After TruffleTier");
@@ -206,9 +216,7 @@ public abstract class TruffleCompiler {
         }
 
         CompilationResult result = null;
-        List<AssumptionValidAssumption> validAssumptions = new ArrayList<>();
 
-        TruffleCompilationResultBuilderFactory factory = new TruffleCompilationResultBuilderFactory(graph, validAssumptions);
         try (DebugCloseable a = CompilationTime.start();
                         Scope s = Debug.scope("TruffleGraal.GraalCompiler", graph, providers.getCodeCache());
                         DebugCloseable c = CompilationMemUse.start()) {
@@ -218,22 +226,18 @@ public abstract class TruffleCompiler {
             }
 
             CompilationResult compilationResult = createCompilationResult(name, graph.compilationId());
-            result = compileGraph(graph, graph.method(), providers, backend, graphBuilderSuite, Optimizations, graph.getProfilingInfo(), suites, lirSuites, compilationResult, factory);
+            result = compileGraph(graph, graph.method(), providers, backend, graphBuilderSuite, Optimizations, graph.getProfilingInfo(), suites, lirSuites, compilationResult,
+                            CompilationResultBuilderFactory.Default);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
 
-        compilationNotify.notifyCompilationGraalTierFinished((OptimizedCallTarget) predefinedInstalledCode, graph);
+        compilationNotify.notifyCompilationGraalTierFinished(predefinedInstalledCode, graph);
 
-        InstalledCode installedCode;
         try (DebugCloseable a = CodeInstallationTime.start(); DebugCloseable c = CodeInstallationMemUse.start()) {
-            installedCode = backend.createInstalledCode(graph.method(), compilationRequest, result, graph.getSpeculationLog(), predefinedInstalledCode, false);
+            backend.createInstalledCode(graph.method(), compilationRequest, result, graph.getSpeculationLog(), predefinedInstalledCode, false);
         } catch (Throwable e) {
             throw Debug.handle(e);
-        }
-
-        for (AssumptionValidAssumption a : validAssumptions) {
-            a.getAssumption().registerInstalledCode(installedCode);
         }
 
         return result;
@@ -250,5 +254,53 @@ public abstract class TruffleCompiler {
 
     public PartialEvaluator getPartialEvaluator() {
         return partialEvaluator;
+    }
+
+    public OptimizedCallTarget asOptimizedCallTarget(JavaConstant constant) {
+        return snippetReflection.asObject(OptimizedCallTarget.class, constant);
+    }
+
+    private class TruffleCodeInstallationTask extends Backend.CodeInstallationTask {
+        private List<AssumptionValidAssumption> validAssumptions = new ArrayList<>();
+
+        @Override
+        public void preProcess(CompilationResult result) {
+            if (result == null || result.getAssumptions() == null) {
+                return;
+            }
+            ArrayList<Assumption> newAssumptions = new ArrayList<>();
+            for (Assumption assumption : result.getAssumptions()) {
+                if (assumption != null && assumption instanceof AssumptionValidAssumption) {
+                    AssumptionValidAssumption assumptionValidAssumption = (AssumptionValidAssumption) assumption;
+                    validAssumptions.add(assumptionValidAssumption);
+                } else {
+                    newAssumptions.add(assumption);
+                }
+            }
+            result.setAssumptions(newAssumptions.toArray(new Assumption[newAssumptions.size()]));
+        }
+
+        @Override
+        public void postProcess(InstalledCode installedCode) {
+            if (installedCode instanceof OptimizedCallTarget) {
+                for (AssumptionValidAssumption assumption : validAssumptions) {
+                    assumption.getAssumption().registerInstalledCode(installedCode);
+                }
+            }
+        }
+
+        @Override
+        public void releaseInstallation(InstalledCode installedCode) {
+            if (installedCode instanceof OptimizedCallTarget) {
+                ((OptimizedCallTarget) installedCode).releaseEntryPoint();
+            }
+        }
+    }
+
+    private class TrufflePostCodeInstallationTaskFactory extends Backend.CodeInstallationTaskFactory {
+        @Override
+        public Backend.CodeInstallationTask create() {
+            return new TruffleCodeInstallationTask();
+        }
     }
 }

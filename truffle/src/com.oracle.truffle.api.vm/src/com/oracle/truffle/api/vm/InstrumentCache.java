@@ -25,12 +25,12 @@
 package com.oracle.truffle.api.vm;
 
 import static com.oracle.truffle.api.vm.PolyglotEngine.LOG;
-import static com.oracle.truffle.api.vm.VMAccessor.SPI;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
@@ -41,16 +41,18 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+
 //TODO (chumer): maybe this class should share some code with LanguageCache?
 final class InstrumentCache {
 
-    static final boolean JDK8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
+    private static final boolean JDK8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
 
-    static final boolean PRELOAD;
-    private static final List<InstrumentCache> CACHE;
-    private static List<InstrumentCache> cache;
+    private static final List<InstrumentCache> nativeImageCache = TruffleOptions.AOT ? new ArrayList<>() : null;
+    private static List<InstrumentCache> runtimeCache;
 
-    private Class<?> instrumentClass;
+    private Class<? extends TruffleInstrument> instrumentClass;
     private final String className;
     private final String id;
     private final String name;
@@ -58,19 +60,29 @@ final class InstrumentCache {
     private final ClassLoader loader;
     private final Set<String> services;
 
-    static {
-        List<InstrumentCache> instruments = null;
-        if (Boolean.getBoolean("com.oracle.truffle.aot")) { // NOI18N
-            instruments = load();
-            for (InstrumentCache info : instruments) {
-                info.loadClass();
-            }
-        }
-        CACHE = instruments;
-        PRELOAD = CACHE != null;
+    /**
+     * Initializes state for native image generation.
+     *
+     * NOTE: this method is called reflectively by downstream projects.
+     *
+     * @param imageClassLoader class loader passed by the image builder.
+     */
+    @SuppressWarnings("unused")
+    private static void initializeNativeImageState(ClassLoader imageClassLoader) {
+        nativeImageCache.addAll(doLoad(Collections.singletonList(imageClassLoader)));
     }
 
-    InstrumentCache(String prefix, Properties info, ClassLoader loader) {
+    /**
+     * Initializes state for native image generation.
+     *
+     * NOTE: this method is called reflectively by downstream projects.
+     */
+    @SuppressWarnings("unused")
+    private static void resetNativeImageState() {
+        nativeImageCache.clear();
+    }
+
+    private InstrumentCache(String prefix, Properties info, ClassLoader loader) {
         this.loader = loader;
         this.className = info.getProperty(prefix + "className");
         this.name = info.getProperty(prefix + "name");
@@ -78,7 +90,11 @@ final class InstrumentCache {
         String loadedId = info.getProperty(prefix + "id");
         if (loadedId.equals("")) {
             /* use class name default id */
-            this.id = className;
+            int lastIndex = className.lastIndexOf('$');
+            if (lastIndex == -1) {
+                lastIndex = className.lastIndexOf('.');
+            }
+            this.id = className.substring(lastIndex + 1, className.length());
         } else {
             this.id = loadedId;
         }
@@ -92,24 +108,31 @@ final class InstrumentCache {
             }
             this.services.add(serviceName);
         }
+        if (TruffleOptions.AOT) {
+            loadClass();
+        }
     }
 
-    static List<InstrumentCache> load() {
-        if (PRELOAD) {
-            return CACHE;
+    static List<InstrumentCache> load(Collection<ClassLoader> loaders) {
+        if (TruffleOptions.AOT) {
+            return nativeImageCache;
         }
-        if (cache != null) {
-            return cache;
+        if (runtimeCache != null) {
+            return runtimeCache;
         }
+        return doLoad(loaders);
+    }
+
+    private static List<InstrumentCache> doLoad(Collection<ClassLoader> loaders) {
         List<InstrumentCache> list = new ArrayList<>();
         Set<String> classNamesUsed = new HashSet<>();
-        for (ClassLoader loader : (LanguageCache.AOT_LOADERS == null ? SPI.allLoaders() : LanguageCache.AOT_LOADERS)) {
+        for (ClassLoader loader : loaders) {
             loadForOne(loader, list, classNamesUsed);
         }
         if (!JDK8OrEarlier) {
             loadForOne(ModuleResourceLocator.createLoader(), list, classNamesUsed);
         }
-        return cache = list;
+        return runtimeCache = list;
     }
 
     private static void loadForOne(ClassLoader loader, List<InstrumentCache> list, Set<String> classNamesUsed) {
@@ -172,7 +195,7 @@ final class InstrumentCache {
     }
 
     Class<?> getInstrumentationClass() {
-        if (!PRELOAD && instrumentClass == null) {
+        if (!TruffleOptions.AOT && instrumentClass == null) {
             loadClass();
         }
         return instrumentClass;
@@ -186,9 +209,10 @@ final class InstrumentCache {
         return services.toArray(new String[0]);
     }
 
+    @SuppressWarnings("unchecked")
     private void loadClass() {
         try {
-            instrumentClass = Class.forName(className, true, loader);
+            instrumentClass = (Class<? extends TruffleInstrument>) Class.forName(className, true, loader);
         } catch (Exception ex) {
             throw new IllegalStateException("Cannot initialize " + getName() + " instrument with implementation " + className, ex);
         }

@@ -25,19 +25,19 @@ builds += [
   },
   ${linux-amd64} ${linux-deploy} ${maven-deploy-dry-run} ${truffleCommon} {name: "gate-truffle-maven-dry-run"}
   ${solaris-sparcv9} ${java8} ${gateLite} {
-    targets : [ gate ],
+    targets : [ weekly ],
     name: "gate-truffle-solaris-lite-8"
   }
   ${solaris-sparcv9} ${java9} ${gateLite} {
-    targets : [ gate ],
+    targets : [ weekly ],
     name: "gate-truffle-solaris-lite-9"
   }
   ${darwin-amd64} ${java8} ${gateLite} {
-    targets : [ gate ],
+    targets : [ weekly ],
     name: "gate-truffle-mac-lite-8"
   }
   ${darwin-amd64} ${java9} ${gateLite} {
-    targets : [ gate ],
+    targets : [ weekly ],
     name: "gate-truffle-mac-lite-9"
   }
   ${linux-amd64} ${java8} ${truffleCommon} {

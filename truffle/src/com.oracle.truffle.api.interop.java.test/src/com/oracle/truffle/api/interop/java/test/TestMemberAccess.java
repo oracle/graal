@@ -336,6 +336,29 @@ public class TestMemberAccess {
         assertTrue(JavaInterop.isArray(stringArray));
     }
 
+    @Test
+    public void testArrayOutOfBoundsAccess() throws InteropException {
+        Object[] array = new Object[1];
+        TruffleObject arrayObject = JavaInterop.asTruffleObject(array);
+        assertTrue(JavaInterop.isArray(arrayObject));
+        ForeignAccess.sendRead(READ_NODE, arrayObject, 0);
+        try {
+            ForeignAccess.sendRead(READ_NODE, arrayObject, 1);
+            fail();
+        } catch (UnknownIdentifierException e) {
+        }
+    }
+
+    @Test
+    public void testObjectReadIndex() throws InteropException {
+        TruffleObject arrayObject = JavaInterop.asTruffleObject(new TestClass());
+        try {
+            ForeignAccess.sendRead(READ_NODE, arrayObject, 0);
+            fail();
+        } catch (UnknownIdentifierException e) {
+        }
+    }
+
     private void testForValue(String name, Object value) throws ClassNotFoundException, UnsupportedTypeException, ArityException, UnsupportedMessageException, InteropException {
         Object o = getValueFromMember(name);
         if (value == null) {

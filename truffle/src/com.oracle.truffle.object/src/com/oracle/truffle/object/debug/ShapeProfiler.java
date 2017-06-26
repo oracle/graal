@@ -35,6 +35,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+@SuppressWarnings("deprecation")
 @Deprecated
 public class ShapeProfiler {
     private static final String LINE_SEPARATOR = "***********************************************";
