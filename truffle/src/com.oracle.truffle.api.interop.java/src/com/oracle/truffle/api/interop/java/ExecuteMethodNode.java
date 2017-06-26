@@ -110,6 +110,50 @@ abstract class ExecuteMethodNode extends Node {
         return doInvoke(method, obj, convertedArguments, languageContext);
     }
 
+    @SuppressWarnings("unused")
+    @ExplodeLoop
+    @Specialization(guards = {"method == cachedMethod", "checkArgTypes(args, cachedArgTypes)"})
+    Object doOverloadedCached(OverloadedMethodDesc method, Object obj, Object[] args, Object languageContext,
+                    @Cached("method") OverloadedMethodDesc cachedMethod,
+                    @Cached(value = "getArgTypes(args)", dimensions = 1) Class<?>[] cachedArgTypes,
+                    @Cached("create()") ToJavaNode toJavaNode) {
+        SingleMethodDesc overload = selectOverload(method, args, languageContext, toJavaNode);
+        TypeAndClass<?>[] types = getTypes(overload, args.length);
+        Object[] convertedArguments = new Object[cachedArgTypes.length];
+        for (int i = 0; i < cachedArgTypes.length; i++) {
+            convertedArguments[i] = toJavaNode.execute(args[i], types[i], languageContext);
+        }
+        return doInvoke(overload, obj, convertedArguments, languageContext);
+    }
+
+    static Class<?>[] getArgTypes(Object[] args) {
+        Class<?>[] argTypes = new Class<?>[args.length];
+        for (int i = 0; i < args.length; i++) {
+            argTypes[i] = args[i] == null ? null : args[i].getClass();
+        }
+        return argTypes;
+    }
+
+    @ExplodeLoop
+    static boolean checkArgTypes(Object[] args, Class<?>[] argTypes) {
+        if (args.length != argTypes.length) {
+            return false;
+        }
+        for (int i = 0; i < argTypes.length; i++) {
+            Class<?> argType = argTypes[i];
+            if (args[i] == null) {
+                if (argType != null) {
+                    return false;
+                }
+            } else {
+                if (args[i].getClass() != argType) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     static Class<?> primitiveTypeToBoxedType(Class<?> primitiveType) {
         assert primitiveType.isPrimitive();
         if (primitiveType == boolean.class) {
@@ -133,7 +177,7 @@ abstract class ExecuteMethodNode extends Node {
         }
     }
 
-    @Specialization
+    @Specialization(replaces = "doOverloadedCached")
     Object doOverloadedUncached(OverloadedMethodDesc method, Object obj, Object[] args, Object languageContext,
                     @Cached("create()") ToJavaNode toJavaNode) {
         SingleMethodDesc overload = selectOverload(method, args, languageContext, toJavaNode);
