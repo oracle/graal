@@ -20,6 +20,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added RootNode.isInternal to indicate if a RootNode is considered internal and should not be shown to the guest language programmer.
 * Added TruffleLanguage.lookupSymbol to be implemented by languages to support language agnostic lookups in the top-most scope.
 * Added TruffleLanguage.Env.getApplicationArguments() to access application arguments specified by the user.
+* Added [@Option](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/Option.html) annotation to allow simple declaration of options in TruffleLanguage or TruffleInstrument subclasses.
+
 
 ## Version 0.26
 18-May-2017

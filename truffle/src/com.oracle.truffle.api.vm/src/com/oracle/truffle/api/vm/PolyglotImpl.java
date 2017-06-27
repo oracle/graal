@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
+import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
@@ -51,6 +52,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.impl.TruffleLocator;
@@ -200,6 +202,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         throw new EngineException(e);
     }
 
+    @TruffleBoundary
     static <T extends Throwable> RuntimeException wrapHostException(T e) {
         if (e instanceof ThreadDeath) {
             throw (ThreadDeath) e;
@@ -213,6 +216,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         return new HostException(e);
     }
 
+    @TruffleBoundary
     static <T extends Throwable> RuntimeException wrapGuestException(PolyglotLanguageContextImpl context, T e) {
         if (e instanceof PolyglotException) {
             return (PolyglotException) e;
@@ -297,6 +301,20 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
+        public OptionValues getCompilerOptionValues(RootNode rootNode) {
+            Object vm = NODES.getSourceVM(rootNode);
+            if (vm instanceof PolyglotEngineImpl) {
+                return ((PolyglotEngineImpl) vm).compilerOptionValues;
+            }
+            return null;
+        }
+
+        @Override
+        public Object getVMFromLanguageObject(Object engineObject) {
+            return getEngine(engineObject);
+        }
+
+        @Override
         public Env getEnvForLanguage(Object vmObject, String mimeType) {
             PolyglotLanguageContextImpl languageContext = (PolyglotLanguageContextImpl) vmObject;
             PolyglotLanguageContextImpl context = languageContext.context.findLanguageContext(mimeType, true);
@@ -358,6 +376,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         private static PolyglotEngineImpl getEngine(Object vmObject) throws AssertionError {
+            if (!(vmObject instanceof VMObject)) {
+                throw new AssertionError();
+            }
             return ((VMObject) vmObject).getEngine();
         }
 
@@ -371,7 +392,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public Object getCurrentVM() {
-            return CURRENT_CONTEXT.get().getEngine();
+            PolyglotContextImpl current = CURRENT_CONTEXT.get();
+            return current != null ? current.getEngine() : null;
         }
 
         @Override

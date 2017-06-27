@@ -23,6 +23,7 @@
 package org.graalvm.compiler.truffle;
 
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -57,8 +58,13 @@ final class GraalTVMCI extends TVMCI {
     }
 
     @Override
-    protected OptionDescriptors getCompilerOptions() {
-        return super.getCompilerOptions();
+    protected OptionDescriptors getCompilerOptionDescriptors() {
+        return PolyglotCompilerOptions.getDescriptors();
+    }
+
+    @Override
+    protected OptionValues getCompilerOptionValues(RootNode rootNode) {
+        return super.getCompilerOptionValues(rootNode);
     }
 
     void onFirstExecution(OptimizedCallTarget callTarget) {
