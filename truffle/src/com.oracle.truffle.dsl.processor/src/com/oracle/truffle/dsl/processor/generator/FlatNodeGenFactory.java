@@ -70,6 +70,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
 import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -354,7 +355,10 @@ public class FlatNodeGenFactory {
 
         clazz.addOptional(createExecuteAndSpecialize());
 
-        clazz.add(createGetCostMethod());
+        NodeInfo nodeInfo = node.getTemplateType().getAnnotation(NodeInfo.class);
+        if (nodeInfo == null || nodeInfo.cost() == NodeCost.MONOMORPHIC /* the default */) {
+            clazz.add(createGetCostMethod());
+        }
 
         for (TypeMirror type : ElementUtils.uniqueSortedTypes(expectedTypes, false)) {
             if (!typeSystem.hasType(type)) {
