@@ -43,8 +43,6 @@ import com.oracle.truffle.api.nodes.Node;
 
 abstract class ExecuteMethodNode extends Node {
 
-    @Child private ToPrimitiveNode primitive = ToPrimitiveNode.create();
-
     ExecuteMethodNode() {
     }
 
@@ -450,7 +448,7 @@ abstract class ExecuteMethodNode extends Node {
     }
 
     @TruffleBoundary
-    private Object doInvoke(SingleMethodDesc method, Object obj, Object[] args, Object languageContext) {
+    private static Object doInvoke(SingleMethodDesc method, Object obj, Object[] args, Object languageContext) {
         int numberOfArguments = method.getParameterTypes().length;
         Class<?>[] argumentTypes = method.getParameterTypes();
         Object[] arguments = new Object[numberOfArguments];
@@ -473,15 +471,12 @@ abstract class ExecuteMethodNode extends Node {
     }
 
     @TruffleBoundary
-    private Object reflectiveInvoke(SingleMethodDesc method, Object obj, Object[] arguments, Object languageContext) {
+    private static Object reflectiveInvoke(SingleMethodDesc method, Object obj, Object[] arguments, Object languageContext) {
         Object ret;
         try {
             ret = method.invoke(obj, arguments);
         } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | InstantiationException ex) {
             throw new IllegalStateException(ex);
-        }
-        if (primitive.isPrimitive(ret)) {
-            return ret;
         }
         return JavaInterop.toGuestValue(ret, languageContext);
     }

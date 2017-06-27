@@ -34,7 +34,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
 
 abstract class ArrayReadNode extends Node {
-    @Child private ToPrimitiveNode primitive = ToPrimitiveNode.create();
 
     protected abstract Object executeWithTarget(JavaObject receiver, Object index);
 
@@ -57,7 +56,7 @@ abstract class ArrayReadNode extends Node {
         throw UnknownIdentifierException.raise(String.valueOf(index));
     }
 
-    private Object doArrayAccess(JavaObject object, int index) {
+    private static Object doArrayAccess(JavaObject object, int index) {
         Object obj = object.obj;
         assert object.isArray();
         Object val = null;
@@ -66,9 +65,6 @@ abstract class ArrayReadNode extends Node {
         } catch (ArrayIndexOutOfBoundsException outOfBounds) {
             CompilerDirectives.transferToInterpreter();
             throw UnknownIdentifierException.raise(String.valueOf(index));
-        }
-        if (primitive.isPrimitive(val)) {
-            return val;
         }
         return JavaInterop.toGuestValue(val, object.languageContext);
     }
