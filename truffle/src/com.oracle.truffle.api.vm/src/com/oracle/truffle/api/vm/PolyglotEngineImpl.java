@@ -192,7 +192,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                 if (key.startsWith(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX)) {
                     String engineKey = key.substring(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX.length(), key.length());
                     if (!options.containsKey(engineKey)) {
-                        options.put(key, System.getProperty(key));
+                        options.put(engineKey, System.getProperty(key));
                     }
                 }
             }
