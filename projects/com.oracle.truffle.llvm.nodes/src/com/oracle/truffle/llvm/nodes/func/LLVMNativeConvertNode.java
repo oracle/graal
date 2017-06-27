@@ -41,6 +41,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.func.LLVMNativeConvertNodeFactory.AddressToNativeNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMNativeConvertNodeFactory.FunctionToNativeNodeGen;
+import com.oracle.truffle.llvm.nodes.func.LLVMNativeConvertNodeFactory.I1FromNativeToLLVMNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMNativeConvertNodeFactory.IdNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMNativeConvertNodeFactory.NativeToAddressNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
@@ -54,6 +55,8 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions.NullPointerNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 abstract class LLVMNativeConvertNode extends LLVMNode {
@@ -88,6 +91,8 @@ abstract class LLVMNativeConvertNode extends LLVMNode {
     static LLVMNativeConvertNode createFromNative(Type retType) {
         if (retType instanceof PointerType) {
             return NativeToAddressNodeGen.create();
+        } else if (retType instanceof PrimitiveType && ((PrimitiveType) retType).getPrimitiveKind() == PrimitiveKind.I1) {
+            return I1FromNativeToLLVMNodeGen.create();
         }
         return IdNodeGen.create();
     }
@@ -269,5 +274,17 @@ abstract class LLVMNativeConvertNode extends LLVMNode {
             return arg;
         }
 
+    }
+
+    abstract static class I1FromNativeToLLVMNode extends LLVMNativeConvertNode {
+        @Specialization
+        public Object convert(byte value) {
+            return value != 0;
+        }
+
+        @Specialization
+        public Object convert(boolean value) {
+            return value;
+        }
     }
 }
