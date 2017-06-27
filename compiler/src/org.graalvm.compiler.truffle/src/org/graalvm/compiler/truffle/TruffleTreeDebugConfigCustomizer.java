@@ -22,8 +22,23 @@
  */
 package org.graalvm.compiler.truffle;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.channels.FileChannel;
+import java.nio.channels.SocketChannel;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import org.graalvm.compiler.debug.DebugConfig;
 import org.graalvm.compiler.debug.DebugConfigCustomizer;
+import org.graalvm.compiler.debug.GraalDebugConfig;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.DumpPath;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintBinaryGraphPort;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintBinaryGraphs;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintGraphFileName;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintGraphHost;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintXmlGraphPort;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.options.UniquePathUtilities;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
 @ServiceProvider(DebugConfigCustomizer.class)
@@ -31,6 +46,32 @@ public class TruffleTreeDebugConfigCustomizer implements DebugConfigCustomizer {
 
     @Override
     public void customize(DebugConfig config) {
-        config.dumpHandlers().add(new TruffleTreeDumpHandler(config.getOptions()));
+        OptionValues options = config.getOptions();
+        try {
+            if (GraalDebugConfig.Options.PrintGraphFile.getValue(options)) {
+                config.dumpHandlers().add(createFilePrinter(options));
+            } else {
+                config.dumpHandlers().add(createNetworkPrinter(options));
+            }
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
     }
+
+    private static Path getFilePrinterPath(OptionValues options) {
+        // Construct the path to the file.
+        return UniquePathUtilities.getPath(options, PrintGraphFileName, DumpPath, PrintBinaryGraphs.getValue(options) ? "bgv" : "gv.xml");
+    }
+
+    private static TruffleTreeDumpHandler createFilePrinter(OptionValues options) throws IOException {
+        Path path = getFilePrinterPath(options);
+        return new TruffleTreeDumpHandler(() -> FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW), options);
+    }
+
+    private static TruffleTreeDumpHandler createNetworkPrinter(OptionValues options) throws IOException {
+        String host = PrintGraphHost.getValue(options);
+        int port = PrintBinaryGraphs.getValue(options) ? PrintBinaryGraphPort.getValue(options) : PrintXmlGraphPort.getValue(options);
+        return new TruffleTreeDumpHandler(() -> SocketChannel.open(new InetSocketAddress(host, port)), options);
+    }
+
 }

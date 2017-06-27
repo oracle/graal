@@ -85,7 +85,7 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.
     }
 
     @Override
-    ResolvedJavaMethod findMethod(Object object) {
+    protected ResolvedJavaMethod findMethod(Object object) {
         if (object instanceof Bytecode) {
             return ((Bytecode) object).getMethod();
         } else if (object instanceof ResolvedJavaMethod) {
@@ -96,7 +96,7 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.
     }
 
     @Override
-    NodeClass<?> findNodeClass(Object obj) {
+    protected NodeClass<?> findNodeClass(Object obj) {
         if (obj instanceof NodeClass<?>) {
             return (NodeClass<?>) obj;
         }
@@ -107,17 +107,17 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.
     }
 
     @Override
-    Class<?> findJavaClass(NodeClass<?> node) {
+    protected Class<?> findJavaClass(NodeClass<?> node) {
         return node.getJavaClass();
     }
 
     @Override
-    String findNameTemplate(NodeClass<?> nodeClass) {
+    protected String findNameTemplate(NodeClass<?> nodeClass) {
         return nodeClass.getNameTemplate();
     }
 
     @Override
-    final GraphInfo findGraph(Object obj) {
+    protected final GraphInfo findGraph(Object obj) {
         if (obj instanceof Graph) {
             return new GraphInfo((Graph) obj);
         } else if (obj instanceof CachedGraph) {
@@ -128,18 +128,18 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.
     }
 
     @Override
-    int findNodeId(Node n) {
+    protected int findNodeId(Node n) {
         return getNodeId(n);
     }
 
     @Override
-    final Edges findEdges(Node node, boolean dumpInputs) {
+    protected final Edges findEdges(Node node, boolean dumpInputs) {
         NodeClass<?> nodeClass = node.getNodeClass();
         return findClassEdges(nodeClass, dumpInputs);
     }
 
     @Override
-    final Edges findClassEdges(NodeClass<?> nodeClass, boolean dumpInputs) {
+    protected final Edges findClassEdges(NodeClass<?> nodeClass, boolean dumpInputs) {
         return nodeClass.getEdges(dumpInputs ? Inputs : Successors);
     }
 
@@ -149,32 +149,32 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.
     }
 
     @Override
-    List<Node> findBlockNodes(GraphInfo info, Block block) {
+    protected List<Node> findBlockNodes(GraphInfo info, Block block) {
         return info.blockToNodes.get(block);
     }
 
     @Override
-    int findBlockId(Block sux) {
+    protected int findBlockId(Block sux) {
         return sux.getId();
     }
 
     @Override
-    List<Block> findBlockSuccessors(Block block) {
+    protected List<Block> findBlockSuccessors(Block block) {
         return Arrays.asList(block.getSuccessors());
     }
 
     @Override
-    Iterable<Node> findNodes(GraphInfo info) {
+    protected Iterable<Node> findNodes(GraphInfo info) {
         return info.graph.getNodes();
     }
 
     @Override
-    int findNodesCount(GraphInfo info) {
+    protected int findNodesCount(GraphInfo info) {
         return info.graph.getNodeCount();
     }
 
     @Override
-    void findNodeProperties(Node node, Map<Object, Object> props, GraphInfo info) {
+    protected void findNodeProperties(Node node, Map<Object, Object> props, GraphInfo info) {
         node.getDebugProperties(props);
         Graph graph = info.graph;
         ControlFlowGraph cfg = info.cfg;
@@ -244,7 +244,7 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.
     }
 
     @Override
-    void findExtraNodes(Node node, Collection<? super Node> extraNodes) {
+    protected void findExtraNodes(Node node, Collection<? super Node> extraNodes) {
         if (node instanceof AbstractMergeNode) {
             AbstractMergeNode merge = (AbstractMergeNode) node;
             for (PhiNode phi : merge.phis()) {
@@ -254,12 +254,12 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.
     }
 
     @Override
-    boolean hasPredecessor(Node node) {
+    protected boolean hasPredecessor(Node node) {
         return node.predecessor() != null;
     }
 
     @Override
-    List<Block> findBlocks(GraphInfo graph) {
+    protected List<Block> findBlocks(GraphInfo graph) {
         return graph.blocks;
     }
 
@@ -269,32 +269,32 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.
     }
 
     @Override
-    int findSize(Edges edges) {
+    protected int findSize(Edges edges) {
         return edges.getCount();
     }
 
     @Override
-    boolean isDirect(Edges edges, int i) {
+    protected boolean isDirect(Edges edges, int i) {
         return i < edges.getDirectCount();
     }
 
     @Override
-    String findName(Edges edges, int i) {
+    protected String findName(Edges edges, int i) {
         return edges.getName(i);
     }
 
     @Override
-    InputType findType(Edges edges, int i) {
+    protected InputType findType(Edges edges, int i) {
         return ((InputEdges) edges).getInputType(i);
     }
 
     @Override
-    Node findNode(Node node, Edges edges, int i) {
+    protected Node findNode(Node node, Edges edges, int i) {
         return Edges.getNode(node, edges.getOffsets(), i);
     }
 
     @Override
-    List<Node> findNodes(Node node, Edges edges, int i) {
+    protected List<Node> findNodes(Node node, Edges edges, int i) {
         return Edges.getNodeList(node, edges.getOffsets(), i);
     }
 

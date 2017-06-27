@@ -22,68 +22,194 @@
  */
 package org.graalvm.compiler.truffle;
 
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.Closeable;
-import java.io.File;
-import java.io.FileOutputStream;
+import com.oracle.truffle.api.RootCallTarget;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.io.PrintStream;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.net.Socket;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.xml.stream.FactoryConfigurationError;
-import javax.xml.stream.XMLOutputFactory;
-import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamWriter;
-
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeClass;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.api.nodes.RootNode;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.channels.WritableByteChannel;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Objects;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.compiler.nodeinfo.InputType;
+import org.graalvm.compiler.printer.AbstractGraphPrinter;
+import org.graalvm.compiler.truffle.GraphPrintVisitor.EdgeType;
+import org.graalvm.compiler.truffle.GraphPrintVisitor.NodeElement;
 
 /**
  * Utility class for creating output for the ideal graph visualizer.
  *
  * @since 0.8 or earlier
  */
-class GraphPrintVisitor implements Closeable {
-    /** @since 0.8 or earlier */
-    static final String GraphVisualizerAddress = "127.0.0.1";
-    /** @since 0.8 or earlier */
-    static final int GraphVisualizerPort = 4444;
-    private static final String DEFAULT_GRAPH_NAME = "truffle tree";
-
+class GraphPrintVisitor extends AbstractGraphPrinter<RootCallTarget, NodeElement, NodeClass, EdgeType, Void> {
     private Map<Object, NodeElement> nodeMap;
     private List<EdgeElement> edgeList;
     private Map<Object, NodeElement> prevNodeMap;
     private int id;
-    private Impl xmlstream;
-    private OutputStream outputStream;
-    private int openGroupCount;
-    private int openGraphCount;
     private String currentGraphName;
 
-    private static class NodeElement {
-        private final int id;
-        private final Map<String, Object> properties;
+    @Override
+    protected RootCallTarget findGraph(Object obj) {
+        return obj instanceof RootCallTarget ? (RootCallTarget) obj : null;
+    }
 
-        NodeElement(int id) {
-            super();
+    @Override
+    protected ResolvedJavaMethod findMethod(Object obj) {
+        return null;
+    }
+
+    @Override
+    protected NodeClass findNodeClass(Object obj) {
+        if (obj instanceof NodeElement) {
+            obj = ((NodeElement) obj).node;
+        }
+        if (obj instanceof NodeClass) {
+            return (NodeClass) obj;
+        }
+        if (obj instanceof RootCallTarget) {
+            obj = ((RootCallTarget) obj).getRootNode();
+        }
+        if (obj instanceof Node) {
+            Node node = (Node) obj;
+            return NodeClass.get(node.getClass());
+        }
+        return null;
+    }
+
+    @Override
+    protected Class<?> findJavaClass(NodeClass clazz) {
+        return clazz.getType();
+    }
+
+    @Override
+    protected String findNameTemplate(NodeClass clazz) {
+        return "";
+    }
+
+    @Override
+    protected EdgeType findEdges(NodeElement node, boolean dumpInputs) {
+        return dumpInputs ? EdgeType.PARENT : EdgeType.CHILDREN;
+    }
+
+    @Override
+    protected EdgeType findClassEdges(NodeClass nodeClass, boolean dumpInputs) {
+        return dumpInputs ? EdgeType.PARENT : EdgeType.CHILDREN;
+    }
+
+    @Override
+    protected int findNodeId(NodeElement n) {
+        return n.id;
+    }
+
+    @Override
+    protected void findExtraNodes(NodeElement node, Collection<? super NodeElement> extraNodes) {
+    }
+
+    @Override
+    protected boolean hasPredecessor(NodeElement node) {
+        return !node.in.isEmpty();
+    }
+
+    @Override
+    protected int findNodesCount(RootCallTarget info) {
+        return nodeMap.size();
+    }
+
+    @Override
+    protected Iterable<NodeElement> findNodes(RootCallTarget info) {
+        return nodeMap.values();
+    }
+
+    @Override
+    protected void findNodeProperties(NodeElement node, Map<Object, Object> props, RootCallTarget info) {
+        for (Map.Entry<String, Object> entry : node.getProperties().entrySet()) {
+            final Object value = entry.getValue();
+            props.put(entry.getKey(), Objects.toString(value));
+        }
+    }
+
+    @Override
+    protected List<NodeElement> findBlockNodes(RootCallTarget info, Void block) {
+        return Collections.emptyList();
+    }
+
+    @Override
+    protected int findBlockId(Void sux) {
+        return -1;
+    }
+
+    @Override
+    protected List<Void> findBlocks(RootCallTarget graph) {
+        return Collections.emptyList();
+    }
+
+    @Override
+    protected List<Void> findBlockSuccessors(Void block) {
+        return Collections.emptyList();
+    }
+
+    @Override
+    protected String formatTitle(int id, String format, Object... args) {
+        return String.format(format, args) + " [" + id + "]";
+    }
+
+    @Override
+    protected int findSize(EdgeType edges) {
+        return 1;
+    }
+
+    @Override
+    protected boolean isDirect(EdgeType edges, int i) {
+        return false;
+    }
+
+    @Override
+    protected String findName(EdgeType edges, int i) {
+        return edges == EdgeType.PARENT ? "Parent" : "Children";
+    }
+
+    @Override
+    protected InputType findType(EdgeType edges, int i) {
+        return InputType.Association;
+    }
+
+    @Override
+    protected NodeElement findNode(NodeElement node, EdgeType edges, int i) {
+        List<NodeElement> nodes = findNodes(node, edges, i);
+        return nodes.isEmpty() ? null : nodes.get(0);
+    }
+
+    @Override
+    protected List<NodeElement> findNodes(NodeElement node, EdgeType edges, int i) {
+        return edges == EdgeType.PARENT ? node.in : node.out;
+    }
+
+    static class NodeElement {
+        final Object node;
+        final int id;
+        final Map<String, Object> properties;
+        final List<NodeElement> in = new ArrayList<>();
+        final List<NodeElement> out = new ArrayList<>();
+
+        NodeElement(Object node, int id) {
+            this.node = node;
             this.id = id;
             this.properties = new LinkedHashMap<>();
         }
@@ -97,7 +223,7 @@ class GraphPrintVisitor implements Closeable {
         }
     }
 
-    private static class EdgeElement {
+    static class EdgeElement {
         private final NodeElement from;
         private final NodeElement to;
         private final int index;
@@ -127,173 +253,12 @@ class GraphPrintVisitor implements Closeable {
         }
     }
 
-    private interface Impl {
-        void writeStartDocument();
-
-        void writeEndDocument();
-
-        void writeStartElement(String name);
-
-        void writeEndElement();
-
-        void writeAttribute(String name, String value);
-
-        void writeCharacters(String text);
-
-        void flush();
-
-        void close();
-    }
-
-    private static class XMLImpl implements Impl {
-        private static final XMLOutputFactory XML_OUTPUT_FACTORY = XMLOutputFactory.newInstance();
-        private final XMLStreamWriter xmlstream;
-
-        XMLImpl(OutputStream outputStream) {
-            try {
-                this.xmlstream = XML_OUTPUT_FACTORY.createXMLStreamWriter(outputStream);
-            } catch (XMLStreamException | FactoryConfigurationError e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        public void writeStartDocument() {
-            try {
-                xmlstream.writeStartDocument();
-            } catch (XMLStreamException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        public void writeEndDocument() {
-            try {
-                xmlstream.writeEndDocument();
-            } catch (XMLStreamException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        public void writeStartElement(String name) {
-            try {
-                xmlstream.writeStartElement(name);
-            } catch (XMLStreamException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        public void writeEndElement() {
-            try {
-                xmlstream.writeEndElement();
-            } catch (XMLStreamException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        public void writeAttribute(String name, String value) {
-            try {
-                xmlstream.writeAttribute(name, value);
-            } catch (XMLStreamException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        public void writeCharacters(String text) {
-            try {
-                xmlstream.writeCharacters(text);
-            } catch (XMLStreamException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        public void flush() {
-            try {
-                xmlstream.flush();
-            } catch (XMLStreamException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        public void close() {
-            try {
-                xmlstream.close();
-            } catch (XMLStreamException e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
-    /** @since 0.8 or earlier */
-    GraphPrintVisitor() {
-        this(new ByteArrayOutputStream());
-    }
-
-    /** @since 0.8 or earlier */
-    GraphPrintVisitor(OutputStream outputStream) {
-        this.outputStream = outputStream;
-        this.xmlstream = createImpl(outputStream);
-        this.xmlstream.writeStartDocument();
-        this.xmlstream.writeStartElement("graphDocument");
-    }
-
-    private static Impl createImpl(OutputStream outputStream) {
-        return new XMLImpl(outputStream);
-    }
-
-    private void ensureOpen() {
-        if (xmlstream == null) {
-            throw new IllegalStateException("printer is closed");
-        }
-    }
-
-    /** @since 0.8 or earlier */
-    GraphPrintVisitor beginGroup(String groupName) {
-        ensureOpen();
-        maybeEndGraph();
-        openGroupCount++;
-        xmlstream.writeStartElement("group");
-        xmlstream.writeStartElement("properties");
-
-        if (!groupName.isEmpty()) {
-            // set group name
-            xmlstream.writeStartElement("p");
-            xmlstream.writeAttribute("name", "name");
-            xmlstream.writeCharacters(groupName);
-            xmlstream.writeEndElement();
-        }
-
-        xmlstream.writeEndElement(); // properties
-
-        // forget old nodes
-        prevNodeMap = null;
-        nodeMap = new IdentityHashMap<>();
-        edgeList = new ArrayList<>();
-
-        return this;
-    }
-
-    /** @since 0.8 or earlier */
-    GraphPrintVisitor endGroup() {
-        ensureOpen();
-        if (openGroupCount <= 0) {
-            throw new IllegalArgumentException("no open group");
-        }
-        maybeEndGraph();
-        openGroupCount--;
-
-        xmlstream.writeEndElement(); // group
-
-        return this;
+    GraphPrintVisitor(WritableByteChannel ch) throws IOException {
+        super(ch);
     }
 
     /** @since 0.8 or earlier */
     GraphPrintVisitor beginGraph(String graphName) {
-        ensureOpen();
-        if (openGroupCount == 0) {
-            beginGroup(graphName);
-        }
-        maybeEndGraph();
-        openGraphCount++;
-
         this.currentGraphName = graphName;
 
         // save old nodes
@@ -302,142 +267,6 @@ class GraphPrintVisitor implements Closeable {
         edgeList = new ArrayList<>();
 
         return this;
-    }
-
-    private void maybeEndGraph() {
-        if (openGraphCount > 0) {
-            endGraph();
-            assert openGraphCount == 0;
-        }
-    }
-
-    /** @since 0.8 or earlier */
-    GraphPrintVisitor endGraph() {
-        ensureOpen();
-        if (openGraphCount <= 0) {
-            throw new IllegalArgumentException("no open graph");
-        }
-        openGraphCount--;
-
-        xmlstream.writeStartElement("graph");
-
-        xmlstream.writeStartElement("properties");
-
-        // set graph name
-        xmlstream.writeStartElement("p");
-        xmlstream.writeAttribute("name", "name");
-        xmlstream.writeCharacters(currentGraphName);
-        xmlstream.writeEndElement();
-
-        xmlstream.writeEndElement(); // properties
-
-        xmlstream.writeStartElement("nodes");
-        writeNodes();
-        xmlstream.writeEndElement(); // nodes
-
-        xmlstream.writeStartElement("edges");
-        writeEdges();
-        xmlstream.writeEndElement(); // edges
-
-        xmlstream.writeEndElement(); // graph
-
-        xmlstream.flush();
-
-        return this;
-    }
-
-    private void writeNodes() {
-        for (NodeElement node : nodeMap.values()) {
-            xmlstream.writeStartElement("node");
-            xmlstream.writeAttribute("id", String.valueOf(node.getId()));
-
-            xmlstream.writeStartElement("properties");
-            for (Map.Entry<String, Object> property : node.getProperties().entrySet()) {
-                xmlstream.writeStartElement("p");
-                xmlstream.writeAttribute("name", property.getKey());
-                xmlstream.writeCharacters(safeToString(property.getValue()));
-                xmlstream.writeEndElement(); // p
-            }
-            xmlstream.writeEndElement(); // properties
-
-            xmlstream.writeEndElement(); // node
-        }
-    }
-
-    private void writeEdges() {
-        for (EdgeElement edge : edgeList) {
-            xmlstream.writeStartElement("edge");
-
-            xmlstream.writeAttribute("from", String.valueOf(edge.getFrom().getId()));
-            xmlstream.writeAttribute("to", String.valueOf(edge.getTo().getId()));
-            xmlstream.writeAttribute("index", String.valueOf(edge.getIndex()));
-            if (edge.getLabel() != null) {
-                xmlstream.writeAttribute("label", edge.getLabel());
-            }
-
-            xmlstream.writeEndElement(); // edge
-        }
-    }
-
-    /** @since 0.8 or earlier */
-    @Override
-    public String toString() {
-        if (outputStream instanceof ByteArrayOutputStream) {
-            return new String(((ByteArrayOutputStream) outputStream).toByteArray(), Charset.forName("UTF-8"));
-        }
-        return super.toString();
-    }
-
-    /** @since 0.8 or earlier */
-    void printToFile(File f) {
-        close();
-        if (outputStream instanceof ByteArrayOutputStream) {
-            try (OutputStream os = new FileOutputStream(f)) {
-                os.write(((ByteArrayOutputStream) outputStream).toByteArray());
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    /** @since 0.8 or earlier */
-    void printToSysout() {
-        close();
-        if (outputStream instanceof ByteArrayOutputStream) {
-            PrintStream out = System.out;
-            out.println(toString());
-        }
-    }
-
-    /** @since 0.8 or earlier */
-    void printToNetwork(boolean ignoreErrors) {
-        close();
-        if (outputStream instanceof ByteArrayOutputStream) {
-            try (Socket socket = new Socket(GraphVisualizerAddress, GraphVisualizerPort); BufferedOutputStream os = new BufferedOutputStream(socket.getOutputStream(), 0x4000)) {
-                os.write(((ByteArrayOutputStream) outputStream).toByteArray());
-            } catch (IOException e) {
-                if (!ignoreErrors) {
-                    e.printStackTrace();
-                }
-            }
-        }
-    }
-
-    /** @since 0.8 or earlier */
-    public void close() {
-        if (xmlstream == null) {
-            return;
-        }
-        while (openGroupCount > 0) {
-            endGroup();
-        }
-        assert openGraphCount == 0 && openGroupCount == 0;
-
-        xmlstream.writeEndElement(); // graphDocument
-        xmlstream.writeEndDocument();
-        xmlstream.flush();
-        xmlstream.close();
-        xmlstream = null;
     }
 
     private int nextId() {
@@ -461,7 +290,7 @@ class GraphPrintVisitor implements Closeable {
         boolean exists = nodeMap.containsKey(node);
         if (!exists) {
             int nodeId = !exists ? oldOrNextId(node) : nextId();
-            nodeMap.put(node, new NodeElement(nodeId));
+            nodeMap.put(node, new NodeElement(node, nodeId));
 
             String className = className(node.getClass());
             setNodeProperty(node, "name", dropNodeSuffix(className));
@@ -533,15 +362,14 @@ class GraphPrintVisitor implements Closeable {
             }
         }
 
-        edgeList.add(new EdgeElement(fromNode, toNode, count, label));
+        final EdgeElement element = new EdgeElement(fromNode, toNode, count, label);
+        edgeList.add(element);
+        fromNode.out.add(toNode);
+        toNode.in.add(fromNode);
     }
 
     /** @since 0.8 or earlier */
-    GraphPrintVisitor visit(Object node) {
-        if (openGraphCount == 0) {
-            beginGraph(DEFAULT_GRAPH_NAME);
-        }
-
+    GraphPrintVisitor visit(Object node) throws IOException {
         // if node is visited once again, skip
         if (getElementByObject(node) != null) {
             return this;
@@ -559,13 +387,15 @@ class GraphPrintVisitor implements Closeable {
         return this;
     }
 
-    /** @since 0.8 or earlier */
-    GraphPrintVisitor visit(Object node, GraphPrintHandler handler) {
-        if (openGraphCount == 0) {
-            beginGraph(DEFAULT_GRAPH_NAME);
-        }
-
+    GraphPrintVisitor visit(Object node, GraphPrintHandler handler) throws IOException {
         handler.visit(node, new GraphPrintAdapter());
+
+        if (node instanceof RootCallTarget) {
+            print((RootCallTarget) node, null, nextId(), currentGraphName);
+        }
+        if (node instanceof RootNode) {
+            print(((RootNode) node).getCallTarget(), null, nextId(), currentGraphName);
+        }
 
         return this;
     }
@@ -650,14 +480,6 @@ class GraphPrintVisitor implements Closeable {
         }
     }
 
-    private static String safeToString(Object value) {
-        try {
-            return String.valueOf(value);
-        } catch (Throwable ex) {
-            return value.getClass().getName() + "@" + Integer.toHexString(System.identityHashCode(value));
-        }
-    }
-
     /** @since 0.8 or earlier */
     class GraphPrintAdapter {
         /**
@@ -674,12 +496,12 @@ class GraphPrintVisitor implements Closeable {
         }
 
         /** @since 0.8 or earlier */
-        void visit(Object node) {
+        void visit(Object node) throws IOException {
             GraphPrintVisitor.this.visit(node);
         }
 
         /** @since 0.8 or earlier */
-        void visit(Object node, GraphPrintHandler handler) {
+        void visit(Object node, GraphPrintHandler handler) throws IOException {
             GraphPrintVisitor.this.visit(node, handler);
         }
 
@@ -716,7 +538,11 @@ class GraphPrintVisitor implements Closeable {
 
             if (node instanceof Node) {
                 for (Map.Entry<String, Node> child : findNamedNodeChildren((Node) node).entrySet()) {
-                    printer.visit(child.getValue());
+                    try {
+                        printer.visit(child.getValue());
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
                     printer.connectNodes(node, child.getValue(), child.getKey());
                 }
             }
@@ -735,5 +561,10 @@ class GraphPrintVisitor implements Closeable {
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
     @interface NullGraphPrintHandler {
+    }
+
+    enum EdgeType {
+        PARENT,
+        CHILDREN;
     }
 }

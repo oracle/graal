@@ -39,7 +39,7 @@ import jdk.vm.ci.meta.Signature;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodeinfo.InputType;
 
-abstract class AbstractGraphPrinter<Graph, Node, NodeClass, Edges, Block> {
+public abstract class AbstractGraphPrinter<Graph, Node, NodeClass, Edges, Block> {
     private static final Charset UTF8 = Charset.forName("UTF-8");
 
     private static final int CONSTANT_POOL_MAX_SIZE = 8000;
@@ -80,7 +80,7 @@ abstract class AbstractGraphPrinter<Graph, Node, NodeClass, Edges, Block> {
     private final int versionMajor;
     private final int versionMinor;
 
-    AbstractGraphPrinter(WritableByteChannel channel) throws IOException {
+    protected AbstractGraphPrinter(WritableByteChannel channel) throws IOException {
         this(channel, 4, 0);
     }
 
@@ -100,7 +100,7 @@ abstract class AbstractGraphPrinter<Graph, Node, NodeClass, Edges, Block> {
     }
 
     @SuppressWarnings("all")
-    public void print(Graph graph, Map<Object, Object> properties, int id, String format, Object... args) throws IOException {
+    public final void print(Graph graph, Map<Object, Object> properties, int id, String format, Object... args) throws IOException {
         writeByte(BEGIN_GRAPH);
         if (versionMajor >= 3) {
             writeInt(id);
@@ -116,7 +116,7 @@ abstract class AbstractGraphPrinter<Graph, Node, NodeClass, Edges, Block> {
         flush();
     }
 
-    public void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci, Map<Object, Object> properties) throws IOException {
+    public final void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci, Map<Object, Object> properties) throws IOException {
         writeByte(BEGIN_GROUP);
         writePoolObject(name);
         writePoolObject(shortName);
@@ -125,11 +125,11 @@ abstract class AbstractGraphPrinter<Graph, Node, NodeClass, Edges, Block> {
         writeProperties(properties);
     }
 
-    public void endGroup() throws IOException {
+    public final void endGroup() throws IOException {
         writeByte(CLOSE_GROUP);
     }
 
-    public void close() {
+    public final void close() {
         try {
             flush();
             channel.close();
@@ -138,53 +138,53 @@ abstract class AbstractGraphPrinter<Graph, Node, NodeClass, Edges, Block> {
         }
     }
 
-    abstract Graph findGraph(Object obj);
+    protected abstract Graph findGraph(Object obj);
 
-    abstract ResolvedJavaMethod findMethod(Object obj);
+    protected abstract ResolvedJavaMethod findMethod(Object obj);
 
-    abstract NodeClass findNodeClass(Object obj);
+    protected abstract NodeClass findNodeClass(Object obj);
 
-    abstract Class<?> findJavaClass(NodeClass clazz);
+    protected abstract Class<?> findJavaClass(NodeClass clazz);
 
-    abstract String findNameTemplate(NodeClass clazz);
+    protected abstract String findNameTemplate(NodeClass clazz);
 
-    abstract Edges findEdges(Node node, boolean dumpInputs);
+    protected abstract Edges findEdges(Node node, boolean dumpInputs);
 
-    abstract Edges findClassEdges(NodeClass nodeClass, boolean dumpInputs);
+    protected abstract Edges findClassEdges(NodeClass nodeClass, boolean dumpInputs);
 
-    abstract int findNodeId(Node n);
+    protected abstract int findNodeId(Node n);
 
-    abstract void findExtraNodes(Node node, Collection<? super Node> extraNodes);
+    protected abstract void findExtraNodes(Node node, Collection<? super Node> extraNodes);
 
-    abstract boolean hasPredecessor(Node node);
+    protected abstract boolean hasPredecessor(Node node);
 
-    abstract int findNodesCount(Graph info);
+    protected abstract int findNodesCount(Graph info);
 
-    abstract Iterable<Node> findNodes(Graph info);
+    protected abstract Iterable<Node> findNodes(Graph info);
 
-    abstract void findNodeProperties(Node node, Map<Object, Object> props, Graph info);
+    protected abstract void findNodeProperties(Node node, Map<Object, Object> props, Graph info);
 
-    abstract List<Node> findBlockNodes(Graph info, Block block);
+    protected abstract List<Node> findBlockNodes(Graph info, Block block);
 
-    abstract int findBlockId(Block sux);
+    protected abstract int findBlockId(Block sux);
 
-    abstract List<Block> findBlocks(Graph graph);
+    protected abstract List<Block> findBlocks(Graph graph);
 
-    abstract List<Block> findBlockSuccessors(Block block);
+    protected abstract List<Block> findBlockSuccessors(Block block);
 
-    abstract String formatTitle(int id, String format, Object... args);
+    protected abstract String formatTitle(int id, String format, Object... args);
 
-    abstract int findSize(Edges edges);
+    protected abstract int findSize(Edges edges);
 
-    abstract boolean isDirect(Edges edges, int i);
+    protected abstract boolean isDirect(Edges edges, int i);
 
-    abstract String findName(Edges edges, int i);
+    protected abstract String findName(Edges edges, int i);
 
-    abstract InputType findType(Edges edges, int i);
+    protected abstract InputType findType(Edges edges, int i);
 
-    abstract Node findNode(Node node, Edges edges, int i);
+    protected abstract Node findNode(Node node, Edges edges, int i);
 
-    abstract List<Node> findNodes(Node node, Edges edges, int i);
+    protected abstract List<Node> findNodes(Node node, Edges edges, int i);
 
     private void writeVersion() throws IOException {
         writeBytesRaw(MAGIC_BYTES);
