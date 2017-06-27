@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.test.vm;
+package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -32,7 +32,7 @@ import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
-public class PolyglotHostLanguageTest {
+public class HostLanguageTest {
 
     public static class MyClass {
 

@@ -61,6 +61,8 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
 // TODO document that the current context class loader is captured when the engine is created.
 public final class Engine implements AutoCloseable {
 
+    public static final String OPTION_COMPILER_TRACE_COMPILATION = "compiler.TraceCompilation";
+
     final AbstractEngineImpl impl;
 
     Engine(AbstractEngineImpl impl) {
@@ -173,7 +175,7 @@ public final class Engine implements AutoCloseable {
      */
     @Override
     public void close() {
-        impl.ensureClosed();
+        impl.ensureClosed(false);
     }
 
     public static Engine create() {
@@ -203,18 +205,21 @@ public final class Engine implements AutoCloseable {
         private Map<String, String> options = new HashMap<>();
         private boolean useSystemProperties = true;
 
-        public Builder setOut(OutputStream os) {
-            out = os;
+        public Builder setOut(OutputStream out) {
+            Objects.requireNonNull(out);
+            this.out = out;
             return this;
         }
 
-        public Builder setErr(OutputStream os) {
-            err = os;
+        public Builder setErr(OutputStream err) {
+            Objects.requireNonNull(err);
+            this.err = err;
             return this;
         }
 
-        public Builder setIn(InputStream is) {
-            in = is;
+        public Builder setIn(InputStream in) {
+            Objects.requireNonNull(in);
+            this.in = in;
             return this;
         }
 

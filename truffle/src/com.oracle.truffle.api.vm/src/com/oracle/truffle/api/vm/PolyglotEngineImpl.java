@@ -375,11 +375,11 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     }
 
     @Override
-    public void ensureClosed() {
+    public void ensureClosed(boolean ignoreContexts) {
         if (!closed) {
             synchronized (this) {
                 if (!closed) {
-                    if (contextCount > 0) {
+                    if (!ignoreContexts && contextCount > 0) {
                         throw new IllegalStateException(
                                         String.format("There are still %s open contexts in use. All contexts spawned by an engine must be closed before their engine can be closed. ",
                                                         contextCount));
@@ -492,7 +492,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         public void run() {
             for (PolyglotEngineImpl engine : ENGINES.keySet()) {
                 if (engine != null) {
-                    engine.ensureClosed();
+                    engine.ensureClosed(true);
                 }
             }
         }
