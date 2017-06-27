@@ -34,8 +34,6 @@ import com.oracle.truffle.api.source.SourceSection;
 import java.io.IOException;
 import java.nio.channels.WritableByteChannel;
 import java.util.concurrent.Callable;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.graalvm.compiler.truffle.GraphPrintVisitor.GraphPrintAdapter;
 import org.graalvm.compiler.truffle.GraphPrintVisitor.GraphPrintHandler;
 

@@ -24,21 +24,15 @@ package org.graalvm.compiler.truffle;
 
 import com.oracle.truffle.api.RootCallTarget;
 import java.io.IOException;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeClass;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -76,7 +70,8 @@ class GraphPrintVisitor extends AbstractGraphPrinter<RootCallTarget, NodeElement
     }
 
     @Override
-    protected NodeClass findNodeClass(Object obj) {
+    protected NodeClass findNodeClass(Object o) {
+        Object obj = o;
         if (obj instanceof NodeElement) {
             obj = ((NodeElement) obj).node;
         }
@@ -166,8 +161,8 @@ class GraphPrintVisitor extends AbstractGraphPrinter<RootCallTarget, NodeElement
     }
 
     @Override
-    protected String formatTitle(int id, String format, Object... args) {
-        return String.format(format, args) + " [" + id + "]";
+    protected String formatTitle(int ident, String format, Object... args) {
+        return String.format(format, args) + " [" + ident + "]";
     }
 
     @Override
@@ -374,16 +369,7 @@ class GraphPrintVisitor extends AbstractGraphPrinter<RootCallTarget, NodeElement
         if (getElementByObject(node) != null) {
             return this;
         }
-
-        // respect node's custom handler
-        if (!TruffleOptions.AOT && NodeUtil.findAnnotation(node.getClass(), CustomGraphPrintHandler.class) != null) {
-            visit(node, createGraphPrintHandlerFromClass(NodeUtil.findAnnotation(node.getClass(), CustomGraphPrintHandler.class).handler()));
-        } else if (NodeUtil.findAnnotation(node.getClass(), NullGraphPrintHandler.class) != null) {
-            // ignore
-        } else {
-            visit(node, new DefaultGraphPrintHandler());
-        }
-
+        visit(node, new DefaultGraphPrintHandler());
         return this;
     }
 
@@ -398,14 +384,6 @@ class GraphPrintVisitor extends AbstractGraphPrinter<RootCallTarget, NodeElement
         }
 
         return this;
-    }
-
-    private static GraphPrintHandler createGraphPrintHandlerFromClass(Class<? extends GraphPrintHandler> customHandlerClass) {
-        try {
-            return customHandlerClass.newInstance();
-        } catch (InstantiationException | IllegalAccessException e) {
-            throw new AssertionError(e);
-        }
     }
 
     private static LinkedHashMap<String, Node> findNamedNodeChildren(Node node) {
@@ -434,7 +412,7 @@ class GraphPrintVisitor extends AbstractGraphPrinter<RootCallTarget, NodeElement
         return nodes;
     }
 
-    private Object findFieldValue(NodeClass nodeClass, Object field, Node node) {
+    private static Object findFieldValue(NodeClass nodeClass, Object field, Node node) {
         return callOnNodeClass(Object.class, "getFieldValue", nodeClass, field, node);
     }
 
@@ -458,7 +436,7 @@ class GraphPrintVisitor extends AbstractGraphPrinter<RootCallTarget, NodeElement
         return callOnNodeClass(String.class, "getFieldName", nodeClass, field);
     }
 
-    private static final Map<String, Method> METHODS = new HashMap<String, Method>();
+    private static final Map<String, Method> METHODS = new HashMap<>();
 
     private static <T> T callOnNodeClass(Class<T> returnType, String name, NodeClass thiz, Object... args) {
         Method m = METHODS.get(name);
@@ -533,6 +511,7 @@ class GraphPrintVisitor extends AbstractGraphPrinter<RootCallTarget, NodeElement
     }
 
     private static final class DefaultGraphPrintHandler implements GraphPrintHandler {
+        @Override
         public void visit(Object node, GraphPrintAdapter printer) {
             printer.createElementForNode(node);
 
@@ -547,20 +526,6 @@ class GraphPrintVisitor extends AbstractGraphPrinter<RootCallTarget, NodeElement
                 }
             }
         }
-    }
-
-    /** @since 0.8 or earlier */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.TYPE)
-    @interface CustomGraphPrintHandler {
-
-        Class<? extends GraphPrintHandler> handler();
-    }
-
-    /** @since 0.8 or earlier */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.TYPE)
-    @interface NullGraphPrintHandler {
     }
 
     enum EdgeType {
