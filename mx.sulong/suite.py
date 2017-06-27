@@ -88,6 +88,12 @@ suite = {
       "subDir" : "projects",
       "native" : True,
       "vpath" : True,
+      "results" : [
+        "bin/<lib:sulongtest>",
+      ],
+      "buildEnv" : {
+        "LIBSULONGTEST" : "<lib:sulongtest>",
+      },
       "license" : "BSD-new",
     },
 
@@ -305,6 +311,7 @@ suite = {
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_NFI",
         "SULONG_OPTIONS",
+        "SULONG_LIBS",
       ],
       "license" : "BSD-new",
     },
@@ -371,6 +378,7 @@ suite = {
       "output" : "mxbuild/sulong-test-native",
       "dependencies" : [
         "com.oracle.truffle.llvm.pipe.native",
+        "com.oracle.truffle.llvm.test.native",
       ],
       "license" : "BSD-new",
     },

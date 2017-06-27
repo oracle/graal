@@ -36,22 +36,22 @@ def deleteCachedTests(folderInCache):
     if os.path.exists(p):
         shutil.rmtree(p)
 
-def run(vmArgs, unittest, extraOption=None):
+def run(vmArgs, unittest, extraOption=None, extraLibs=None):
     if extraOption is None:
         extraOption = []
     if mx.get_opts().verbose:
-        command = mx_sulong.getCommonUnitTestOptions() + extraOption + vmArgs + ['--very-verbose', unittest]
+        command = mx_sulong.getCommonUnitTestOptions(extraLibs=extraLibs) + extraOption + vmArgs + ['--very-verbose', unittest]
         print ('Running mx unittest ' + ' '.join(command))
         return mx_unittest.unittest(command)
     else:
-        command = mx_sulong.getCommonUnitTestOptions() + extraOption + vmArgs + [unittest]
+        command = mx_sulong.getCommonUnitTestOptions(extraLibs=extraLibs) + extraOption + vmArgs + [unittest]
         return mx_unittest.unittest(command)
 
 def runShootoutSuite(vmArgs):
     """runs the Sulong test suite"""
     mx_sulong.ensureDragonEggExists()
     compileSuite(['shootout'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.ShootoutsSuite")
+    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.ShootoutsSuite", extraLibs=["-lgmp"])
 
 def runLLVMSuite(vmArgs):
     """runs the LLVM test suite"""
@@ -77,7 +77,7 @@ def runGCCSuite(vmArgs):
     """runs the LLVM test suite"""
     mx_sulong.ensureDragonEggExists()
     compileSuite(['gcc'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.GCCSuite")
+    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.GCCSuite", extraLibs=["-lgfortran"])
 
 def runGCCSuite38(vmArgs):
     """runs the LLVM test suite"""

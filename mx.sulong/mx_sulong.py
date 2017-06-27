@@ -441,20 +441,17 @@ def getSearchPathOption(lib_args=None):
     for lib_arg in lib_args:
         if lib_arg in lib_aliases:
             lib_arg = lib_aliases[lib_arg][index]
-        else:
-            lib_arg = lib_arg[2:]
+        elif lib_arg.startswith('-l'):
+            lib_arg = mx.add_lib_suffix(mx.add_lib_prefix(lib_arg[2:]))
         lib_names.append(lib_arg)
-
-    libpath = join(mx.project('com.oracle.truffle.llvm.test.native').getOutput(), 'bin')
-    for path, _, files in os.walk(libpath):
-        for f in files:
-            if f.endswith('.so'):
-                lib_names.append(join(path, f))
 
     return '-Dsulong.DynamicNativeLibraryPath=' + ':'.join(lib_names)
 
-def getCommonUnitTestOptions():
-    return getCommonOptions() + ['-Xss56m', '-Xms2g', '-Xmx2g', getLLVMRootOption(), '-ea', '-esa']
+def getCommonUnitTestOptions(extraLibs=None):
+    libs = [mx_subst.path_substitutions.substitute('<path:SULONG_TEST_NATIVE>/<lib:sulongtest>')]
+    if extraLibs is not None:
+        libs += extraLibs
+    return getCommonOptions(lib_args=libs) + ['-Xss56m', '-Xms2g', '-Xmx2g', getLLVMRootOption(), '-ea', '-esa']
 
 # PE does not work yet for all test cases
 def compilationSucceedsOption():
