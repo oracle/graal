@@ -24,18 +24,30 @@
  */
 package com.oracle.truffle.api.interop.java;
 
+import java.util.StringJoiner;
+
 class OverloadedMethodDesc implements JavaMethodDesc {
     private final SingleMethodDesc[] overloads;
 
     OverloadedMethodDesc(SingleMethodDesc[] overloads) {
         this.overloads = overloads;
+        assert overloads.length >= 2;
     }
 
     public SingleMethodDesc[] getOverloads() {
         return overloads;
     }
 
-    public Object invoke(Object receiver, Object[] arguments) {
-        throw new UnsupportedOperationException("TODO");
+    public String getName() {
+        return getOverloads()[0].getName();
+    }
+
+    @Override
+    public String toString() {
+        StringJoiner sj = new StringJoiner(", ", "Method[", "]");
+        for (SingleMethodDesc overload : getOverloads()) {
+            sj.add(overload.getReflectionMethod().toString());
+        }
+        return sj.toString();
     }
 }

@@ -24,18 +24,6 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-
 interface JavaMethodDesc {
-    static JavaMethodDesc unreflect(Method reflectionMethod) {
-        return new SingleMethodDesc.ConcreteMethod(reflectionMethod);
-    }
-
-    static JavaMethodDesc unreflect(Constructor<?> reflectionConstructor) {
-        return new SingleMethodDesc.ConcreteConstructor(reflectionConstructor);
-    }
-
-    Object invoke(Object receiver, Object[] arguments) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException, InstantiationException;
+    String getName();
 }

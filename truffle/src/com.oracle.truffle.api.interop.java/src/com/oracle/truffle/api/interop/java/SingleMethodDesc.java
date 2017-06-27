@@ -47,8 +47,19 @@ abstract class SingleMethodDesc implements JavaMethodDesc {
         return getReflectionMethod().getParameterCount();
     }
 
+    @Override
     public String getName() {
         return getReflectionMethod().getName();
+    }
+
+    public abstract Object invoke(Object receiver, Object[] arguments) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException, InstantiationException;
+
+    static SingleMethodDesc unreflect(Method reflectionMethod) {
+        return new SingleMethodDesc.ConcreteMethod(reflectionMethod);
+    }
+
+    static SingleMethodDesc unreflect(Constructor<?> reflectionConstructor) {
+        return new SingleMethodDesc.ConcreteConstructor(reflectionConstructor);
     }
 
     @Override
@@ -68,6 +79,7 @@ abstract class SingleMethodDesc implements JavaMethodDesc {
             return reflectionMethod;
         }
 
+        @Override
         public Object invoke(Object receiver, Object[] arguments) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
             return reflectionMethod.invoke(receiver, arguments);
         }
@@ -100,6 +112,7 @@ abstract class SingleMethodDesc implements JavaMethodDesc {
             return reflectionConstructor;
         }
 
+        @Override
         public Object invoke(Object receiver, Object[] arguments) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException, InstantiationException {
             return reflectionConstructor.newInstance(arguments);
         }

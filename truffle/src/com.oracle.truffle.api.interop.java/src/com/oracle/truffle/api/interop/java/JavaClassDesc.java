@@ -84,7 +84,7 @@ final class JavaClassDesc {
                         // method available that we can use instead.
                         continue;
                     }
-                    JavaMethodDesc method = JavaMethodDesc.unreflect(m);
+                    SingleMethodDesc method = SingleMethodDesc.unreflect(m);
 
                     methodMap.merge(m.getName(), method, MERGE);
                     if (Modifier.isStatic(m.getModifiers())) {
@@ -101,7 +101,7 @@ final class JavaClassDesc {
                     if (c.getDeclaringClass() == Object.class) {
                         continue;
                     }
-                    JavaMethodDesc overload = JavaMethodDesc.unreflect(c);
+                    SingleMethodDesc overload = SingleMethodDesc.unreflect(c);
                     ctor = ctor == null ? overload : merge(ctor, overload);
                 }
 
@@ -130,7 +130,7 @@ final class JavaClassDesc {
                     }
 
                     if (visited.add(getSignature(m))) {
-                        JavaMethodDesc method = JavaMethodDesc.unreflect(m);
+                        SingleMethodDesc method = SingleMethodDesc.unreflect(m);
 
                         methodMap.merge(m.getName(), method, MERGE);
                         if (Modifier.isStatic(m.getModifiers())) {

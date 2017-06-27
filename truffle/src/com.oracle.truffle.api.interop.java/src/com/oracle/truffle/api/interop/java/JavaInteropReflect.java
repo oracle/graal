@@ -86,7 +86,7 @@ final class JavaInteropReflect {
                     if (name.startsWith(m.getName())) {
                         final String fullName = jniName(m);
                         if (fullName.equals(name)) {
-                            return new JavaFunctionObject(JavaMethodDesc.unreflect(m), obj);
+                            return new JavaFunctionObject(SingleMethodDesc.unreflect(m), obj);
                         }
                     }
                 }

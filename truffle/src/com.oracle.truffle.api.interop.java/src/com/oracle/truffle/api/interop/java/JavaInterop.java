@@ -409,7 +409,7 @@ public final class JavaInterop {
         if (method == null) {
             throw new IllegalArgumentException();
         }
-        return new JavaFunctionObject(JavaMethodDesc.unreflect(method), implementation, languageContext);
+        return new JavaFunctionObject(SingleMethodDesc.unreflect(method), implementation, languageContext);
     }
 
     /**
