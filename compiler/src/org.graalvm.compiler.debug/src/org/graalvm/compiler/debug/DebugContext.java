@@ -570,6 +570,10 @@ public final class DebugContext implements AutoCloseable {
 
     private final Invariants invariants = Assertions.ENABLED ? new Invariants() : null;
 
+    static StackTraceElement[] getStackTrace(Thread thread) {
+        return thread.getStackTrace();
+    }
+
     /**
      * Utility for enforcing {@link DebugContext} invariants via assertions.
      */
@@ -579,7 +583,7 @@ public final class DebugContext implements AutoCloseable {
 
         Invariants() {
             thread = Thread.currentThread();
-            origin = thread.getStackTrace();
+            origin = getStackTrace(thread);
         }
 
         boolean checkNoConcurrentAccess() {
