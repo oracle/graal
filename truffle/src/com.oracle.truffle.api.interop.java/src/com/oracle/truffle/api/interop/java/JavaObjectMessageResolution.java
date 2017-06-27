@@ -26,7 +26,6 @@ package com.oracle.truffle.api.interop.java;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Objects;
 
@@ -90,11 +89,11 @@ class JavaObjectMessageResolution {
             }
 
             // (1) look for a method; if found, invoke it on obj.
-            Method foundMethod = JavaInteropReflect.findMethod(object, name, args);
+            JavaMethodDesc foundMethod = JavaInteropReflect.findMethod(object, name, args);
             if (foundMethod != null) {
-                if (doExecute == null || args.length != doExecute.numberOfArguments()) {
+                if (doExecute == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    doExecute = insert(new ExecuteMethodNode(args.length));
+                    doExecute = insert(ExecuteMethodNode.create());
                 }
                 return doExecute.execute(foundMethod, object.obj, args, object.languageContext);
             }
@@ -133,25 +132,31 @@ class JavaObjectMessageResolution {
 
     @Resolve(message = "NEW")
     abstract static class NewNode extends Node {
+        @Child private ExecuteMethodNode doExecute;
 
         public Object access(JavaObject object, Object[] args) {
             return execute(object, args);
         }
 
         @TruffleBoundary
-        private static Object execute(JavaObject receiver, Object[] args) {
-            if (receiver.obj != null) {
+        private Object execute(JavaObject receiver, Object[] args) {
+            if (!receiver.isClass()) {
                 throw new IllegalStateException("Can only work on classes: " + receiver.obj);
             }
             if (TruffleOptions.AOT) {
                 throw new IllegalStateException();
             }
-            for (int i = 0; i < args.length; i++) {
-                if (args[i] instanceof JavaObject) {
-                    args[i] = ((JavaObject) args[i]).obj;
-                }
+            if (doExecute == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                doExecute = insert(ExecuteMethodNode.create());
             }
-            return JavaInteropReflect.newConstructor(receiver.clazz, args);
+            JavaClassDesc classDesc = JavaClassDesc.forClass(receiver.clazz);
+            JavaMethodDesc method = classDesc.lookupConstructor();
+            if (method != null) {
+                return doExecute.execute(method, null, args, receiver.languageContext);
+            } else {
+                throw UnsupportedTypeException.raise(new Object[]{receiver});
+            }
         }
     }
 
@@ -351,20 +356,16 @@ class JavaObjectMessageResolution {
             if (TruffleOptions.AOT) {
                 throw UnsupportedMessageException.raise(Message.createExecute(args.length));
             }
-            if (doExecute == null || args.length != doExecute.numberOfArguments()) {
+            if (doExecute == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                doExecute = insert(new ExecuteMethodNode(args.length));
+                doExecute = insert(ExecuteMethodNode.create());
             }
             Object obj = receiver.obj;
             String functionalInterfaceMethodName = JavaInteropReflect.findFunctionalInterfaceMethodName(obj.getClass());
             if (functionalInterfaceMethodName != null) {
-                Method method = JavaInteropReflect.findMethod(receiver, functionalInterfaceMethodName);
+                JavaMethodDesc method = JavaInteropReflect.findMethod(receiver, functionalInterfaceMethodName);
                 if (method != null) {
-                    if (method.getParameterCount() == args.length || method.isVarArgs()) {
-                        return doExecute.execute(method, obj, args, receiver.languageContext);
-                    } else {
-                        throw ArityException.raise(method.getParameterCount(), args.length);
-                    }
+                    return doExecute.execute(method, obj, args, receiver.languageContext);
                 }
             }
             throw UnsupportedMessageException.raise(Message.createExecute(args.length));

@@ -69,7 +69,7 @@ abstract class ToJavaNode extends Node {
 
     private Object convertImpl(Object value, TypeAndClass<?> targetType, Object languageContext) {
         Object convertedValue;
-        if (isPrimitiveType(targetType.clazz)) {
+        if (isAssignableFromTrufflePrimitiveType(targetType.clazz)) {
             convertedValue = primitive.toPrimitive(value, targetType.clazz);
             if (convertedValue != null) {
                 return convertedValue;
@@ -98,13 +98,66 @@ abstract class ToJavaNode extends Node {
         return convertedValue;
     }
 
+    boolean canConvert(Object value, TypeAndClass<?> targetType, Object languageContext) {
+        Object convertedValue;
+        if (isAssignableFromTrufflePrimitiveType(targetType.clazz)) {
+            convertedValue = primitive.toPrimitive(value, targetType.clazz);
+            if (convertedValue != null) {
+                return true;
+            }
+        }
+        if (languageContext != null && targetType.clazz == Value.class) {
+            return true;
+        } else if (JavaObject.isJavaInstance(targetType.clazz, value)) {
+            return true;
+        } else if (!TruffleOptions.AOT && value instanceof TruffleObject && JavaInterop.isJavaFunctionInterface(targetType.clazz) && isExecutable((TruffleObject) value)) {
+            return true;
+        } else if (value == JavaObject.NULL && !targetType.clazz.isPrimitive()) {
+            return true;
+        } else if (value instanceof TruffleObject) {
+            if (targetType.clazz.isPrimitive()) {
+                return false;
+            }
+            if (targetType.clazz == Object.class) {
+                return true;
+            } else {
+                if (targetType.clazz.isInstance(value)) {
+                    return true;
+                } else {
+                    boolean isNull = primitive.isNull((TruffleObject) value);
+                    if (isNull) {
+                        return true;
+                    } else {
+                        if (!targetType.clazz.isInterface()) {
+                            return false;
+                        }
+                        boolean hasSize = primitive.hasSize((TruffleObject) value);
+                        if (targetType.clazz == List.class && hasSize) {
+                            return true;
+                        } else if (targetType.clazz == Map.class) {
+                            return true;
+                        } else {
+                            if (!TruffleOptions.AOT) {
+                                return true; // Proxy
+                            } else {
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            return targetType.clazz.isInstance(value);
+        }
+    }
+
     @Specialization(guards = "operand != null", replaces = "doCached")
     @TruffleBoundary
     protected Object doGeneric(Object operand, TypeAndClass<?> type, Object languageContext) {
         return convertImpl(operand, type, languageContext);
     }
 
-    private static boolean isPrimitiveType(Class<?> clazz) {
+    private static boolean isAssignableFromTrufflePrimitiveType(Class<?> clazz) {
         return clazz == int.class || clazz == Integer.class ||
                         clazz == boolean.class || clazz == Boolean.class ||
                         clazz == byte.class || clazz == Byte.class ||
@@ -216,4 +269,7 @@ abstract class ToJavaNode extends Node {
         return ret;
     }
 
+    public static ToJavaNode create() {
+        return ToJavaNodeGen.create();
+    }
 }

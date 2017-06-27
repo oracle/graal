@@ -398,19 +398,18 @@ public final class JavaInterop {
      * @since 0.9
      */
     public static <T> TruffleObject asTruffleFunction(Class<T> functionalType, T implementation) {
-        final Method method = functionalInterfaceMethod(functionalType);
-        if (method == null) {
-            throw new IllegalArgumentException();
-        }
-        return new JavaFunctionObject(method, implementation);
+        return asTruffleFunction(functionalType, implementation, null);
     }
 
     static <T> TruffleObject asTruffleFunction(Class<T> functionalType, T implementation, Object languageContext) {
+        if (TruffleOptions.AOT) {
+            throw new IllegalArgumentException();
+        }
         final Method method = functionalInterfaceMethod(functionalType);
         if (method == null) {
             throw new IllegalArgumentException();
         }
-        return new JavaFunctionObject(method, implementation, languageContext);
+        return new JavaFunctionObject(JavaMethodDesc.unreflect(method), implementation, languageContext);
     }
 
     /**
@@ -645,6 +644,9 @@ public final class JavaInterop {
         EngineSupport engine = ACCESSOR.engine();
         if (engine == null) {
             assert !(obj instanceof Value || obj instanceof Proxy);
+            if (isPrimitive(obj)) {
+                return obj;
+            }
             return asTruffleObject(obj, languageContext);
         }
         return engine.toGuestValue(obj, languageContext);

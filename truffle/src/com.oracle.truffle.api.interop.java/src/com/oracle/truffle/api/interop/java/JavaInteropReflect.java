@@ -70,15 +70,12 @@ final class JavaInteropReflect {
             }
             val = field.get(obj);
         } catch (NoSuchFieldException ex) {
-            for (Method m : object.clazz.getMethods()) {
-                final boolean isStatic = (m.getModifiers() & Modifier.STATIC) != 0;
-                if (onlyStatic != isStatic) {
-                    continue;
-                }
-                if (m.getName().equals(name) && m.getDeclaringClass() != Object.class) {
-                    return new JavaFunctionObject(m, obj);
-                }
+            JavaClassDesc classDesc = JavaClassDesc.forClass(object.clazz);
+            JavaMethodDesc method = onlyStatic ? classDesc.lookupStaticMethod(name) : classDesc.lookupMethod(name);
+            if (method != null) {
+                return new JavaFunctionObject(method, obj, object.languageContext);
             }
+
             int signature = name.indexOf("__");
             if (signature != -1) {
                 for (Method m : object.clazz.getMethods()) {
@@ -89,7 +86,7 @@ final class JavaInteropReflect {
                     if (name.startsWith(m.getName())) {
                         final String fullName = jniName(m);
                         if (fullName.equals(name)) {
-                            return new JavaFunctionObject(m, obj);
+                            return new JavaFunctionObject(JavaMethodDesc.unreflect(m), obj);
                         }
                     }
                 }
@@ -172,29 +169,39 @@ final class JavaInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static Method findMethod(JavaObject object, String name, Object[] args) {
-        for (Method m : object.clazz.getMethods()) {
-            if (m.getName().equals(name) && m.getDeclaringClass() != Object.class) {
-                if (m.getParameterTypes().length == args.length || m.isVarArgs()) {
-                    return m;
-                }
+    static JavaMethodDesc findMethod(JavaObject object, String name, Object[] args) {
+        JavaMethodDesc method = findMethod(object, name);
+        if (method != null) {
+            if (!isApplicableByArity(method, args.length)) {
+                return null;
             }
         }
-        return null;
+        return method;
+    }
+
+    private static boolean isApplicableByArity(JavaMethodDesc method, int nArgs) {
+        if (method instanceof SingleMethodDesc) {
+            return nArgs == ((SingleMethodDesc) method).getParameterCount() ||
+                            ((SingleMethodDesc) method).isVarArgs() && nArgs >= ((SingleMethodDesc) method).getParameterCount() - 1;
+        } else {
+            SingleMethodDesc[] overloads = ((OverloadedMethodDesc) method).getOverloads();
+            for (SingleMethodDesc overload : overloads) {
+                if (isApplicableByArity(overload, nArgs)) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     @CompilerDirectives.TruffleBoundary
-    static Method findMethod(JavaObject object, String name) {
+    static JavaMethodDesc findMethod(JavaObject object, String name) {
         if (TruffleOptions.AOT) {
             return null;
         }
 
-        for (Method m : object.clazz.getMethods()) {
-            if (m.getName().equals(name) && m.getDeclaringClass() != Object.class) {
-                return m;
-            }
-        }
-        return null;
+        JavaClassDesc classDesc = JavaClassDesc.forClass(object.clazz);
+        return classDesc.lookupMethod(name);
     }
 
     private JavaInteropReflect() {
