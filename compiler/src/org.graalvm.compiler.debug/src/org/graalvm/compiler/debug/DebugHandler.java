@@ -23,10 +23,8 @@
 package org.graalvm.compiler.debug;
 
 /**
- * Service that does something of interest to a given object in an enabled
- * {@linkplain DebugContext.Scope debug scope}.
+ * This interface exists to unify {@link DebugDumpHandler} and {@link DebugVerifyHandler} for the
+ * sake of {@link DebugHandlersFactory#createHandlers}.
  */
 public interface DebugHandler {
-
-    void apply(DebugContext debug, Object object, String format, Object... arguments);
 }
