@@ -57,7 +57,7 @@ abstract class ExecuteMethodNode extends Node {
     static ToJavaNode[] createToJava(int argsLength) {
         ToJavaNode[] toJava = new ToJavaNode[argsLength];
         for (int i = 0; i < argsLength; i++) {
-            toJava[i] = ToJavaNodeGen.create();
+            toJava[i] = ToJavaNode.create();
         }
         return toJava;
     }

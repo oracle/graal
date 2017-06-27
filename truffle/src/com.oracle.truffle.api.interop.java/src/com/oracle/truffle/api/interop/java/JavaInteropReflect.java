@@ -24,10 +24,8 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
@@ -208,23 +206,6 @@ final class JavaInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static Object newConstructor(final Class<?> clazz, Object[] args) throws IllegalStateException, SecurityException {
-        IllegalStateException ex = new IllegalStateException("No suitable constructor found for " + clazz);
-        for (Constructor<?> constructor : clazz.getConstructors()) {
-            try {
-                Object ret = constructor.newInstance(args);
-                if (ToPrimitiveNode.temporary().isPrimitive(ret)) {
-                    return ret;
-                }
-                return JavaInterop.asTruffleObject(ret);
-            } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException instEx) {
-                ex = new IllegalStateException(instEx);
-            }
-        }
-        throw ex;
-    }
-
-    @CompilerDirectives.TruffleBoundary
     static Field findField(JavaObject receiver, String name) {
         try {
             return receiver.clazz.getField(name);
@@ -372,7 +353,7 @@ final class JavaInteropReflect {
                 Object arg = args[i];
                 if (arg instanceof TruffleObject) {
                     continue;
-                } else if (ToPrimitiveNode.temporary().isPrimitive(arg)) {
+                } else if (JavaInterop.isPrimitive(arg)) {
                     continue;
                 } else {
                     arguments[i] = JavaInterop.toGuestValue(arg, languageContext);
@@ -426,7 +407,7 @@ final class JavaInteropReflect {
         MethodNode(String name, Message message, TypeAndClass<?> returnType) {
             super(null);
             this.name = name;
-            this.toJavaNode = ToJavaNodeGen.create();
+            this.toJavaNode = ToJavaNode.create();
             this.message = message;
             this.returnType = returnType;
         }

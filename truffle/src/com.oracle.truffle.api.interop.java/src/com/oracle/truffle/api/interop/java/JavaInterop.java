@@ -37,6 +37,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -188,7 +189,7 @@ public final class JavaInterop {
     @CompilerDirectives.TruffleBoundary
     @SuppressWarnings("unchecked")
     private static <T> T convertToJavaObject(Class<T> type, TruffleObject foreignObject) {
-        RootNode root = new TemporaryConvertRoot(ToJavaNodeGen.create(), foreignObject, type);
+        RootNode root = new TemporaryConvertRoot(ToJavaNode.create(), foreignObject, type);
         Object convertedValue = Truffle.getRuntime().createCallTarget(root).call();
         return (T) convertedValue;
     }
@@ -354,6 +355,11 @@ public final class JavaInterop {
         if (obj == null) {
             return false;
         }
+        return isPrimitiveImpl(obj);
+    }
+
+    @TruffleBoundary
+    private static boolean isPrimitiveImpl(Object obj) {
         return ToPrimitiveNode.temporary().isPrimitive(obj);
     }
 
@@ -372,7 +378,7 @@ public final class JavaInterop {
      * @since 0.9
      */
     public static <T> T asJavaFunction(Class<T> functionalType, TruffleObject function) {
-        RootNode root = new TemporaryConvertRoot(ToJavaNodeGen.create(), function, functionalType);
+        RootNode root = new TemporaryConvertRoot(ToJavaNode.create(), function, functionalType);
         return functionalType.cast(Truffle.getRuntime().createCallTarget(root).call());
     }
 

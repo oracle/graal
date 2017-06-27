@@ -72,4 +72,8 @@ abstract class ArrayReadNode extends Node {
         }
         return JavaInterop.toGuestValue(val, object.languageContext);
     }
+
+    static ArrayReadNode create() {
+        return ArrayReadNodeGen.create();
+    }
 }

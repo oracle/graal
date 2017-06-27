@@ -95,7 +95,7 @@ final class TruffleList<T> extends AbstractList<T> {
             super(null);
             this.msg = msg;
             this.node = msg.createNode();
-            this.toJavaNode = ToJavaNodeGen.create();
+            this.toJavaNode = ToJavaNode.create();
         }
 
         @Override

@@ -788,7 +788,7 @@ public class JavaInteropTest {
     }
 
     private static class TemporaryRoot extends RootNode {
-        @Node.Child private Node foreignAccess;
+        @Child private Node foreignAccess;
         private final TruffleObject function;
         private final Object[] args;
 
@@ -807,7 +807,7 @@ public class JavaInteropTest {
                 throw e.raise();
             }
         }
-    } // end of TemporaryRoot
+    }
 
     static final class NoKeysObject implements TruffleObject {
 

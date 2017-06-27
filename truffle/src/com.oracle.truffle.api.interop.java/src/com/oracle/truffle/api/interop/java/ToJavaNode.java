@@ -209,13 +209,13 @@ abstract class ToJavaNode extends Node {
 
     static final class TemporaryRoot extends RootNode {
 
-        @Node.Child private Node foreignAccess;
-        @Node.Child private ToJavaNode toJava;
+        @Child private Node foreignAccess;
+        @Child private ToJavaNode toJava;
 
         TemporaryRoot(Node foreignAccess) {
             super(null);
             this.foreignAccess = foreignAccess;
-            this.toJava = ToJavaNodeGen.create();
+            this.toJava = ToJavaNode.create();
         }
 
         @Override

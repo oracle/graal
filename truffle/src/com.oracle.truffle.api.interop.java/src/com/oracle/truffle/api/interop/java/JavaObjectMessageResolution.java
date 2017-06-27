@@ -32,7 +32,6 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -47,9 +46,6 @@ import com.oracle.truffle.api.nodes.Node;
 @MessageResolution(receiverType = JavaObject.class)
 class JavaObjectMessageResolution {
 
-    /**
-     * The generated class uses {@link Specialization}.
-     */
     @Resolve(message = "GET_SIZE")
     abstract static class ArrayGetSizeNode extends Node {
 
@@ -193,7 +189,7 @@ class JavaObjectMessageResolution {
     @Resolve(message = "READ")
     abstract static class ReadFieldNode extends Node {
 
-        @Child private ArrayReadNode read = ArrayReadNodeGen.create();
+        @Child private ArrayReadNode read = ArrayReadNode.create();
 
         public Object access(JavaObject object, Number index) {
             return read.executeWithTarget(object, index);
@@ -220,8 +216,8 @@ class JavaObjectMessageResolution {
     @Resolve(message = "WRITE")
     abstract static class WriteFieldNode extends Node {
 
-        @Child private ToJavaNode toJava = ToJavaNodeGen.create();
-        @Child private ArrayWriteNode write = ArrayWriteNodeGen.create();
+        @Child private ToJavaNode toJava = ToJavaNode.create();
+        @Child private ArrayWriteNode write = ArrayWriteNode.create();
 
         public Object access(JavaObject receiver, String name, Object value) {
             Object obj = receiver.obj;
