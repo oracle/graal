@@ -376,6 +376,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         private static PolyglotEngineImpl getEngine(Object vmObject) throws AssertionError {
+            if (!(vmObject instanceof VMObject)) {
+                throw new AssertionError();
+            }
             return ((VMObject) vmObject).getEngine();
         }
 
