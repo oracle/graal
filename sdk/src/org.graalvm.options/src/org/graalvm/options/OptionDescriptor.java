@@ -149,6 +149,8 @@ public final class OptionDescriptor {
      * @since 1.0
      */
     public static <T> Builder newBuilder(OptionKey<T> key, String name) {
+        Objects.requireNonNull(key);
+        Objects.requireNonNull(name);
         return new Builder(key, name);
     }
 
@@ -177,6 +179,7 @@ public final class OptionDescriptor {
          * @since 1.0
          */
         public Builder category(@SuppressWarnings("hiding") OptionCategory category) {
+            Objects.requireNonNull(category);
             this.category = category;
             return this;
         }
@@ -198,6 +201,7 @@ public final class OptionDescriptor {
          * @since 1.0
          */
         public Builder help(@SuppressWarnings("hiding") String help) {
+            Objects.requireNonNull(help);
             this.help = help;
             return this;
         }
@@ -208,7 +212,7 @@ public final class OptionDescriptor {
          * @since 1.0
          */
         public OptionDescriptor build() {
-            return new OptionDescriptor(key, name, help, category, deprecated);
+            return new OptionDescriptor(key, name, help == null ? "" : help, category == null ? OptionCategory.DEBUG : category, deprecated);
         }
 
     }
