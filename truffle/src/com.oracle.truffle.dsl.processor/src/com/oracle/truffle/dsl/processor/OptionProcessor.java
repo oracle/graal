@@ -102,6 +102,7 @@ public class OptionProcessor extends AbstractProcessor {
                 if (!processed.contains(element)) {
                     processed.add(element);
                     Element topElement = element.getEnclosingElement();
+
                     OptionsInfo options = map.get(topElement);
                     if (options == null) {
                         options = new OptionsInfo(topElement);
@@ -180,23 +181,26 @@ public class OptionProcessor extends AbstractProcessor {
 
         if (prefix != null) {
             groupPrefixStrings = prefix.value();
-        } else if (ElementUtils.isAssignable(info.type.asType(), context.getType(TruffleLanguage.class))) {
-            TruffleLanguage.Registration registration = info.type.getAnnotation(TruffleLanguage.Registration.class);
-            if (registration != null) {
-                groupPrefixStrings = new String[]{registration.id()};
-                if (groupPrefixStrings[0].isEmpty()) {
-                    error(element, elementAnnotation, "%s must specify an id such that Truffle options can infer their prefix.", TruffleLanguage.Registration.class.getSimpleName());
-                    return false;
+        } else {
+            TypeMirror erasedTruffleType = context.getEnvironment().getTypeUtils().erasure(context.getType(TruffleLanguage.class));
+            if (context.getEnvironment().getTypeUtils().isAssignable(info.type.asType(), erasedTruffleType)) {
+                TruffleLanguage.Registration registration = info.type.getAnnotation(TruffleLanguage.Registration.class);
+                if (registration != null) {
+                    groupPrefixStrings = new String[]{registration.id()};
+                    if (groupPrefixStrings[0].isEmpty()) {
+                        error(element, elementAnnotation, "%s must specify an id such that Truffle options can infer their prefix.", TruffleLanguage.Registration.class.getSimpleName());
+                        return false;
+                    }
                 }
-            }
 
-        } else if (ElementUtils.isAssignable(info.type.asType(), context.getType(TruffleInstrument.class))) {
-            TruffleInstrument.Registration registration = info.type.getAnnotation(TruffleInstrument.Registration.class);
-            if (registration != null) {
-                groupPrefixStrings = new String[]{registration.id()};
-                if (groupPrefixStrings[0].isEmpty()) {
-                    error(element, elementAnnotation, "%s must specify an id such that Truffle options can infer their prefix.", TruffleInstrument.Registration.class.getSimpleName());
-                    return false;
+            } else if (context.getEnvironment().getTypeUtils().isAssignable(info.type.asType(), context.getType(TruffleInstrument.class))) {
+                TruffleInstrument.Registration registration = info.type.getAnnotation(TruffleInstrument.Registration.class);
+                if (registration != null) {
+                    groupPrefixStrings = new String[]{registration.id()};
+                    if (groupPrefixStrings[0].isEmpty()) {
+                        error(element, elementAnnotation, "%s must specify an id such that Truffle options can infer their prefix.", TruffleInstrument.Registration.class.getSimpleName());
+                        return false;
+                    }
                 }
             }
         }
