@@ -37,7 +37,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -339,7 +338,8 @@ public final class JavaInterop {
 
     /**
      * Test whether the object is a primitive, which all {@link TruffleLanguage}s are supposed to
-     * handle. Primitives are instances of {@link Number}, {@link Boolean}, {@link Character} or
+     * handle. Primitives are instances of {@link Boolean}, {@link Byte}, {@link Short},
+     * {@link Integer}, {@link Long}, {@link Float}, {@link Double}, {@link Character}, or
      * {@link String}.
      *
      * @param obj a Java object to test
@@ -355,12 +355,18 @@ public final class JavaInterop {
         if (obj == null) {
             return false;
         }
-        return isPrimitiveImpl(obj);
-    }
-
-    @TruffleBoundary
-    private static boolean isPrimitiveImpl(Object obj) {
-        return ToPrimitiveNode.temporary().isPrimitive(obj);
+        if (obj instanceof Boolean ||
+                        obj instanceof Byte ||
+                        obj instanceof Short ||
+                        obj instanceof Integer ||
+                        obj instanceof Long ||
+                        obj instanceof Float ||
+                        obj instanceof Double ||
+                        obj instanceof Character ||
+                        obj instanceof String) {
+            return true;
+        }
+        return false;
     }
 
     /**
