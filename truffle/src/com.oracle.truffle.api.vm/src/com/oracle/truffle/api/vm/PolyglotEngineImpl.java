@@ -101,9 +101,9 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     final OptionValuesImpl engineOptionValues;
     final OptionValuesImpl compilerOptionValues;
     final ClassLoader contextClassLoader;
+    private volatile int contextCount = 0;
 
     volatile OptionDescriptors allOptions;
-
     volatile boolean closed;
 
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options, long timeout, TimeUnit timeoutUnit,
@@ -336,6 +336,15 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         throw new UnsupportedOperationException();
     }
 
+    void incrementContextCount() {
+        assert Thread.holdsLock(this);
+        contextCount++;
+    }
+
+    synchronized void decrementContextCount() {
+        contextCount--;
+    }
+
     @Override
     public Language getLanguage(String id) {
         checkEngine(this);
@@ -358,8 +367,9 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
     @Override
     @SuppressWarnings("hiding")
-    public PolyglotContext createPolyglotContext(OutputStream out, OutputStream err, InputStream in, Map<String, String[]> arguments, Map<String, String> options) {
+    public synchronized PolyglotContext createPolyglotContext(OutputStream out, OutputStream err, InputStream in, Map<String, String[]> arguments, Map<String, String> options) {
         checkEngine(this);
+        incrementContextCount();
         PolyglotContextImpl contextImpl = new PolyglotContextImpl(this, out, err, in, options, arguments, null);
         return impl.getAPIAccess().newPolyglotContext(api, contextImpl);
     }
@@ -369,6 +379,11 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         if (!closed) {
             synchronized (this) {
                 if (!closed) {
+                    if (contextCount > 0) {
+                        throw new IllegalStateException(
+                                        String.format("There are still %s open contexts in use. All contexts spawned by an engine must be closed before their engine can be closed. ",
+                                                        contextCount));
+                    }
                     closed = true;
                     for (Instrument instrument : idToInstrument.values()) {
                         PolyglotInstrumentImpl instrumentImpl = (PolyglotInstrumentImpl) getAPIAccess().getImpl(instrument);

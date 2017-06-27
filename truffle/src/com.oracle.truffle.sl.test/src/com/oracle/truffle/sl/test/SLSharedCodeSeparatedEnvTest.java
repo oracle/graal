@@ -49,6 +49,7 @@ import java.io.IOException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -79,6 +80,13 @@ public class SLSharedCodeSeparatedEnvTest {
         e2 = engine.getLanguage("sl").createContextBuilder().setOut(os2).build();
         e2.exportSymbol("extra", 2);
         assertEquals("One SLLanguage instance created", instances + 1, SLLanguage.counter);
+    }
+
+    @After
+    public void closeEngines() {
+        e1.close();
+        e2.close();
+        e2.getEngine().close();
     }
 
     @Test
@@ -118,6 +126,8 @@ public class SLSharedCodeSeparatedEnvTest {
         assertEquals("Ahoj1\n", os1.toString("UTF-8"));
         assertEquals("Ahoj2\n", os2.toString("UTF-8"));
 
+        e1.close();
+        e2.close();
         e1.getEngine().close();
 
         assertEquals("Output of both contexts and instruments is capturable",

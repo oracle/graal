@@ -216,6 +216,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Engine getEngineImpl();
 
+        public abstract void close();
+
     }
 
     public abstract static class AbstractEngineImpl {

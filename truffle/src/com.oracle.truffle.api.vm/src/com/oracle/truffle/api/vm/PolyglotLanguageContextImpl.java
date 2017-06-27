@@ -51,6 +51,7 @@ class PolyglotLanguageContextImpl implements VMObject {
     final OptionValues optionValues;
     final Value nullValue;
     final String[] applicationArguments;
+    volatile boolean disposed;
     volatile Env env;
 
     PolyglotLanguageContextImpl(PolyglotContextImpl context, PolyglotLanguageImpl language, OptionValues optionValues, String[] applicationArguments) {
@@ -61,6 +62,19 @@ class PolyglotLanguageContextImpl implements VMObject {
 
         PolyglotValueImpl.createDefaultValueCaches(this);
         nullValue = toHostValue(toGuestValue(null));
+    }
+
+    void dispose() {
+        if (env != null) {
+            synchronized (this) {
+                if (env != null) {
+                    checkAccess();
+                    LANGUAGE.dispose(env);
+                    env = null;
+                }
+                disposed = true;
+            }
+        }
     }
 
     void ensureInitialized() {
@@ -85,6 +99,9 @@ class PolyglotLanguageContextImpl implements VMObject {
     }
 
     private void checkAccess() {
+        if (disposed) {
+            throw new IllegalStateException(String.format("Context is already disposed for language %s.", language.getId()));
+        }
         boolean accessPermitted = language.isHost() || language.cache.isInternal() || context.singlePublicLanguage == null || context.singlePublicLanguage == language;
         if (!accessPermitted) {
             throw new IllegalStateException(String.format("Access to language '%s' is not permitted. ", language.getId()));

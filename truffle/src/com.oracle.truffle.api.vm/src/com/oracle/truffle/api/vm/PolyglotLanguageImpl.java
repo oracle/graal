@@ -133,9 +133,12 @@ class PolyglotLanguageImpl extends AbstractLanguageImpl implements VMObject {
     @Override
     @SuppressWarnings("hiding")
     public Context createContext(OutputStream out, OutputStream err, InputStream in, Map<String, String> optionValues, Map<String, String[]> arguments) {
-        checkEngine(engine);
-        PolyglotContextImpl contextImpl = new PolyglotContextImpl(engine, out, err, in, optionValues, arguments, this);
-        return engine.impl.getAPIAccess().newContext(contextImpl, api);
+        synchronized (engine) {
+            engine.incrementContextCount();
+            checkEngine(engine);
+            PolyglotContextImpl contextImpl = new PolyglotContextImpl(engine, out, err, in, optionValues, arguments, this);
+            return engine.impl.getAPIAccess().newContext(contextImpl, api);
+        }
     }
 
     @Override

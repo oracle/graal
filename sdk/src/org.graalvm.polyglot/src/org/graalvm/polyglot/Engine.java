@@ -162,6 +162,15 @@ public final class Engine implements AutoCloseable {
         return impl.getVersion();
     }
 
+    /**
+     * Closes this engine and frees up allocated native resources. An engine can only be closed if
+     * all its contexts were closed before. If an engine was closed then all its methods will throw
+     * an {@link IllegalStateException} when invoked. Multiple calls to close have no effect.
+     *
+     * @throws IllegalStateException if there are still open context instances. Make sure to
+     *             {@link Context#close() close} them before closing the engine.
+     * @since 1.0
+     */
     @Override
     public void close() {
         impl.ensureClosed();
@@ -310,7 +319,7 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public Context newContext(AbstractContextImpl impl, Language languageImpl) {
-            return new Context(impl, languageImpl);
+            return new Context(impl, languageImpl, false);
         }
 
         @Override

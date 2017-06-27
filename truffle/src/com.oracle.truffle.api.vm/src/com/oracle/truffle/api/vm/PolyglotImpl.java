@@ -177,7 +177,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     static void checkEngine(PolyglotEngineImpl engine) {
         if (engine.closed) {
-            throw new IllegalStateException("Engine already closed.");
+            throw new IllegalStateException("Engine is already closed.");
         }
     }
 
@@ -186,7 +186,13 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     static void checkStateForGuest(PolyglotContextImpl context) {
-        checkEngine(context.engine);
+        checkStateForGuest(context, true);
+    }
+
+    static void checkStateForGuest(PolyglotContextImpl context, boolean checkClosed) {
+        if (checkClosed) {
+            checkEngine(context.engine);
+        }
         Thread boundThread = context.boundThread;
         if (boundThread == null) {
             context.boundThread = Thread.currentThread();
@@ -195,6 +201,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                             String.format("The context was accessed from thread %s but is bound to thread %s. " +
                                             "The context is not thread-safe and can therefore not be accessed from multiple threads. ",
                                             boundThread, Thread.currentThread())));
+        }
+        if (context.closed && checkClosed) {
+            throw engineError(new IllegalStateException("Language context is already closed."));
         }
     }
 
