@@ -29,7 +29,9 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.BiFunction;
 
 final class JavaClassDesc {
@@ -67,32 +69,105 @@ final class JavaClassDesc {
         };
 
         Members(Class<?> type) {
-            HashMap<String, JavaMethodDesc> methodMap = new HashMap<>();
-            HashMap<String, JavaMethodDesc> staticMethodMap = new HashMap<>();
-            for (Method m : type.getMethods()) {
-                if (m.getDeclaringClass() == Object.class) {
-                    continue;
-                }
-                JavaMethodDesc method = JavaMethodDesc.unreflect(m);
+            Map<String, JavaMethodDesc> methodMap = new HashMap<>();
+            Map<String, JavaMethodDesc> staticMethodMap = new HashMap<>();
+            JavaMethodDesc ctor = null;
 
-                methodMap.merge(m.getName(), method, MERGE);
-                if (Modifier.isStatic(m.getModifiers())) {
-                    staticMethodMap.merge(m.getName(), method, MERGE);
+            if (Modifier.isPublic(type.getModifiers())) {
+                for (Method m : type.getMethods()) {
+                    if (m.getDeclaringClass() == Object.class) {
+                        continue;
+                    }
+
+                    if (!Modifier.isPublic(m.getDeclaringClass().getModifiers())) {
+                        // if the declaring class is not public, there should be a public bridge
+                        // method available that we can use instead.
+                        continue;
+                    }
+                    JavaMethodDesc method = JavaMethodDesc.unreflect(m);
+
+                    methodMap.merge(m.getName(), method, MERGE);
+                    if (Modifier.isStatic(m.getModifiers())) {
+                        staticMethodMap.merge(m.getName(), method, MERGE);
+                    }
                 }
+            } else {
+                // If the class is not public, look for inherited public methods.
+                collectPublicSuperMethods(type, methodMap, staticMethodMap, new HashSet<>());
             }
 
-            JavaMethodDesc ctor = null;
-            for (Constructor<?> c : type.getConstructors()) {
-                if (c.getDeclaringClass() == Object.class) {
-                    continue;
+            if (Modifier.isPublic(type.getModifiers())) {
+                for (Constructor<?> c : type.getConstructors()) {
+                    if (c.getDeclaringClass() == Object.class) {
+                        continue;
+                    }
+                    JavaMethodDesc overload = JavaMethodDesc.unreflect(c);
+                    ctor = ctor == null ? overload : merge(ctor, overload);
                 }
-                JavaMethodDesc overload = JavaMethodDesc.unreflect(c);
-                ctor = ctor == null ? overload : merge(ctor, overload);
+
             }
 
             this.methods = methodMap;
             this.staticMethods = staticMethodMap;
             this.constructor = ctor;
+        }
+
+        private static void collectPublicSuperMethods(Class<?> type, Map<String, JavaMethodDesc> methodMap, Map<String, JavaMethodDesc> staticMethodMap, Set<Object> visited) {
+            if (type == Object.class) {
+                return;
+            }
+            if (Modifier.isPublic(type.getModifiers())) {
+                for (Method m : type.getMethods()) {
+                    if (m.getDeclaringClass() == Object.class) {
+                        continue;
+                    }
+
+                    if (!Modifier.isPublic(m.getDeclaringClass().getModifiers())) {
+                        continue;
+                    } else if (Modifier.isStatic(m.getModifiers()) && m.getDeclaringClass().isInterface()) {
+                        // do not inherit static interface methods
+                        continue;
+                    }
+
+                    if (visited.add(getSignature(m))) {
+                        JavaMethodDesc method = JavaMethodDesc.unreflect(m);
+
+                        methodMap.merge(m.getName(), method, MERGE);
+                        if (Modifier.isStatic(m.getModifiers())) {
+                            staticMethodMap.merge(m.getName(), method, MERGE);
+                        }
+                    }
+                }
+            } else {
+                if (type.getSuperclass() != null) {
+                    collectPublicSuperMethods(type.getSuperclass(), methodMap, staticMethodMap, visited);
+                }
+                for (Class<?> intf : type.getInterfaces()) {
+                    collectPublicSuperMethods(intf, methodMap, staticMethodMap, visited);
+                }
+            }
+        }
+
+        private static Object getSignature(Method m) {
+            class Signature {
+                private final String name = m.getName();
+                private final Class<?>[] parameterTypes = m.getParameterTypes();
+
+                @Override
+                public boolean equals(Object obj) {
+                    return obj instanceof Signature && name.equals(((Signature) obj).name) && Arrays.equals(parameterTypes, ((Signature) obj).parameterTypes);
+                }
+
+                @Override
+                public int hashCode() {
+                    final int prime = 31;
+                    int result = 1;
+                    result = prime * result + name.hashCode();
+                    result = prime * result + Arrays.hashCode(parameterTypes);
+                    return result;
+                }
+            }
+            return new Signature();
         }
 
         static JavaMethodDesc merge(JavaMethodDesc existing, JavaMethodDesc other) {
@@ -106,6 +181,7 @@ final class JavaClassDesc {
                 return new OverloadedMethodDesc(newOverloads);
             }
         }
+
     }
 
     private Members getMembers() {
