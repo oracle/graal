@@ -30,6 +30,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -38,10 +39,10 @@ import java.lang.reflect.Modifier;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Callable;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.KeyInfo;
@@ -49,7 +50,6 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -364,6 +364,32 @@ public class TestMemberAccess {
             fail();
         } catch (IllegalArgumentException e) {
         }
+    }
+
+    @Test
+    public void testOverloadedConstructor3() throws InteropException {
+        TruffleObject clazz = JavaInterop.asTruffleObject(TestConstructorException.class);
+        Object testObj = ForeignAccess.sendNew(Message.createNew(0).createNode(), clazz, "test", 42);
+        assertTrue(testObj instanceof TruffleObject && JavaInterop.isJavaObject(TestConstructorException.class, (TruffleObject) testObj));
+        assertThrowsExceptionWithCause(() -> ForeignAccess.sendNew(Message.createNew(0).createNode(), clazz, "test"), IOException.class);
+    }
+
+    @Test
+    public void testMethodThrowsIOException() throws ClassNotFoundException, InteropException {
+        assertThrowsExceptionWithCause(() -> getValueFromMember(TestClass2.class, "methodThrowsIOException"), IOException.class);
+    }
+
+    private static void assertThrowsExceptionWithCause(Callable<?> callable, Class<? extends Exception> exception) {
+        try {
+            callable.call();
+        } catch (Exception e) {
+            for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+                if (cause instanceof IOException) {
+                    return;
+                }
+            }
+        }
+        fail("Expected " + exception.getClass().getSimpleName());
     }
 
     private void testForValue(String name, Object value) throws ClassNotFoundException, InteropException {
@@ -778,7 +804,6 @@ public class TestMemberAccess {
         public String classAsArg(Class<?> c) {
             return c.getName();
         }
-
     }
 
     public static final class TestClass2 {
@@ -821,6 +846,10 @@ public class TestMemberAccess {
         public String isOverloaded(short c) {
             return short.class.getName();
         }
+
+        public void methodThrowsIOException() throws IOException {
+            throw new IOException();
+        }
     }
 
     public static final class TestConstructor {
@@ -840,6 +869,15 @@ public class TestMemberAccess {
         public TestConstructor(float f) {
             this.f = f;
             this.ctor = float.class.getName();
+        }
+    }
+
+    public static class TestConstructorException {
+        public TestConstructorException(String s) throws IOException {
+            throw new IOException();
+        }
+
+        public TestConstructorException(String s, int i) {
         }
     }
 
