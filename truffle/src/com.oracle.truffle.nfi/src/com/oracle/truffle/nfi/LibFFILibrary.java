@@ -64,7 +64,7 @@ final class LibFFILibrary implements TruffleObject {
     }
 
     @CompilerDirectives.TruffleBoundary
-    TruffleObject findSymbol(String name) {
+    TruffleObject findSymbol(String name) throws UnknownIdentifierException {
         TruffleObject obj = symbols == null ? null : symbols.get(name);
         if (obj == null) {
             throw UnknownIdentifierException.raise(name);
