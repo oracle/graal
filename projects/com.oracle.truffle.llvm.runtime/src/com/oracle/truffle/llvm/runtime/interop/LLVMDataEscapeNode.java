@@ -132,7 +132,7 @@ public abstract class LLVMDataEscapeNode extends Node {
 
     @Specialization
     public TruffleObject escapingFunction(LLVMFunctionHandle escapingValue, LLVMContext context) {
-        return context.lookup(escapingValue);
+        return context.getFunctionDescriptor(escapingValue);
     }
 
     @Specialization
@@ -231,7 +231,7 @@ public abstract class LLVMDataEscapeNode extends Node {
         } else if (value instanceof LLVMAddress) {
             return new LLVMTruffleAddress((LLVMAddress) value, type, context);
         } else if (value instanceof LLVMFunctionHandle) {
-            return context.lookup((LLVMFunctionHandle) value);
+            return context.getFunctionDescriptor((LLVMFunctionHandle) value);
         } else if (value instanceof LLVMTruffleObject && ((LLVMTruffleObject) value).getOffset() == 0) {
             return ((LLVMTruffleObject) value).getObject();
         } else if (value instanceof LLVMTruffleObject) {

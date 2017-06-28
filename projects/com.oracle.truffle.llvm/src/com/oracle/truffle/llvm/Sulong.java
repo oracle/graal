@@ -50,7 +50,6 @@ import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.SulongNodeFactory;
 import com.oracle.truffle.llvm.parser.factories.BasicSulongNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
@@ -101,12 +100,11 @@ public final class Sulong extends LLVMLanguage {
     @Override
     protected Object findExportedSymbol(LLVMContext context, String globalName, boolean onlyExplicit) {
         String atname = "@" + globalName; // for interop
-        for (LLVMFunctionDescriptor descr : context.getFunctionDescriptors()) {
-            if (descr != null && descr.getName().equals(globalName)) {
-                return descr;
-            } else if (descr != null && descr.getName().equals(atname)) {
-                return descr;
-            }
+        if (context.getGlobalScope().functionExists(atname)) {
+            return context.getGlobalScope().getFunctionDescriptor(context, atname);
+        }
+        if (context.getGlobalScope().functionExists(globalName)) {
+            return context.getGlobalScope().getFunctionDescriptor(context, globalName);
         }
         return null;
     }
@@ -169,7 +167,7 @@ public final class Sulong extends LLVMLanguage {
                 CallTarget mainFunction = null;
                 if (code.getMimeType().equals(Sulong.LLVM_BITCODE_MIME_TYPE) || code.getMimeType().equals(Sulong.LLVM_BITCODE_BASE64_MIME_TYPE)) {
                     LLVMParserResult parserResult = parseBitcodeFile(code, language, context);
-                    mainFunction = parserResult.getMainFunction();
+                    mainFunction = parserResult.getMainCallTarget();
                     handleParserResult(context, parserResult);
                 } else if (code.getMimeType().equals(Sulong.SULONG_LIBRARY_MIME_TYPE)) {
                     final SulongLibrary library = new SulongLibrary(new File(code.getPath()));
@@ -189,8 +187,8 @@ public final class Sulong extends LLVMLanguage {
                                 throw new UnsupportedOperationException(mimeType);
                             }
                             handleParserResult(context, parserResult);
-                            if (parserResult.getMainFunction() != null) {
-                                mainFunction = parserResult.getMainFunction();
+                            if (parserResult.getMainCallTarget() != null) {
+                                mainFunction = parserResult.getMainCallTarget();
                             }
                         } catch (Throwable t) {
                             throw new IOException("Error while trying to parse " + source.getName(), t);
@@ -239,26 +237,22 @@ public final class Sulong extends LLVMLanguage {
             }
 
             private void handleParserResult(LLVMContext context, LLVMParserResult result) {
-                context.registerGlobalVarInit(result.getGlobalVarInits());
-                context.registerGlobalVarDealloc(result.getGlobalVarDeallocs());
-                if (result.getConstructorFunctions() != null) {
-                    for (RootCallTarget constructorFunction : result.getConstructorFunctions()) {
-                        context.registerConstructorFunction(constructorFunction);
-                    }
+                context.registerGlobalVarInit(result.getGlobalVarInit());
+                context.registerGlobalVarDealloc(result.getGlobalVarDealloc());
+                if (result.getConstructorFunction() != null) {
+                    context.registerConstructorFunction(result.getConstructorFunction());
                 }
-                if (result.getDestructorFunctions() != null) {
-                    for (RootCallTarget destructorFunction : result.getDestructorFunctions()) {
-                        context.registerDestructorFunction(destructorFunction);
-                    }
+                if (result.getDestructorFunction() != null) {
+                    context.registerDestructorFunction(result.getDestructorFunction());
                 }
                 if (!context.isParseOnly()) {
                     context.getThreadingStack().checkThread();
                     long stackPointer = context.getThreadingStack().getStack().getStackPointer();
-                    result.getGlobalVarInits().call(stackPointer);
+                    result.getGlobalVarInit().call(stackPointer);
                     context.getThreadingStack().getStack().setStackPointer(stackPointer);
-                    for (RootCallTarget constructorFunction : result.getConstructorFunctions()) {
+                    if (result.getConstructorFunction() != null) {
                         stackPointer = context.getThreadingStack().getStack().getStackPointer();
-                        constructorFunction.call(stackPointer);
+                        result.getConstructorFunction().call(stackPointer);
                         context.getThreadingStack().getStack().setStackPointer(stackPointer);
                     }
                 }

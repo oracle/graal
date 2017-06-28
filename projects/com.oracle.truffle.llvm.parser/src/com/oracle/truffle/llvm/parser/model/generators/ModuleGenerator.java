@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.model.generators;
 
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
+import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -38,7 +39,7 @@ public interface ModuleGenerator extends SymbolGenerator {
 
     void createAlias(Type type, int aliasedValue, long linkage, long visibility);
 
-    void createFunction(FunctionType type, boolean isPrototype, AttributesCodeEntry paramattr);
+    void createFunction(FunctionType type, boolean isPrototype, Linkage linkage, AttributesCodeEntry paramattr);
 
     void createTargetDataLayout(TargetDataLayout layout);
 

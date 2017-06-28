@@ -46,7 +46,7 @@ public abstract class LLVMAtExit extends LLVMIntrinsic {
     public long doInt(LLVMFunctionHandle func) {
 
         LLVMContext context = getContext();
-        LLVMFunctionDescriptor desc = context.lookup(func);
+        LLVMFunctionDescriptor desc = context.getFunctionDescriptor(func);
         context.registerAtExitFunction(desc);
 
         return func.getFunctionPointer();

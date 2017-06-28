@@ -55,7 +55,7 @@ public abstract class LLVMTruffleAddressToFunction extends LLVMIntrinsic {
     }
 
     protected static LLVMFunctionDescriptor getDescriptor(LLVMAddress value, LLVMContext cachedContext) {
-        return cachedContext.lookup(LLVMFunctionHandle.createHandle(value.getVal()));
+        return cachedContext.getFunctionDescriptor(LLVMFunctionHandle.createHandle(value.getVal()));
     }
 
 }

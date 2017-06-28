@@ -29,47 +29,45 @@
  */
 package com.oracle.truffle.llvm.parser;
 
-import java.util.List;
-
 import com.oracle.truffle.api.RootCallTarget;
 
 public final class LLVMParserResult {
 
-    private final RootCallTarget mainFunction;
+    private final RootCallTarget mainCallTarget;
     private final RootCallTarget globalVarInits;
     private final RootCallTarget globalVarDeallocs;
-    private final List<RootCallTarget> constructorFunctions;
-    private final List<RootCallTarget> destructorFunctions;
+    private final RootCallTarget constructorFunctions;
+    private final RootCallTarget destructorFunctions;
 
-    LLVMParserResult(RootCallTarget mainFunction,
+    LLVMParserResult(RootCallTarget mainCallTarget,
                     RootCallTarget globalVarInits,
                     RootCallTarget globalVarDeallocs,
-                    List<RootCallTarget> constructorFunctions,
-                    List<RootCallTarget> destructorFunctions) {
-        this.mainFunction = mainFunction;
+                    RootCallTarget constructorFunctions,
+                    RootCallTarget destructorFunctions) {
+        this.mainCallTarget = mainCallTarget;
         this.globalVarInits = globalVarInits;
         this.globalVarDeallocs = globalVarDeallocs;
         this.constructorFunctions = constructorFunctions;
         this.destructorFunctions = destructorFunctions;
     }
 
-    public RootCallTarget getMainFunction() {
-        return mainFunction;
+    public RootCallTarget getMainCallTarget() {
+        return mainCallTarget;
     }
 
-    public RootCallTarget getGlobalVarInits() {
+    public RootCallTarget getGlobalVarInit() {
         return globalVarInits;
     }
 
-    public RootCallTarget getGlobalVarDeallocs() {
+    public RootCallTarget getGlobalVarDealloc() {
         return globalVarDeallocs;
     }
 
-    public List<RootCallTarget> getConstructorFunctions() {
+    public RootCallTarget getConstructorFunction() {
         return constructorFunctions;
     }
 
-    public List<RootCallTarget> getDestructorFunctions() {
+    public RootCallTarget getDestructorFunction() {
         return destructorFunctions;
     }
 }

@@ -42,19 +42,18 @@ import com.oracle.truffle.llvm.parser.model.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 final class LLVMModelVisitor implements ModelVisitor {
     private final Map<GlobalAlias, Symbol> aliases;
-    private final Map<GlobalValueSymbol, LLVMExpressionNode> globals;
+    private final List<GlobalValueSymbol> globals;
     private final List<FunctionDefinition> functions;
 
     LLVMModelVisitor() {
         this.aliases = new HashMap<>();
-        this.globals = new HashMap<>();
+        this.globals = new ArrayList<>();
         this.functions = new ArrayList<>();
     }
 
@@ -62,7 +61,7 @@ final class LLVMModelVisitor implements ModelVisitor {
         return aliases;
     }
 
-    public Map<GlobalValueSymbol, LLVMExpressionNode> getGlobals() {
+    public List<GlobalValueSymbol> getGlobals() {
         return globals;
     }
 
@@ -77,12 +76,12 @@ final class LLVMModelVisitor implements ModelVisitor {
 
     @Override
     public void visit(GlobalConstant constant) {
-        globals.put(constant, null);
+        globals.add(constant);
     }
 
     @Override
     public void visit(GlobalVariable variable) {
-        globals.put(variable, null);
+        globals.add(variable);
     }
 
     @Override

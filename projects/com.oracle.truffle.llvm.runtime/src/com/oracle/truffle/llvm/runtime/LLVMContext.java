@@ -39,6 +39,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -51,7 +52,6 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMContext {
@@ -62,35 +62,24 @@ public final class LLVMContext {
     private final List<RootCallTarget> destructorFunctions = new ArrayList<>();
     private final Deque<LLVMFunctionDescriptor> atExitFunctions = new ArrayDeque<>();
     private final List<LLVMThread> runningThreads = new ArrayList<>();
-
-    private final LLVMGlobalVariableRegistry globalVariableRegistry = new LLVMGlobalVariableRegistry();
-    private final LLVMTypeRegistry typeRegistry = new LLVMTypeRegistry();
-
     private final NativeLookup nativeLookup;
-
     private final LLVMNativeFunctions nativeFunctions;
-
     private final LLVMThreadingStack threadingStack = new LLVMThreadingStack();
-
     private Object[] mainArguments;
-
     private Source mainSourceFile;
-
     private boolean parseOnly;
     private boolean haveLoadedDynamicBitcodeLibraries;
-
-    private int currentFunctionIndex = 0;
-    private final List<LLVMFunctionDescriptor> functionDescriptors = new ArrayList<>();
-    private final HashMap<String, LLVMFunctionDescriptor> llvmIRFunctions;
     private NativeIntrinsicProvider nativeIntrinsicsFactory;
-
     private final LinkedList<LLVMAddress> caughtExceptionStack = new LinkedList<>();
     private final LinkedList<DestructorStackElement> destructorStack = new LinkedList<>();
     private final HashMap<String, Integer> nativeCallStatistics;
-
     private final Object handlesLock;
     private final IdentityHashMap<TruffleObject, LLVMAddress> toNative;
     private final HashMap<LLVMAddress, TruffleObject> toManaged;
+
+    private final LLVMScope globalScope;
+    private final LLVMFunctionIndexRegistry functionIndexRegistry;
+    private final LLVMTypeRegistry typeRegistry;
 
     // #define SIG_DFL ((__sighandler_t) 0) /* Default action. */
     private final LLVMFunction sigDfl;
@@ -100,8 +89,6 @@ public final class LLVMContext {
 
     // #define SIG_ERR ((__sighandler_t) -1) /* Error return. */
     private final LLVMFunction sigErr;
-
-    private static final String ZERO_FUNCTION = "<zero function>";
 
     public static final class DestructorStackElement {
         private final LLVMFunctionDescriptor destructor;
@@ -121,10 +108,60 @@ public final class LLVMContext {
         }
     }
 
+    private static final class LLVMFunctionIndexRegistry {
+        private int currentFunctionIndex = 0;
+        private final List<LLVMFunctionDescriptor> functionDescriptors = new ArrayList<>();
+
+        LLVMFunctionDescriptor getDescriptor(LLVMFunctionHandle handle) {
+            return functionDescriptors.get(handle.getSulongFunctionIndex());
+        }
+
+        LLVMFunctionDescriptor create(FunctionFactory factory) {
+            LLVMFunctionDescriptor function = factory.create(currentFunctionIndex++);
+            functionDescriptors.add(function);
+
+            assert LLVMFunction.getSulongFunctionIndex(function.getFunctionPointer()) == currentFunctionIndex - 1;
+            assert functionDescriptors.get(currentFunctionIndex - 1) == function;
+            return function;
+        }
+
+    }
+
+    private static final class LLVMTypeRegistry {
+        private final Map<String, Object> types = new HashMap<>();
+
+        synchronized boolean exists(Type type) {
+            return types.containsKey(type.toString());
+        }
+
+        synchronized void add(Type type, Object object) {
+            if (exists(type)) {
+                throw new IllegalStateException("Type " + type.toString() + " already added.");
+            }
+            types.put(type.toString(), object);
+        }
+
+        synchronized Object lookup(Type type) {
+            if (exists(type)) {
+                return types.get(type.toString());
+            }
+            throw new IllegalStateException("Type " + type + " does not exist.");
+        }
+
+        synchronized Object lookupOrCreate(Type type, Supplier<Object> generator) {
+            if (exists(type)) {
+                return lookup(type);
+            } else {
+                Object variable = generator.get();
+                add(type, variable);
+                return variable;
+            }
+        }
+    }
+
     public LLVMContext(Env env) {
         this.nativeLookup = LLVMOptions.ENGINE.disableNativeInterface() ? null : new NativeLookup(env);
         this.nativeCallStatistics = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.printNativeCallStatistics()) ? new HashMap<>() : null;
-        this.llvmIRFunctions = new HashMap<>();
         this.nativeFunctions = new LLVMNativeFunctionsImpl(nativeLookup);
         this.sigDfl = LLVMFunctionHandle.createHandle(0);
         this.sigIgn = LLVMFunctionHandle.createHandle(1);
@@ -132,11 +169,39 @@ public final class LLVMContext {
         this.toNative = new IdentityHashMap<>();
         this.toManaged = new HashMap<>();
         this.handlesLock = new Object();
+        this.functionIndexRegistry = new LLVMFunctionIndexRegistry();
+        this.typeRegistry = new LLVMTypeRegistry();
+        this.globalScope = LLVMScope.createGlobalScope(this);
+    }
 
-        assert currentFunctionIndex == 0;
-        LLVMFunctionDescriptor zeroFunction = LLVMFunctionDescriptor.createDescriptor(this, ZERO_FUNCTION, new FunctionType(MetaType.UNKNOWN, new Type[0], false), currentFunctionIndex++);
-        this.llvmIRFunctions.put(ZERO_FUNCTION, zeroFunction);
-        this.functionDescriptors.add(zeroFunction);
+    public LLVMScope getGlobalScope() {
+        return globalScope;
+    }
+
+    @TruffleBoundary
+    public boolean typeExists(Type type) {
+        return typeRegistry.exists(type);
+    }
+
+    @TruffleBoundary
+    public Object getType(Type type) {
+        return typeRegistry.lookup(type);
+    }
+
+    @TruffleBoundary
+    public Object lookupOrCreateType(Type type, Supplier<Object> generator) {
+        return typeRegistry.lookupOrCreate(type, generator);
+    }
+
+    @TruffleBoundary
+    public synchronized LLVMFunctionDescriptor getFunctionDescriptor(LLVMFunctionHandle handle) {
+        assert handle.isSulong();
+        return functionIndexRegistry.getDescriptor(handle);
+    }
+
+    @TruffleBoundary
+    public synchronized LLVMFunctionDescriptor createFunctionDescriptor(FunctionFactory factory) {
+        return functionIndexRegistry.create(factory);
     }
 
     public void setNativeIntrinsicsFactory(NativeIntrinsicProvider nativeIntrinsicsFactory) {
@@ -235,14 +300,6 @@ public final class LLVMContext {
 
     public LinkedList<DestructorStackElement> getDestructorStack() {
         return destructorStack;
-    }
-
-    public LLVMGlobalVariableRegistry getGlobalVariableRegistry() {
-        return globalVariableRegistry;
-    }
-
-    public LLVMTypeRegistry getTypeRegistry() {
-        return typeRegistry;
     }
 
     public void addLibraryToNativeLookup(String library) {
@@ -358,35 +415,8 @@ public final class LLVMContext {
         haveLoadedDynamicBitcodeLibraries = true;
     }
 
-    public LLVMFunctionDescriptor lookup(LLVMFunctionHandle handle) {
-        assert handle.isSulong();
-        return functionDescriptors.get(handle.getSulongFunctionIndex());
-    }
-
-    public List<LLVMFunctionDescriptor> getFunctionDescriptors() {
-        return functionDescriptors;
-    }
-
-    public LLVMFunctionDescriptor getZeroFunctionDescriptor() {
-        return functionDescriptors.get(0);
-    }
-
     public interface FunctionFactory {
         LLVMFunctionDescriptor create(int index);
-    }
-
-    public LLVMFunctionDescriptor lookupFunctionDescriptor(String name, FunctionFactory factory) {
-        LLVMFunctionDescriptor function = llvmIRFunctions.get(name);
-        if (function == null) {
-            function = factory.create(currentFunctionIndex++);
-            functionDescriptors.add(function);
-            llvmIRFunctions.put(name, function);
-
-            assert LLVMFunction.getSulongFunctionIndex(function.getFunctionPointer()) == currentFunctionIndex - 1;
-            assert functionDescriptors.get(currentFunctionIndex - 1) == function;
-        }
-        return function;
-
     }
 
     public NativeLookup getNativeLookup() {

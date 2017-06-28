@@ -33,7 +33,9 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.llvm.parser.metadata.MetadataList;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
+import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.generators.FunctionGenerator;
@@ -60,7 +62,6 @@ import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.metadata.MetadataList;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
@@ -184,13 +185,13 @@ public final class ModelModule implements ModuleGenerator {
     }
 
     @Override
-    public void createFunction(FunctionType type, boolean isPrototype, AttributesCodeEntry paramAttr) {
+    public void createFunction(FunctionType type, boolean isPrototype, Linkage linkage, AttributesCodeEntry paramAttr) {
         if (isPrototype) {
-            final FunctionDeclaration function = new FunctionDeclaration(type, paramAttr);
+            final FunctionDeclaration function = new FunctionDeclaration(type, linkage, paramAttr);
             symbols.addSymbol(function);
             declares.add(function);
         } else {
-            final FunctionDefinition method = new FunctionDefinition(type, metadata.instantiate(), paramAttr);
+            final FunctionDefinition method = new FunctionDefinition(type, metadata.instantiate(), linkage, paramAttr);
             symbols.addSymbol(method);
             defines.add(method);
         }

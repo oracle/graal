@@ -87,14 +87,6 @@ public abstract class GlobalValueSymbol implements ValueSymbol {
         return linkage;
     }
 
-    public boolean isStatic() {
-        return linkage == Linkage.INTERNAL || linkage == Linkage.PRIVATE;
-    }
-
-    public boolean isExtern() {
-        return linkage == Linkage.EXTERNAL || linkage == Linkage.EXTERN_WEAK;
-    }
-
     public Symbol getValue() {
         return value;
     }
