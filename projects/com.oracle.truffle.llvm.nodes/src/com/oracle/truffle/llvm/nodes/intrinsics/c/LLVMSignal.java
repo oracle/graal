@@ -69,7 +69,7 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
 
     @Specialization
     public LLVMFunction doSignal(int signal, LLVMFunctionHandle handler, @Cached("getContext()") LLVMContext context) {
-        return setSignalHandler(context, signal, context.lookup(handler));
+        return setSignalHandler(context, signal, context.getFunctionDescriptor(handler));
     }
 
     private static LLVMFunction setSignalHandler(LLVMContext context, int signalId, LLVMFunctionDescriptor function) {

@@ -30,9 +30,7 @@
 package com.oracle.truffle.llvm.parser;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -50,6 +48,7 @@ import com.oracle.truffle.llvm.parser.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.parser.datalayout.DataLayoutConverter.DataSpecConverterImpl;
 import com.oracle.truffle.llvm.parser.metadata.SourceSectionGenerator;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
+import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalConstant;
@@ -65,6 +64,7 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
+import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -103,51 +103,33 @@ public final class LLVMParserRuntime {
         model.accept(module);
 
         DataLayoutConverter.DataSpecConverterImpl targetDataLayout = DataLayoutConverter.getConverter(layout.getDataLayout());
-        LLVMParserRuntime runtime = new LLVMParserRuntime(source, language, context, stack, targetDataLayout, nodeFactory, module.getGlobals(), module.getAliases());
+        LLVMParserRuntime runtime = new LLVMParserRuntime(source, language, context, stack, targetDataLayout, nodeFactory, module.getAliases());
 
-        Map<String, LLVMFunctionDescriptor> functions = initializeFunctions(runtime, context, nodeFactory, stack, phiManager, labels, module.getFunctions(), source);
-        LLVMFunctionDescriptor mainFunction = functions.get("@main");
+        runtime.initializeFunctions(phiManager, labels, module.getFunctions());
 
         LLVMSymbolResolver symbolResolver = new LLVMSymbolResolver(runtime, labels);
-        LLVMExpressionNode[] globals = runtime.createGlobalVariableNodes(symbolResolver).toArray(new LLVMExpressionNode[0]);
+        LLVMExpressionNode[] globals = runtime.createGlobalVariableInitializationNodes(symbolResolver, module.getGlobals());
         RootNode globalVarInits = nodeFactory.createStaticInitsRootNode(runtime, globals);
         RootCallTarget globalVarInitsTarget = Truffle.getRuntime().createCallTarget(globalVarInits);
         LLVMExpressionNode[] deallocs = runtime.getDeallocations();
         RootNode globalVarDeallocs = nodeFactory.createStaticInitsRootNode(runtime, deallocs);
         RootCallTarget globalVarDeallocsTarget = Truffle.getRuntime().createCallTarget(globalVarDeallocs);
 
-        List<RootCallTarget> constructorFunctions = runtime.getConstructors();
-        List<RootCallTarget> destructorFunctions = runtime.getDestructors();
+        RootCallTarget constructorFunctions = runtime.getConstructors(module.getGlobals());
+        RootCallTarget destructorFunctions = runtime.getDestructors(module.getGlobals());
 
         RootCallTarget mainFunctionCallTarget;
-        if (mainFunction != null) {
-            RootCallTarget mainCallTarget = mainFunction.getLLVMIRFunction();
-            RootNode globalFunction = nodeFactory.createGlobalRootNode(runtime, mainCallTarget, context.getMainArguments(), source, mainFunction.getType().getArgumentTypes());
+        if (runtime.getScope().functionExists("@main")) {
+            LLVMFunctionDescriptor mainDescriptor = runtime.getScope().getFunctionDescriptor(context, "@main");
+            RootCallTarget mainCallTarget = mainDescriptor.getLLVMIRFunction();
+            RootNode globalFunction = nodeFactory.createGlobalRootNode(runtime, mainCallTarget, context.getMainArguments(), source, mainDescriptor.getType().getArgumentTypes());
             RootCallTarget globalFunctionRoot = Truffle.getRuntime().createCallTarget(globalFunction);
-            RootNode globalRootNode = nodeFactory.createGlobalRootNodeWrapping(runtime, globalFunctionRoot, mainFunction.getType().getReturnType());
+            RootNode globalRootNode = nodeFactory.createGlobalRootNodeWrapping(runtime, globalFunctionRoot, mainDescriptor.getType().getReturnType());
             mainFunctionCallTarget = Truffle.getRuntime().createCallTarget(globalRootNode);
         } else {
             mainFunctionCallTarget = null;
         }
         return new LLVMParserResult(mainFunctionCallTarget, globalVarInitsTarget, globalVarDeallocsTarget, constructorFunctions, destructorFunctions);
-    }
-
-    private static Map<String, LLVMFunctionDescriptor> initializeFunctions(LLVMParserRuntime runtime, LLVMContext context, SulongNodeFactory nodeFactory, StackAllocation stack,
-                    LLVMPhiManager phiManager, LLVMLabelList labels, List<FunctionDefinition> functions, Source source) {
-        Map<String, LLVMFunctionDescriptor> result = new HashMap<>();
-        for (FunctionDefinition function : functions) {
-            String functionName = function.getName();
-            LLVMFunctionDescriptor functionDescriptor = context.lookupFunctionDescriptor(functionName, i -> nodeFactory.createFunctionDescriptor(context, functionName, function.getType(), i));
-
-            LazyToTruffleConverterImpl lazyConverter = new LazyToTruffleConverterImpl(runtime, nodeFactory, function, source, stack.getFrame(functionName), phiManager.getPhiMap(functionName),
-                            labels.labels(functionName));
-            if (!LLVMOptions.ENGINE.lazyParsing()) {
-                lazyConverter.convert();
-            }
-            functionDescriptor.declareInSulong(lazyConverter);
-            result.put(functionName, functionDescriptor);
-        }
-        return result;
     }
 
     private final Source source;
@@ -156,27 +138,75 @@ public final class LLVMParserRuntime {
     private final StackAllocation stack;
     private final DataLayoutConverter.DataSpecConverterImpl targetDataLayout;
     private final SulongNodeFactory nodeFactory;
-    private final Map<GlobalValueSymbol, LLVMExpressionNode> globals;
     private final Map<GlobalAlias, Symbol> aliases;
-
     private final List<LLVMExpressionNode> deallocations;
     private final SourceSectionGenerator sourceSectionGenerator;
-    private final Map<String, Object> globalVariableScope;
+    private final LLVMScope scope;
 
-    public LLVMParserRuntime(Source source, LLVMLanguage language, LLVMContext context, StackAllocation stack, DataSpecConverterImpl targetDataLayout, SulongNodeFactory nodeFactory,
-                    Map<GlobalValueSymbol, LLVMExpressionNode> globals, Map<GlobalAlias, Symbol> aliases) {
+    private LLVMParserRuntime(Source source, LLVMLanguage language, LLVMContext context, StackAllocation stack, DataSpecConverterImpl targetDataLayout, SulongNodeFactory nodeFactory,
+                    Map<GlobalAlias, Symbol> aliases) {
         this.source = source;
         this.context = context;
         this.stack = stack;
         this.targetDataLayout = targetDataLayout;
         this.nodeFactory = nodeFactory;
         this.language = language;
-        this.globals = globals;
         this.aliases = aliases;
-
         this.deallocations = new ArrayList<>();
         this.sourceSectionGenerator = new SourceSectionGenerator();
-        this.globalVariableScope = new HashMap<>();
+        this.scope = LLVMScope.createFileScope(context);
+    }
+
+    private void initializeFunctions(LLVMPhiManager phiManager, LLVMLabelList labels, List<FunctionDefinition> functions) {
+        for (FunctionDefinition function : functions) {
+            String functionName = function.getName();
+            LLVMFunctionDescriptor functionDescriptor = scope.lookupOrCreateFunction(context, functionName, !Linkage.isFileLocal(function.getLinkage()),
+                            index -> LLVMFunctionDescriptor.createDescriptor(context, functionName, function.getType(), index));
+            LazyToTruffleConverterImpl lazyConverter = new LazyToTruffleConverterImpl(this, nodeFactory, function, source, stack.getFrame(functionName), phiManager.getPhiMap(functionName),
+                            labels.labels(functionName));
+            if (!LLVMOptions.ENGINE.lazyParsing()) {
+                lazyConverter.convert();
+            }
+            functionDescriptor.declareInSulong(lazyConverter);
+        }
+    }
+
+    private LLVMExpressionNode[] createGlobalVariableInitializationNodes(LLVMSymbolResolver symbolResolver, List<GlobalValueSymbol> globals) {
+        final List<LLVMExpressionNode> globalNodes = new ArrayList<>();
+        for (GlobalValueSymbol global : globals) {
+            final LLVMExpressionNode store = createGlobalInitialization(symbolResolver, global);
+            if (store != null) {
+                globalNodes.add(store);
+            }
+        }
+        return globalNodes.toArray(new LLVMExpressionNode[globalNodes.size()]);
+    }
+
+    private LLVMExpressionNode createGlobalInitialization(LLVMSymbolResolver symbolResolver, GlobalValueSymbol global) {
+        if (global == null || global.getValue() == null) {
+            return null;
+        }
+
+        LLVMExpressionNode constant = symbolResolver.resolve(global.getValue());
+        if (constant != null) {
+            final Type type = ((PointerType) global.getType()).getPointeeType();
+            final int size = getByteSize(type);
+
+            final LLVMExpressionNode globalVarAddress = getGlobalVariable(symbolResolver, global);
+
+            if (size != 0) {
+                final LLVMExpressionNode store;
+                if (type instanceof ArrayType || type instanceof StructureType) {
+                    store = nodeFactory.createStore(this, globalVarAddress, constant, type, null);
+                } else {
+                    final Type t = global.getValue().getType();
+                    store = nodeFactory.createStore(this, globalVarAddress, constant, t, null);
+                }
+                return store;
+            }
+        }
+
+        return null;
     }
 
     private LLVMExpressionNode getGlobalVariable(LLVMSymbolResolver symbolResolver, GlobalValueSymbol global) {
@@ -187,33 +217,44 @@ public final class LLVMParserRuntime {
 
         if (g instanceof GlobalValueSymbol) {
             final GlobalValueSymbol variable = (GlobalValueSymbol) g;
-            return globals.computeIfAbsent(variable, k -> allocateGlobal(variable));
+            Object globalVariableDescriptor = scope.lookupOrCreateGlobal(variable.getName(), !Linkage.isFileLocal(variable.getLinkage()), () -> {
+                final Object globalValue;
+                if (global instanceof GlobalVariable) {
+                    globalValue = nodeFactory.allocateGlobalVariable(this, (GlobalVariable) global);
+                } else if (global instanceof GlobalConstant) {
+                    globalValue = nodeFactory.allocateGlobalConstant(this, (GlobalConstant) global);
+                } else {
+                    throw new AssertionError("Cannot allocate global: " + global);
+                }
+                return globalValue;
+            });
+            return nodeFactory.createLiteral(this, globalVariableDescriptor, new PointerType(variable.getType()));
         } else {
             return symbolResolver.resolve(g);
         }
     }
 
-    private List<RootCallTarget> getConstructors() {
-        return getStructor(CONSTRUCTORS_VARNAME, ASCENDING_PRIORITY);
+    private RootCallTarget getConstructors(List<GlobalValueSymbol> globals) {
+        return getStructor(CONSTRUCTORS_VARNAME, globals, ASCENDING_PRIORITY);
     }
 
-    private List<RootCallTarget> getDestructors() {
-        return getStructor(DESTRUCTORS_VARNAME, DESCENDING_PRIORITY);
+    private RootCallTarget getDestructors(List<GlobalValueSymbol> globals) {
+        return getStructor(DESTRUCTORS_VARNAME, globals, DESCENDING_PRIORITY);
     }
 
-    private List<RootCallTarget> getStructor(String name, Comparator<Pair<Integer, ?>> priorityComparator) {
-        for (GlobalValueSymbol globalValueSymbol : globals.keySet()) {
+    private RootCallTarget getStructor(String name, List<GlobalValueSymbol> globals, Comparator<Pair<Integer, ?>> priorityComparator) {
+        for (GlobalValueSymbol globalValueSymbol : globals) {
             if (globalValueSymbol.getName().equals(name)) {
                 final LLVMExpressionNode[] targets = resolveStructor(globalValueSymbol, priorityComparator);
                 final RootCallTarget constructorFunctionsRootCallTarget = Truffle.getRuntime().createCallTarget(nodeFactory.createStaticInitsRootNode(this, targets));
-                return Collections.singletonList(constructorFunctionsRootCallTarget);
+                return constructorFunctionsRootCallTarget;
             }
         }
-        return Collections.emptyList();
+        return null;
     }
 
     private LLVMExpressionNode[] resolveStructor(GlobalValueSymbol globalVar, Comparator<Pair<Integer, ?>> priorityComparator) {
-        final Object globalVariableDescriptor = globalVariableScope.get(globalVar.getName());
+        final Object globalVariableDescriptor = scope.getGlobalVariable(globalVar.getName());
         final ArrayConstant arrayConstant = (ArrayConstant) globalVar.getValue();
         final int elemCount = arrayConstant.getElementCount();
 
@@ -245,58 +286,6 @@ public final class LLVMParserRuntime {
         return structors.stream().sorted(priorityComparator).map(Pair::getSecond).toArray(LLVMExpressionNode[]::new);
     }
 
-    private LLVMExpressionNode allocateGlobal(GlobalValueSymbol global) {
-        final Object globalValue;
-        if (global instanceof GlobalVariable) {
-            globalValue = nodeFactory.allocateGlobalVariable(this, (GlobalVariable) global);
-        } else if (global instanceof GlobalConstant) {
-            globalValue = nodeFactory.allocateGlobalConstant(this, (GlobalConstant) global);
-        } else {
-            throw new AssertionError("Cannot allocate global: " + global);
-        }
-
-        globalVariableScope.put(global.getName(), globalValue);
-        return nodeFactory.createLiteral(this, globalValue, new PointerType(global.getType()));
-    }
-
-    private List<LLVMExpressionNode> createGlobalVariableNodes(LLVMSymbolResolver symbolResolver) {
-        final List<LLVMExpressionNode> globalNodes = new ArrayList<>();
-        for (GlobalValueSymbol global : globals.keySet()) {
-            final LLVMExpressionNode store = createGlobal(symbolResolver, global);
-            if (store != null) {
-                globalNodes.add(store);
-            }
-        }
-        return globalNodes;
-    }
-
-    private LLVMExpressionNode createGlobal(LLVMSymbolResolver symbolResolver, GlobalValueSymbol global) {
-        if (global == null || global.getValue() == null) {
-            return null;
-        }
-
-        LLVMExpressionNode constant = symbolResolver.resolve(global.getValue());
-        if (constant != null) {
-            final Type type = ((PointerType) global.getType()).getPointeeType();
-            final int size = getByteSize(type);
-
-            final LLVMExpressionNode globalVarAddress = getGlobalVariable(symbolResolver, global);
-
-            if (size != 0) {
-                final LLVMExpressionNode store;
-                if (type instanceof ArrayType || type instanceof StructureType) {
-                    store = nodeFactory.createStore(this, globalVarAddress, constant, type, null);
-                } else {
-                    final Type t = global.getValue().getType();
-                    store = nodeFactory.createStore(this, globalVarAddress, constant, t, null);
-                }
-                return store;
-            }
-        }
-
-        return null;
-    }
-
     public LLVMContext getContext() {
         return context;
     }
@@ -309,7 +298,7 @@ public final class LLVMParserRuntime {
         return nodeFactory.createAlloc(this, type, size, alignment, null, null);
     }
 
-    public Object getGlobalAddress(LLVMSymbolResolver symbolResolver, GlobalValueSymbol var) {
+    public LLVMExpressionNode getGlobalAddress(LLVMSymbolResolver symbolResolver, GlobalValueSymbol var) {
         return getGlobalVariable(symbolResolver, var);
     }
 
@@ -356,6 +345,10 @@ public final class LLVMParserRuntime {
 
     public LLVMLanguage getLanguage() {
         return language;
+    }
+
+    public LLVMScope getScope() {
+        return scope;
     }
 
     SourceSection getSourceSection(FunctionDefinition function) {

@@ -43,6 +43,7 @@ import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionKind;
 import com.oracle.truffle.llvm.parser.model.enums.Flag;
+import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
@@ -68,7 +69,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerCon
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
@@ -273,13 +274,13 @@ public final class LLVMSymbolResolver {
     }
 
     private LLVMExpressionNode toFunction(FunctionDefinition toResolve) {
-        final LLVMFunction llvmFunction = runtime.getNodeFactory().createAndRegisterFunctionDescriptor(runtime, toResolve.getName(), toResolve.getType());
-        return runtime.getNodeFactory().createLiteral(runtime, llvmFunction, toResolve.getType());
+        return runtime.getNodeFactory().createLiteral(runtime, runtime.getScope().lookupOrCreateFunction(runtime.getContext(), toResolve.getName(), !Linkage.isFileLocal(toResolve.getLinkage()),
+                        i -> LLVMFunctionDescriptor.createDescriptor(runtime.getContext(), toResolve.getName(), toResolve.getType(), i)), toResolve.getType());
     }
 
     private LLVMExpressionNode toFunction(FunctionDeclaration toResolve) {
-        final LLVMFunction llvmFunction = runtime.getNodeFactory().createAndRegisterFunctionDescriptor(runtime, toResolve.getName(), toResolve.getType());
-        return runtime.getNodeFactory().createLiteral(runtime, llvmFunction, toResolve.getType());
+        return runtime.getNodeFactory().createLiteral(runtime, runtime.getScope().lookupOrCreateFunction(runtime.getContext(), toResolve.getName(), !Linkage.isFileLocal(toResolve.getLinkage()),
+                        i -> LLVMFunctionDescriptor.createDescriptor(runtime.getContext(), toResolve.getName(), toResolve.getType(), i)), toResolve.getType());
     }
 
     private LLVMExpressionNode toBinaryOperation(BinaryOperationConstant operation) {
@@ -386,58 +387,40 @@ public final class LLVMSymbolResolver {
         if (symbol instanceof ValueInstruction || symbol instanceof FunctionParameter) {
             final FrameSlot slot = frame.findFrameSlot(((ValueSymbol) symbol).getName());
             return runtime.getNodeFactory().createFrameRead(runtime, symbol.getType(), slot);
-
         } else if (symbol instanceof GlobalValueSymbol) {
-            return (LLVMExpressionNode) runtime.getGlobalAddress(this, (GlobalValueSymbol) symbol);
-
+            return runtime.getGlobalAddress(this, (GlobalValueSymbol) symbol);
         } else if (symbol instanceof NullConstant || symbol instanceof UndefinedConstant) {
             return toNullValue(symbol.getType());
-
         } else if (symbol instanceof IntegerConstant) {
             return toInteger((IntegerConstant) symbol);
-
         } else if (symbol instanceof BigIntegerConstant) {
             return toBigInteger((BigIntegerConstant) symbol);
-
         } else if (symbol instanceof FloatingPointConstant) {
             return toFloat((FloatingPointConstant) symbol);
-
         } else if (symbol instanceof StringConstant) {
             return toStr((StringConstant) symbol);
-
         } else if (symbol instanceof StructureConstant) {
             return toStruct((StructureConstant) symbol);
-
         } else if (symbol instanceof ArrayConstant) {
             return toArray((ArrayConstant) symbol);
-
         } else if (symbol instanceof VectorConstant) {
             return toVector((VectorConstant) symbol);
-
         } else if (symbol instanceof FunctionDefinition) {
             return toFunction((FunctionDefinition) symbol);
-
         } else if (symbol instanceof FunctionDeclaration) {
             return toFunction((FunctionDeclaration) symbol);
-
         } else if (symbol instanceof BinaryOperationConstant) {
             return toBinaryOperation((BinaryOperationConstant) symbol);
-
         } else if (symbol instanceof GetElementPointerConstant) {
             return toElementPointer((GetElementPointerConstant) symbol);
-
         } else if (symbol instanceof BlockAddressConstant) {
             return toBlockAddress((BlockAddressConstant) symbol);
-
         } else if (symbol instanceof CompareConstant) {
             return toComparison((CompareConstant) symbol);
-
         } else if (symbol instanceof CastConstant) {
             return toCast((CastConstant) symbol);
-
         } else if (symbol instanceof MetadataConstant) {
             return toMetaData((MetadataConstant) symbol);
-
         } else {
             throw new AssertionError("Cannot resolve symbol: " + symbol);
         }

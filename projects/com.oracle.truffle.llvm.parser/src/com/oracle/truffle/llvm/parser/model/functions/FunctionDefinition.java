@@ -44,6 +44,7 @@ import com.oracle.truffle.llvm.parser.metadata.MetadataList;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
+import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.generators.FunctionGenerator;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.BinaryOperationConstant;
@@ -76,33 +77,31 @@ import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 public final class FunctionDefinition implements Constant, FunctionGenerator, ValueSymbol {
 
     private final MetadataList metadata;
-
     private final Symbols symbols = new Symbols();
-
     private final List<FunctionParameter> parameters = new ArrayList<>();
-
     private InstructionBlock[] blocks = new InstructionBlock[0];
-
     private int currentBlock = 0;
-
     private final Map<String, Type> namesToTypes;
-
     private final FunctionType type;
-
     private String name;
-
     private final AttributesCodeEntry paramAttr;
+    private final Linkage linkage;
 
-    public FunctionDefinition(FunctionType type, String name, MetadataList metadata, AttributesCodeEntry paramAttr) {
+    public FunctionDefinition(FunctionType type, String name, MetadataList metadata, Linkage linkage, AttributesCodeEntry paramAttr) {
         this.type = type;
         this.metadata = metadata;
-        namesToTypes = new HashMap<>();
+        this.namesToTypes = new HashMap<>();
         this.name = name;
         this.paramAttr = paramAttr;
+        this.linkage = linkage;
     }
 
-    public FunctionDefinition(FunctionType type, MetadataList metadata, AttributesCodeEntry paramAttr) {
-        this(type, LLVMIdentifier.UNKNOWN, metadata, paramAttr);
+    public FunctionDefinition(FunctionType type, MetadataList metadata, Linkage linkage, AttributesCodeEntry paramAttr) {
+        this(type, LLVMIdentifier.UNKNOWN, metadata, linkage, paramAttr);
+    }
+
+    public Linkage getLinkage() {
+        return linkage;
     }
 
     @Override

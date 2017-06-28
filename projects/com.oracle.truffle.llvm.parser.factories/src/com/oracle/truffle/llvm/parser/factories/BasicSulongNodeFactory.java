@@ -119,6 +119,7 @@ import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionKind;
 import com.oracle.truffle.llvm.parser.metadata.DebugInfoGenerator;
 import com.oracle.truffle.llvm.parser.model.enums.CompareOperator;
 import com.oracle.truffle.llvm.parser.model.enums.Flag;
+import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalConstant;
@@ -128,7 +129,6 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
-import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableRegistry;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
@@ -370,17 +370,6 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
     }
 
     @Override
-    public RootNode createGlobalRootNode(LLVMParserRuntime runtime, RootCallTarget mainCallTarget,
-                    Object[] args, Source sourceFile, Type[] mainTypes) {
-        return LLVMRootNodeFactory.createGlobalRootNode(runtime, mainCallTarget, args, sourceFile, mainTypes);
-    }
-
-    @Override
-    public RootNode createGlobalRootNodeWrapping(LLVMParserRuntime runtime, RootCallTarget mainCallTarget, Type returnType) {
-        return LLVMFunctionFactory.createGlobalRootNodeWrapping(runtime.getLanguage(), mainCallTarget, returnType);
-    }
-
-    @Override
     public LLVMExpressionNode createStructureConstantNode(LLVMParserRuntime runtime, Type structType, boolean packed, Type[] types, LLVMExpressionNode[] constants) {
         return LLVMAggregateFactory.createStructConstantNode(runtime, structType, packed, types, constants);
     }
@@ -434,16 +423,9 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
 
         final NativeResolver nativeResolver = () -> LLVMAddress.fromLong(runtime.getNativeHandle(name));
 
-        final LLVMGlobalVariable descriptor;
-        if (globalVariable.isStatic()) {
-            descriptor = LLVMGlobalVariable.create(name, nativeResolver, resolvedType);
-        } else {
-            final LLVMContext context = runtime.getContext();
-            LLVMGlobalVariableRegistry registry = context.getGlobalVariableRegistry();
-            descriptor = (LLVMGlobalVariable) registry.lookupOrCreate(name, () -> LLVMGlobalVariable.create(name, nativeResolver, resolvedType));
-        }
+        final LLVMGlobalVariable descriptor = LLVMGlobalVariable.create(name, nativeResolver, resolvedType);
 
-        if ((globalVariable.getInitialiser() > 0 || !globalVariable.isExtern()) && descriptor.isUninitialized()) {
+        if ((globalVariable.getInitialiser() > 0 || !Linkage.isExtern(globalVariable.getLinkage())) && descriptor.isUninitialized()) {
             runtime.addDestructor(new LLVMExpressionNode() {
 
                 private final LLVMGlobalVariable global = descriptor;
@@ -477,16 +459,6 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
     @Override
     public RootNode createStaticInitsRootNode(LLVMParserRuntime runtime, LLVMExpressionNode[] staticInits) {
         return new LLVMStaticInitsBlockNode(runtime.getLanguage(), staticInits, runtime.getGlobalFrameDescriptor());
-    }
-
-    @Override
-    public LLVMFunctionDescriptor createFunctionDescriptor(LLVMContext context, String name, FunctionType type, int functionIndex) {
-        return LLVMFunctionDescriptor.createDescriptor(context, name, type, functionIndex);
-    }
-
-    @Override
-    public LLVMFunctionDescriptor createAndRegisterFunctionDescriptor(LLVMParserRuntime runtime, String name, FunctionType type) {
-        return runtime.getContext().lookupFunctionDescriptor(name, i -> runtime.getNodeFactory().createFunctionDescriptor(runtime.getContext(), name, type, i));
     }
 
     @Override
@@ -674,5 +646,16 @@ public class BasicSulongNodeFactory implements SulongNodeFactory {
     @Override
     public LLVMExpressionNode createPhi(LLVMExpressionNode[] from, FrameSlot[] to, Type[] types) {
         return new LLVMWritePhisNode(from, to, types);
+    }
+
+    @Override
+    public RootNode createGlobalRootNode(LLVMParserRuntime runtime, RootCallTarget mainCallTarget,
+                    Object[] args, Source sourceFile, Type[] mainTypes) {
+        return LLVMRootNodeFactory.createGlobalRootNode(runtime, mainCallTarget, args, sourceFile, mainTypes);
+    }
+
+    @Override
+    public RootNode createGlobalRootNodeWrapping(LLVMParserRuntime runtime, RootCallTarget mainCallTarget, Type returnType) {
+        return LLVMFunctionFactory.createGlobalRootNodeWrapping(runtime.getLanguage(), mainCallTarget, returnType);
     }
 }

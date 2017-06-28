@@ -44,6 +44,10 @@ public final class LLVMFunctionHandle implements LLVMFunction {
         return new LLVMFunctionHandle(value);
     }
 
+    public static LLVMFunctionHandle nullPointer() {
+        return new LLVMFunctionHandle(LLVMFunction.tagSulongFunctionPointer(0));
+    }
+
     @Override
     public long getFunctionPointer() {
         return functionIndex;
