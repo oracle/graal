@@ -116,7 +116,7 @@ deploy-binaries: ${common} {
     run : ${deploy-command}
 }
 
-deploy-binaries-linux: ${deploy-binaries} ${linux-amd64} {
+deploy-binaries-linux: ${deploy-binaries} ${linux-amd64} ${requireGCC} {
     packages: {
         llvm: "==3.8"
         maven: ">=3.3.9"
