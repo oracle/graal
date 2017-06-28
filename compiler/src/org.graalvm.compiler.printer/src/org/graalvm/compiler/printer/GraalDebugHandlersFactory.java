@@ -52,13 +52,13 @@ import org.graalvm.compiler.debug.DebugHandler;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.debug.UniquePathUtilities;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.options.UniquePathUtilities;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
 @ServiceProvider(DebugHandlersFactory.class)

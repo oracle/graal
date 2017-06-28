@@ -20,13 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.options;
+package org.graalvm.compiler.debug;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionValues;
 
 public class UniquePathUtilities {
 
@@ -82,26 +86,26 @@ public class UniquePathUtilities {
 
     /**
      * Generates a {@link Path} using the format "%s-%d_%d%s" with the {@code baseNameOption}, a
-     * {@link #globalTimeStamp global timestamp} , {@link #getThreadDumpId a per thread unique id}
-     * and an optional {@code extension}.
+     * {@link #getGlobalTimeStamp() global timestamp} , {@link #getThreadDumpId a per thread unique
+     * id} and an optional {@code extension}.
      *
      * @return the output file path or null if the flag is null
      */
-    public static Path getPath(OptionValues options, OptionKey<String> option, OptionKey<String> defaultDirectory, String extension) {
-        return getPath(options, option, defaultDirectory, extension, true);
+    public static Path getPath(OptionValues options, OptionKey<String> option, String extension) throws IOException {
+        return getPath(options, option, extension, true);
     }
 
     /**
      * Generate a {@link Path} using the format "%s-%d_%s" with the {@code baseNameOption}, a
-     * {@link #globalTimeStamp global timestamp} and an optional {@code extension} .
+     * {@link #getGlobalTimeStamp() global timestamp} and an optional {@code extension} .
      *
      * @return the output file path or null if the flag is null
      */
-    public static Path getPathGlobal(OptionValues options, OptionKey<String> baseNameOption, OptionKey<String> defaultDirectory, String extension) {
-        return getPath(options, baseNameOption, defaultDirectory, extension, false);
+    public static Path getPathGlobal(OptionValues options, OptionKey<String> baseNameOption, String extension) throws IOException {
+        return getPath(options, baseNameOption, extension, false);
     }
 
-    private static Path getPath(OptionValues options, OptionKey<String> baseNameOption, OptionKey<String> defaultDirectory, String extension, boolean includeThreadId) {
+    private static Path getPath(OptionValues options, OptionKey<String> baseNameOption, String extension, boolean includeThreadId) throws IOException {
         if (baseNameOption.getValue(options) == null) {
             return null;
         }
@@ -110,9 +114,10 @@ public class UniquePathUtilities {
                         ? String.format("%s-%d_%s%s", baseNameOption.getValue(options), getGlobalTimeStamp(), getThreadDumpId(ext), ext)
                         : String.format("%s-%d%s", baseNameOption.getValue(options), getGlobalTimeStamp(), ext);
         Path result = Paths.get(name);
-        if (result.isAbsolute() || defaultDirectory == null) {
+        if (result.isAbsolute()) {
             return result;
         }
-        return Paths.get(defaultDirectory.getValue(options), name).normalize();
+        Path dumpDir = DebugOptions.getDumpDirectory(options);
+        return dumpDir.resolve(name).normalize();
     }
 }
