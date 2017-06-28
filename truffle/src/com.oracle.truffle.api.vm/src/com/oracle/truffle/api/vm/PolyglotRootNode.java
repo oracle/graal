@@ -33,7 +33,6 @@ import java.nio.charset.StandardCharsets;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -153,10 +152,7 @@ abstract class PolyglotRootNode extends RootNode {
 
     private static final class AsJavaRootNode extends PolyglotRootNode {
         @Child private Node toJavaNode;
-
         private final Class<? extends TruffleObject> receiverType;
-
-        @CompilationFinal private int argumentCount = -1;
 
         AsJavaRootNode(PolyglotEngine engine, Class<? extends TruffleObject> receiverType) {
             super(engine);
