@@ -35,6 +35,7 @@ import static org.junit.Assert.fail;
 
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -43,6 +44,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.function.DoubleBinaryOperator;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -74,7 +76,6 @@ import com.oracle.truffle.tck.impl.LongBinaryOperation;
 import com.oracle.truffle.tck.impl.ObjectBinaryOperation;
 import com.oracle.truffle.tck.impl.TckInstrument;
 import com.oracle.truffle.tck.impl.TestObject;
-import java.lang.reflect.Field;
 
 /**
  * Test compatibility kit (the <em>TCK</em>) is a collection of tests to certify your
@@ -1982,13 +1983,9 @@ public abstract class TruffleTCK {
         }
         PolyglotEngine.Value apply = findGlobalSymbol(id);
 
-        FunctionFooInterface object = JavaInterop.asJavaFunction(FunctionFooInterface.class, (TruffleObject) apply.execute().get());
+        DoubleBinaryOperator object = JavaInterop.asJavaFunction(DoubleBinaryOperator.class, (TruffleObject) apply.execute().get());
 
-        Assert.assertEquals(42.0, object.eval(20.0, 22.0), 0.1);
-    }
-
-    private interface FunctionFooInterface {
-        double eval(double a, double b);
+        Assert.assertEquals(42.0, object.applyAsDouble(20.0, 22.0), 0.1);
     }
 
     /** @since 0.26 */
@@ -2173,9 +2170,9 @@ public abstract class TruffleTCK {
             return;
         }
         PolyglotEngine.Value apply = findGlobalSymbol(id);
-        boolean result = (boolean) apply.execute(JavaInterop.asTruffleFunction(FunctionFooInterface.class, new FunctionFooInterface() {
+        boolean result = (boolean) apply.execute(JavaInterop.asTruffleFunction(DoubleBinaryOperator.class, new DoubleBinaryOperator() {
 
-            public double eval(double a, double b) {
+            public double applyAsDouble(double a, double b) {
                 if (a != 41.0 || b != 42.0) {
                     throw new AssertionError("Expected [41.5, 42.5] but was [" + a + "," + b + "]");
                 }
@@ -2193,9 +2190,9 @@ public abstract class TruffleTCK {
             return;
         }
         PolyglotEngine.Value apply = findGlobalSymbol(id);
-        apply.execute(JavaInterop.asTruffleFunction(FunctionFooInterface.class, new FunctionFooInterface() {
+        apply.execute(JavaInterop.asTruffleFunction(DoubleBinaryOperator.class, new DoubleBinaryOperator() {
 
-            public double eval(double a, double b) {
+            public double applyAsDouble(double a, double b) {
                 if (a != 41.0 || b != 42.0) {
                     throw new AssertionError("Expected [41.0, 42.0] but was [" + a + "," + b + "]");
                 }
