@@ -164,8 +164,7 @@ class DebugValueBenchmarkMixin(object):
         super(DebugValueBenchmarkMixin, self).after(bmSuiteArgs)
 
     def vmArgs(self, bmSuiteArgs):
-        vmArgs = ['-Dgraal.DebugValueHumanReadable=false', '-Dgraal.DebugValueSummary=Name',
-                  '-Dgraal.DebugValueFile=' + self.get_csv_filename()] +\
+        vmArgs = ['-Dgraal.DebugValueFile=' + self.get_csv_filename()] +\
                   super(DebugValueBenchmarkMixin, self).vmArgs(bmSuiteArgs)
         return vmArgs
 
@@ -189,7 +188,7 @@ class DebugValueRule(mx_benchmark.CSVFixedFileRule):
         # pylint: disable=expression-not-assigned
         super(DebugValueRule, self).__init__(
             filename=debug_value_file,
-            colnames=['scope', 'name', 'value', 'unit'],
+            colnames=['name', 'value', 'unit'],
             replacement={
                 "benchmark": benchmark,
                 "bench-suite": bench_suite,
@@ -214,7 +213,8 @@ class TimingBenchmarkMixin(DebugValueBenchmarkMixin):
     timers = [
         "BackEnd",
         "FrontEnd",
-        "GraalCompiler",
+        "GraalCompiler",   # only compilation
+        "CompilationTime", # includes code installation
         # LIR stages
         "LIRPhaseTime_AllocationStage",
         "LIRPhaseTime_PostAllocationOptimizationStage",
@@ -229,7 +229,7 @@ class TimingBenchmarkMixin(DebugValueBenchmarkMixin):
 
     @staticmethod
     def timerArgs():
-        return ["-Dgraaldebug.timer.{0}=true".format(timer) for timer in TimingBenchmarkMixin.timers]
+        return "-Dgraal.Timers=" + ','.join(TimingBenchmarkMixin.timers)
 
     def vmArgs(self, bmSuiteArgs):
         vmArgs = TimingBenchmarkMixin.timerArgs() + super(TimingBenchmarkMixin, self).vmArgs(bmSuiteArgs)
@@ -250,7 +250,7 @@ class TimingBenchmarkMixin(DebugValueBenchmarkMixin):
 
     def shorten_vm_flags(self, args):
         # no need for timer names
-        filtered_args = [x for x in args if not x.startswith("-Dgraaldebug.timer")]
+        filtered_args = [x for x in args if not x.startswith("-Dgraal.Timers=")]
         return super(TimingBenchmarkMixin, self).shorten_vm_flags(filtered_args)
 
     def rules(self, out, benchmarks, bmSuiteArgs):
@@ -278,7 +278,7 @@ class CounterBenchmarkMixin(DebugValueBenchmarkMixin):
 
     @staticmethod
     def counterArgs():
-        return ["-Dgraaldebug.counter.{0}=true".format(timer) for timer in CounterBenchmarkMixin.counters]
+        return "-Dgraal.Counters=" + ','.join(CounterBenchmarkMixin.counters)
 
     def vmArgs(self, bmSuiteArgs):
         vmArgs = CounterBenchmarkMixin.counterArgs() + super(CounterBenchmarkMixin, self).vmArgs(bmSuiteArgs)
@@ -290,7 +290,7 @@ class CounterBenchmarkMixin(DebugValueBenchmarkMixin):
 
     def shorten_vm_flags(self, args):
         # not need for timer names
-        filtered_args = [x for x in args if not x.startswith("-Dgraaldebug.counter")]
+        filtered_args = [x for x in args if not x.startswith("-Dgraal.Counters=")]
         return super(CounterBenchmarkMixin, self).shorten_vm_flags(filtered_args)
 
     def rules(self, out, benchmarks, bmSuiteArgs):

@@ -246,7 +246,7 @@ def _ctw_system_properties_suffix():
     args = ['-XX:+EnableJVMCI'] + _ctw_jvmci_export_args()
     args.extend(['-cp', mx.classpath('org.graalvm.compiler.hotspot.test', jdk=jdk),
             '-DCompileTheWorld.Help=true', 'org.graalvm.compiler.hotspot.test.CompileTheWorld'])
-    run_vm(args, out=out)
+    run_java(args, out=out, addDefaultArgs=False)
     return out.data
 
 def ctw(args, extraVMarguments=None):
@@ -255,16 +255,20 @@ def ctw(args, extraVMarguments=None):
     defaultCtwopts = 'Inline=false'
 
     parser = ArgumentParser(prog='mx ctw', formatter_class=RawDescriptionHelpFormatter, epilog=_ctw_system_properties_suffix())
-    parser.add_argument('--ctwopts', action='store', help='space separated JVMCI options used for CTW compilations (default: --ctwopts="' + defaultCtwopts + '")', default=defaultCtwopts, metavar='<options>')
+    parser.add_argument('--ctwopts', action='store', help='space separated Graal options used for CTW compilations (default: --ctwopts="' + defaultCtwopts + '")', metavar='<options>')
     parser.add_argument('--cp', '--jar', action='store', help='jar or class path denoting classes to compile', metavar='<path>')
     if not isJDK8:
         parser.add_argument('--limitmods', action='store', help='limits the set of compiled classes to only those in the listed modules', metavar='<modulename>[,<modulename>...]')
 
+    configArgs = [a for a in args if a.startswith('-DCompileTheWorld.Config=')]
     args, vmargs = parser.parse_known_args(args)
 
     if args.ctwopts:
-        # Replace spaces with '#' since it cannot contain spaces
+        if configArgs:
+            mx.abort('Cannot specify both --ctwopts and -DCompileTheWorld.Config')
         vmargs.append('-DCompileTheWorld.Config=' + re.sub(r'\s+', '#', args.ctwopts))
+    elif not configArgs:
+        vmargs.append('-DCompileTheWorld.Config=Inline=false')
 
     # suppress menubar and dock when running on Mac; exclude x11 classes as they may cause VM crashes (on Solaris)
     vmargs = ['-Djava.awt.headless=true'] + vmargs
@@ -519,7 +523,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
 
     # ensure -Xbatch still works
     with Task('DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test) as t:
-        if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xbatch', '-Dgraal.ForceDebugEnable=true'])
+        if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xbatch'])
 
     # ensure benchmark counters still work
     with Task('DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test) as t:

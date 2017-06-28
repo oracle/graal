@@ -40,7 +40,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.core.common.type.TypeReference;
-import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
@@ -367,7 +367,7 @@ public class TruffleGraphBuilderPlugins {
                         }
                         sb.append(")");
                     }
-                    Debug.dump(Debug.VERBOSE_LEVEL, value.graph(), "Graph before bailout at node %s", sb);
+                    value.getDebug().dump(DebugContext.VERBOSE_LEVEL, value.graph(), "Graph before bailout at node %s", sb);
                     throw b.bailout("Partial evaluation did not reduce value to a constant, is a regular compiler node: " + sb);
                 }
             }
@@ -722,16 +722,17 @@ public class TruffleGraphBuilderPlugins {
             return;
         }
         StructuredGraph graph = location.graph();
-        try (Debug.Scope s = Debug.scope("TrufflePerformanceWarnings", graph)) {
-            TruffleDebugJavaMethod truffleMethod = Debug.contextLookup(TruffleDebugJavaMethod.class);
+        DebugContext debug = access.getDebug();
+        try (DebugContext.Scope s = debug.scope("TrufflePerformanceWarnings", graph)) {
+            TruffleDebugJavaMethod truffleMethod = debug.contextLookup(TruffleDebugJavaMethod.class);
             String callTargetName = truffleMethod != null ? truffleMethod.getName() : "";
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("location", location);
             properties.put("method", targetMethod.format("%h.%n"));
             PartialEvaluator.PerformanceInformationHandler.logPerformanceWarning(callTargetName, Collections.singletonList(access), "location argument not PE-constant", properties);
-            Debug.dump(Debug.VERBOSE_LEVEL, graph, "perf warn: location argument not PE-constant: %s", location);
+            debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: location argument not PE-constant: %s", location);
         } catch (Throwable t) {
-            Debug.handle(t);
+            debug.handle(t);
         }
     }
 }

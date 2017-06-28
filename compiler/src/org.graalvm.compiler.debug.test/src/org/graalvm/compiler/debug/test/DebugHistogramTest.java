@@ -25,19 +25,18 @@ package org.graalvm.compiler.debug.test;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugHistogram;
+import org.graalvm.compiler.debug.DebugHistogramAsciiPrinter;
+import org.graalvm.compiler.debug.DebugHistogramRPrinter;
 import org.junit.Assert;
 import org.junit.Test;
-
-import org.graalvm.compiler.debug.Debug;
-import org.graalvm.compiler.debug.DebugHistogram;
-import org.graalvm.compiler.debug.internal.DebugHistogramAsciiPrinter;
-import org.graalvm.compiler.debug.internal.DebugHistogramRPrinter;
 
 public class DebugHistogramTest {
 
     @Test
     public void testEmptyHistogram() {
-        DebugHistogram histogram = Debug.createHistogram("TestHistogram");
+        DebugHistogram histogram = DebugContext.createHistogram("TestHistogram");
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
         new DebugHistogramAsciiPrinter(new PrintStream(outputStream)).print(histogram);
@@ -51,7 +50,7 @@ public class DebugHistogramTest {
 
     @Test
     public void testSingleEntryHistogram() {
-        DebugHistogram histogram = Debug.createHistogram("TestHistogram");
+        DebugHistogram histogram = DebugContext.createHistogram("TestHistogram");
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         histogram.add(new Integer(1));
         histogram.add(new Integer(1));
@@ -81,7 +80,7 @@ public class DebugHistogramTest {
 
     @Test
     public void testMultipleEntryHistogram() {
-        DebugHistogram histogram = Debug.createHistogram("TestHistogram");
+        DebugHistogram histogram = DebugContext.createHistogram("TestHistogram");
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         histogram.add(new Integer(1));
         histogram.add(new Integer(2));
@@ -113,7 +112,7 @@ public class DebugHistogramTest {
 
     @Test
     public void testTooLongValueString() {
-        DebugHistogram histogram = Debug.createHistogram("TestHistogram");
+        DebugHistogram histogram = DebugContext.createHistogram("TestHistogram");
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         histogram.add("MyCustomValue");
         new DebugHistogramAsciiPrinter(new PrintStream(outputStream), Integer.MAX_VALUE, 10, 10, 1).print(histogram);

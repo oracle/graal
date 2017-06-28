@@ -22,8 +22,9 @@
  */
 package org.graalvm.compiler.truffle;
 
-import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.JavaMethodContext;
+
 import com.oracle.truffle.api.RootCallTarget;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -34,7 +35,7 @@ import jdk.vm.ci.meta.Signature;
 
 /**
  * Enables a Truffle compilable to masquerade as a {@link JavaMethod} for use as a context value in
- * {@linkplain Debug#scope(Object) debug scopes}.
+ * {@linkplain DebugContext#scope(Object) debug scopes}.
  */
 public class TruffleDebugJavaMethod implements JavaMethod, JavaMethodContext {
     private final RootCallTarget compilable;

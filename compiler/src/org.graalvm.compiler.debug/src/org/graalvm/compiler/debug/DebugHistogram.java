@@ -30,8 +30,8 @@ import java.util.List;
 public interface DebugHistogram {
 
     /**
-     * Gets the name specified when this objected was {@linkplain Debug#createHistogram(String)
-     * created}.
+     * Gets the name specified when this objected was
+     * {@linkplain DebugContext#createHistogram(String) created}.
      */
     String getName();
 

@@ -24,9 +24,9 @@ package org.graalvm.compiler.truffle.hotspot.nfi;
 
 import java.util.Arrays;
 
-import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.Debug.Scope;
+
 import com.oracle.nfi.api.NativeFunctionHandle;
 import com.oracle.truffle.api.CompilerDirectives;
 
@@ -64,18 +64,20 @@ public class HotSpotNativeFunctionHandle implements NativeFunctionHandle {
 
     @SuppressWarnings("try")
     private void traceCall(Object... args) {
-        try (Scope s = Debug.scope("GNFI")) {
-            if (Debug.isLogEnabled()) {
-                Debug.log("[GNFI] %s%s", pointer.getName(), Arrays.toString(args));
+        DebugContext debug = DebugContext.forCurrentThread();
+        try (DebugContext.Scope s = debug.scope("GNFI")) {
+            if (debug.isLogEnabled()) {
+                debug.log("[GNFI] %s%s", pointer.getName(), Arrays.toString(args));
             }
         }
     }
 
     @SuppressWarnings("try")
     private void traceResult(Object result) {
-        try (Scope s = Debug.scope("GNFI")) {
-            if (Debug.isLogEnabled()) {
-                Debug.log("[GNFI] %s --> %s", pointer.getName(), result);
+        DebugContext debug = DebugContext.forCurrentThread();
+        try (DebugContext.Scope s = debug.scope("GNFI")) {
+            if (debug.isLogEnabled()) {
+                debug.log("[GNFI] %s --> %s", pointer.getName(), result);
             }
         }
     }
