@@ -90,6 +90,7 @@ class LibFFILibraryMessageResolution {
                 if (cachedObj == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     cachedObj = obj;
+                    cachedSymbol = symbol;
                     execute = insert(Message.createExecute(args.length).createNode());
                 }
             }
