@@ -136,7 +136,6 @@ suite = {
         "com.oracle.truffle.api.debug",
         "com.oracle.truffle.api.utilities",
         "com.oracle.truffle.api.vm",
-        "TRUFFLE_SL",
         "mx:JUNIT",
       ],
       "imports" : ["jdk.internal.loader"],
