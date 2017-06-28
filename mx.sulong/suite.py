@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.70.2",
+  "mxversion" : "5.114.10",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
@@ -88,6 +88,12 @@ suite = {
       "subDir" : "projects",
       "native" : True,
       "vpath" : True,
+      "results" : [
+        "bin/<lib:sulongtest>",
+      ],
+      "buildEnv" : {
+        "LIBSULONGTEST" : "<lib:sulongtest>",
+      },
       "license" : "BSD-new",
     },
 
@@ -278,6 +284,20 @@ suite = {
       "outputDir": "",
       "prefix": "",
     },
+
+    "com.oracle.truffle.llvm.tests.sulong" : {
+      "subDir" : "tests",
+      "class" : "SulongTestSuite",
+      "variants" : ['O0', 'O0_BB_VECTORIZE', 'O1', 'O2', 'O3', 'gcc_O0'],
+      "buildEnv" : {
+        "LDFLAGS" : "-lm",
+      },
+    },
+    "com.oracle.truffle.llvm.tests.sulongcpp" : {
+      "subDir" : "tests",
+      "class" : "SulongTestSuite",
+      "variants" : ['O0', 'O0_BB_VECTORIZE'],
+    },
   },
 
   "distributions" : {
@@ -291,6 +311,7 @@ suite = {
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_NFI",
         "SULONG_OPTIONS",
+        "SULONG_LIBS",
       ],
       "license" : "BSD-new",
     },
@@ -345,6 +366,9 @@ suite = {
         "sulong:SULONG",
         "SULONG_TEST_NATIVE",
       ],
+      "javaProperties" : {
+        "sulong.TestSuitesPath" : "<path:SULONG_TEST_SUITES>"
+      },
       "license" : "BSD-new",
     },
 
@@ -354,6 +378,19 @@ suite = {
       "output" : "mxbuild/sulong-test-native",
       "dependencies" : [
         "com.oracle.truffle.llvm.pipe.native",
+        "com.oracle.truffle.llvm.test.native",
+      ],
+      "license" : "BSD-new",
+    },
+
+    "SULONG_TEST_SUITES" : {
+      "native" : True,
+      "relpath" : True,
+      "platformDependent" : True,
+      "output" : "mxbuild/sulong-test-suites",
+      "dependencies" : [
+        "com.oracle.truffle.llvm.tests.sulong",
+        "com.oracle.truffle.llvm.tests.sulongcpp",
       ],
       "license" : "BSD-new",
     },

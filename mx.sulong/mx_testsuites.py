@@ -4,6 +4,7 @@ import argparse
 import mx
 import mx_gate
 import mx_unittest
+import mx_subst
 import os
 import mx_tools
 import shutil
@@ -15,8 +16,6 @@ _suite = mx.suite('sulong')
 _testDir = os.path.join(_suite.dir, "tests/")
 _cacheDir = os.path.join(_suite.dir, "cache/tests")
 
-_sulongSuiteDir = os.path.join(_testDir, "sulong/")
-_sulongcppSuiteDir = os.path.join(_testDir, "sulongcpp/")
 _benchmarksgameSuiteDir = os.path.join(_testDir, "benchmarksgame/")
 _benchmarksgameSuiteDirRoot = os.path.join(_benchmarksgameSuiteDir, "benchmarksgame-2014-08-31/benchmarksgame/bench/")
 _interoptestsDir = os.path.join(_testDir, "interoptests/")
@@ -37,65 +36,22 @@ def deleteCachedTests(folderInCache):
     if os.path.exists(p):
         shutil.rmtree(p)
 
-def compileV38SulongcppSuite():
-    deleteCachedTests('sulongcpp')
-    print("Compiling SulongCPP Suite reference executables ", end='')
-    mx_tools.printProgress(mx_tools.multicompileRefFolder(_sulongcppSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_CPP_V38], []))
-    print("Compiling SulongCPP Suite with clang 3.8 -O0 ", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_sulongcppSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_CPP_V38], [], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, optimizers=[mx_tools.Tool.BB_VECTORIZE_V38]))
-
-def compileV38SulongSuite():
-    deleteCachedTests('sulong')
-    print("Compiling Sulong Suite reference executables ", end='')
-    mx_tools.printProgress(mx_tools.multicompileRefFolder(_sulongSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_V38], ['-Iinclude', '-lm']))
-    print("Compiling Sulong Suite with clang 3.8 -O0 ", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_V38], ['-Iinclude', '-lm'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, optimizers=[mx_tools.Tool.BB_VECTORIZE_V38]))
-    print("Compiling Sulong Suite with clang 3.8 -O1/2/3 ", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_V38], ['-Iinclude', '-lm'], [mx_tools.Optimization.O1, mx_tools.Optimization.O2, mx_tools.Optimization.O3], mx_tools.ProgrammingLanguage.LLVMBC))
-
-def compileSulongSuite():
-    deleteCachedTests('sulong')
-    print("Compiling Sulong Suite reference executables ", end='')
-    mx_tools.printProgress(mx_tools.multicompileRefFolder(_sulongSuiteDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude', '-lm']))
-    print("Compiling Sulong Suite with clang -O0 ", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude', '-lm'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, optimizers=[mx_tools.Tool.BB_VECTORIZE]))
-    print("Compiling Sulong Suite with clang -O1/2/3 ", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude', '-lm'], [mx_tools.Optimization.O1, mx_tools.Optimization.O2, mx_tools.Optimization.O3], mx_tools.ProgrammingLanguage.LLVMBC))
-    print("Compiling Sulong Suite with gcc -O0 ", end='')
-    mx_tools.printProgress(mx_tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [mx_tools.Tool.GCC], ['-Iinclude', '-lm'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC))
-
-def run(vmArgs, unittest, extraOption=None):
+def run(vmArgs, unittest, extraOption=None, extraLibs=None):
     if extraOption is None:
         extraOption = []
     if mx.get_opts().verbose:
-        command = mx_sulong.getCommonUnitTestOptions() + extraOption + vmArgs + ['--very-verbose', unittest]
+        command = mx_sulong.getCommonUnitTestOptions(extraLibs=extraLibs) + extraOption + vmArgs + ['--very-verbose', unittest]
         print ('Running mx unittest ' + ' '.join(command))
         return mx_unittest.unittest(command)
     else:
-        command = mx_sulong.getCommonUnitTestOptions() + extraOption + vmArgs + [unittest]
+        command = mx_sulong.getCommonUnitTestOptions(extraLibs=extraLibs) + extraOption + vmArgs + [unittest]
         return mx_unittest.unittest(command)
-
-def runSulongSuite(vmArgs):
-    """runs the Sulong test suite"""
-    mx_sulong.ensureDragonEggExists()
-    compileSuite(['sulong'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.SulongSuite")
-
-def runSulongSuite38(vmArgs):
-    """runs the Sulong test suite"""
-    compileSuite(['sulong38'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.SulongSuite")
-
-def runSulongcppSuite38(vmArgs):
-    """runs the Sulong test suite"""
-    compileSuite(['sulongcpp38'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.SulongCPPSuite")
 
 def runShootoutSuite(vmArgs):
     """runs the Sulong test suite"""
     mx_sulong.ensureDragonEggExists()
     compileSuite(['shootout'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.ShootoutsSuite")
+    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.ShootoutsSuite", extraLibs=["-lgmp"])
 
 def runLLVMSuite(vmArgs):
     """runs the LLVM test suite"""
@@ -121,7 +77,7 @@ def runGCCSuite(vmArgs):
     """runs the LLVM test suite"""
     mx_sulong.ensureDragonEggExists()
     compileSuite(['gcc'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.GCCSuite")
+    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.GCCSuite", extraLibs=["-lgfortran"])
 
 def runGCCSuite38(vmArgs):
     """runs the LLVM test suite"""
@@ -282,9 +238,6 @@ testSuites = {
     'llvm' : (compileLLVMSuite, runLLVMSuite),
     'gcc38' : (compileV38GCCSuite, runGCCSuite38),
     'llvm38' : (compileV38LLVMSuite, runLLVMSuite38),
-    'sulong' : (compileSulongSuite, runSulongSuite),
-    'sulong38' : (compileV38SulongSuite, runSulongSuite38),
-    'sulongcpp38' : (compileV38SulongcppSuite, runSulongcppSuite38),
     'shootout' : (compileShootoutSuite, runShootoutSuite),
     'interop' : (compileInteropTests38, runInteropTests38),
     'tck' : (compileInteropTests38, runTCKTests38),
@@ -316,9 +269,6 @@ def runSuite(args=None):
     parsedArgs = parser.parse_args(otherArgs)
 
     tasks = []
-    with mx_gate.Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
-
     for testSuiteName in parsedArgs.suite:
         with mx_gate.Task('Test%s' % testSuiteName.capitalize(), tasks) as t:
             if t:
@@ -367,3 +317,60 @@ def renameBenchmarkFiles(directory):
                 os.rename(absPath, absPath + '.c')
             if ext in ['.gpp']:
                 os.rename(absPath, absPath + '.cpp')
+
+
+class SulongTestSuite(mx.NativeProject):
+    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
+        d = os.path.join(suite.dir, subDir) # use common Makefile for all test suites
+        mx.NativeProject.__init__(self, suite, name, subDir, [], deps, workingSets, results, output, d)
+        self.vpath = True
+
+    @staticmethod
+    def haveDragonegg():
+        if not hasattr(SulongTestSuite, '_haveDragonegg'):
+            SulongTestSuite._haveDragonegg = os.path.exists(mx_sulong.dragonEggPath()) and mx_sulong.getGCC(optional=True) is not None
+        return SulongTestSuite._haveDragonegg
+
+    def getTests(self):
+        if not hasattr(self, '_tests'):
+            self._tests = []
+            root = os.path.join(self.dir, self.name)
+            for path, _, files in os.walk(root):
+                for f in files:
+                    absPath = os.path.join(path, f)
+                    relPath = os.path.relpath(absPath, root)
+                    test, ext = os.path.splitext(relPath)
+                    if ext in ['.c', '.cpp']:
+                        self._tests.append(test)
+        return self._tests
+
+    def getVariants(self):
+        if not hasattr(self, '_variants'):
+            self._variants = []
+            for v in self.variants:
+                if 'gcc' in v and not SulongTestSuite.haveDragonegg():
+                    mx.warn('Could not find dragonegg, not building test variant "%s"' % v)
+                    continue
+                self._variants.append(v)
+        return self._variants
+
+    def getBuildEnv(self, replaceVar=mx_subst.path_substitutions):
+        env = super(SulongTestSuite, self).getBuildEnv(replaceVar=replaceVar)
+        env['VPATH'] = os.path.join(self.dir, self.name)
+        env['PROJECT'] = self.name
+        env['TESTS'] = ' '.join(self.getTests())
+        env['VARIANTS'] = ' '.join(self.getVariants())
+        if SulongTestSuite.haveDragonegg():
+            env['DRAGONEGG'] = mx_sulong.dragonEggPath()
+            env['DRAGONEGG_GCC'] = mx_sulong.getGCC()
+            env['DRAGONEGG_LLVMAS'] = mx_sulong.findLLVMProgramForDragonegg("llvm-as")
+        return env
+
+    def getResults(self, replaceVar=mx_subst.results_substitutions):
+        if not self.results:
+            self.results = []
+            for t in self.getTests():
+                self.results.append(os.path.join(t, 'ref.out'))
+                for v in self.getVariants():
+                    self.results.append(os.path.join(t, v + '.bc'))
+        return super(SulongTestSuite, self).getResults(replaceVar=replaceVar)

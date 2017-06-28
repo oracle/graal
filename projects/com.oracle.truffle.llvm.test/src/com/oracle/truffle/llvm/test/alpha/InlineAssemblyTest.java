@@ -66,11 +66,6 @@ public final class InlineAssemblyTest extends BaseSuiteHarness {
     }
 
     @Override
-    protected Path getSuiteDirectory() {
-        return ASSEMBLY_SUITE_DIR;
-    }
-
-    @Override
     protected String getTestName() {
         return testName;
     }

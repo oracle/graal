@@ -29,46 +29,40 @@
  */
 package com.oracle.truffle.llvm.test.alpha;
 
+import com.oracle.truffle.llvm.test.options.SulongTestOptions;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import org.junit.AfterClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
-
 @RunWith(Parameterized.class)
 public final class SulongSuite extends BaseSuiteHarness {
-
-    private static final Path SULONG_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../cache/tests/sulong").toPath();
-    private static final Path SULONG_SOURCE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/sulong").toPath();
-    private static final Path SULONG_CONFIG_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/sulong/configs").toPath();
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public String testName;
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        return collectTestCases(SULONG_CONFIG_DIR, SULONG_SUITE_DIR, SULONG_SOURCE_DIR);
+        Path suitesPath = new File(SulongTestOptions.TEST.testSuitesPath()).toPath();
+        try {
+            Stream<Path> destDirs = Files.walk(suitesPath).filter(path -> path.endsWith("ref.out")).map(Path::getParent);
+            return destDirs.map(testPath -> new Object[]{testPath, suitesPath.relativize(testPath).toString()}).collect(Collectors.toList());
+        } catch (IOException e) {
+            throw new AssertionError("Test cases not found", e);
+        }
     }
 
     @Override
     protected Path getTestDirectory() {
         return path;
-    }
-
-    @Override
-    protected Path getSuiteDirectory() {
-        return SULONG_SUITE_DIR;
-    }
-
-    @AfterClass
-    public static void printStatistics() {
-        printStatistics("Sulong", SULONG_SOURCE_DIR, SULONG_CONFIG_DIR, f -> true);
     }
 
     @Override

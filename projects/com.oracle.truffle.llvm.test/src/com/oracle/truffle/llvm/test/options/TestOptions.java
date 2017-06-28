@@ -41,6 +41,9 @@ abstract class TestOptions {
                     name = "testDiscoveryPath") //
     protected static final String TEST_DISCOVERY_PATH = null;
 
+    @Option(commandLineName = "TestSuitesPath", help = "Path to the compiled test suites.", name = "testSuitesPath") //
+    protected static final String TEST_SUITES_PATH = null;
+
     @Option(commandLineName = "TestAOTImage", help = "Test an AOT compiled Sulong image. The value of this option should point to the compiled Sulong binary.", name = "testAOTImage") //
     protected static final String TEST_AOT_IMAGE = null;
 }

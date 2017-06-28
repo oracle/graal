@@ -17,6 +17,9 @@ from mx_gate import Task, add_gate_runner
 
 import mx_testsuites
 
+# re-export SulongTestSuite class so it can be used from suite.py
+from mx_testsuites import SulongTestSuite #pylint: disable=unused-import
+
 os.environ["LC_NUMERIC"] = "C"  # required for some testcases
 
 _suite = mx.suite('sulong')
@@ -112,7 +115,7 @@ def travis1(args=None):
     """executes a Travis job"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac', '--dependencies', 'SULONG_TEST'])
     with Task('TestBenchmarks', tasks) as t:
         if t: mx_testsuites.runSuite(['shootout'])
     with Task('TestPolglot', tasks) as t:
@@ -123,14 +126,12 @@ def travis1(args=None):
         if t: mx_testsuites.runSuite(['pipe'])
     with Task('TestLLVM', tasks) as t:
         if t: mx_testsuites.runSuite(['llvm'])
-    with Task('TestSulong', tasks) as t:
-        if t: mx_testsuites.runSuite(['sulong'])
 
 def travis2(args=None):
     """executes the third Travis job (Javac build, NWCC, GCC compilation test cases)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac', '--dependencies', 'SULONG_TEST'])
     with Task('TestNWCC', tasks) as t:
         if t: mx_testsuites.runSuite(['nwcc'])
     with Task('TestGCCSuiteCompile', tasks) as t:
@@ -164,8 +165,11 @@ def pullLLVMBinaries(args=None):
 def dragonEggPath():
     if 'DRAGONEGG' in os.environ:
         return join(os.environ['DRAGONEGG'], 'dragonegg.so')
-    else:
-        return _dragonEggPath
+    if 'DRAGONEGG_GCC' in os.environ:
+        path = join(os.environ['DRAGONEGG_GCC'], 'lib', 'dragonegg.so')
+        if os.path.exists(path):
+            return path
+    return _dragonEggPath
 
 def dragonEgg(args=None):
     """executes GCC with dragonegg"""
@@ -182,7 +186,7 @@ def dragonEggGPP(args=None):
     executeCommand = [getGPP(), "-fplugin=" + dragonEggPath(), '-fplugin-arg-dragonegg-emit-ir']
     return mx.run(executeCommand + args)
 
-def which(program):
+def which(program, searchPath=None):
     def is_exe(fpath):
         return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
@@ -191,7 +195,9 @@ def which(program):
         if is_exe(program):
             return program
     else:
-        for path in os.environ["PATH"].split(os.pathsep):
+        if searchPath is None:
+            searchPath = os.environ["PATH"].split(os.pathsep)
+        for path in searchPath:
             path = path.strip('"')
             exe_file = os.path.join(path, program)
             if is_exe(exe_file):
@@ -209,26 +215,26 @@ def getCommand(envVariable):
         else:
             return command
 
-def getGCC():
+def getGCC(optional=False):
     """tries to locate a gcc version suitable to execute Dragonegg"""
     specifiedGCC = getCommand('SULONG_GCC')
     if specifiedGCC is not None:
         return specifiedGCC
-    return findGCCProgram('gcc')
+    return findGCCProgram('gcc', optional=optional)
 
-def getGFortran():
+def getGFortran(optional=False):
     """tries to locate a gfortran version suitable to execute Dragonegg"""
     specifiedGFortran = getCommand('SULONG_GFORTRAN')
     if specifiedGFortran is not None:
         return specifiedGFortran
-    return findGCCProgram('gfortran')
+    return findGCCProgram('gfortran', optional=optional)
 
-def getGPP():
+def getGPP(optional=False):
     """tries to locate a g++ version suitable to execute Dragonegg"""
     specifiedCPP = getCommand('SULONG_GPP')
     if specifiedCPP is not None:
         return specifiedCPP
-    return findGCCProgram('g++')
+    return findGCCProgram('g++', optional=optional)
 
 # platform independent
 def pullInstallDragonEgg(args=None):
@@ -250,20 +256,22 @@ def pullInstallDragonEgg(args=None):
     os.environ['CXX'] = getGPP()
     os.environ['CC'] = getGCC()
     pullLLVMBinaries()
-    os.environ['LLVM_CONFIG'] = findLLVMProgramForDragonegg()
-    mx.log(os.environ['LLVM_CONFIG'])
+    os.environ['LLVM_CONFIG'] = findLLVMProgramForDragonegg('llvm-config')
     compileCommand = ['make']
     return mx.run(compileCommand, cwd=_toolDir + 'dragonegg/dragonegg-3.2.src')
 
-def findLLVMProgramForDragonegg():
+def findLLVMProgramForDragonegg(program):
     """tries to find a supported version of an installed LLVM program; if the program is not found it downloads the LLVM binaries and checks there"""
-    installedProgram = findInstalledLLVMProgram('llvm-config', ['3.2', '3.3'])
+    installedProgram = findInstalledLLVMProgram(program, ['3.2', '3.3'])
 
     if installedProgram is None:
-        if not os.path.exists(_clangPath):
-            pullLLVMBinaries()
-        programPath = _toolDir + 'llvm/bin/llvm-config'
-        return programPath
+        if 'DRAGONEGG_LLVM' in os.environ:
+            path = os.environ['DRAGONEGG_LLVM']
+        else:
+            if not os.path.exists(_clangPath):
+                pullLLVMBinaries()
+            path = os.path.join(_toolDir, 'llvm')
+        return os.path.join(path, 'bin', program)
     else:
         return installedProgram
 
@@ -433,20 +441,17 @@ def getSearchPathOption(lib_args=None):
     for lib_arg in lib_args:
         if lib_arg in lib_aliases:
             lib_arg = lib_aliases[lib_arg][index]
-        else:
-            lib_arg = lib_arg[2:]
+        elif lib_arg.startswith('-l'):
+            lib_arg = mx.add_lib_suffix(mx.add_lib_prefix(lib_arg[2:]))
         lib_names.append(lib_arg)
-
-    libpath = join(mx.project('com.oracle.truffle.llvm.test.native').getOutput(), 'bin')
-    for path, _, files in os.walk(libpath):
-        for f in files:
-            if f.endswith('.so'):
-                lib_names.append(join(path, f))
 
     return '-Dsulong.DynamicNativeLibraryPath=' + ':'.join(lib_names)
 
-def getCommonUnitTestOptions():
-    return getCommonOptions() + ['-Xss56m', '-Xms2g', '-Xmx2g', getLLVMRootOption(), '-ea', '-esa']
+def getCommonUnitTestOptions(extraLibs=None):
+    libs = [mx_subst.path_substitutions.substitute('<path:SULONG_TEST_NATIVE>/<lib:sulongtest>')]
+    if extraLibs is not None:
+        libs += extraLibs
+    return getCommonOptions(lib_args=libs) + ['-Xss56m', '-Xms2g', '-Xmx2g', getLLVMRootOption(), '-ea', '-esa']
 
 # PE does not work yet for all test cases
 def compilationSucceedsOption():
@@ -526,9 +531,12 @@ def findInstalledLLVMProgram(llvmProgram, supportedVersions=None):
 
 def findInstalledGCCProgram(gccProgram):
     """tries to find a supported version of a GCC program by checking for the argument string (e.g., gfortran) and appending version numbers (e.g., gfortran-4.9)"""
-    return findInstalledProgram(gccProgram, supportedGCCVersions, isSupportedGCCVersion)
+    path = None
+    if 'DRAGONEGG_GCC' in os.environ:
+        path = [os.path.join(os.environ['DRAGONEGG_GCC'], 'bin')]
+    return findInstalledProgram(gccProgram, supportedGCCVersions, isSupportedGCCVersion, searchPath=path)
 
-def findInstalledProgram(program, supportedVersions, testSupportedVersion):
+def findInstalledProgram(program, supportedVersions, testSupportedVersion, searchPath=None):
     """tries to find a supported version of a program
 
     The function takes program argument, and checks if it has the supported version.
@@ -541,9 +549,10 @@ def findInstalledProgram(program, supportedVersions, testSupportedVersion):
     program -- the program to find, e.g., clang or gcc
     supportedVersions -- the supported versions, e.g., 3.4 or 4.9
     testSupportedVersion(path, supportedVersions) -- the test function to be called to ensure that the found program is supported
+    searchPath -- search path to find binaries (defaults to PATH environment variable)
     """
     assert program is not None
-    programPath = which(program)
+    programPath = which(program, searchPath=searchPath)
     if programPath is not None and testSupportedVersion(programPath, supportedVersions):
         return programPath
     else:
@@ -552,7 +561,7 @@ def findInstalledProgram(program, supportedVersions, testSupportedVersion):
             alternativeProgram2 = program + re.sub(r"\D", "", version)
             alternativePrograms = [alternativeProgram1, alternativeProgram2]
             for alternativeProgram in alternativePrograms:
-                alternativeProgramPath = which(alternativeProgram)
+                alternativeProgramPath = which(alternativeProgram, searchPath=searchPath)
                 if alternativeProgramPath is not None:
                     assert testSupportedVersion(alternativeProgramPath, supportedVersions)
                     return alternativeProgramPath
@@ -567,10 +576,10 @@ def findLLVMProgram(llvmProgram, version=None):
     else:
         return installedProgram
 
-def findGCCProgram(gccProgram):
+def findGCCProgram(gccProgram, optional=False):
     """tries to find a supported version of an installed GCC program"""
     installedProgram = findInstalledGCCProgram(gccProgram)
-    if installedProgram is None:
+    if installedProgram is None and not optional:
         exit('found no supported version ' + str(supportedGCCVersions) + ' of ' + gccProgram)
     else:
         return installedProgram
