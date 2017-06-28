@@ -51,6 +51,7 @@ final class LookupAndBind extends RootNode {
         if (cached != null) {
             return cached;
         }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         LibFFILibrary library = (LibFFILibrary) libraryNode.execute(frame);
         return cached = initializeLib(library);
     }
