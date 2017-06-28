@@ -197,11 +197,9 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
             failuresCount++;
         }
         printer = null;
+        e.printStackTrace(TTY.out);
         if (failuresCount > FAILURE_LIMIT) {
-            e.printStackTrace(TTY.out);
-            TTY.println("Too many failures with dumping.  Disabling dump in thread " + Thread.currentThread());
-        } else {
-            TTY.println(e.getMessage());
+            TTY.println("Too many failures with dumping. Disabling dump in thread " + Thread.currentThread());
         }
     }
 
