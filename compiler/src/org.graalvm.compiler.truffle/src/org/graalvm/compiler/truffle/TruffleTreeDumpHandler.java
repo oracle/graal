@@ -32,8 +32,21 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.source.SourceSection;
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.channels.FileChannel;
+import java.nio.channels.SocketChannel;
 import java.nio.channels.WritableByteChannel;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.concurrent.Callable;
+import org.graalvm.compiler.debug.GraalDebugConfig;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.DumpPath;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintBinaryGraphPort;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintBinaryGraphs;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintGraphFileName;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintGraphHost;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintXmlGraphPort;
+import org.graalvm.compiler.options.UniquePathUtilities;
 import org.graalvm.compiler.truffle.GraphPrintVisitor.GraphPrintAdapter;
 import org.graalvm.compiler.truffle.GraphPrintVisitor.GraphPrintHandler;
 
@@ -55,9 +68,29 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         }
     }
 
-    public TruffleTreeDumpHandler(Callable<WritableByteChannel> out, OptionValues options) {
-        this.out = out;
+    public TruffleTreeDumpHandler(OptionValues options) {
         this.options = options;
+        if (GraalDebugConfig.Options.PrintGraphFile.getValue(options)) {
+            this.out = createFilePrinter(options);
+        } else {
+            this.out = createNetworkPrinter(options);
+        }
+    }
+
+    private static Path getFilePrinterPath(OptionValues options) {
+        // Construct the path to the file.
+        return UniquePathUtilities.getPath(options, PrintGraphFileName, DumpPath, PrintBinaryGraphs.getValue(options) ? "bgv" : "gv.xml");
+    }
+
+    private static Callable<WritableByteChannel> createFilePrinter(OptionValues options) {
+        Path path = getFilePrinterPath(options);
+        return () -> FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
+    }
+
+    private static Callable<WritableByteChannel> createNetworkPrinter(OptionValues options) {
+        String host = PrintGraphHost.getValue(options);
+        int port = PrintBinaryGraphs.getValue(options) ? PrintBinaryGraphPort.getValue(options) : PrintXmlGraphPort.getValue(options);
+        return () -> SocketChannel.open(new InetSocketAddress(host, port));
     }
 
     @Override
