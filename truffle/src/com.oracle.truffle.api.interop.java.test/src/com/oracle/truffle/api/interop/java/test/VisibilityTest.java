@@ -266,4 +266,66 @@ public class VisibilityTest {
             run = null;
         }
     }
+
+    public static class F1 {
+        public int a = 10;
+        public int b = 20;
+        public static int s = 30;
+    }
+
+    public static class F2 extends F1 {
+        public static int a = 30;
+        public int b = 40;
+    }
+
+    private static class F3 extends F1 {
+        public int a = 30;
+        public int c = 40;
+    }
+
+    public static class F4 extends F3 {
+    }
+
+    public static class F5 extends F1 {
+        protected int a = -1;
+    }
+
+    @Test
+    public void testPublicClassPublicField() throws InteropException {
+        Assert.assertEquals(10, read(new F1(), "a"));
+        Assert.assertEquals(40, read(new F2(), "b"));
+
+        // get instance field from superclass instead of static field in subclass
+        Assert.assertEquals(10, read(new F2(), "a"));
+        // static fields can be accessed via class
+        Assert.assertEquals(30, read(F2.class, "a"));
+        // static fields in superclass not visible from subclass
+        Assert.assertNull(read(F2.class, "s"));
+    }
+
+    @Test
+    public void testPrivateClassPublicField() throws InteropException {
+        // public field in private superclass of public class
+        Assert.assertNull(read(new F4(), "c"));
+        // public field in public superclass of private class (not shadowed)
+        Assert.assertEquals(20, read(new F3(), "b"));
+    }
+
+    @Test
+    public void testShadowedField() throws InteropException {
+        // public field in public superclass but shadowed by public field in private class
+        Assert.assertNull(read(new F3(), "a"));
+        Assert.assertNull(read(new F4(), "a"));
+        // public field in public superclass but shadowed by protected field
+        Assert.assertNull(read(new F5(), "a"));
+    }
+
+    private static Object read(Object obj, String name) throws InteropException {
+        TruffleObject receiver = JavaInterop.asTruffleObject(obj);
+        try {
+            return ForeignAccess.sendRead(Message.READ.createNode(), receiver, name);
+        } catch (UnknownIdentifierException uie) {
+            return null;
+        }
+    }
 }
