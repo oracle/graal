@@ -49,6 +49,10 @@ class LibFFIFunction implements TruffleObject {
         return symbol.nativePointer;
     }
 
+    NativePointer getPointer() {
+        return symbol;
+    }
+
     @Override
     public ForeignAccess getForeignAccess() {
         return LibFFIFunctionMessageResolutionForeign.ACCESS;

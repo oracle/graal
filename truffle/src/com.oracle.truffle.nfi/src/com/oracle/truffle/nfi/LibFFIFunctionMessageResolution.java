@@ -146,6 +146,15 @@ class LibFFIFunctionMessageResolution {
         }
     }
 
+    @Resolve(message = "INVOKE")
+    abstract static class ReBindNode extends Node {
+        @Child private NativePointerMessageResolution.BindNode bind = NativePointerMessageResolutionForeignFactory.BindSubNodeGen.create();
+
+        public TruffleObject access(LibFFIFunction receiver, String identifier, Object[] args) {
+            return bind.access(receiver.getPointer(), identifier, args);
+        }
+    }
+
     @CanResolve
     abstract static class CanResolveLibFFIFunctionNode extends Node {
 
