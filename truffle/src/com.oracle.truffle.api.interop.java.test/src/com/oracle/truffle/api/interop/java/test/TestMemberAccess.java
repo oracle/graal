@@ -36,6 +36,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -372,6 +373,26 @@ public class TestMemberAccess {
         Object testObj = ForeignAccess.sendNew(Message.createNew(0).createNode(), clazz, "test", 42);
         assertTrue(testObj instanceof TruffleObject && JavaInterop.isJavaObject(TestConstructorException.class, (TruffleObject) testObj));
         assertThrowsExceptionWithCause(() -> ForeignAccess.sendNew(Message.createNew(0).createNode(), clazz, "test"), IOException.class);
+    }
+
+    @Test
+    public void testIterate() throws InteropException {
+        List<Object> l = new ArrayList<>();
+        l.add("one");
+        l.add("two");
+        TruffleObject listObject = JavaInterop.asTruffleObject(l);
+        TruffleObject itFunction = (TruffleObject) ForeignAccess.sendRead(READ_NODE, listObject, "iterator");
+        TruffleObject it = (TruffleObject) ForeignAccess.sendExecute(EXEC_NODE, itFunction);
+        TruffleObject hasNextFunction = (TruffleObject) ForeignAccess.sendRead(READ_NODE, it, "hasNext");
+        List<Object> returned = new ArrayList<>();
+        while ((boolean) ForeignAccess.sendExecute(EXEC_NODE, hasNextFunction)) {
+            TruffleObject nextFunction = (TruffleObject) ForeignAccess.sendRead(READ_NODE, it, "next");
+            Object element = ForeignAccess.sendExecute(EXEC_NODE, nextFunction);
+            returned.add(element);
+        }
+        assertEquals(l.size(), returned.size());
+        assertEquals(l.get(0), returned.get(0));
+        assertEquals(l.get(1), returned.get(1));
     }
 
     @Test
