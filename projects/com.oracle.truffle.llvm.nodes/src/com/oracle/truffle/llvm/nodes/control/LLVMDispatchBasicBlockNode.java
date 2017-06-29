@@ -110,7 +110,7 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                 Object condition = switchNode.executeCondition(frame);
                 int[] successors = switchNode.getSuccessors();
                 for (int i = 0; i < successors.length - 1; i++) {
-                    Object caseValue = switchNode.cases[i].executeGeneric(frame);
+                    Object caseValue = switchNode.getCase(i).executeGeneric(frame);
                     assert caseValue.getClass() == condition.getClass() : "must be the same type - otherwise equals might wrongly return false";
                     if (CompilerDirectives.injectBranchProbability(bb.getBranchProbability(i), condition.equals(caseValue))) {
                         if (CompilerDirectives.inInterpreter()) {
@@ -181,6 +181,7 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                         backEdgeCounter++;
                     }
                 }
+                unconditionalNode.execute(frame); // required for instrumentation
                 executePhis(frame, unconditionalNode, 0);
                 nullDeadSlots(frame, basicBlockIndex, afterBlockNuller);
                 basicBlockIndex = unconditionalNode.getSuccessor();
