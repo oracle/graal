@@ -415,8 +415,11 @@ public class BinaryGraphPrinter implements GraphPrinter {
             writeInt(bci);
             StackTraceElement ste = method.asStackTraceElement(bci);
             if (ste != null) {
-                writePoolObject(ste.getFileName());
-                writeInt(ste.getLineNumber());
+                String fn = ste.getFileName();
+                writePoolObject(fn);
+                if (fn != null) {
+                    writeInt(ste.getLineNumber());
+                }
             } else {
                 writePoolObject(null);
             }
