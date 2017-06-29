@@ -32,46 +32,23 @@
 #include <errno.h>
 #include "internal.h"
 
-static jclass UnsatisfiedLinkError;
-
-static void initializeFlag(JNIEnv *env, jclass NativeAccess, const char *name, int value) {
-    jfieldID field = (*env)->GetStaticFieldID(env, NativeAccess, name, "I");
-    (*env)->SetStaticIntField(env, NativeAccess, field, value);
-}
-
-void initializeLookup(JNIEnv *env, jstring libName) {
-    const char *utfName = (*env)->GetStringUTFChars(env, libName, NULL);
-    // JNI opens libraries with RTLD_LOCAL
-    // we need to promote libtrufflenfi to RTLD_GLOBAL to make it usable from libraries loaded with NativeAccess.loadLibrary
-    dlopen(utfName, RTLD_NOW | RTLD_GLOBAL | RTLD_NOLOAD);
-    (*env)->ReleaseStringUTFChars(env, libName, utfName);
-
-    UnsatisfiedLinkError = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "java/lang/UnsatisfiedLinkError"));
-
-    jclass NativeAccess = (*env)->FindClass(env, "com/oracle/truffle/nfi/NativeAccess");
-    initializeFlag(env, NativeAccess, "RTLD_GLOBAL", RTLD_GLOBAL);
-    initializeFlag(env, NativeAccess, "RTLD_LOCAL", RTLD_LOCAL);
-    initializeFlag(env, NativeAccess, "RTLD_LAZY", RTLD_LAZY);
-    initializeFlag(env, NativeAccess, "RTLD_NOW", RTLD_NOW);
-}
-
-
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_NativeAccess_loadLibrary(JNIEnv *env, jclass self, jstring name, jint flags) {
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_NFIContext_loadLibrary(JNIEnv *env, jclass self, jlong context, jstring name, jint flags) {
     const char *utfName = (*env)->GetStringUTFChars(env, name, NULL);
     void *ret = dlopen(utfName, flags);
     if (ret == NULL) {
         const char *error = dlerror();
-        (*env)->ThrowNew(env, UnsatisfiedLinkError, error);
+        struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
+        (*env)->ThrowNew(env, ctx->UnsatisfiedLinkError, error);
     }
     (*env)->ReleaseStringUTFChars(env, name, utfName);
     return (jlong) ret;
 }
 
-JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_NativeAccess_freeLibrary(JNIEnv *env, jclass self, jlong handle) {
+JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_NFIContext_freeLibrary(JNIEnv *env, jclass self, jlong handle) {
     dlclose((void*) handle);
 }
 
-static jlong lookup(JNIEnv *env, void *handle, jstring name) {
+static jlong lookup(JNIEnv *env, jlong context, void *handle, jstring name) {
     const char *utfName = (*env)->GetStringUTFChars(env, name, NULL);
     // clear previous errors
     dlerror();
@@ -80,17 +57,18 @@ static jlong lookup(JNIEnv *env, void *handle, jstring name) {
         const char *error = dlerror();
         // if error == NULL, the symbol was found, but really points to NULL
         if (error != NULL) {
-            (*env)->ThrowNew(env, UnsatisfiedLinkError, error);
+            struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
+            (*env)->ThrowNew(env, ctx->UnsatisfiedLinkError, error);
         }
     }
     (*env)->ReleaseStringUTFChars(env, name, utfName);
     return (jlong) ret;
 }
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_NativeAccess_lookup(JNIEnv *env, jclass self, jlong library, jstring name) {
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_NFIContext_lookup(JNIEnv *env, jclass self, jlong context, jlong library, jstring name) {
     if (library == 0) {
-        return lookup(env, RTLD_DEFAULT, name);
+        return lookup(env, context, RTLD_DEFAULT, name);
     } else {
-        return lookup(env, (void *) library, name);
+        return lookup(env, context, (void *) library, name);
     }
 }

@@ -29,32 +29,10 @@
 #include "internal.h"
 
 
-static jfieldID LibFFISignature_cif;
-static jfieldID LibFFIType_type;
-
-static jclass string;
-
-
-void initializeSignature(JNIEnv *env) {
-    string = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "java/lang/String"));
-
-    jclass LibFFISignature = (*env)->FindClass(env, "com/oracle/truffle/nfi/LibFFISignature");
-    LibFFISignature_cif = (*env)->GetFieldID(env, LibFFISignature, "cif", "J");
-
-    jclass LibFFIType = (*env)->FindClass(env, "com/oracle/truffle/nfi/LibFFIType");
-    LibFFIType_type = (*env)->GetFieldID(env, LibFFIType, "type", "J");
-}
-
-
 struct cif_data {
     ffi_cif cif;
     ffi_type *args[0];
 };
-
-ffi_cif *get_ffi_cif(JNIEnv *env, jobject signature) {
-    struct cif_data *data = (struct cif_data *) (*env)->GetLongField(env, signature, LibFFISignature_cif);
-    return &data->cif;
-}
 
 static int align_up(int index, int alignment) {
     if (index % alignment != 0) {
@@ -63,8 +41,13 @@ static int align_up(int index, int alignment) {
     return index;
 }
 
-static void executeHelper(JNIEnv *env, void *ret, jobject self, jlong address, jbyteArray primArgs, jint patchCount, jintArray patch, jobjectArray objArgs) {
-    ffi_cif *cif = get_ffi_cif(env, self);
+static void executeHelper(JNIEnv *env, TruffleContext *ctx, void *ret, ffi_cif *cif, jlong address, jbyteArray primArgs, jint patchCount, jintArray patch, jobjectArray objArgs) {
+    struct __TruffleEnvInternal truffleEnv;
+
+    truffleEnv.functions = &truffleNativeAPI;
+    truffleEnv.context = (struct __TruffleContextInternal *) ctx;
+    truffleEnv.jniEnv = env;
+
     void *argPtrs[cif->nargs];
 
     jbyte *primArgValues = (*env)->GetByteArrayElements(env, primArgs, NULL);
@@ -103,6 +86,9 @@ static void executeHelper(JNIEnv *env, void *ret, jobject self, jlong address, j
                  * No need to patch anything, the byte array already contains the executable code from the closure.
                  * The LibFFIClosure object is only stored in the arguments array to make sure it stays alive.
                  */
+                break;
+            case ENV:
+                *((TruffleEnv**) argPtr) = (TruffleEnv*) &truffleEnv;
                 break;
             case BOOLEAN_ARRAY:
                 objectsForRelease[releaseCount] = arg;
@@ -159,6 +145,7 @@ static void executeHelper(JNIEnv *env, void *ret, jobject self, jlong address, j
         switch (tagsForRelease[i]) {
             case OBJECT:
             case CLOSURE:
+            case ENV:
                 // nothing to do
                 break;
             case STRING:
@@ -192,45 +179,46 @@ static void executeHelper(JNIEnv *env, void *ret, jobject self, jlong address, j
     }
 }
 
-JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_LibFFISignature_executeNative(JNIEnv *env, jobject self, jlong address,
+JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_NFIContext_executeNative(JNIEnv *env, jclass self, jlong truffleContext, jlong cif, jlong address,
         jbyteArray primArgs, jint patchCount, jintArray patch, jobjectArray objArgs, jbyteArray retArray) {
     jbyte *ret = retArray ? (*env)->GetByteArrayElements(env, retArray, NULL) : NULL;
-    executeHelper(env, ret, self, address, primArgs, patchCount, patch, objArgs);
+    executeHelper(env, (TruffleContext*) truffleContext, ret, (ffi_cif*) cif, address, primArgs, patchCount, patch, objArgs);
     if (retArray) {
         (*env)->ReleaseByteArrayElements(env, retArray, ret, 0);
     }
 }
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_LibFFISignature_executePrimitive(JNIEnv *env, jobject self, jlong address,
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_NFIContext_executePrimitive(JNIEnv *env, jclass self, jlong truffleContext, jlong cif, jlong address,
         jbyteArray primArgs, jint patchCount, jintArray patch, jobjectArray objArgs) {
     ffi_arg ret;
-    executeHelper(env, &ret, self, address, primArgs, patchCount, patch, objArgs);
+    executeHelper(env, (TruffleContext*) truffleContext, &ret, (ffi_cif*) cif, address, primArgs, patchCount, patch, objArgs);
     return (jlong) ret;
 }
 
-JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_LibFFISignature_executeObject(JNIEnv *env, jobject self, jlong address,
+JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_NFIContext_executeObject(JNIEnv *env, jclass self, jlong truffleContext, jlong cif, jlong address,
         jbyteArray primArgs, jint patchCount, jintArray patch, jobjectArray objArgs) {
     jobject ret;
-    executeHelper(env, &ret, self, address, primArgs, patchCount, patch, objArgs);
+    executeHelper(env, (TruffleContext*) truffleContext, &ret, (ffi_cif*) cif, address, primArgs, patchCount, patch, objArgs);
     return ret;
 }
 
 
-static struct cif_data *prepareArgs(JNIEnv *env, int nargs, jobjectArray argTypes) {
+static struct cif_data *prepareArgs(JNIEnv *env, struct __TruffleContextInternal *ctx, int nargs, jobjectArray argTypes) {
     struct cif_data *data = (struct cif_data *) malloc(sizeof(struct cif_data) + nargs * sizeof(ffi_type*));
     int i;
     for (i = 0; i < nargs; i++) {
         jobject type = (*env)->GetObjectArrayElement(env, argTypes, i);
-        data->args[i] = (ffi_type*) (*env)->GetLongField(env, type, LibFFIType_type);
+        data->args[i] = (ffi_type*) (*env)->GetLongField(env, type, ctx->LibFFIType_type);
     }
     return data;
 }
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_LibFFISignature_prepareSignature(JNIEnv *env, jclass self, jobject retType, jobjectArray argTypes) {
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_NFIContext_prepareSignature(JNIEnv *env, jclass self, jlong nativeContext, jobject retType, jobjectArray argTypes) {
+    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) nativeContext;
     int nargs = (*env)->GetArrayLength(env, argTypes);
 
-    struct cif_data *data = prepareArgs(env, nargs, argTypes);
-    ffi_type *ret = (ffi_type*) (*env)->GetLongField(env, retType, LibFFIType_type);
+    struct cif_data *data = prepareArgs(env, ctx, nargs, argTypes);
+    ffi_type *ret = (ffi_type*) (*env)->GetLongField(env, retType, ctx->LibFFIType_type);
 
     ffi_status result = ffi_prep_cif(&data->cif, FFI_DEFAULT_ABI, nargs, ret, data->args);
 
@@ -242,11 +230,12 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_LibFFISignature_prepareSigna
     }
 }
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_LibFFISignature_prepareSignatureVarargs(JNIEnv *env, jclass self, jobject retType, jint nFixedArgs, jobjectArray argTypes) {
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_NFIContext_prepareSignatureVarargs(JNIEnv *env, jclass self, jlong nativeContext, jobject retType, jint nFixedArgs, jobjectArray argTypes) {
+    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) nativeContext;
     int nargs = (*env)->GetArrayLength(env, argTypes);
 
-    struct cif_data *data = prepareArgs(env, nargs, argTypes);
-    ffi_type *ret = (ffi_type*) (*env)->GetLongField(env, retType, LibFFIType_type);
+    struct cif_data *data = prepareArgs(env, ctx, nargs, argTypes);
+    ffi_type *ret = (ffi_type*) (*env)->GetLongField(env, retType, ctx->LibFFIType_type);
 
     ffi_status result = ffi_prep_cif_var(&data->cif, FFI_DEFAULT_ABI, nFixedArgs, nargs, ret, data->args);
 

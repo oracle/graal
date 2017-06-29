@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.nfi;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -34,72 +34,22 @@ import com.oracle.truffle.nfi.ClosureArgumentNode.ObjectClosureArgumentNode;
 import com.oracle.truffle.nfi.ClosureArgumentNode.StringClosureArgumentNode;
 import com.oracle.truffle.nfi.ClosureArgumentNodeFactory.BufferClosureArgumentNodeGen;
 import com.oracle.truffle.nfi.NativeArgumentBuffer.TypeTag;
+import com.oracle.truffle.nfi.SerializeArgumentNode.SerializeEnvArgumentNode;
 import com.oracle.truffle.nfi.SerializeArgumentNode.SerializeObjectArgumentNode;
 import com.oracle.truffle.nfi.SerializeArgumentNodeFactory.SerializeArrayArgumentNodeGen;
 import com.oracle.truffle.nfi.SerializeArgumentNodeFactory.SerializeClosureArgumentNodeGen;
 import com.oracle.truffle.nfi.SerializeArgumentNodeFactory.SerializePointerArgumentNodeGen;
 import com.oracle.truffle.nfi.SerializeArgumentNodeFactory.SerializeSimpleArgumentNodeGen;
 import com.oracle.truffle.nfi.SerializeArgumentNodeFactory.SerializeStringArgumentNodeGen;
-import com.oracle.truffle.nfi.types.NativeArrayTypeMirror;
-import com.oracle.truffle.nfi.types.NativeFunctionTypeMirror;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
-import com.oracle.truffle.nfi.types.NativeSimpleTypeMirror;
-import com.oracle.truffle.nfi.types.NativeTypeMirror;
-import com.oracle.truffle.nfi.types.NativeTypeMirror.Kind;
 import java.nio.ByteOrder;
 
 abstract class LibFFIType {
 
-    @CompilationFinal(dimensions = 1) static final LibFFIType[] simpleTypeMap = new LibFFIType[NativeSimpleType.values().length];
-    @CompilationFinal(dimensions = 1) static final LibFFIType[] arrayTypeMap = new LibFFIType[NativeSimpleType.values().length];
-
-    public static LibFFIType lookupArgType(NativeTypeMirror type) {
-        return lookup(type, false);
-    }
-
-    public static LibFFIType lookupRetType(NativeTypeMirror type) {
-        return lookup(type, true);
-    }
-
-    private static LibFFIType lookup(NativeTypeMirror type, boolean asRetType) {
-        switch (type.getKind()) {
-            case SIMPLE:
-                NativeSimpleTypeMirror simpleType = (NativeSimpleTypeMirror) type;
-                return simpleTypeMap[simpleType.getSimpleType().ordinal()];
-
-            case ARRAY:
-                NativeArrayTypeMirror arrayType = (NativeArrayTypeMirror) type;
-                NativeTypeMirror elementType = arrayType.getElementType();
-
-                LibFFIType ret = null;
-                if (elementType.getKind() == Kind.SIMPLE) {
-                    ret = arrayTypeMap[((NativeSimpleTypeMirror) elementType).getSimpleType().ordinal()];
-                }
-
-                if (ret == null) {
-                    throw new AssertionError("unsupported array type");
-                } else {
-                    return ret;
-                }
-
-            case FUNCTION:
-                NativeFunctionTypeMirror functionType = (NativeFunctionTypeMirror) type;
-                LibFFISignature signature = LibFFISignature.create(functionType.getSignature());
-                return new ClosureType(signature, asRetType);
-        }
-        throw new AssertionError("unsupported type");
-    }
-
-    protected static void initializeSimpleType(NativeSimpleType simpleType, int size, int alignment, long ffiType) {
-        assert simpleTypeMap[simpleType.ordinal()] == null : "initializeSimpleType called twice for " + simpleType;
-        simpleTypeMap[simpleType.ordinal()] = createSimpleType(simpleType, size, alignment, ffiType);
-        arrayTypeMap[simpleType.ordinal()] = createArrayType(simpleType);
-    }
-
-    private static LibFFIType createSimpleType(NativeSimpleType simpleType, int size, int alignment, long ffiType) {
+    static LibFFIType createSimpleType(NFIContext ctx, NativeSimpleType simpleType, int size, int alignment, long ffiType) {
         switch (simpleType) {
             case VOID:
-                return new VoidType(size, alignment, ffiType);
+                return new VoidType(ctx, size, alignment, ffiType);
             case UINT8:
             case SINT8:
             case UINT16:
@@ -110,9 +60,9 @@ abstract class LibFFIType {
             case SINT64:
             case FLOAT:
             case DOUBLE:
-                return new SimpleType(simpleType, size, alignment, ffiType);
+                return new SimpleType(ctx, simpleType, size, alignment, ffiType);
             case POINTER:
-                return new PointerType(size, alignment, ffiType);
+                return new PointerType(ctx, size, alignment, ffiType);
             case STRING:
                 return new StringType(size, alignment, ffiType);
             case OBJECT:
@@ -122,7 +72,7 @@ abstract class LibFFIType {
         }
     }
 
-    private static LibFFIType createArrayType(NativeSimpleType simpleType) {
+    static LibFFIType createArrayType(NFIContext ctx, NativeSimpleType simpleType) {
         switch (simpleType) {
             case UINT8:
             case SINT8:
@@ -134,7 +84,7 @@ abstract class LibFFIType {
             case SINT64:
             case FLOAT:
             case DOUBLE:
-                return new ArrayType(simpleType);
+                return new ArrayType(ctx.lookupSimpleType(NativeSimpleType.POINTER), simpleType);
             default:
                 return null;
         }
@@ -142,10 +92,12 @@ abstract class LibFFIType {
 
     static class SimpleType extends LibFFIType {
 
+        final NFIContext ctx;
         final NativeSimpleType simpleType;
 
-        SimpleType(NativeSimpleType simpleType, int size, int alignment, long ffiType) {
-            super(size, alignment, 0, ffiType, Direction.BOTH);
+        SimpleType(NFIContext ctx, NativeSimpleType simpleType, int size, int alignment, long ffiType) {
+            super(size, alignment, 0, ffiType, Direction.BOTH, false);
+            this.ctx = ctx;
             this.simpleType = simpleType;
         }
 
@@ -277,11 +229,11 @@ abstract class LibFFIType {
                 case UINT8:
                 case UINT16:
                 case UINT32:
-                    return SerializeSimpleArgumentNodeGen.create(simpleTypeMap[NativeSimpleType.UINT64.ordinal()]);
+                    return SerializeSimpleArgumentNodeGen.create(ctx.lookupSimpleType(NativeSimpleType.UINT64));
                 case SINT8:
                 case SINT16:
                 case SINT32:
-                    return SerializeSimpleArgumentNodeGen.create(simpleTypeMap[NativeSimpleType.SINT64.ordinal()]);
+                    return SerializeSimpleArgumentNodeGen.create(ctx.lookupSimpleType(NativeSimpleType.SINT64));
                 default:
                     return super.createClosureReturnNode();
             }
@@ -296,8 +248,8 @@ abstract class LibFFIType {
 
     static final class VoidType extends SimpleType {
 
-        private VoidType(int size, int alignment, long ffiType) {
-            super(NativeSimpleType.VOID, size, alignment, ffiType);
+        private VoidType(NFIContext ctx, int size, int alignment, long ffiType) {
+            super(ctx, NativeSimpleType.VOID, size, alignment, ffiType);
         }
 
         @Override
@@ -313,8 +265,8 @@ abstract class LibFFIType {
 
     static final class PointerType extends SimpleType {
 
-        private PointerType(int size, int alignment, long ffiType) {
-            super(NativeSimpleType.POINTER, size, alignment, ffiType);
+        private PointerType(NFIContext ctx, int size, int alignment, long ffiType) {
+            super(ctx, NativeSimpleType.POINTER, size, alignment, ffiType);
         }
 
         @Override
@@ -355,7 +307,7 @@ abstract class LibFFIType {
     static final class StringType extends LibFFIType {
 
         private StringType(int size, int alignment, long ffiType) {
-            super(size, alignment, 1, ffiType, Direction.BOTH);
+            super(size, alignment, 1, ffiType, Direction.BOTH, false);
         }
 
         @Override
@@ -402,7 +354,7 @@ abstract class LibFFIType {
     static class ObjectType extends LibFFIType {
 
         ObjectType(int size, int alignment, long ffiType) {
-            super(size, alignment, 1, ffiType, Direction.BOTH);
+            super(size, alignment, 1, ffiType, Direction.BOTH, false);
         }
 
         @Override
@@ -438,17 +390,8 @@ abstract class LibFFIType {
 
     abstract static class BasePointerType extends LibFFIType {
 
-        static {
-            // make sure simpleTypeMap is initialized
-            NativeAccess.ensureInitialized();
-        }
-
-        private static LibFFIType getPointerType() {
-            return simpleTypeMap[NativeSimpleType.POINTER.ordinal()];
-        }
-
-        protected BasePointerType(Direction direction) {
-            super(getPointerType().size, getPointerType().alignment, 1, getPointerType().type, direction);
+        protected BasePointerType(LibFFIType pointerType, Direction direction, boolean injectedArgument) {
+            super(pointerType.size, pointerType.alignment, 1, pointerType.type, direction, injectedArgument);
         }
     }
 
@@ -456,8 +399,8 @@ abstract class LibFFIType {
 
         final NativeSimpleType elementType;
 
-        ArrayType(NativeSimpleType elementType) {
-            super(Direction.JAVA_TO_NATIVE_ONLY);
+        ArrayType(LibFFIType pointerType, NativeSimpleType elementType) {
+            super(pointerType, Direction.JAVA_TO_NATIVE_ONLY, false);
             switch (elementType) {
                 case UINT8:
                 case SINT8:
@@ -609,8 +552,8 @@ abstract class LibFFIType {
         private final LibFFISignature signature;
         private final boolean asRetType;
 
-        ClosureType(LibFFISignature signature, boolean asRetType) {
-            super(signature.getAllowedCallDirection().reverse());
+        ClosureType(LibFFIType pointerType, LibFFISignature signature, boolean asRetType) {
+            super(pointerType, signature.getAllowedCallDirection().reverse(), false);
             this.signature = signature;
             this.asRetType = asRetType;
         }
@@ -625,7 +568,12 @@ abstract class LibFFIType {
                 if (value instanceof LibFFIClosure) {
                     closure = (LibFFIClosure) value;
                 } else if (value instanceof TruffleObject) {
-                    closure = LibFFIClosure.create(signature, (TruffleObject) value);
+                    /*
+                     * If we enter this branch, that means the LibFFIClosure was not cached. This
+                     * should only happen on the slow-path.
+                     */
+                    CompilerAsserts.neverPartOfCompilation();
+                    closure = LibFFIClosure.createSlowPath(signature, (TruffleObject) value);
                 } else {
                     throw UnsupportedTypeException.raise(new Object[]{value});
                 }
@@ -678,6 +626,43 @@ abstract class LibFFIType {
         }
     }
 
+    static class EnvType extends BasePointerType {
+
+        EnvType(LibFFIType pointerType) {
+            super(pointerType, Direction.BOTH, true);
+        }
+
+        @Override
+        protected void doSerialize(NativeArgumentBuffer buffer, Object value) {
+            buffer.putObject(TypeTag.ENV, null, size);
+        }
+
+        @Override
+        protected Object doDeserialize(NativeArgumentBuffer buffer) {
+            throw new AssertionError("environment pointer can not be used as return type");
+        }
+
+        @Override
+        public SerializeArgumentNode createSerializeArgumentNode() {
+            return new SerializeEnvArgumentNode(this);
+        }
+
+        @Override
+        public ClosureArgumentNode createClosureArgumentNode() {
+            throw new AssertionError("createClosureArgumentNode should not be called on injected argument");
+        }
+
+        @Override
+        public SerializeArgumentNode createClosureReturnNode() {
+            throw new AssertionError("environment pointer can not be used as return type");
+        }
+
+        @Override
+        public Object slowpathPrepareArgument(TruffleObject value) {
+            return value;
+        }
+    }
+
     enum Direction {
         JAVA_TO_NATIVE_ONLY,
         NATIVE_TO_JAVA_ONLY,
@@ -704,13 +689,15 @@ abstract class LibFFIType {
     protected final long type;
 
     protected final Direction allowedDataFlowDirection;
+    protected final boolean injectedArgument;
 
-    protected LibFFIType(int size, int alignment, int objectCount, long type, Direction direction) {
+    protected LibFFIType(int size, int alignment, int objectCount, long type, Direction direction, boolean injectedArgument) {
         this.size = size;
         this.alignment = alignment;
         this.objectCount = objectCount;
         this.type = type;
         this.allowedDataFlowDirection = direction;
+        this.injectedArgument = injectedArgument;
     }
 
     protected abstract void doSerialize(NativeArgumentBuffer buffer, Object value);

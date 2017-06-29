@@ -24,35 +24,36 @@
  */
 package com.oracle.truffle.nfi;
 
-class NativeAccess {
+import com.oracle.truffle.api.interop.CanResolve;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 
-    static {
-        String nfiLib = System.getProperty("truffle.nfi.library");
-        if (nfiLib == null) {
-            System.loadLibrary("trufflenfi");
-            nfiLib = System.mapLibraryName("trufflenfi");
-        } else {
-            System.load(nfiLib);
+@MessageResolution(receiverType = LibFFIClosure.class)
+class LibFFIClosureMessageResolution {
+
+    @Resolve(message = "IS_POINTER")
+    abstract static class IsNativeClosureNode extends Node {
+
+        public boolean access(@SuppressWarnings("unused") LibFFIClosure receiver) {
+            return true;
         }
-        initialize(nfiLib, LibFFIType.simpleTypeMap);
     }
 
-    static void ensureInitialized() {
+    @Resolve(message = "AS_POINTER")
+    abstract static class AsNativeClosureNode extends Node {
+
+        public long access(LibFFIClosure receiver) {
+            return receiver.nativePointer.getCodePointer();
+        }
     }
 
-    // initialized by native code
-    // Checkstyle: stop field name check
-    static int RTLD_GLOBAL;
-    static int RTLD_LOCAL;
-    static int RTLD_LAZY;
-    static int RTLD_NOW;
-    // Checkstyle: resume field name check
+    @CanResolve
+    abstract static class CanResolveLibFFIClosureNode extends Node {
 
-    private static native void initialize(String libName, LibFFIType[] simpleTypeMap);
-
-    static native long loadLibrary(String name, int flags);
-
-    static native void freeLibrary(long library);
-
-    static native long lookup(long library, String name);
+        public boolean test(TruffleObject receiver) {
+            return receiver instanceof LibFFIClosure;
+        }
+    }
 }

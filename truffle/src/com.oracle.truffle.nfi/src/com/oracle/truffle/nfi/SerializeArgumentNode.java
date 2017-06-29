@@ -26,6 +26,7 @@ package com.oracle.truffle.nfi;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -39,7 +40,10 @@ import com.oracle.truffle.api.nodes.Node;
 
 abstract class SerializeArgumentNode extends Node {
 
-    abstract Object execute(NativeArgumentBuffer buffer, Object arg);
+    /**
+     * @return whether the argument was consumed
+     */
+    abstract boolean execute(NativeArgumentBuffer buffer, Object arg);
 
     protected static Node createIsNull() {
         return Message.IS_NULL.createNode();
@@ -76,43 +80,41 @@ abstract class SerializeArgumentNode extends Node {
 
         @Specialization(guards = {"!isSpecialized(arg)", "checkNull(isNull, arg)"})
         @SuppressWarnings("unused")
-        protected Object serializeNull(NativeArgumentBuffer buffer, TruffleObject arg,
+        protected boolean serializeNull(NativeArgumentBuffer buffer, TruffleObject arg,
                         @Cached("createIsNull()") Node isNull) {
             argType.serialize(buffer, null);
-            return null;
+            return true;
         }
 
         @Specialization(guards = {"!isSpecialized(arg)", "checkIsPointer(isPointer, arg)"})
         @SuppressWarnings("unused")
-        protected Object serializePointer(NativeArgumentBuffer buffer, TruffleObject arg,
+        protected boolean serializePointer(NativeArgumentBuffer buffer, TruffleObject arg,
                         @Cached("createIsPointer()") Node isPointer,
                         @Cached("createAsPointer()") Node asPointer,
                         @Cached("argType.createSerializeArgumentNode()") SerializeArgumentNode serialize) {
             try {
                 long pointer = ForeignAccess.sendAsPointer(asPointer, arg);
-                serialize.execute(buffer, new NativePointer(pointer));
+                return serialize.execute(buffer, new NativePointer(pointer));
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw UnsupportedTypeException.raise(ex, new Object[]{arg});
             }
-            return null;
         }
 
         @Specialization(guards = {"!isSpecialized(arg)", "!checkNull(isNull, arg)", "!checkIsPointer(isPointer, arg)"})
         @SuppressWarnings("unused")
-        protected Object serializeUnbox(NativeArgumentBuffer buffer, TruffleObject arg,
+        protected boolean serializeUnbox(NativeArgumentBuffer buffer, TruffleObject arg,
                         @Cached("createIsPointer()") Node isPointer,
                         @Cached("createIsNull()") Node isNull,
                         @Cached("createUnbox()") Node unbox,
                         @Cached("argType.createSerializeArgumentNode()") SerializeArgumentNode serialize) {
             try {
                 Object unboxed = ForeignAccess.sendUnbox(unbox, arg);
-                serialize.execute(buffer, unboxed);
+                return serialize.execute(buffer, unboxed);
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw UnsupportedTypeException.raise(ex, new Object[]{arg});
             }
-            return null;
         }
 
         protected static Node createUnbox() {
@@ -127,51 +129,51 @@ abstract class SerializeArgumentNode extends Node {
         }
 
         @Specialization(insertBefore = "serializeNull")
-        protected Object serializeByte(NativeArgumentBuffer buffer, byte arg) {
+        protected boolean serializeByte(NativeArgumentBuffer buffer, byte arg) {
             argType.serialize(buffer, arg);
-            return null;
+            return true;
         }
 
         @Specialization(insertBefore = "serializeNull")
-        protected Object serializeBoolean(NativeArgumentBuffer buffer, boolean arg) {
+        protected boolean serializeBoolean(NativeArgumentBuffer buffer, boolean arg) {
             argType.serialize(buffer, arg);
-            return null;
+            return true;
         }
 
         @Specialization(insertBefore = "serializeNull")
-        protected Object serializeShort(NativeArgumentBuffer buffer, short arg) {
+        protected boolean serializeShort(NativeArgumentBuffer buffer, short arg) {
             argType.serialize(buffer, arg);
-            return null;
+            return true;
         }
 
         @Specialization(insertBefore = "serializeNull")
-        protected Object serializeChar(NativeArgumentBuffer buffer, char arg) {
+        protected boolean serializeChar(NativeArgumentBuffer buffer, char arg) {
             argType.serialize(buffer, arg);
-            return null;
+            return true;
         }
 
         @Specialization(insertBefore = "serializeNull")
-        protected Object serializeInt(NativeArgumentBuffer buffer, int arg) {
+        protected boolean serializeInt(NativeArgumentBuffer buffer, int arg) {
             argType.serialize(buffer, arg);
-            return null;
+            return true;
         }
 
         @Specialization(insertBefore = "serializeNull")
-        protected Object serializeLong(NativeArgumentBuffer buffer, long arg) {
+        protected boolean serializeLong(NativeArgumentBuffer buffer, long arg) {
             argType.serialize(buffer, arg);
-            return null;
+            return true;
         }
 
         @Specialization(insertBefore = "serializeNull")
-        protected Object serializeFloat(NativeArgumentBuffer buffer, float arg) {
+        protected boolean serializeFloat(NativeArgumentBuffer buffer, float arg) {
             argType.serialize(buffer, arg);
-            return null;
+            return true;
         }
 
         @Specialization(insertBefore = "serializeNull")
-        protected Object serializeDouble(NativeArgumentBuffer buffer, double arg) {
+        protected boolean serializeDouble(NativeArgumentBuffer buffer, double arg) {
             argType.serialize(buffer, arg);
-            return null;
+            return true;
         }
     }
 
@@ -187,15 +189,15 @@ abstract class SerializeArgumentNode extends Node {
         }
 
         @Specialization(insertBefore = "serializeNull")
-        protected Object serializeNativeString(NativeArgumentBuffer buffer, NativeString string) {
+        protected boolean serializeNativeString(NativeArgumentBuffer buffer, NativeString string) {
             argType.serialize(buffer, string);
-            return null;
+            return true;
         }
 
         @Specialization(insertBefore = "serializeNull")
-        protected Object serializeNativePointer(NativeArgumentBuffer buffer, NativePointer ptr) {
+        protected boolean serializeNativePointer(NativeArgumentBuffer buffer, NativePointer ptr) {
             argType.serialize(buffer, ptr);
-            return null;
+            return true;
         }
     }
 
@@ -211,15 +213,15 @@ abstract class SerializeArgumentNode extends Node {
         }
 
         @Specialization(insertBefore = "serializeNull")
-        protected Object serializeString(NativeArgumentBuffer buffer, String string) {
+        protected boolean serializeString(NativeArgumentBuffer buffer, String string) {
             argType.serialize(buffer, string);
-            return null;
+            return true;
         }
 
         @Specialization(insertBefore = "serializeNull")
-        protected Object serializeNativeString(NativeArgumentBuffer buffer, NativeString string) {
+        protected boolean serializeNativeString(NativeArgumentBuffer buffer, NativeString string) {
             argType.serialize(buffer, string);
-            return null;
+            return true;
         }
     }
 
@@ -232,9 +234,9 @@ abstract class SerializeArgumentNode extends Node {
         }
 
         @Override
-        Object execute(NativeArgumentBuffer buffer, Object object) {
+        boolean execute(NativeArgumentBuffer buffer, Object object) {
             argType.serialize(buffer, object);
-            return null;
+            return true;
         }
     }
 
@@ -248,21 +250,21 @@ abstract class SerializeArgumentNode extends Node {
 
         @Specialization(guards = "checkNull(isNull, arg)")
         @SuppressWarnings("unused")
-        protected Object serializeNull(NativeArgumentBuffer buffer, TruffleObject arg,
+        protected boolean serializeNull(NativeArgumentBuffer buffer, TruffleObject arg,
                         @Cached("createIsNull()") Node isNull) {
             argType.serialize(buffer, null);
-            return null;
+            return true;
         }
 
         @Specialization(guards = "isJavaObject(arrayType, object)")
-        protected Object serializeArray(NativeArgumentBuffer buffer, TruffleObject object, @Cached("argType.getArrayType(object)") Class<?> arrayType) {
+        protected boolean serializeArray(NativeArgumentBuffer buffer, TruffleObject object, @Cached("argType.getArrayType(object)") Class<?> arrayType) {
             argType.serialize(buffer, JavaInterop.asJavaObject(arrayType, object));
-            return null;
+            return true;
         }
 
         @Fallback
         @SuppressWarnings("unused")
-        protected Object error(NativeArgumentBuffer buffer, Object object) {
+        protected boolean error(NativeArgumentBuffer buffer, Object object) {
             CompilerDirectives.transferToInterpreter();
             throw UnsupportedTypeException.raise(new Object[]{object});
         }
@@ -281,9 +283,12 @@ abstract class SerializeArgumentNode extends Node {
         private final LibFFIType argType;
         private final LibFFISignature signature;
 
+        private final ContextReference<NFIContext> ctxRef;
+
         SerializeClosureArgumentNode(LibFFIType argType, LibFFISignature signature) {
             this.argType = argType;
             this.signature = signature;
+            this.ctxRef = NFILanguage.getCurrentContextReference();
         }
 
         protected boolean isSpecialized(TruffleObject arg) {
@@ -291,29 +296,44 @@ abstract class SerializeArgumentNode extends Node {
         }
 
         @Specialization
-        protected Object serializeNativePointer(NativeArgumentBuffer buffer, NativePointer object) {
+        protected boolean serializeNativePointer(NativeArgumentBuffer buffer, NativePointer object) {
             argType.serialize(buffer, object);
-            return null;
+            return true;
         }
 
         @Specialization(limit = "5", guards = {"!isSpecialized(object)", "object == cachedObject"})
         @SuppressWarnings("unused")
-        protected Object serializeCached(NativeArgumentBuffer buffer, TruffleObject object,
+        protected boolean serializeCached(NativeArgumentBuffer buffer, TruffleObject object,
                         @Cached("object") TruffleObject cachedObject,
                         @Cached("createClosure(object)") LibFFIClosure closure) {
             argType.serialize(buffer, closure);
-            return null;
+            return true;
         }
 
         @Specialization(guards = "!isSpecialized(object)")
-        protected Object serializeFallback(NativeArgumentBuffer buffer, TruffleObject object) {
+        protected boolean serializeFallback(NativeArgumentBuffer buffer, TruffleObject object) {
             argType.serialize(buffer, createClosure(object));
-            return null;
+            return true;
         }
 
         @TruffleBoundary
         protected LibFFIClosure createClosure(TruffleObject object) {
-            return LibFFIClosure.create(signature, object);
+            return LibFFIClosure.create(ctxRef.get(), signature, object);
+        }
+    }
+
+    static class SerializeEnvArgumentNode extends SerializeArgumentNode {
+
+        private final LibFFIType argType;
+
+        SerializeEnvArgumentNode(LibFFIType argType) {
+            this.argType = argType;
+        }
+
+        @Override
+        boolean execute(NativeArgumentBuffer buffer, Object arg) {
+            argType.serialize(buffer, null);
+            return false;
         }
     }
 }

@@ -25,63 +25,122 @@
 #include "native.h"
 #include "trufflenfi.h"
 
+#include "internal.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <ffi.h>
-#include "internal.h"
+#include <dlfcn.h>
 
-static JavaVM *jvm;
-
-JNIEnv *getEnv() {
-    JNIEnv *env;
-    int ret = (*jvm)->GetEnv(jvm, (void**) &env, JNI_VERSION_1_6);
-    if (ret == JNI_EDETACHED) {
-        ret = (*jvm)->AttachCurrentThread(jvm, (void **) &env, NULL);
-    }
-
-    if (ret == JNI_OK) {
-        return env;
-    } else {
-        return NULL;
-    }
-}
-
-static void cacheFFIType(JNIEnv *env, jclass nativeSimpleType, jclass libFFIType, jmethodID initializeSimpleType, jobjectArray simpleTypeMap,
-        const char *enumName, ffi_type *type) {
+static void cacheFFIType(JNIEnv *env, jclass nativeSimpleType, jobject context, jmethodID initializeSimpleType, const char *enumName, ffi_type *type) {
     jfieldID enumField = (*env)->GetStaticFieldID(env, nativeSimpleType, enumName, "Lcom/oracle/truffle/nfi/types/NativeSimpleType;");
     jobject enumValue = (*env)->GetStaticObjectField(env, nativeSimpleType, enumField);
 
-    (*env)->CallStaticVoidMethod(env, libFFIType, initializeSimpleType, enumValue, type->size, type->alignment, (jlong) type);
+    (*env)->CallVoidMethod(env, context, initializeSimpleType, enumValue, type->size, type->alignment, (jlong) type);
 }
 
-JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_NativeAccess_initialize(JNIEnv *env, jclass self, jstring libName, jobjectArray simpleTypeMap) {
-    (*env)->GetJavaVM(env, &jvm);
+static void initializeFlag(JNIEnv *env, jclass NFIContext, jobject context, const char *name, int value) {
+    jfieldID field = (*env)->GetFieldID(env, NFIContext, name, "I");
+    (*env)->SetIntField(env, context, field, value);
+}
 
-    jclass nativeSimpleType = (*env)->FindClass(env, "com/oracle/truffle/nfi/types/NativeSimpleType");
-    jclass libFFIType = (*env)->FindClass(env, "com/oracle/truffle/nfi/LibFFIType");
-    jmethodID initializeSimpleType = (*env)->GetStaticMethodID(env, libFFIType, "initializeSimpleType", "(Lcom/oracle/truffle/nfi/types/NativeSimpleType;IIJ)V");
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_NFIContext_initializeNativeContext(JNIEnv *env, jobject context) {
+    struct __TruffleContextInternal *ret = (struct __TruffleContextInternal *) malloc(sizeof(*ret));
+
+    (*env)->GetJavaVM(env, &ret->javaVM);
+    ret->functions = &truffleThreadAPI;
+    ret->NFIContext = (*env)->NewGlobalRef(env, context);
+
+    jclass CallTarget = (*env)->FindClass(env, "com/oracle/truffle/api/CallTarget");
+    ret->CallTarget_call = (*env)->GetMethodID(env, CallTarget, "call", "([Ljava/lang/Object;)Ljava/lang/Object;");
+
+    jclass LibFFISignature = (*env)->FindClass(env, "com/oracle/truffle/nfi/LibFFISignature");
+    ret->LibFFISignature_cif = (*env)->GetFieldID(env, LibFFISignature, "cif", "J");
+    ret->LibFFISignature_argTypes = (*env)->GetFieldID(env, LibFFISignature, "argTypes", "[Lcom/oracle/truffle/nfi/LibFFIType;");
+
+    jclass LibFFIType = (*env)->FindClass(env, "com/oracle/truffle/nfi/LibFFIType");
+    ret->LibFFIType_type = (*env)->GetFieldID(env, LibFFIType, "type", "J");
+    ret->LibFFIType_EnvType = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/LibFFIType$EnvType"));
+    ret->LibFFIType_ObjectType = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/LibFFIType$ObjectType"));
+    ret->LibFFIType_StringType = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/LibFFIType$StringType"));
+
+    ret->NativeString = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/NativeString"));
+    ret->NativeString_nativePointer = (*env)->GetFieldID(env, ret->NativeString, "nativePointer", "J");
+
+    jclass NFIContext = (*env)->FindClass(env, "com/oracle/truffle/nfi/NFIContext");
+    ret->NFIContext_getNativeEnv = (*env)->GetMethodID(env, NFIContext, "getNativeEnv", "()J");
+    ret->NFIContext_createClosureNativePointer = (*env)->GetMethodID(env, NFIContext, "createClosureNativePointer", "(JJ)Lcom/oracle/truffle/nfi/ClosureNativePointer;");
+    ret->NFIContext_newClosureRef = (*env)->GetMethodID(env, NFIContext, "newClosureRef", "(J)V");
+    ret->NFIContext_releaseClosureRef = (*env)->GetMethodID(env, NFIContext, "releaseClosureRef", "(J)V");
+    ret->NFIContext_getClosureObject = (*env)->GetMethodID(env, NFIContext, "getClosureObject", "(J)Lcom/oracle/truffle/api/interop/TruffleObject;");
+
+    ret->Object = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "java/lang/Object"));
+    ret->String = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "java/lang/String"));
+    ret->UnsatisfiedLinkError = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "java/lang/UnsatisfiedLinkError"));
+
+    jclass LibFFIClosure_RetPatches = (*env)->FindClass(env, "com/oracle/truffle/nfi/LibFFIClosure$RetPatches");
+    ret->RetPatches_count = (*env)->GetFieldID(env, LibFFIClosure_RetPatches, "count", "I");
+    ret->RetPatches_patches = (*env)->GetFieldID(env, LibFFIClosure_RetPatches, "patches", "[I");
+    ret->RetPatches_objects = (*env)->GetFieldID(env, LibFFIClosure_RetPatches, "objects", "[Ljava/lang/Object;");
+
+
+    jmethodID initializeSimpleType = (*env)->GetMethodID(env, NFIContext, "initializeSimpleType", "(Lcom/oracle/truffle/nfi/types/NativeSimpleType;IIJ)V");
+    jclass NativeSimpleType = (*env)->FindClass(env, "com/oracle/truffle/nfi/types/NativeSimpleType");
 
     // it's important to initialize "POINTER" first, because the primitive array types depend on it
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "POINTER", &ffi_type_pointer);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "POINTER", &ffi_type_pointer);
 
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "VOID",    &ffi_type_void);
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "UINT8",   &ffi_type_uint8);
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "SINT8",   &ffi_type_sint8);
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "UINT16",  &ffi_type_uint16);
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "SINT16",  &ffi_type_sint16);
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "UINT32",  &ffi_type_uint32);
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "SINT32",  &ffi_type_sint32);
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "UINT64",  &ffi_type_uint64);
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "SINT64",  &ffi_type_sint64);
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "FLOAT",   &ffi_type_float);
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "DOUBLE",  &ffi_type_double);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "VOID",    &ffi_type_void);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "UINT8",   &ffi_type_uint8);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "SINT8",   &ffi_type_sint8);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "UINT16",  &ffi_type_uint16);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "SINT16",  &ffi_type_sint16);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "UINT32",  &ffi_type_uint32);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "SINT32",  &ffi_type_sint32);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "UINT64",  &ffi_type_uint64);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "SINT64",  &ffi_type_sint64);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "FLOAT",   &ffi_type_float);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "DOUBLE",  &ffi_type_double);
 
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "STRING", &ffi_type_pointer);
-    cacheFFIType(env, nativeSimpleType, libFFIType, initializeSimpleType, simpleTypeMap, "OBJECT", &ffi_type_pointer);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "STRING", &ffi_type_pointer);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "OBJECT", &ffi_type_pointer);
 
-    initializeClosure(env);
-    initializeSignature(env);
-    initializeLookup(env, libName);
+
+    initializeFlag(env, NFIContext, context, "RTLD_GLOBAL", RTLD_GLOBAL);
+    initializeFlag(env, NFIContext, context, "RTLD_LOCAL", RTLD_LOCAL);
+    initializeFlag(env, NFIContext, context, "RTLD_LAZY", RTLD_LAZY);
+    initializeFlag(env, NFIContext, context, "RTLD_NOW", RTLD_NOW);
+
+    return (jlong) ret;
+}
+
+JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_NFIContext_disposeNativeContext(JNIEnv *env, jclass clazz, jlong context) {
+    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
+
+    (*env)->DeleteGlobalRef(env, ctx->NFIContext);
+
+    (*env)->DeleteGlobalRef(env, ctx->LibFFIType_EnvType);
+    (*env)->DeleteGlobalRef(env, ctx->LibFFIType_ObjectType);
+    (*env)->DeleteGlobalRef(env, ctx->LibFFIType_StringType);
+
+    (*env)->DeleteGlobalRef(env, ctx->NativeString);
+
+    (*env)->DeleteGlobalRef(env, ctx->Object);
+    (*env)->DeleteGlobalRef(env, ctx->String);
+    (*env)->DeleteGlobalRef(env, ctx->UnsatisfiedLinkError);
+
+    free(ctx);
+}
+
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_NFIContext_initializeNativeEnv(JNIEnv *env, jclass clazz, jlong context) {
+    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
+
+    struct __TruffleEnvInternal *ret = (struct __TruffleEnvInternal *) malloc(sizeof(*ret));
+    ret->functions = &truffleNativeAPI;
+    ret->context = ctx;
+    ret->jniEnv = env;
+
+    return (jlong) ret;
 }
 
 JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_NativeAllocation_free(JNIEnv *env, jclass self, jlong pointer) {
@@ -91,27 +150,4 @@ JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_NativeAllocation_free(JNIEnv 
 JNIEXPORT jstring JNICALL Java_com_oracle_truffle_nfi_NativeString_toJavaString(JNIEnv *env, jclass self, jlong pointer) {
     const char *str = (const char *) pointer;
     return (*env)->NewStringUTF(env, str);
-}
-
-TruffleObject newObjectRef(TruffleObject object) {
-    JNIEnv *env = getEnv();
-    return (TruffleObject) (*env)->NewGlobalRef(env, (jobject) object);
-}
-
-void releaseObjectRef(TruffleObject object) {
-    JNIEnv *env = getEnv();
-    (*env)->DeleteGlobalRef(env, (jobject) object);
-}
-
-int isSameObject(TruffleObject object1, TruffleObject object2) {
-    JNIEnv *env = getEnv();
-    return (*env)->IsSameObject(env, (jobject) object1, (jobject) object2);
-}
-
-TruffleObject releaseAndReturn(TruffleObject object) {
-    JNIEnv *env = getEnv();
-    jobject global = (jobject) object;
-    jobject local = (*env)->NewLocalRef(env, global);
-    (*env)->DeleteGlobalRef(env, global);
-    return (TruffleObject) local;
 }
