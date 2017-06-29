@@ -119,7 +119,7 @@ class GraphPrintVisitor extends AbstractGraphPrinter<RootCallTarget, NodeElement
 
     @Override
     protected boolean hasPredecessor(NodeElement node) {
-        return !node.in.isEmpty();
+        return false;
     }
 
     @Override
@@ -193,7 +193,7 @@ class GraphPrintVisitor extends AbstractGraphPrinter<RootCallTarget, NodeElement
 
     @Override
     protected List<NodeElement> findNodes(NodeElement node, EdgeType edges, int i) {
-        return edges == EdgeType.PARENT ? node.in : node.out;
+        return edges == EdgeType.PARENT ? Collections.emptyList() : node.out;
     }
 
     static class NodeElement {
