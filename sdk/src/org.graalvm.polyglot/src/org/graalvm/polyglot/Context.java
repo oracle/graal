@@ -83,14 +83,18 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Closes this context and frees up allocated native resources. Languages might not be able to
-     * free all native resources allocated by a context automatically, therfore it is recommended to
-     * close contexts after use. Context instances that were created by a {@link PolyglotContext
-     * polylgot context} instance cannot be closed individually. Instead the polyglot context should
-     * be {@link PolyglotContext#close() closed}. If internal errors occur during closing of the
+     * Closes this context and frees up potentially allocated native resources. Languages might not
+     * be able to free all native resources allocated by a context automatically, therefore it is
+     * recommended to close contexts after use. If the source {@link #getEngine() engine} is closed
+     * then this context is closed automatically.
+     * <p>
+     * Context instances that were created by a {@link PolyglotContext polylgot context} instance
+     * cannot be closed individually. Instead the polyglot context should be
+     * {@link PolyglotContext#close() closed}. If internal errors occur during closing of the
      * language then they are printed to the configured {@link Builder#setErr(OutputStream) error
      * output stream}. If a context was closed then all its methods will throw an
-     * {@link IllegalStateException} when invoked. Multiple calls to close have no effect.
+     * {@link IllegalStateException} when invoked. If an an attempt to close this context was
+     * successful then consecutive calls to close have no effect.
      *
      * @throws IllegalStateException If the context was created by a PolyglotContext.
      * @see PolyglotContext#close() To close a polyglot context.

@@ -40,7 +40,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
-class PolyglotLanguageContextImpl implements VMObject {
+final class PolyglotLanguageContextImpl implements VMObject {
 
     private static final String[] EMPTY_STRING_ARRAY = new String[0];
 
@@ -64,13 +64,25 @@ class PolyglotLanguageContextImpl implements VMObject {
         nullValue = toHostValue(toGuestValue(null));
     }
 
+    Object enter() {
+        return context.enter();
+    }
+
+    void leave(Object prev) {
+        context.leave(prev);
+    }
+
     void dispose() {
         if (env != null) {
             synchronized (this) {
                 if (env != null) {
-                    checkAccess();
-                    LANGUAGE.dispose(env);
-                    env = null;
+                    try {
+                        checkAccess();
+                        LANGUAGE.dispose(env);
+                        env = null;
+                    } catch (Throwable t) {
+                        throw PolyglotImpl.wrapGuestException(this, t);
+                    }
                 }
                 disposed = true;
             }

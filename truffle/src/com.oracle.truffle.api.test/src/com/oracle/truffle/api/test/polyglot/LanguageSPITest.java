@@ -48,16 +48,8 @@ public class LanguageSPITest {
 
         Context context = engine.getLanguage(LANGUAGE_SPI_TEST).createContext();
         assertNotNull(langContext);
-        try {
-            engine.close();
-            fail();
-        } catch (IllegalStateException e) {
-        }
-
         assertEquals(0, langContext.disposeCalled);
         context.close();
-        context.close();
-        engine.close();
         engine.close();
         assertEquals(1, langContext.disposeCalled);
     }
@@ -71,11 +63,6 @@ public class LanguageSPITest {
         context.getContext(LANGUAGE_SPI_TEST);
 
         assertNotNull(langContext);
-        try {
-            engine.close();
-            fail();
-        } catch (IllegalStateException e) {
-        }
 
         try {
             // not allowed to close internal context
@@ -86,8 +73,54 @@ public class LanguageSPITest {
 
         assertEquals(0, langContext.disposeCalled);
         context.close();
-        context.close();
         engine.close();
+        assertEquals(1, langContext.disposeCalled);
+    }
+
+    @Test
+    public void testImplicitClose() {
+        Engine engine = Engine.create();
+        langContext = null;
+        engine.createPolyglotContext().getContext(LANGUAGE_SPI_TEST);
+        LanguageContext context1 = langContext;
+
+        engine.createPolyglotContext().getContext(LANGUAGE_SPI_TEST);
+        LanguageContext context2 = langContext;
+
+        engine.close();
+        assertEquals(1, context1.disposeCalled);
+        assertEquals(1, context2.disposeCalled);
+    }
+
+    @Test
+    public void testImplicitCloseFromOtherThread() throws InterruptedException {
+        Engine engine = Engine.create();
+        PolyglotContext context = engine.createPolyglotContext();
+        langContext = null;
+        context.getContext(LANGUAGE_SPI_TEST);
+
+        Thread t = new Thread(new Runnable() {
+            public void run() {
+                engine.close();
+            }
+        });
+        t.start();
+        t.join(10000);
+        assertEquals(1, langContext.disposeCalled);
+    }
+
+    @Test
+    public void testCreateFromOtherThreadAndCloseFromMain() throws InterruptedException {
+        Engine engine = Engine.create();
+        langContext = null;
+        Thread t = new Thread(new Runnable() {
+            public void run() {
+                PolyglotContext context = engine.createPolyglotContext();
+                context.getContext(LANGUAGE_SPI_TEST);
+            }
+        });
+        t.start();
+        t.join(10000);
         engine.close();
         assertEquals(1, langContext.disposeCalled);
     }
@@ -118,9 +151,8 @@ public class LanguageSPITest {
 
         @Override
         protected void disposeContext(LanguageContext context) {
+            assertSame(getContext(), context);
             context.disposeCalled++;
-            assertNotNull(langContext);
-            assertSame(context, langContext);
         }
 
         @Override

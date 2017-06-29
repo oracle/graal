@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.vm;
 
-import static com.oracle.truffle.api.vm.PolyglotImpl.checkEngine;
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 
 import java.io.InputStream;
@@ -66,7 +65,7 @@ class PolyglotLanguageImpl extends AbstractLanguageImpl implements VMObject {
     }
 
     Object getCurrentContext() {
-        Env env = PolyglotImpl.requireContext().contexts[index].env;
+        Env env = PolyglotContextImpl.requireContext().contexts[index].env;
         if (env == null) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(
@@ -82,7 +81,7 @@ class PolyglotLanguageImpl extends AbstractLanguageImpl implements VMObject {
 
     @Override
     public OptionDescriptors getOptions() {
-        checkEngine(engine);
+        engine.checkState();
         ensureInitialized();
         return options;
     }
@@ -134,9 +133,9 @@ class PolyglotLanguageImpl extends AbstractLanguageImpl implements VMObject {
     @SuppressWarnings("hiding")
     public Context createContext(OutputStream out, OutputStream err, InputStream in, Map<String, String> optionValues, Map<String, String[]> arguments) {
         synchronized (engine) {
-            engine.incrementContextCount();
-            checkEngine(engine);
+            engine.checkState();
             PolyglotContextImpl contextImpl = new PolyglotContextImpl(engine, out, err, in, optionValues, arguments, this);
+            engine.addContext(contextImpl);
             return engine.impl.getAPIAccess().newContext(contextImpl, api);
         }
     }

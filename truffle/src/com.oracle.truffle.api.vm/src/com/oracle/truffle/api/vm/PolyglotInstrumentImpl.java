@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.vm;
 
-import static com.oracle.truffle.api.vm.PolyglotImpl.checkEngine;
 import static com.oracle.truffle.api.vm.VMAccessor.INSTRUMENT;
 
 import org.graalvm.options.OptionDescriptors;
@@ -54,7 +53,7 @@ class PolyglotInstrumentImpl extends AbstractInstrumentImpl implements VMObject 
 
     @Override
     public OptionDescriptors getOptions() {
-        checkEngine(engine);
+        engine.checkState();
         ensureInitialized();
         return options;
     }
@@ -125,9 +124,8 @@ class PolyglotInstrumentImpl extends AbstractInstrumentImpl implements VMObject 
 
     @Override
     public <T> T lookup(Class<T> serviceClass) {
-        if (engine.closed) {
-            return null;
-        } else if (cache.supportsService(serviceClass)) {
+        engine.checkState();
+        if (cache.supportsService(serviceClass)) {
             ensureCreated();
             return INSTRUMENT.getInstrumentationHandlerService(engine.instrumentationHandler, this, serviceClass);
         } else {
