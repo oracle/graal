@@ -22,10 +22,10 @@
  */
 package org.graalvm.compiler.hotspot.debug;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
@@ -40,7 +40,6 @@ import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.debug.CSVUtil;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.debug.UniquePathUtilities;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.replacements.HotspotSnippetsOptions;
 import org.graalvm.compiler.nodes.debug.DynamicCounterNode;
@@ -103,9 +102,9 @@ public class BenchmarkCounters {
         public static final OptionKey<String> BenchmarkDynamicCounters = new OptionKey<>(null);
         @Option(help = "Use grouping separators for number printing", type = OptionType.Debug)
         public static final OptionKey<Boolean> DynamicCountersPrintGroupSeparator = new OptionKey<>(true);
-        @Option(help = "Print in human readable format", type = OptionType.Debug)
-        public static final OptionKey<Boolean> DynamicCountersHumanReadable = new OptionKey<>(true);
-        @Option(help = "Benchmark counters log file (default is stdout)", type = OptionType.Debug)
+        @Option(help = "File to which benchmark counters are dumped. A CSV format is used if the file ends with .csv " +
+                       "otherwise a more human readable format is used. The fields in the CSV format are: " +
+                       "category, group, name, value", type = OptionType.Debug)
         public static final OptionKey<String> BenchmarkCountersFile = new OptionKey<>(null);
         @Option(help = "Dump dynamic counters", type = OptionType.Debug)
         public static final OptionKey<Boolean> BenchmarkCountersDumpDynamic = new OptionKey<>(true);
@@ -207,14 +206,14 @@ public class BenchmarkCounters {
         delta = counters;
     }
 
+    private static boolean shouldDumpComputerReadable(OptionValues options) {
+        String dumpFile = Options.BenchmarkCountersFile.getValue(options);
+        return dumpFile != null && (dumpFile.endsWith(".csv") || dumpFile.endsWith(".CSV"));
+    }
+
     private abstract static class Dumper implements AutoCloseable {
         public static Dumper getDumper(OptionValues options, PrintStream out, int counterSize, double second, int maxRows) {
-            Dumper dumper;
-            if (Options.DynamicCountersHumanReadable.getValue(options)) {
-                dumper = new HumanReadableDumper(out, second, maxRows);
-            } else {
-                dumper = new ComputerReadableDumper(out);
-            }
+            Dumper dumper = shouldDumpComputerReadable(options) ? new ComputerReadableDumper(out) : new HumanReadableDumper(out, second, maxRows);
             dumper.start(counterSize);
             return dumper;
         }
@@ -493,9 +492,10 @@ public class BenchmarkCounters {
     private static PrintStream getPrintStream(OptionValues options) {
         if (Options.BenchmarkCountersFile.getValue(options) != null) {
             try {
-                Path path = UniquePathUtilities.getPathGlobal(options, Options.BenchmarkCountersFile, "csv").toAbsolutePath();
-                TTY.println("Writing benchmark counters to '%s'", path);
-                return new PrintStream(path.toFile());
+
+                File file = new File(Options.BenchmarkCountersFile.getValue(options));
+                TTY.println("Writing benchmark counters to '%s'", file.getAbsolutePath());
+                return new PrintStream(file);
             } catch (IOException e) {
                 TTY.out().println(e.getMessage());
                 TTY.out().println("Fallback to default");
