@@ -164,7 +164,7 @@ class DebugValueBenchmarkMixin(object):
         super(DebugValueBenchmarkMixin, self).after(bmSuiteArgs)
 
     def vmArgs(self, bmSuiteArgs):
-        vmArgs = ['-Dgraal.DebugValueFile=' + self.get_csv_filename()] +\
+        vmArgs = ['-Dgraal.AggregatedMetricsFile=' + self.get_csv_filename()] +\
                   super(DebugValueBenchmarkMixin, self).vmArgs(bmSuiteArgs)
         return vmArgs
 
@@ -176,7 +176,7 @@ class DebugValueBenchmarkMixin(object):
 
     def shorten_vm_flags(self, args):
         # no need for debug value flags
-        filtered_args = [x for x in args if not x.startswith("-Dgraal.DebugValue")]
+        filtered_args = [x for x in args if not x.startswith("-Dgraal.AggregatedMetricsFile")]
         return super(DebugValueBenchmarkMixin, self).shorten_vm_flags(filtered_args)
 
     def get_csv_filename(self):
@@ -229,7 +229,7 @@ class TimingBenchmarkMixin(DebugValueBenchmarkMixin):
 
     @staticmethod
     def timerArgs():
-        return "-Dgraal.Timers=" + ','.join(TimingBenchmarkMixin.timers)
+        return ["-Dgraal.Timers=" + ','.join(TimingBenchmarkMixin.timers)]
 
     def vmArgs(self, bmSuiteArgs):
         vmArgs = TimingBenchmarkMixin.timerArgs() + super(TimingBenchmarkMixin, self).vmArgs(bmSuiteArgs)
@@ -281,7 +281,7 @@ class CounterBenchmarkMixin(DebugValueBenchmarkMixin):
         return "-Dgraal.Counters=" + ','.join(CounterBenchmarkMixin.counters)
 
     def vmArgs(self, bmSuiteArgs):
-        vmArgs = CounterBenchmarkMixin.counterArgs() + super(CounterBenchmarkMixin, self).vmArgs(bmSuiteArgs)
+        vmArgs = [CounterBenchmarkMixin.counterArgs()] + super(CounterBenchmarkMixin, self).vmArgs(bmSuiteArgs)
         return vmArgs
 
     @staticmethod

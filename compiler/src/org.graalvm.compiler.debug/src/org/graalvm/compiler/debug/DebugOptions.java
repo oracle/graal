@@ -31,7 +31,6 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.options.UniquePathUtilities;
 import org.graalvm.util.EconomicMap;
 
 /**
