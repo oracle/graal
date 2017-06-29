@@ -59,16 +59,12 @@ final class JavaInteropReflect {
     static Object readField(JavaObject object, String name) throws NoSuchFieldError, SecurityException, IllegalArgumentException, IllegalAccessException {
         Object obj = object.obj;
         final boolean onlyStatic = obj == null;
-        Object val;
-        try {
-            final Field field = object.clazz.getField(name);
-            final boolean isStatic = (field.getModifiers() & Modifier.STATIC) != 0;
-            if (onlyStatic != isStatic) {
-                throw UnknownIdentifierException.raise(name);
-            }
-            val = field.get(obj);
-        } catch (NoSuchFieldException ex) {
-            JavaClassDesc classDesc = JavaClassDesc.forClass(object.clazz);
+        JavaClassDesc classDesc = JavaClassDesc.forClass(object.clazz);
+        Field field = onlyStatic ? classDesc.lookupStaticField(name) : classDesc.lookupField(name);
+        if (field != null) {
+            Object val = field.get(obj);
+            return JavaInterop.toGuestValue(val, object.languageContext);
+        } else {
             JavaMethodDesc method = onlyStatic ? classDesc.lookupStaticMethod(name) : classDesc.lookupMethod(name);
             if (method != null) {
                 return new JavaFunctionObject(method, obj, object.languageContext);
@@ -103,7 +99,6 @@ final class JavaInteropReflect {
             }
             throw UnknownIdentifierException.raise(name);
         }
-        return JavaInterop.toGuestValue(val, object.languageContext);
     }
 
     static boolean isField(JavaObject object, String name) {

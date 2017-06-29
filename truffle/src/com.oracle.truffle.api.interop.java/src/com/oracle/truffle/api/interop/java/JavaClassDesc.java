@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.interop.java;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
@@ -64,6 +65,8 @@ final class JavaClassDesc {
         final Map<String, JavaMethodDesc> methods;
         final Map<String, JavaMethodDesc> staticMethods;
         final JavaMethodDesc constructor;
+        final Map<String, Field> fields;
+        final Map<String, Field> staticFields;
 
         private static final BiFunction<JavaMethodDesc, JavaMethodDesc, JavaMethodDesc> MERGE = new BiFunction<JavaMethodDesc, JavaMethodDesc, JavaMethodDesc>() {
             @Override
@@ -75,6 +78,8 @@ final class JavaClassDesc {
         Members(Class<?> type) {
             Map<String, JavaMethodDesc> methodMap = new HashMap<>();
             Map<String, JavaMethodDesc> staticMethodMap = new HashMap<>();
+            Map<String, Field> fieldMap = new HashMap<>();
+            Map<String, Field> staticFieldMap = new HashMap<>();
             JavaMethodDesc ctor = null;
 
             if (Modifier.isPublic(type.getModifiers())) {
@@ -104,9 +109,37 @@ final class JavaClassDesc {
                         staticMethodMap.merge(m.getName(), method, MERGE);
                     }
                 }
+
+                boolean inheritedPublicInstanceFields = false;
+                for (Field f : type.getFields()) {
+                    if (!Modifier.isPublic(f.getDeclaringClass().getModifiers())) {
+                        continue;
+                    }
+                    if (!Modifier.isStatic(f.getModifiers())) {
+                        if (f.getDeclaringClass() == type) {
+                            assert !fieldMap.containsKey(f.getName());
+                            fieldMap.put(f.getName(), f);
+                        } else {
+                            inheritedPublicInstanceFields = true;
+                        }
+                    } else {
+                        // do not inherit static fields
+                        if (f.getDeclaringClass() == type) {
+                            staticFieldMap.put(f.getName(), f);
+                        }
+                    }
+                }
+                if (inheritedPublicInstanceFields) {
+                    // collect inherited instance fields that are not shadowed
+                    collectPublicInstanceFields(type, fieldMap);
+                }
             } else {
                 // If the class is not public, look for inherited public methods.
                 collectPublicMethods(type, methodMap, staticMethodMap);
+
+                if (!type.isInterface()) {
+                    collectPublicInstanceFields(type, fieldMap);
+                }
             }
 
             if (Modifier.isPublic(type.getModifiers())) {
@@ -123,6 +156,8 @@ final class JavaClassDesc {
             this.methods = methodMap;
             this.staticMethods = staticMethodMap;
             this.constructor = ctor;
+            this.fields = fieldMap;
+            this.staticFields = staticFieldMap;
         }
 
         private static void collectPublicMethods(Class<?> type, Map<String, JavaMethodDesc> methodMap, Map<String, JavaMethodDesc> staticMethodMap) {
@@ -205,6 +240,21 @@ final class JavaClassDesc {
             }
         }
 
+        private static void collectPublicInstanceFields(Class<?> type, Map<String, Field> fieldMap) {
+            Set<String> fieldNames = new HashSet<>();
+            for (Class<?> superclass = type; superclass != null && superclass != Object.class; superclass = superclass.getSuperclass()) {
+                for (Field f : superclass.getDeclaredFields()) {
+                    if (Modifier.isStatic(f.getModifiers())) {
+                        continue;
+                    }
+                    if (fieldNames.add(f.getName())) {
+                        if (Modifier.isPublic(f.getModifiers()) && Modifier.isPublic(f.getDeclaringClass().getModifiers())) {
+                            fieldMap.putIfAbsent(f.getName(), f);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private Members getMembers() {
@@ -247,6 +297,26 @@ final class JavaClassDesc {
      */
     public JavaMethodDesc lookupConstructor() {
         return getMembers().constructor;
+    }
+
+    /**
+     * Looks up a public field in this class.
+     *
+     * @param name field name
+     * @return field or {@code null} if there is no such field
+     */
+    public Field lookupField(String name) {
+        return getMembers().fields.get(name);
+    }
+
+    /**
+     * Looks up a public static field in this class.
+     *
+     * @param name field name
+     * @return field or {@code null} if there is no such field
+     */
+    public Field lookupStaticField(String name) {
+        return getMembers().staticFields.get(name);
     }
 
     @Override
