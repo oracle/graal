@@ -42,6 +42,7 @@ public class NFILanguage extends TruffleLanguage<Env> {
 
     @Override
     protected Env createContext(Env env) {
+        NativeAccess.ensureInitialized();
         return env;
     }
 
