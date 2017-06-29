@@ -168,112 +168,153 @@ public class BenchmarkCounters {
 
     private static synchronized void dump(OptionValues options, PrintStream out, double seconds, long[] counters, int maxRows) {
         if (!counterMap.isEmpty()) {
-            if (Options.DynamicCountersHumanReadable.getValue(options)) {
-                out.println("====== dynamic counters (" + counterMap.size() + " in total) ======");
-            }
-            TreeSet<String> set = new TreeSet<>();
-            counterMap.forEach((nameGroup, counter) -> set.add(counter.group));
-            for (String group : set) {
-                if (group != null) {
-                    if (Options.BenchmarkCountersDumpStatic.getValue(options)) {
-                        dumpCounters(options, out, seconds, counters, true, group, maxRows);
-                    }
-                    if (Options.BenchmarkCountersDumpDynamic.getValue(options)) {
-                        dumpCounters(options, out, seconds, counters, false, group, maxRows);
+            try (Dumper dumper = Dumper.getDumper(options, out, counterMap.size(), seconds, maxRows)) {
+                TreeSet<String> set = new TreeSet<>();
+                counterMap.forEach((nameGroup, counter) -> set.add(counter.group));
+                for (String group : set) {
+                    if (group != null) {
+                        if (Options.BenchmarkCountersDumpStatic.getValue(options)) {
+                            dumper.dumpCounters(true, group, collectStaticCounters(), counterMap.entrySet(), options);
+                        }
+                        if (Options.BenchmarkCountersDumpDynamic.getValue(options)) {
+                            dumper.dumpCounters(false, group, collectDynamicCounters(counters), counterMap.entrySet(), options);
+                        }
                     }
                 }
-            }
-            if (Options.DynamicCountersHumanReadable.getValue(options)) {
-                out.println("============================");
             }
 
             clear(counters);
         }
     }
 
+    private static synchronized long[] collectDynamicCounters(long[] counters) {
+        long[] array = counters.clone();
+        for (int i = 0; i < array.length; i++) {
+            array[i] -= delta[i];
+        }
+        return array;
+    }
+
+    private static synchronized long[] collectStaticCounters() {
+        long[] array = new long[counterMap.size()];
+        for (Counter counter : counterMap.values()) {
+            array[counter.index] = counter.staticCounters.get();
+        }
+        return array;
+    }
+
     private static synchronized void clear(long[] counters) {
         delta = counters;
     }
 
-    private static synchronized void dumpCounters(OptionValues options, PrintStream out, double seconds, long[] counters, boolean staticCounter, String group, int maxRows) {
+    private abstract static class Dumper implements AutoCloseable {
+        public static Dumper getDumper(OptionValues options, PrintStream out, int counterSize, double second, int maxRows) {
+            Dumper dumper;
+            if (Options.DynamicCountersHumanReadable.getValue(options)) {
+                dumper = new HumanReadableDumper(out, second, maxRows);
+            } else {
+                dumper = new ComputerReadableDumper(out);
+            }
+            dumper.start(counterSize);
+            return dumper;
+        }
 
-        // collect the numbers
-        long[] array;
-        if (staticCounter) {
-            array = new long[counterMap.size()];
-            for (Counter counter : counterMap.values()) {
-                array[counter.index] = counter.staticCounters.get();
-            }
-        } else {
-            array = counters.clone();
-            for (int i = 0; i < array.length; i++) {
-                array[i] -= delta[i];
-            }
+        protected final PrintStream out;
+
+        private Dumper(PrintStream out) {
+            this.out = out;
         }
-        Set<Entry<String, Counter>> counterEntrySet = counterMap.entrySet();
-        if (Options.DynamicCountersHumanReadable.getValue(options)) {
-            dumpHumanReadable(options, out, seconds, staticCounter, group, maxRows, array, counterEntrySet);
-        } else {
-            dumpComputerReadable(out, staticCounter, group, array, counterEntrySet);
-        }
+
+        protected abstract void start(int size);
+
+        public abstract void dumpCounters(boolean staticCounter, String group, long[] array, Set<Entry<String, Counter>> counterEntrySet, OptionValues options);
+
+        @Override
+        public abstract void close();
+
     }
 
     private static String getName(String nameGroup, String group) {
         return nameGroup.substring(0, nameGroup.length() - group.length() - 1);
     }
 
-    private static void dumpHumanReadable(OptionValues options, PrintStream out, double seconds, boolean staticCounter, String group, int maxRows, long[] array,
-                    Set<Entry<String, Counter>> counterEntrySet) {
-        // sort the counters by putting them into a sorted map
-        TreeMap<Long, String> sorted = new TreeMap<>();
-        long sum = 0;
-        for (Map.Entry<String, Counter> entry : counterEntrySet) {
-            Counter counter = entry.getValue();
-            int index = counter.index;
-            if (counter.group.equals(group)) {
-                sum += array[index];
-                sorted.put(array[index] * array.length + index, getName(entry.getKey(), group));
-            }
+    private static long percentage(long counter, long sum) {
+        return (counter * 200 + 1) / sum / 2;
+    }
+
+    private static class HumanReadableDumper extends Dumper {
+        private final double seconds;
+        private final int maxRows;
+
+        HumanReadableDumper(PrintStream out, double seconds, int maxRows) {
+            super(out);
+            this.seconds = seconds;
+            this.maxRows = maxRows;
         }
 
-        if (sum > 0) {
-            long cutoff = sorted.size() < 10 ? 1 : Math.max(1, sum / 100);
-            int cnt = sorted.size();
+        @Override
+        public void start(int size) {
+            out.println("====== dynamic counters (" + size + " in total) ======");
+        }
 
-            // remove everything below cutoff and keep at most maxRows
-            Iterator<Map.Entry<Long, String>> iter = sorted.entrySet().iterator();
-            while (iter.hasNext()) {
-                Map.Entry<Long, String> entry = iter.next();
-                long counter = entry.getKey() / array.length;
-                if (counter < cutoff || cnt > maxRows) {
-                    iter.remove();
+        @Override
+        public void close() {
+            out.println("============================");
+        }
+
+        @Override
+        public void dumpCounters(boolean staticCounter, String group, long[] array, Set<Entry<String, Counter>> counterEntrySet, OptionValues options) {
+            // sort the counters by putting them into a sorted map
+            TreeMap<Long, String> sorted = new TreeMap<>();
+            long sum = 0;
+            for (Map.Entry<String, Counter> entry : counterEntrySet) {
+                Counter counter = entry.getValue();
+                int index = counter.index;
+                if (counter.group.equals(group)) {
+                    sum += array[index];
+                    sorted.put(array[index] * array.length + index, getName(entry.getKey(), group));
                 }
-                cnt--;
             }
 
-            String numFmt = Options.DynamicCountersPrintGroupSeparator.getValue(options) ? "%,19d" : "%19d";
-            if (staticCounter) {
-                out.println("=========== " + group + " (static counters):");
-                for (Map.Entry<Long, String> entry : sorted.entrySet()) {
+            if (sum > 0) {
+                long cutoff = sorted.size() < 10 ? 1 : Math.max(1, sum / 100);
+                int cnt = sorted.size();
+
+                // remove everything below cutoff and keep at most maxRows
+                Iterator<Map.Entry<Long, String>> iter = sorted.entrySet().iterator();
+                while (iter.hasNext()) {
+                    Map.Entry<Long, String> entry = iter.next();
                     long counter = entry.getKey() / array.length;
-                    out.format(Locale.US, numFmt + " %3d%%  %s\n", counter, percentage(counter, sum), entry.getValue());
-                }
-                out.format(Locale.US, numFmt + " total\n", sum);
-            } else {
-                if (group.startsWith("~")) {
-                    out.println("=========== " + group + " (dynamic counters), time = " + seconds + " s:");
-                    for (Map.Entry<Long, String> entry : sorted.entrySet()) {
-                        long counter = entry.getKey() / array.length;
-                        out.format(Locale.US, numFmt + "/s %3d%%  %s\n", (long) (counter / seconds), percentage(counter, sum), entry.getValue());
+                    if (counter < cutoff || cnt > maxRows) {
+                        iter.remove();
                     }
-                    out.format(Locale.US, numFmt + "/s total\n", (long) (sum / seconds));
-                } else {
-                    out.println("=========== " + group + " (dynamic counters):");
+                    cnt--;
+                }
+
+                String numFmt = Options.DynamicCountersPrintGroupSeparator.getValue(options) ? "%,19d" : "%19d";
+                if (staticCounter) {
+                    out.println("=========== " + group + " (static counters):");
                     for (Map.Entry<Long, String> entry : sorted.entrySet()) {
                         long counter = entry.getKey() / array.length;
                         out.format(Locale.US, numFmt + " %3d%%  %s\n", counter, percentage(counter, sum), entry.getValue());
                     }
                     out.format(Locale.US, numFmt + " total\n", sum);
+                } else {
+                    if (group.startsWith("~")) {
+                        out.println("=========== " + group + " (dynamic counters), time = " + seconds + " s:");
+                        for (Map.Entry<Long, String> entry : sorted.entrySet()) {
+                            long counter = entry.getKey() / array.length;
+                            out.format(Locale.US, numFmt + "/s %3d%%  %s\n", (long) (counter / seconds), percentage(counter, sum), entry.getValue());
+                        }
+                        out.format(Locale.US, numFmt + "/s total\n", (long) (sum / seconds));
+                    } else {
+                        out.println("=========== " + group + " (dynamic counters):");
+                        for (Map.Entry<Long, String> entry : sorted.entrySet()) {
+                            long counter = entry.getKey() / array.length;
+                            out.format(Locale.US, numFmt + " %3d%%  %s\n", counter, percentage(counter, sum), entry.getValue());
+                        }
+                        out.format(Locale.US, numFmt + " total\n", sum);
+                    }
                 }
             }
         }
@@ -281,21 +322,35 @@ public class BenchmarkCounters {
 
     private static final String CSV_FMT = CSVUtil.buildFormatString("%s", "%s", "%s", "%d");
 
-    private static void dumpComputerReadable(PrintStream out, boolean staticCounter, String group, long[] array, Set<Entry<String, Counter>> counterEntrySet) {
-        String category = staticCounter ? "static counters" : "dynamic counters";
-        for (Map.Entry<String, Counter> entry : counterEntrySet) {
-            Counter counter = entry.getValue();
-            if (counter.group.equals(group)) {
-                String name = getName(entry.getKey(), group);
-                int index = counter.index;
-                long value = array[index];
-                CSVUtil.Escape.println(out, CSV_FMT, category, group, name, value);
+    private static class ComputerReadableDumper extends Dumper {
+
+        ComputerReadableDumper(PrintStream out) {
+            super(out);
+        }
+
+        @Override
+        public void start(int size) {
+            // do nothing
+        }
+
+        @Override
+        public void close() {
+            // do nothing
+        }
+
+        @Override
+        public void dumpCounters(boolean staticCounter, String group, long[] array, Set<Entry<String, Counter>> counterEntrySet, OptionValues options) {
+            String category = staticCounter ? "static counters" : "dynamic counters";
+            for (Map.Entry<String, Counter> entry : counterEntrySet) {
+                Counter counter = entry.getValue();
+                if (counter.group.equals(group)) {
+                    String name = getName(entry.getKey(), group);
+                    int index = counter.index;
+                    long value = array[index];
+                    CSVUtil.Escape.println(out, CSV_FMT, category, group, name, value);
+                }
             }
         }
-    }
-
-    private static long percentage(long counter, long sum) {
-        return (counter * 200 + 1) / sum / 2;
     }
 
     private abstract static class CallbackOutputStream extends OutputStream {
