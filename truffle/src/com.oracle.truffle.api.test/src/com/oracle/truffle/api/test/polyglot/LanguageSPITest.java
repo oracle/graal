@@ -81,12 +81,14 @@ public class LanguageSPITest {
     public void testImplicitClose() {
         Engine engine = Engine.create();
         langContext = null;
-        engine.createPolyglotContext().getContext(LANGUAGE_SPI_TEST);
+        PolyglotContext c = engine.createPolyglotContext();
+        c.getContext(LANGUAGE_SPI_TEST);
         LanguageContext context1 = langContext;
 
         engine.createPolyglotContext().getContext(LANGUAGE_SPI_TEST);
         LanguageContext context2 = langContext;
 
+        c.close();
         engine.close();
         assertEquals(1, context1.disposeCalled);
         assertEquals(1, context2.disposeCalled);
@@ -152,6 +154,7 @@ public class LanguageSPITest {
         @Override
         protected void disposeContext(LanguageContext context) {
             assertSame(getContext(), context);
+            assertSame(context, getContextReference().get());
             context.disposeCalled++;
         }
 
