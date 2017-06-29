@@ -30,7 +30,7 @@ import java.util.List;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.CFGVerifier;
 import org.graalvm.compiler.core.common.cfg.Loop;
-import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
@@ -620,7 +620,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                                 if (sux.loop != loop) {
                                     AbstractBeginNode begin = sux.getBeginNode();
                                     if (!(begin instanceof LoopExitNode && ((LoopExitNode) begin).loopBegin() == loopBegin)) {
-                                        Debug.log(Debug.VERBOSE_LEVEL, "Unexpected loop exit with %s, including whole branch in the loop", sux);
+                                        graph.getDebug().log(DebugContext.VERBOSE_LEVEL, "Unexpected loop exit with %s, including whole branch in the loop", sux);
                                         computeLoopBlocks(sux, loop, stack, false);
                                     }
                                 }

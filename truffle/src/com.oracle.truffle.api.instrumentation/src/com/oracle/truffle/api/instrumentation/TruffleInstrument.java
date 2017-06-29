@@ -41,6 +41,7 @@ import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.InstrumentInfo;
+import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AccessorInstrumentHandler;
@@ -164,6 +165,7 @@ public abstract class TruffleInstrument {
      * provided by the engine. To construct option descriptors from a list then
      * {@link OptionDescriptors#create(List)} can be used.
      *
+     * @see Option For an example of declaring the option descriptor using an annotation.
      * @since 0.27
      */
     protected OptionDescriptors getOptionDescriptors() {

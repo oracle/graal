@@ -376,6 +376,7 @@ public abstract class TruffleLanguage<C> {
      * {@link #createContext(Env) created}. To construct option descriptors from a list then
      * {@link OptionDescriptors#create(List)} can be used.
      *
+     * @see Option For an example of declaring the option descriptor using an annotation.
      * @since 0.27
      */
     protected OptionDescriptors getOptionDescriptors() {
@@ -1460,8 +1461,7 @@ public abstract class TruffleLanguage<C> {
 
         @Override
         @SuppressWarnings("rawtypes")
-        public LanguageInfo getLegacyLanguageInfo(Class<? extends TruffleLanguage> languageClass) {
-            Object vm = AccessAPI.engineAccess().getCurrentVM();
+        public LanguageInfo getLegacyLanguageInfo(Object vm, Class<? extends TruffleLanguage> languageClass) {
             if (vm == null) {
                 return null;
             }

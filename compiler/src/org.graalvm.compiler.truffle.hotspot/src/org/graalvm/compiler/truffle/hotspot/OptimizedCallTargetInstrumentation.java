@@ -29,6 +29,7 @@ import java.lang.reflect.Field;
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
@@ -50,8 +51,8 @@ public abstract class OptimizedCallTargetInstrumentation extends CompilationResu
     protected final HotSpotRegistersProvider registers;
 
     public OptimizedCallTargetInstrumentation(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
-                    OptionValues options, CompilationResult compilationResult, GraalHotSpotVMConfig config, HotSpotRegistersProvider registers) {
-        super(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, compilationResult);
+                    OptionValues options, DebugContext debug, CompilationResult compilationResult, GraalHotSpotVMConfig config, HotSpotRegistersProvider registers) {
+        super(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult);
         this.config = config;
         this.registers = registers;
     }

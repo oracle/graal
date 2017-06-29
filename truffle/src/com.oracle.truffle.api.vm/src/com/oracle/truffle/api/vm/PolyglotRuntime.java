@@ -90,6 +90,7 @@ public final class PolyglotRuntime {
     }
 
     PolyglotRuntime(DispatchOutputStream out, DispatchOutputStream err, InputStream in, boolean automaticDispose) {
+        PolyglotEngine.ensureInitialized();
         this.engineProfile = PolyglotEngine.GLOBAL_PROFILE;
         this.instrumentationHandler = INSTRUMENT.createInstrumentationHandler(this, out, err, in);
         /*

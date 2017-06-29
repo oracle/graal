@@ -29,7 +29,7 @@ import java.util.Queue;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
@@ -180,8 +180,9 @@ public class LoopEx {
             }
             ValueNode result = BinaryArithmeticNode.reassociate(binary, invariant, binary.getX(), binary.getY());
             if (result != binary) {
-                if (Debug.isLogEnabled()) {
-                    Debug.log("%s : Reassociated %s into %s", graph.method().format("%H::%n"), binary, result);
+                DebugContext debug = graph.getDebug();
+                if (debug.isLogEnabled()) {
+                    debug.log("%s : Reassociated %s into %s", graph.method().format("%H::%n"), binary, result);
                 }
                 if (!result.isAlive()) {
                     assert !result.isDeleted();
@@ -211,7 +212,7 @@ public class LoopEx {
             LogicNode ifTest = ifNode.condition();
             if (!(ifTest instanceof IntegerLessThanNode) && !(ifTest instanceof IntegerEqualsNode)) {
                 if (ifTest instanceof IntegerBelowNode) {
-                    Debug.log("Ignored potential Counted loop at %s with |<|", loopBegin);
+                    ifTest.getDebug().log("Ignored potential Counted loop at %s with |<|", loopBegin);
                 }
                 return false;
             }

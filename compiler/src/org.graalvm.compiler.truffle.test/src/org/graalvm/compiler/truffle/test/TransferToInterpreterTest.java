@@ -22,9 +22,13 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.DefaultTruffleCompiler;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -55,10 +59,13 @@ public class TransferToInterpreterTest {
     @Test
     public void test() {
         RootNode rootNode = new TestRootNode();
-        OptimizedCallTarget target = (OptimizedCallTarget) GraalTruffleRuntime.getRuntime().createCallTarget(rootNode);
+        GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         target.call(0);
         Assert.assertFalse(target.isValid());
-        DefaultTruffleCompiler.create(GraalTruffleRuntime.getRuntime()).compileMethod(target, GraalTruffleRuntime.getRuntime());
+        OptionValues options = TruffleCompilerOptions.getOptions();
+        DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
+        DefaultTruffleCompiler.create(runtime).compileMethod(debug, target, runtime);
         Assert.assertTrue(target.isValid());
         target.call(0);
         Assert.assertTrue(target.isValid());

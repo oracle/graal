@@ -32,7 +32,7 @@ import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.code.SourceStackTraceBailoutException;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
-import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
@@ -98,7 +98,8 @@ public class GraphUtil {
 
         fixSurvivingAffectedMerges(markedNodes, unmarkedMerges);
 
-        Debug.dump(Debug.DETAILED_LEVEL, node.graph(), "After fixing merges (killCFG %s)", node);
+        DebugContext debug = node.getDebug();
+        debug.dump(DebugContext.DETAILED_LEVEL, node.graph(), "After fixing merges (killCFG %s)", node);
 
         // Mark non-fixed nodes
         markUsages(markedNodes);
@@ -112,7 +113,7 @@ public class GraphUtil {
                 }
             }
         }
-        Debug.dump(Debug.VERY_DETAILED_LEVEL, node.graph(), "After disconnecting non-marked inputs (killCFG %s)", node);
+        debug.dump(DebugContext.VERY_DETAILED_LEVEL, node.graph(), "After disconnecting non-marked inputs (killCFG %s)", node);
         // Kill marked nodes
         for (Node marked : markedNodes) {
             if (marked.isAlive()) {
@@ -218,7 +219,8 @@ public class GraphUtil {
 
     @SuppressWarnings("try")
     public static void killCFG(FixedNode node) {
-        try (Debug.Scope scope = Debug.scope("KillCFG", node)) {
+        DebugContext debug = node.getDebug();
+        try (DebugContext.Scope scope = debug.scope("KillCFG", node)) {
             EconomicSet<Node> unusedNodes = null;
             EconomicSet<Node> unsafeNodes = null;
             Graph.NodeEventScope nodeEventScope = null;
@@ -237,9 +239,9 @@ public class GraphUtil {
                     }
                 });
             }
-            Debug.dump(Debug.VERY_DETAILED_LEVEL, node.graph(), "Before killCFG %s", node);
+            debug.dump(DebugContext.VERY_DETAILED_LEVEL, node.graph(), "Before killCFG %s", node);
             killCFGInner(node);
-            Debug.dump(Debug.VERY_DETAILED_LEVEL, node.graph(), "After killCFG %s", node);
+            debug.dump(DebugContext.VERY_DETAILED_LEVEL, node.graph(), "After killCFG %s", node);
             if (Graph.Options.VerifyGraalGraphEdges.getValue(options)) {
                 EconomicSet<Node> newUnsafeNodes = collectUnsafeNodes(node.graph());
                 newUnsafeNodes.removeAll(unsafeNodes);
@@ -257,7 +259,7 @@ public class GraphUtil {
                 assert unusedNodes.isEmpty() : "New unused nodes: " + unusedNodes;
             }
         } catch (Throwable t) {
-            throw Debug.handle(t);
+            throw debug.handle(t);
         }
     }
 

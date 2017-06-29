@@ -25,10 +25,12 @@
 package com.oracle.truffle.api.impl;
 
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.impl.Accessor.InstrumentSupport;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -179,8 +181,20 @@ public abstract class TVMCI {
      *
      * @since 0.27
      */
-    protected OptionDescriptors getCompilerOptions() {
+    protected OptionDescriptors getCompilerOptionDescriptors() {
         return OptionDescriptors.EMPTY;
+    }
+
+    /**
+     * Invoked when a call target is invoked to find out its option values.
+     * {@link OptionValues#getDescriptors()} must match the value returned by
+     * {@link #getCompilerOptionDescriptors()}.
+     *
+     * @since 0.27
+     */
+    protected OptionValues getCompilerOptionValues(RootNode rootNode) {
+        EngineSupport engine = Accessor.engineAccess();
+        return engine != null ? engine.getCompilerOptionValues(rootNode) : null;
     }
 
     /**
