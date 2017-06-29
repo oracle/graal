@@ -257,16 +257,24 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
     public void beginGroup(DebugContext debug, String name, String shortName, ResolvedJavaMethod method, int bci, Map<Object, Object> properties) throws IOException {
     }
 
+    private StructuredGraph currentGraph;
+    private Path currentDirectory;
+
+    private Path getDirectory(StructuredGraph graph) throws IOException {
+        if (graph == currentGraph) {
+            return currentDirectory;
+        }
+        currentDirectory = GraalDebugHandlersFactory.createDumpPath(graph.getOptions(), graph, "graph-strings", true);
+        currentGraph = graph;
+        return currentDirectory;
+    }
+
     @Override
     public void print(DebugContext debug, Graph graph, Map<Object, Object> properties, int id, String format, Object... args) throws IOException {
         if (graph instanceof StructuredGraph) {
             OptionValues options = graph.getOptions();
             StructuredGraph structuredGraph = (StructuredGraph) graph;
-            Path outDirectory = GraalDebugHandlersFactory.createDumpFilePath(options, structuredGraph, "graph-strings", true);
-            if (!outDirectory.endsWith("graph-strings")) {
-                GraalDebugHandlersFactory.createDumpFilePath(options, structuredGraph, "graph-strings", true);
-            }
-
+            Path outDirectory = getDirectory(structuredGraph);
             String title = String.format("%03d-%s.txt", id, String.format(format, simplifyClassArgs(args)));
             Path filePath = outDirectory.resolve(sanitizedFileName(title));
             try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(filePath.toFile())))) {

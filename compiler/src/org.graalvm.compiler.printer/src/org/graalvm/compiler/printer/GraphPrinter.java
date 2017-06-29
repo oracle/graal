@@ -167,9 +167,6 @@ interface GraphPrinter extends Closeable {
                 res[i] = arg;
             }
         }
-        System.out.println(Arrays.toString(args));
-        System.out.println(Arrays.toString(res));
-        System.out.println("------------------------------------");
         return res;
     }
 
