@@ -35,6 +35,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Instrumentable;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
@@ -256,6 +257,11 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
     public boolean needsBranchProfiling() {
         // we can't use branch profiling because the control flow happens via exception handling
         return false;
+    }
+
+    @Override
+    protected boolean isTaggedWith(Class<?> tag) {
+        return tag == StandardTags.StatementTag.class || tag == StandardTags.CallTag.class || super.isTaggedWith(tag);
     }
 
     public static final class LLVMSubstitutionInvokeNode extends LLVMInvokeNodeImpl {
