@@ -26,4 +26,6 @@ package com.oracle.truffle.api.interop.java;
 
 interface JavaMethodDesc {
     String getName();
+
+    JavaMethodDesc[] getOverloads();
 }

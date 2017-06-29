@@ -745,7 +745,7 @@ public class JavaInteropTest {
         assertTrue(KeyInfo.isInvocable(keyInfo));
     }
 
-    static final class TestJavaObject {
+    public static final class TestJavaObject {
         public int aField = 10;
     }
 

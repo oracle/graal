@@ -34,10 +34,12 @@ class OverloadedMethodDesc implements JavaMethodDesc {
         assert overloads.length >= 2;
     }
 
+    @Override
     public SingleMethodDesc[] getOverloads() {
         return overloads;
     }
 
+    @Override
     public String getName() {
         return getOverloads()[0].getName();
     }

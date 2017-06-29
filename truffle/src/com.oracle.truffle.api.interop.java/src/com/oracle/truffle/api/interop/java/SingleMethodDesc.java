@@ -28,6 +28,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 
 abstract class SingleMethodDesc implements JavaMethodDesc {
@@ -52,14 +53,24 @@ abstract class SingleMethodDesc implements JavaMethodDesc {
         return getReflectionMethod().getName();
     }
 
+    public JavaMethodDesc[] getOverloads() {
+        return new JavaMethodDesc[]{this};
+    }
+
     public abstract Object invoke(Object receiver, Object[] arguments) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException, InstantiationException;
 
     static SingleMethodDesc unreflect(Method reflectionMethod) {
+        assert isAccessible(reflectionMethod);
         return new SingleMethodDesc.ConcreteMethod(reflectionMethod);
     }
 
     static SingleMethodDesc unreflect(Constructor<?> reflectionConstructor) {
+        assert isAccessible(reflectionConstructor);
         return new SingleMethodDesc.ConcreteConstructor(reflectionConstructor);
+    }
+
+    static boolean isAccessible(Executable method) {
+        return Modifier.isPublic(method.getModifiers()) && Modifier.isPublic(method.getDeclaringClass().getModifiers());
     }
 
     @Override

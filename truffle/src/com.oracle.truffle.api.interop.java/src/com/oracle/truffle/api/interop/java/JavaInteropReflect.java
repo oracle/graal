@@ -58,107 +58,85 @@ final class JavaInteropReflect {
     @CompilerDirectives.TruffleBoundary
     static Object readField(JavaObject object, String name) throws NoSuchFieldError, SecurityException, IllegalArgumentException, IllegalAccessException {
         Object obj = object.obj;
-        final boolean onlyStatic = obj == null;
+        final boolean onlyStatic = object.isClass();
         JavaClassDesc classDesc = JavaClassDesc.forClass(object.clazz);
-        Field field = onlyStatic ? classDesc.lookupStaticField(name) : classDesc.lookupField(name);
+        Field field = classDesc.lookupField(name, onlyStatic);
         if (field != null) {
             Object val = field.get(obj);
             return JavaInterop.toGuestValue(val, object.languageContext);
         } else {
-            JavaMethodDesc method = onlyStatic ? classDesc.lookupStaticMethod(name) : classDesc.lookupMethod(name);
+            JavaMethodDesc method = classDesc.lookupMethod(name, onlyStatic);
             if (method != null) {
                 return new JavaFunctionObject(method, obj, object.languageContext);
             }
 
-            int signature = name.indexOf("__");
-            if (signature != -1) {
-                for (Method m : object.clazz.getMethods()) {
-                    final boolean isStatic = (m.getModifiers() & Modifier.STATIC) != 0;
-                    if (onlyStatic != isStatic) {
-                        continue;
-                    }
-                    if (name.startsWith(m.getName())) {
-                        final String fullName = jniName(m);
-                        if (fullName.equals(name)) {
-                            return new JavaFunctionObject(SingleMethodDesc.unreflect(m), obj);
-                        }
-                    }
+            if (isJNIName(name)) {
+                method = classDesc.lookupMethodByJNIName(name, onlyStatic);
+                if (method != null) {
+                    return new JavaFunctionObject(method, obj, object.languageContext);
                 }
             }
+
             if (onlyStatic) {
-                // no support for nonstatic type members now
-                for (Class<?> t : object.clazz.getClasses()) {
-                    final boolean isStatic = isStaticTypeOrInterface(t);
-                    if (!isStatic) {
-                        continue;
-                    }
-                    if (t.getSimpleName().equals(name)) {
-                        return new JavaObject(null, t);
-                    }
+                Class<?> clazz = object.clazz;
+                JavaObject innerclass = lookupInnerClass(clazz, name);
+                if (innerclass != null) {
+                    return innerclass;
                 }
             }
             throw UnknownIdentifierException.raise(name);
         }
     }
 
-    static boolean isField(JavaObject object, String name) {
-        Object obj = object.obj;
-        final boolean onlyStatic = obj == null;
-        try {
-            final Field field = object.clazz.getField(name);
-            final boolean isStatic = (field.getModifiers() & Modifier.STATIC) != 0;
-            if (onlyStatic != isStatic) {
-                return false;
+    static JavaObject lookupInnerClass(Class<?> clazz, String name) {
+        if (Modifier.isPublic(clazz.getModifiers())) {
+            for (Class<?> t : clazz.getClasses()) {
+                // no support for non-static type members now
+                if (isStaticTypeOrInterface(t) && t.getSimpleName().equals(name)) {
+                    return new JavaObject(null, t);
+                }
             }
-            return true;
-        } catch (NoSuchFieldException | SecurityException ex) {
-            return false;
         }
+        return null;
+    }
+
+    static boolean isField(JavaObject object, String name) {
+        JavaClassDesc classDesc = JavaClassDesc.forClass(object.clazz);
+        final boolean onlyStatic = object.isClass();
+        return classDesc.lookupField(name, onlyStatic) != null;
     }
 
     static boolean isMethod(JavaObject object, String name) {
-        Object obj = object.obj;
-        final boolean onlyStatic = obj == null;
-        for (Method m : object.clazz.getMethods()) {
-            final boolean isStatic = (m.getModifiers() & Modifier.STATIC) != 0;
-            if (onlyStatic != isStatic) {
-                continue;
-            }
-            if (m.getName().equals(name)) {
-                return true;
-            }
-        }
-        return false;
+        JavaClassDesc classDesc = JavaClassDesc.forClass(object.clazz);
+        final boolean onlyStatic = object.isClass();
+        return classDesc.lookupMethod(name, onlyStatic) != null;
     }
 
     static boolean isMemberType(JavaObject object, String name) {
-        Object obj = object.obj;
-        final boolean onlyStatic = obj == null;
+        final boolean onlyStatic = object.isClass();
         if (!onlyStatic) {
-            // no support for nonstatic members now
+            // no support for non-static members now
             return false;
         }
-        for (Class<?> c : object.clazz.getClasses()) {
-            if (isStaticTypeOrInterface(c) && name.equals(c.getSimpleName())) {
-                return true;
+        Class<?> clazz = object.clazz;
+        if (Modifier.isPublic(clazz.getModifiers())) {
+            for (Class<?> t : clazz.getClasses()) {
+                if (isStaticTypeOrInterface(t) && t.getSimpleName().equals(name)) {
+                    return true;
+                }
             }
         }
         return false;
     }
 
-    static boolean isJNIMethod(JavaObject object, String name) {
-        Object obj = object.obj;
-        final boolean onlyStatic = obj == null;
-        for (Method m : object.clazz.getMethods()) {
-            final boolean isStatic = (m.getModifiers() & Modifier.STATIC) != 0;
-            if (onlyStatic != isStatic) {
-                continue;
-            }
-            if (jniName(m).equals(name)) {
-                return true;
-            }
-        }
-        return false;
+    static boolean isJNIMethod(JavaObject object, String jniName) {
+        JavaClassDesc classDesc = JavaClassDesc.forClass(object.clazz);
+        final boolean onlyStatic = object.isClass();
+        return (classDesc.lookupMethodByJNIName(jniName, onlyStatic)) != null;
+    }
+
+    static boolean isJNIName(String name) {
+        return name.contains("__");
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -202,11 +180,9 @@ final class JavaInteropReflect {
 
     @CompilerDirectives.TruffleBoundary
     static Field findField(JavaObject receiver, String name) {
-        try {
-            return receiver.clazz.getField(name);
-        } catch (NoSuchFieldException ex) {
-            return null;
-        }
+        JavaClassDesc classDesc = JavaClassDesc.forClass(receiver.clazz);
+        final boolean onlyStatic = receiver.isClass();
+        return classDesc.lookupField(name, onlyStatic);
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -254,43 +230,27 @@ final class JavaInteropReflect {
 
     static boolean isStaticTypeOrInterface(Class<?> t) {
         // anonymous classes are private, they should be eliminated elsewhere
-        return t.isInterface() || t.isEnum() || ((t.getModifiers() & Modifier.STATIC) > 0);
+        return Modifier.isPublic(t.getModifiers()) && (t.isInterface() || t.isEnum() || Modifier.isStatic(t.getModifiers()));
     }
 
     @CompilerDirectives.TruffleBoundary
-    static String[] findUniquePublicMemberNames(Class<?> c, boolean onlyInstance, boolean includeInternal) throws SecurityException {
-        Class<?> clazz = c;
-        while ((clazz.getModifiers() & Modifier.PUBLIC) == 0) {
-            clazz = clazz.getSuperclass();
-        }
-        final Field[] fields = clazz.getFields();
+    static String[] findUniquePublicMemberNames(Class<?> clazz, boolean onlyInstance, boolean includeInternal) throws SecurityException {
+        JavaClassDesc classDesc = JavaClassDesc.forClass(clazz);
         Collection<String> names = new LinkedHashSet<>();
-        for (Field field : fields) {
-            if (((field.getModifiers() & Modifier.STATIC) == 0) != onlyInstance) {
-                continue;
-            }
-            names.add(field.getName());
-        }
-        final Method[] methods = clazz.getMethods();
-        for (Method method : methods) {
-            if (method.getDeclaringClass() == Object.class) {
-                continue;
-            }
-            if (((method.getModifiers() & Modifier.STATIC) == 0) != onlyInstance) {
-                continue;
-            }
-            names.add(method.getName());
-            if (includeInternal) {
-                names.add(jniName(method));
-            }
+        names.addAll(classDesc.getFieldNames(!onlyInstance));
+        names.addAll(classDesc.getMethodNames(!onlyInstance));
+        if (includeInternal) {
+            names.addAll(classDesc.getJNIMethodNames(!onlyInstance));
         }
         if (!onlyInstance) {
-            // no support for nonstatic member types now
-            for (Class<?> t : clazz.getClasses()) {
-                if (!isStaticTypeOrInterface(t)) {
-                    continue;
+            if (Modifier.isPublic(clazz.getModifiers())) {
+                // no support for non-static member types now
+                for (Class<?> t : clazz.getClasses()) {
+                    if (!isStaticTypeOrInterface(t)) {
+                        continue;
+                    }
+                    names.add(t.getSimpleName());
                 }
-                names.add(t.getSimpleName());
             }
         }
         return names.toArray(new String[0]);
@@ -610,7 +570,7 @@ final class JavaInteropReflect {
         return ToJavaNode.toJava(ret, TypeAndClass.forReturnType(method));
     }
 
-    private static String jniName(Method m) {
+    static String jniName(Method m) {
         StringBuilder sb = new StringBuilder();
         noUnderscore(sb, m.getName()).append("__");
         appendType(sb, m.getReturnType());

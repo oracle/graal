@@ -258,7 +258,7 @@ class JavaObjectMessageResolution {
                     fields[i++] = Objects.toString(key, null);
                 }
             } else {
-                fields = TruffleOptions.AOT ? new String[0] : JavaInteropReflect.findUniquePublicMemberNames(receiver.clazz, receiver.obj != null, includeInternal);
+                fields = TruffleOptions.AOT ? new String[0] : JavaInteropReflect.findUniquePublicMemberNames(receiver.clazz, !receiver.isClass(), includeInternal);
             }
             return JavaInterop.asTruffleObject(fields);
         }
@@ -312,7 +312,7 @@ class JavaObjectMessageResolution {
             if (JavaInteropReflect.isMethod(receiver, name)) {
                 return 0b1111;
             }
-            if (name.contains("__")) {
+            if (JavaInteropReflect.isJNIName(name)) {
                 if (JavaInteropReflect.isJNIMethod(receiver, name)) {
                     return 0b11111;
                 }

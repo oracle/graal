@@ -29,6 +29,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -52,6 +54,7 @@ final class JavaClassDesc {
 
     private final Class<?> type;
     private volatile Members members;
+    private volatile JNIMembers jniMembers;
 
     JavaClassDesc(Class<?> type) {
         this.type = type;
@@ -257,6 +260,28 @@ final class JavaClassDesc {
         }
     }
 
+    private static class JNIMembers {
+        final Map<String, JavaMethodDesc> methods;
+        final Map<String, JavaMethodDesc> staticMethods;
+
+        JNIMembers(Members members) {
+            this.methods = collectJNINamedMethods(members.methods);
+            this.staticMethods = collectJNINamedMethods(members.staticMethods);
+        }
+
+        private static Map<String, JavaMethodDesc> collectJNINamedMethods(Map<String, JavaMethodDesc> methods) {
+            Map<String, JavaMethodDesc> jniMethods = new HashMap<>();
+            for (JavaMethodDesc method : methods.values()) {
+                for (JavaMethodDesc m : method.getOverloads()) {
+                    if (m instanceof SingleMethodDesc.ConcreteMethod) {
+                        jniMethods.put(JavaInteropReflect.jniName(((SingleMethodDesc.ConcreteMethod) m).getReflectionMethod()), m);
+                    }
+                }
+            }
+            return jniMethods;
+        }
+    }
+
     private Members getMembers() {
         Members m = members;
         if (m == null) {
@@ -264,6 +289,19 @@ final class JavaClassDesc {
                 m = members;
                 if (m == null) {
                     members = m = new Members(type);
+                }
+            }
+        }
+        return m;
+    }
+
+    private JNIMembers getJNIMembers() {
+        JNIMembers m = jniMembers;
+        if (m == null) {
+            synchronized (this) {
+                m = jniMembers;
+                if (m == null) {
+                    jniMembers = m = new JNIMembers(getMembers());
                 }
             }
         }
@@ -288,6 +326,22 @@ final class JavaClassDesc {
      */
     public JavaMethodDesc lookupStaticMethod(String name) {
         return getMembers().staticMethods.get(name);
+    }
+
+    public JavaMethodDesc lookupMethod(String name, boolean onlyStatic) {
+        return onlyStatic ? lookupStaticMethod(name) : lookupMethod(name);
+    }
+
+    public JavaMethodDesc lookupMethodByJNIName(String jniName, boolean onlyStatic) {
+        return onlyStatic ? getJNIMembers().staticMethods.get(jniName) : getJNIMembers().methods.get(jniName);
+    }
+
+    public Collection<String> getMethodNames(boolean onlyStatic) {
+        return Collections.unmodifiableCollection((onlyStatic ? getMembers().staticMethods : getMembers().methods).keySet());
+    }
+
+    public Collection<String> getJNIMethodNames(boolean onlyStatic) {
+        return Collections.unmodifiableCollection((onlyStatic ? getJNIMembers().staticMethods : getJNIMembers().methods).keySet());
     }
 
     /**
@@ -317,6 +371,14 @@ final class JavaClassDesc {
      */
     public Field lookupStaticField(String name) {
         return getMembers().staticFields.get(name);
+    }
+
+    public Field lookupField(String name, boolean onlyStatic) {
+        return onlyStatic ? lookupStaticField(name) : lookupField(name);
+    }
+
+    public Collection<String> getFieldNames(boolean onlyStatic) {
+        return Collections.unmodifiableCollection((onlyStatic ? getMembers().staticFields : getMembers().fields).keySet());
     }
 
     @Override
