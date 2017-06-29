@@ -35,7 +35,7 @@ final class LibFFILibrary implements TruffleObject {
     static final LibFFILibrary DEFAULT = new LibFFILibrary(0);
 
     protected final long handle;
-    private Map<String, ? extends TruffleObject> symbols;
+    private Map<String, LibFFIFunction> symbols;
 
     static LibFFILibrary create(long handle) {
         assert handle != 0;
@@ -57,9 +57,12 @@ final class LibFFILibrary implements TruffleObject {
         return LibFFILibraryMessageResolutionForeign.ACCESS;
     }
 
-    LibFFILibrary register(Map<String, ? extends TruffleObject> functions) {
-        assert this.symbols == null;
-        this.symbols = functions;
+    LibFFILibrary register(Map<String, LibFFIFunction> functions) {
+        if (this.symbols == null) {
+            this.symbols = functions;
+        } else {
+            this.symbols.putAll(functions);
+        }
         return this;
     }
 

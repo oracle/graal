@@ -59,6 +59,10 @@ public class StringAsInterfaceNFITest {
         String strdup(String orig);
     }
 
+    interface Strndup {
+        String strndup(String orig, int len);
+    }
+
     @Test
     public void testDuplicateAString() {
         String copy = stdlib.strdup("Ahoj");
@@ -70,4 +74,17 @@ public class StringAsInterfaceNFITest {
         long mem = stdlib.malloc(512);
         stdlib.free(mem);
     }
+
+    @Test
+    public void canViewDefaultLibraryAsAnotherInterface() {
+        Strndup second = engine.eval(Source.newBuilder("default {\n" + //
+                        "  strndup(string, UINT32):string;\n" + //
+                        "}" //
+        ).name("(load default 2nd time)").mimeType("application/x-native").build()).as(Strndup.class);
+
+        String copy = stdlib.strdup("Hello World!");
+        String hello = second.strndup(copy, 5);
+        assertEquals("Hello", hello);
+    }
+
 }
