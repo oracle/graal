@@ -44,6 +44,7 @@ final class FinalIntMap {
             if (current.key == key) {
                 return current.value;
             }
+            current = current.next;
         }
         return -1;
     }
