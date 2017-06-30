@@ -158,7 +158,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
                     return;
                 }
                 g.createElementForNode(node);
-                g.setNodeProperty(node, "name", node.toString());
+                g.setNodeProperty(node, "label", node.toString());
                 for (DirectCallNode callNode : NodeUtil.findAllNodeInstances(((RootCallTarget) node).getRootNode(), DirectCallNode.class)) {
                     CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
                     if (inlinedCallTarget instanceof OptimizedCallTarget && callNode instanceof OptimizedDirectCallNode) {
