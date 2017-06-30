@@ -213,7 +213,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Engine getEngineImpl();
 
-        public abstract void close();
+        public abstract void close(boolean interuptExecution);
 
     }
 
@@ -251,7 +251,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean isInternalError();
 
-        public abstract boolean isTimeout();
+        public abstract boolean isCancelled();
 
         public abstract boolean isExit();
 

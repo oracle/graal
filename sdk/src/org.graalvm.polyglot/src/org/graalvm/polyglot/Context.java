@@ -38,12 +38,10 @@ public final class Context implements AutoCloseable {
 
     final AbstractContextImpl impl;
     private final Language primaryLanguage;
-    private final boolean polyglot;
 
-    Context(AbstractContextImpl impl, Language language, boolean polyglot) {
+    Context(AbstractContextImpl impl, Language language) {
         this.impl = impl;
         this.primaryLanguage = language;
-        this.polyglot = polyglot;
     }
 
     /**
@@ -139,24 +137,45 @@ public final class Context implements AutoCloseable {
      * Closes this context and frees up potentially allocated native resources. Languages might not
      * be able to free all native resources allocated by a context automatically, therefore it is
      * recommended to close contexts after use. If the source {@link #getEngine() engine} is closed
-     * then this context is closed automatically.
+     * then this context is closed automatically. If a context got cancelled then the cancelled
+     * thread will throw a {@link PolyglotException} where the
+     * {@link PolyglotException#isCancelled() cancelled} flag is set. Please note that cancelling a
+     * single context can negatively affect the performance of other executing contexts of the same
+     * engine while the cancellation request is processed.
      * <p>
      * If internal errors occur during closing of the language then they are printed to the
      * configured {@link Builder#setErr(OutputStream) error output stream}. If a context was closed
      * then all its methods will throw an {@link IllegalStateException} when invoked. If an an
      * attempt to close this context was successful then consecutive calls to close have no effect.
      *
-     * @throws IllegalStateException If the context was created by a PolyglotContext.
-     * @see PolyglotContext#close() To close a polyglot context.
+     * @param cancelIfExecuting if <code>true</code> then currently executing contexts will be
+     *            cancelled, else an {@link IllegalStateException} is thrown.
+     * @see Engine#close() To close an engine.
+     * @since 1.0
+     */
+    public void close(boolean cancelIfRunning) {
+        impl.close(cancelIfRunning);
+    }
+
+    /**
+     * Closes this context and frees up potentially allocated native resources. Languages might not
+     * be able to free all native resources allocated by a context automatically, therefore it is
+     * recommended to close contexts after use. If the source {@link #getEngine() engine} is closed
+     * then this context is closed automatically. If the context is currently beeing executed on
+     * another thread then an {@link IllegalStateException} is thrown. To close currently executing
+     * contexts see {@link #close(boolean)}.
+     * <p>
+     * If internal errors occur during closing of the language then they are printed to the
+     * configured {@link Builder#setErr(OutputStream) error output stream}. If a context was closed
+     * then all its methods will throw an {@link IllegalStateException} when invoked. If an an
+     * attempt to close this context was successful then consecutive calls to close have no effect.
+     *
+     * @throws IllegalStateException if the context is currently executing on another thread.
      * @see Engine#close() To close an engine.
      * @since 1.0
      */
     public void close() {
-        if (polyglot) {
-            throw new IllegalStateException("Context instances that originate from a PolyglotContext cannot be closed individually. Use PolyglotContext.close() instead.");
-        } else {
-            impl.close();
-        }
+        close(false);
     }
 
     public static final class Builder {

@@ -245,7 +245,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
     }
 
     @Override
-    public boolean isTimeout() {
+    public boolean isCancelled() {
         return timeout;
     }
 

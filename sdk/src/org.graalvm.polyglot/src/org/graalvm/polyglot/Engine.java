@@ -50,18 +50,24 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
 
 /**
- * An engine represents an the execution environment for polyglot applications. Using an engine
- * contexts can be created. Contexts can either be single language contexts that are
- * {@link Language#createContext() created} using a {@link Language language} or polyglot contexts
- * that are {@link Engine#createPolyglotContext() created} from the engine. Contexts allow to
- * {@link Context#eval(Source) evaluate} guest language code directly and polylgot contexts require
- * to evaluate code code should be run in.
+ * Represents an execution engine for polyglot applications. An engine consists of
+ * {@link #getLanguages() guest languages} and {@link #getInstruments() instruments}. An engine can
+ * be used to {@link #createPolyglotContext() create} {@link Context execution contexts}.
+ * <p>
+ * An instrument alters and/or monitors the execution of guest language source code. Common examples
+ * for instruments are debuggers, profilers or monitoring tools. Instruments are enabled via
+ * {@link Instrument#getOptions() options} passed to the {@link Builder#setOption(String, String)
+ * engine} when it is constructed.
  *
+ * @see Context
+ * @see Value
+ * @see Language
+ * @see Instrument
+ *
+ * @since 1.0
  */
 // TODO document that the current context class loader is captured when the engine is created.
 public final class Engine implements AutoCloseable {
-
-    public static final String OPTION_COMPILER_TRACE_COMPILATION = "compiler.TraceCompilation";
 
     final AbstractEngineImpl impl;
 
@@ -117,18 +123,6 @@ public final class Engine implements AutoCloseable {
         return impl.detectLanguage(source.impl);
     }
 
-    // TODO implement timeout features
-
-    @SuppressWarnings("unused")
-    void startTimeout(long timeout, TimeUnit unit) {
-    }
-
-    void resetTimeout() {
-    }
-
-    void clearTimeout() {
-    }
-
     /**
      * Returns all options available for the engine. The engine offers options with the following
      * {@link OptionDescriptor#getGroup() groups}:
@@ -177,14 +171,32 @@ public final class Engine implements AutoCloseable {
      * Closes this engine and frees up allocated native resources. If there are still open context
      * instances that were created using this engine and they are currently not beeing executed then
      * all they will be closed automatically. If an an attempt to close the engine was successful
+     * then consecutive calls to close have no effect. If a context got cancelled then the cancelled
+     * thread will throw a {@link PolyglotException} where the
+     * {@link PolyglotException#isCancelled() cancelled} flag is set.
+     *
+     * @param cancelIfExecuting if <code>true</code> then currently executing contexts will be
+     *            cancelled, else an {@link IllegalStateException} is thrown.
+     * @since 1.0
+     */
+    public void close(boolean cancelIfExecuting) {
+        impl.ensureClosed(false);
+    }
+
+    /**
+     * Closes this engine and frees up allocated native resources. If there are still open context
+     * instances that were created using this engine and they are currently not beeing executed then
+     * all they will be closed automatically. If an an attempt to close the engine was successful
      * then consecutive calls to close have no effect.
      *
      * @throws IllegalStateException if there currently executing open context instances.
+     * @see #close(boolean)
+     * @see Engine#close()
      * @since 1.0
      */
     @Override
     public void close() {
-        impl.ensureClosed(false);
+        close(false);
     }
 
     public static Engine create() {
@@ -328,7 +340,7 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public Context newContext(AbstractContextImpl impl, Language languageImpl) {
-            return new Context(impl, languageImpl, false);
+            return new Context(impl, languageImpl);
         }
 
         @Override

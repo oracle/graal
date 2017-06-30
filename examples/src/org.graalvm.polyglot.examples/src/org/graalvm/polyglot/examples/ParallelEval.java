@@ -17,7 +17,8 @@ public class ParallelEval {
     public static void main(String[] args) throws InterruptedException, ExecutionException {
         ExecutorService service = Executors.newFixedThreadPool(1);
         Engine engine = Engine.create();
-        Future<Integer> future = service.submit(() -> engine.getLanguage("js").createContext().eval("21 + 21").asInt());
+        Future<Integer> future = service.submit(
+                        () -> engine.getLanguage("js").createContext().eval("21 + 21").asInt());
 
         // do work while JavaScript executes
 
