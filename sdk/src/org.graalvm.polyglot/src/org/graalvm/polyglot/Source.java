@@ -347,7 +347,7 @@ public final class Source {
         return new Builder(source);
     }
 
-    public static Source create(String source) {
+    public static Source create(CharSequence source) {
         return newBuilder(source).build();
     }
 
