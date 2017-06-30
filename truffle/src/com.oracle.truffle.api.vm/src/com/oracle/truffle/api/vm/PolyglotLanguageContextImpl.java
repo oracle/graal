@@ -40,7 +40,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
-class PolyglotLanguageContextImpl implements VMObject {
+final class PolyglotLanguageContextImpl implements VMObject {
 
     private static final String[] EMPTY_STRING_ARRAY = new String[0];
 
@@ -51,6 +51,7 @@ class PolyglotLanguageContextImpl implements VMObject {
     final OptionValues optionValues;
     final Value nullValue;
     final String[] applicationArguments;
+    volatile boolean disposed;
     volatile Env env;
 
     PolyglotLanguageContextImpl(PolyglotContextImpl context, PolyglotLanguageImpl language, OptionValues optionValues, String[] applicationArguments) {
@@ -61,6 +62,31 @@ class PolyglotLanguageContextImpl implements VMObject {
 
         PolyglotValueImpl.createDefaultValueCaches(this);
         nullValue = toHostValue(toGuestValue(null));
+    }
+
+    Object enter() {
+        return context.enter();
+    }
+
+    void leave(Object prev) {
+        context.leave(prev);
+    }
+
+    void dispose() {
+        if (env != null) {
+            synchronized (this) {
+                if (env != null) {
+                    try {
+                        checkAccess();
+                        LANGUAGE.dispose(env);
+                        env = null;
+                    } catch (Throwable t) {
+                        throw PolyglotImpl.wrapGuestException(this, t);
+                    }
+                }
+                disposed = true;
+            }
+        }
     }
 
     void ensureInitialized() {
@@ -85,6 +111,9 @@ class PolyglotLanguageContextImpl implements VMObject {
     }
 
     private void checkAccess() {
+        if (disposed) {
+            throw new IllegalStateException(String.format("Context is already disposed for language %s.", language.getId()));
+        }
         boolean accessPermitted = language.isHost() || language.cache.isInternal() || context.singlePublicLanguage == null || context.singlePublicLanguage == language;
         if (!accessPermitted) {
             throw new IllegalStateException(String.format("Access to language '%s' is not permitted. ", language.getId()));

@@ -112,7 +112,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
 
     @Override
     protected HostContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
-        return new HostContext(env, PolyglotImpl.currentContext().getHostContext());
+        return new HostContext(env, PolyglotContextImpl.current().getHostContext());
     }
 
     @Override

@@ -216,6 +216,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Engine getEngineImpl();
 
+        public abstract void close();
+
     }
 
     public abstract static class AbstractEngineImpl {
@@ -230,7 +232,7 @@ public abstract class AbstractPolyglotImpl {
 
         // Runtime
 
-        public abstract void ensureClosed();
+        public abstract void ensureClosed(boolean ignoreCloseFailure);
 
         public abstract Map<String, Instrument> getInstruments();
 

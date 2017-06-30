@@ -35,14 +35,16 @@ import java.util.Objects;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 
-public final class Context {
+public final class Context implements AutoCloseable {
 
     final AbstractContextImpl impl;
     private final Language language;
+    private final boolean polyglot;
 
-    Context(AbstractContextImpl impl, Language language) {
+    Context(AbstractContextImpl impl, Language language, boolean polyglot) {
         this.impl = impl;
         this.language = language;
+        this.polyglot = polyglot;
     }
 
     public Value eval(Source source) {
@@ -78,6 +80,33 @@ public final class Context {
 
     public Language getLanguage() {
         return language;
+    }
+
+    /**
+     * Closes this context and frees up potentially allocated native resources. Languages might not
+     * be able to free all native resources allocated by a context automatically, therefore it is
+     * recommended to close contexts after use. If the source {@link #getEngine() engine} is closed
+     * then this context is closed automatically.
+     * <p>
+     * Context instances that were created by a {@link PolyglotContext polylgot context} instance
+     * cannot be closed individually. Instead the polyglot context should be
+     * {@link PolyglotContext#close() closed}. If internal errors occur during closing of the
+     * language then they are printed to the configured {@link Builder#setErr(OutputStream) error
+     * output stream}. If a context was closed then all its methods will throw an
+     * {@link IllegalStateException} when invoked. If an an attempt to close this context was
+     * successful then consecutive calls to close have no effect.
+     *
+     * @throws IllegalStateException If the context was created by a PolyglotContext.
+     * @see PolyglotContext#close() To close a polyglot context.
+     * @see Engine#close() To close an engine.
+     * @since 1.0
+     */
+    public void close() {
+        if (polyglot) {
+            throw new IllegalStateException("Context instances that originate from a PolyglotContext cannot be closed individually. Use PolyglotContext.close() instead.");
+        } else {
+            impl.close();
+        }
     }
 
     public static final class Builder {
