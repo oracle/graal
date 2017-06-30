@@ -63,7 +63,7 @@ public class OverloadedTest {
 
     @Test
     public void threeProperties() {
-        TruffleObject ret = (TruffleObject) JavaInteropTest.sendKeys().call(obj);
+        TruffleObject ret = JavaInteropTest.sendKeys(obj);
         List<?> list = JavaInterop.asJavaObject(List.class, ret);
         assertEquals("Just one (overloaded) property: " + list, 1, list.size());
         assertEquals("x", list.get(0));

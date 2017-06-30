@@ -25,7 +25,6 @@
 package com.oracle.truffle.api.interop.java.test;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -40,7 +39,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Callable;
 
 import org.junit.Test;
 
@@ -207,9 +205,9 @@ public class TestMemberAccess {
                 if (!KeyInfo.isInvocable(info)) {
                     continue;
                 }
-                assertFalse("Not internal: " + keyName, KeyInfo.isInternal(info));
+                assertTrue("Not internal: " + keyName, !KeyInfo.isInternal(info) || isObjectMethodName(keyName));
                 boolean found = foundKeys.remove(keyName);
-                assertTrue("Non-internal key has been listed before: " + keyName, found);
+                assertTrue("Non-internal key has been listed before: " + keyName, found || isObjectMethodName(keyName));
             } else {
                 assertTrue("Internal: " + keyName, KeyInfo.isInternal(info));
                 foundInternalKeys.add(keyName);
@@ -220,6 +218,21 @@ public class TestMemberAccess {
         assertTrue("All normal keys listed in internal mode too: " + foundKeys, foundKeys.isEmpty());
 
         assertTrue("More than " + count + " real internals: " + foundInternalKeys, foundInternalKeys.size() >= count);
+    }
+
+    private static boolean isObjectMethodName(String name) {
+        switch (name) {
+            case "notify":
+            case "notifyAll":
+            case "wait":
+            case "hashCode":
+            case "equals":
+            case "toString":
+            case "getClass":
+                return true;
+            default:
+                return false;
+        }
     }
 
     @Test
@@ -372,7 +385,7 @@ public class TestMemberAccess {
         TruffleObject clazz = JavaInterop.asTruffleObject(TestConstructorException.class);
         Object testObj = ForeignAccess.sendNew(Message.createNew(0).createNode(), clazz, "test", 42);
         assertTrue(testObj instanceof TruffleObject && JavaInterop.isJavaObject(TestConstructorException.class, (TruffleObject) testObj));
-        assertThrowsExceptionWithCause(() -> ForeignAccess.sendNew(Message.createNew(0).createNode(), clazz, "test"), IOException.class);
+        JavaInteropTest.assertThrowsExceptionWithCause(() -> ForeignAccess.sendNew(Message.createNew(0).createNode(), clazz, "test"), IOException.class);
     }
 
     @Test
@@ -397,20 +410,7 @@ public class TestMemberAccess {
 
     @Test
     public void testMethodThrowsIOException() throws ClassNotFoundException, InteropException {
-        assertThrowsExceptionWithCause(() -> getValueFromMember(TestClass2.class, "methodThrowsIOException"), IOException.class);
-    }
-
-    private static void assertThrowsExceptionWithCause(Callable<?> callable, Class<? extends Exception> exception) {
-        try {
-            callable.call();
-        } catch (Exception e) {
-            for (Throwable cause = e; cause != null; cause = cause.getCause()) {
-                if (cause instanceof IOException) {
-                    return;
-                }
-            }
-        }
-        fail("Expected " + exception.getClass().getSimpleName());
+        JavaInteropTest.assertThrowsExceptionWithCause(() -> getValueFromMember(TestClass2.class, "methodThrowsIOException"), IOException.class);
     }
 
     private void testForValue(String name, Object value) throws ClassNotFoundException, InteropException {
