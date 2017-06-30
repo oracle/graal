@@ -36,7 +36,9 @@ import java.util.List;
 
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.CounterKey;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Scope;
 import org.graalvm.compiler.debug.DebugDumpHandler;
 import org.graalvm.compiler.debug.DebugHandler;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -172,7 +174,7 @@ public class DebugContextTest {
         OptionValues options = new OptionValues(map);
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         DebugContext debug = DebugContext.create(options, NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, new PrintStream(baos), DebugHandlersFactory.LOADER);
-        Exception e = new Exception();
+        Exception e = new Exception("testEnabledSandbox");
         String scopeName = "";
         try {
             try (DebugContext.Scope d = debug.sandbox("TestExceptionHandling", debug.getConfig())) {
@@ -184,7 +186,7 @@ public class DebugContextTest {
             }
         } catch (Throwable t) {
             // The exception object should propagate all the way out through
-            // a disabled sandbox scope
+            // a enabled sandbox scope
             Assert.assertEquals(e, t);
         }
         String logged = baos.toString();
@@ -199,8 +201,9 @@ public class DebugContextTest {
         // Configure with an option that enables scopes
         map.put(DebugOptions.DumpOnError, true);
         OptionValues options = new OptionValues(map);
-        DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
-        Exception e = new Exception();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        DebugContext debug = DebugContext.create(options, NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, new PrintStream(baos), DebugHandlersFactory.LOADER);
+        Exception e = new Exception("testDisabledSandbox");
         try {
             // Test a disabled sandbox scope
             try (DebugContext.Scope d = debug.sandbox("TestExceptionHandling", null)) {
@@ -214,6 +217,8 @@ public class DebugContextTest {
             // a disabled sandbox scope
             Assert.assertEquals(e, t);
         }
+        String logged = baos.toString();
+        Assert.assertTrue(logged, logged.isEmpty());
     }
 
     /**
@@ -223,7 +228,6 @@ public class DebugContextTest {
     @Test
     public void testInvariantChecking() throws InterruptedException {
         Assume.assumeTrue(Assertions.ENABLED);
-
         EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
         // Configure with an option that enables counters
         map.put(DebugOptions.Counters, "");
@@ -246,5 +250,32 @@ public class DebugContextTest {
         thread.join();
 
         Assert.assertNotNull("Expected thread to throw AssertionError", result[0]);
+    }
+
+    @Test
+    public void testDisableIntercept() {
+        EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
+        // Configure with an option that enables scopes
+        map.put(DebugOptions.DumpOnError, true);
+        OptionValues options = new OptionValues(map);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        DebugContext debug = DebugContext.create(options, NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, new PrintStream(baos), DebugHandlersFactory.LOADER);
+        Exception e = new Exception();
+        try {
+            try (DebugCloseable disabled = debug.disableIntercept(); Scope s1 = debug.scope("ScopeWithDisabledIntercept")) {
+                try (Scope s2 = debug.scope("InnerScopeInheritsDisabledIntercept")) {
+                    throw e;
+                }
+            } catch (Throwable t) {
+                assert e == t;
+                debug.handle(t);
+            }
+        } catch (Throwable t) {
+            // The exception object should propagate all the way out through
+            // an intercept disabled scope
+            Assert.assertEquals(e, t);
+        }
+        String logged = baos.toString();
+        Assert.assertEquals("Exception should not have been intercepted", "", logged);
     }
 }
