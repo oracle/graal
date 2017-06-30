@@ -24,6 +24,7 @@
  */
 package org.graalvm.polyglot;
 
+import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 
@@ -35,34 +36,105 @@ public final class Language {
         this.impl = impl;
     }
 
+    /**
+     * Returns the primary identification string of this language. The language id is used as the
+     * primary way of identifying languages in the polyglot API.
+     *
+     * @since 1.0
+     */
     public String getId() {
         return impl.getId();
     }
 
+    /**
+     * Returns a human readable name of the language.
+     *
+     * @since 1.0
+     */
     public String getName() {
         return impl.getName();
     }
 
+    /**
+     * Retruns a human readable name of the language implementation.
+     *
+     * @since 1.0
+     */
+    public String getImplementationName() {
+        return impl.getImplementationName();
+    }
+
+    /**
+     * Returns version information of the language in an arbitrary language specific format.
+     *
+     * @since 1.0
+     */
     public String getVersion() {
         return impl.getVersion();
     }
 
+    /**
+     * Returns <code>true</code> if a the language is suitable for interactive evaluation of
+     * {@link Source sources}. {@link #interactive() Interactive} languages should be displayed in
+     * interactive environments and presented to the user.
+     *
+     * @since 1.0
+     */
     public boolean isInteractive() {
         return impl.isInteractive();
     }
 
+    /**
+     * Returns <code>true</code> if this language object represents the host language typically
+     * Java.
+     *
+     * @since 1.0
+     */
     public boolean isHost() {
         return impl.isHost();
     }
 
+    /**
+     * Creates a new context with default configuration and this language as primary language. This
+     * is a short-cut method for {@link #createContextBuilder()}.{@link Context.Builder#build()
+     * build()}.
+     *
+     * @since 1.0
+     */
     public Context createContext() {
         return createContextBuilder().build();
     }
 
-    public Context.Builder createContextBuilder() {
-        return new Context.Builder(impl);
+    /**
+     * Creates a new {@link Context.Builder#setPolyglot(boolean) polyglot} context with default
+     * configuration and this language as primary language. This is a short-cut method for
+     * {@link #createContextBuilder()}.{@link Context.Builder#setPolyglot(boolean)
+     * setPolyglot(true)}.{@link Context.Builder#build() build()}.
+     *
+     * @since 1.0
+     */
+    public Context createPolyglotContext() {
+        return createContextBuilder().setPolyglot(true).build();
     }
 
+    /**
+     * Creates a new context builder useful to build a {@link Context context} instance with
+     * customized configuration.
+     *
+     * @since 1.0
+     */
+    public Context.Builder createContextBuilder() {
+        return new Context.Builder(getEngine(), this);
+    }
+
+    /**
+     * Returns the set of options provided by this language. The option descriptor
+     * {@link OptionDescriptor#getName() name} can be used as option when building a new
+     * {@link Engine.Builder#setOption(String, String) engine} or a new
+     * {@link Context.Builder#setOption(String, String) context}.
+     *
+     * @since 1.0
+     */
     public OptionDescriptors getOptions() {
         return impl.getOptions();
     }

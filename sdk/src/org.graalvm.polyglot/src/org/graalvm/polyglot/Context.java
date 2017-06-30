@@ -33,26 +33,77 @@ import java.util.Map;
 import java.util.Objects;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 
 public final class Context implements AutoCloseable {
 
     final AbstractContextImpl impl;
-    private final Language language;
+    private final Language primaryLanguage;
     private final boolean polyglot;
 
     Context(AbstractContextImpl impl, Language language, boolean polyglot) {
         this.impl = impl;
-        this.language = language;
+        this.primaryLanguage = language;
         this.polyglot = polyglot;
     }
 
+    /**
+     * Evaluates a source in the primary language of the context.
+     */
     public Value eval(Source source) {
-        return impl.eval(language.impl, source.impl);
+        if (primaryLanguage == null) {
+            throw new IllegalArgumentException("This context was not created with a primary language. " +
+                            "Use Context.eval(language, source) or create the context using Language.createContext() instead.");
+        }
+        return eval(primaryLanguage, source);
     }
 
-    public Value eval(String source) {
-        return impl.eval(language.impl, Source.create(source).impl);
+    public Value eval(CharSequence source) {
+        if (primaryLanguage == null) {
+            throw new IllegalArgumentException("This context was not created with a primary language. " +
+                            "Use Context.eval(language, source) or create the context using Language.createContext() instead.");
+        }
+        return eval(primaryLanguage, Source.create(source));
+    }
+
+    public Value eval(String languageId, CharSequence source) {
+        return eval(getEngine().getLanguage(languageId), Source.create(source));
+    }
+
+    public Value eval(String languageId, Source source) {
+        return eval(getEngine().getLanguage(languageId), source);
+    }
+
+    public Value eval(Language language, CharSequence source) {
+        return eval(language, Source.create(source));
+    }
+
+    public Value eval(Language language, Source source) {
+        return impl.eval(language.impl, source);
+    }
+
+    /**
+     * Perform a lookup for a symbol in the top-most scope of the language.
+     */
+    public Value lookup(String key) {
+        if (primaryLanguage == null) {
+            throw new IllegalArgumentException("This context was not created with a primary language. " +
+                            "Use Context.eval(language, source) or create the context using Language.createContext() instead.");
+        }
+        return lookup(primaryLanguage, key);
+    }
+
+    /**
+     * Perform a lookup for a symbol in the top-most scope of the language.
+     */
+    public Value lookup(String language, String key) {
+        return lookup(getEngine().getLanguage(language), key);
+    }
+
+    /**
+     * Perform a lookup for a symbol in the top-most scope of the language.
+     */
+    public Value lookup(Language language, String key) {
+        return impl.lookup(language.impl, key);
     }
 
     public Value importSymbol(String key) {
@@ -63,7 +114,16 @@ public final class Context implements AutoCloseable {
         impl.exportSymbol(key, value);
     }
 
-    void initializeLanguage() {
+    /**
+     * Forces the initialization of a language.
+     *
+     * @param language
+     */
+    public void initialize(String language) {
+        initialize(getEngine().getLanguage(language));
+    }
+
+    public void initialize(Language language) {
         impl.initializeLanguage(language.impl);
     }
 
@@ -71,15 +131,8 @@ public final class Context implements AutoCloseable {
         return impl.getEngineImpl();
     }
 
-    /**
-     * Perform a lookup for a symbol in the top-most scope of the language.
-     */
-    public Value lookup(String key) {
-        return impl.lookup(language.impl, key);
-    }
-
     public Language getLanguage() {
-        return language;
+        return primaryLanguage;
     }
 
     /**
@@ -88,13 +141,10 @@ public final class Context implements AutoCloseable {
      * recommended to close contexts after use. If the source {@link #getEngine() engine} is closed
      * then this context is closed automatically.
      * <p>
-     * Context instances that were created by a {@link PolyglotContext polylgot context} instance
-     * cannot be closed individually. Instead the polyglot context should be
-     * {@link PolyglotContext#close() closed}. If internal errors occur during closing of the
-     * language then they are printed to the configured {@link Builder#setErr(OutputStream) error
-     * output stream}. If a context was closed then all its methods will throw an
-     * {@link IllegalStateException} when invoked. If an an attempt to close this context was
-     * successful then consecutive calls to close have no effect.
+     * If internal errors occur during closing of the language then they are printed to the
+     * configured {@link Builder#setErr(OutputStream) error output stream}. If a context was closed
+     * then all its methods will throw an {@link IllegalStateException} when invoked. If an an
+     * attempt to close this context was successful then consecutive calls to close have no effect.
      *
      * @throws IllegalStateException If the context was created by a PolyglotContext.
      * @see PolyglotContext#close() To close a polyglot context.
@@ -111,16 +161,19 @@ public final class Context implements AutoCloseable {
 
     public static final class Builder {
 
-        private final AbstractLanguageImpl languageImpl;
+        private final Engine engine;
+        private Language primaryLanguage;
 
         private OutputStream out;
         private OutputStream err;
         private InputStream in;
         private Map<String, String> options;
-        private String[] arguments;
+        private Map<String, String[]> arguments;
+        private boolean polyglot;
 
-        Builder(AbstractLanguageImpl languageImpl) {
-            this.languageImpl = languageImpl;
+        Builder(Engine engine, Language primaryLanguage) {
+            this.engine = engine;
+            this.primaryLanguage = primaryLanguage;
         }
 
         /**
@@ -129,6 +182,18 @@ public final class Context implements AutoCloseable {
         @Deprecated
         public Builder setOut(PrintStream out) {
             this.out = out;
+            return this;
+        }
+
+        /**
+         * If set to <code>true</code> allows access to other guest languages other than the primary
+         * language. If set to <code>false</code> all accesses to the language will result in an
+         * {@link IllegalStateException}.
+         *
+         * @since 1.0
+         */
+        public Builder setPolyglot(boolean polyglot) {
+            this.polyglot = polyglot;
             return this;
         }
 
@@ -184,10 +249,29 @@ public final class Context implements AutoCloseable {
          * {@link Context#eval(Source) evaluated} guest language scripts. Passing no arguments to a
          * language then it is equivalent to providing an empty arguments array.
          *
+         * @param languageId the languageId available in the engine.
+         * @param args an array of arguments passed to the guest language program
+         * @throws IllegalArgumentException if an invalid language id was specified.
+         * @since 1.0
+         */
+        public Builder setArguments(String languageId, String[] args) {
+            Objects.requireNonNull(args);
+            return setArguments(engine.getLanguage(languageId), args);
+        }
+
+        /**
+         * Sets the guest language application arguments for a language {@link Context context}.
+         * Application arguments are typcially made available to guest language implementations. It
+         * depends on the language whether and how they are accessible within the
+         * {@link Context#eval(Source) evaluated} guest language scripts. Passing no arguments to a
+         * language then it is equivalent to providing an empty arguments array.
+         *
+         * @param languageId the languageId available in the engine.
          * @param args an array of arguments passed to the guest language program
          * @since 1.0
          */
-        public Builder setArguments(String[] args) {
+        public Builder setArguments(Language language, String[] args) {
+            Objects.requireNonNull(language);
             Objects.requireNonNull(args);
             String[] newArgs = args;
             if (args.length > 0) {
@@ -196,7 +280,13 @@ public final class Context implements AutoCloseable {
                     newArgs[i] = Objects.requireNonNull(args[i]);
                 }
             }
-            this.arguments = newArgs;
+            if (language.getEngine() != engine) {
+                throw new IllegalArgumentException("Invalid language from another engine provided.");
+            }
+            if (arguments == null) {
+                arguments = new HashMap<>();
+            }
+            arguments.put(language.getId(), newArgs);
             return this;
         }
 
@@ -216,17 +306,9 @@ public final class Context implements AutoCloseable {
         }
 
         public Context build() {
-            Map<String, String[]> argumentMap;
-            if (arguments != null) {
-                argumentMap = new HashMap<>();
-                argumentMap.put(languageImpl.getId(), arguments);
-            } else {
-                argumentMap = Collections.emptyMap();
-            }
-
-            Context context = languageImpl.createContext(out, err, in, options == null ? Collections.emptyMap() : options, argumentMap);
-            context.initializeLanguage();
-            return context;
+            return primaryLanguage.impl.createContext(out, err, in,
+                            options == null ? Collections.emptyMap() : options,
+                            arguments == null ? Collections.emptyMap() : arguments, polyglot);
         }
 
     }

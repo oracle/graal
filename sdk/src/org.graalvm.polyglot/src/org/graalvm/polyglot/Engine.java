@@ -152,12 +152,21 @@ public final class Engine implements AutoCloseable {
         return impl.getOptions();
     }
 
-    public PolyglotContext createPolyglotContext() {
-        return newPolyglotContextBuilder().build();
+    /**
+     * Creates a new <i>polyglot</i> context that allows access to all installed
+     * {@link #getLanguages() languages}.
+     *
+     * @see Context for further information on context instances.
+     * @see Language#createContext() to create a context for a single language.
+     * @return
+     * @since 1.0
+     */
+    public Context createPolyglotContext() {
+        return new Context.Builder(this, null).setPolyglot(true).build();
     }
 
-    public PolyglotContext.Builder newPolyglotContextBuilder() {
-        return new PolyglotContext.Builder(this);
+    public Context.Builder newPolyglotContextBuilder() {
+        return new Context.Builder(this, null).setPolyglot(true);
     }
 
     public String getVersion() {
@@ -315,11 +324,6 @@ public final class Engine implements AutoCloseable {
         @Override
         public Engine newEngine(AbstractEngineImpl impl) {
             return new Engine(impl);
-        }
-
-        @Override
-        public PolyglotContext newPolyglotContext(Engine engine, AbstractContextImpl impl) {
-            return new PolyglotContext(engine, impl);
         }
 
         @Override
