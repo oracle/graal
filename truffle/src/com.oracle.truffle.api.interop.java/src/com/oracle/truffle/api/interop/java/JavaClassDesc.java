@@ -87,10 +87,6 @@ final class JavaClassDesc {
 
             if (Modifier.isPublic(type.getModifiers())) {
                 for (Method m : type.getMethods()) {
-                    if (m.getDeclaringClass() == Object.class) {
-                        continue;
-                    }
-
                     if (!Modifier.isPublic(m.getDeclaringClass().getModifiers())) {
                         /*
                          * If a method is declared in a non-public direct superclass, there should
@@ -164,17 +160,10 @@ final class JavaClassDesc {
         }
 
         private static void collectPublicMethods(Class<?> type, Map<String, JavaMethodDesc> methodMap, Map<String, JavaMethodDesc> staticMethodMap, Set<Object> visited, Class<?> startType) {
-            if (type == Object.class) {
-                return;
-            }
             boolean isPublicType = Modifier.isPublic(type.getModifiers());
             boolean allMethodsPublic = true;
             if (isPublicType) {
                 for (Method m : type.getMethods()) {
-                    if (m.getDeclaringClass() == Object.class) {
-                        continue;
-                    }
-
                     if (!Modifier.isPublic(m.getDeclaringClass().getModifiers())) {
                         allMethodsPublic = false;
                         continue;
