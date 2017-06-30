@@ -109,16 +109,18 @@ final class JavaClassDesc {
                 }
 
                 boolean inheritedPublicInstanceFields = false;
+                boolean inheritedPublicInaccessibleFields = false;
                 for (Field f : type.getFields()) {
-                    if (!Modifier.isPublic(f.getDeclaringClass().getModifiers())) {
-                        continue;
-                    }
                     if (!Modifier.isStatic(f.getModifiers())) {
                         if (f.getDeclaringClass() == type) {
                             assert !fieldMap.containsKey(f.getName());
                             fieldMap.put(f.getName(), f);
                         } else {
-                            inheritedPublicInstanceFields = true;
+                            if (Modifier.isPublic(f.getDeclaringClass().getModifiers())) {
+                                inheritedPublicInstanceFields = true;
+                            } else {
+                                inheritedPublicInaccessibleFields = true;
+                            }
                         }
                     } else {
                         // do not inherit static fields
@@ -128,15 +130,14 @@ final class JavaClassDesc {
                     }
                 }
                 if (inheritedPublicInstanceFields) {
-                    // collect inherited instance fields that are not shadowed
-                    collectPublicInstanceFields(type, fieldMap);
+                    collectPublicInstanceFields(type, fieldMap, inheritedPublicInaccessibleFields);
                 }
             } else {
                 // If the class is not public, look for inherited public methods.
                 collectPublicMethods(type, methodMap, staticMethodMap);
 
                 if (!type.isInterface()) {
-                    collectPublicInstanceFields(type, fieldMap);
+                    collectPublicInstanceFields(type, fieldMap, true);
                 }
             }
 
@@ -243,18 +244,32 @@ final class JavaClassDesc {
             }
         }
 
-        private static void collectPublicInstanceFields(Class<?> type, Map<String, Field> fieldMap) {
+        private static void collectPublicInstanceFields(Class<?> type, Map<String, Field> fieldMap, boolean mayHaveInaccessibleFields) {
             Set<String> fieldNames = new HashSet<>();
             for (Class<?> superclass = type; superclass != null && superclass != Object.class; superclass = superclass.getSuperclass()) {
-                for (Field f : superclass.getDeclaredFields()) {
+                boolean inheritedPublicInstanceFields = false;
+                for (Field f : superclass.getFields()) {
                     if (Modifier.isStatic(f.getModifiers())) {
                         continue;
                     }
-                    if (fieldNames.add(f.getName())) {
-                        if (Modifier.isPublic(f.getModifiers()) && Modifier.isPublic(f.getDeclaringClass().getModifiers())) {
-                            fieldMap.putIfAbsent(f.getName(), f);
+                    if (f.getDeclaringClass() != superclass) {
+                        if (Modifier.isPublic(f.getDeclaringClass().getModifiers())) {
+                            inheritedPublicInstanceFields = true;
                         }
+                        continue;
                     }
+                    // a public field in a non-public class hides fields further up the hierarchy
+                    if (mayHaveInaccessibleFields && !fieldNames.add(f.getName())) {
+                        continue;
+                    }
+                    if (Modifier.isPublic(f.getDeclaringClass().getModifiers())) {
+                        fieldMap.putIfAbsent(f.getName(), f);
+                    } else {
+                        assert mayHaveInaccessibleFields;
+                    }
+                }
+                if (!inheritedPublicInstanceFields) {
+                    break;
                 }
             }
         }
