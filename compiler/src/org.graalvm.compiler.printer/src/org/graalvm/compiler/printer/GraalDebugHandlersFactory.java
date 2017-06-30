@@ -35,6 +35,7 @@ import java.net.Socket;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -113,7 +114,6 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
     }
 
     private static CanonicalStringGraphPrinter createStringPrinter(SnippetReflectionProvider snippetReflection) {
-        // Construct the path to the directory.
         return new CanonicalStringGraphPrinter(snippetReflection);
     }
 
@@ -168,74 +168,95 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
     private static final AtomicInteger unknownCompilationId = new AtomicInteger();
 
     /**
-     * Creates a unique path for dumping based on a given graph and a file extension.
+     * Creates a new file or directory for dumping based on a given graph and a file extension.
      *
      * @param graph a base path name is derived from {@code graph}
      * @param extension a suffix which if non-null and non-empty added to the end of the returned
      *            path separated by a {@code "."}
-     * @param isDirectory specifies if the returned path will be used as a directory
-     * @throws IOException if there was an error creating a unique path
+     * @param createDirectory specifies if this is a request to create a directory instead of a file
+     * @return the created directory or file
+     * @throws IOException if there was an error creating the directory or file
      */
-    static Path createDumpFilePath(OptionValues options, Graph graph, String extension, boolean isDirectory) throws IOException {
-        String baseName;
+    static Path createDumpPath(OptionValues options, Graph graph, String extension, boolean createDirectory) throws IOException {
         CompilationIdentifier compilationId = CompilationIdentifier.INVALID_COMPILATION_ID;
+        String id = null;
+        String label = null;
         if (graph instanceof StructuredGraph) {
             StructuredGraph sgraph = (StructuredGraph) graph;
+            label = getGraphName(graph, sgraph);
             compilationId = sgraph.compilationId();
             if (compilationId == CompilationIdentifier.INVALID_COMPILATION_ID) {
-                String graphName;
-                if (graph.name != null) {
-                    graphName = graph.name;
-                } else if (sgraph.method() != null) {
-                    graphName = sgraph.method().format("%H.%n(%p)");
-                } else {
-                    graphName = sgraph.toString();
-                }
-                compilationId = new CompilationIdentifier() {
-
-                    @Override
-                    public String toString(Verbosity verbosity) {
-                        return toString();
-                    }
-
-                    @Override
-                    public String toString() {
-                        return graph.getClass().getSimpleName() + "-" + sgraph.graphId() + '[' + graphName + ']';
-                    }
-                };
+                id = graph.getClass().getSimpleName() + "-" + sgraph.graphId();
+            } else {
+                id = compilationId.toString(CompilationIdentifier.Verbosity.ID);
             }
-        }
-        if (compilationId == CompilationIdentifier.INVALID_COMPILATION_ID) {
-            String graphName = graph.name != null ? graph.name : graph.toString();
-            baseName = "UnknownCompilation-" + unknownCompilationId.incrementAndGet() + '[' + graphName + ']';
         } else {
-            baseName = compilationId.toString(CompilationIdentifier.Verbosity.DETAILED);
+            label = graph.name != null ? graph.name : graph.toString();
+            id = "UnknownCompilation-" + unknownCompilationId.incrementAndGet();
         }
         String ext = UniquePathUtilities.formatExtension(extension);
-        baseName = sanitizedFileName(baseName);
-        Path dumpDir = DebugOptions.getDumpDirectory(options);
-        Path result = dumpDir.resolve(baseName + ext);
-        if (Files.exists(result)) {
-            if (isDirectory) {
-                Files.createTempDirectory(dumpDir, baseName + ext);
-            } else {
-                Files.createTempFile(dumpDir, baseName, ext);
-            }
-        } else if (isDirectory) {
-            Files.createDirectories(result);
-        }
+        Path result = createUnique(DebugOptions.getDumpDirectory(options), id, label, ext, createDirectory);
         if (ShowDumpFiles.getValue(options)) {
             TTY.println("Dumping debug output to %s", result.toAbsolutePath().toString());
         }
         return result;
     }
 
+    /**
+     * A maximum file name length supported by most file systems. There is no platform independent
+     * way to get this in Java.
+     */
+    private static final int MAX_FILE_NAME_LENGTH = 255;
+
+    private static final String ELLIPSIS = "...";
+
+    private static Path createUnique(Path dumpDir, String id, String label, String ext, boolean createDirectory) throws IOException {
+        String timestamp = "";
+        for (;;) {
+            int fileNameLengthWithoutLabel = timestamp.length() + ext.length() + id.length() + "[]".length();
+            int labelLengthLimit = MAX_FILE_NAME_LENGTH - fileNameLengthWithoutLabel;
+            String fileName;
+            if (labelLengthLimit < ELLIPSIS.length()) {
+                // This means `id` is very long
+                String suffix = timestamp + ext;
+                int idLengthLimit = Math.min(MAX_FILE_NAME_LENGTH - suffix.length(), id.length());
+                fileName = id.substring(0, idLengthLimit) + suffix;
+            } else {
+                String adjustedLabel = label;
+                if (label.length() > labelLengthLimit) {
+                    adjustedLabel = label.substring(0, labelLengthLimit - ELLIPSIS.length()) + ELLIPSIS;
+                }
+                fileName = sanitizedFileName(id + '[' + adjustedLabel + ']' + timestamp + ext);
+            }
+            Path result = dumpDir.resolve(fileName);
+            try {
+                if (createDirectory) {
+                    return Files.createDirectory(result);
+                } else {
+                    return Files.createFile(result);
+                }
+            } catch (FileAlreadyExistsException e) {
+                timestamp = "_" + Long.toString(System.currentTimeMillis());
+            }
+        }
+    }
+
+    private static String getGraphName(Graph graph, StructuredGraph sgraph) {
+        if (graph.name != null) {
+            return graph.name;
+        } else if (sgraph.method() != null) {
+            return sgraph.method().format("%h.%n(%p)").replace(" ", "");
+        } else {
+            return sgraph.toString();
+        }
+    }
+
     private static GraphPrinter createFilePrinter(Graph graph, OptionValues options, SnippetReflectionProvider snippetReflection) throws IOException {
-        Path path = createDumpFilePath(options, graph, PrintBinaryGraphs.getValue(options) ? "bgv" : "gv.xml", false);
+        Path path = createDumpPath(options, graph, PrintBinaryGraphs.getValue(options) ? "bgv" : "gv.xml", false);
         try {
             GraphPrinter printer;
             if (DebugOptions.PrintBinaryGraphs.getValue(options)) {
-                printer = new BinaryGraphPrinter(FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW), snippetReflection);
+                printer = new BinaryGraphPrinter(FileChannel.open(path, StandardOpenOption.WRITE), snippetReflection);
             } else {
                 printer = new IdealGraphPrinter(Files.newOutputStream(path), true, snippetReflection);
             }
