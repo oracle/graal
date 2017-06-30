@@ -183,7 +183,7 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
         String label = null;
         if (graph instanceof StructuredGraph) {
             StructuredGraph sgraph = (StructuredGraph) graph;
-            label = getGraphName(graph, sgraph);
+            label = getGraphName(sgraph);
             compilationId = sgraph.compilationId();
             if (compilationId == CompilationIdentifier.INVALID_COMPILATION_ID) {
                 id = graph.getClass().getSimpleName() + "-" + sgraph.graphId();
@@ -191,7 +191,7 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
                 id = compilationId.toString(CompilationIdentifier.Verbosity.ID);
             }
         } else {
-            label = graph.name != null ? graph.name : graph.toString();
+            label = graph == null ? "<no graph>" : graph.name != null ? graph.name : graph.toString();
             id = "UnknownCompilation-" + unknownCompilationId.incrementAndGet();
         }
         String ext = UniquePathUtilities.formatExtension(extension);
@@ -241,13 +241,13 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
         }
     }
 
-    private static String getGraphName(Graph graph, StructuredGraph sgraph) {
+    private static String getGraphName(StructuredGraph graph) {
         if (graph.name != null) {
             return graph.name;
-        } else if (sgraph.method() != null) {
-            return sgraph.method().format("%h.%n(%p)").replace(" ", "");
+        } else if (graph.method() != null) {
+            return graph.method().format("%h.%n(%p)").replace(" ", "");
         } else {
-            return sgraph.toString();
+            return graph.toString();
         }
     }
 
