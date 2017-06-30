@@ -35,8 +35,15 @@ import javax.tools.Diagnostic.Kind;
 
 public class ExpectError {
 
+    private static final String[] EXPECT_ERROR_TYPES = new String[]{TruffleTypes.EXPECT_ERROR_CLASS_NAME1, TruffleTypes.EXPECT_ERROR_CLASS_NAME2};
+
     public static void assertNoErrorExpected(ProcessingEnvironment processingEnv, Element element) {
-        TypeElement eee = processingEnv.getElementUtils().getTypeElement(TruffleTypes.EXPECT_ERROR_CLASS_NAME);
+        for (String errorType : EXPECT_ERROR_TYPES) {
+            assertNoErrorExpectedImpl(processingEnv, element, processingEnv.getElementUtils().getTypeElement(errorType));
+        }
+    }
+
+    private static void assertNoErrorExpectedImpl(ProcessingEnvironment processingEnv, Element element, TypeElement eee) {
         if (eee != null) {
             for (AnnotationMirror am : element.getAnnotationMirrors()) {
                 if (am.getAnnotationType().asElement().equals(eee)) {
@@ -47,7 +54,15 @@ public class ExpectError {
     }
 
     public static boolean isExpectedError(ProcessingEnvironment processingEnv, Element element, String message) {
-        TypeElement eee = processingEnv.getElementUtils().getTypeElement(TruffleTypes.EXPECT_ERROR_CLASS_NAME);
+        for (String errorType : EXPECT_ERROR_TYPES) {
+            if (isExpectedErrorImpl(element, message, processingEnv.getElementUtils().getTypeElement(errorType))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isExpectedErrorImpl(Element element, String message, TypeElement eee) {
         if (eee != null) {
             for (AnnotationMirror am : element.getAnnotationMirrors()) {
                 if (am.getAnnotationType().asElement().equals(eee)) {

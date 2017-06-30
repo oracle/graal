@@ -36,10 +36,12 @@ import java.util.List;
 import java.util.Map;
 
 import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.InstrumentInfo;
+import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AccessorInstrumentHandler;
@@ -144,19 +146,30 @@ public abstract class TruffleInstrument {
     }
 
     /**
-     * Returns a list of option descriptors that are supported by this language. Option values are
+     * @since 0.27
+     * @deprecated in 0.27 use {@link #getOptionDescriptors()} instead.
+     */
+    @Deprecated
+    protected List<OptionDescriptor> describeOptions() {
+        return null;
+    }
+
+    /**
+     * Returns a set of option descriptors that are supported by this instrument. Option values are
      * accessible using the {@link Env#getOptions() environment} when the instrument is
      * {@link #onCreate(Env) created}. By default no options are available for an instrument.
      * Options returned by this method must specifiy the {@link Registration#id() instrument id} as
      * {@link OptionDescriptor#getName() name} prefix for each option. For example if the id of the
-     * instrument is "debugger" then a valid option name would be "debugger.enabled". The instrument
+     * instrument is "debugger" then a valid option name would be "debugger.Enabled". The instrument
      * will automatically be {@link #onCreate(Env) created} if one of the specified options was
-     * provided by the engine.
+     * provided by the engine. To construct option descriptors from a list then
+     * {@link OptionDescriptors#create(List)} can be used.
      *
+     * @see Option For an example of declaring the option descriptor using an annotation.
      * @since 0.27
      */
-    protected List<OptionDescriptor> describeOptions() {
-        return null;
+    protected OptionDescriptors getOptionDescriptors() {
+        return OptionDescriptors.create(describeOptions());
     }
 
     /**
@@ -318,7 +331,7 @@ public abstract class TruffleInstrument {
 
         /**
          * Returns option values for the options described in
-         * {@link TruffleInstrument#describeOptions()}. The returned options are never
+         * {@link TruffleLanguage#getOptionDescriptors()}. The returned options are never
          * <code>null</code>.
          *
          * @since 0.27

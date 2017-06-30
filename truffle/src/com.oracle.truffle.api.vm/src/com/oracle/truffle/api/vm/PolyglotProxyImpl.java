@@ -34,6 +34,7 @@ import org.graalvm.polyglot.proxy.ProxyPrimitive;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -84,6 +85,8 @@ final class PolyglotProxyImpl {
             super(null);
         }
 
+        @CompilationFinal boolean seenException = false;
+
         @Override
         public Object execute(VirtualFrame frame) {
             Object[] arguments = frame.getArguments();
@@ -92,6 +95,10 @@ final class PolyglotProxyImpl {
             try {
                 return executeProxy(context, proxy.proxy, arguments);
             } catch (Throwable t) {
+                if (!seenException) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    seenException = true;
+                }
                 throw PolyglotImpl.wrapHostException(t);
             }
         }
@@ -103,11 +110,11 @@ final class PolyglotProxyImpl {
     private static final class ProxyNewNode extends ProxyRootNode {
 
         @Override
+        @TruffleBoundary
         Object executeProxy(PolyglotLanguageContextImpl context, Proxy proxy, Object[] arguments) {
             if (proxy instanceof ProxyExecutable) {
                 return context.toGuestValue(((ProxyExecutable) proxy).execute(context.toHostValues(arguments, 1)));
             } else {
-                CompilerDirectives.transferToInterpreter();
                 throw UnsupportedMessageException.raise(Message.createNew(0));
             }
         }
@@ -116,11 +123,11 @@ final class PolyglotProxyImpl {
     private static final class ProxyExecuteNode extends ProxyRootNode {
 
         @Override
+        @TruffleBoundary
         Object executeProxy(PolyglotLanguageContextImpl context, Proxy proxy, Object[] arguments) {
             if (proxy instanceof ProxyExecutable) {
                 return context.toGuestValue(((ProxyExecutable) proxy).execute(context.toHostValues(arguments, 1)));
             } else {
-                CompilerDirectives.transferToInterpreter();
                 throw UnsupportedMessageException.raise(Message.createExecute(0));
             }
         }
@@ -145,6 +152,7 @@ final class PolyglotProxyImpl {
     private static final class ProxyAsPointerNode extends ProxyRootNode {
 
         @Override
+        @TruffleBoundary
         Object executeProxy(PolyglotLanguageContextImpl context, Proxy proxy, Object[] arguments) {
             if (proxy instanceof ProxyNativeObject) {
                 return ((ProxyNativeObject) proxy).asPointer();

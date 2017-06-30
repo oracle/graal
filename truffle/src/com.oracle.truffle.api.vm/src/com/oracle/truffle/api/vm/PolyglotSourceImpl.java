@@ -55,8 +55,13 @@ class PolyglotSourceImpl extends AbstractSourceImpl {
     @Override
     public boolean isInteractive(Object impl) {
         com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
-
         return source.isInteractive();
+    }
+
+    @Override
+    public boolean isInternal(Object impl) {
+        com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
+        return source.isInternal();
     }
 
     @Override
@@ -160,7 +165,7 @@ class PolyglotSourceImpl extends AbstractSourceImpl {
     }
 
     @Override
-    public Source build(Object origin, URI uri, String name, boolean interactive) {
+    public Source build(Object origin, URI uri, String name, boolean interactive, boolean internal) {
         com.oracle.truffle.api.source.Source.Builder<?, ?, ?> builder;
         boolean needsName = false;
         if (origin instanceof File) {
@@ -186,6 +191,10 @@ class PolyglotSourceImpl extends AbstractSourceImpl {
             builder.name(name);
         } else if (needsName) {
             builder.name("Unnamed");
+        }
+
+        if (internal) {
+            builder.internal();
         }
 
         if (interactive) {

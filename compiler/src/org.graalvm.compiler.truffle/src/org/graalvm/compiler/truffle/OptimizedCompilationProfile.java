@@ -23,16 +23,16 @@
 package org.graalvm.compiler.truffle;
 
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleArgumentTypeSpeculation;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationThreshold;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompileImmediately;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInvalidationReprofileCount;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleMinInvokeThreshold;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleReplaceReprofileCount;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleReturnTypeSpeculation;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleTimeThreshold;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+
+import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -65,9 +65,14 @@ public class OptimizedCompilationProfile {
 
     private volatile boolean compilationFailed;
 
-    public OptimizedCompilationProfile() {
-        compilationCallThreshold = TruffleCompilerOptions.getValue(TruffleMinInvokeThreshold);
-        compilationCallAndLoopThreshold = TruffleCompilerOptions.getValue(TruffleCompilationThreshold);
+    public OptimizedCompilationProfile(OptionValues options) {
+        int callThreshold = TruffleCompilerOptions.getValue(TruffleMinInvokeThreshold);
+        int callAndLoopThreshold = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.CompilationThreshold);
+        assert callThreshold >= 0;
+        assert callAndLoopThreshold >= 0;
+        this.compilationCallThreshold = Math.min(callThreshold, callAndLoopThreshold);
+        this.compilationCallAndLoopThreshold = callAndLoopThreshold;
+        this.timestamp = System.nanoTime();
     }
 
     @Override
@@ -230,11 +235,6 @@ public class OptimizedCompilationProfile {
 
     final void reportLoopCount(int count) {
         interpreterCallAndLoopCount += count;
-
-        int callsMissing = compilationCallAndLoopThreshold - interpreterCallAndLoopCount;
-        if (callsMissing <= getTimestampThreshold() && callsMissing + count > getTimestampThreshold()) {
-            timestamp = System.nanoTime();
-        }
     }
 
     final void reportInvalidated() {
@@ -252,11 +252,6 @@ public class OptimizedCompilationProfile {
     final void interpreterCall(OptimizedCallTarget callTarget) {
         int intCallCount = ++interpreterCallCount;
         int intAndLoopCallCount = ++interpreterCallAndLoopCount;
-
-        int callsMissing = compilationCallAndLoopThreshold - interpreterCallAndLoopCount;
-        if (callsMissing == getTimestampThreshold()) {
-            timestamp = System.nanoTime();
-        }
         if (!callTarget.isCompiling() && !compilationFailed) {
             // check if call target is hot enough to get compiled, but took not too long to get hot
             if ((intAndLoopCallCount >= compilationCallAndLoopThreshold && intCallCount >= compilationCallThreshold && !isDeferredCompile(callTarget)) ||
@@ -268,31 +263,34 @@ public class OptimizedCompilationProfile {
 
     private boolean isDeferredCompile(OptimizedCallTarget target) {
         // Workaround for https://bugs.eclipse.org/bugs/show_bug.cgi?id=440019
-        int thresholdInt = TruffleCompilerOptions.getValue(TruffleTimeThreshold);
-        long threshold = thresholdInt;
+        int threshold = target.getOptionValue(PolyglotCompilerOptions.QueueTimeThreshold);
 
         CompilerOptions compilerOptions = target.getCompilerOptions();
         if (compilerOptions instanceof GraalCompilerOptions) {
             threshold = Math.max(threshold, ((GraalCompilerOptions) compilerOptions).getMinTimeThreshold());
         }
+        if (threshold <= 0) {
+            return false;
+        }
 
-        long time = getTimestamp();
+        long time = timestamp;
         if (time == 0) {
             return false;
         }
+
         long timeElapsed = System.nanoTime() - time;
-        if (timeElapsed > threshold * 1_000_000) {
+        if (timeElapsed > (threshold * 1_000_000L)) {
+
+            int callThreshold = TruffleCompilerOptions.getValue(TruffleMinInvokeThreshold);
+            int callAndLoopThreshold = PolyglotCompilerOptions.getValue(target.getRootNode(), PolyglotCompilerOptions.CompilationThreshold);
+
             // defer compilation
-            ensureProfiling(0, getTimestampThreshold() + 1);
-            timestamp = 0;
+            ensureProfiling(0, Math.min(callThreshold, callAndLoopThreshold));
+            timestamp = System.nanoTime();
             deferredCount++;
             return true;
         }
         return false;
-    }
-
-    private static int getTimestampThreshold() {
-        return Math.max(TruffleCompilerOptions.getValue(TruffleCompilationThreshold) / 2, 1);
     }
 
     private void initializeProfiledArgumentTypes(Object[] args) {
@@ -379,8 +377,8 @@ public class OptimizedCompilationProfile {
         return timestamp;
     }
 
-    public static OptimizedCompilationProfile create() {
-        return new OptimizedCompilationProfile();
+    public static OptimizedCompilationProfile create(OptionValues options) {
+        return new OptimizedCompilationProfile(options);
     }
 
     private static OptimizedAssumption createAssumption(String name) {

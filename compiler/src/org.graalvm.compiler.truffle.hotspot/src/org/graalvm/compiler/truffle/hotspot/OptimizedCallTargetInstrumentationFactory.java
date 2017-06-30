@@ -30,7 +30,16 @@ import org.graalvm.compiler.truffle.OptimizedCallTarget;
 
 /**
  * A service for creating a specialized {@link CompilationResultBuilder} used to inject code into
- * {@link OptimizedCallTarget#call(Object[])}.
+ * the beginning of {@link OptimizedCallTarget#call(Object[])}. The injected code tests the
+ * {@code entryPoint} field of an {@link OptimizedCallTarget} receiver and tail calls it if it's
+ * non-zero:
+ *
+ * <pre>
+ * if (this.entryPoint != null) {
+ *     tailcall(this.entryPoint);
+ * }
+ * // normal compiled code
+ * </pre>
  */
 public abstract class OptimizedCallTargetInstrumentationFactory implements CompilationResultBuilderFactory {
 

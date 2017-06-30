@@ -52,7 +52,7 @@ final class ConsListPropertyMap extends PropertyMap {
 
     private ConsListPropertyMap(ConsListPropertyMap parent, Property added) {
         this.car = Objects.requireNonNull(parent);
-        this.cdr = added;
+        this.cdr = Objects.requireNonNull(added);
         this.size = parent.size + 1;
     }
 
@@ -87,13 +87,33 @@ final class ConsListPropertyMap extends PropertyMap {
     }
 
     public Property get(Object key) {
-        ConsListPropertyMap current = this;
-        while (!current.isEmpty()) {
+        if (key == null || isEmpty()) {
+            return null;
+        } else if (key instanceof String) {
+            return getStringKey((String) key);
+        } else {
+            return getEquals(key);
+        }
+    }
+
+    private Property getEquals(Object key) {
+        for (ConsListPropertyMap current = this; !current.isEmpty(); current = current.getParentMap()) {
             Property p = current.getLastProperty();
-            if (p.getKey().equals(key)) {
+            Object pKey = p.getKey();
+            if (pKey == key || pKey.equals(key)) {
                 return p;
             }
-            current = current.getParentMap();
+        }
+        return null;
+    }
+
+    private Property getStringKey(String key) {
+        for (ConsListPropertyMap current = this; !current.isEmpty(); current = current.getParentMap()) {
+            Property p = current.getLastProperty();
+            Object pKey = p.getKey();
+            if (pKey == key || (pKey instanceof String && ((String) pKey).equals(key))) {
+                return p;
+            }
         }
         return null;
     }

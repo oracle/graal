@@ -33,15 +33,15 @@ public final class VisibilityTest {
     @Test
     public void testPublicVisibility() {
         Assert.assertTrue(Modifier.isPublic(VisibilityTestObjectMR.class.getModifiers()));
-        Assert.assertTrue(Modifier.isPublic(VisibilityTestReadNodeSub.class.getModifiers()));
-        Assert.assertTrue(Modifier.isPublic(VisibilityTestLanguageCheckSub.class.getModifiers()));
+        Assert.assertTrue(Modifier.isPublic(VisibilityTestObjectMRForeign.VisibilityTestReadSubNode.class.getModifiers()));
+        Assert.assertTrue(Modifier.isPublic(VisibilityTestObjectMRForeign.VisibilityTestLanguageCheckSubNode.class.getModifiers()));
     }
 
     @Test
     public void testPackageProtectedVisibility() {
         Assert.assertTrue(isPackageProtected(VisibilityTestObjectMR4.class.getModifiers()));
-        Assert.assertTrue(isPackageProtected(VisibilityTestReadNode4Sub.class.getModifiers()));
-        Assert.assertTrue(isPackageProtected(VisibilityTestLanguageCheck4Sub.class.getModifiers()));
+        Assert.assertTrue(isPackageProtected(VisibilityTestObjectMR4Foreign.VisibilityTestReadSubNode.class.getModifiers()));
+        Assert.assertTrue(isPackageProtected(VisibilityTestObjectMR4Foreign.VisibilityTestLanguageCheckSubNode.class.getModifiers()));
     }
 
     private static boolean isPackageProtected(int modifier) {

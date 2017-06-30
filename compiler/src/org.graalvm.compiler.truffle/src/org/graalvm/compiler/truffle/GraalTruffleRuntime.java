@@ -59,8 +59,7 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.CompilerThreadFactory;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.target.Backend;
-import org.graalvm.compiler.debug.Debug;
-import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -123,11 +122,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         callTargets.clear();
     }
 
-    protected abstract static class BackgroundCompileQueue implements CompilerThreadFactory.DebugConfigAccess {
+    protected static class BackgroundCompileQueue {
         private final ExecutorService compileQueue;
 
-        protected BackgroundCompileQueue() {
-            CompilerThreadFactory factory = new CompilerThreadFactory("TruffleCompilerThread", this);
+        public BackgroundCompileQueue() {
+            CompilerThreadFactory factory = new CompilerThreadFactory("TruffleCompilerThread");
 
             int selectedProcessors = TruffleCompilerOptions.getValue(TruffleCompilerThreads);
             if (selectedProcessors == 0) {
@@ -174,9 +173,15 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     }
 
     /**
-     * Gets the initial values for this Graal-based Truffle runtime.
+     * Gets the initial option values for this Graal-based Truffle runtime.
      */
     public abstract OptionValues getInitialOptions();
+
+    /**
+     * Opens a debug context for compiling {@code callTarget}. The {@link DebugContext#close()}
+     * method should be called on the returned object once the compilation is finished.
+     */
+    protected abstract DebugContext openDebugContext(OptionValues options, CompilationIdentifier compilationId, OptimizedCallTarget callTarget);
 
     public GraalTruffleRuntime(Supplier<GraalRuntime> graalRuntime) {
         this.graalRuntime = graalRuntime;
@@ -517,25 +522,29 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         }
     }
 
-    protected void doCompile(OptimizedCallTarget optimizedCallTarget, CancellableCompileTask task) {
+    protected void doCompile(OptionValues options, OptimizedCallTarget optimizedCallTarget, CancellableCompileTask task) {
         int repeats = TruffleCompilerOptions.getValue(TruffleCompilationRepeats);
         if (repeats <= 1) {
             /* Normal compilation. */
-            doCompile0(optimizedCallTarget, task);
+            doCompile0(options, optimizedCallTarget, task);
 
         } else {
             /* Repeated compilation for compilation time benchmarking. */
             for (int i = 0; i < repeats; i++) {
-                doCompile0(optimizedCallTarget, task);
+                doCompile0(options, optimizedCallTarget, task);
             }
             System.exit(0);
         }
     }
 
     @SuppressWarnings("try")
-    private void doCompile0(OptimizedCallTarget optimizedCallTarget, CancellableCompileTask task) {
-        try (Scope s = Debug.scope("Truffle", new TruffleDebugJavaMethod(optimizedCallTarget))) {
-            compileMethod(optimizedCallTarget, task);
+    private void doCompile0(OptionValues options, OptimizedCallTarget optimizedCallTarget, CancellableCompileTask task) {
+        TruffleCompiler compiler = getTruffleCompiler();
+        ResolvedJavaMethod rootMethod = compiler.partialEvaluator.rootForCallTarget(optimizedCallTarget);
+        CompilationIdentifier compilationId = getCompilationIdentifier(optimizedCallTarget, rootMethod, compiler.backend);
+        try (DebugContext debug = openDebugContext(options, compilationId, optimizedCallTarget);
+                        DebugContext.Scope s = debug.scope("Truffle", new TruffleDebugJavaMethod(optimizedCallTarget))) {
+            compileMethod(debug, compiler, optimizedCallTarget, rootMethod, compilationId, task);
         } catch (Throwable e) {
             optimizedCallTarget.notifyCompilationFailed(e);
         } finally {
@@ -543,8 +552,13 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         }
     }
 
-    protected void compileMethod(OptimizedCallTarget optimizedCallTarget, CancellableCompileTask task) {
-        getTruffleCompiler().compileMethod(optimizedCallTarget, this, task);
+    protected void compileMethod(DebugContext debug,
+                    TruffleCompiler compiler,
+                    OptimizedCallTarget optimizedCallTarget,
+                    ResolvedJavaMethod rootMethod,
+                    CompilationIdentifier compilationId,
+                    CancellableCompileTask task) {
+        compiler.compileMethod(debug, optimizedCallTarget, rootMethod, compilationId, task);
     }
 
     /**
@@ -570,7 +584,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
                 OptimizedCallTarget callTarget = weakCallTarget.get();
                 if (callTarget != null) {
                     try (TruffleOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides.getMap()) : null) {
-                        doCompile(callTarget, cancellable);
+                        OptionValues options = TruffleCompilerOptions.getOptions();
+                        doCompile(options, callTarget, cancellable);
                     }
                 }
             }

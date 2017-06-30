@@ -32,12 +32,10 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
-import org.graalvm.compiler.debug.Debug;
-import org.graalvm.compiler.debug.GraalDebugConfig;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.graph.CachedGraph;
 import org.graalvm.compiler.graph.Edges;
 import org.graalvm.compiler.graph.Graph;
@@ -55,22 +53,20 @@ import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 
 public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.GraphInfo, Node, NodeClass<?>, Edges, Block>
                 implements GraphPrinter {
     private SnippetReflectionProvider snippetReflection;
 
-    public BinaryGraphPrinter(WritableByteChannel channel) throws IOException {
+    public BinaryGraphPrinter(WritableByteChannel channel, SnippetReflectionProvider snippetReflection) throws IOException {
         super(channel);
-    }
-
-    @Override
-    public void setSnippetReflectionProvider(SnippetReflectionProvider snippetReflection) {
         this.snippetReflection = snippetReflection;
     }
 
@@ -81,7 +77,13 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.
 
     @Override
     public String formatTitle(int id, String format, Object... args) {
-        return GraphPrinter.super.formatTitle(id, format, args);
+        Object[] newArgs = GraphPrinter.super.simplifyClassArgs(args);
+        return id + ": " + String.format(format, newArgs);
+    }
+
+    @Override
+    public void beginGroup(DebugContext debug, String name, String shortName, ResolvedJavaMethod method, int bci, Map<Object, Object> properties) throws IOException {
+        beginGroup(new GraphInfo(debug, null), name, shortName, method, 0, properties);
     }
 
     @Override
@@ -117,11 +119,11 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.
     }
 
     @Override
-    protected final GraphInfo findGraph(Object obj) {
+    protected final GraphInfo findGraph(GraphInfo currrent, Object obj) {
         if (obj instanceof Graph) {
-            return new GraphInfo((Graph) obj);
+            return new GraphInfo(currrent.debug, (Graph) obj);
         } else if (obj instanceof CachedGraph) {
-            return new GraphInfo(((CachedGraph<?>) obj).getReadonlyCopy());
+            return new GraphInfo(currrent.debug, ((CachedGraph<?>) obj).getReadonlyCopy());
         } else {
             return null;
         }
@@ -179,7 +181,7 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.
         Graph graph = info.graph;
         ControlFlowGraph cfg = info.cfg;
         NodeMap<Block> nodeToBlocks = info.nodeToBlocks;
-        if (cfg != null && GraalDebugConfig.Options.PrintGraphProbabilities.getValue(graph.getOptions()) && node instanceof FixedNode) {
+        if (cfg != null && DebugOptions.PrintGraphProbabilities.getValue(graph.getOptions()) && node instanceof FixedNode) {
             try {
                 props.put("probability", cfg.blockFor(node).probability());
             } catch (Throwable t) {
@@ -264,8 +266,8 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.
     }
 
     @Override
-    public void print(Graph graph, Map<Object, Object> properties, int id, String format, Object... args) throws IOException {
-        print(new GraphInfo(graph), properties, 0, format, args);
+    public void print(DebugContext debug, Graph graph, Map<Object, Object> properties, int id, String format, Object... args) throws IOException {
+        print(new GraphInfo(debug, graph), properties, 0, format, args);
     }
 
     @Override
@@ -299,13 +301,15 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.
     }
 
     static final class GraphInfo {
+        final DebugContext debug;
         final Graph graph;
         final ControlFlowGraph cfg;
         final BlockMap<List<Node>> blockToNodes;
         final NodeMap<Block> nodeToBlocks;
         final List<Block> blocks;
 
-        private GraphInfo(Graph graph) {
+        private GraphInfo(DebugContext debug, Graph graph) {
+            this.debug = debug;
             this.graph = graph;
             StructuredGraph.ScheduleResult scheduleResult = null;
             if (graph instanceof StructuredGraph) {
@@ -315,7 +319,7 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.
                 if (scheduleResult == null) {
 
                     // Also provide a schedule when an error occurs
-                    if (GraalDebugConfig.Options.PrintGraphWithSchedule.getValue(graph.getOptions()) || Debug.contextLookup(Throwable.class) != null) {
+                    if (DebugOptions.PrintGraphWithSchedule.getValue(graph.getOptions()) || debug.contextLookup(Throwable.class) != null) {
                         try {
                             SchedulePhase schedule = new SchedulePhase(graph.getOptions());
                             schedule.apply(structuredGraph);
@@ -326,7 +330,7 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.
 
                 }
             }
-            cfg = scheduleResult == null ? Debug.contextLookup(ControlFlowGraph.class) : scheduleResult.getCFG();
+            cfg = scheduleResult == null ? debug.contextLookup(ControlFlowGraph.class) : scheduleResult.getCFG();
             blockToNodes = scheduleResult == null ? null : scheduleResult.getBlockToNodesMap();
             nodeToBlocks = scheduleResult == null ? null : scheduleResult.getNodeToBlockMap();
             blocks = cfg == null ? null : Arrays.asList(cfg.getBlocks());

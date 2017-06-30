@@ -22,8 +22,9 @@
  */
 package org.graalvm.compiler.truffle;
 
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpHandler;
-import org.graalvm.compiler.debug.GraalDebugConfig.Options;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
@@ -39,14 +40,12 @@ import java.nio.channels.WritableByteChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.concurrent.Callable;
-import org.graalvm.compiler.debug.GraalDebugConfig;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.DumpPath;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintBinaryGraphPort;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintBinaryGraphs;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintGraphFileName;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintGraphHost;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintXmlGraphPort;
-import org.graalvm.compiler.options.UniquePathUtilities;
+import static org.graalvm.compiler.debug.DebugOptions.DumpPath;
+import static org.graalvm.compiler.debug.DebugOptions.PrintBinaryGraphPort;
+import static org.graalvm.compiler.debug.DebugOptions.PrintBinaryGraphs;
+import static org.graalvm.compiler.debug.DebugOptions.PrintGraphHost;
+import static org.graalvm.compiler.debug.DebugOptions.PrintXmlGraphPort;
+import org.graalvm.compiler.debug.UniquePathUtilities;
 import org.graalvm.compiler.truffle.GraphPrintVisitor.GraphPrintAdapter;
 import org.graalvm.compiler.truffle.GraphPrintVisitor.GraphPrintHandler;
 
@@ -70,21 +69,25 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
 
     public TruffleTreeDumpHandler(OptionValues options) {
         this.options = options;
-        if (GraalDebugConfig.Options.PrintGraphFile.getValue(options)) {
+        if (DebugOptions.PrintGraphFile.getValue(options)) {
             this.out = createFilePrinter(options);
         } else {
             this.out = createNetworkPrinter(options);
         }
     }
 
-    private static Path getFilePrinterPath(OptionValues options) {
+    private static Path getFilePrinterPath(OptionValues options) throws IOException {
         // Construct the path to the file.
-        return UniquePathUtilities.getPath(options, PrintGraphFileName, DumpPath, PrintBinaryGraphs.getValue(options) ? "bgv" : "gv.xml");
+        // PrintGraphFileName -
+        String extension = PrintBinaryGraphs.getValue(options) ? "bgv" : "gv.xml";
+        return UniquePathUtilities.getPath(options, DumpPath, extension);
     }
 
     private static Callable<WritableByteChannel> createFilePrinter(OptionValues options) {
-        Path path = getFilePrinterPath(options);
-        return () -> FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
+        return () -> {
+            Path path = getFilePrinterPath(options);
+            return FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
+        };
     }
 
     private static Callable<WritableByteChannel> createNetworkPrinter(OptionValues options) {
@@ -94,8 +97,8 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
     }
 
     @Override
-    public void dump(Object object, final String format, Object... arguments) {
-        if (object instanceof TruffleTreeDump && Options.PrintGraph.getValue(options) && TruffleCompilerOptions.getValue(Options.PrintTruffleTrees)) {
+    public void dump(DebugContext debug, Object object, final String format, Object... arguments) {
+        if (object instanceof TruffleTreeDump && DebugOptions.PrintGraph.getValue(options) && TruffleCompilerOptions.getValue(DebugOptions.PrintTruffleTrees)) {
             String message = String.format(format, arguments);
             try {
                 dumpRootCallTarget(message, ((TruffleTreeDump) object).callTarget);
@@ -110,13 +113,13 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
             final GraphPrintVisitor printer;
             try {
                 printer = new GraphPrintVisitor(out.call());
-            } catch (IOException ex) {
+            } catch (RuntimeException | IOException ex) {
                 throw ex;
             } catch (Exception ex) {
                 throw new IOException(ex);
             }
 
-            printer.beginGroup(callTarget.toString(), callTarget.getRootNode().getName(), null, 0, null);
+            printer.beginGroup(callTarget, callTarget.toString(), callTarget.getRootNode().getName(), null, 0, null);
             printer.beginGraph(message).visit(callTarget.getRootNode());
             if (callTarget instanceof OptimizedCallTarget) {
                 TruffleInlining inlining = new TruffleInlining((OptimizedCallTarget) callTarget, new DefaultInliningPolicy());
@@ -135,7 +138,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
             if (inlinedCallTarget instanceof OptimizedCallTarget && callNode instanceof OptimizedDirectCallNode) {
                 TruffleInliningDecision decision = inlining.findByCall((OptimizedDirectCallNode) callNode);
                 if (decision != null && decision.isInline()) {
-                    printer.beginGroup(inlinedCallTarget.toString(), null, null, 0, null);
+                    printer.beginGroup((RootCallTarget) inlinedCallTarget, inlinedCallTarget.toString(), null, null, 0, null);
                     printer.beginGraph(inlinedCallTarget.toString()).visit(((RootCallTarget) inlinedCallTarget).getRootNode());
                     dumpInlinedTrees(printer, (OptimizedCallTarget) inlinedCallTarget, decision);
                     printer.endGroup();

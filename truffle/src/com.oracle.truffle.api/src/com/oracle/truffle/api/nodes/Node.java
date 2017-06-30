@@ -650,6 +650,11 @@ public abstract class Node implements NodeInterface, Cloneable {
                 return new LanguageInfo(vmObject, id, name, version, mimeTypes);
             }
 
+            @Override
+            public Object getSourceVM(RootNode rootNode) {
+                return rootNode.sourceVM;
+            }
+
         }
     }
 

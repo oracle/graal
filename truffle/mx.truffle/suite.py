@@ -38,6 +38,7 @@ suite = {
 
     "JLINE" : {
       "sha1" : "5296978fd0c28c778ddbb6e1dc0c30cadb998eca",
+      "sourceSha1" : "cfc632deac8a2004fe1d36ae93f3f21b0a27290b",
       "maven" : {
         "groupId" : "jline",
         "artifactId" : "jline",

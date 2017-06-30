@@ -13,13 +13,15 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added [RootNode.getCurrentContext](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html), [TruffleLanguage.getCurrentLanguage(Class)](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html), [TruffleLanguage.getCurrentContext(Class)](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) to allow static lookups of the language and context.
 * Added an id property to [TruffleLanguage.Registration](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Registration#id) to specify a unique identifier for each language. If not specified getName().toLowerCase() will be used. The registration id will be mandatory in future releases.
 * Added an internal property to [TruffleLanguage.Registration](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Registration#internal) to specify whether a language is intended for internal use only. For example the Truffle Native Function Interface is a language that should be used from other languages only.
-* Added the ability to describe options for languages and instruments using [TruffleLanguage.describeOptions()](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) and [TruffleInstrument.describeOptions](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.html). User provided options are available to the language using TruffleLanguage.Env.getOptions() and TruffleInstrument.Env.getOptions().
+* Added the ability to describe options for languages and instruments using [TruffleLanguage.getOptionDescriptors()](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) and [TruffleInstrument.getOptionDescriptors](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.html). User provided options are available to the language using TruffleLanguage.Env.getOptions() and TruffleInstrument.Env.getOptions().
 * Added JavaInterop.isJavaObject(TruffleObject) and JavaInterop.asJavaObject(TruffleObject) to check and convert back to host language object from a TruffleObject.
 * Added [TruffleException](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/TruffleException.html) to allow languages to throw standardized error information. 
 * [Guest language stack traces](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/TruffleStackTraceElement.html) are now collected automatically for each exception thrown and passed through a CallTarget. 
 * Added RootNode.isInternal to indicate if a RootNode is considered internal and should not be shown to the guest language programmer.
 * Added TruffleLanguage.lookupSymbol to be implemented by languages to support language agnostic lookups in the top-most scope.
 * Added TruffleLanguage.Env.getApplicationArguments() to access application arguments specified by the user.
+* Added [@Option](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/Option.html) annotation to allow simple declaration of options in TruffleLanguage or TruffleInstrument subclasses.
+
 
 ## Version 0.26
 18-May-2017

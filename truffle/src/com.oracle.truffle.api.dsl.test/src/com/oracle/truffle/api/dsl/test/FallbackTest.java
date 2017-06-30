@@ -30,8 +30,10 @@ import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Introspectable;
@@ -49,6 +51,8 @@ import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback6Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback7Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback8NodeGen;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback9NodeGen;
+import com.oracle.truffle.api.dsl.test.FallbackTestFactory.FallbackWithAssumptionArrayNodeGen;
+import com.oracle.truffle.api.dsl.test.FallbackTestFactory.FallbackWithAssumptionNodeGen;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.dsl.test.examples.ExampleTypes;
@@ -459,6 +463,112 @@ public class FallbackTest {
         @TruffleBoundary
         protected String f0(Object left, Object right) {
             return "f0";
+        }
+
+    }
+
+    @Test
+    public void testFallbackWithAssumption() {
+        FallbackWithAssumption node1 = FallbackWithAssumptionNodeGen.create();
+        Assert.assertEquals("s0", node1.execute(0));
+        node1.assumption.invalidate();
+        Assert.assertEquals("f0", node1.execute(0));
+
+        FallbackWithAssumption node2 = FallbackWithAssumptionNodeGen.create();
+        node2.assumption.invalidate();
+        Assert.assertEquals("f0", node2.execute(0)); // executeAndSpecialize
+        Assert.assertEquals("f0", node2.execute(0)); // execute the fallbackGuard
+
+        FallbackWithAssumption node3 = FallbackWithAssumptionNodeGen.create();
+        Assert.assertEquals("f0", node3.execute(3.14));
+        Assert.assertEquals("f0", node3.execute(3.14));
+        // This will stay in fallback if we assume a null assumption is "invalid"
+        Assert.assertEquals("f0", node3.execute(0));
+
+        FallbackWithAssumption node4 = FallbackWithAssumptionNodeGen.create();
+        Assert.assertEquals("f0", node4.execute(3.14));
+        Assert.assertEquals("f0", node4.execute(3.14));
+        node4.assumption.invalidate();
+        // These go to executeAndSpecialize() and deopt every time
+        // if we assume a null assumption is "valid"
+        Assert.assertEquals("f0", node4.execute(0));
+        Assert.assertEquals("f0", node4.execute(0));
+    }
+
+    @TypeSystemReference(ExampleTypes.class)
+    @Introspectable
+    @SuppressWarnings("unused")
+    public abstract static class FallbackWithAssumption extends Node {
+
+        protected Assumption assumption = Truffle.getRuntime().createAssumption();
+
+        public abstract String execute(Object n);
+
+        @Specialization(assumptions = "getAssumption()")
+        protected String s0(int n) {
+            return "s0";
+        }
+
+        @Fallback
+        protected String f0(Object n) {
+            return "f0";
+        }
+
+        protected Assumption getAssumption() {
+            return assumption;
+        }
+
+    }
+
+    @Test
+    public void testFallbackWithAssumptionArray() {
+        FallbackWithAssumptionArray node1 = FallbackWithAssumptionArrayNodeGen.create();
+        Assert.assertEquals("s0", node1.execute(0));
+        node1.assumptions[0].invalidate();
+        Assert.assertEquals("f0", node1.execute(0));
+
+        FallbackWithAssumptionArray node2 = FallbackWithAssumptionArrayNodeGen.create();
+        node2.assumptions[0].invalidate();
+        Assert.assertEquals("f0", node2.execute(0)); // executeAndSpecialize
+        Assert.assertEquals("f0", node2.execute(0)); // execute the fallbackGuard
+
+        FallbackWithAssumptionArray node3 = FallbackWithAssumptionArrayNodeGen.create();
+        Assert.assertEquals("f0", node3.execute(3.14));
+        Assert.assertEquals("f0", node3.execute(3.14));
+        // This will stay in fallback if we assume a null assumptions array is "invalid"
+        Assert.assertEquals("f0", node3.execute(0));
+
+        FallbackWithAssumptionArray node4 = FallbackWithAssumptionArrayNodeGen.create();
+        Assert.assertEquals("f0", node4.execute(3.14));
+        Assert.assertEquals("f0", node4.execute(3.14));
+        node4.assumptions[0].invalidate();
+        // These go to executeAndSpecialize() and deopt every time
+        // if we assume a null assumptions array is "valid"
+        Assert.assertEquals("f0", node4.execute(0));
+        Assert.assertEquals("f0", node4.execute(0));
+    }
+
+    @TypeSystemReference(ExampleTypes.class)
+    @Introspectable
+    @SuppressWarnings("unused")
+    public abstract static class FallbackWithAssumptionArray extends Node {
+
+        protected Assumption[] assumptions = new Assumption[]{Truffle.getRuntime().createAssumption()};
+
+        public abstract String execute(Object n);
+
+        @Specialization(assumptions = "getAssumptions()")
+        protected String s0(int n) {
+            return "s0";
+        }
+
+        @Fallback
+        protected String f0(Object n) {
+            return "f0";
+        }
+
+        protected Assumption[] getAssumptions() {
+            return assumptions;
         }
 
     }

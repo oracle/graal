@@ -31,7 +31,6 @@ import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.object.Locations.DeclaredLocation;
 
 /**
  * Property objects represent the mapping between property identifiers (keys) and storage locations.
@@ -43,7 +42,6 @@ public class PropertyImpl extends Property {
     private final Object key;
     private final Location location;
     private final int flags;
-    private final boolean shadow;
     private final boolean relocatable;
 
     /**
@@ -54,17 +52,16 @@ public class PropertyImpl extends Property {
      * @param flags property flags (optional)
      * @since 0.17 or earlier
      */
-    protected PropertyImpl(Object key, Location location, int flags, boolean shadow, boolean relocatable) {
+    PropertyImpl(Object key, Location location, int flags, boolean relocatable) {
         this.key = Objects.requireNonNull(key);
         this.location = Objects.requireNonNull(location);
         this.flags = flags;
-        this.shadow = shadow;
         this.relocatable = relocatable;
     }
 
     /** @since 0.17 or earlier */
     public PropertyImpl(Object name, Location location, int flags) {
-        this(name, location, flags, false, true);
+        this(name, location, flags, true);
     }
 
     /** @since 0.17 or earlier */
@@ -193,7 +190,7 @@ public class PropertyImpl extends Property {
         }
 
         PropertyImpl other = (PropertyImpl) obj;
-        return key.equals(other.key) && location.equals(other.location) && flags == other.flags && shadow == other.shadow && relocatable == other.relocatable;
+        return key.equals(other.key) && flags == other.flags && relocatable == other.relocatable && location.equals(other.location);
     }
 
     /** @since 0.17 or earlier */
@@ -254,21 +251,17 @@ public class PropertyImpl extends Property {
     }
 
     /** @since 0.17 or earlier */
+    @SuppressWarnings("deprecation")
     @Deprecated
     @Override
     public final boolean isShadow() {
-        return shadow;
-    }
-
-    Property relocateShadow(Location newLocation) {
-        assert !isShadow() && getLocation() instanceof DeclaredLocation && relocatable;
-        return new PropertyImpl(key, newLocation, flags, true, relocatable);
+        return false;
     }
 
     /** @since 0.17 or earlier */
     @SuppressWarnings("hiding")
     protected Property construct(Object name, Location location, int flags) {
-        return new PropertyImpl(name, location, flags, shadow, relocatable);
+        return new PropertyImpl(name, location, flags, relocatable);
     }
 
     /** @since 0.17 or earlier */
@@ -281,7 +274,7 @@ public class PropertyImpl extends Property {
     @Override
     public Property copyWithRelocatable(boolean newRelocatable) {
         if (this.relocatable != newRelocatable) {
-            return new PropertyImpl(key, location, flags, shadow, newRelocatable);
+            return new PropertyImpl(key, location, flags, newRelocatable);
         }
         return this;
     }

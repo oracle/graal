@@ -24,11 +24,11 @@ package org.graalvm.compiler.truffle.hotspot.nfi;
 
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.target.Backend;
-import org.graalvm.compiler.debug.Debug;
-import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.hotspot.HotSpotCompiledCodeBuilder;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.java.GraphBuilderPhase;
@@ -54,6 +54,7 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
+import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.replacements.ConstantBindingParameterPlugin;
 
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
@@ -131,16 +132,19 @@ public class NativeCallStubGraphBuilder {
         Suites suites = providers.getSuites().getDefaultSuites(options);
         LIRSuites lirSuites = providers.getSuites().getDefaultLIRSuites(options);
 
-        StructuredGraph g = new StructuredGraph.Builder(options).method(callStubMethod).compilationId(backend.getCompilationIdentifier(callStubMethod)).build();
+        SnippetReflectionProvider snippetReflection = providers.getSnippetReflection();
+        DebugContext debug = DebugContext.create(options, new GraalDebugHandlersFactory(snippetReflection));
+        StructuredGraph g = new StructuredGraph.Builder(options, debug).method(callStubMethod).compilationId(backend.getCompilationIdentifier(callStubMethod)).build();
         CompilationResult compResult = GraalCompiler.compileGraph(g, callStubMethod, providers, backend, graphBuilder, OptimisticOptimizations.ALL, DefaultProfilingInfo.get(TriState.UNKNOWN), suites,
                         lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
 
         HotSpotCodeCacheProvider codeCache = providers.getCodeCache();
-        try (Scope s = Debug.scope("CodeInstall", codeCache, g.method(), compResult)) {
+        try (DebugContext.Scope s = debug.scope("CodeInstall", codeCache, g.method(), compResult);
+                        DebugContext.Activation a = debug.activate()) {
             HotSpotCompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(codeCache, g.method(), null, compResult);
             function.code = codeCache.addCode(g.method(), compiledCode, null, null);
         } catch (Throwable e) {
-            throw Debug.handle(e);
+            throw debug.handle(e);
         }
     }
 

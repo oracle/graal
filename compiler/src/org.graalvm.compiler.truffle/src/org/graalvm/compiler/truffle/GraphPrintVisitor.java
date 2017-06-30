@@ -60,7 +60,7 @@ class GraphPrintVisitor extends AbstractGraphPrinter<RootCallTarget, NodeElement
     private String currentGraphName;
 
     @Override
-    protected RootCallTarget findGraph(Object obj) {
+    protected RootCallTarget findGraph(RootCallTarget current, Object obj) {
         return obj instanceof RootCallTarget ? (RootCallTarget) obj : null;
     }
 

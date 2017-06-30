@@ -70,6 +70,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
 import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -354,7 +355,10 @@ public class FlatNodeGenFactory {
 
         clazz.addOptional(createExecuteAndSpecialize());
 
-        clazz.add(createGetCostMethod());
+        NodeInfo nodeInfo = node.getTemplateType().getAnnotation(NodeInfo.class);
+        if (nodeInfo == null || nodeInfo.cost() == NodeCost.MONOMORPHIC /* the default */) {
+            clazz.add(createGetCostMethod());
+        }
 
         for (TypeMirror type : ElementUtils.uniqueSortedTypes(expectedTypes, false)) {
             if (!typeSystem.hasType(type)) {
@@ -613,6 +617,7 @@ public class FlatNodeGenFactory {
         if (assumptionType.getKind() == TypeKind.ARRAY) {
             isValid.addAnnotationMirror(new CodeAnnotationMirror(context.getDeclaredType(ExplodeLoop.class)));
             isValid.addParameter(new CodeVariableElement(getType(Assumption[].class), "assumptions"));
+            builder.startIf().string("assumptions == null").end().startBlock().returnFalse().end();
             builder.startFor().startGroup().type(((ArrayType) assumptionType).getComponentType()).string(" assumption : assumptions").end().end();
             builder.startBlock();
             builder.startIf().string("assumption == null || !assumption.isValid()").end();

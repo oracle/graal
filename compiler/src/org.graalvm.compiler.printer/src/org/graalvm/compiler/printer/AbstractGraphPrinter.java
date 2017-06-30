@@ -107,7 +107,7 @@ public abstract class AbstractGraphPrinter<Graph, Node, NodeClass, Edges, Block>
             writeString(format);
             writeInt(args.length);
             for (Object a : args) {
-                writePropertyObject(a);
+                writePropertyObject(graph, a);
             }
         } else {
             writePoolObject(formatTitle(id, format, args));
@@ -116,13 +116,13 @@ public abstract class AbstractGraphPrinter<Graph, Node, NodeClass, Edges, Block>
         flush();
     }
 
-    public final void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci, Map<Object, Object> properties) throws IOException {
+    public final void beginGroup(Graph noGraph, String name, String shortName, ResolvedJavaMethod method, int bci, Map<Object, Object> properties) throws IOException {
         writeByte(BEGIN_GROUP);
         writePoolObject(name);
         writePoolObject(shortName);
         writePoolObject(method);
         writeInt(bci);
-        writeProperties(properties);
+        writeProperties(noGraph, properties);
     }
 
     public final void endGroup() throws IOException {
@@ -138,7 +138,7 @@ public abstract class AbstractGraphPrinter<Graph, Node, NodeClass, Edges, Block>
         }
     }
 
-    protected abstract Graph findGraph(Object obj);
+    protected abstract Graph findGraph(Graph current, Object obj);
 
     protected abstract ResolvedJavaMethod findMethod(Object obj);
 
@@ -334,7 +334,7 @@ public abstract class AbstractGraphPrinter<Graph, Node, NodeClass, Edges, Block>
     }
 
     private void writeGraph(Graph graph, Map<Object, Object> properties) throws IOException {
-        writeProperties(properties);
+        writeProperties(graph, properties);
         writeNodes(graph);
         writeBlocks(findBlocks(graph), graph);
     }
@@ -351,7 +351,7 @@ public abstract class AbstractGraphPrinter<Graph, Node, NodeClass, Edges, Block>
             writeInt(findNodeId(node));
             writePoolObject(nodeClass);
             writeByte(hasPredecessor(node) ? 1 : 0);
-            writeProperties(props);
+            writeProperties(info, props);
             writeEdges(node, true);
             writeEdges(node, false);
 
@@ -525,7 +525,7 @@ public abstract class AbstractGraphPrinter<Graph, Node, NodeClass, Edges, Block>
         }
     }
 
-    private void writePropertyObject(Object obj) throws IOException {
+    private void writePropertyObject(Graph graph, Object obj) throws IOException {
         if (obj instanceof Integer) {
             writeByte(PROPERTY_INT);
             writeInt(((Integer) obj).intValue());
@@ -569,7 +569,7 @@ public abstract class AbstractGraphPrinter<Graph, Node, NodeClass, Edges, Block>
                 }
             }
         } else {
-            Graph g = findGraph(obj);
+            Graph g = findGraph(graph, obj);
             if (g == null) {
                 writeByte(PROPERTY_POOL);
                 writePoolObject(obj);
@@ -580,7 +580,7 @@ public abstract class AbstractGraphPrinter<Graph, Node, NodeClass, Edges, Block>
         }
     }
 
-    private void writeProperties(Map<Object, Object> props) throws IOException {
+    private void writeProperties(Graph graph, Map<Object, Object> props) throws IOException {
         if (props == null) {
             writeShort((char) 0);
             return;
@@ -590,7 +590,7 @@ public abstract class AbstractGraphPrinter<Graph, Node, NodeClass, Edges, Block>
         for (Map.Entry<Object, Object> entry : props.entrySet()) {
             String key = entry.getKey().toString();
             writePoolObject(key);
-            writePropertyObject(entry.getValue());
+            writePropertyObject(graph, entry.getValue());
         }
     }
 

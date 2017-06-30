@@ -70,6 +70,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
     private final boolean syntaxError;
     private final int exitStatus;
     private final Value guestObject;
+    private final String message;
 
     PolyglotExceptionImpl(PolyglotLanguageContextImpl languageContext, Throwable original) {
         super(languageContext.getImpl());
@@ -113,6 +114,20 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
             this.sourceLocation = null;
             this.guestObject = languageContext.context.getHostContext().nullValue;
         }
+
+        if (!isInternalError() && guestObject != languageContext.context.getHostContext().nullValue) {
+            String msg;
+            try {
+                msg = getGuestObject().toString();
+            } catch (PolyglotException e) {
+                msg = exception.getMessage();
+            }
+            this.message = msg;
+        } else if (isHostException()) {
+            this.message = asHostException().getMessage();
+        } else {
+            this.message = exception.getMessage();
+        }
     }
 
     @Override
@@ -150,15 +165,17 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
         // using a Set with identity equality semantics.
         synchronized (s.lock()) {
             // Print our stack trace
-            s.println(api);
+            if (isInternalError() || getMessage() == null || getMessage().isEmpty()) {
+                s.println(api);
+            } else {
+                s.println(getMessage());
+            }
 
             materialize();
             int languageIdLength = 0; // java
             for (StackFrame traceElement : getPolyglotStackTrace()) {
                 if (!traceElement.isHostFrame()) {
                     languageIdLength = Math.max(languageIdLength, getAPIAccess().getImpl(traceElement).getLanguage().getId().length());
-                } else {
-                    languageIdLength = Math.max(languageIdLength, 4);
                 }
             }
 
@@ -175,13 +192,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
 
     @Override
     public String getMessage() {
-        if (!getGuestObject().isNull() && !isInternalError()) {
-            return getGuestObject().toString();
-        }
-        if (isHostException()) {
-            return asHostException().getMessage();
-        }
-        return exception.getMessage();
+        return message;
     }
 
     public StackTraceElement[] getJavaStackTrace() {

@@ -141,8 +141,6 @@ meth public abstract int getId()
 meth public abstract int getPropertyCount()
 meth public abstract java.lang.Iterable<com.oracle.truffle.api.object.Property> getProperties()
 meth public abstract java.lang.Iterable<java.lang.Object> getKeys()
-meth public abstract java.lang.Object getData()
- anno 0 java.lang.Deprecated()
 meth public abstract java.lang.Object getMutex()
 meth public abstract java.lang.Object getSharedData()
 meth public abstract java.util.List<com.oracle.truffle.api.object.Property> getPropertyList()
@@ -262,8 +260,6 @@ hfds INT_TO_DOUBLE_FLAG,INT_TO_LONG_FLAG,allowedImplicitCasts
 
 CLSS public abstract com.oracle.truffle.object.LayoutStrategy
 cons protected init()
-fld protected final static com.oracle.truffle.api.object.LocationFactory DEFAULT_LAYOUT_FACTORY
- anno 0 java.lang.Deprecated()
 meth protected abstract boolean updateShape(com.oracle.truffle.api.object.DynamicObject)
 meth protected abstract com.oracle.truffle.object.ShapeImpl ensureSpace(com.oracle.truffle.object.ShapeImpl,com.oracle.truffle.api.object.Location)
 meth protected abstract com.oracle.truffle.object.ShapeImpl ensureValid(com.oracle.truffle.object.ShapeImpl)
@@ -280,8 +276,6 @@ meth protected com.oracle.truffle.object.ShapeImpl directReplaceProperty(com.ora
 meth protected com.oracle.truffle.object.ShapeImpl generalizeProperty(com.oracle.truffle.api.object.Property,java.lang.Object,com.oracle.truffle.object.ShapeImpl,com.oracle.truffle.object.ShapeImpl)
 meth protected com.oracle.truffle.object.ShapeImpl removeProperty(com.oracle.truffle.object.ShapeImpl,com.oracle.truffle.api.object.Property)
 meth protected com.oracle.truffle.object.ShapeImpl replaceProperty(com.oracle.truffle.object.ShapeImpl,com.oracle.truffle.api.object.Property,com.oracle.truffle.api.object.Property)
-meth protected static com.oracle.truffle.api.object.Property relocateShadow(com.oracle.truffle.api.object.Property,com.oracle.truffle.api.object.Location)
- anno 0 java.lang.Deprecated()
 meth protected static com.oracle.truffle.object.ShapeImpl getShapeFromProperty(com.oracle.truffle.object.ShapeImpl,com.oracle.truffle.api.object.Property)
 meth protected static com.oracle.truffle.object.ShapeImpl getShapeFromProperty(com.oracle.truffle.object.ShapeImpl,java.lang.Object)
 meth protected void objectDefineProperty(com.oracle.truffle.object.DynamicObjectImpl,java.lang.Object,java.lang.Object,int,com.oracle.truffle.api.object.LocationFactory,com.oracle.truffle.object.ShapeImpl)
@@ -381,7 +375,6 @@ supr java.lang.Object
 hfds DebugCounters,DumpDebugCounters,DumpShapes,DumpShapesDOT,DumpShapesIGV,DumpShapesJSON,DumpShapesPath
 
 CLSS public com.oracle.truffle.object.PropertyImpl
-cons protected init(java.lang.Object,com.oracle.truffle.api.object.Location,int,boolean,boolean)
 cons public init(java.lang.Object,com.oracle.truffle.api.object.Location,int)
 meth protected com.oracle.truffle.api.object.Property construct(java.lang.Object,com.oracle.truffle.api.object.Location,int)
 meth public boolean equals(java.lang.Object)
@@ -500,8 +493,6 @@ meth public final int getPrimitiveArraySize()
 meth public final int getPrimitiveFieldSize()
 meth public final int getPropertyCount()
 meth public final java.lang.Iterable<com.oracle.truffle.api.object.Property> getProperties()
-meth public final java.lang.Object getData()
- anno 0 java.lang.Deprecated()
 meth public final java.lang.Object getSharedData()
 meth public final java.util.List<com.oracle.truffle.api.object.Property> getPropertyList()
 meth public final java.util.List<com.oracle.truffle.api.object.Property> getPropertyList(com.oracle.truffle.api.object.Shape$Pred<com.oracle.truffle.api.object.Property>)

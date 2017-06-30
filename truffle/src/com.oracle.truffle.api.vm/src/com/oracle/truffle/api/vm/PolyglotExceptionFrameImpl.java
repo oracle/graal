@@ -94,11 +94,11 @@ final class PolyglotExceptionFrameImpl extends AbstractStackFrameImpl {
         StringBuilder b = new StringBuilder();
         String languageId;
         if (isHostFrame()) {
-            languageId = "java";
+            languageId = "";
         } else {
             languageId = language.getId();
+            b.append(spaces(Math.max(langColumn, languageId.length()) - languageId.length())).append("<").append(languageId).append("> ");
         }
-        b.append(spaces(Math.max(langColumn, languageId.length()) - languageId.length())).append("<").append(languageId).append("> ");
         if (isHostFrame()) {
             b.append(stackTrace.toString());
         } else {

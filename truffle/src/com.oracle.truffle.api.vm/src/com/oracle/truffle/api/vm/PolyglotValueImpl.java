@@ -24,9 +24,6 @@
  */
 package com.oracle.truffle.api.vm;
 
-import static com.oracle.truffle.api.vm.PolyglotImpl.checkStateForGuest;
-import static com.oracle.truffle.api.vm.PolyglotImpl.enterGuest;
-import static com.oracle.truffle.api.vm.PolyglotImpl.leaveGuest;
 import static com.oracle.truffle.api.vm.PolyglotImpl.wrapGuestException;
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 
@@ -68,13 +65,13 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
 
     @Override
     public Value getMetaObject(Object receiver) {
-        Object prev = PolyglotImpl.enterGuest(languageContext);
+        Object prev = languageContext.enter();
         try {
             return newValue(LANGUAGE.findMetaObject(languageContext.env, receiver));
         } catch (Throwable e) {
             throw wrapGuestException(languageContext, e);
         } finally {
-            PolyglotImpl.leaveGuest(prev);
+            languageContext.leave(prev);
         }
     }
 
@@ -93,7 +90,7 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
 
     @Override
     protected RuntimeException unsupported(Object receiver, String message, String useToCheck) {
-        Object prev = enterGuest(languageContext);
+        Object prev = languageContext.enter();
         try {
             Object metaObject = LANGUAGE.findMetaObject(languageContext.env, receiver);
             String typeName = LANGUAGE.toStringIfVisible(languageContext.env, metaObject, false);
@@ -105,19 +102,19 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
         } catch (Throwable e) {
             throw wrapGuestException(languageContext, e);
         } finally {
-            leaveGuest(prev);
+            languageContext.leave(prev);
         }
     }
 
     @Override
     public String toString(Object receiver) {
-        Object prev = PolyglotImpl.enterGuest(languageContext);
+        Object prev = languageContext.enter();
         try {
             return LANGUAGE.toStringIfVisible(languageContext.env, receiver, false);
         } catch (Throwable e) {
             throw wrapGuestException(languageContext, e);
         } finally {
-            PolyglotImpl.leaveGuest(prev);
+            languageContext.leave(prev);
         }
     }
 
@@ -721,31 +718,31 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
 
         @Override
         public boolean isNativePointer(Object receiver) {
-            Object prev = enterGuest(languageContext);
+            Object prev = languageContext.enter();
             try {
                 return ForeignAccess.sendIsPointer(isPointerNode, (TruffleObject) receiver);
             } catch (Throwable e) {
                 throw wrapGuestException(languageContext, e);
             } finally {
-                leaveGuest(prev);
+                languageContext.leave(prev);
             }
         }
 
         @Override
         public boolean hasArrayElements(Object receiver) {
-            Object prev = enterGuest(languageContext);
+            Object prev = languageContext.enter();
             try {
                 return ForeignAccess.sendHasSize(hasSizeNode, (TruffleObject) receiver);
             } catch (Throwable e) {
                 throw wrapGuestException(languageContext, e);
             } finally {
-                leaveGuest(prev);
+                languageContext.leave(prev);
             }
         }
 
         @Override
         public Value getArrayElement(Object receiver, long index) {
-            Object prev = enterGuest(languageContext);
+            Object prev = languageContext.enter();
             try {
                 try {
                     return newValue(ForeignAccess.sendRead(readArrayNode, (TruffleObject) receiver, index));
@@ -757,13 +754,13 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
             } catch (Throwable e) {
                 throw wrapGuestException(languageContext, e);
             } finally {
-                leaveGuest(prev);
+                languageContext.leave(prev);
             }
         }
 
         @Override
         public void setArrayElement(Object receiver, long index, Object value) {
-            Object prev = enterGuest(languageContext);
+            Object prev = languageContext.enter();
             try {
                 try {
                     ForeignAccess.sendWrite(writeArrayNode, (TruffleObject) receiver, index, languageContext.toGuestValue(value));
@@ -778,13 +775,13 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
             } catch (Throwable e) {
                 throw wrapGuestException(languageContext, e);
             } finally {
-                leaveGuest(prev);
+                languageContext.leave(prev);
             }
         }
 
         @Override
         public long getArraySize(Object receiver) {
-            Object prev = enterGuest(languageContext);
+            Object prev = languageContext.enter();
             try {
                 if (ForeignAccess.sendHasSize(hasSizeNode, (TruffleObject) receiver)) {
                     try {
@@ -799,7 +796,7 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
             } catch (Throwable e) {
                 throw wrapGuestException(languageContext, e);
             } finally {
-                leaveGuest(prev);
+                languageContext.leave(prev);
             }
         }
 
@@ -812,7 +809,7 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
 
         @Override
         public Value getMember(Object receiver, String key) {
-            Object prev = enterGuest(languageContext);
+            Object prev = languageContext.enter();
             try {
                 try {
                     return newValue(ForeignAccess.sendRead(readMemberNode, (TruffleObject) receiver, key));
@@ -824,26 +821,26 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
             } catch (Throwable e) {
                 throw wrapGuestException(languageContext, e);
             } finally {
-                leaveGuest(prev);
+                languageContext.leave(prev);
             }
         }
 
         @Override
         public boolean hasMember(Object receiver, String key) {
-            Object prev = enterGuest(languageContext);
+            Object prev = languageContext.enter();
             try {
                 int keyInfo = ForeignAccess.sendKeyInfo(keyInfoNode, (TruffleObject) receiver, key);
                 return KeyInfo.isExisting(keyInfo);
             } catch (Throwable e) {
                 throw wrapGuestException(languageContext, e);
             } finally {
-                leaveGuest(prev);
+                languageContext.leave(prev);
             }
         }
 
         @Override
         public void putMember(Object receiver, String key, Object member) {
-            Object prev = enterGuest(languageContext);
+            Object prev = languageContext.enter();
             try {
                 try {
                     ForeignAccess.sendWrite(writeMemberNode, (TruffleObject) receiver, key, languageContext.toGuestValue(member));
@@ -858,13 +855,13 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
             } catch (Throwable e) {
                 throw wrapGuestException(languageContext, e);
             } finally {
-                leaveGuest(prev);
+                languageContext.leave(prev);
             }
         }
 
         @Override
         public Set<String> getMemberKeys(Object receiver) {
-            Object prev = enterGuest(languageContext);
+            Object prev = languageContext.enter();
             try {
                 try {
                     final Object keys = ForeignAccess.sendKeys(keysNode, (TruffleObject) receiver, false);
@@ -878,13 +875,13 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
             } catch (Throwable e) {
                 throw wrapGuestException(languageContext, e);
             } finally {
-                leaveGuest(prev);
+                languageContext.leave(prev);
             }
         }
 
         @Override
         public long asNativePointer(Object receiver) {
-            Object prev = enterGuest(languageContext);
+            Object prev = languageContext.enter();
             try {
                 if (ForeignAccess.sendIsExecutable(isPointerNode, (TruffleObject) receiver)) {
                     try {
@@ -899,57 +896,69 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
             } catch (Throwable e) {
                 throw wrapGuestException(languageContext, e);
             } finally {
-                leaveGuest(prev);
+                languageContext.leave(prev);
             }
         }
 
         @Override
         public boolean isHostObject(Object receiver) {
-            checkStateForGuest(languageContext);
-            TruffleObject castReceiver = (TruffleObject) receiver;
-            return PolyglotProxyImpl.isProxyGuestObject(castReceiver) || JavaInterop.isJavaObject(castReceiver);
+            Object prev = languageContext.enter();
+            try {
+                TruffleObject castReceiver = (TruffleObject) receiver;
+                return PolyglotProxyImpl.isProxyGuestObject(castReceiver) || JavaInterop.isJavaObject(castReceiver);
+            } catch (Throwable e) {
+                throw wrapGuestException(languageContext, e);
+            } finally {
+                languageContext.leave(prev);
+            }
         }
 
         @Override
         public Object asHostObject(Object receiver) {
-            checkStateForGuest(languageContext);
-            TruffleObject castReceiver = (TruffleObject) receiver;
-            if (PolyglotProxyImpl.isProxyGuestObject(castReceiver)) {
-                return PolyglotProxyImpl.toProxyHostObject(castReceiver);
-            } else if (JavaInterop.isJavaObject(castReceiver)) {
-                return JavaInterop.asJavaObject(castReceiver);
-            } else {
-                return super.asHostObject(receiver);
+            Object prev = languageContext.enter();
+            try {
+                TruffleObject castReceiver = (TruffleObject) receiver;
+                if (PolyglotProxyImpl.isProxyGuestObject(castReceiver)) {
+                    return PolyglotProxyImpl.toProxyHostObject(castReceiver);
+                } else if (JavaInterop.isJavaObject(castReceiver)) {
+                    return JavaInterop.asJavaObject(castReceiver);
+                } else {
+                    return super.asHostObject(receiver);
+                }
+            } catch (Throwable e) {
+                throw wrapGuestException(languageContext, e);
+            } finally {
+                languageContext.leave(prev);
             }
         }
 
         @Override
         public boolean isNull(Object receiver) {
-            Object prev = enterGuest(languageContext);
+            Object prev = languageContext.enter();
             try {
                 return ForeignAccess.sendIsNull(isNullNode, (TruffleObject) receiver);
             } catch (Throwable e) {
                 throw wrapGuestException(languageContext, e);
             } finally {
-                leaveGuest(prev);
+                languageContext.leave(prev);
             }
         }
 
         @Override
         public boolean canExecute(Object receiver) {
-            Object prev = enterGuest(languageContext);
+            Object prev = languageContext.enter();
             try {
                 return ForeignAccess.sendIsExecutable(isExecutableNode, (TruffleObject) receiver);
             } catch (Throwable e) {
                 throw wrapGuestException(languageContext, e);
             } finally {
-                leaveGuest(prev);
+                languageContext.leave(prev);
             }
         }
 
         @Override
         public Value execute(Object receiver, Object[] arguments) {
-            Object prev = enterGuest(languageContext);
+            Object prev = languageContext.enter();
             try {
                 if (ForeignAccess.sendIsExecutable(isExecutableNode, (TruffleObject) receiver)) {
                     try {
@@ -968,7 +977,7 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
             } catch (Throwable e) {
                 throw wrapGuestException(languageContext, e);
             } finally {
-                leaveGuest(prev);
+                languageContext.leave(prev);
             }
         }
 
@@ -1004,7 +1013,7 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
         }
 
         private Object asPrimitive(Object receiver) {
-            Object prev = enterGuest(languageContext);
+            Object prev = languageContext.enter();
             try {
                 if (ForeignAccess.sendIsBoxed(isBoxedNode, (TruffleObject) receiver)) {
                     try {
@@ -1018,7 +1027,7 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
             } catch (Throwable e) {
                 throw wrapGuestException(languageContext, e);
             } finally {
-                leaveGuest(prev);
+                languageContext.leave(prev);
             }
         }
 
@@ -1140,14 +1149,14 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
                 if (!(o instanceof String)) {
                     return false;
                 }
-                Object prev = enterGuest(languageContext);
+                Object prev = languageContext.enter();
                 try {
                     int keyInfo = ForeignAccess.sendKeyInfo(keyInfoNode, receiver, o);
                     return KeyInfo.isExisting(keyInfo);
                 } catch (Throwable e) {
                     throw wrapGuestException(languageContext, e);
                 } finally {
-                    leaveGuest(prev);
+                    languageContext.leave(prev);
                 }
             }
 
@@ -1165,7 +1174,7 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
                         if (index >= size()) {
                             throw new NoSuchElementException();
                         }
-                        Object prev = enterGuest(languageContext);
+                        Object prev = languageContext.enter();
                         try {
                             try {
                                 Object result = ForeignAccess.sendRead(keysReadNode, keys, index);
@@ -1177,7 +1186,7 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
                         } catch (Throwable e) {
                             throw wrapGuestException(languageContext, e);
                         } finally {
-                            leaveGuest(prev);
+                            languageContext.leave(prev);
                         }
                     }
                 };
@@ -1188,7 +1197,7 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
                 if (cachedSize != -1) {
                     return cachedSize;
                 }
-                Object prev = enterGuest(languageContext);
+                Object prev = languageContext.enter();
                 try {
                     try {
                         cachedSize = ((Number) ForeignAccess.sendGetSize(keysSizeNode, keys)).intValue();
@@ -1199,7 +1208,7 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
                 } catch (Throwable e) {
                     throw wrapGuestException(languageContext, e);
                 } finally {
-                    leaveGuest(prev);
+                    languageContext.leave(prev);
                 }
             }
 

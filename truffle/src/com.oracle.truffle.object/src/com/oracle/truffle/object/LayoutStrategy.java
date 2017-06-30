@@ -47,8 +47,7 @@ public abstract class LayoutStrategy {
     protected LayoutStrategy() {
     }
 
-    /** @since 0.17 or earlier */
-    @Deprecated protected static final LocationFactory DEFAULT_LAYOUT_FACTORY = new LocationFactory() {
+    private static final LocationFactory DEFAULT_LOCATION_FACTORY = new LocationFactory() {
         public Location createLocation(Shape shape, Object value) {
             return ((ShapeImpl) shape).allocator().locationForValue(value, true, value != null);
         }
@@ -56,7 +55,7 @@ public abstract class LayoutStrategy {
 
     /** @since 0.18 */
     protected LocationFactory getDefaultLocationFactory() {
-        return DEFAULT_LAYOUT_FACTORY;
+        return DEFAULT_LOCATION_FACTORY;
     }
 
     /** @since 0.17 or earlier */
@@ -181,12 +180,6 @@ public abstract class LayoutStrategy {
     }
 
     /** @since 0.17 or earlier */
-    @Deprecated
-    protected static Property relocateShadow(Property property, Location newLocation) {
-        return ((PropertyImpl) property).relocateShadow(newLocation);
-    }
-
-    /** @since 0.17 or earlier */
     protected ShapeImpl replaceProperty(ShapeImpl shape, Property oldProperty, Property newProperty) {
         return directReplaceProperty(shape, oldProperty, newProperty);
     }
@@ -246,7 +239,7 @@ public abstract class LayoutStrategy {
 
     /** @since 0.17 or earlier */
     protected ShapeImpl addProperty(ShapeImpl shape, Property property, boolean ensureValid) {
-        assert property.isShadow() || !(shape.hasProperty(property.getKey())) : "duplicate property " + property.getKey();
+        assert !(shape.hasProperty(property.getKey())) : "duplicate property " + property.getKey();
 
         AddPropertyTransition addTransition = new AddPropertyTransition(property);
         ShapeImpl cachedShape = shape.queryTransition(addTransition);

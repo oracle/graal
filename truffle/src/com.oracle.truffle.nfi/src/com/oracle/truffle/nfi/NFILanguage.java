@@ -42,6 +42,7 @@ public class NFILanguage extends TruffleLanguage<Env> {
 
     @Override
     protected Env createContext(Env env) {
+        NativeAccess.ensureInitialized();
         return env;
     }
 
@@ -83,9 +84,9 @@ public class NFILanguage extends TruffleLanguage<Env> {
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
         String library = request.getSource().getCode();
+        RootNode root;
         NativeLibraryDescriptor descriptor = Parser.parseLibraryDescriptor(library);
 
-        RootNode root;
         if (descriptor.isDefaultLibrary()) {
             root = new GetDefaultLibraryNode();
         } else {
@@ -117,6 +118,11 @@ public class NFILanguage extends TruffleLanguage<Env> {
             }
             root = new LoadLibraryNode(descriptor.getFilename(), flags);
         }
+
+        if (!descriptor.getBindings().isEmpty()) {
+            root = new LookupAndBind(root, descriptor.getBindings());
+        }
+
         return Truffle.getRuntime().createCallTarget(root);
     }
 

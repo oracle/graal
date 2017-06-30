@@ -35,61 +35,35 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeKind;
-import javax.tools.JavaFileObject;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
-/**
- * THIS IS NOT PUBLIC API.
- */
-public final class LanguageCheckGenerator {
+final class LanguageCheckGenerator extends InteropNodeGenerator {
     protected static final String TEST_METHOD_NAME = "test";
 
-    protected final TypeElement element;
-    protected final String packageName;
-    protected final String clazzName;
-    protected final String userClassName;
-    protected final ProcessingEnvironment processingEnv;
     protected String receiverClassName;
-    protected ForeignAccessFactoryGenerator containingForeignAccessFactory;
 
     LanguageCheckGenerator(ProcessingEnvironment processingEnv, MessageResolution messageResolutionAnnotation, TypeElement element, ForeignAccessFactoryGenerator containingForeignAccessFactory) {
-        this.processingEnv = processingEnv;
-        this.element = element;
-        this.packageName = ElementUtils.getPackageName(element);
-        this.userClassName = ElementUtils.getQualifiedName(element);
-        this.clazzName = ElementUtils.getSimpleName(element) + "Sub";
+        super(processingEnv, element, containingForeignAccessFactory);
         this.receiverClassName = Utils.getReceiverTypeFullClassName(messageResolutionAnnotation);
-        this.containingForeignAccessFactory = containingForeignAccessFactory;
     }
 
-    public void generate() throws IOException {
-        JavaFileObject file = processingEnv.getFiler().createSourceFile(packageName + "." + clazzName, element);
-        Writer w = file.openWriter();
-        w.append("package ").append(packageName).append(";\n");
-        appendImports(w);
-
-        appendGeneratedFor(w, "");
-        Utils.appendMessagesGeneratedByInformation(w, "", containingForeignAccessFactory.getFullClassName(), ElementUtils.getQualifiedName(element));
+    @Override
+    public void appendNode(Writer w) throws IOException {
+        Utils.appendMessagesGeneratedByInformation(w, indent, ElementUtils.getQualifiedName(element), receiverClassName);
+        w.append(indent);
         Utils.appendVisibilityModifier(w, element);
-        w.append("abstract class ").append(clazzName).append(" extends ").append(userClassName).append(" {\n");
+        w.append("abstract static class ").append(clazzName).append(" extends ").append(userClassName).append(" {\n");
         appendExecuteWithTarget(w);
         appendSpecializations(w);
 
         appendRootNode(w);
         appendRootNodeFactory(w);
 
-        w.append("}\n");
-        w.close();
-    }
-
-    void appendGeneratedFor(Writer w, String ident) throws IOException {
-        w.append(ident).append("/**\n");
-        w.append(ident).append(" * Generated for {@link ").append(receiverClassName).append("}\n");
-        w.append(ident).append(" */\n");
+        w.append(indent).append("}\n");
     }
 
     public List<ExecutableElement> getTestMethods() {
@@ -105,16 +79,6 @@ public final class LanguageCheckGenerator {
             methods.add(method);
         }
         return methods;
-    }
-
-    static void appendImports(Writer w) throws IOException {
-        w.append("import com.oracle.truffle.api.frame.VirtualFrame;").append("\n");
-        w.append("import com.oracle.truffle.api.dsl.Specialization;").append("\n");
-        w.append("import com.oracle.truffle.api.nodes.RootNode;").append("\n");
-        w.append("import com.oracle.truffle.api.TruffleLanguage;").append("\n");
-        w.append("import com.oracle.truffle.api.interop.ForeignAccess;").append("\n");
-        w.append("import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;").append("\n");
-        w.append("import com.oracle.truffle.api.interop.UnsupportedTypeException;").append("\n");
     }
 
     public String checkSignature(ExecutableElement method) {
@@ -143,8 +107,8 @@ public final class LanguageCheckGenerator {
         return null;
     }
 
-    static void appendExecuteWithTarget(Writer w) throws IOException {
-        w.append("    public abstract Object executeWithTarget(VirtualFrame frame, ").append("Object ").append("o").append(");\n");
+    void appendExecuteWithTarget(Writer w) throws IOException {
+        w.append(indent).append("    public abstract Object executeWithTarget(VirtualFrame frame, ").append("Object ").append("o").append(");\n");
     }
 
     void appendSpecializations(Writer w) throws IOException {
@@ -154,8 +118,8 @@ public final class LanguageCheckGenerator {
 
         final List<? extends VariableElement> params = testMethods.get(0).getParameters();
 
-        w.append("    @Specialization\n");
-        w.append("    protected Object ").append(TEST_METHOD_NAME).append("WithTarget");
+        w.append(indent).append("    @Specialization\n");
+        w.append(indent).append("    protected Object ").append(TEST_METHOD_NAME).append("WithTarget");
         w.append("(");
 
         sep = "";
@@ -164,58 +128,49 @@ public final class LanguageCheckGenerator {
             sep = ", ";
         }
         w.append(") {\n");
-        w.append("        return ").append(TEST_METHOD_NAME).append("(");
+        w.append(indent).append("        return ").append(TEST_METHOD_NAME).append("(");
         sep = "";
         for (VariableElement p : params) {
             w.append(sep).append(p.getSimpleName());
             sep = ", ";
         }
         w.append(");\n");
-        w.append("    }\n");
+        w.append(indent).append("    }\n");
     }
 
     void appendRootNode(Writer w) throws IOException {
-        w.append("    private static final class LanguageCheckRootNode extends RootNode {\n");
-        w.append("        protected LanguageCheckRootNode() {\n");
-        w.append("            super(null);\n");
-        w.append("        }\n");
+        w.append(indent).append("    private static final class LanguageCheckRootNode extends RootNode {\n");
+        w.append(indent).append("        protected LanguageCheckRootNode() {\n");
+        w.append(indent).append("            super(null);\n");
+        w.append(indent).append("        }\n");
         w.append("\n");
-        w.append("        @Child private ").append(clazzName).append(" node = ").append(packageName).append(".").append(clazzName).append("NodeGen.create();");
+        w.append(indent).append("        @Child private ").append(clazzName).append(" node = ").append(getGeneratedDSLNodeQualifiedName()).append(".create();");
         w.append("\n");
-        w.append("        @Override\n");
-        w.append("        public Object execute(VirtualFrame frame) {\n");
-        w.append("            try {\n");
-        w.append("              Object receiver = ForeignAccess.getReceiver(frame);\n");
-        w.append("              return node.executeWithTarget(frame, receiver);\n");
-        w.append("            } catch (UnsupportedSpecializationException e) {\n");
+        w.append(indent).append("        @Override\n");
+        w.append(indent).append("        public Object execute(VirtualFrame frame) {\n");
+        w.append(indent).append("            try {\n");
+        w.append(indent).append("              Object receiver = ForeignAccess.getReceiver(frame);\n");
+        w.append(indent).append("              return node.executeWithTarget(frame, receiver);\n");
+        w.append(indent).append("            } catch (UnsupportedSpecializationException e) {\n");
         appendHandleUnsupportedTypeException(w);
-        w.append("            }\n");
-        w.append("        }\n");
+        w.append(indent).append("            }\n");
+        w.append(indent).append("        }\n");
         w.append("\n");
-        w.append("    }\n");
+        w.append(indent).append("    }\n");
     }
 
-    static void appendRootNodeFactory(Writer w) throws IOException {
-        w.append("    @Deprecated\n");
-        w.append("    @SuppressWarnings(\"unused\")\n");
-        w.append("    public static RootNode createRoot(Class<? extends TruffleLanguage<?>> language) {\n");
-        w.append("        return createRoot();\n");
-        w.append("    }\n");
-        w.append("    public static RootNode createRoot() {\n");
-        w.append("        return new LanguageCheckRootNode();\n");
-        w.append("    }\n");
+    void appendRootNodeFactory(Writer w) throws IOException {
+        w.append(indent).append("    public static RootNode createRoot() {\n");
+        w.append(indent).append("        return new LanguageCheckRootNode();\n");
+        w.append(indent).append("    }\n");
     }
 
     protected void appendHandleUnsupportedTypeException(Writer w) throws IOException {
-        w.append("                if (e.getNode() instanceof ").append(clazzName).append(") {\n");
-        w.append("                  throw UnsupportedTypeException.raise(e, e.getSuppliedValues());\n");
-        w.append("                } else {\n");
-        w.append("                  throw e;\n");
-        w.append("                }\n");
-    }
-
-    public String getRootNodeFactoryInvokation() {
-        return packageName + "." + clazzName + ".createRoot()";
+        w.append(indent).append("                if (e.getNode() instanceof ").append(clazzName).append(") {\n");
+        w.append(indent).append("                  throw UnsupportedTypeException.raise(e, e.getSuppliedValues());\n");
+        w.append(indent).append("                } else {\n");
+        w.append(indent).append("                  throw e;\n");
+        w.append(indent).append("                }\n");
     }
 
     @Override

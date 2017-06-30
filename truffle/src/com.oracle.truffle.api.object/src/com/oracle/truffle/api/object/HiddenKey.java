@@ -48,4 +48,16 @@ public final class HiddenKey {
     public String toString() {
         return name;
     }
+
+    /** @since 0.27 */
+    @Override
+    public boolean equals(Object obj) {
+        return (this == obj);
+    }
+
+    /** @since 0.27 */
+    @Override
+    public int hashCode() {
+        return (name != null ? name.hashCode() : 0);
+    }
 }

@@ -46,6 +46,8 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime.LazyFrameBoxingQuery;
 import org.graalvm.compiler.truffle.debug.AbstractDebugCompilationListener;
 import org.graalvm.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -262,7 +264,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         runtime().getCompilationNotify().notifyCompilationDeoptimized(this, frame);
     }
 
-    private static GraalTruffleRuntime runtime() {
+    static GraalTruffleRuntime runtime() {
         return (GraalTruffleRuntime) Truffle.getRuntime();
     }
 
@@ -278,11 +280,16 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         }
     }
 
-    private static OptimizedCompilationProfile createCompilationProfile() {
+    public final OptionValues getOptionValues() {
+        return runtime().getTvmci().getCompilerOptionValues(rootNode);
+    }
+
+    private OptimizedCompilationProfile createCompilationProfile() {
+        OptionValues optionValues = PolyglotCompilerOptions.getPolyglotValues(rootNode);
         if (TruffleCompilerOptions.getValue(TruffleCallTargetProfiling)) {
-            return TraceCompilationProfile.create();
+            return TraceCompilationProfile.create(optionValues);
         } else {
-            return OptimizedCompilationProfile.create();
+            return OptimizedCompilationProfile.create(optionValues);
         }
     }
 
@@ -616,4 +623,9 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     void resetCompilationTask() {
         this.compilationTask = null;
     }
+
+    public <T> T getOptionValue(OptionKey<T> key) {
+        return PolyglotCompilerOptions.getValue(rootNode, key);
+    }
+
 }

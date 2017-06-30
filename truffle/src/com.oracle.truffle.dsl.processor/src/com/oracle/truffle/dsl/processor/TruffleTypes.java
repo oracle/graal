@@ -57,7 +57,8 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 public final class TruffleTypes {
 
-    public static final String EXPECT_ERROR_CLASS_NAME = "com.oracle.truffle.api.dsl.test.ExpectError";
+    public static final String EXPECT_ERROR_CLASS_NAME1 = "com.oracle.truffle.api.dsl.test.ExpectError";
+    public static final String EXPECT_ERROR_CLASS_NAME2 = "com.oracle.truffle.api.test.ExpectError";
 
     private final DeclaredType node;
     private final ArrayType nodeArray;
@@ -101,7 +102,7 @@ public final class TruffleTypes {
         compilationFinal = getRequired(context, CompilationFinal.class);
         nodeUtil = getRequired(context, NodeUtil.class);
         nodeFactory = getRequired(context, NodeFactory.class);
-        expectError = getOptional(context, EXPECT_ERROR_CLASS_NAME);
+        expectError = getOptional(context, EXPECT_ERROR_CLASS_NAME1);
         generateNodeFactory = getRequired(context, GenerateNodeFactory.class);
     }
 
