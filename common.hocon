@@ -61,6 +61,10 @@ solaris-sparcv9 : ${solaris} {
   capabilities : [solaris, sparcv9]
 }
 
+linux-sparcv9 : ${linux} {
+  capabilities : [linux, sparcv9]
+}
+
 java8 : {
   downloads : {
     EXTRA_JAVA_HOMES : { pathlist :[

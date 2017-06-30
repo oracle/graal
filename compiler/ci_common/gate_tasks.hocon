@@ -27,6 +27,8 @@ builds += [
   ${gateTestBenchmark8}        ${gateSolarisSPARC} {name: "gate-compiler-benchmarktest-8-solaris-sparcv9",           timelimit: "1:00:00"}
 # ${gateTestBenchmark8Debug}   ${gateSolarisSPARC} {name: "gate-compiler-benchmarktest-8-solaris-sparcv9-fastdebug", timelimit: "1:00:00"}
 
+  # Linux SPARC
+  ${gateTest8}                 ${gateLinuxSPARC} {name: "gate-compiler-test-8-linux-sparcv9",                    timelimit: "1:00:00"}
 
   # TraceRA
   ${gateTest8}                 ${gateLinuxAMD64TraceRA} {name: "gate-compiler-test-8-linux-amd64-tracera", targets : [weekly]}
