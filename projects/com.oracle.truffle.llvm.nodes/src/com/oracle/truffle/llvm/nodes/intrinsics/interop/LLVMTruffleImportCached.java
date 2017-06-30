@@ -50,7 +50,7 @@ public abstract class LLVMTruffleImportCached extends LLVMIntrinsic {
 
     @TruffleBoundary
     public Object importSymbol(String id) {
-        return getLLVMLanguage().getEnvironment().importSymbol(id);
+        return getContext().getEnv().importSymbol(id);
     }
 
     protected static String getString(LLVMAddress value) {

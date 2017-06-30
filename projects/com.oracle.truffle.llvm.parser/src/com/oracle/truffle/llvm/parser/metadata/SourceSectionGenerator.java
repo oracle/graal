@@ -29,19 +29,18 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.Call;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.Call;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
+import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 public final class SourceSectionGenerator {
 
@@ -82,7 +81,7 @@ public final class SourceSectionGenerator {
                         source = Source.newBuilder(file).mimeType(sourceMimeType).name(sourceName).build();
                         scopeToSource.put(md, source);
                     } catch (IOException e) {
-                        LLVMLogger.info(String.format("Could not access Source: %s\ncaused by %s", file.getAbsolutePath(), e.getMessage()));
+                        throw new IllegalStateException(String.format("Could not access Source: %s\ncaused by %s", file.getAbsolutePath(), e.getMessage()), e);
                     }
                 }
             }
@@ -114,7 +113,6 @@ public final class SourceSectionGenerator {
 
         @Override
         public void ifVisitNotOverwritten(MDBaseNode md) {
-            LLVMLogger.info("Metadata Node not Supported for Source Generation: " + md);
         }
 
         private void updateLocationInSource(long newLine, long newCol) {

@@ -70,7 +70,6 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstructio
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
@@ -109,18 +108,11 @@ public final class LLVMSymbolResolver {
 
     public static Integer evaluateIntegerConstant(Symbol constant) {
         if (constant instanceof IntegerConstant) {
-            if (constant.getType() == PrimitiveType.I64) {
-                LLVMLogger.info("GEP index overflow (still parse as int");
-            }
             return (int) ((IntegerConstant) constant).getValue();
-
         } else if (constant instanceof BigIntegerConstant) {
-            LLVMLogger.info("GEP index overflow (still parse as int");
             return ((BigIntegerConstant) constant).getValue().intValueExact();
-
         } else if (constant instanceof NullConstant) {
             return 0;
-
         } else {
             return null;
         }

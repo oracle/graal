@@ -53,7 +53,6 @@ public final class LLVMIVarBit {
 
     private LLVMIVarBit(int bits, byte[] arr) {
         this.bits = bits;
-        LLVMPerformance.warn(null, "LLVMIVarBit:constructor");
         // TODO: what about sign extension?
         this.arr = new byte[getByteSize()];
         if (getByteSize() >= arr.length) {

@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.test.alpha;
 
-import com.oracle.truffle.llvm.test.options.SulongTestOptions;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -43,6 +42,8 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
+import com.oracle.truffle.llvm.test.options.TestOptions;
+
 @RunWith(Parameterized.class)
 public final class SulongSuite extends BaseSuiteHarness {
 
@@ -51,7 +52,7 @@ public final class SulongSuite extends BaseSuiteHarness {
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        Path suitesPath = new File(SulongTestOptions.TEST.testSuitesPath()).toPath();
+        Path suitesPath = new File(TestOptions.TEST_SUITE_PATH).toPath();
         try {
             Stream<Path> destDirs = Files.walk(suitesPath).filter(path -> path.endsWith("ref.out")).map(Path::getParent);
             return destDirs.map(testPath -> new Object[]{testPath, suitesPath.relativize(testPath).toString()}).collect(Collectors.toList());

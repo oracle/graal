@@ -41,8 +41,6 @@ import com.oracle.truffle.llvm.parser.model.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
@@ -90,10 +88,6 @@ final class LLVMModelVisitor implements ModelVisitor {
 
     @Override
     public void visit(FunctionDefinition method) {
-        String methodName = method.getName();
-        if (!LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.printMetadata())) {
-            method.getMetadata().print(LLVMLogger.print(LLVMOptions.DEBUG.printMetadata()), methodName);
-        }
         functions.add(method);
     }
 

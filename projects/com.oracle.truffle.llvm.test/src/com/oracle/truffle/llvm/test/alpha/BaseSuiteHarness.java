@@ -45,7 +45,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.oracle.truffle.llvm.test.options.SulongTestOptions;
+import com.oracle.truffle.llvm.test.options.TestOptions;
 import com.oracle.truffle.llvm.test.util.ProcessUtil;
 import com.oracle.truffle.llvm.test.util.ProcessUtil.ProcessResult;
 
@@ -76,7 +76,7 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
             if (!candidate.toAbsolutePath().toFile().exists()) {
                 fail(getTestName(), new AssertionError("File " + candidate.toAbsolutePath().toFile() + " does not exist."));
             }
-            ProcessResult out = ProcessUtil.executeSulongTestMain(candidate.toAbsolutePath().toFile());
+            ProcessResult out = ProcessUtil.executeSulongTestMain(candidate.toAbsolutePath().toFile(), new String[]{});
             int sulongResult = out.getReturnValue();
             String sulongStdOut = out.getStdOutput();
 
@@ -112,7 +112,7 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
 
     @AfterClass
     public static void reportDiscoveryReport() {
-        String testDiscoveryPath = SulongTestOptions.TEST.testDiscoveryPath();
+        String testDiscoveryPath = TestOptions.TEST_DISCOVERY_PATH;
         if (testDiscoveryPath != null) {
             System.out.println("PASSING:");
             System.out.println(passingTests.stream().map(p -> p.toString()).collect(Collectors.joining("\n")));

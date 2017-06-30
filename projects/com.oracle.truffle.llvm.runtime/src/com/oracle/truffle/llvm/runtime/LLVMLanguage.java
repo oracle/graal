@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.runtime;
 import com.oracle.truffle.api.TruffleLanguage;
 
 public abstract class LLVMLanguage extends TruffleLanguage<LLVMContext> {
-
     public static final String LLVM_BITCODE_MIME_TYPE = "application/x-llvm-ir-bitcode";
     public static final String LLVM_BITCODE_EXTENSION = "bc";
 
@@ -46,7 +45,11 @@ public abstract class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     public static final String SULONG_LIBRARY_MIME_TYPE = "application/x-sulong-library";
     public static final String SULONG_LIBRARY_EXTENSION = "su";
 
+    public static final String MAIN_ARGS_KEY = "Sulong Main Args";
+    public static final String PARSE_ONLY_KEY = "Parse only";
+
+    public static final String NAME = "sulong";
+
     public abstract LLVMContext findLLVMContext();
 
-    public abstract TruffleLanguage.Env getEnvironment();
 }

@@ -29,9 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
@@ -51,17 +48,18 @@ import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolResolver;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMException;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LazyToTruffleConverter;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 
 public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     private final LLVMParserRuntime runtime;
+    private final LLVMContext context;
     private final SulongNodeFactory nodeFactory;
     private final FunctionDefinition method;
     private final Source source;
@@ -69,9 +67,11 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     private final Map<InstructionBlock, List<Phi>> phis;
     private final Map<String, Integer> labels;
 
-    LazyToTruffleConverterImpl(LLVMParserRuntime runtime, SulongNodeFactory nodeFactory, FunctionDefinition method, Source source, FrameDescriptor frame, Map<InstructionBlock, List<Phi>> phis,
+    LazyToTruffleConverterImpl(LLVMParserRuntime runtime, LLVMContext context, SulongNodeFactory nodeFactory, FunctionDefinition method, Source source, FrameDescriptor frame,
+                    Map<InstructionBlock, List<Phi>> phis,
                     Map<String, Integer> labels) {
         this.runtime = runtime;
+        this.context = context;
         this.nodeFactory = nodeFactory;
         this.method = method;
         this.source = source;
@@ -84,7 +84,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     public RootCallTarget convert() {
         CompilerAsserts.neverPartOfCompilation();
 
-        LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(frame, phis, method);
+        LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(frame, context, phis, method);
         LLVMBitcodeFunctionVisitor visitor = new LLVMBitcodeFunctionVisitor(runtime, frame, labels, phis, nodeFactory, method.getParameters().size(),
                         new LLVMSymbolResolver(runtime, method, frame, labels), method, liveness);
         method.accept(visitor);
@@ -96,28 +96,10 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         LLVMExpressionNode[] copyArgumentsToFrameArray = copyArgumentsToFrame.toArray(new LLVMExpressionNode[copyArgumentsToFrame.size()]);
         RootNode rootNode = nodeFactory.createFunctionStartNode(runtime, body, copyArgumentsToFrameArray, runtime.getSourceSection(method), frame, method, source);
 
-        String astPrintTarget = LLVMOptions.DEBUG.printFunctionASTs();
-        if (LLVMLogger.TARGET_STDOUT.equals(astPrintTarget) || LLVMLogger.TARGET_ANY.equals(astPrintTarget)) {
-            // Checkstyle: stop
-            NodeUtil.printTree(System.out, rootNode);
-            System.out.flush();
-            // Checkstyle: resume
-
-        } else if (LLVMLogger.TARGET_STDERR.equals(astPrintTarget)) {
-            // Checkstyle: stop
-            NodeUtil.printTree(System.err, rootNode);
-            System.err.flush();
-            // Checkstyle: resume
-
-        } else if (!LLVMLogger.TARGET_NONE.equals(astPrintTarget)) {
-            try (PrintStream out = new PrintStream(new FileOutputStream(astPrintTarget, true))) {
-                NodeUtil.printTree(out, rootNode);
-                out.flush();
-            } catch (IOException e) {
-                throw new IllegalStateException("Cannot write to file: " + astPrintTarget);
-            }
+        String astPrintTarget = context.getEnv().getOptions().get(SulongEngineOption.PRINT_FUNCTION_ASTS);
+        if (SulongEngineOption.isTrue(astPrintTarget)) {
+            NodeUtil.printTree(SulongEngineOption.getStream(astPrintTarget), rootNode);
         }
-
         return Truffle.getRuntime().createCallTarget(rootNode);
     }
 

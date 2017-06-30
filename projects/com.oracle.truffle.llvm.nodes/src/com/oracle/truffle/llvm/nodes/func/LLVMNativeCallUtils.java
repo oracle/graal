@@ -40,12 +40,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 public final class LLVMNativeCallUtils {
-
-    private static final boolean TRACE = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.printNativeCallStatistics());
 
     static Node getBindNode() {
         CompilerAsserts.neverPartOfCompilation();
@@ -61,8 +57,9 @@ public final class LLVMNativeCallUtils {
         }
     }
 
-    static Object callNativeFunction(LLVMContext context, Node nativeCall, TruffleObject function, Object[] nativeArgs, LLVMFunctionDescriptor descriptor) {
-        if (TRACE) {
+    static Object callNativeFunction(boolean enabled, LLVMContext context, Node nativeCall, TruffleObject function, Object[] nativeArgs, LLVMFunctionDescriptor descriptor) {
+        CompilerAsserts.partialEvaluationConstant(enabled);
+        if (enabled) {
             if (descriptor != null) {
                 traceNativeCall(context, descriptor);
             }

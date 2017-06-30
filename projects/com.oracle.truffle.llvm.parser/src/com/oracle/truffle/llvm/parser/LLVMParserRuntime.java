@@ -63,12 +63,11 @@ import com.oracle.truffle.llvm.parser.util.Pair;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -94,10 +93,6 @@ public final class LLVMParserRuntime {
         LLVMLabelList labels = parserResult.getLabels();
         TargetDataLayout layout = model.getTargetDataLayout();
         assert layout != null;
-
-        if (!LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.printMetadata())) {
-            model.getMetadata().print(LLVMLogger.print(LLVMOptions.DEBUG.printMetadata()));
-        }
 
         LLVMModelVisitor module = new LLVMModelVisitor();
         model.accept(module);
@@ -162,9 +157,9 @@ public final class LLVMParserRuntime {
             String functionName = function.getName();
             LLVMFunctionDescriptor functionDescriptor = scope.lookupOrCreateFunction(context, functionName, !Linkage.isFileLocal(function.getLinkage()),
                             index -> LLVMFunctionDescriptor.createDescriptor(context, functionName, function.getType(), index));
-            LazyToTruffleConverterImpl lazyConverter = new LazyToTruffleConverterImpl(this, nodeFactory, function, source, stack.getFrame(functionName), phiManager.getPhiMap(functionName),
+            LazyToTruffleConverterImpl lazyConverter = new LazyToTruffleConverterImpl(this, context, nodeFactory, function, source, stack.getFrame(functionName), phiManager.getPhiMap(functionName),
                             labels.labels(functionName));
-            if (!LLVMOptions.ENGINE.lazyParsing()) {
+            if (!context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING)) {
                 lazyConverter.convert();
             }
             functionDescriptor.declareInSulong(lazyConverter);

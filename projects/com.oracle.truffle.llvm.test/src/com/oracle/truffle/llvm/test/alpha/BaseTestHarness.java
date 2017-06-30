@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
 
 import org.junit.Test;
 
-import com.oracle.truffle.llvm.test.options.SulongTestOptions;
+import com.oracle.truffle.llvm.test.options.TestOptions;
 
 public abstract class BaseTestHarness {
 
@@ -75,7 +75,7 @@ public abstract class BaseTestHarness {
     }
 
     public static final Collection<Object[]> collectTestCases(Path configPath, Path suiteDir, Path sourceDir) throws AssertionError {
-        String testDiscoveryPath = SulongTestOptions.TEST.testDiscoveryPath();
+        String testDiscoveryPath = TestOptions.TEST_DISCOVERY_PATH;
         if (testDiscoveryPath == null) {
             return collectRegularRun(configPath, suiteDir);
         } else {
@@ -141,7 +141,7 @@ public abstract class BaseTestHarness {
 
     private static Set<Path> getWhiteListEntries(Path configDir) {
         Predicate<Path> fortranFilter;
-        if (SulongTestOptions.TEST.ignoreFortran()) {
+        if (TestOptions.IGNORE_FORTRAN) {
             fortranFilter = f -> (!f.toString().trim().endsWith(".f90") && !f.toString().trim().endsWith(".F90"));
         } else {
             fortranFilter = f -> true;

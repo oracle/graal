@@ -50,7 +50,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -64,11 +64,11 @@ public final class LLVMContext {
     private final List<LLVMThread> runningThreads = new ArrayList<>();
     private final NativeLookup nativeLookup;
     private final LLVMNativeFunctions nativeFunctions;
-    private final LLVMThreadingStack threadingStack = new LLVMThreadingStack();
+    private final LLVMThreadingStack threadingStack;
     private Object[] mainArguments;
     private Source mainSourceFile;
     private boolean parseOnly;
-    private boolean haveLoadedDynamicBitcodeLibraries;
+    private boolean bcLibrariesLoaded;
     private NativeIntrinsicProvider nativeIntrinsicsFactory;
     private final LinkedList<LLVMAddress> caughtExceptionStack = new LinkedList<>();
     private final LinkedList<DestructorStackElement> destructorStack = new LinkedList<>();
@@ -77,6 +77,7 @@ public final class LLVMContext {
     private final IdentityHashMap<TruffleObject, LLVMAddress> toNative;
     private final HashMap<LLVMAddress, TruffleObject> toManaged;
 
+    private final Env env;
     private final LLVMScope globalScope;
     private final LLVMFunctionIndexRegistry functionIndexRegistry;
     private final LLVMTypeRegistry typeRegistry;
@@ -160,8 +161,10 @@ public final class LLVMContext {
     }
 
     public LLVMContext(Env env) {
-        this.nativeLookup = LLVMOptions.ENGINE.disableNativeInterface() ? null : new NativeLookup(env);
-        this.nativeCallStatistics = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.printNativeCallStatistics()) ? new HashMap<>() : null;
+        this.env = env;
+        this.nativeLookup = env.getOptions().get(SulongEngineOption.DISABLE_NFI) ? null : new NativeLookup(env);
+        this.nativeCallStatistics = SulongEngineOption.isTrue(env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS)) ? new HashMap<>() : null;
+        this.threadingStack = new LLVMThreadingStack(env.getOptions().get(SulongEngineOption.STACK_SIZE_KB));
         this.nativeFunctions = new LLVMNativeFunctionsImpl(nativeLookup);
         this.sigDfl = LLVMFunctionHandle.createHandle(0);
         this.sigIgn = LLVMFunctionHandle.createHandle(1);
@@ -172,6 +175,15 @@ public final class LLVMContext {
         this.functionIndexRegistry = new LLVMFunctionIndexRegistry();
         this.typeRegistry = new LLVMTypeRegistry();
         this.globalScope = LLVMScope.createGlobalScope(this);
+
+        Object mainArgs = env.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY);
+        this.mainArguments = mainArgs == null ? env.getApplicationArguments() : (Object[]) mainArgs;
+        Object parseOnlyFlag = env.getConfig().get(LLVMLanguage.PARSE_ONLY_KEY);
+        this.parseOnly = parseOnlyFlag == null ? false : (boolean) parseOnlyFlag;
+    }
+
+    public Env getEnv() {
+        return env;
     }
 
     public LLVMScope getGlobalScope() {
@@ -407,12 +419,12 @@ public final class LLVMContext {
         return parseOnly;
     }
 
-    public boolean haveLoadedDynamicBitcodeLibraries() {
-        return haveLoadedDynamicBitcodeLibraries;
+    public boolean bcLibrariesLoaded() {
+        return bcLibrariesLoaded;
     }
 
-    public void setHaveLoadedDynamicBitcodeLibraries() {
-        haveLoadedDynamicBitcodeLibraries = true;
+    public void setBcLibrariesLoaded() {
+        bcLibrariesLoaded = true;
     }
 
     public interface FunctionFactory {

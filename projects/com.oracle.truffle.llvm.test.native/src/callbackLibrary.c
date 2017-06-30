@@ -29,6 +29,7 @@
  */
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 struct container {
   int (*callback)(int p1, int p2);
@@ -93,3 +94,6 @@ int callbackPointerArgTest(int (*callback)(void *), void *arg) {
     return callback(arg);
 }
 
+bool nativeInvert(bool value) {
+  return !value;
+}

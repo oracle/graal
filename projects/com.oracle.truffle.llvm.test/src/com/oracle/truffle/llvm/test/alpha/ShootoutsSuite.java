@@ -41,12 +41,12 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.test.options.TestOptions;
 
 @RunWith(Parameterized.class)
 public final class ShootoutsSuite extends BaseSulongOnlyHarness {
 
-    private static final Path SHOOTOUTS_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../cache/tests/benchmarksgame").toPath();
+    private static final Path SHOOTOUTS_SUITE_DIR = new File(TestOptions.PROJECT_ROOT + "/../cache/tests/benchmarksgame").toPath();
     private static final String benchmarkSuffix = "_clang_O1.bc";
 
     @Parameter(value = 0) public Path path;
@@ -57,24 +57,24 @@ public final class ShootoutsSuite extends BaseSulongOnlyHarness {
     public static Collection<Object[]> data() {
 
         final Map<Path, RunConfiguration> runs = new HashMap<>();
-        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/binarytrees/binarytrees.gcc-2.gcc/binarytrees.gcc-2.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, "12"));
-        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/binarytrees/binarytrees.gcc/binarytrees.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, "12"));
-        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fannkuchredux/fannkuchredux.cint/fannkuchredux.cint" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, "9"));
-        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fannkuchredux/fannkuchredux.gcc/fannkuchredux.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, "9"));
-        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fasta/fasta.cint/fasta.cint" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, "100"));
-        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fasta/fasta.gcc-4.gcc/fasta.gcc-4.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, "100"));
-        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fasta/fasta.gcc-5.gcc/fasta.gcc-5.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, "100"));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/binarytrees/binarytrees.gcc-2.gcc/binarytrees.gcc-2.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"12"}));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/binarytrees/binarytrees.gcc/binarytrees.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"12"}));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fannkuchredux/fannkuchredux.cint/fannkuchredux.cint" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"9"}));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fannkuchredux/fannkuchredux.gcc/fannkuchredux.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"9"}));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fasta/fasta.cint/fasta.cint" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"100"}));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fasta/fasta.gcc-4.gcc/fasta.gcc-4.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"100"}));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fasta/fasta.gcc-5.gcc/fasta.gcc-5.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"100"}));
         // fastaredux.gcc-2.gcc causes a segfault due to a buffer overflow, so we do not include it
         runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fastaredux/fastaredux.gcc-3.gcc/fastaredux.gcc-3.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null));
-        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/mandelbrot/mandelbrot.cint-2.cint/mandelbrot.cint-2.cint" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, "500"));
-        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/mandelbrot/mandelbrot.gcc-2.gcc/mandelbrot.gcc-2.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, "500"));
-        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/mandelbrot/mandelbrot.gcc-8.gcc/mandelbrot.gcc-8.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, "500"));
-        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/mandelbrot/mandelbrot.gcc-9.gcc/mandelbrot.gcc-9.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, "500"));
-        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/nbody/nbody.cint/nbody.cint" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, "10"));
-        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/spectralnorm/spectralnorm.cint/spectralnorm.cint" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, "150"));
-        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/spectralnorm/spectralnorm.gcc-2.gcc/spectralnorm.gcc-2.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, "150"));
-        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/pidigits/pidigits.cint-4.cint/pidigits.cint-4.cint" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, "10000"));
-        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/pidigits/pidigits.gcc/pidigits.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, "10000"));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/mandelbrot/mandelbrot.cint-2.cint/mandelbrot.cint-2.cint" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"500"}));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/mandelbrot/mandelbrot.gcc-2.gcc/mandelbrot.gcc-2.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"500"}));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/mandelbrot/mandelbrot.gcc-8.gcc/mandelbrot.gcc-8.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"500"}));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/mandelbrot/mandelbrot.gcc-9.gcc/mandelbrot.gcc-9.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"500"}));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/nbody/nbody.cint/nbody.cint" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"10"}));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/spectralnorm/spectralnorm.cint/spectralnorm.cint" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"150"}));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/spectralnorm/spectralnorm.gcc-2.gcc/spectralnorm.gcc-2.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"150"}));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/pidigits/pidigits.cint-4.cint/pidigits.cint-4.cint" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"10000"}));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/pidigits/pidigits.gcc/pidigits.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, new String[]{"10000"}));
 
         return runs.keySet().stream().map(k -> new Object[]{k, runs.get(k), k.getFileName().toString()}).collect(Collectors.toList());
 

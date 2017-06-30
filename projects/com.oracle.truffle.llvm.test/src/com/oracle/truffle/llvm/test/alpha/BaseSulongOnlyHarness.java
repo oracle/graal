@@ -64,9 +64,13 @@ public abstract class BaseSulongOnlyHarness {
     static final class RunConfiguration {
         private final int expectedPosixReturn;
         private final String expectedOutput;
-        private final Object[] args;
+        private final String[] args;
 
-        RunConfiguration(int expectedPosixReturn, String expectedOutput, Object... args) {
+        RunConfiguration(int expectedPosixReturn, String expectedOutput) {
+            this(expectedPosixReturn, expectedOutput, new String[]{});
+        }
+
+        RunConfiguration(int expectedPosixReturn, String expectedOutput, String[] args) {
             this.expectedPosixReturn = expectedPosixReturn;
             this.expectedOutput = expectedOutput;
             this.args = args;

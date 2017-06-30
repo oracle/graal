@@ -39,14 +39,14 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.test.options.TestOptions;
 
 @RunWith(Parameterized.class)
 public final class LLVMSuite extends BaseSuiteHarness {
 
-    private static final Path LLVM_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../cache/tests/llvm").toPath();
-    private static final Path LLVM_SOURCE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/llvm/test-suite-3.2.src/").toPath();
-    private static final Path LLVM_CONFIG_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/llvm/configs").toPath();
+    private static final Path LLVM_SUITE_DIR = new File(TestOptions.PROJECT_ROOT + "/../cache/tests/llvm").toPath();
+    private static final Path LLVM_SOURCE_DIR = new File(TestOptions.PROJECT_ROOT + "/../tests/llvm/test-suite-3.2.src/").toPath();
+    private static final Path LLVM_CONFIG_DIR = new File(TestOptions.PROJECT_ROOT + "/../tests/llvm/configs").toPath();
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public String testName;

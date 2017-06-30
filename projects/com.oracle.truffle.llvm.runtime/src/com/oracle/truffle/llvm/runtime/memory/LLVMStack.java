@@ -41,7 +41,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 import sun.misc.Unsafe;
 
@@ -61,10 +60,6 @@ public final class LLVMStack {
     }
 
     public static final String FRAME_ID = "<stackpointer>";
-
-    private static final long STACK_SIZE_KB = LLVMOptions.ENGINE.stackSize();
-
-    private static final long STACK_SIZE_BYTE = STACK_SIZE_KB * 1024;
 
     static final Unsafe UNSAFE = getUnsafe();
 
@@ -86,18 +81,18 @@ public final class LLVMStack {
 
     private long stackPointer;
 
-    public LLVMStack() {
-        allocate(STACK_SIZE_BYTE);
+    public LLVMStack(int stackSize) {
+        allocate(stackSize);
     }
 
     @TruffleBoundary
-    private void allocate(final long stackSize) {
+    private void allocate(final int stackSize) {
         if (!isFreed) {
             throw new AssertionError("previously not deallocated");
         }
-        final long stackAllocation = UNSAFE.allocateMemory(stackSize);
+        final long stackAllocation = UNSAFE.allocateMemory(stackSize * 1024);
         lowerBounds = stackAllocation;
-        upperBounds = stackAllocation + stackSize;
+        upperBounds = stackAllocation + stackSize * 1024;
         isFreed = false;
         stackPointer = upperBounds;
     }

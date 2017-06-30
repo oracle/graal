@@ -42,14 +42,14 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.test.options.TestOptions;
 
 @RunWith(Parameterized.class)
 public final class GCCSuite extends BaseSuiteHarness {
 
-    private static final Path GCC_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../cache/tests/gcc").toPath();
-    private static final Path GCC_SOURCE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/gcc/gcc-5.2.0").toPath();
-    private static final Path GCC_CONFIG_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/gcc/configs").toPath();
+    private static final Path GCC_SUITE_DIR = new File(TestOptions.PROJECT_ROOT + "/../cache/tests/gcc").toPath();
+    private static final Path GCC_SOURCE_DIR = new File(TestOptions.PROJECT_ROOT + "/../tests/gcc/gcc-5.2.0").toPath();
+    private static final Path GCC_CONFIG_DIR = new File(TestOptions.PROJECT_ROOT + "/../tests/gcc/configs").toPath();
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public String testName;

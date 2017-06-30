@@ -15,27 +15,20 @@ Truffle's language interoperability capabilities, you will soon be able
 to call functions from/to other languages on Truffle such as Ruby,
 JavaScript, or R.
 
-External Dependencies
----------------------
+Build Dependencies
+------------------
 
-Make sure you have GCC-4.6, G++-4.6, and GFortran-4.6 installed. For
-a full list of external dependencies on Ubuntu you can look at our
-[Travis configuration](https://github.com/graalvm/sulong/blob/master/.travis.yml).
+Sulong is mostly implemented in Java. However, parts of Sulong are
+implemented in C/C++ and will be compiled to a shared library or a bitcode
+file. For a successful build you need to have LLVM (incl. `CLANG` and `OPT`
+tool) v3.2 - v4.0 installed. Sulong also depends on `libc++` and `libc++abi`
+(on Ubuntu, install `libc++1`, `libc++abi1`, `libc++-dev`, `libc++abi-dev`).
+For a full list of external dependencies on Ubuntu you can look at our
+Travis configuration.
 
-On the Mac you can use Homebrew:
-
-    brew tap homebrew/versions
-    brew install gcc46 --with-fortran
-    brew link --force gmp4
-
-On some versions of Mac OS X, `gcc46` may fail to install with a segmentation
-fault. You can find more details and suggestions on how to fix this [here](https://github.com/Homebrew/homebrew-versions/issues/515).
-
-However you install GCC on the Mac, you may then need to manually link the
-gcc libraries we use into a location where they can be found, as
-`DYLD_LIBRARY_PATH` cannot normally be set on the Mac.
-
-    ln -s /usr/local/Cellar/gcc46/4.6.4/lib/gcc/4.6/libgfortran.3.dylib /usr/local/lib
+MacOS: Apple's default LLVM does not contain the `opt` tool, which a Sulong
+build needs. We recommend installing LLVM via `homebrew` and appending the
+bin path to the `PATH`.
 
 How to get started?
 -------------------

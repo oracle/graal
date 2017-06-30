@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
@@ -38,29 +37,16 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleHandleToManaged extends LLVMIntrinsic {
-
-    private static final boolean TRACE = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.debug());
 
     @Specialization
     public TruffleObject executeIntrinsic(Object rawHandle, @Cached("getContext()") LLVMContext context, @Cached("getForceLLVMAddressNode()") LLVMForceLLVMAddressNode forceAddressNode) {
         LLVMAddress handle = forceAddressNode.executeWithTarget(rawHandle);
         TruffleObject object = context.getManagedObjectForHandle(handle);
-        if (TRACE) {
-            trace(handle, object);
-        }
         return object;
-    }
-
-    @TruffleBoundary
-    private static void trace(LLVMAddress address, TruffleObject object) {
-        LLVMLogger.print(LLVMOptions.DEBUG.debug()).accept(
-                        String.format("[sulong] Managed object (%s) for native handle (%s) requested.", String.valueOf(object), String.valueOf(address)));
     }
 
 }

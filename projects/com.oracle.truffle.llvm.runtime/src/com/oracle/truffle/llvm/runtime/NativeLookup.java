@@ -41,7 +41,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -69,13 +69,13 @@ public final class NativeLookup {
     private static List<TruffleObject> loadLibraries(TruffleLanguage.Env env) {
         CompilerAsserts.neverPartOfCompilation();
         List<TruffleObject> handles = new ArrayList<>();
-        String[] dynamicLibraryPaths = LLVMOptions.getNativeLibraries();
+        String[] dynamicLibraryPaths = SulongEngineOption.getNativeLibraries(env);
         for (String library : dynamicLibraryPaths) {
             try {
                 TruffleObject lib = loadLibrary(env, library);
                 handles.add(lib);
             } catch (UnsatisfiedLinkError e) {
-                LLVMLogger.unconditionalInfo(library + " not found!\n" + e.getMessage());
+                System.err.println(library + " not found!\n" + e.getMessage());
                 e.printStackTrace(System.err);
             }
         }
@@ -177,9 +177,6 @@ public final class NativeLookup {
             }
         }
         TruffleObject symbol = getNativeFunction(defaultLibrary, name);
-        if (symbol == null) {
-            LLVMLogger.info("external symbol " + nameIn + " could not be resolved!");
-        }
         return symbol;
     }
 
@@ -209,9 +206,6 @@ public final class NativeLookup {
             }
         }
         TruffleObject symbol = getNativeDataObject(defaultLibrary, realName);
-        if (symbol == null) {
-            LLVMLogger.info("external symbol " + name + " could not be resolved!");
-        }
         return symbol;
     }
 

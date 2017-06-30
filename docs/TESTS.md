@@ -26,6 +26,26 @@ Sulong's Truffle LLVM IR interpreter can directly execute the LLVM IR
 files it uses Clang and/or GCC to compile the other source files to LLVM IR
 before executing them.
 
+## Fortran
+
+Some of our tests are Fortran files. Make sure you have GCC-4.6, G++-4.6,
+and GFortran-4.6 installed.
+
+On the Mac you can use Homebrew:
+
+    brew tap homebrew/versions
+    brew install gcc46 --with-fortran
+    brew link --force gmp4
+
+On some versions of Mac OS X, `gcc46` may fail to install with a segmentation
+fault. You can find more details and suggestions on how to fix this here.
+
+However you install GCC on the Mac, you may then need to manually link the
+ gcc libraries we use into a location where they can be found, as
+ DYLD_LIBRARY_PATH cannot normally be set on the Mac.
+
+    ln -s /usr/local/Cellar/gcc46/4.6.4/lib/gcc/4.6/libgfortran.3.dylib /usr/local/lib
+
 ## Test case options
 
 You can pass VM arguments as the last argument to the test runner. For

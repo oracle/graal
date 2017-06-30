@@ -75,8 +75,8 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInst
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 
@@ -85,18 +85,19 @@ public final class LLVMLivenessAnalysis {
     private LLVMLivenessAnalysis() {
     }
 
-    public static LLVMLivenessAnalysisResult computeLiveness(FrameDescriptor frame, Map<InstructionBlock, List<LLVMPhiManager.Phi>> phis, FunctionDefinition functionDefinition) {
+    public static LLVMLivenessAnalysisResult computeLiveness(FrameDescriptor frame, LLVMContext context, Map<InstructionBlock, List<LLVMPhiManager.Phi>> phis, FunctionDefinition functionDefinition) {
         List<InstructionBlock> blocks = functionDefinition.getBlocks();
         BlockInfo[] blockInfos = initializeGenKill(frame, phis, functionDefinition, blocks);
         ArrayList<InstructionBlock>[] predecessors = computePredecessors(blocks);
         int processedBlocks = iterateToFixedPoint(blocks, frame, blockInfos, predecessors);
-        if (!LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.printLifetimeAnalysisStatistics())) {
-            printIntermediateResult(frame, functionDefinition, blocks, blockInfos, processedBlocks);
+        boolean printStatistics = SulongEngineOption.isTrue(context.getEnv().getOptions().get(SulongEngineOption.PRINT_LIFE_TIME_ANALYSIS_STATS));
+        if (printStatistics) {
+            printIntermediateResult(context, frame, functionDefinition, blocks, blockInfos, processedBlocks);
         }
 
         LLVMLivenessAnalysisResult result = computeLivenessAnalysisResult(functionDefinition, blocks, frame, blockInfos, predecessors);
-        if (!LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.printLifetimeAnalysisStatistics())) {
-            printResult(frame, blocks, result);
+        if (printStatistics) {
+            printResult(context, frame, blocks, result);
         }
         return result;
     }
@@ -382,7 +383,8 @@ public final class LLVMLivenessAnalysis {
         return -1;
     }
 
-    private static void printIntermediateResult(FrameDescriptor frame, FunctionDefinition functionDefinition, List<InstructionBlock> blocks, BlockInfo[] blockInfos, int processedBlocks) {
+    private static void printIntermediateResult(LLVMContext context, FrameDescriptor frame, FunctionDefinition functionDefinition, List<InstructionBlock> blocks, BlockInfo[] blockInfos,
+                    int processedBlocks) {
         StringBuilder builder = new StringBuilder();
         builder.append(functionDefinition.getName());
         builder.append(" (processed ");
@@ -427,10 +429,10 @@ public final class LLVMLivenessAnalysis {
             builder.append("\n");
         }
 
-        LLVMLogger.print(LLVMOptions.DEBUG.printLifetimeAnalysisStatistics()).accept(builder.toString());
+        SulongEngineOption.getStream(context.getEnv().getOptions().get(SulongEngineOption.PRINT_LIFE_TIME_ANALYSIS_STATS)).println(builder.toString());
     }
 
-    private static void printResult(FrameDescriptor frame, List<InstructionBlock> blocks, LLVMLivenessAnalysisResult result) {
+    private static void printResult(LLVMContext context, FrameDescriptor frame, List<InstructionBlock> blocks, LLVMLivenessAnalysisResult result) {
         StringBuilder builder = new StringBuilder();
         for (int i = 0; i < blocks.size(); i++) {
             builder.append("Basic block ");
@@ -452,7 +454,7 @@ public final class LLVMLivenessAnalysis {
             builder.append("\n");
         }
 
-        LLVMLogger.print(LLVMOptions.DEBUG.printLifetimeAnalysisStatistics()).accept(builder.toString());
+        SulongEngineOption.getStream(context.getEnv().getOptions().get(SulongEngineOption.PRINT_LIFE_TIME_ANALYSIS_STATS)).println(builder.toString());
     }
 
     private static String formatLocals(FrameDescriptor frame, BitSet bitSet) {
