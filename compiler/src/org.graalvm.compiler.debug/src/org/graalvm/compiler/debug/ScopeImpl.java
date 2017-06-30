@@ -150,6 +150,7 @@ public final class ScopeImpl implements DebugContext.Scope {
         this.unqualifiedName = unqualifiedName;
         if (parent != null) {
             logScopeName = !unqualifiedName.equals("");
+            this.interceptDisabled = parent.interceptDisabled;
         } else {
             logScopeName = true;
         }
@@ -258,16 +259,23 @@ public final class ScopeImpl implements DebugContext.Scope {
         try {
             if (owner.lastClosedScope instanceof ScopeImpl) {
                 ScopeImpl lastClosed = (ScopeImpl) owner.lastClosedScope;
-                assert lastClosed.parent == this : "Debug.handle() used with no matching Debug.scope(...) or Debug.sandbox(...) " +
+                assert lastClosed.parent == this : "DebugContext.handle() used without closing a scope opened by DebugContext.scope(...) or DebugContext.sandbox(...) " +
                                 "or an exception occurred while opening a scope";
                 if (e != owner.lastExceptionThrown) {
                     RuntimeException newException = null;
+                    // Make the scope in which the exception was thrown
+                    // the current scope again.
                     owner.currentScope = lastClosed;
+
+                    // When this try block exits, the above action will be undone
                     try (ScopeImpl s = lastClosed) {
                         newException = s.interceptException(e);
                     }
+
+                    // Checks that the action really is undone
                     assert owner.currentScope == this;
                     assert lastClosed == owner.lastClosedScope;
+
                     if (newException == null) {
                         owner.lastExceptionThrown = e;
                     } else {
@@ -275,6 +283,9 @@ public final class ScopeImpl implements DebugContext.Scope {
                         throw newException;
                     }
                 }
+            } else if (owner.lastClosedScope == null) {
+                throw new AssertionError("DebugContext.handle() used without closing a scope opened by DebugContext.scope(...) or DebugContext.sandbox(...) " +
+                                "or an exception occurred while opening a scope");
             } else {
                 assert owner.lastClosedScope instanceof DisabledScope : owner.lastClosedScope;
             }

@@ -24,6 +24,7 @@ package org.graalvm.compiler.hotspot.test;
 
 import java.util.List;
 
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Scope;
 import org.graalvm.compiler.debug.DebugDumpScope;
@@ -646,7 +647,7 @@ public class WriteBarrierVerificationTest extends HotSpotGraalCompilerTest {
     @SuppressWarnings("try")
     private void testPredicate(final String snippet, final GraphPredicate expectedBarriers, final int... removedBarrierIndices) {
         DebugContext debug = getDebugContext();
-        try (DebugContext.Scope d = debug.scope("WriteBarrierVerificationTest", new DebugDumpScope(snippet))) {
+        try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("WriteBarrierVerificationTest", new DebugDumpScope(snippet))) {
             final StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES, debug);
             HighTierContext highTierContext = getDefaultHighTierContext();
             new InliningPhase(new CanonicalizerPhase()).apply(graph, highTierContext);
@@ -724,7 +725,7 @@ public class WriteBarrierVerificationTest extends HotSpotGraalCompilerTest {
                 }
             };
 
-            try (Scope s = debug.disable()) {
+            try (Scope disabled = debug.disable()) {
                 ReentrantNodeIterator.apply(closure, graph.start(), false);
                 new WriteBarrierVerificationPhase(config).apply(graph);
             } catch (AssertionError error) {

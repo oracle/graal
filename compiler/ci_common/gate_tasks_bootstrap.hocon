@@ -15,6 +15,9 @@ builds += [
   ${gateBootstrap9}            ${gateSolarisSPARCBootstrap} {name: "gate-compiler-bootstrap-9-solaris-sparcv9",   timelimit: "1:00:00", targets : [weekly]}
   ${gateBootstrap9EA}          ${gateSolarisSPARCBootstrap} {name: "gate-compiler-bootstrap-9EA-solaris-sparcv9", timelimit: "1:00:00", targets : [weekly]}
 
+  # Linux SPARC
+  ${gateBootstrap8}            ${gateLinuxSPARCBootstrap} {name: "gate-compiler-bootstrap-8-linux-sparcv9",   timelimit: "1:00:00", targets : [weekly]}
+
   # Linux AMD64 TraceRA
   ${gateBootstrap8FullVerify}  ${gateLinuxAMD64TraceRABootstrap} {name: "gate-compiler-bootstrapfullverify-8-linux-amd64-tracera", targets : [weekly]}
 

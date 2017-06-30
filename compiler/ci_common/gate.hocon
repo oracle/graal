@@ -98,6 +98,8 @@ gateDarwinAMD64 : ${darwin-amd64} ${gateCommon}
 
 gateSolarisSPARC : ${solaris-sparcv9} ${gateCommon}
 
+gateLinuxSPARC : ${linux-sparcv9} ${gateCommon}
+
 gateLinuxAMD64TraceRA : ${gateLinuxAMD64} {
   environment : {
     EXTRA_VM_ARGS : "-Dgraal.TraceRA=true"
@@ -119,5 +121,6 @@ gateLinuxAMD64TraceRASingleBlock : ${gateLinuxAMD64} {
 gateLinuxAMD64Bootstrap : ${gateLinuxAMD64} { capabilities : ${gateLinuxAMD64.capabilities} [manycores] }
 gateDarwinAMD64Bootstrap : ${gateDarwinAMD64}
 gateSolarisSPARCBootstrap : ${gateSolarisSPARC} { capabilities : ${gateSolarisSPARC.capabilities} [manycores] }
+gateLinuxSPARCBootstrap : ${gateLinuxSPARC} # No manycore
 gateLinuxAMD64TraceRABootstrap : ${gateLinuxAMD64TraceRA} { capabilities : ${gateLinuxAMD64TraceRA.capabilities} [manycores] }
 gateLinuxAMD64TraceRABUBootstrap : ${gateLinuxAMD64TraceRABU} { capabilities : ${gateLinuxAMD64TraceRABU.capabilities} [manycores] }
