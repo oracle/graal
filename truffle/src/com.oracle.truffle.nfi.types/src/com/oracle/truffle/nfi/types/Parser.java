@@ -36,11 +36,17 @@ import java.util.List;
  * to parse the source string in {@link TruffleLanguage#parse}. The syntax of the source string is:
  *
  * <pre>
- * LibraryDescriptor ::= DefaultLibrary | LoadLibrary
+ * LibraryDescriptor ::= LibraryDefinition BindBlock?
+ * 
+ * LibraryDefinition ::= DefaultLibrary | LoadLibrary
  *
  * DefaultLibrary ::= 'default'
  *
  * LoadLibrary ::= 'load' [ '(' ident { '|' ident } ')' ] string
+ *
+ * BindBlock ::= '{' BindDirective* '}'
+ *
+ * BindDirective ::= ident Signature ';'
  * </pre>
  *
  * Implementors of the Truffle NFI must use {@link #parseSignature(java.lang.CharSequence)} to parse
@@ -86,19 +92,42 @@ public final class Parser {
     }
 
     private NativeLibraryDescriptor parseLibraryDescriptor() {
+        NativeLibraryDescriptor ret;
+
         Token token = lexer.next();
         String keyword = lexer.currentValue();
-        if (token == Token.IDENTIFIER) {
-            switch (keyword) {
-                case "load":
-                    return parseLoadLibrary();
-
-                case "default":
-                    return parseDefaultLibrary();
+        LIBRARY_DEFINITION: {
+            if (token == Token.IDENTIFIER) {
+                switch (keyword) {
+                    case "load":
+                        ret = parseLoadLibrary();
+                        break LIBRARY_DEFINITION;
+                    case "default":
+                        ret = parseDefaultLibrary();
+                        break LIBRARY_DEFINITION;
+                }
             }
+            throw new IllegalArgumentException(String.format("expected 'load' or 'default', but got '%s'", keyword));
         }
 
-        throw new IllegalArgumentException(String.format("expected 'load' or 'default', but got '%s'", keyword));
+        if (lexer.next() == Token.OPENBRACE) {
+            for (;;) {
+                Token closeOrId = lexer.next();
+                if (closeOrId == Token.CLOSEBRACE) {
+                    break;
+                }
+                if (closeOrId != Token.IDENTIFIER) {
+                    throw new IllegalArgumentException("Expecting identifier in library body");
+                }
+                String ident = lexer.currentValue();
+                NativeSignature sig = parseSignature();
+                ret.register(ident, sig);
+                if (lexer.next() != Token.SEMICOLON) {
+                    throw new IllegalArgumentException("Expecting semicolon");
+                }
+            }
+        }
+        return ret;
     }
 
     private static NativeLibraryDescriptor parseDefaultLibrary() {
