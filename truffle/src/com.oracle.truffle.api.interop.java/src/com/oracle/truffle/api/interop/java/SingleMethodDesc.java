@@ -109,6 +109,11 @@ abstract class SingleMethodDesc implements JavaMethodDesc {
         public Class<?> getReturnType() {
             return reflectionMethod.getReturnType();
         }
+
+        @Override
+        public boolean isInternal() {
+            return reflectionMethod.getDeclaringClass() == Object.class;
+        }
     }
 
     static class ConcreteConstructor extends SingleMethodDesc {
