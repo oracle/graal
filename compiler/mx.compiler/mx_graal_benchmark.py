@@ -333,14 +333,13 @@ class MoveProfilingBenchmarkMixin(object):
 
     See org.graalvm.compiler.lir.profiling.MoveProfilingPhase for more details.
     """
-    benchmark_counters_file = 'benchmark-counters'
+    benchmark_counters_file = 'benchmark-counters.csv'
 
     def vmArgs(self, bmSuiteArgs):
         vmArgs = [
                   self.get_dynamic_counters_argument(),
                   '-XX:JVMCICounterSize=10',
                   '-Dgraal.LIRProfileMoves=true',
-                  '-Dgraal.DynamicCountersHumanReadable=false',
                   '-Dgraal.DynamicCountersPrintGroupSeparator=false',
                   '-Dgraal.BenchmarkCountersFile=' + MoveProfilingBenchmarkMixin.benchmark_counters_file] + super(MoveProfilingBenchmarkMixin, self).vmArgs(bmSuiteArgs)
         return vmArgs
