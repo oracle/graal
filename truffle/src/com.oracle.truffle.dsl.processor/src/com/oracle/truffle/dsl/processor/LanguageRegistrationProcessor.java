@@ -73,6 +73,7 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
                 p.setProperty(prefix + "id", id);
             }
             p.setProperty(prefix + "name", annotation.name());
+            p.setProperty(prefix + "implementationName", annotation.implementationName());
             p.setProperty(prefix + "version", annotation.version());
             p.setProperty(prefix + "className", className);
             String[] mimes = annotation.mimeType();

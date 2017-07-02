@@ -56,6 +56,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private final Set<String> mimeTypes;
     private final String id;
     private final String name;
+    private final String implementationName;
     private final String version;
     private final boolean interactive;
     private final boolean internal;
@@ -73,6 +74,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.loader = loader;
         this.className = info.getProperty(prefix + "className");
         this.name = info.getProperty(prefix + "name");
+        this.implementationName = info.getProperty(prefix + "implementationName");
         this.version = info.getProperty(prefix + "version");
         String resolvedId = info.getProperty(prefix + "id");
 
