@@ -129,10 +129,6 @@ public final class Context implements AutoCloseable {
         return impl.getEngineImpl();
     }
 
-    public Language getLanguage() {
-        return primaryLanguage;
-    }
-
     /**
      * Closes this context and frees up potentially allocated native resources. Languages might not
      * be able to free all native resources allocated by a context automatically, therefore it is
