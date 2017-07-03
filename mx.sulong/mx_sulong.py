@@ -92,7 +92,8 @@ basicLLVMDependencies = [
 
 def _unittest_config_participant(config):
     (vmArgs, mainClass, mainClassArgs) = config
-    vmArgs = getCommonUnitTestOptions() + vmArgs
+    libs = [mx_subst.path_substitutions.substitute('<path:SULONG_TEST_NATIVE>/<lib:sulongtest>')]
+    vmArgs = getCommonOptions(True, libs) + vmArgs
     return (vmArgs, mainClass, mainClassArgs)
 
 add_config_participant(_unittest_config_participant)
@@ -359,15 +360,8 @@ def extract_compiler_args(args, useDoubleDash=False):
 
 def runLLVM(args=None, out=None):
     """uses Sulong to execute a LLVM IR file"""
-    vmArgs, sulongArgsWithLibs = truffle_extract_VM_args(args)
-    sulongArgs = []
-    libNames = []
-    for arg in sulongArgsWithLibs:
-        if arg.startswith('-l'):
-            libNames.append(arg)
-        else:
-            sulongArgs.append(arg)
-    return mx.run_java(getCommonOptions(libNames) + vmArgs + getClasspathOptions() + ["com.oracle.truffle.llvm.Sulong"] + sulongArgs, out=out)
+    vmArgs, sulongArgs = truffle_extract_VM_args(args)
+    return mx.run_java(getCommonOptions(False) + vmArgs + getClasspathOptions() + ["com.oracle.truffle.llvm.Sulong"] + sulongArgs, out=out)
 
 def runTests(args=None):
     mx_testsuites.runSuite(args)
@@ -408,62 +402,21 @@ def compileWithEcjStrict(args=None):
     else:
         exit('JDT environment variable not set. Cannot execute BuildJavaWithEcj task.')
 
-def getCommonOptions(lib_args=None):
-    return [
-        '-Dgraal.TruffleCompilationExceptionsArePrinted=true',
-        '-Dgraal.ExitVMOnException=true',
-        getSearchPathOption(lib_args)
-    ] + getBitcodeLibrariesOption()
+def getCommonOptions(withAssertion, lib_args=None):
+    options = ['-Dgraal.TruffleCompilationExceptionsArePrinted=true',
+        '-Dgraal.ExitVMOnException=true']
 
-def getSearchPathOption(lib_args=None):
-    osStr = mx.get_os()
-    index = {'linux': 0, 'darwin': 1}[mx.get_os()]
-    if index is None:
-        mx.log_error("{0} not supported!".format(osStr))
+    options.append(mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraryPath=<path:SULONG_LIBS>'))
 
-    # lgmp and lgfortran are needed for the gcc suite
-    if lib_args is None:
-        if osStr == 'linux':
-            lib_args = ['-lgmp', '-lgfortran']
-        if osStr == 'darwin':
-            lib_args = [] # on darwin, lgmp and lgfortran are not available by default.
+    if lib_args is not None:
+        options.append('-Dpolyglot.llvm.libraries=' + ':'.join(lib_args))
 
-    lib_names = [mx_subst.path_substitutions.substitute('<path:SULONG_LIBS>/<lib:sulong>')]
+    options += ['-Xss56m', '-Xms4g', '-Xmx4g']
+    options.append(getLLVMRootOption())
+    if withAssertion:
+        options += ['-ea', '-esa']
 
-    lib_aliases = {
-        '-lc': ['libc.so.6', 'libc.dylib'],
-        '-lstdc++': ['libstdc++.so.6', 'libstdc++.6.dylib'],
-        '-lgmp': ['libgmp.so.10', 'libgmp.10.dylib'],
-        '-lgfortran': ['libgfortran.so.3', 'libgfortran.3.dylib'],
-        '-lpcre': ['libpcre.so.3', 'libpcre.dylib']
-    }
-
-    for lib_arg in lib_args:
-        if lib_arg in lib_aliases:
-            lib_arg = lib_aliases[lib_arg][index]
-        elif lib_arg.startswith('-l'):
-            lib_arg = mx.add_lib_suffix(mx.add_lib_prefix(lib_arg[2:]))
-        lib_names.append(lib_arg)
-
-    return '-Dpolyglot.sulong.dynamicNativeLibraryPath=' + ':'.join(lib_names)
-
-def getCommonUnitTestOptions(extraLibs=None):
-    libs = [mx_subst.path_substitutions.substitute('<path:SULONG_TEST_NATIVE>/<lib:sulongtest>')]
-    if extraLibs is not None:
-        libs += extraLibs
-    return getCommonOptions(lib_args=libs) + ['-Xss56m', '-Xms2g', '-Xmx2g', getLLVMRootOption(), '-ea', '-esa']
-
-# PE does not work yet for all test cases
-def compilationSucceedsOption():
-    return "-Dgraal.TruffleCompilationExceptionsAreFatal=true"
-
-def getBenchmarkOptions():
-    return [
-        '-Dgraal.TruffleBackgroundCompilation=false',
-        '-Dgraal.TruffleTimeThreshold=1000000',
-        '-Xms4g',
-        '-Xmx4g'
-    ]
+    return options
 
 def getLLVMRootOption():
     return "-Dsulongtest.projectRoot=" + _root
@@ -623,10 +576,6 @@ def getClasspathOptions():
     """gets the classpath of the Sulong distributions"""
     return mx.get_runtime_jvm_args('SULONG')
 
-def printOptions(args=None):
-    """prints the Sulong Java property options"""
-    return mx.run_java(getClasspathOptions() + ["com.oracle.truffle.llvm.runtime.options.LLVMOptions"])
-
 def ensureDragonEggExists():
     """downloads dragonegg if not downloaded yet"""
     if not os.path.exists(dragonEggPath()):
@@ -641,92 +590,9 @@ def ensureLLVMBinariesExist():
         if findLLVMProgram(llvmBinary) is None:
             raise Exception(llvmBinary + ' not found')
 
-def suBench(args=None):
-    """runs a given benchmark with Sulong"""
-    ensureLLVMBinariesExist()
-    vmArgs, sulongArgs = truffle_extract_VM_args(args)
-    compileWithClang(['-c', '-emit-llvm', '-o', 'test.bc', sulongArgs[0]])
-    return runLLVM(getBenchmarkOptions() + ['test.bc'] + vmArgs)
-
-def getStandardLLVMOptFlags():
-    """gets the optimal LLVM opt flags for Sulong"""
-    return ['-mem2reg', '-globalopt', '-simplifycfg', '-constprop', '-instcombine', '-dse', '-loop-simplify', '-reassociate', '-licm', '-gvn']
-
-def getRemoveExceptionHandlingLLVMOptFlags():
-    """gets the LLVM opt flags that remove C++ exception handling if possible"""
-    return ['-mem2reg', '-lowerinvoke', '-prune-eh', '-simplifycfg']
-
-def getOptimalLLVMOptFlags(sourceFile):
-    """gets the optimal LLVM opt flags for Sulong based on an original file source name (such as test.c)"""
-    _, ext = os.path.splitext(sourceFile)
-    if ext == '.c':
-        return getStandardLLVMOptFlags()
-    elif ext == '.cpp':
-        return getStandardLLVMOptFlags() + getRemoveExceptionHandlingLLVMOptFlags()
-    else:
-        exit(ext + " is not supported!")
-
-def suOptimalOpt(args=None):
-    """use opt with the optimal opt flags for Sulong"""
-    opt(getStandardLLVMOptFlags() + args)
-
 _env_flags = []
 if 'CPPFLAGS' in os.environ:
     _env_flags = os.environ['CPPFLAGS'].split(' ')
-
-def compileWithClangOpt(inputFile, outputFile='test.bc', version=None, args=None, out=None, err=None):
-    """compiles a program to LLVM IR with Clang using LLVM optimizations that benefit Sulong"""
-    _, ext = os.path.splitext(inputFile)
-    if ext == '.c':
-        compileWithClang(['-c', '-emit-llvm', '-o', outputFile, inputFile] + _env_flags, version, out=out, err=err)
-    elif ext == '.cpp':
-        compileWithClangPP(['-c', '-emit-llvm', '-o', outputFile, inputFile] + _env_flags, version, out=out, err=err)
-    else:
-        exit(ext + " is not supported!")
-    opt(['-o', outputFile, outputFile] + getStandardLLVMOptFlags(), version, out=out, err=err)
-
-def suOptBench(args=None):
-    """runs a given benchmark with Sulong after optimizing it with opt"""
-    ensureLLVMBinariesExist()
-    vmArgs, other = truffle_extract_VM_args(args)
-    inputFile = other[0]
-    outputFile = 'test.bc'
-    compileWithClangOpt(inputFile, outputFile)
-    return runLLVM(getBenchmarkOptions() + [getSearchPathOption(), outputFile] + vmArgs)
-
-def suOptCompile(args=None):
-    """compiles a given benchmark and optimizes it with opt"""
-    ensureLLVMBinariesExist()
-    inputFile = args[0]
-    outputFile = 'test.bc'
-    compileWithClangOpt(inputFile, outputFile)
-
-def clangBench(args=None):
-    """ Executes a benchmark with the system default Clang"""
-    _, inputFiles = extract_compiler_args(args)
-    _, ext = os.path.splitext(inputFiles[0])
-    if ext == '.c':
-        mx.run(['clang'] + args + standardLinkerCommands())
-    elif ext == '.cpp':
-        mx.run(['clang++'] + args + standardLinkerCommands())
-    else:
-        exit(ext + " is not supported!")
-    return mx.run(['./a.out'])
-
-def gccBench(args=None):
-    """ executes a benchmark with the system default GCC version"""
-    _, inputFiles = extract_compiler_args(args)
-    _, ext = os.path.splitext(inputFiles[0])
-    if ext == '.c':
-        mx.run(['gcc', '-std=gnu99'] + args + standardLinkerCommands())
-    elif ext == '.cpp':
-        mx.run(['g++'] + args + standardLinkerCommands())
-    else:
-        exit(ext + " is not supported!")
-    return mx.run(['./a.out'])
-
-def standardLinkerCommands(args=None):
-    return ['-lm', '-lgmp', '-lpcre']
 
 def mdlCheck(args=None):
     """runs mdl on all .md files in the projects and root directory"""
@@ -745,12 +611,6 @@ def mdlCheck(args=None):
                         error = True
     if error:
         exit(-1)
-
-def getBitcodeLibrariesOption():
-    if 'SULONG_NO_LIBRARY' not in os.environ:
-        return [mx_subst.path_substitutions.substitute('-Dpolyglot.sulong.dynamicBitcodeLibraries=<path:SULONG_LIBS>/libsulong.bc')]
-    else:
-        return []
 
 def clangformatcheck(args=None):
     """ Performs a format check on the include/truffle.h file """
@@ -838,21 +698,14 @@ checkCases = {
 }
 
 mx.update_commands(_suite, {
-    'suoptbench' : [suOptBench, ''],
-    'subench' : [suBench, ''],
-    'clangbench' : [clangBench, ''],
-    'gccbench' : [gccBench, ''],
     'su-checks' : [runChecks, ''],
     'su-tests' : [runTests, ''],
     'su-suite' : [mx_testsuites.runSuite, ''],
     'su-clang' : [compileWithClang, ''],
-    'su-options' : [printOptions, ''],
     'su-pulldragonegg' : [pullInstallDragonEgg, ''],
     'su-run' : [runLLVM, ''],
     'su-clang++' : [compileWithClangPP, ''],
     'su-opt' : [opt, ''],
-    'su-optimize' : [suOptimalOpt, ''],
-    'su-compile-optimize' : [suOptCompile, ''],
     'su-link' : [link, ''],
     'su-gcc' : [dragonEgg, ''],
     'su-gfortran' : [dragonEggGFortran, ''],

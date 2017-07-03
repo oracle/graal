@@ -1105,7 +1105,7 @@ public final class LLVMInteropTest {
         int run() {
             File file = new File(TEST_DIR.toFile(), "/" + fileName + "/" + fileName + FILE_SUFFIX);
             Source source = Source.newBuilder(file).build();
-            return context.eval("sulong", source).asInt();
+            return context.eval("llvm", source).asInt();
         }
 
     }

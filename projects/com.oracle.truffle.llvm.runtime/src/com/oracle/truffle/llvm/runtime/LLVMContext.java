@@ -67,7 +67,6 @@ public final class LLVMContext {
     private final LLVMThreadingStack threadingStack;
     private Object[] mainArguments;
     private Source mainSourceFile;
-    private boolean parseOnly;
     private boolean bcLibrariesLoaded;
     private NativeIntrinsicProvider nativeIntrinsicsFactory;
     private final LinkedList<LLVMAddress> caughtExceptionStack = new LinkedList<>();
@@ -178,8 +177,6 @@ public final class LLVMContext {
 
         Object mainArgs = env.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY);
         this.mainArguments = mainArgs == null ? env.getApplicationArguments() : (Object[]) mainArgs;
-        Object parseOnlyFlag = env.getConfig().get(LLVMLanguage.PARSE_ONLY_KEY);
-        this.parseOnly = parseOnlyFlag == null ? false : (boolean) parseOnlyFlag;
     }
 
     public Env getEnv() {
@@ -409,14 +406,6 @@ public final class LLVMContext {
 
     public synchronized List<LLVMThread> getRunningThreads() {
         return Collections.unmodifiableList(runningThreads);
-    }
-
-    public void setParseOnly(boolean parseOnly) {
-        this.parseOnly = parseOnly;
-    }
-
-    public boolean isParseOnly() {
-        return parseOnly;
     }
 
     public boolean bcLibrariesLoaded() {

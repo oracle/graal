@@ -2,6 +2,7 @@
 import re
 import mx, mx_benchmark, mx_sulong
 import os
+import mx_subst
 from os.path import join, exists
 from mx_benchmark import VmRegistry, java_vm_registry, Vm, GuestVm, VmBenchmarkSuite
 
@@ -186,15 +187,16 @@ class SulongVm(GuestVm):
 
         mx.run(cmdline, out=f, err=f, env=env)
         mx.run(['extract-bc', 'bench'], out=f, err=f)
-        mx_sulong.opt(['-o', 'bench.bc', 'bench.bc'] + mx_sulong.getStandardLLVMOptFlags(), out=f, err=f)
+        mx_sulong.opt(['-o', 'bench.bc', 'bench.bc'] + ['-mem2reg', '-globalopt', '-simplifycfg', '-constprop', '-instcombine', '-dse', '-loop-simplify', '-reassociate', '-licm', '-gvn'], out=f, err=f)
 
         suTruffleOptions = [
             '-Dgraal.TruffleBackgroundCompilation=false',
             '-Dgraal.TruffleTimeThreshold=1000000',
             '-Dgraal.TruffleInliningMaxCallerSize=10000',
             '-Dgraal.TruffleCompilationExceptionsAreFatal=true',
-        ]
-        sulongCmdLine = suTruffleOptions + [mx_sulong.getSearchPathOption()] + mx_sulong.getBitcodeLibrariesOption() + mx_sulong.getClasspathOptions() + ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.Sulong"] + ['bench.bc']
+            mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraryPath=<path:SULONG_LIBS>'),
+            '-Dpolyglot.llvm.libraries=libgmp.so.10']
+        sulongCmdLine = suTruffleOptions + mx_sulong.getClasspathOptions() + ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.Sulong"] + ['bench.bc']
         result = self.host_vm().run(cwd, sulongCmdLine + args)
 
         # reset current Directory

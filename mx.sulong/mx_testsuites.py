@@ -40,18 +40,18 @@ def run(vmArgs, unittest, extraOption=None, extraLibs=None):
     if extraOption is None:
         extraOption = []
     if mx.get_opts().verbose:
-        command = mx_sulong.getCommonUnitTestOptions(extraLibs=extraLibs) + extraOption + vmArgs + ['--very-verbose', unittest]
+        command = mx_sulong.getCommonOptions(True, extraLibs) + extraOption + vmArgs + ['--very-verbose', unittest]
         print ('Running mx unittest ' + ' '.join(command))
         return mx_unittest.unittest(command)
     else:
-        command = mx_sulong.getCommonUnitTestOptions(extraLibs=extraLibs) + extraOption + vmArgs + [unittest]
+        command = mx_sulong.getCommonOptions(True, extraLibs) + extraOption + vmArgs + [unittest]
         return mx_unittest.unittest(command)
 
 def runShootoutSuite(vmArgs):
     """runs the Sulong test suite"""
     mx_sulong.ensureDragonEggExists()
     compileSuite(['shootout'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.ShootoutsSuite", extraLibs=["-lgmp"])
+    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.ShootoutsSuite", extraLibs=["libgmp.so.10"])
 
 def runLLVMSuite(vmArgs):
     """runs the LLVM test suite"""
@@ -77,7 +77,7 @@ def runGCCSuite(vmArgs):
     """runs the LLVM test suite"""
     mx_sulong.ensureDragonEggExists()
     compileSuite(['gcc'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.GCCSuite", extraLibs=["-lgfortran"])
+    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.GCCSuite", extraLibs=["libgfortran.so.3"])
 
 def runGCCSuite38(vmArgs):
     """runs the LLVM test suite"""
@@ -130,7 +130,7 @@ def runParserTortureSuite(vmArgs):
     """runs the ParserTorture test suite"""
     mx_sulong.ensureDragonEggExists()
     compileSuite(['parserTorture'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.ParserTortureSuite")
+    return run(vmArgs + ['-polyglot.llvm.parseOnly=true'], "com.oracle.truffle.llvm.test.alpha.ParserTortureSuite")
 
 def runPolyglotTests(vmArgs):
     """runs the Polyglot test suite"""

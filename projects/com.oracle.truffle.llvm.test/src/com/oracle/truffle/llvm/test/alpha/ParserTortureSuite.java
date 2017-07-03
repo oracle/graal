@@ -36,16 +36,15 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.PolyglotContext;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
-import com.oracle.truffle.llvm.Sulong;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.test.options.TestOptions;
 
 @RunWith(Parameterized.class)
@@ -72,10 +71,9 @@ public final class ParserTortureSuite {
             }
 
             try {
-                Builder engineBuilder = PolyglotEngine.newBuilder();
-                engineBuilder.config(Sulong.LLVM_BITCODE_MIME_TYPE, Sulong.PARSE_ONLY_KEY, true);
-                PolyglotEngine build = engineBuilder.build();
-                build.eval(Source.newBuilder(candidate.toFile()).build());
+                Engine engine = Engine.create();
+                PolyglotContext context = engine.createPolyglotContext();
+                context.eval(LLVMLanguage.NAME, org.graalvm.polyglot.Source.create(candidate.toFile()));
             } catch (Throwable e) {
                 throw e;
             }
