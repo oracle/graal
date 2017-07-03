@@ -279,6 +279,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             if ("@llvm.dbg.declare".equals(name) || "@llvm.dbg.value".equals(name)) {
                 // these intrinsics are debug information and should be resolved during parsing, not
                 // at runtime
+                handleNullerInfo();
                 return;
             }
         }
