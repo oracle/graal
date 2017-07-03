@@ -17,7 +17,7 @@ env:
   global:
     - JVMCI_VERSION="jvmci-0.28"
     - JVMCI_BASE_JDK8="jdk1.8.0_121"
-    - JDK9_EA_BUILD="174"
+    - JDK9_EA_BUILD="176"
   matrix:
 # Cannot build OpenJDK8 based JVMCI JDK until
 # https://github.com/travis-ci/travis-ci/issues/7337 is resolved
@@ -67,7 +67,7 @@ install:
       if [ "${JDK}" == "jdk9" ]
       then
         JDK_TAR=${TRAVIS_BUILD_DIR}/../jdk.tar.gz
-        wget http://download.java.net/java/jdk9/archive/${JDK9_EA_BUILD}/binaries/jdk-9-ea+${JDK9_EA_BUILD}_linux-x64_bin.tar.gz -O ${JDK_TAR}
+        wget http://download.java.net/java/jdk9/archive/${JDK9_EA_BUILD}/binaries/jdk-9+${JDK9_EA_BUILD}_linux-x64_bin.tar.gz -O ${JDK_TAR}
         tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${JDK_TAR}
         export JAVA_HOME=${TRAVIS_BUILD_DIR}/../jdk-9
       fi
