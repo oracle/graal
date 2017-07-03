@@ -168,7 +168,7 @@ class DebugValueBenchmarkMixin(object):
                   super(DebugValueBenchmarkMixin, self).vmArgs(bmSuiteArgs)
         return vmArgs
 
-    def getBechmarkName(self):
+    def getBenchmarkName(self):
         raise NotImplementedError()
 
     def benchSuiteName(self):
@@ -257,7 +257,7 @@ class TimingBenchmarkMixin(DebugValueBenchmarkMixin):
         return [
                    DebugValueRule(
                        debug_value_file=self.get_csv_filename(),
-                       benchmark=self.getBechmarkName(),
+                       benchmark=self.getBenchmarkName(),
                        bench_suite=self.benchSuiteName(),
                        metric_name="compile-time",
                        vm_flags=self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
@@ -297,7 +297,7 @@ class CounterBenchmarkMixin(DebugValueBenchmarkMixin):
         return [
             DebugValueRule(
                 debug_value_file=self.get_csv_filename(),
-                benchmark=self.getBechmarkName(),
+                benchmark=self.getBenchmarkName(),
                 bench_suite=self.benchSuiteName(),
                 metric_name="count",
                 metric_unit="#",
@@ -316,7 +316,7 @@ class DaCapoTimingBenchmarkMixin(TimingBenchmarkMixin, CounterBenchmarkMixin):
         self.currentBenchname = benchname
         return super(DaCapoTimingBenchmarkMixin, self).postprocessRunArgs(benchname, runArgs)
 
-    def getBechmarkName(self):
+    def getBenchmarkName(self):
         return self.currentBenchname
 
     def removeWarmup(self, results):
@@ -352,7 +352,7 @@ class MoveProfilingBenchmarkMixin(object):
         """
         raise NotImplementedError()
 
-    def getBechmarkName(self):
+    def getBenchmarkName(self):
         raise NotImplementedError()
 
     def benchSuiteName(self):
@@ -377,7 +377,7 @@ class MoveProfilingBenchmarkMixin(object):
             match_name="name",
             colnames=['type', 'group', 'name', 'value'],
             replacement={
-              "benchmark": self.getBechmarkName(),
+              "benchmark": self.getBenchmarkName(),
               "bench-suite": self.benchSuiteName(),
               "vm": "jvmci",
               "config.name": "default",
@@ -411,7 +411,7 @@ class DaCapoMoveProfilingBenchmarkMixin(MoveProfilingBenchmarkMixin):
         self.currentBenchname = benchname
         return super(DaCapoMoveProfilingBenchmarkMixin, self).postprocessRunArgs(benchname, runArgs)
 
-    def getBechmarkName(self):
+    def getBenchmarkName(self):
         return self.currentBenchname
 
 
