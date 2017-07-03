@@ -36,6 +36,7 @@ import java.util.List;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.RetryableCompilation;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
@@ -96,13 +97,19 @@ public class CompilationTask {
     private final boolean useProfilingInfo;
     private final OptionValues options;
 
-    final class RetryableCompilation extends HotSpotRetryableCompilation<HotSpotCompilationRequestResult> {
+    final class HotSpotRetryableCompilation extends RetryableCompilation<HotSpotCompilationRequestResult> {
         private final EventProvider.CompilationEvent compilationEvent;
         CompilationResult result;
 
-        RetryableCompilation(EventProvider.CompilationEvent compilationEvent) {
-            super(compiler.getGraalRuntime());
+        HotSpotRetryableCompilation(EventProvider.CompilationEvent compilationEvent) {
+            super(compiler.getGraalRuntime().getOutputDirectory());
             this.compilationEvent = compilationEvent;
+        }
+
+        @Override
+        protected DebugContext createRetryDebugContext(OptionValues retryOptions) {
+            SnippetReflectionProvider snippetReflection = compiler.getGraalRuntime().getHostProviders().getSnippetReflection();
+            return DebugContext.create(retryOptions, new GraalDebugHandlersFactory(snippetReflection));
         }
 
         @Override
@@ -307,7 +314,7 @@ public class CompilationTask {
             }
         }
 
-        RetryableCompilation compilation = new RetryableCompilation(compilationEvent);
+        HotSpotRetryableCompilation compilation = new HotSpotRetryableCompilation(compilationEvent);
         try (DebugCloseable a = CompilationTime.start(debug)) {
             return compilation.runWithRetry(debug);
         } catch (BailoutException bailout) {

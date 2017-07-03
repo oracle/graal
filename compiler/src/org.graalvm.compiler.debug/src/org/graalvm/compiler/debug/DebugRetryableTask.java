@@ -29,7 +29,7 @@ public abstract class DebugRetryableTask<T> {
 
     /**
      * Calls {@link #run} on this task and if it results in an exception, calls
-     * {@link #getRetryContext} and if that returns a non-null value,
+     * {@link #openRetryContext} and if that returns a non-null value,
      * {@link #run(DebugContext, Throwable)} is called with it.
      *
      * @param initialDebug the debug context to be used for the initial execution
@@ -39,34 +39,35 @@ public abstract class DebugRetryableTask<T> {
         try {
             return run(initialDebug, null);
         } catch (Throwable t) {
-            DebugContext retryDebug = getRetryContext(initialDebug, t);
-            if (retryDebug != null) {
-                return run(retryDebug, t);
-            } else {
-                throw t;
+            try (DebugContext retryDebug = openRetryContext(initialDebug, t)) {
+                if (retryDebug != null) {
+                    return run(retryDebug, t);
+                } else {
+                    throw t;
+                }
             }
         }
     }
 
     /**
-     * Runs this body of this task.
+     * Runs the body of this task.
      *
      * @param debug the debug context to use for the execution
-     * @param failure {@code null} if this is the first execution otherwise the cause of the first
+     * @param failureCause {@code null} if this is the first execution otherwise the cause of the first
      *            execution to fail
      */
-    protected abstract T run(DebugContext debug, Throwable failure);
+    protected abstract T run(DebugContext debug, Throwable failureCause);
 
     /**
      * Notifies this object that the initial execution failed with exception {@code t} and requests
-     * a debug context to be used for re-execution.
+     * a debug context to be opened for re-execution.
      *
      * @param initialDebug the debug context used for the initial execution
      * @param t an exception that terminated the first execution of this task
      * @return the debug context to be used for re-executing this task or {@code null} if {@code t}
      *         should immediately be re-thrown without re-executing this task
      */
-    protected DebugContext getRetryContext(DebugContext initialDebug, Throwable t) {
+    protected DebugContext openRetryContext(DebugContext initialDebug, Throwable t) {
         return null;
     }
 }

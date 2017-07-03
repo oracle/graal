@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot;
+package org.graalvm.compiler.core;
 
 import static org.graalvm.compiler.debug.DebugContext.VERBOSE_LEVEL;
 import static org.graalvm.compiler.debug.DebugOptions.Dump;
@@ -33,35 +33,40 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugOutputDirectory;
 import org.graalvm.compiler.debug.DebugRetryableTask;
+import org.graalvm.compiler.debug.PathUtilities;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 
 import jdk.vm.ci.code.BailoutException;
 
 /**
- * Utility for retrying a compilation that throws an exception where the retry enables extra logging
- * for subsequently diagnosing the failure.
+ * Extends {@link DebugRetryableTask} to enable dumping for diagnosing a compilation failure.
  */
-public abstract class HotSpotRetryableCompilation<T> extends DebugRetryableTask<T> {
+public abstract class RetryableCompilation<T> extends DebugRetryableTask<T> {
 
-    protected final HotSpotGraalRuntimeProvider runtime;
+    private final DebugOutputDirectory outputDirectory;
 
-    public HotSpotRetryableCompilation(HotSpotGraalRuntimeProvider runtime) {
-        this.runtime = runtime;
+    /**
+     * @param outputDirectory object used to access a directory for dumping if the compilation is
+     *            re-executed
+     */
+    public RetryableCompilation(DebugOutputDirectory outputDirectory) {
+        this.outputDirectory = outputDirectory;
     }
 
     /**
-     * Gets a value that represents the compilation unit being compiled.
+     * Gets a value that represents the input to the compilation.
      */
     @Override
     public abstract String toString();
 
+    protected abstract DebugContext createRetryDebugContext(OptionValues options);
+
     @Override
-    protected DebugContext getRetryContext(DebugContext initialDebug, Throwable t) {
+    protected DebugContext openRetryContext(DebugContext initialDebug, Throwable t) {
         if (t instanceof BailoutException) {
             return null;
         }
@@ -73,12 +78,12 @@ public abstract class HotSpotRetryableCompilation<T> extends DebugRetryableTask<
             return null;
         }
 
-        String outputDirectory = runtime.getOutputDirectory();
-        if (outputDirectory == null) {
+        String dir = this.outputDirectory.getPath();
+        if (dir == null) {
             return null;
         }
-        String dumpName = GraalDebugHandlersFactory.sanitizedFileName(toString());
-        File dumpPath = new File(outputDirectory, dumpName);
+        String dumpName = PathUtilities.sanitizeFileName(toString());
+        File dumpPath = new File(dir, dumpName);
         dumpPath.mkdirs();
         if (!dumpPath.exists()) {
             TTY.println("Warning: could not create dump directory " + dumpPath);
@@ -92,8 +97,7 @@ public abstract class HotSpotRetryableCompilation<T> extends DebugRetryableTask<
                         Dump, ":" + VERBOSE_LEVEL,
                         MethodFilter, null,
                         DumpPath, dumpPath.getPath());
-        SnippetReflectionProvider snippetReflection = runtime.getHostProviders().getSnippetReflection();
-        return DebugContext.create(retryOptions, new GraalDebugHandlersFactory(snippetReflection));
+        return createRetryDebugContext(retryOptions);
     }
 
     private String retryLogPath;

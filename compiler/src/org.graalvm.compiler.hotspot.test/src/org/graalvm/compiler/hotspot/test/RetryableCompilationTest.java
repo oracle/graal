@@ -86,6 +86,7 @@ public class RetryableCompilationTest extends GraalCompilerTest {
                 }
             }
         }
+
         if (!seenForcedCrashString) {
             Assert.fail(String.format("Did not find '%s' in output of command:%n%s", forcedCrashString, proc));
         }
