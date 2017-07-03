@@ -40,6 +40,8 @@ import com.oracle.truffle.llvm.parser.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionKind;
+import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
+import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.enums.AsmDialect;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.InlineAsmConstant;
@@ -222,6 +224,10 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         for (int i = 0; argIndex < argumentCount; i++) {
             argNodes[argIndex] = symbols.resolve(call.getArgument(i));
             argTypes[argIndex] = call.getArgument(i).getType();
+            final AttributesGroup paramAttr = call.getParameterAttributesGroup(i);
+            if (isByValue(paramAttr)) {
+                argNodes[argIndex] = capsuleAddressByValue(argNodes[argIndex], argTypes[argIndex], paramAttr);
+            }
             argIndex++;
         }
 
@@ -300,6 +306,10 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         for (int i = 0; i < call.getArgumentCount(); i++) {
             args[argIndex] = symbols.resolve(call.getArgument(i));
             argsType[argIndex] = call.getArgument(i).getType();
+            final AttributesGroup paramAttr = call.getParameterAttributesGroup(i);
+            if (isByValue(paramAttr)) {
+                args[argIndex] = capsuleAddressByValue(args[argIndex], argsType[argIndex], paramAttr);
+            }
             argIndex++;
         }
 
@@ -338,6 +348,10 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         for (int i = 0; argIndex < argumentCount; i++, argIndex++) {
             argNodes[argIndex] = symbols.resolve(call.getArgument(i));
             argTypes[argIndex] = call.getArgument(i).getType();
+            final AttributesGroup paramAttr = call.getParameterAttributesGroup(i);
+            if (isByValue(paramAttr)) {
+                argNodes[argIndex] = capsuleAddressByValue(argNodes[argIndex], argTypes[argIndex], paramAttr);
+            }
         }
 
         final Symbol target = call.getCallTarget();
@@ -399,6 +413,10 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         for (int i = 0; i < call.getArgumentCount(); i++) {
             args[argIndex] = symbols.resolve(call.getArgument(i));
             argsType[argIndex] = call.getArgument(i).getType();
+            final AttributesGroup paramAttr = call.getParameterAttributesGroup(i);
+            if (isByValue(paramAttr)) {
+                args[argIndex] = capsuleAddressByValue(args[argIndex], argsType[argIndex], paramAttr);
+            }
             argIndex++;
         }
 
@@ -806,5 +824,33 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     private void setControlFlowNode(LLVMControlFlowNode controlFlowNode) {
         assert this.controlFlowNode == null;
         this.controlFlowNode = controlFlowNode;
+    }
+
+    private LLVMExpressionNode capsuleAddressByValue(LLVMExpressionNode child, Type type, AttributesGroup paramAttr) {
+        final Type pointee = ((PointerType) type).getPointeeType();
+
+        final int size = runtime.getByteSize(pointee);
+        int alignment = runtime.getByteAlignment(pointee);
+        for (Attribute attr : paramAttr.getAttributes()) {
+            if (attr instanceof Attribute.KnownIntegerValueAttribute && ((Attribute.KnownIntegerValueAttribute) attr).getAttr() == Attribute.Kind.ALIGN) {
+                alignment = ((Attribute.KnownIntegerValueAttribute) attr).getValue();
+            }
+        }
+
+        return nodeFactory.createVarArgCompoundValue(runtime, size, alignment, child);
+    }
+
+    private static boolean isByValue(AttributesGroup parameter) {
+        if (parameter == null) {
+            return false;
+        }
+
+        for (Attribute a : parameter.getAttributes()) {
+            if (a instanceof Attribute.KnownAttribute && ((Attribute.KnownAttribute) a).getAttr() == Attribute.Kind.BYVAL) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

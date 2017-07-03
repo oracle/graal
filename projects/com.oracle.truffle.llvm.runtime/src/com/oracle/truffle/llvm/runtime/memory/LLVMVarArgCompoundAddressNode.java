@@ -29,57 +29,33 @@
  */
 package com.oracle.truffle.llvm.runtime.memory;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.NodeFields;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.NeedsStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "source")})
 @NodeFields({@NodeField(name = "length", type = int.class), @NodeField(name = "alignment", type = int.class)})
-@NeedsStack
-public abstract class LLVMStructByValueNode extends LLVMExpressionNode {
-    private final LLVMProfiledMemMove profiledMemMove = new LLVMProfiledMemMove();
-
+public abstract class LLVMVarArgCompoundAddressNode extends LLVMExpressionNode {
     public abstract int getLength();
 
     public abstract int getAlignment();
 
-    @CompilationFinal private FrameSlot stackPointer;
-
-    protected FrameSlot getStackPointerSlot() {
-        if (stackPointer == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            stackPointer = getRootNode().getFrameDescriptor().findFrameSlot(LLVMStack.FRAME_ID);
-        }
-        return stackPointer;
+    @Specialization
+    public LLVMVarArgCompoundValue byValue(LLVMGlobalVariable source, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
+        return byValue(access.getNativeLocation(source));
     }
 
     @Specialization
-    public LLVMAddress byValue(VirtualFrame frame, LLVMGlobalVariable source, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
-        return byValue(frame, access.getNativeLocation(source));
+    public LLVMVarArgCompoundValue byValue(LLVMAddress source) {
+        return LLVMVarArgCompoundValue.create(source.getVal(), getLength(), getAlignment());
     }
 
-    @Specialization
-    public LLVMAddress byValue(VirtualFrame frame, LLVMAddress source) {
-        LLVMAddress dest = LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), getLength(), getAlignment()));
-        profiledMemMove.memmove(dest, source, getLength());
-        return dest;
-    }
-
-    @Specialization
-    public LLVMAddress byValue(VirtualFrame frame, LLVMVarArgCompoundValue source) {
-        return byValue(frame, LLVMAddress.fromLong(source.getAddr()));
-    }
 }
