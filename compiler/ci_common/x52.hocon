@@ -29,7 +29,8 @@ builds += [
   ${x52.default} ${bench-specjvm2008-Single}       ${openjdk8} { name: "bench-compiler-specjvm2008-Single-linux-x52" }
   ${x52.default} ${bench-specjvm2008-OneVM}        ${openjdk8} { name: "bench-compiler-specjvm2008-OneVM-linux-x52" }
   ${x52.default} ${bench-specjbb2015}              ${openjdk8} { name: "bench-compiler-specjbb2015-linux-x52" }
-  ${x52.default} ${bench-micros-graal}             ${openjdk8} { name: "bench-compiler-jmh-micros-graal-linux-x52" }
+  ${x52.default} ${bench-micros-graal-whitebox}    ${openjdk8} { name: "bench-compiler-jmh-micros-graal-whitebox-linux-x52" }
+  ${x52.default} ${bench-micros-graal-dist}        ${openjdk8} { name: "bench-compiler-jmh-micros-graal-dist-linux-x52" }
 
   ${x52.tmpfs10g-g1gc} ${bench-dacapo-hwloc}       ${openjdk8} { targets : [weekly, bench], name: "bench-compiler-dacapo-g1gc-linux-x52" }
   ${x52.tmpfs10g-g1gc} ${bench-scala-dacapo-hwloc} ${openjdk8} { targets : [weekly, bench], name: "bench-compiler-scala-dacapo-g1gc-linux-x52" }

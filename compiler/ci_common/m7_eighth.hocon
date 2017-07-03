@@ -26,7 +26,8 @@ builds += [
   ${m7_eighth.default} ${bench-specjvm2008-Single}  ${labsjdk8} { name: "bench-compiler-specjvm2008-Single-solaris-m7_eighth" }
   ${m7_eighth.default} ${bench-specjvm2008-OneVM}   ${labsjdk8} { name: "bench-compiler-specjvm2008-OneVM-solaris-m7_eighth" }
   ${m7_eighth.default} ${bench-specjbb2015}         ${labsjdk8} { name: "bench-compiler-specjbb2015-solaris-m7_eighth" }
-  ${m7_eighth.default} ${bench-micros-graal}        ${labsjdk8} { name: "bench-compiler-jmh-micros-graal-solaris-m7_eighth" }
+  ${m7_eighth.default} ${bench-micros-graal-whitebox} ${labsjdk8} { name: "bench-compiler-jmh-micros-graal-whitebox-solaris-m7_eighth" }
+  ${m7_eighth.default} ${bench-micros-graal-dist}   ${labsjdk8} { name: "bench-compiler-jmh-micros-graal-dist-solaris-m7_eighth" }
 
   ${m7_eighth.default-g1gc} ${bench-dacapo}              ${labsjdk8} { targets : [weekly, bench], name: "bench-compiler-dacapo-g1gc-solaris-m7_eighth", timelimit: "1:00:00" }
   ${m7_eighth.default-g1gc} ${bench-scala-dacapo}        ${labsjdk8} { targets : [weekly, bench], name: "bench-compiler-scala-dacapo-g1gc-solaris-m7_eighth", timelimit: "1:00:00" }

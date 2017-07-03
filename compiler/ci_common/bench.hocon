@@ -15,7 +15,8 @@ bench-jvmci : {
   mx-specjbb2005: ${bench-jvmci.mx-benchmark} ["specjbb2005"]
   mx-specjbb2015: ${bench-jvmci.mx-benchmark} ["specjbb2015"]
   mx-renaissance: ${bench-jvmci.mx-benchmark} ["renaissance:*"]
-  mx-micros-graal: ${bench-jvmci.mx-benchmark} ["jmh-graal-core-whitebox:*"]
+  mx-micros-graal-whitebox: ${bench-jvmci.mx-benchmark} ["jmh-whitebox:*"]
+  mx-micros-graal-dist: ${bench-jvmci.mx-benchmark} ["jmh-dist:*"]
   mx-teardown : ["bench-uploader.py", "--url", "${BENCH_SERVER_URL}", "${BENCH_RESULTS_FILE_PATH}"]
 }
 
@@ -132,10 +133,18 @@ bench-specjbb2015: ${bench-common} {
 
 # JMH micros graal
 
-bench-micros-graal: ${bench-common} {
+bench-micros-graal-whitebox: ${bench-common} {
   targets: [weekly]
   run: [
-    ${bench-jvmci.mx-micros-graal} ${bench-arguments}
+    ${bench-jvmci.mx-micros-graal-whitebox} ${bench-arguments}
+  ]
+  timelimit: "1:00:00"
+}
+
+bench-micros-graal-dist: ${bench-common} {
+  targets: [weekly]
+  run: [
+    ${bench-jvmci.mx-micros-graal-dist} ${bench-arguments}
   ]
   timelimit: "1:00:00"
 }
