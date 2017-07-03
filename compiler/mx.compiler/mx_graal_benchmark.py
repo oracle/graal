@@ -30,6 +30,7 @@ import os
 from os.path import join, exists
 from tempfile import mkdtemp, mkstemp
 from shutil import rmtree
+import itertools
 
 import mx
 import mx_benchmark
@@ -1254,7 +1255,13 @@ class SpecJbb2015BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 mx_benchmark.add_bm_suite(SpecJbb2015BenchmarkSuite())
 
 
-class JMHRunnerGraalCoreBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite):
+class JMHRunnerGraalCoreBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite): # pylint: disable=too-many-ancestors
+
+    def alternative_suite(self):
+        return "jmh-whitebox"
+
+    def warning_only(self):
+        return False
 
     def name(self):
         return "jmh-graal-core-whitebox"
@@ -1285,6 +1292,54 @@ class JMHJarGraalCoreBenchmarkSuite(mx_benchmark.JMHJarBenchmarkSuite):
 
 
 mx_benchmark.add_bm_suite(JMHJarGraalCoreBenchmarkSuite())
+
+
+class JMHDistGraalCoreBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite):
+
+    def name(self):
+        return "jmh-dist"
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "graal-compiler"
+
+    def filter_distribution(self, dist):
+        return super(JMHDistGraalCoreBenchmarkSuite, self).filter_distribution(dist) and \
+               not any(JMHDistWhiteboxBenchmarkSuite.whitebox_dependency(dist))
+
+
+mx_benchmark.add_bm_suite(JMHDistGraalCoreBenchmarkSuite())
+
+
+class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite):
+
+    def name(self):
+        return "jmh-whitebox"
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "graal-compiler"
+
+    @staticmethod
+    def whitebox_dependency(dist):
+        return itertools.chain(
+            (dep.name.startswith('GRAAL') for dep in dist.deps),
+            (dep.name.startswith('org.graalvm.compiler') for dep in dist.archived_deps())
+        )
+
+    def filter_distribution(self, dist):
+        return super(JMHDistWhiteboxBenchmarkSuite, self).filter_distribution(dist) and \
+               any(JMHDistWhiteboxBenchmarkSuite.whitebox_dependency(dist))
+
+    def extraVmArgs(self):
+        return ['-XX:-UseJVMCIClassLoader'] + super(JMHDistWhiteboxBenchmarkSuite, self).extraVmArgs()
+
+
+mx_benchmark.add_bm_suite(JMHDistWhiteboxBenchmarkSuite())
 
 
 class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchmarkMixin):
