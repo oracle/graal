@@ -75,9 +75,9 @@ public final class DefaultTraceRegisterAllocationPolicy {
         public static final OptionKey<Integer> TraceRAnumVariables = new OptionKey<>(null);
         @Option(help = "Use LSRA / BottomUp ratio", type = OptionType.Debug)
         public static final OptionKey<Double> TraceRAbottomUpRatio = new OptionKey<>(0.0);
-        @Option(help = "Probabiltiy Threshold", type = OptionType.Debug)
+        @Option(help = "Probability Threshold", type = OptionType.Debug)
         public static final OptionKey<Double> TraceRAprobalilityThreshold = new OptionKey<>(0.8);
-        @Option(help = "Sum Probabiltiy Budget Threshold", type = OptionType.Debug)
+        @Option(help = "Sum Probability Budget Threshold", type = OptionType.Debug)
         public static final OptionKey<Double> TraceRAsumBudget = new OptionKey<>(0.5);
         @Option(help = "TraceRA allocation policy to use.", type = OptionType.Debug)
         public static final EnumOptionKey<TraceRAPolicies> TraceRAPolicy = new EnumOptionKey<>(TraceRAPolicies.Default);
@@ -281,11 +281,11 @@ public final class DefaultTraceRegisterAllocationPolicy {
         public BottomUpMaxFrequencyStrategy(TraceRegisterAllocationPolicy plan) {
             // explicitly specify the enclosing instance for the superclass constructor call
             super(plan);
-            maxMethodProbability = maxProbabiltiy(getLIR().getControlFlowGraph().getBlocks());
+            maxMethodProbability = maxProbability(getLIR().getControlFlowGraph().getBlocks());
             probabilityThreshold = Options.TraceRAprobalilityThreshold.getValue(plan.getOptions());
         }
 
-        private static double maxProbabiltiy(AbstractBlockBase<?>[] blocks) {
+        private static double maxProbability(AbstractBlockBase<?>[] blocks) {
             double max = 0;
             for (AbstractBlockBase<?> block : blocks) {
                 double probability = block.probability();
@@ -301,7 +301,7 @@ public final class DefaultTraceRegisterAllocationPolicy {
             if (!super.shouldApplyTo(trace)) {
                 return false;
             }
-            return maxProbabiltiy(trace.getBlocks()) / maxMethodProbability <= probabilityThreshold;
+            return maxProbability(trace.getBlocks()) / maxMethodProbability <= probabilityThreshold;
         }
 
     }
