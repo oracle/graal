@@ -191,7 +191,7 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
                 id = compilationId.toString(CompilationIdentifier.Verbosity.ID);
             }
         } else {
-            label = graph == null ? "<no graph>" : graph.name != null ? graph.name : graph.toString();
+            label = graph == null ? null : graph.name != null ? graph.name : graph.toString();
             id = "UnknownCompilation-" + unknownCompilationId.incrementAndGet();
         }
         String ext = UniquePathUtilities.formatExtension(extension);
@@ -222,11 +222,15 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
                 int idLengthLimit = Math.min(MAX_FILE_NAME_LENGTH - suffix.length(), id.length());
                 fileName = id.substring(0, idLengthLimit) + suffix;
             } else {
-                String adjustedLabel = label;
-                if (label.length() > labelLengthLimit) {
-                    adjustedLabel = label.substring(0, labelLengthLimit - ELLIPSIS.length()) + ELLIPSIS;
+                if (label == null) {
+                    fileName = sanitizedFileName(id + timestamp + ext);
+                } else {
+                    String adjustedLabel = label;
+                    if (label.length() > labelLengthLimit) {
+                        adjustedLabel = label.substring(0, labelLengthLimit - ELLIPSIS.length()) + ELLIPSIS;
+                    }
+                    fileName = sanitizedFileName(id + '[' + adjustedLabel + ']' + timestamp + ext);
                 }
-                fileName = sanitizedFileName(id + '[' + adjustedLabel + ']' + timestamp + ext);
             }
             Path result = dumpDir.resolve(fileName);
             try {

@@ -48,6 +48,7 @@ import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Activation;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotCompilationIdentifier;
@@ -187,11 +188,21 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         return truffleCompiler;
     }
 
+    protected boolean reportedTruffleCompilerInitializationFailure;
+
     private void initializeTruffleCompiler() {
         synchronized (this) {
             // might occur for multiple compiler threads at the same time.
             if (truffleCompiler == null) {
-                truffleCompiler = DefaultTruffleCompiler.create(this);
+                try {
+                    truffleCompiler = DefaultTruffleCompiler.create(this);
+                } catch (Throwable e) {
+                    if (!reportedTruffleCompilerInitializationFailure) {
+                        // This should never happen so report it (once)
+                        reportedTruffleCompilerInitializationFailure = true;
+                        e.printStackTrace(TTY.out);
+                    }
+                }
             }
         }
     }
