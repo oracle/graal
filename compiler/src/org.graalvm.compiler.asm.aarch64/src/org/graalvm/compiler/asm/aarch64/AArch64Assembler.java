@@ -1068,9 +1068,9 @@ public abstract class AArch64Assembler extends Assembler {
                         PSTL3STRM
         };
 
-        public PrefetchMode lookup(int encoding) {
-            assert encoding >= 00 && encoding < modes.length;
-            return modes[encoding];
+        public static PrefetchMode lookup(int enc) {
+            assert enc >= 00 && enc < modes.length;
+            return modes[enc];
         }
 
         public Register toRegister() {
@@ -1081,9 +1081,9 @@ public abstract class AArch64Assembler extends Assembler {
     /*
      * implements a prefetch at a 64-bit aligned address using a scaled 12 bit or unscaled 9 bit
      * displacement addressing mode
-     * 
+     *
      * @param rt general purpose register. May not be null, zr or stackpointer.
-     * 
+     *
      * @param address only displacement addressing modes allowed. May not be null.
      */
     public void prfm(AArch64Address address, PrefetchMode mode) {
