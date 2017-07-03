@@ -116,11 +116,6 @@ def runInteropTests38(vmArgs):
     compileSuite(['interop'])
     return run(vmArgs, "com.oracle.truffle.llvm.test.interop.LLVMInteropTest")
 
-def runTCKTests38(vmArgs):
-    """runs the Sulong test suite"""
-    compileSuite(['interop'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.interop.LLVMTckTest")
-
 def runInlineAssemblySuite38(vmArgs):
     """runs the InlineAssembly test suite"""
     compileSuite(['assembly'])
@@ -130,7 +125,7 @@ def runParserTortureSuite(vmArgs):
     """runs the ParserTorture test suite"""
     mx_sulong.ensureDragonEggExists()
     compileSuite(['parserTorture'])
-    return run(vmArgs + ['-polyglot.llvm.parseOnly=true'], "com.oracle.truffle.llvm.test.alpha.ParserTortureSuite")
+    return run(vmArgs + ['-Dpolyglot.llvm.parseOnly=true'], "com.oracle.truffle.llvm.test.alpha.ParserTortureSuite")
 
 def runPolyglotTests(vmArgs):
     """runs the Polyglot test suite"""
@@ -240,7 +235,6 @@ testSuites = {
     'llvm38' : (compileV38LLVMSuite, runLLVMSuite38),
     'shootout' : (compileShootoutSuite, runShootoutSuite),
     'interop' : (compileInteropTests38, runInteropTests38),
-    'tck' : (compileInteropTests38, runTCKTests38),
     'parserTorture' : (compileParserTurtureSuite, runParserTortureSuite),
     'polyglot' : (None, runPolyglotTests),
     'type' : (None, runTypeTests),
