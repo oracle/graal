@@ -243,7 +243,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     private boolean shouldDump(StructuredGraph graph, C context) {
         DebugContext debug = graph.getDebug();
         String phaseChange = DebugOptions.DumpOnPhaseChange.getValue(graph.getOptions());
-        if (phaseChange != null && getClass().getSimpleName().contains(phaseChange)) {
+        if (phaseChange != null && Pattern.matches(phaseChange, getClass().getSimpleName())) {
             StructuredGraph graphCopy = (StructuredGraph) graph.copy(graph.getDebug());
             GraphChangeListener listener = new GraphChangeListener(graphCopy);
             try (NodeEventScope s = graphCopy.trackNodeEvents(listener)) {
