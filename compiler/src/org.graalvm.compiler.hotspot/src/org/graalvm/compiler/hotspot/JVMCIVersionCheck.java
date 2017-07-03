@@ -121,8 +121,8 @@ class JVMCIVersionCheck {
             }
             // http://openjdk.java.net/jeps/223
             // Only support EA builds until GA is available
-            if (vmVersion.startsWith("9-ea+")) {
-                int start = "9-ea+".length();
+            if (vmVersion.startsWith("9+")) {
+                int start = "9+".length();
                 int end = start;
                 end = start;
                 while (end < vmVersion.length() && Character.isDigit(vmVersion.charAt(end))) {
