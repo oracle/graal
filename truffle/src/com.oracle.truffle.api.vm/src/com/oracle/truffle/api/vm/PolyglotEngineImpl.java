@@ -205,39 +205,42 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
         for (String key : options.keySet()) {
             int groupIndex = key.indexOf('.');
+            String group;
             if (groupIndex != -1) {
-                String group = key.substring(0, groupIndex);
-                String value = options.get(key);
-                PolyglotLanguageImpl language = idToLanguage.get(group);
-                if (language != null) {
-                    Map<String, String> languageOptions = languagesOptions.get(language);
-                    if (languageOptions == null) {
-                        languageOptions = new HashMap<>();
-                        languagesOptions.put(language, languageOptions);
-                    }
-                    languageOptions.put(key, value);
-                    continue;
+                group = key.substring(0, groupIndex);
+            } else {
+                group = key;
+            }
+            String value = options.get(key);
+            PolyglotLanguageImpl language = idToLanguage.get(group);
+            if (language != null) {
+                Map<String, String> languageOptions = languagesOptions.get(language);
+                if (languageOptions == null) {
+                    languageOptions = new HashMap<>();
+                    languagesOptions.put(language, languageOptions);
                 }
-                Instrument instrument = idToInstrument.get(group);
-                if (instrument != null) {
-                    Map<String, String> instrumentOptions = instrumentsOptions.get(instrument);
-                    if (instrumentOptions == null) {
-                        instrumentOptions = new HashMap<>();
-                        instrumentsOptions.put(instrument, instrumentOptions);
-                    }
-                    instrumentOptions.put(key, value);
-                    continue;
+                languageOptions.put(key, value);
+                continue;
+            }
+            Instrument instrument = idToInstrument.get(group);
+            if (instrument != null) {
+                Map<String, String> instrumentOptions = instrumentsOptions.get(instrument);
+                if (instrumentOptions == null) {
+                    instrumentOptions = new HashMap<>();
+                    instrumentsOptions.put(instrument, instrumentOptions);
                 }
+                instrumentOptions.put(key, value);
+                continue;
+            }
 
-                if (group.equals(PolyglotImpl.OPTION_GROUP_ENGINE)) {
-                    originalEngineOptions.put(key, value);
-                    continue;
-                }
+            if (group.equals(PolyglotImpl.OPTION_GROUP_ENGINE)) {
+                originalEngineOptions.put(key, value);
+                continue;
+            }
 
-                if (group.equals(PolyglotImpl.OPTION_GROUP_COMPILER)) {
-                    originalCompilerOptions.put(key, value);
-                    continue;
-                }
+            if (group.equals(PolyglotImpl.OPTION_GROUP_COMPILER)) {
+                originalCompilerOptions.put(key, value);
+                continue;
             }
             throw OptionValuesImpl.failNotFound(getAllOptions(), key);
         }
