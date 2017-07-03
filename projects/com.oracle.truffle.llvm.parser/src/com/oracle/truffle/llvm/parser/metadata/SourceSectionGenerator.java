@@ -42,12 +42,12 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.Call;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
-public final class SourceSectionGenerator {
+final class SourceSectionGenerator {
 
-    private final Map<MDBaseNode, Source> scopeToSource;
+    private final Map<MDFile, Source> sources;
 
-    public SourceSectionGenerator() {
-        scopeToSource = new HashMap<>();
+    SourceSectionGenerator() {
+        sources = new HashMap<>();
     }
 
     private final class SSVisitor implements MetadataVisitor {
@@ -68,8 +68,8 @@ public final class SourceSectionGenerator {
 
         @Override
         public void visit(MDFile md) {
-            if (scopeToSource.containsKey(md)) {
-                source = scopeToSource.get(md);
+            if (sources.containsKey(md)) {
+                source = sources.get(md);
 
             } else {
                 File file = md.asFile();
@@ -79,7 +79,7 @@ public final class SourceSectionGenerator {
                 if (file.exists()) {
                     try {
                         source = Source.newBuilder(file).mimeType(sourceMimeType).name(sourceName).build();
-                        scopeToSource.put(md, source);
+                        sources.put(md, source);
                     } catch (IOException e) {
                         throw new IllegalStateException(String.format("Could not access Source: %s\ncaused by %s", file.getAbsolutePath(), e.getMessage()), e);
                     }
@@ -168,7 +168,7 @@ public final class SourceSectionGenerator {
         }
     }
 
-    public SourceSection getOrDefault(Instruction instruction) {
+    SourceSection getOrDefault(Instruction instruction) {
         MDLocation mdLocation = instruction.getDebugLocation();
         if (mdLocation == null) {
             return null;
@@ -186,24 +186,20 @@ public final class SourceSectionGenerator {
         return visitor.generateSourceSection();
     }
 
-    public SourceSection getOrDefault(FunctionDefinition function, Source bcSource) {
+    SourceSection getOrDefault(FunctionDefinition function) {
         return getFunctionDIAttachment(function).map(di -> {
             SSVisitor visitor = new SSVisitor();
             di.accept(visitor);
             return visitor.generateSourceSection();
 
-        }).orElseGet(() -> {
-            String sourceText = String.format("%s:%s", bcSource.getName(), function.getName());
-            Source irSource = Source.newBuilder(sourceText).mimeType(MIMETYPE_PLAINTEXT).name(sourceText).build();
-            return irSource.createSection(1);
-        });
+        }).orElse(null);
     }
 
     private static Optional<MDBaseNode> getFunctionDIAttachment(FunctionDefinition function) {
         return function.getMetadata().getFunctionAttachments().stream().filter(md -> MDKind.DBG_NAME.equals(md.getKind().getName())).findAny().map(dbg -> dbg.getMdRef().get());
     }
 
-    private static final String MIMETYPE_PLAINTEXT = "text/plain";
+    static final String MIMETYPE_PLAINTEXT = "text/plain";
 
     private static String getMimeType(File file) {
         String path = file.getPath();

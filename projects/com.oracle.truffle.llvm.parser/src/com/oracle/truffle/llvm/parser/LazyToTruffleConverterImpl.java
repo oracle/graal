@@ -42,6 +42,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.LLVMLivenessAnalysis.LLVMLivenessAnalysisResult;
 import com.oracle.truffle.llvm.parser.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
@@ -84,6 +85,9 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     public RootCallTarget convert() {
         CompilerAsserts.neverPartOfCompilation();
 
+        // this also precompiles the SourceSections for the contained instructions
+        SourceSection sourceSection = runtime.getSourceSection(method);
+
         LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(frame, context, phis, method);
         LLVMBitcodeFunctionVisitor visitor = new LLVMBitcodeFunctionVisitor(runtime, frame, labels, phis, nodeFactory, method.getParameters().size(),
                         new LLVMSymbolResolver(runtime, method, frame, labels), method, liveness);
@@ -94,7 +98,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
         List<LLVMExpressionNode> copyArgumentsToFrame = copyArgumentsToFrame();
         LLVMExpressionNode[] copyArgumentsToFrameArray = copyArgumentsToFrame.toArray(new LLVMExpressionNode[copyArgumentsToFrame.size()]);
-        RootNode rootNode = nodeFactory.createFunctionStartNode(runtime, body, copyArgumentsToFrameArray, runtime.getSourceSection(method), frame, method, source);
+        RootNode rootNode = nodeFactory.createFunctionStartNode(runtime, body, copyArgumentsToFrameArray, sourceSection, frame, method, source);
 
         String astPrintTarget = context.getEnv().getOptions().get(SulongEngineOption.PRINT_FUNCTION_ASTS);
         if (SulongEngineOption.isTrue(astPrintTarget)) {
