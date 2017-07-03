@@ -18,31 +18,37 @@ public class CancelExecution {
 
     public static void main(String[] args) throws InterruptedException {
         ExecutorService service = Executors.newFixedThreadPool(1);
-        Engine engine = Engine.create();
-        Context context = engine.getLanguage("js").createContext();
-
-        // we submit a harmful infinite script to the executor
-        Future<Value> future = service.submit(() -> context.eval("while(true)"));
-
-        // wait some time to let the execution complete.
-        Thread.sleep(1000);
-
-        /*
-         * closes the context and cancels the running execution. This can be done on any parallel
-         * thread. Alternatively Engine.close(true) can be used to close all running contexts of an
-         * engine.
-         */
-        context.close(true);
-
         try {
-            future.get();
-        } catch (ExecutionException e) {
-            PolyglotException polyglotException = (PolyglotException) e.getCause();
+            Engine engine = Engine.create();
+            Context context = engine.getLanguage("js").createContext();
+
+            // we submit a harmful infinite script to the executor
+            Future<Value> future = service.submit(() -> context.eval("while(true);"));
+
+            // wait some time to let the execution complete.
+            Thread.sleep(1000);
+
             /*
-             * After the execution got cancelled the executing thread stops by throwning a
-             * PolyglotException with the cancelled flag set.
+             * closes the context and cancels the running execution. This can be done on any
+             * parallel thread. Alternatively Engine.close(true) can be used to close all running
+             * contexts of an engine.
              */
-            assert polyglotException.isCancelled();
+            context.close(true);
+
+            try {
+                future.get();
+            } catch (ExecutionException e) {
+                PolyglotException polyglotException = (PolyglotException) e.getCause();
+                polyglotException.printStackTrace();
+                /*
+                 * After the execution got cancelled the executing thread stops by throwning a
+                 * PolyglotException with the cancelled flag set.
+                 */
+                assert polyglotException.isCancelled();
+            }
+            engine.close();
+        } finally {
+            service.shutdown();
         }
     }
 

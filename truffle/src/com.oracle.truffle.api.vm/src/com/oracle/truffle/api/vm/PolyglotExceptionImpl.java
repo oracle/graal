@@ -64,7 +64,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
 
     private final SourceSection sourceLocation;
     private final boolean internal;
-    private final boolean timeout;
+    private final boolean cancelled;
     private final boolean exit;
     private final boolean incompleteSource;
     private final boolean syntaxError;
@@ -81,7 +81,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
         if (exception instanceof TruffleException) {
             TruffleException truffleException = (TruffleException) exception;
             this.internal = truffleException.isInternalError();
-            this.timeout = truffleException.isTimeout();
+            this.cancelled = truffleException.isCancelled();
             this.syntaxError = truffleException.isSyntaxError();
             this.incompleteSource = truffleException.isIncompleteSource();
             this.exit = truffleException.isExit();
@@ -105,8 +105,8 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
                 this.guestObject = languageContext.context.getHostContext().nullValue;
             }
         } else {
+            this.cancelled = false;
             this.internal = true;
-            this.timeout = false;
             this.syntaxError = false;
             this.incompleteSource = false;
             this.exit = false;
@@ -246,7 +246,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
 
     @Override
     public boolean isCancelled() {
-        return timeout;
+        return cancelled;
     }
 
     @Override

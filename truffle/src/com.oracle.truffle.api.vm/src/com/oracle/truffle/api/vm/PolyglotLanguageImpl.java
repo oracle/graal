@@ -146,6 +146,11 @@ class PolyglotLanguageImpl extends AbstractLanguageImpl implements VMObject {
     }
 
     @Override
+    public String getImplementationName() {
+        return cache.getImplementationName();
+    }
+
+    @Override
     public boolean isInteractive() {
         return cache.isInteractive();
     }

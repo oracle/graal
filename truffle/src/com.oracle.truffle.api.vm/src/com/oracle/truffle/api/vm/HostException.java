@@ -50,7 +50,7 @@ final class HostException extends RuntimeException implements TruffleException {
         return null;
     }
 
-    public boolean isTimeout() {
+    public boolean isCancelled() {
         return getCause() instanceof InterruptedException;
     }
 

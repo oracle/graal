@@ -40,6 +40,8 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.polyglot.Engine;
@@ -61,6 +63,7 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
 
     volatile Thread boundThread;
     volatile boolean closed;
+    volatile CountDownLatch closingLatch;
     final AtomicInteger enteredCount = new AtomicInteger();
     final PolyglotEngineImpl engine;
     final Thread initThread;
@@ -147,6 +150,9 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
         int result = enteredCount.decrementAndGet();
         if (result <= 0) {
             boundThread = null;
+            if (closingLatch != null) {
+                close(false);
+            }
         }
         CURRENT_CONTEXT.leave((PolyglotContextImpl) prev);
     }
@@ -363,26 +369,77 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
     }
 
     @Override
-    public void close() {
-        if (!closed) {
-            Object prev = enter();
+    public void close(boolean cancelIfExecuting) {
+        closeImpl(cancelIfExecuting);
+        if (cancelIfExecuting) {
+            engine.getCancelHandler().waitForClosing(this);
+        }
+    }
+
+    void waitForClose() {
+        assert boundThread == null || boundThread != Thread.currentThread() : "cannot wait on current thread";
+        while (!closed) {
+            CountDownLatch closing = closingLatch;
+            if (closing == null) {
+                return;
+            }
             try {
-                for (PolyglotLanguageContextImpl context : contexts) {
-                    try {
-                        context.dispose();
-                    } catch (Exception | Error ex) {
-                        try {
-                            err.write(String.format("Error closing language %s: %n", context.language.cache.getId()).getBytes());
-                        } catch (IOException e) {
-                            ex.addSuppressed(e);
+                if (closing.await(100, TimeUnit.MILLISECONDS)) {
+                    return;
+                }
+            } catch (InterruptedException e) {
+            }
+        }
+    }
+
+    void closeImpl(boolean cancelIfExecuting) {
+        if (!closed) {
+            synchronized (this) {
+                if (!closed) {
+                    Thread thread = boundThread;
+                    if (cancelIfExecuting) {
+                        if (Thread.currentThread() == thread) {
+                            throw new IllegalStateException(String.format("Cannot cancel an execution that is running on the current thread %s.", thread));
+                        } else if (thread != null) {
+                            if (closingLatch == null) {
+                                closingLatch = new CountDownLatch(1);
+
+                                // account for race condition when we already left the execution in
+                                // the meantime. in such a case #leave(Object) will never be called.
+                                if (enteredCount.get() <= 0) {
+                                    closeImpl(false);
+                                }
+                            }
+                            return;
                         }
-                        ex.printStackTrace(new PrintStream(err));
+                    }
+
+                    Object prev = enter();
+                    try {
+                        for (PolyglotLanguageContextImpl context : contexts) {
+                            try {
+                                context.dispose();
+                            } catch (Exception | Error ex) {
+                                try {
+                                    err.write(String.format("Error closing language %s: %n", context.language.cache.getId()).getBytes());
+                                } catch (IOException e) {
+                                    ex.addSuppressed(e);
+                                }
+                                ex.printStackTrace(new PrintStream(err));
+                            }
+                        }
+                        closed = true;
+                        engine.removeContext(this);
+
+                        if (closingLatch != null) {
+                            closingLatch.countDown();
+                            closingLatch = null;
+                        }
+
+                    } finally {
+                        leave(prev);
                     }
                 }
-                closed = true;
-                engine.removeContext(this);
-            } finally {
-                leave(prev);
             }
         }
     }

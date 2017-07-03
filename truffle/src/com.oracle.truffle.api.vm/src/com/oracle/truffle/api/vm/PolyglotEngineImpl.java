@@ -31,7 +31,6 @@ import static com.oracle.truffle.api.vm.VMAccessor.SPI;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -56,12 +55,20 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
-import org.graalvm.polyglot.PolyglotContext;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
+import com.oracle.truffle.api.instrumentation.EventBinding;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
+import com.oracle.truffle.api.instrumentation.Instrumenter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.impl.SourceAccessor;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
@@ -104,6 +111,8 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
     volatile OptionDescriptors allOptions;
     volatile boolean closed;
+
+    private volatile CancelHandler cancelHandler;
 
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options, long timeout, TimeUnit timeoutUnit,
                     boolean sandbox, boolean useSystemProperties, ClassLoader contextClassLoader) {
@@ -307,7 +316,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
     private static LanguageCache createHostLanguageCache() {
         return new LanguageCache(HOST_LANGUAGE_ID, Collections.emptySet(),
-                        "Java", System.getProperty("java.version"), false, false, new HostLanguage());
+                        "Java", "Java", System.getProperty("java.version"), false, false, new HostLanguage());
     }
 
     private static void verifyId(String id, String className) {
@@ -374,30 +383,30 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     }
 
     @Override
-    @SuppressWarnings("hiding")
-    public synchronized PolyglotContext createPolyglotContext(OutputStream out, OutputStream err, InputStream in, Map<String, String[]> arguments, Map<String, String> options) {
-        checkState();
-        PolyglotContextImpl contextImpl = new PolyglotContextImpl(this, out, err, in, options, arguments, null);
-        addContext(contextImpl);
-        return impl.getAPIAccess().newPolyglotContext(api, contextImpl);
-    }
-
-    @Override
-    public void ensureClosed(boolean ignoreCloseFailure) {
+    public void ensureClosed(boolean cancelIfExecuting, boolean ignoreCloseFailure) {
         if (!closed) {
             synchronized (this) {
                 if (!closed) {
-                    for (PolyglotContextImpl context : contexts.toArray(new PolyglotContextImpl[0])) {
+                    PolyglotContextImpl[] localContexts = contexts.toArray(new PolyglotContextImpl[0]);
+                    for (PolyglotContextImpl context : localContexts) {
                         assert !context.closed : "should not be in the contexts list";
                         Thread t = context.boundThread;
                         try {
+                            boolean performClose = true;
                             if (t != null) {
                                 if (!ignoreCloseFailure) {
-                                    throw new IllegalStateException(String.format("The context is currently executing on thread %s. " +
-                                                    "Cannot close the engine without closing all open contexts.", t));
+                                    if (cancelIfExecuting) {
+                                        performClose = true;
+                                    } else {
+                                        throw new IllegalStateException(String.format("One of the context instances is currently executing on thread %s. " +
+                                                        "Set cancelIfExecuting to true to stop the execution on this thread.", t));
+                                    }
+                                } else {
+                                    performClose = false;
                                 }
-                            } else {
-                                context.close();
+                            }
+                            if (performClose) {
+                                context.closeImpl(cancelIfExecuting);
                             }
                         } catch (Throwable e) {
                             if (!ignoreCloseFailure) {
@@ -405,6 +414,8 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                             }
                         }
                     }
+                    getCancelHandler().waitForClosing(localContexts);
+
                     contexts.clear();
                     for (Instrument instrument : idToInstrument.values()) {
                         PolyglotInstrumentImpl instrumentImpl = (PolyglotInstrumentImpl) getAPIAccess().getImpl(instrument);
@@ -520,9 +531,128 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         public void run() {
             for (PolyglotEngineImpl engine : ENGINES.keySet()) {
                 if (engine != null) {
-                    engine.ensureClosed(true);
+                    engine.ensureClosed(false, true);
                 }
             }
+        }
+    }
+
+    CancelHandler getCancelHandler() {
+        if (cancelHandler == null) {
+            synchronized (this) {
+                if (cancelHandler == null) {
+                    cancelHandler = new CancelHandler();
+                }
+            }
+        }
+        return cancelHandler;
+
+    }
+
+    final class CancelHandler {
+        private final Instrumenter instrumenter;
+        private volatile EventBinding<?> cancellationBinding;
+        private int cancellationUsers;
+
+        CancelHandler() {
+            this.instrumenter = (Instrumenter) INSTRUMENT.getEngineInstrumenter(instrumentationHandler);
+        }
+
+        void waitForClosing(PolyglotContextImpl... localContexts) {
+            boolean cancelling = false;
+            for (PolyglotContextImpl context : localContexts) {
+                if (context.closingLatch != null) {
+                    cancelling = true;
+                    break;
+                }
+            }
+
+            if (cancelling) {
+                enableCancel();
+
+                for (PolyglotContextImpl context : localContexts) {
+                    Thread thread = context.boundThread;
+                    if (thread != null && context.closingLatch != null) {
+                        /*
+                         * We send an interrupt to the thread to wake up and to run some guest
+                         * language code in case they are waiting in some async primitive.
+                         */
+                        thread.interrupt();
+                    }
+                }
+                try {
+                    for (PolyglotContextImpl context : localContexts) {
+                        context.waitForClose();
+                    }
+                } finally {
+                    disableCancel();
+                }
+            }
+        }
+
+        private void enableCancel() {
+            synchronized (this) {
+                if (cancellationBinding == null) {
+                    cancellationBinding = instrumenter.attachListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+                        public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+                            cancelExecution(context);
+                        }
+
+                        public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+                            cancelExecution(context);
+                        }
+
+                        public void onEnter(EventContext context, VirtualFrame frame) {
+                            cancelExecution(context);
+                        }
+
+                        @TruffleBoundary
+                        private void cancelExecution(EventContext eventContext) {
+                            PolyglotContextImpl context = PolyglotContextImpl.current();
+                            if (context.closingLatch != null) {
+                                throw new CancelExecution(eventContext);
+                            }
+                        }
+                    });
+                }
+                cancellationUsers++;
+            }
+        }
+
+        private void disableCancel() {
+            synchronized (this) {
+                int usersLeft = --cancellationUsers;
+                if (usersLeft <= 0) {
+                    EventBinding<?> b = cancellationBinding;
+                    if (b != null) {
+                        b.dispose();
+                    }
+                    cancellationBinding = null;
+                }
+            }
+        }
+    }
+
+    @SuppressWarnings("serial")
+    private static final class CancelExecution extends ThreadDeath implements TruffleException {
+
+        private final Node node;
+
+        CancelExecution(EventContext context) {
+            this.node = context.getInstrumentedNode();
+        }
+
+        public Node getLocation() {
+            return node;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Execution got cancelled.";
+        }
+
+        public boolean isCancelled() {
+            return true;
         }
 
     }

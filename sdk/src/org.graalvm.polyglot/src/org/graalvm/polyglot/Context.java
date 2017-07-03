@@ -76,7 +76,7 @@ public final class Context implements AutoCloseable {
     }
 
     public Value eval(Language language, Source source) {
-        return impl.eval(language.impl, source);
+        return impl.eval(language.impl, source.impl);
     }
 
     /**
@@ -255,6 +255,19 @@ public final class Context implements AutoCloseable {
             }
             this.options.put(key, value);
             return this;
+        }
+
+        /**
+         * Sets the application arguments for the primary language context.
+         *
+         * @see #setArguments(String, String[])
+         * @since 1.0
+         */
+        public Builder setArguments(String[] args) {
+            if (primaryLanguage == null) {
+                throw new IllegalArgumentException("No primary language in use. Use setArguments(String, STring[]) instead.");
+            }
+            return setArguments(primaryLanguage, args);
         }
 
         /**

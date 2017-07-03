@@ -25,11 +25,9 @@ package com.oracle.truffle.api.test.polyglot;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
-import static org.junit.Assert.fail;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.PolyglotContext;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -61,17 +59,10 @@ public class LanguageSPITest {
         langContext = null;
         Engine engine = Engine.create();
 
-        PolyglotContext context = engine.createPolyglotContext();
-        context.getContext(LANGUAGE_SPI_TEST);
+        Context context = engine.createPolyglotContext();
+        context.initialize(LANGUAGE_SPI_TEST);
 
         assertNotNull(langContext);
-
-        try {
-            // not allowed to close internal context
-            context.getContext(LANGUAGE_SPI_TEST).close();
-            fail();
-        } catch (IllegalStateException e) {
-        }
 
         assertEquals(0, langContext.disposeCalled);
         context.close();
@@ -83,11 +74,11 @@ public class LanguageSPITest {
     public void testImplicitClose() {
         Engine engine = Engine.create();
         langContext = null;
-        PolyglotContext c = engine.createPolyglotContext();
-        c.getContext(LANGUAGE_SPI_TEST);
+        Context c = engine.createPolyglotContext();
+        c.initialize(LANGUAGE_SPI_TEST);
         LanguageContext context1 = langContext;
 
-        engine.createPolyglotContext().getContext(LANGUAGE_SPI_TEST);
+        engine.createPolyglotContext().initialize(LANGUAGE_SPI_TEST);
         LanguageContext context2 = langContext;
 
         c.close();
@@ -99,9 +90,9 @@ public class LanguageSPITest {
     @Test
     public void testImplicitCloseFromOtherThread() throws InterruptedException {
         Engine engine = Engine.create();
-        PolyglotContext context = engine.createPolyglotContext();
+        Context context = engine.createPolyglotContext();
         langContext = null;
-        context.getContext(LANGUAGE_SPI_TEST);
+        context.initialize(LANGUAGE_SPI_TEST);
 
         Thread t = new Thread(new Runnable() {
             public void run() {
@@ -119,8 +110,8 @@ public class LanguageSPITest {
         langContext = null;
         Thread t = new Thread(new Runnable() {
             public void run() {
-                PolyglotContext context = engine.createPolyglotContext();
-                context.getContext(LANGUAGE_SPI_TEST);
+                Context context = engine.createPolyglotContext();
+                context.initialize(LANGUAGE_SPI_TEST);
             }
         });
         t.start();

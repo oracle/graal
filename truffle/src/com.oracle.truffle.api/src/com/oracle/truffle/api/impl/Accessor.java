@@ -261,6 +261,8 @@ public abstract class Accessor {
 
         public abstract OptionDescriptors describeOptions(Object instrumentationHandler, Object key, String requiredGroup);
 
+        public abstract Object getEngineInstrumenter(Object instrumentationHandler);
+
     }
 
     protected abstract static class Frames {
