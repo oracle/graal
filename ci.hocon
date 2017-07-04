@@ -135,7 +135,7 @@ builds = [
   ${gateTest38-linux} ${requireGCC} ${sulongSuite} { name: gate-sulong-v38-linux }
   ${gateTest38-darwin} ${sulongSuite} { name: gate-sulong-v38-darwin }
   ${gateTest38-linux} { name: gate-gcc-v38, run: [[mx, build, --dependencies, SULONG_TEST], [mx, su-suite, gcc38]] }
-  ${gateTest38-linux} { name: gate-var-v38, run: [[mx, build, --dependencies, SULONG_TEST], [mx, su-suite, interop], [mx, su-suite, tck], [mx, su-suite, assembly], [mx, su-suite, args], [mx, su-suite, callback], [mx, su-suite, vaargs]] }
+  ${gateTest38-linux} { name: gate-var-v38, run: [[mx, build, --dependencies, SULONG_TEST], [mx, su-suite, interop], [mx, su-suite, assembly], [mx, su-suite, args], [mx, su-suite, callback], [mx, su-suite, vaargs]] }
 
   ${deploy-binaries-linux} { name: postmerge-deploy-binaries-linux-amd64 }
   ${deploy-binaries-darwin} { name: postmerge-deploy-binaries-darwin-amd64 }

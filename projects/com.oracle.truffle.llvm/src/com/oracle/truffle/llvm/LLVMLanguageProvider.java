@@ -95,8 +95,8 @@ public final class LLVMLanguageProvider {
                 throw new IllegalArgumentException("undeclared mime type: " + code.getMimeType());
             }
             parseDynamicBitcodeLibraries(language, context);
-            if (context.isParseOnly()) {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(mainFunction));
+            if (context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
+                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
             } else {
                 return mainFunction;
             }
@@ -142,7 +142,7 @@ public final class LLVMLanguageProvider {
         if (result.getDestructorFunction() != null) {
             context.registerDestructorFunction(result.getDestructorFunction());
         }
-        if (!context.isParseOnly()) {
+        if (!context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
             context.getThreadingStack().checkThread();
             long stackPointer = context.getThreadingStack().getStack().getStackPointer();
             result.getGlobalVarInit().call(stackPointer);

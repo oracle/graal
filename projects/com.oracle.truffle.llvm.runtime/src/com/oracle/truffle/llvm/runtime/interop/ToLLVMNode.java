@@ -42,6 +42,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
@@ -678,6 +679,11 @@ public abstract class ToLLVMNode extends Node {
         @Specialization
         public LLVMGlobalVariable fromSharedDescriptor(LLVMSharedGlobalVariable shared) {
             return shared.getDescriptor();
+        }
+
+        @Specialization
+        public LLVMFunctionDescriptor id(LLVMFunctionDescriptor fd) {
+            return fd;
         }
 
         @Specialization(guards = {"checkIsPointer(isPointer, obj)", "notLLVM(obj)"})
