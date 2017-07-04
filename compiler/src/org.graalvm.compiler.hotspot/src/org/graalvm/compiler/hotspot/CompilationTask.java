@@ -24,10 +24,7 @@ package org.graalvm.compiler.hotspot;
 
 import static org.graalvm.compiler.core.GraalCompilerOptions.ExitVMOnBailout;
 import static org.graalvm.compiler.core.GraalCompilerOptions.ExitVMOnException;
-import static org.graalvm.compiler.core.GraalCompilerOptions.PrintAfterCompilation;
 import static org.graalvm.compiler.core.GraalCompilerOptions.PrintBailout;
-import static org.graalvm.compiler.core.GraalCompilerOptions.PrintCompilation;
-import static org.graalvm.compiler.core.GraalCompilerOptions.PrintFilter;
 import static org.graalvm.compiler.core.GraalCompilerOptions.PrintStackTraceOnException;
 import static org.graalvm.compiler.core.phases.HighTier.Options.Inline;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
@@ -36,6 +33,7 @@ import java.util.List;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.CompilationPrinter;
 import org.graalvm.compiler.core.RetryableCompilation;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.CounterKey;
@@ -43,9 +41,7 @@ import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.Management;
 import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.debug.TimeSource;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
@@ -124,23 +120,8 @@ public class CompilationTask {
             int entryBCI = getEntryBCI();
             final boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
             CompilationStatistics stats = CompilationStatistics.create(options, method, isOSR);
-            final boolean printCompilation = PrintCompilation.getValue(options) && !TTY.isSuppressed();
-            final boolean printAfterCompilation = PrintAfterCompilation.getValue(options) && !TTY.isSuppressed();
-            if (printCompilation) {
-                TTY.println(getMethodDescription() + "...");
-            }
 
-            TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(options), method);
-            final long start;
-            final long allocatedBytesBefore;
-            if (printAfterCompilation || printCompilation) {
-                final long threadId = Thread.currentThread().getId();
-                start = TimeSource.getTimeNS();
-                allocatedBytesBefore = printAfterCompilation || printCompilation ? Lazy.threadMXBean.getThreadAllocatedBytes(threadId) : 0L;
-            } else {
-                start = 0L;
-                allocatedBytesBefore = 0L;
-            }
+            final CompilationPrinter printer = CompilationPrinter.get(options, compilationId, method, entryBCI);
 
             try (DebugContext.Scope s = debug.scope("Compiling", new DebugDumpScope(getIdString(), true))) {
                 // Begin the compilation event.
@@ -154,30 +135,14 @@ public class CompilationTask {
             } finally {
                 // End the compilation event.
                 compilationEvent.end();
-
-                filter.remove();
-
-                if (printAfterCompilation || printCompilation) {
-                    final long threadId = Thread.currentThread().getId();
-                    final long stop = TimeSource.getTimeNS();
-                    final long duration = (stop - start) / 1000000;
-                    final int targetCodeSize = result != null ? result.getTargetCodeSize() : -1;
-                    final int bytecodeSize = result != null ? result.getBytecodeSize() : 0;
-                    final long allocatedBytesAfter = Lazy.threadMXBean.getThreadAllocatedBytes(threadId);
-                    final long allocatedKBytes = (allocatedBytesAfter - allocatedBytesBefore) / 1024;
-
-                    if (printAfterCompilation) {
-                        TTY.println(getMethodDescription() + String.format(" | %4dms %5dB %5dB %5dkB", duration, bytecodeSize, targetCodeSize, allocatedKBytes));
-                    } else if (printCompilation) {
-                        TTY.println(String.format("%-6d JVMCI %-70s %-45s %-50s | %4dms %5dB %5dB %5dkB", getId(), "", "", "", duration, bytecodeSize, targetCodeSize, allocatedKBytes));
-                    }
-                }
             }
 
             if (result != null) {
                 try (DebugCloseable b = CodeInstallationTime.start(debug)) {
                     installMethod(debug, result);
                 }
+                // Installation is included in compilation time and memory usage reported by printer
+                printer.finish(result);
             }
             stats.finish(method, installedCode);
             if (result != null) {
@@ -185,14 +150,6 @@ public class CompilationTask {
             }
             return null;
         }
-    }
-
-    static class Lazy {
-        /**
-         * A {@link com.sun.management.ThreadMXBean} to be able to query some information about the
-         * current compiler thread, e.g. total allocated bytes.
-         */
-        static final com.sun.management.ThreadMXBean threadMXBean = (com.sun.management.ThreadMXBean) Management.getThreadMXBean();
     }
 
     public CompilationTask(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalCompiler compiler, HotSpotCompilationRequest request, boolean useProfilingInfo, boolean installAsDefault,
@@ -233,7 +190,7 @@ public class CompilationTask {
     }
 
     /**
-     * Returns the HostSpot id of this compilation.
+     * Returns the HotSpot id of this compilation.
      *
      * @return HotSpot compile id
      */
@@ -389,7 +346,7 @@ public class CompilationTask {
     protected void handleException(Throwable t) {
         /*
          * Automatically enable ExitVMOnException during bootstrap or when asserts are enabled but
-         * respect ExitVMOnException if it's been explicitly set.
+         * respect ExitVMOnException if it has been explicitly set.
          */
         boolean exitVMOnException = ExitVMOnException.getValue(options);
         if (!ExitVMOnException.hasBeenSet(options)) {
@@ -413,12 +370,6 @@ public class CompilationTask {
         if (exitVMOnException) {
             System.exit(-1);
         }
-    }
-
-    private String getMethodDescription() {
-        HotSpotResolvedJavaMethod method = getMethod();
-        return String.format("%-6d JVMCI %-70s %-45s %-50s %s", getId(), method.getDeclaringClass().getName(), method.getName(), method.getSignature().toMethodDescriptor(),
-                        getEntryBCI() == JVMCICompiler.INVOCATION_ENTRY_BCI ? "" : "(OSR@" + getEntryBCI() + ") ");
     }
 
     @SuppressWarnings("try")

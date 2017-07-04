@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.truffle;
 
+import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
 import static org.graalvm.compiler.core.GraalCompiler.compileGraph;
 import static org.graalvm.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleEnableInfopoints;
@@ -34,6 +35,7 @@ import java.util.List;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.CompilationPrinter;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.core.target.Backend;
@@ -156,6 +158,7 @@ public abstract class TruffleCompiler {
 
     @SuppressWarnings("try")
     public void compileMethod(DebugContext debug, final OptimizedCallTarget compilable, ResolvedJavaMethod rootMethod, CompilationIdentifier compilationId, CancellableCompileTask task) {
+        final CompilationPrinter printer = CompilationPrinter.get(TruffleCompilerOptions.getOptions(), compilationId, new TruffleDebugJavaMethod(compilable), INVOCATION_ENTRY_BCI);
         StructuredGraph graph = null;
         compilationNotify.notifyCompilationStarted(compilable);
 
@@ -177,6 +180,11 @@ public abstract class TruffleCompiler {
             compilationNotify.notifyCompilationTruffleTierFinished(compilable, inliningDecision, graph);
             CompilationResult compilationResult = compileMethodHelper(graph, compilable.toString(), graphBuilderSuite, compilable, asCompilationRequest(compilationId));
             compilationNotify.notifyCompilationSuccess(compilable, inliningDecision, graph, compilationResult);
+
+            // Partial evaluation and installation are included in
+            // compilation time and memory usage reported by printer
+            printer.finish(compilationResult);
+
             dequeueInlinedCallSites(inliningDecision, compilable);
         } catch (Throwable t) {
             // Note: If the compiler cancels the compilation with a bailout exception, then the

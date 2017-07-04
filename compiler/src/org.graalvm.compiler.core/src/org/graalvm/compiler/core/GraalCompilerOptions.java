@@ -32,22 +32,20 @@ import org.graalvm.compiler.options.OptionType;
 public class GraalCompilerOptions {
 
     // @formatter:off
-    @Option(help = "", type = OptionType.Debug)
-    public static final OptionKey<String> PrintFilter = new OptionKey<>(null);
-    @Option(help = "", type = OptionType.Debug)
+    @Option(help = "Print an informational line to the console for each completed compilation.", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintCompilation = new OptionKey<>(false);
-    @Option(help = "", type = OptionType.Debug)
-    public static final OptionKey<Boolean> PrintAfterCompilation = new OptionKey<>(false);
-    @Option(help = "", type = OptionType.Debug)
+    @Option(help = "Print a stack trace to the console when a bailout exception occurs during compilation.", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintBailout = new OptionKey<>(false);
-    @Option(help = "", type = OptionType.Debug)
+    @Option(help = "Call System.exit(-1) when a compilation fails with a bailout exception.", type = OptionType.Debug)
     public static final OptionKey<Boolean> ExitVMOnBailout = new OptionKey<>(false);
-    @Option(help = "", type = OptionType.Debug)
+    @Option(help = "Call System.exit(-1) when a compilation fails with a non-bailout exception." +
+                   "This defaults to true during bootstrapping or if assertions are enabled in Graal.", type = OptionType.Debug)
     public static final OptionKey<Boolean> ExitVMOnException = new OptionKey<>(false);
-    @Option(help = "", type = OptionType.Debug)
+    @Option(help = "Print a stack trace to the console when a non-bailout exception occurs during compilation.", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintStackTraceOnException = new OptionKey<>(false);
     @Option(help = "Pattern (see MethodFilter for format) for method that will trigger an exception when compiled. " +
                    "This option exists to test handling compilation crashes gracefully.", type = OptionType.Debug)
     public static final OptionKey<String> CrashAt = new OptionKey<>(null);
     // @formatter:on
+
 }
