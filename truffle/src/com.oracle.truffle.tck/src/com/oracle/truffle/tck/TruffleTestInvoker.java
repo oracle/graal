@@ -25,9 +25,17 @@
 package com.oracle.truffle.tck;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.TVMCI;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.vm.PolyglotEngine;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -39,12 +47,101 @@ import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.Statement;
 import org.junit.runners.model.TestClass;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
+import com.oracle.truffle.tck.TruffleRunner.RunWithPolyglotRule;
 
 final class TruffleTestInvoker<T extends CallTarget> extends TVMCI.TestAccessor<T> {
 
     static TruffleTestInvoker<?> create() {
         TVMCI.Test<?> testTvmci = Truffle.getRuntime().getCapability(TVMCI.Test.class);
         return new TruffleTestInvoker<>(testTvmci);
+    }
+
+    @TruffleLanguage.Registration(name = "truffletestinvoker", mimeType = "application/x-unittest", version = "")
+    public static class TruffleTestInvokerLanguage extends TruffleLanguage<Env> {
+
+        @Override
+        protected Env createContext(Env env) {
+            return env;
+        }
+
+        @Override
+        protected Object getLanguageGlobal(Env context) {
+            return context;
+        }
+
+        @Override
+        protected boolean isObjectOfLanguage(Object object) {
+            return object instanceof TestStatement;
+        }
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            RootNode root = new RootNode(this) {
+
+                final ContextReference<Env> ctxRef = getContextReference();
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    Env env = ctxRef.get();
+                    TestStatement testStatement = (TestStatement) env.importSymbol("currentTestStatement");
+                    testStatement.runInsideContext(env);
+                    return testStatement;
+                }
+            };
+            return Truffle.getRuntime().createCallTarget(root);
+        }
+
+        static Env getTruffleTestEnv() {
+            return getCurrentLanguage(TruffleTestInvokerLanguage.class).getContextReference().get();
+        }
+    }
+
+    private static class TestStatement extends Statement implements TruffleObject {
+
+        private final RunWithPolyglotRule rule;
+        private final Statement stmt;
+
+        private Throwable throwable;
+
+        TestStatement(RunWithPolyglotRule rule, Statement stmt) {
+            this.rule = rule;
+            this.stmt = stmt;
+            this.throwable = null;
+        }
+
+        @Override
+        public void evaluate() throws Throwable {
+            PolyglotEngine engine = PolyglotEngine.newBuilder().build();
+            try {
+                Env env = engine.getLanguages().get("application/x-unittest").getGlobalObject().as(Env.class);
+                env.exportSymbol("currentTestStatement", this);
+                Source dummy = Source.newBuilder("").name("TestStatement").mimeType("application/x-unittest").build();
+                engine.eval(dummy);
+                if (throwable != null) {
+                    throw throwable;
+                }
+            } finally {
+                engine.dispose();
+            }
+        }
+
+        @TruffleBoundary
+        void runInsideContext(Env env) {
+            Env prevEnv = rule.testEnv;
+            try {
+                rule.testEnv = env;
+                stmt.evaluate();
+            } catch (Throwable t) {
+                throwable = t;
+            } finally {
+                rule.testEnv = prevEnv;
+            }
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            throw new UnsupportedOperationException("TestStatement leaked outside of TruffleTestInvokerLanguage");
+        }
     }
 
     private TruffleTestInvoker(TVMCI.Test<T> testTvmci) {
@@ -106,6 +203,10 @@ final class TruffleTestInvoker<T extends CallTarget> extends TVMCI.TestAccessor<
                 method.invokeExplosively(test, args);
             }
         };
+    }
+
+    static Statement withTruffleContext(RunWithPolyglotRule rule, Statement stmt) {
+        return new TestStatement(rule, stmt);
     }
 
     private static Inject findRootNodeAnnotation(Annotation[] annotations) {
