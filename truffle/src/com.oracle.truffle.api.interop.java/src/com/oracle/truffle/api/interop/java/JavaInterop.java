@@ -246,10 +246,9 @@ public final class JavaInterop {
      * {@link TruffleObject} obj = JavaInterop.asTruffleObject(new JavaRecord());
      * </pre>
      *
-     * can then be access from <em>JavaScript</em> or any other <em>Truffle</em> based language as
+     * can then be accessed from <em>JavaScript</em> or any other <em>Truffle</em> based language as
      *
      * <pre>
-     *
      * obj.x;
      * obj.y;
      * obj.name();
@@ -269,7 +268,7 @@ public final class JavaInterop {
      * <p>
      * Do not convert primitive types (instances of {@link Number}, {@link Boolean},
      * {@link Character} or {@link String}) to {@link TruffleObject}, all {@link TruffleLanguage}s
-     * are supposed to handle primitives. Use directly the the primitive types instead. To convert
+     * are supposed to handle primitives. Use directly the primitive types instead. To convert
      * generic objects to {@link TruffleObject} while retaining primitive values unwrapped, use
      * {@link #asTruffleValue(java.lang.Object)} instead.
      *
@@ -278,29 +277,13 @@ public final class JavaInterop {
      * @since 0.9
      */
     public static TruffleObject asTruffleObject(Object obj) {
-        if (obj instanceof TruffleObject) {
-            return ((TruffleObject) obj);
-        }
-        if (obj instanceof Class) {
-            return new JavaObject(null, (Class<?>) obj);
-        }
-        if (obj == null) {
-            return JavaObject.NULL;
-        }
-        if (obj.getClass().isArray()) {
-            return new JavaObject(obj, obj.getClass());
-        }
-        if (TruffleOptions.AOT) {
-            return new JavaObject(obj, obj.getClass());
-        }
-        return JavaInteropReflect.asTruffleViaReflection(obj);
+        return asTruffleObject(obj, null);
     }
 
     /**
      * Exports a Java object for use in any {@link TruffleLanguage}.
      *
      * @param obj a Java object to convert into one suitable for <em>Truffle</em> languages
-     * @param languageContext LanguageContextData
      * @return converted object
      */
     static TruffleObject asTruffleObject(Object obj, Object languageContext) {

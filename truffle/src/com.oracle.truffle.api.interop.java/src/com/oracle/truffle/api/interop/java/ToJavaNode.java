@@ -137,11 +137,8 @@ abstract class ToJavaNode extends Node {
                         } else if (targetType.clazz == Map.class) {
                             return true;
                         } else {
-                            if (!TruffleOptions.AOT) {
-                                return true; // Proxy
-                            } else {
-                                return false;
-                            }
+                            // Proxy
+                            return !TruffleOptions.AOT;
                         }
                     }
                 }
@@ -253,7 +250,7 @@ abstract class ToJavaNode extends Node {
             return primitiveRet;
         }
         if (ret instanceof TruffleObject) {
-            if (ToPrimitiveNode.temporary().isNull((TruffleObject) ret)) {
+            if (primitiveNode.isNull((TruffleObject) ret)) {
                 return null;
             }
         }

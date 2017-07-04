@@ -213,17 +213,6 @@ final class JavaInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static TruffleObject asTruffleViaReflection(Object obj) {
-        if (Proxy.isProxyClass(obj.getClass())) {
-            InvocationHandler h = Proxy.getInvocationHandler(obj);
-            if (h instanceof TruffleHandler) {
-                return ((TruffleHandler) h).obj;
-            }
-        }
-        return new JavaObject(obj, obj.getClass());
-    }
-
-    @CompilerDirectives.TruffleBoundary
     static TruffleObject asTruffleViaReflection(Object obj, Object languageContext) {
         if (Proxy.isProxyClass(obj.getClass())) {
             InvocationHandler h = Proxy.getInvocationHandler(obj);

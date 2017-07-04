@@ -26,12 +26,14 @@ package com.oracle.truffle.api.interop.java.test;
 
 import static org.junit.Assert.assertEquals;
 
+import java.math.BigInteger;
 import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
@@ -40,7 +42,7 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 
 public class OverloadedTest {
-    public final class Data {
+    public static final class Data {
         public int x;
 
         public void x(int value) {
@@ -91,6 +93,15 @@ public class OverloadedTest {
 
         JavaInteropTest.message(Message.createInvoke(1), obj, "x", new UnboxableToInt(21));
         assertEquals(42, data.x);
+    }
+
+    @Test
+    public void testOverloadingTruffleObjectArg() throws InteropException {
+        Node n = Message.createInvoke(1).createNode();
+        ForeignAccess.sendInvoke(n, obj, "x", new UnboxableToInt(21));
+        assertEquals(42, data.x);
+        ForeignAccess.sendInvoke(n, obj, "x", JavaInterop.asTruffleObject(BigInteger.TEN));
+        assertEquals(20, data.x);
     }
 
     @MessageResolution(receiverType = UnboxableToInt.class)

@@ -170,7 +170,7 @@ class JavaObjectMessageResolution {
         @Child private ToPrimitiveNode primitive = ToPrimitiveNode.create();
 
         public Object access(JavaObject object) {
-            return primitive.isPrimitive(object.obj);
+            return JavaInterop.isPrimitive(object.obj);
         }
 
     }
@@ -180,8 +180,7 @@ class JavaObjectMessageResolution {
         @Child private ToPrimitiveNode primitive = ToPrimitiveNode.create();
 
         public Object access(JavaObject object) {
-            Object result = primitive.toPrimitive(object.obj, null);
-            return result == null ? JavaObject.NULL : result;
+            return JavaInterop.isPrimitive(object.obj) ? object.obj : JavaObject.NULL;
         }
 
     }
@@ -269,7 +268,7 @@ class JavaObjectMessageResolution {
     abstract static class PropertyInfoNode extends Node {
 
         @TruffleBoundary
-        public Object access(JavaObject receiver, Number index) {
+        public int access(JavaObject receiver, Number index) {
             int i = index.intValue();
             if (i != index.doubleValue()) {
                 // No non-integer indexes
