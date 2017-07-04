@@ -155,12 +155,37 @@ public final class Engine implements AutoCloseable {
      * @return
      * @since 1.0
      */
-    public Context createPolyglotContext() {
+    public Context createContext() {
         return new Context.Builder(this, null).setPolyglot(true).build();
     }
 
-    public Context.Builder newPolyglotContextBuilder() {
+    public Context.Builder newContextBuilder() {
         return new Context.Builder(this, null).setPolyglot(true);
+    }
+
+    /**
+     * Creates a new <i>polyglot</i> context that allows access to all installed
+     * {@link #getLanguages() languages}.
+     *
+     * @see Context for further information on context instances.
+     * @see Language#createContext() to create a context for a single language.
+     * @return
+     * @since 1.0
+     * @deprecated use {@link #createContext()} instead.
+     */
+    @SuppressWarnings("deprecation")
+    @Deprecated
+    public org.graalvm.polyglot.PolyglotContext createPolyglotContext() {
+        return new org.graalvm.polyglot.PolyglotContext.Builder(this).build();
+    }
+
+    /**
+     * @deprecated use {@link #newContextBuilder()}
+     */
+    @SuppressWarnings("deprecation")
+    @Deprecated
+    public org.graalvm.polyglot.PolyglotContext.Builder newPolyglotContextBuilder() {
+        return new org.graalvm.polyglot.PolyglotContext.Builder(this);
     }
 
     public String getVersion() {
@@ -371,6 +396,12 @@ public final class Engine implements AutoCloseable {
         @Override
         public SourceSection newSourceSection(Source source, Object impl) {
             return new SourceSection(source, impl);
+        }
+
+        @Override
+        @SuppressWarnings("deprecation")
+        public org.graalvm.polyglot.PolyglotContext newPolyglotContext(Engine engine, AbstractContextImpl impl) {
+            return new org.graalvm.polyglot.PolyglotContext(engine, impl);
         }
 
         @Override

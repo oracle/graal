@@ -59,7 +59,7 @@ public class LanguageSPITest {
         langContext = null;
         Engine engine = Engine.create();
 
-        Context context = engine.createPolyglotContext();
+        Context context = engine.createContext();
         context.initialize(LANGUAGE_SPI_TEST);
 
         assertNotNull(langContext);
@@ -74,11 +74,11 @@ public class LanguageSPITest {
     public void testImplicitClose() {
         Engine engine = Engine.create();
         langContext = null;
-        Context c = engine.createPolyglotContext();
+        Context c = engine.createContext();
         c.initialize(LANGUAGE_SPI_TEST);
         LanguageContext context1 = langContext;
 
-        engine.createPolyglotContext().initialize(LANGUAGE_SPI_TEST);
+        engine.createContext().initialize(LANGUAGE_SPI_TEST);
         LanguageContext context2 = langContext;
 
         c.close();
@@ -90,7 +90,7 @@ public class LanguageSPITest {
     @Test
     public void testImplicitCloseFromOtherThread() throws InterruptedException {
         Engine engine = Engine.create();
-        Context context = engine.createPolyglotContext();
+        Context context = engine.createContext();
         langContext = null;
         context.initialize(LANGUAGE_SPI_TEST);
 
@@ -110,7 +110,7 @@ public class LanguageSPITest {
         langContext = null;
         Thread t = new Thread(new Runnable() {
             public void run() {
-                Context context = engine.createPolyglotContext();
+                Context context = engine.createContext();
                 context.initialize(LANGUAGE_SPI_TEST);
             }
         });

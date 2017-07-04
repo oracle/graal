@@ -31,6 +31,7 @@ import static com.oracle.truffle.api.vm.VMAccessor.SPI;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -657,4 +658,12 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
     }
 
+    @Override
+    @SuppressWarnings({"hiding", "deprecation"})
+    public synchronized org.graalvm.polyglot.PolyglotContext createPolyglotContext(OutputStream out, OutputStream err, InputStream in, Map<String, String[]> arguments, Map<String, String> options) {
+        checkState();
+        PolyglotContextImpl contextImpl = new PolyglotContextImpl(this, out, err, in, options, arguments, null);
+        addContext(contextImpl);
+        return impl.getAPIAccess().newPolyglotContext(api, contextImpl);
+    }
 }

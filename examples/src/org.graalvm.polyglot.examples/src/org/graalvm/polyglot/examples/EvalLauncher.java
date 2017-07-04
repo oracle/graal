@@ -71,7 +71,7 @@ public class EvalLauncher {
         }
 
         Engine engine = Engine.newBuilder().setOptions(options).build();
-        Context context = engine.createPolyglotContext();
+        Context context = engine.createContext();
 
         for (String script : scripts) {
             int index = script.indexOf(':');

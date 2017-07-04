@@ -68,6 +68,9 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Context newContext(AbstractContextImpl impl, Language languageImpl);
 
+        @SuppressWarnings("deprecation")
+        public abstract org.graalvm.polyglot.PolyglotContext newPolyglotContext(Engine engine, AbstractContextImpl impl);
+
         public abstract PolyglotException newLanguageException(String message, AbstractExceptionImpl impl);
 
         public abstract Language newLanguage(AbstractLanguageImpl impl);
@@ -236,6 +239,9 @@ public abstract class AbstractPolyglotImpl {
         public abstract Map<String, Language> getLanguages();
 
         public abstract String getVersion();
+
+        @SuppressWarnings("deprecation")
+        public abstract org.graalvm.polyglot.PolyglotContext createPolyglotContext(OutputStream out, OutputStream err, InputStream in, Map<String, String[]> arguments, Map<String, String> options);
 
         public abstract Language detectLanguage(Object sourceImpls);
 
