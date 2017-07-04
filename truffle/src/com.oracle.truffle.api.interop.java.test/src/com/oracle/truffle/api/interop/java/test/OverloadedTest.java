@@ -28,6 +28,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -51,6 +52,26 @@ public class OverloadedTest {
 
         public double x() {
             return this.x * 2;
+        }
+    }
+
+    public static final class Num {
+        public Object x;
+        public String parameter;
+
+        public void x(int value) {
+            this.x = value;
+            this.parameter = "int";
+        }
+
+        public void x(Number value) {
+            this.x = value;
+            this.parameter = "Number";
+        }
+
+        public void x(BigInteger value) {
+            this.x = value;
+            this.parameter = "BigInteger";
         }
     }
 
@@ -102,6 +123,19 @@ public class OverloadedTest {
         assertEquals(42, data.x);
         ForeignAccess.sendInvoke(n, obj, "x", JavaInterop.asTruffleObject(BigInteger.TEN));
         assertEquals(20, data.x);
+    }
+
+    @Test
+    public void testOverloadingNumber() throws InteropException {
+        Node n = Message.createInvoke(1).createNode();
+        Num num = new Num();
+        TruffleObject numobj = JavaInterop.asTruffleObject(num);
+        ForeignAccess.sendInvoke(n, numobj, "x", new UnboxableToInt(21));
+        assertEquals("int", num.parameter);
+        ForeignAccess.sendInvoke(n, numobj, "x", JavaInterop.asTruffleObject(new AtomicInteger(22)));
+        assertEquals("Number", num.parameter);
+        ForeignAccess.sendInvoke(n, numobj, "x", JavaInterop.asTruffleObject(BigInteger.TEN));
+        assertEquals("BigInteger", num.parameter);
     }
 
     @MessageResolution(receiverType = UnboxableToInt.class)

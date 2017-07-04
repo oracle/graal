@@ -31,21 +31,37 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 abstract class SingleMethodDesc implements JavaMethodDesc {
+    private final boolean varArgs;
+    @CompilationFinal(dimensions = 1) private final Class<?>[] parameterTypes;
+
+    protected SingleMethodDesc(Executable executable) {
+        this.varArgs = executable.isVarArgs();
+        this.parameterTypes = executable.getParameterTypes();
+    }
+
     public abstract Executable getReflectionMethod();
 
-    public abstract boolean isVarArgs();
-
-    public abstract Class<?>[] getParameterTypes();
+    public final boolean isVarArgs() {
+        return varArgs;
+    }
 
     public abstract Class<?> getReturnType();
 
-    public Type[] getGenericParameterTypes() {
-        return getReflectionMethod().getGenericParameterTypes();
+    public final Class<?>[] getParameterTypes() {
+        return parameterTypes;
     }
 
-    public int getParameterCount() {
-        return getReflectionMethod().getParameterCount();
+    public final int getParameterCount() {
+        return parameterTypes.length;
+    }
+
+    public Type[] getGenericParameterTypes() {
+        return getReflectionMethod().getGenericParameterTypes();
     }
 
     @Override
@@ -57,7 +73,7 @@ abstract class SingleMethodDesc implements JavaMethodDesc {
         return new JavaMethodDesc[]{this};
     }
 
-    public abstract Object invoke(Object receiver, Object[] arguments) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException, InstantiationException;
+    public abstract Object invoke(Object receiver, Object[] arguments) throws Throwable;
 
     static SingleMethodDesc unreflect(Method reflectionMethod) {
         assert isAccessible(reflectionMethod);
@@ -82,37 +98,34 @@ abstract class SingleMethodDesc implements JavaMethodDesc {
         private final Method reflectionMethod;
 
         ConcreteMethod(Method reflectionMethod) {
+            super(reflectionMethod);
             this.reflectionMethod = reflectionMethod;
         }
 
         @Override
         public Method getReflectionMethod() {
+            CompilerAsserts.neverPartOfCompilation();
             return reflectionMethod;
         }
 
+        @TruffleBoundary
         @Override
-        public Object invoke(Object receiver, Object[] arguments) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
-            return reflectionMethod.invoke(receiver, arguments);
-        }
-
-        @Override
-        public boolean isVarArgs() {
-            return reflectionMethod.isVarArgs();
-        }
-
-        @Override
-        public Class<?>[] getParameterTypes() {
-            return reflectionMethod.getParameterTypes();
+        public Object invoke(Object receiver, Object[] arguments) throws Throwable {
+            try {
+                return getReflectionMethod().invoke(receiver, arguments);
+            } catch (InvocationTargetException e) {
+                throw e.getCause();
+            }
         }
 
         @Override
         public Class<?> getReturnType() {
-            return reflectionMethod.getReturnType();
+            return getReflectionMethod().getReturnType();
         }
 
         @Override
         public boolean isInternal() {
-            return reflectionMethod.getDeclaringClass() == Object.class;
+            return getReflectionMethod().getDeclaringClass() == Object.class;
         }
     }
 
@@ -120,32 +133,29 @@ abstract class SingleMethodDesc implements JavaMethodDesc {
         private final Constructor<?> reflectionConstructor;
 
         ConcreteConstructor(Constructor<?> reflectionConstructor) {
+            super(reflectionConstructor);
             this.reflectionConstructor = reflectionConstructor;
         }
 
         @Override
         public Constructor<?> getReflectionMethod() {
+            CompilerAsserts.neverPartOfCompilation();
             return reflectionConstructor;
         }
 
+        @TruffleBoundary
         @Override
-        public Object invoke(Object receiver, Object[] arguments) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException, InstantiationException {
-            return reflectionConstructor.newInstance(arguments);
-        }
-
-        @Override
-        public Class<?>[] getParameterTypes() {
-            return reflectionConstructor.getParameterTypes();
+        public Object invoke(Object receiver, Object[] arguments) throws Throwable {
+            try {
+                return getReflectionMethod().newInstance(arguments);
+            } catch (InvocationTargetException e) {
+                throw e.getCause();
+            }
         }
 
         @Override
         public Class<?> getReturnType() {
-            return reflectionConstructor.getDeclaringClass();
-        }
-
-        @Override
-        public boolean isVarArgs() {
-            return reflectionConstructor.isVarArgs();
+            return getReflectionMethod().getDeclaringClass();
         }
     }
 }

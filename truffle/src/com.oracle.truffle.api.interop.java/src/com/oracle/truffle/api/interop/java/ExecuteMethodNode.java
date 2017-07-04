@@ -26,14 +26,16 @@ package com.oracle.truffle.api.interop.java;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.GenericArrayType;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.StringJoiner;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -60,6 +62,7 @@ abstract class ExecuteMethodNode extends Node {
         return toJava;
     }
 
+    @SuppressWarnings("unused")
     @ExplodeLoop
     @Specialization(guards = {"!method.isVarArgs()", "method == cachedMethod"})
     Object doFixed(SingleMethodDesc method, Object obj, Object[] args, Object languageContext,
@@ -74,9 +77,10 @@ abstract class ExecuteMethodNode extends Node {
         for (int i = 0; i < toJavaNodes.length; i++) {
             convertedArguments[i] = toJavaNodes[i].execute(args[i], types[i], languageContext);
         }
-        return doInvoke(method, obj, convertedArguments, languageContext);
+        return doInvoke(cachedMethod, obj, convertedArguments, languageContext);
     }
 
+    @SuppressWarnings("unused")
     @Specialization(guards = {"method.isVarArgs()", "method == cachedMethod"})
     Object doVarArgs(SingleMethodDesc method, Object obj, Object[] args, Object languageContext,
                     @Cached("method") SingleMethodDesc cachedMethod,
@@ -85,12 +89,12 @@ abstract class ExecuteMethodNode extends Node {
         if (args.length < minArity) {
             throw ArityException.raise(minArity, args.length);
         }
-        TypeAndClass<?>[] types = getTypes(method, args.length);
+        TypeAndClass<?>[] types = getTypes(cachedMethod, args.length);
         Object[] convertedArguments = new Object[args.length];
         for (int i = 0; i < args.length; i++) {
             convertedArguments[i] = toJavaNode.execute(args[i], types[i], languageContext);
         }
-        return doInvoke(method, obj, convertedArguments, languageContext);
+        return doInvoke(cachedMethod, obj, convertedArguments, languageContext);
     }
 
     @Specialization(replaces = {"doFixed", "doVarArgs"})
@@ -113,10 +117,12 @@ abstract class ExecuteMethodNode extends Node {
     @Specialization(guards = {"method == cachedMethod", "checkArgTypes(args, cachedArgTypes)"})
     Object doOverloadedCached(OverloadedMethodDesc method, Object obj, Object[] args, Object languageContext,
                     @Cached("method") OverloadedMethodDesc cachedMethod,
-                    @Cached(value = "getArgTypes(args)", dimensions = 1) Class<?>[] cachedArgTypes,
-                    @Cached("create()") ToJavaNode toJavaNode) {
-        SingleMethodDesc overload = selectOverload(method, args, languageContext, toJavaNode);
-        TypeAndClass<?>[] types = getTypes(overload, args.length);
+                    @Cached(value = "getArgTypes(args)", dimensions = 1) Type[] cachedArgTypes,
+                    @Cached("create()") ToJavaNode toJavaNode,
+                    @Cached("selectOverload(method, args, languageContext, toJavaNode)") SingleMethodDesc overload,
+                    @Cached(value = "getTypes(overload, overload.getParameterCount())", dimensions = 1) TypeAndClass<?>[] types) {
+        assert overload == selectOverload(method, args, languageContext, toJavaNode);
+        assert Arrays.equals(types, getTypes(selectOverload(method, args, languageContext, toJavaNode), args.length));
         Object[] convertedArguments = new Object[cachedArgTypes.length];
         for (int i = 0; i < cachedArgTypes.length; i++) {
             convertedArguments[i] = toJavaNode.execute(args[i], types[i], languageContext);
@@ -124,28 +130,58 @@ abstract class ExecuteMethodNode extends Node {
         return doInvoke(overload, obj, convertedArguments, languageContext);
     }
 
-    static Class<?>[] getArgTypes(Object[] args) {
-        Class<?>[] argTypes = new Class<?>[args.length];
+    @Specialization(replaces = "doOverloadedCached")
+    Object doOverloadedUncached(OverloadedMethodDesc method, Object obj, Object[] args, Object languageContext,
+                    @Cached("create()") ToJavaNode toJavaNode) {
+        SingleMethodDesc overload = selectOverload(method, args, languageContext, toJavaNode);
+        TypeAndClass<?>[] types = getTypes(overload, args.length);
+        Object[] convertedArguments = new Object[args.length];
         for (int i = 0; i < args.length; i++) {
-            argTypes[i] = args[i] == null ? null : args[i].getClass();
+            convertedArguments[i] = toJavaNode.execute(args[i], types[i], languageContext);
+        }
+        return doInvoke(overload, obj, convertedArguments, languageContext);
+    }
+
+    static Type[] getArgTypes(Object[] args) {
+        Type[] argTypes = new Type[args.length];
+        for (int i = 0; i < args.length; i++) {
+            argTypes[i] = getArgType(args[i]);
         }
         return argTypes;
     }
 
+    static Type getArgType(Object arg) {
+        if (arg == null) {
+            return null;
+        } else if (arg instanceof JavaObject) {
+            return new JavaObjectType(((JavaObject) arg).clazz);
+        } else {
+            return arg.getClass();
+        }
+    }
+
     @ExplodeLoop
-    static boolean checkArgTypes(Object[] args, Class<?>[] argTypes) {
+    static boolean checkArgTypes(Object[] args, Type[] argTypes) {
         if (args.length != argTypes.length) {
             return false;
         }
         for (int i = 0; i < argTypes.length; i++) {
-            Class<?> argType = argTypes[i];
-            if (args[i] == null) {
+            Type argType = argTypes[i];
+            Object arg = args[i];
+            if (arg == null) {
                 if (argType != null) {
                     return false;
                 }
             } else {
-                if (args[i].getClass() != argType) {
-                    return false;
+                if (argType instanceof JavaObjectType) {
+                    if (!(arg instanceof JavaObject && ((JavaObject) arg).clazz == ((JavaObjectType) argType).clazz)) {
+                        return false;
+                    }
+                } else {
+                    assert argType instanceof Class<?>;
+                    if (arg.getClass() != argType) {
+                        return false;
+                    }
                 }
             }
         }
@@ -173,18 +209,6 @@ abstract class ExecuteMethodNode extends Node {
         } else {
             throw new IllegalArgumentException();
         }
-    }
-
-    @Specialization(replaces = "doOverloadedCached")
-    Object doOverloadedUncached(OverloadedMethodDesc method, Object obj, Object[] args, Object languageContext,
-                    @Cached("create()") ToJavaNode toJavaNode) {
-        SingleMethodDesc overload = selectOverload(method, args, languageContext, toJavaNode);
-        TypeAndClass<?>[] types = getTypes(overload, args.length);
-        Object[] convertedArguments = new Object[args.length];
-        for (int i = 0; i < args.length; i++) {
-            convertedArguments[i] = toJavaNode.execute(args[i], types[i], languageContext);
-        }
-        return doInvoke(overload, obj, convertedArguments, languageContext);
     }
 
     @TruffleBoundary
@@ -401,10 +425,14 @@ abstract class ExecuteMethodNode extends Node {
     }
 
     private static boolean isSubtypeOf(Object argument, Class<?> parameterType) {
+        Object value = argument;
+        if (argument instanceof JavaObject) {
+            value = ((JavaObject) argument).obj;
+        }
         if (!parameterType.isPrimitive()) {
-            return argument == null || parameterType.isInstance(argument);
+            return value == null || parameterType.isInstance(value);
         } else {
-            return argument != null && argument.getClass() == primitiveTypeToBoxedType(parameterType);
+            return value != null && value.getClass() == primitiveTypeToBoxedType(parameterType);
         }
     }
 
@@ -447,35 +475,41 @@ abstract class ExecuteMethodNode extends Node {
         }
     }
 
-    @TruffleBoundary
     private static Object doInvoke(SingleMethodDesc method, Object obj, Object[] args, Object languageContext) {
-        int numberOfArguments = method.getParameterTypes().length;
-        Class<?>[] argumentTypes = method.getParameterTypes();
-        Object[] arguments = new Object[numberOfArguments];
+        Object[] arguments;
+        int parameterCount = method.getParameterCount();
         if (method.isVarArgs()) {
-            for (int i = 0; i < numberOfArguments - 1; i++) {
-                arguments[i] = args[i];
-            }
-            Class<?> varArgsType = argumentTypes[numberOfArguments - 1].getComponentType();
-            Object varArgs = Array.newInstance(varArgsType, args.length - numberOfArguments + 1);
-            for (int i = numberOfArguments - 1, j = 0; i < args.length; i++, j++) {
-                Array.set(varArgs, j, args[i]);
-            }
-            arguments[numberOfArguments - 1] = varArgs;
+            arguments = createVarArgsArray(method, args, parameterCount);
         } else {
-            for (int i = 0; i < args.length; i++) {
-                arguments[i] = args[i];
-            }
+            arguments = args;
         }
-        return reflectiveInvoke(method, obj, arguments, languageContext);
+        assert arguments.length == parameterCount;
+        return invoke(method, obj, arguments, languageContext);
     }
 
     @TruffleBoundary
-    private static Object reflectiveInvoke(SingleMethodDesc method, Object obj, Object[] arguments, Object languageContext) {
+    private static Object[] createVarArgsArray(SingleMethodDesc method, Object[] args, int parameterCount) {
+        Object[] arguments;
+        Class<?>[] parameterTypes = method.getParameterTypes();
+        arguments = new Object[parameterCount];
+        for (int i = 0; i < parameterCount - 1; i++) {
+            arguments[i] = args[i];
+        }
+        Class<?> varArgsType = parameterTypes[parameterCount - 1].getComponentType();
+        Object varArgs = Array.newInstance(varArgsType, args.length - parameterCount + 1);
+        for (int i = parameterCount - 1, j = 0; i < args.length; i++, j++) {
+            Array.set(varArgs, j, args[i]);
+        }
+        arguments[parameterCount - 1] = varArgs;
+        return arguments;
+    }
+
+    private static Object invoke(SingleMethodDesc method, Object obj, Object[] arguments, Object languageContext) {
         Object ret;
         try {
             ret = method.invoke(obj, arguments);
-        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | InstantiationException ex) {
+        } catch (Throwable ex) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(ex);
         }
         return JavaInterop.toGuestValue(ret, languageContext);
@@ -487,5 +521,35 @@ abstract class ExecuteMethodNode extends Node {
             sj.add(arg == null ? null : arg.toString() + " (" + arg.getClass().getSimpleName() + ")");
         }
         return sj.toString();
+    }
+
+    static class JavaObjectType implements Type {
+        final Class<?> clazz;
+
+        JavaObjectType(Class<?> clazz) {
+            this.clazz = clazz;
+        }
+
+        @Override
+        public int hashCode() {
+            return ((clazz == null) ? 0 : clazz.hashCode());
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (!(obj instanceof JavaObjectType)) {
+                return false;
+            }
+            JavaObjectType other = (JavaObjectType) obj;
+            return Objects.equals(this.clazz, other.clazz);
+        }
+
+        @Override
+        public String toString() {
+            return "JavaObject[" + clazz.getCanonicalName() + "]";
+        }
     }
 }

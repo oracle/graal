@@ -37,6 +37,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -636,12 +637,18 @@ public final class JavaInterop {
     }
 
     static Object toGuestValue(Object obj, Object languageContext) {
+        if (isPrimitive(obj)) {
+            return obj;
+        }
+        return toGuestObject(obj, languageContext);
+    }
+
+    @TruffleBoundary
+    static Object toGuestObject(Object obj, Object languageContext) {
+        assert !isPrimitive(obj);
         EngineSupport engine = ACCESSOR.engine();
         if (engine == null) {
             assert !(obj instanceof Value || obj instanceof Proxy);
-            if (isPrimitive(obj)) {
-                return obj;
-            }
             return asTruffleObject(obj, languageContext);
         }
         return engine.toGuestValue(obj, languageContext);
