@@ -144,15 +144,18 @@ final class PolyglotLanguageContextImpl implements VMObject {
         if (receiver instanceof Value) {
             Value receiverValue = (Value) receiver;
             PolyglotValueImpl argumentCache = (PolyglotValueImpl) context.engine.impl.getAPIAccess().getImpl(receiverValue);
+            Thread valueThread = argumentCache.languageContext.context.boundThread;
+            Thread currentThread = context.boundThread;
+
             if (argumentCache.languageContext.getEngine() != getEngine()) {
                 throw engineError(new IllegalArgumentException(String.format("Values cannot be passed from one engine to another. " +
                                 "The current value originates from engine 0x%s and the argument originates from engine 0x%s.",
                                 Integer.toHexString(getEngine().hashCode()), Integer.toHexString(argumentCache.languageContext.getEngine().hashCode()))));
-            } else if (argumentCache.languageContext.context.boundThread != context.boundThread) {
-                throw engineError(new IllegalArgumentException(String.format("A given value argument must be bound to the same thread. " +
+            } else if (valueThread != null && currentThread != null && valueThread != currentThread) {
+                throw engineError(new IllegalArgumentException(String.format("A given value argument must be bound to the same or no thread. " +
                                 "The current value is bound to thread %s and the argument is bound to %s." +
                                 "The involved languages %s and %s don't support multi-threaded access of values.",
-                                context.boundThread, argumentCache.languageContext.context.boundThread,
+                                context.boundThread, valueThread,
                                 language.api.getName(), argumentCache.languageContext.language.api.getName())));
             }
             return context.engine.impl.getAPIAccess().getReceiver(receiverValue);
