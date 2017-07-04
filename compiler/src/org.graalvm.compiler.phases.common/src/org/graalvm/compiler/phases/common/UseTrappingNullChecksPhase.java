@@ -201,10 +201,10 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
                     // allow for architectures which cannot fold an
                     // intervening uncompress out of the address chain
                     if (base != null && base instanceof CompressionNode) {
-                        base = ((CompressionNode)base).getValue();
+                        base = ((CompressionNode) base).getValue();
                     }
                     if (index != null && index instanceof CompressionNode) {
-                        index = ((CompressionNode)index).getValue();
+                        index = ((CompressionNode) index).getValue();
                     }
                     if (((base == value && index == null) || (base == null && index == value)) && address.getMaxConstantDisplacement() < implicitNullCheckLimit) {
                         // Opportunity for implicit null check as part of an existing read found!
