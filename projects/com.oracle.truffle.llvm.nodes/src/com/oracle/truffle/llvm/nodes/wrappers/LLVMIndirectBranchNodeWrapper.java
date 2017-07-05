@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,59 +27,70 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.control;
+package com.oracle.truffle.llvm.nodes.wrappers;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Instrumentable;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.llvm.nodes.wrappers.LLVMBrUnconditionalNodeWrapper;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
+import com.oracle.truffle.api.instrumentation.InstrumentableFactory;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.nodes.control.LLVMIndirectBranchNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@Instrumentable(factory = LLVMBrUnconditionalNodeWrapper.class)
-public abstract class LLVMBrUnconditionalNode extends LLVMControlFlowNode {
+public class LLVMIndirectBranchNodeWrapper implements InstrumentableFactory<LLVMIndirectBranchNode> {
 
-    public static LLVMBrUnconditionalNode create(int successor, LLVMExpressionNode phi, SourceSection sourceSection) {
-        return new LLVMBrUnconditionalNodeImpl(successor, phi, sourceSection);
+    @Override
+    public WrapperNode createWrapper(LLVMIndirectBranchNode node, ProbeNode probe) {
+        return new LLVMIndirectBranchNodeWrapper0(probe, node);
     }
 
-    public LLVMBrUnconditionalNode(SourceSection sourceSection) {
-        super(sourceSection);
-    }
+    private static final class LLVMIndirectBranchNodeWrapper0 extends LLVMIndirectBranchNode implements WrapperNode {
 
-    public abstract int getSuccessor();
+        @Child private ProbeNode probeNode;
 
-    // we need an execute method so the node can be properly instrumented
-    public abstract void execute(VirtualFrame frame);
+        @Child private LLVMIndirectBranchNode delegate;
 
-    private static final class LLVMBrUnconditionalNodeImpl extends LLVMBrUnconditionalNode {
-        @Child private LLVMExpressionNode phi;
-        private final int successor;
-
-        private LLVMBrUnconditionalNodeImpl(int successor, LLVMExpressionNode phi, SourceSection sourceSection) {
-            super(sourceSection);
-            this.successor = successor;
-            this.phi = phi;
+        private LLVMIndirectBranchNodeWrapper0(ProbeNode probeNode, LLVMIndirectBranchNode delegate) {
+            super(delegate.getSourceSection());
+            this.probeNode = probeNode;
+            this.delegate = delegate;
         }
 
         @Override
         public int getSuccessorCount() {
-            return 1;
+            return delegate.getSuccessorCount();
         }
 
         @Override
         public LLVMExpressionNode getPhiNode(int successorIndex) {
-            assert successorIndex == 0;
-            return phi;
+            return delegate.getPhiNode(successorIndex);
         }
 
         @Override
-        public int getSuccessor() {
-            return successor;
+        public int executeCondition(VirtualFrame frame) {
+            try {
+                probeNode.onEnter(frame);
+                int result = delegate.executeCondition(frame);
+                probeNode.onReturnValue(frame, result);
+                return result;
+            } catch (Throwable t) {
+                probeNode.onReturnExceptional(frame, t);
+                throw t;
+            }
         }
 
         @Override
-        public void execute(VirtualFrame frame) {
+        public int[] getSuccessors() {
+            return delegate.getSuccessors();
+        }
+
+        @Override
+        public Node getDelegateNode() {
+            return delegate;
+        }
+
+        @Override
+        public ProbeNode getProbeNode() {
+            return probeNode;
         }
     }
 }

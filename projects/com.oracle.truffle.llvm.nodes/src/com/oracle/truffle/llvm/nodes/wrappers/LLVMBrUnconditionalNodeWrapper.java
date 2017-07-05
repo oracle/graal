@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,59 +27,69 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.control;
+package com.oracle.truffle.llvm.nodes.wrappers;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Instrumentable;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.llvm.nodes.wrappers.LLVMBrUnconditionalNodeWrapper;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
+import com.oracle.truffle.api.instrumentation.InstrumentableFactory;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.nodes.control.LLVMBrUnconditionalNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@Instrumentable(factory = LLVMBrUnconditionalNodeWrapper.class)
-public abstract class LLVMBrUnconditionalNode extends LLVMControlFlowNode {
+public class LLVMBrUnconditionalNodeWrapper implements InstrumentableFactory<LLVMBrUnconditionalNode> {
 
-    public static LLVMBrUnconditionalNode create(int successor, LLVMExpressionNode phi, SourceSection sourceSection) {
-        return new LLVMBrUnconditionalNodeImpl(successor, phi, sourceSection);
+    @Override
+    public WrapperNode createWrapper(LLVMBrUnconditionalNode node, ProbeNode probe) {
+        return new LLVMBrUnconditionalNodeWrapper0(probe, node);
     }
 
-    public LLVMBrUnconditionalNode(SourceSection sourceSection) {
-        super(sourceSection);
-    }
+    private static final class LLVMBrUnconditionalNodeWrapper0 extends LLVMBrUnconditionalNode implements WrapperNode {
 
-    public abstract int getSuccessor();
+        @Child private ProbeNode probe;
 
-    // we need an execute method so the node can be properly instrumented
-    public abstract void execute(VirtualFrame frame);
+        @Child private LLVMBrUnconditionalNode delegate;
 
-    private static final class LLVMBrUnconditionalNodeImpl extends LLVMBrUnconditionalNode {
-        @Child private LLVMExpressionNode phi;
-        private final int successor;
-
-        private LLVMBrUnconditionalNodeImpl(int successor, LLVMExpressionNode phi, SourceSection sourceSection) {
-            super(sourceSection);
-            this.successor = successor;
-            this.phi = phi;
-        }
-
-        @Override
-        public int getSuccessorCount() {
-            return 1;
-        }
-
-        @Override
-        public LLVMExpressionNode getPhiNode(int successorIndex) {
-            assert successorIndex == 0;
-            return phi;
-        }
-
-        @Override
-        public int getSuccessor() {
-            return successor;
+        LLVMBrUnconditionalNodeWrapper0(ProbeNode probe, LLVMBrUnconditionalNode delegate) {
+            super(delegate.getSourceSection());
+            this.probe = probe;
+            this.delegate = delegate;
         }
 
         @Override
         public void execute(VirtualFrame frame) {
+            try {
+                probe.onEnter(frame);
+                delegate.execute(frame);
+                probe.onReturnValue(frame, null);
+            } catch (Throwable t) {
+                probe.onReturnExceptional(frame, t);
+                throw t;
+            }
+        }
+
+        @Override
+        public int getSuccessorCount() {
+            return delegate.getSuccessorCount();
+        }
+
+        @Override
+        public LLVMExpressionNode getPhiNode(int successorIndex) {
+            return delegate.getPhiNode(successorIndex);
+        }
+
+        @Override
+        public int getSuccessor() {
+            return delegate.getSuccessor();
+        }
+
+        @Override
+        public Node getDelegateNode() {
+            return delegate;
+        }
+
+        @Override
+        public ProbeNode getProbeNode() {
+            return probe;
         }
     }
 }

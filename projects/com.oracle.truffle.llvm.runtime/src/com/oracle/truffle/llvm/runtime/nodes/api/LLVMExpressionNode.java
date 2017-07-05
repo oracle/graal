@@ -34,6 +34,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Instrumentable;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -64,6 +65,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
  * operation.
  */
 @TypeSystemReference(LLVMTypes.class)
+@Instrumentable(factory = LLVMExpressionNodeWrapper.class)
 public abstract class LLVMExpressionNode extends LLVMNode {
 
     public static final int DOUBLE_SIZE_IN_BYTES = 8;

@@ -165,7 +165,8 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             result = nodeFactory.createAlloc(runtime, type, size, alignment, count.getType(), num);
         }
 
-        createFrameWrite(result, allocate);
+        // we never want to step on allocations, only to actual assignments in the source
+        createFrameWrite(result, allocate, null);
     }
 
     @Override
@@ -236,7 +237,9 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
                 result = nodeFactory.createFunctionCall(runtime, function, argNodes, new FunctionType(targetType, argTypes, false), sourceSection);
             }
         }
-        createFrameWrite(result, call);
+
+        // the SourceSection references the call, not the return value assignment
+        createFrameWrite(result, call, null);
     }
 
     @Override
@@ -640,7 +643,13 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         Type type = store.getSource().getType();
 
-        final LLVMExpressionNode node = nodeFactory.createStore(runtime, pointerNode, valueNode, type, runtime.getSourceSection(store));
+        SourceSection sourceSection = null;
+        if (!(store.getSource() instanceof CallInstruction)) {
+            // otherwise the debugger would stop on both the call and the store of the return value
+            sourceSection = runtime.getSourceSection(store);
+        }
+
+        final LLVMExpressionNode node = nodeFactory.createStore(runtime, pointerNode, valueNode, type, sourceSection);
 
         addInstruction(node);
     }
@@ -729,7 +738,11 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     }
 
     private void createFrameWrite(LLVMExpressionNode result, ValueInstruction source) {
-        final LLVMExpressionNode node = nodeFactory.createFrameWrite(runtime, source.getType(), result, getSlot(source.getName()), runtime.getSourceSection(source));
+        createFrameWrite(result, source, runtime.getSourceSection(source));
+    }
+
+    private void createFrameWrite(LLVMExpressionNode result, ValueInstruction source, SourceSection sourceSection) {
+        final LLVMExpressionNode node = nodeFactory.createFrameWrite(runtime, source.getType(), result, getSlot(source.getName()), sourceSection);
         addInstruction(node);
     }
 

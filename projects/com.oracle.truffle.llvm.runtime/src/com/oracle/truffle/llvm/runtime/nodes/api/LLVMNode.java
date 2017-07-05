@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import java.io.PrintStream;
 
 import com.oracle.truffle.api.nodes.Node;
@@ -66,4 +67,11 @@ public abstract class LLVMNode extends Node {
         return SulongEngineOption.isTrue(context.getEnv().getOptions().get(SulongEngineOption.NATIVE_CALL_STATS));
     }
 
+    @Override
+    protected boolean isTaggedWith(Class<?> tag) {
+        // only nodes that have a SourceSection attached are considered to be tagged by any
+        // anything, for sulong only those nodes that actually represent source language statements
+        // should have one
+        return tag == StandardTags.StatementTag.class || super.isTaggedWith(tag);
+    }
 }

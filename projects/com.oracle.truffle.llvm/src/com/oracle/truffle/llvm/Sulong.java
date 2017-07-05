@@ -37,6 +37,8 @@ import org.graalvm.polyglot.PolyglotContext;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.instrumentation.ProvidedTags;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.factories.BasicSulongNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -45,6 +47,7 @@ import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
 @TruffleLanguage.Registration(id = "llvm", name = "llvm", version = "0.01", mimeType = {Sulong.LLVM_BITCODE_MIME_TYPE, Sulong.LLVM_BITCODE_BASE64_MIME_TYPE,
                 Sulong.SULONG_LIBRARY_MIME_TYPE}, internal = false, interactive = false)
+@ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class})
 public final class Sulong extends LLVMLanguage {
 
     @Override
