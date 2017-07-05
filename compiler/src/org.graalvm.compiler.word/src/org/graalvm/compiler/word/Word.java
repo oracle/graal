@@ -80,6 +80,8 @@ public abstract class Word extends WordFactory implements Signed, Unsigned, Poin
     public enum Opcode {
         NODE_CLASS,
         COMPARISON,
+        IS_NULL,
+        IS_NON_NULL,
         NOT,
         READ_POINTER,
         READ_OBJECT,
@@ -423,6 +425,18 @@ public abstract class Word extends WordFactory implements Signed, Unsigned, Poin
     @Operation(opcode = Opcode.NOT)
     public Word not() {
         return box(~unbox());
+    }
+
+    @Override
+    @Operation(opcode = Opcode.IS_NULL)
+    public boolean isNull() {
+        return equal(WordFactory.zero());
+    }
+
+    @Override
+    @Operation(opcode = Opcode.IS_NON_NULL)
+    public boolean isNonNull() {
+        return notEqual(WordFactory.zero());
     }
 
     @Override
