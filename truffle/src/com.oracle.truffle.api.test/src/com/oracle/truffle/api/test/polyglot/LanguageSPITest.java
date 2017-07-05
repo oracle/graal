@@ -24,20 +24,14 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertSame;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
 
 public class LanguageSPITest {
-
-    private static final String LANGUAGE_SPI_TEST = "LanguageSPITest";
 
     static LanguageContext langContext;
 
@@ -46,7 +40,7 @@ public class LanguageSPITest {
         langContext = null;
         Engine engine = Engine.create();
 
-        Context context = engine.getLanguage(LANGUAGE_SPI_TEST).createContext();
+        Context context = engine.getLanguage(LanguageSPITestLanguage.ID).createContext();
         assertNotNull(langContext);
         assertEquals(0, langContext.disposeCalled);
         context.close();
@@ -60,7 +54,7 @@ public class LanguageSPITest {
         Engine engine = Engine.create();
 
         Context context = engine.createContext();
-        context.initialize(LANGUAGE_SPI_TEST);
+        context.initialize(LanguageSPITestLanguage.ID);
 
         assertNotNull(langContext);
 
@@ -75,10 +69,10 @@ public class LanguageSPITest {
         Engine engine = Engine.create();
         langContext = null;
         Context c = engine.createContext();
-        c.initialize(LANGUAGE_SPI_TEST);
+        c.initialize(LanguageSPITestLanguage.ID);
         LanguageContext context1 = langContext;
 
-        engine.createContext().initialize(LANGUAGE_SPI_TEST);
+        engine.createContext().initialize(LanguageSPITestLanguage.ID);
         LanguageContext context2 = langContext;
 
         c.close();
@@ -92,7 +86,7 @@ public class LanguageSPITest {
         Engine engine = Engine.create();
         Context context = engine.createContext();
         langContext = null;
-        context.initialize(LANGUAGE_SPI_TEST);
+        context.initialize(LanguageSPITestLanguage.ID);
 
         Thread t = new Thread(new Runnable() {
             public void run() {
@@ -111,69 +105,13 @@ public class LanguageSPITest {
         Thread t = new Thread(new Runnable() {
             public void run() {
                 Context context = engine.createContext();
-                context.initialize(LANGUAGE_SPI_TEST);
+                context.initialize(LanguageSPITestLanguage.ID);
             }
         });
         t.start();
         t.join(10000);
         engine.close();
         assertEquals(1, langContext.disposeCalled);
-    }
-
-    private static class LanguageContext {
-
-        int disposeCalled;
-
-    }
-
-    @TruffleLanguage.Registration(id = LANGUAGE_SPI_TEST, name = LANGUAGE_SPI_TEST, version = "1.0", mimeType = LANGUAGE_SPI_TEST)
-    public static class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
-
-        public static LanguageContext getContext() {
-            return getCurrentContext(LanguageSPITestLanguage.class);
-        }
-
-        @Override
-        protected CallTarget parse(ParsingRequest request) throws Exception {
-            return null;
-        }
-
-        @Override
-        protected LanguageContext createContext(Env env) {
-            langContext = new LanguageContext();
-            return langContext;
-        }
-
-        @Override
-        protected void disposeContext(LanguageContext context) {
-            assertSame(getContext(), context);
-            assertSame(context, getContextReference().get());
-
-            assertSame(context, new RootNode(this) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    return null;
-                }
-            }.getLanguage(LanguageSPITestLanguage.class).getContextReference().get());
-
-            context.disposeCalled++;
-        }
-
-        @Override
-        protected Object lookupSymbol(LanguageContext context, String symbolName) {
-            return super.lookupSymbol(context, symbolName);
-        }
-
-        @Override
-        protected Object getLanguageGlobal(LanguageContext context) {
-            return null;
-        }
-
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
     }
 
 }

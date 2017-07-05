@@ -130,15 +130,14 @@ public final class Engine implements AutoCloseable {
      * <li><b>engine</b>: options to configure the behavior of this engine.
      * <li><b>compiler</b>: options to configure the optimizing compiler.
      * </ul>
-     * Language or instrument optionds need to be retrieved using separate methods.
+     * The language and instrument specific options need to be retrieved using
+     * {@link Instrument#getOptions()} or {@link Language#getOptions()}.
      *
      * @see Language#getOptions() To get a list of options for a language.
      * @see Instrument#getOptions() To get a list of options for an instrument.
      * @see Builder#setOption(String, String) To set an option for an engine, language or
      *      instrument.
      * @see Context.Builder#setOption(String, String) To set an option for a context.
-     * @see PolyglotContext.Builder#setOption(String, String) To set an option for a polyglot
-     *      context.
      *
      * @since 1.0
      */
