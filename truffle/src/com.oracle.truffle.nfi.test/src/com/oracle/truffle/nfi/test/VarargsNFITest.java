@@ -25,6 +25,7 @@
 package com.oracle.truffle.nfi.test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -63,6 +64,7 @@ public class VarargsNFITest extends NFITest {
             try {
                 size = (Integer) ForeignAccess.sendExecute(execute, formatString, args);
             } catch (InteropException e) {
+                CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(e);
             } finally {
                 args[0] = args[1] = null;
