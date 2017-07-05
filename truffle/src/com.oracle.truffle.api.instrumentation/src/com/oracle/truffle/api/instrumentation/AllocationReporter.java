@@ -319,12 +319,14 @@ public final class AllocationReporter {
     @TruffleBoundary
     private boolean allocatedCheck(Object value, long oldSize, long newSize) {
         LinkedList<Reference<Object>> list = valueCheck.get();
-        assert list != null && !list.isEmpty() : "onEnter() was not called";
-        Object orig = list.removeLast().get();
-        assert orig == null || orig == value : "A different reallocated value. Was: " + orig + " now is: " + value;
-        assert orig == null && oldSize == 0 || orig != null : "Old size must be 0 for new allocations. Was: " + oldSize;
-        assert orig != null && (oldSize > 0 || oldSize == SIZE_UNKNOWN) || orig == null : "Old size of a re-allocated value must be positive or unknown. Was: " + oldSize;
-        assert newSize == SIZE_UNKNOWN || newSize > 0 : "New value size must be positive or unknown. Was: " + newSize;
+        if (list != null && !list.isEmpty()) {
+            assert list != null && !list.isEmpty() : "onEnter() was not called";
+            Object orig = list.removeLast().get();
+            assert orig == null || orig == value : "A different reallocated value. Was: " + orig + " now is: " + value;
+            assert orig == null && oldSize == 0 || orig != null : "Old size must be 0 for new allocations. Was: " + oldSize;
+            assert orig != null && (oldSize > 0 || oldSize == SIZE_UNKNOWN) || orig == null : "Old size of a re-allocated value must be positive or unknown. Was: " + oldSize;
+            assert newSize == SIZE_UNKNOWN || newSize > 0 : "New value size must be positive or unknown. Was: " + newSize;
+        }
         return true;
     }
 }
