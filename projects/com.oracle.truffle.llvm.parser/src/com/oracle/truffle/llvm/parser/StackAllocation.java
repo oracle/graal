@@ -87,7 +87,7 @@ public final class StackAllocation {
             frame.addFrameSlot(LLVMException.FRAME_SLOT_ID, null, FrameSlotKind.Object);
             frame.addFrameSlot(LLVMStack.FRAME_ID, PrimitiveType.I64, FrameSlotKind.Long);
             for (FunctionParameter parameter : functionDefinition.getParameters()) {
-                frame.addFrameSlot(parameter.getName(), parameter.getType(), Type.getFrameSlotKind(parameter.getType()));
+                frame.addFrameSlot(parameter.getFrameSlotName(), parameter.getType(), Type.getFrameSlotKind(parameter.getType()));
             }
 
             final StackAllocationFunctionVisitor functionVisitor = new StackAllocationFunctionVisitor(frame);
@@ -107,7 +107,7 @@ public final class StackAllocation {
 
         @Override
         public void visitValueInstruction(ValueInstruction valueInstruction) {
-            final String slotName = valueInstruction.getName();
+            final String slotName = valueInstruction.getFrameSlotName();
             final FrameSlotKind slotKind = Type.getFrameSlotKind(valueInstruction.getType());
             frame.addFrameSlot(slotName, valueInstruction.getType(), slotKind);
         }

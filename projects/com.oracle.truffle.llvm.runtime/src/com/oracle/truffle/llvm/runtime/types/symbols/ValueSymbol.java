@@ -39,6 +39,10 @@ public interface ValueSymbol extends Symbol {
         return LLVMIdentifier.UNKNOWN;
     }
 
+    default String getFrameSlotName() {
+        return getName();
+    }
+
     @Override
     default boolean hasName() {
         return true;

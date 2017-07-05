@@ -224,7 +224,7 @@ public final class FunctionDefinition extends IRScope implements Constant, Value
     @Override
     public String toString() {
         CompilerAsserts.neverPartOfCompilation();
-        final String formalArgs = parameters.stream().map(FunctionParameter::getName).collect(Collectors.joining(", "));
+        final String formalArgs = parameters.stream().map(FunctionParameter::getFrameSlotName).collect(Collectors.joining(", "));
         return String.format("FunctionDefinition %s(%s) {%d blocks}", name, formalArgs, blocks == null ? 0 : blocks.length);
     }
 }

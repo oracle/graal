@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,61 +27,45 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.instructions;
+package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
-import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
-import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
-import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
+import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
+import com.oracle.truffle.llvm.parser.metadata.MDKind;
+import com.oracle.truffle.llvm.parser.metadata.MDString;
+import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
+import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 
-public abstract class ValueInstruction extends Instruction implements ValueSymbol {
+public final class DebugInfoGenerator {
 
-    private final Type type;
-
-    private String name = LLVMIdentifier.UNKNOWN;
-
-    private SourceModel.Variable sourceVariable = null;
-
-    ValueInstruction(Type type) {
-        this.type = type;
-    }
-
-    @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public Type getType() {
-        return type;
-    }
-
-    @Override
-    public boolean hasName() {
-        return true;
-    }
-
-    @Override
-    public void setName(String name) {
-        this.name = LLVMIdentifier.toLocalIdentifier(name);
-    }
-
-    public SourceModel.Variable getSourceVariable() {
-        return sourceVariable;
-    }
-
-    public void setSourceVariable(SourceModel.Variable sourceVariable) {
-        this.sourceVariable = sourceVariable;
-    }
-
-    @Override
-    public String getFrameSlotName() {
-        if (sourceVariable != null) {
-            String debugName = sourceVariable.getName();
-            if (debugName != null && !SourceModel.Variable.INVALID_NAME.equals(debugName)) {
-                return debugName;
+    public static String getSourceFunctionName(FunctionDefinition function) {
+        if (function.hasAttachedMetadata()) {
+            final MDBaseNode attachment = function.getMetadataAttachment(MDKind.DBG_NAME);
+            if (attachment != null) {
+                final DIVisitor visitor = new DIVisitor();
+                attachment.accept(visitor);
+                return visitor.getFunctionName();
             }
         }
-        return name;
+        return null;
     }
+
+    private static final class DIVisitor implements MDFollowRefVisitor {
+
+        private String diName = null;
+
+        @Override
+        public void visit(MDSubprogram md) {
+            md.getName().accept(this);
+        }
+
+        @Override
+        public void visit(MDString md) {
+            diName = md.getString();
+        }
+
+        String getFunctionName() {
+            return diName;
+        }
+    }
+
 }

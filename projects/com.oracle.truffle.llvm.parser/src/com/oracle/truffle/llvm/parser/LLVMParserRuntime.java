@@ -46,7 +46,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.parser.datalayout.DataLayoutConverter.DataSpecConverterImpl;
-import com.oracle.truffle.llvm.parser.metadata.DebugInformation;
+import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInformation;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;

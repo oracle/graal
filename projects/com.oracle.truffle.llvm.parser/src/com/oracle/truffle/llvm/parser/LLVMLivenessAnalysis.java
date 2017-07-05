@@ -74,6 +74,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchInstructi
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchOldInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.TerminatingInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
@@ -112,7 +113,7 @@ public final class LLVMLivenessAnalysis {
             if (i == 0) {
                 // in the first block, the arguments are also always alive
                 for (FunctionParameter param : functionDefinition.getParameters()) {
-                    processRead(blockInfo, frame.findFrameSlot(param.getName()).getIndex());
+                    processRead(blockInfo, frame.findFrameSlot(param.getFrameSlotName()).getIndex());
                 }
             }
 
@@ -196,7 +197,7 @@ public final class LLVMLivenessAnalysis {
                 // as an approximation, we claim that the arguments are used by the first
                 // instruction
                 for (FunctionParameter param : functionDefinition.getParameters()) {
-                    int frameSlotIndex = frame.findFrameSlot(param.getName()).getIndex();
+                    int frameSlotIndex = frame.findFrameSlot(param.getFrameSlotName()).getIndex();
                     lastInstructionIndexTouchingLocal[frameSlotIndex] = 0;
                 }
             }
@@ -376,7 +377,12 @@ public final class LLVMLivenessAnalysis {
 
     private static int resolve(FrameDescriptor frame, Symbol symbol) {
         if (symbol.hasName() && !(symbol instanceof GlobalValueSymbol || symbol instanceof FunctionDefinition || symbol instanceof FunctionDeclaration)) {
-            String name = ((ValueSymbol) symbol).getName();
+            String name;
+            if (symbol instanceof ValueInstruction) {
+                name = ((ValueInstruction) symbol).getFrameSlotName();
+            } else {
+                name = ((ValueSymbol) symbol).getFrameSlotName();
+            }
             assert name != null;
             FrameSlot frameSlot = frame.findFrameSlot(name);
             assert frameSlot != null : "No Frameslot for ValueSymbol: " + symbol;

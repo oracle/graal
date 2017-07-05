@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata;
+package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
 import java.io.File;
 import java.io.IOException;
@@ -37,6 +37,14 @@ import java.util.Optional;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
+import com.oracle.truffle.llvm.parser.metadata.MDFile;
+import com.oracle.truffle.llvm.parser.metadata.MDKind;
+import com.oracle.truffle.llvm.parser.metadata.MDLexicalBlock;
+import com.oracle.truffle.llvm.parser.metadata.MDLexicalBlockFile;
+import com.oracle.truffle.llvm.parser.metadata.MDLocation;
+import com.oracle.truffle.llvm.parser.metadata.MDReference;
+import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Call;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
@@ -50,7 +58,7 @@ final class SourceSectionGenerator {
         sources = new HashMap<>();
     }
 
-    private final class SSVisitor implements MetadataVisitor {
+    private final class SSVisitor implements MDFollowRefVisitor {
 
         private Source source = null;
 
@@ -96,13 +104,6 @@ final class SourceSectionGenerator {
         @Override
         public void visit(MDLexicalBlockFile md) {
             md.getFile().accept(this);
-        }
-
-        @Override
-        public void visit(MDReference md) {
-            if (md != MDReference.VOID) {
-                md.get().accept(this);
-            }
         }
 
         @Override

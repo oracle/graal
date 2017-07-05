@@ -140,7 +140,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         }
         for (FunctionParameter parameter : parameters) {
             LLVMExpressionNode parameterNode = nodeFactory.createFunctionArgNode(argIndex++, parameter.getType());
-            FrameSlot slot = frame.findFrameSlot(parameter.getName());
+            FrameSlot slot = frame.findFrameSlot(parameter.getFrameSlotName());
             if (isStructByValue(parameter)) {
                 int size = runtime.getByteSize(((PointerType) parameter.getType()).getPointeeType());
                 int alignment = runtime.getByteAlignment(((PointerType) parameter.getType()).getPointeeType());

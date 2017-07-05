@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,61 +27,44 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.instructions;
+package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
-import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
-import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
-import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
+import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
+import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
+import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
+import com.oracle.truffle.llvm.parser.metadata.MDString;
 
-public abstract class ValueInstruction extends Instruction implements ValueSymbol {
+final class MDNameExtractor implements MDFollowRefVisitor {
 
-    private final Type type;
+    static final String DEFAULT_STRING = "<na>";
 
-    private String name = LLVMIdentifier.UNKNOWN;
-
-    private SourceModel.Variable sourceVariable = null;
-
-    ValueInstruction(Type type) {
-        this.type = type;
-    }
-
-    @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public Type getType() {
-        return type;
-    }
-
-    @Override
-    public boolean hasName() {
-        return true;
-    }
-
-    @Override
-    public void setName(String name) {
-        this.name = LLVMIdentifier.toLocalIdentifier(name);
-    }
-
-    public SourceModel.Variable getSourceVariable() {
-        return sourceVariable;
-    }
-
-    public void setSourceVariable(SourceModel.Variable sourceVariable) {
-        this.sourceVariable = sourceVariable;
-    }
-
-    @Override
-    public String getFrameSlotName() {
-        if (sourceVariable != null) {
-            String debugName = sourceVariable.getName();
-            if (debugName != null && !SourceModel.Variable.INVALID_NAME.equals(debugName)) {
-                return debugName;
-            }
+    static String getName(MDBaseNode container) {
+        if (container == null) {
+            return DEFAULT_STRING;
         }
-        return name;
+
+        final MDNameExtractor visitor = new MDNameExtractor();
+        container.accept(visitor);
+        return visitor.str;
+    }
+
+    private MDNameExtractor() {
+    }
+
+    private String str = DEFAULT_STRING;
+
+    @Override
+    public void visit(MDString md) {
+        str = md.getString();
+    }
+
+    @Override
+    public void visit(MDGlobalVariable mdGlobal) {
+        mdGlobal.getName().accept(this);
+    }
+
+    @Override
+    public void visit(MDLocalVariable mdLocal) {
+        mdLocal.getName().accept(this);
     }
 }

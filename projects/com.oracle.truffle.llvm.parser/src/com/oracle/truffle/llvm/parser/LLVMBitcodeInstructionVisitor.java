@@ -367,7 +367,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         List<LLVMExpressionNode> unwindValue = new ArrayList<>();
         if (blockPhis != null) {
             for (Phi phi : blockPhis) {
-                FrameSlot slot = getSlot(phi.getPhiValue().getName());
+                FrameSlot slot = getSlot(phi.getPhiValue().getFrameSlotName());
                 LLVMExpressionNode value = symbols.resolve(phi.getValue());
                 if (call.normalSuccessor() == phi.getBlock()) {
                     normalTo.add(slot);
@@ -391,7 +391,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         if (function == null) {
             function = symbols.resolve(target);
         }
-        LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(runtime, getSlot(call.getName()), function, argNodes, new FunctionType(targetType, argTypes, false),
+        LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(runtime, getSlot(call.getFrameSlotName()), function, argNodes, new FunctionType(targetType, argTypes, false),
                         regularIndex, unwindIndex, normalPhi,
                         unwindPhi, sourceSection);
 
@@ -432,7 +432,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         List<LLVMExpressionNode> unwindValue = new ArrayList<>();
         if (blockPhis != null) {
             for (Phi phi : blockPhis) {
-                FrameSlot slot = getSlot(phi.getPhiValue().getName());
+                FrameSlot slot = getSlot(phi.getPhiValue().getFrameSlotName());
                 LLVMExpressionNode value = symbols.resolve(phi.getValue());
                 if (call.normalSuccessor() == phi.getBlock()) {
                     normalTo.add(slot);
@@ -728,7 +728,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             Type[] types = new Type[phisPerSuccessor[i].size()];
             for (int j = 0; j < phisPerSuccessor[i].size(); j++) {
                 Phi phi = phisPerSuccessor[i].get(j);
-                to[j] = getSlot(phi.getPhiValue().getName());
+                to[j] = getSlot(phi.getPhiValue().getFrameSlotName());
                 from[j] = symbols.resolve(phi.getValue());
                 types[j] = phi.getValue().getType();
             }
@@ -781,7 +781,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     }
 
     private void createFrameWrite(LLVMExpressionNode result, ValueInstruction source, SourceSection sourceSection) {
-        final LLVMExpressionNode node = nodeFactory.createFrameWrite(runtime, source.getType(), result, getSlot(source.getName()), sourceSection);
+        final LLVMExpressionNode node = nodeFactory.createFrameWrite(runtime, source.getType(), result, getSlot(source.getFrameSlotName()), sourceSection);
         addInstruction(node);
     }
 
