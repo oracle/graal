@@ -214,7 +214,7 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
             super(null);
             this.msg = msg;
             this.node = msg.createNode();
-            this.toJavaNode = ToJavaNodeGen.create();
+            this.toJavaNode = ToJavaNode.create();
         }
 
         @Override

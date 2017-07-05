@@ -44,7 +44,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 public class JavaInteropNullTest {
 
-    interface StringCallback {
+    public interface StringCallback {
 
         void call(String obj);
     }

@@ -38,7 +38,7 @@ final class JavaInteropAccessor extends Accessor {
         return new JavaInteropSupport() {
             @Override
             public Node createToJavaNode() {
-                return ToJavaNodeGen.create();
+                return ToJavaNode.create();
             }
 
             @Override
