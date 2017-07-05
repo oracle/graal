@@ -37,14 +37,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.graalvm.options.OptionDescriptor;
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
 import org.junit.Assert;
 import org.junit.Test;
 
 public class EngineAPITest {
-
-    static EngineAPITestLanguage.LanguageContext langContext;
 
     @Test
     public void testCreateAndDispose() {
@@ -168,6 +167,38 @@ public class EngineAPITest {
                 return null;
             }
         }).get();
+    }
+
+    @Test
+    public void testLanguageContextInitialize1() {
+        Engine engine = Engine.create();
+        Context context = engine.getLanguage(EngineAPITestLanguage.ID).createContext();
+        Assert.assertFalse(context.initialize(EngineAPITestLanguage.ID));
+        try {
+            // not allowed to access
+            Assert.assertTrue(context.initialize(LanguageSPITestLanguage.ID));
+            fail();
+        } catch (IllegalStateException e) {
+        }
+        engine.close();
+    }
+
+    @Test
+    public void testLanguageContextInitialize2() {
+        Engine engine = Engine.create();
+        Context context = engine.getLanguage(EngineAPITestLanguage.ID).createPolyglotContext();
+        Assert.assertFalse(context.initialize(EngineAPITestLanguage.ID));
+        Assert.assertTrue(context.initialize(LanguageSPITestLanguage.ID));
+        engine.close();
+    }
+
+    @Test
+    public void testLanguageContextInitialize3() {
+        Engine engine = Engine.create();
+        Context context = engine.getLanguage(EngineAPITestLanguage.ID).createContextBuilder().setPolyglot(true).build();
+        Assert.assertFalse(context.initialize(EngineAPITestLanguage.ID));
+        Assert.assertTrue(context.initialize(LanguageSPITestLanguage.ID));
+        engine.close();
     }
 
 }

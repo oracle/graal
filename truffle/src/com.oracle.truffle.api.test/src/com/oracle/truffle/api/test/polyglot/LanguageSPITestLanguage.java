@@ -2,6 +2,8 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertSame;
 
+import java.util.concurrent.Callable;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -12,6 +14,8 @@ import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageCont
 public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
 
     static final String ID = "LanguageSPITest";
+
+    static Callable<CallTarget> runinside;
 
     static class LanguageContext {
 
@@ -25,6 +29,13 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
 
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
+        if (runinside != null) {
+            try {
+                return runinside.call();
+            } finally {
+                runinside = null;
+            }
+        }
         return null;
     }
 

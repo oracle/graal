@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 
 public final class Context implements AutoCloseable {
 
@@ -116,13 +117,14 @@ public final class Context implements AutoCloseable {
      * Forces the initialization of a language.
      *
      * @param language
+     * @returns <code>true</code> if the language needed to be initialized.
      */
-    public void initialize(String language) {
-        initialize(getEngine().getLanguage(language));
+    public boolean initialize(String language) {
+        return initialize(getEngine().getLanguage(language));
     }
 
-    public void initialize(Language language) {
-        impl.initializeLanguage(language.impl);
+    public boolean initialize(Language language) {
+        return impl.initializeLanguage(language.impl);
     }
 
     public Engine getEngine() {
@@ -334,9 +336,17 @@ public final class Context implements AutoCloseable {
         }
 
         public Context build() {
-            return primaryLanguage.impl.createContext(out, err, in,
+            Language primary = primaryLanguage;
+            AbstractLanguageImpl onlyLanguage = !polyglot && primary != null ? primary.impl : null;
+            Context context = engine.impl.createContext(out, err, in,
                             options == null ? Collections.emptyMap() : options,
-                            arguments == null ? Collections.emptyMap() : arguments, polyglot);
+                            arguments == null ? Collections.emptyMap() : arguments,
+                            primary, onlyLanguage);
+
+            if (primary != null) {
+                context.initialize(primary);
+            }
+            return context;
         }
 
     }

@@ -210,7 +210,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void exportSymbol(String key, Object value);
 
-        public abstract void initializeLanguage(AbstractLanguageImpl languageImpl);
+        public abstract boolean initializeLanguage(AbstractLanguageImpl languageImpl);
 
         public abstract Value eval(Object languageImpl, Object sourceImpl);
 
@@ -246,6 +246,9 @@ public abstract class AbstractPolyglotImpl {
         public abstract Language detectLanguage(Object sourceImpls);
 
         public abstract OptionDescriptors getOptions();
+
+        public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, Map<String, String> options, Map<String, String[]> arguments, Language primaryLanguage,
+                        AbstractLanguageImpl onlyLanguage);
 
     }
 
@@ -332,8 +335,6 @@ public abstract class AbstractPolyglotImpl {
         protected AbstractLanguageImpl(AbstractPolyglotImpl engineImpl) {
             Objects.requireNonNull(engineImpl);
         }
-
-        public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, Map<String, String> options, Map<String, String[]> arguments, boolean polyglot);
 
         public abstract String getName();
 

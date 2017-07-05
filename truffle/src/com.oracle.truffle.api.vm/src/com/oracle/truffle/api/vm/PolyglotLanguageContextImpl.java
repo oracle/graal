@@ -89,7 +89,7 @@ final class PolyglotLanguageContextImpl implements VMObject {
         }
     }
 
-    void ensureInitialized() {
+    boolean ensureInitialized() {
         language.ensureInitialized();
 
         if (env == null) {
@@ -101,16 +101,18 @@ final class PolyglotLanguageContextImpl implements VMObject {
                                     context.err,
                                     context.in, new HashMap<>(), getOptionValues(), applicationArguments);
                     LANGUAGE.postInitEnv(env);
+                    return true;
                 }
             }
         }
+        return false;
     }
 
     OptionValues getOptionValues() {
         return optionValues;
     }
 
-    private void checkAccess() {
+    void checkAccess() {
         if (disposed) {
             throw new IllegalStateException(String.format("Context is already disposed for language %s.", language.getId()));
         }

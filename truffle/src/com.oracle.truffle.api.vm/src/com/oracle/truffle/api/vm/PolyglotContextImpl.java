@@ -53,8 +53,10 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
 class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
@@ -328,12 +330,13 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
     }
 
     @Override
-    public void initializeLanguage(AbstractLanguageImpl languageImpl) {
+    public boolean initializeLanguage(AbstractLanguageImpl languageImpl) {
         PolyglotLanguageImpl language = (PolyglotLanguageImpl) languageImpl;
-        Object prev = enter();
         PolyglotLanguageContextImpl languageContext = this.contexts[language.index];
+        languageContext.checkAccess();
+        Object prev = enter();
         try {
-            languageContext.ensureInitialized();
+            return languageContext.ensureInitialized();
         } catch (Throwable t) {
             throw wrapGuestException(languageContext, t);
         } finally {
@@ -352,6 +355,9 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
             if (target == null) {
                 languageContext.ensureInitialized();
                 target = LANGUAGE.parse(languageContext.env, source, null);
+                if (target == null) {
+                    target = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(languageContext.toGuestValue(null)));
+                }
                 languageContext.sourceCache.put(source, target);
             }
             Object result = target.call(PolyglotImpl.EMPTY_ARGS);

@@ -12,6 +12,8 @@ import com.oracle.truffle.api.test.polyglot.EngineAPITestLanguage.LanguageContex
 @TruffleLanguage.Registration(id = EngineAPITestLanguage.ID, implementationName = EngineAPITestLanguage.IMPL_NAME, name = EngineAPITestLanguage.NAME, version = EngineAPITestLanguage.VERSION, mimeType = EngineAPITestLanguage.MIME)
 public class EngineAPITestLanguage extends TruffleLanguage<LanguageContext> {
 
+    static EngineAPITestLanguage.LanguageContext langContext;
+
     static final String ID = "EngineAPITestLanguage";
     static final String NAME = "Name";
     static final String IMPL_NAME = "ImplName";
@@ -64,8 +66,8 @@ public class EngineAPITestLanguage extends TruffleLanguage<LanguageContext> {
 
     @Override
     protected LanguageContext createContext(Env env) {
-        EngineAPITest.langContext = new LanguageContext();
-        return EngineAPITest.langContext;
+        langContext = new LanguageContext();
+        return langContext;
     }
 
     @Override

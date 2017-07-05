@@ -25,10 +25,13 @@ package com.oracle.truffle.api.test.polyglot;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
+import java.util.concurrent.Callable;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
 
 public class LanguageSPITest {
@@ -111,6 +114,37 @@ public class LanguageSPITest {
         t.start();
         t.join(10000);
         engine.close();
+        assertEquals(1, langContext.disposeCalled);
+    }
+
+    @Test
+    public void testContextCloseInsideFromSameThread() {
+        Engine engine = Engine.create();
+        langContext = null;
+        Context context = engine.getLanguage(LanguageSPITestLanguage.ID).createContext();
+        LanguageSPITestLanguage.runinside = new Callable<CallTarget>() {
+            public CallTarget call() throws Exception {
+                context.close();
+                return null;
+            }
+        };
+        context.eval("");
+        engine.close();
+        assertEquals(1, langContext.disposeCalled);
+    }
+
+    @Test
+    public void testEngineCloseInsideFromSameThread() {
+        Engine engine = Engine.create();
+        langContext = null;
+        Context context = engine.getLanguage(LanguageSPITestLanguage.ID).createContext();
+        LanguageSPITestLanguage.runinside = new Callable<CallTarget>() {
+            public CallTarget call() throws Exception {
+                engine.close();
+                return null;
+            }
+        };
+        context.eval("");
         assertEquals(1, langContext.disposeCalled);
     }
 
