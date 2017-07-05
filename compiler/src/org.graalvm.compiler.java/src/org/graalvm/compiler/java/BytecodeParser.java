@@ -27,6 +27,8 @@ import static java.lang.reflect.Modifier.STATIC;
 import static java.lang.reflect.Modifier.SYNCHRONIZED;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateRecompile;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
+import static jdk.vm.ci.meta.DeoptimizationAction.None;
+import static jdk.vm.ci.meta.DeoptimizationReason.ClassCastException;
 import static jdk.vm.ci.meta.DeoptimizationReason.JavaSubroutineMismatch;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
 import static jdk.vm.ci.meta.DeoptimizationReason.RuntimeConstraint;
@@ -1453,6 +1455,10 @@ public class BytecodeParser implements GraphBuilderContext {
             args[0] = emitExplicitExceptions(args[0]);
         }
 
+        if (initialInvokeKind == InvokeKind.Special && !targetMethod.isConstructor()) {
+            emitCheckForInvokeSuperSpecial(args);
+        }
+
         InlineInfo inlineInfo = null;
         try {
             currentInvoke = new CurrentInvoke(args, invokeKind, returnType);
@@ -1534,6 +1540,30 @@ public class BytecodeParser implements GraphBuilderContext {
             invoke.setUseForInlining(false);
         }
         return invoke;
+    }
+
+    /**
+     * Checks that the class of the receiver of an {@link Bytecodes#INVOKESPECIAL} in a method
+     * declared in an interface (i.e., a default method) is assignable to the interface. If not,
+     * then deoptimize so that the interpreter can throw an {@link IllegalAccessError}.
+     *
+     * This is a check not performed by the verifier and so must be performed at runtime.
+     *
+     * @param args arguments to an {@link Bytecodes#INVOKESPECIAL} implementing a direct call to a
+     *            method in a super class
+     */
+    protected void emitCheckForInvokeSuperSpecial(ValueNode[] args) {
+        ResolvedJavaType callingClass = method.getDeclaringClass();
+        if (callingClass.getHostClass() != null) {
+            callingClass = callingClass.getHostClass();
+        }
+        if (callingClass.isInterface()) {
+            ValueNode receiver = args[0];
+            TypeReference checkedType = TypeReference.createTrusted(graph.getAssumptions(), callingClass);
+            LogicNode condition = genUnique(createInstanceOf(checkedType, receiver, null));
+            FixedGuardNode fixedGuard = append(new FixedGuardNode(condition, ClassCastException, None, false));
+            args[0] = append(PiNode.create(receiver, StampFactory.object(checkedType, true), fixedGuard));
+        }
     }
 
     protected JavaTypeProfile getProfileForInvoke(InvokeKind invokeKind) {

@@ -1736,7 +1736,7 @@ public class PolyglotEngine {
 
         @Override
         public Object toGuestValue(Object obj, Object languageContext) {
-            return JavaInterop.asTruffleObject(obj);
+            return JavaInterop.asTruffleValue(obj);
         }
 
         @Override

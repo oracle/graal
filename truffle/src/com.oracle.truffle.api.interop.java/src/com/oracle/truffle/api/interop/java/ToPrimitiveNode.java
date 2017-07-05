@@ -54,13 +54,11 @@ final class ToPrimitiveNode extends Node {
         return new ToPrimitiveNode();
     }
 
-    boolean isPrimitive(Object attr) {
-        return toPrimitive(attr, null) != null;
-    }
-
     Object toPrimitive(Object value, Class<?> requestedType) {
         Object attr;
-        if (value instanceof TruffleObject) {
+        if (value instanceof JavaObject) {
+            attr = ((JavaObject) value).obj;
+        } else if (value instanceof TruffleObject) {
             boolean isBoxed = ForeignAccess.sendIsBoxed(isBoxedNode, (TruffleObject) value);
             if (!isBoxed) {
                 return null;
@@ -74,40 +72,44 @@ final class ToPrimitiveNode extends Node {
             attr = value;
         }
         if (attr instanceof Number) {
-            if (requestedType == null) {
-                return attr;
-            }
-            Number n = (Number) attr;
-            if (requestedType == byte.class || requestedType == Byte.class) {
-                return n.byteValue();
-            }
-            if (requestedType == short.class || requestedType == Short.class) {
-                return n.shortValue();
-            }
-            if (requestedType == int.class || requestedType == Integer.class) {
-                return n.intValue();
-            }
-            if (requestedType == long.class || requestedType == Long.class) {
-                return n.longValue();
-            }
-            if (requestedType == float.class || requestedType == Float.class) {
-                return n.floatValue();
-            }
-            if (requestedType == double.class || requestedType == Double.class) {
-                return n.doubleValue();
-            }
-            if (requestedType == char.class || requestedType == Character.class) {
-                return (char) n.intValue();
-            }
-            return n;
-        }
-        if (attr instanceof CharSequence) {
-            if (requestedType == char.class || requestedType == Character.class) {
-                if (((String) attr).length() == 1) {
-                    return ((String) attr).charAt(0);
+            if (requestedType != null) {
+                Number n = (Number) attr;
+                if (requestedType == byte.class || requestedType == Byte.class) {
+                    return n.byteValue();
+                }
+                if (requestedType == short.class || requestedType == Short.class) {
+                    return n.shortValue();
+                }
+                if (requestedType == int.class || requestedType == Integer.class) {
+                    return n.intValue();
+                }
+                if (requestedType == long.class || requestedType == Long.class) {
+                    return n.longValue();
+                }
+                if (requestedType == float.class || requestedType == Float.class) {
+                    return n.floatValue();
+                }
+                if (requestedType == double.class || requestedType == Double.class) {
+                    return n.doubleValue();
+                }
+                if (requestedType == char.class || requestedType == Character.class) {
+                    return (char) n.intValue();
                 }
             }
-            return String.valueOf(attr);
+            if (JavaInterop.isPrimitive(attr)) {
+                return attr;
+            } else {
+                return null;
+            }
+        }
+        if (attr instanceof CharSequence) {
+            CharSequence str = (CharSequence) attr;
+            if (requestedType == char.class || requestedType == Character.class) {
+                if (str.length() == 1) {
+                    return str.charAt(0);
+                }
+            }
+            return str.toString();
         }
         if (attr instanceof Character) {
             return attr;

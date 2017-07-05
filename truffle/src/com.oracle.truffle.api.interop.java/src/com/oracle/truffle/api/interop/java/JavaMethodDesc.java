@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,31 +24,12 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
+interface JavaMethodDesc {
+    String getName();
 
-final class JavaFunctionObject implements TruffleObject {
-    final JavaMethodDesc method;
-    final Object obj;
-    final Object languageContext;
+    JavaMethodDesc[] getOverloads();
 
-    JavaFunctionObject(JavaMethodDesc method, Object obj) {
-        this(method, obj, null);
+    default boolean isInternal() {
+        return false;
     }
-
-    JavaFunctionObject(JavaMethodDesc method, Object obj, Object languageContext) {
-        this.method = method;
-        this.obj = obj;
-        this.languageContext = languageContext;
-    }
-
-    public static boolean isInstance(TruffleObject obj) {
-        return obj instanceof JavaFunctionObject;
-    }
-
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return JavaFunctionMessageResolutionForeign.ACCESS;
-    }
-
 }

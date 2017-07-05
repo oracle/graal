@@ -24,19 +24,26 @@
  */
 package com.oracle.truffle.api.interop.java.test;
 
-import com.oracle.truffle.api.interop.Message;
+import static org.junit.Assert.assertEquals;
+
+import java.math.BigInteger;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
-import static com.oracle.truffle.api.interop.java.test.JavaInteropTest.sendKeys;
-import java.util.List;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import com.oracle.truffle.api.nodes.Node;
 
 public class OverloadedTest {
-    public final class Data {
+    public static final class Data {
         public int x;
 
         public void x(int value) {
@@ -45,6 +52,26 @@ public class OverloadedTest {
 
         public double x() {
             return this.x * 2;
+        }
+    }
+
+    public static final class Num {
+        public Object x;
+        public String parameter;
+
+        public void x(int value) {
+            this.x = value;
+            this.parameter = "int";
+        }
+
+        public void x(Number value) {
+            this.x = value;
+            this.parameter = "Number";
+        }
+
+        public void x(BigInteger value) {
+            this.x = value;
+            this.parameter = "BigInteger";
         }
     }
 
@@ -59,7 +86,7 @@ public class OverloadedTest {
 
     @Test
     public void threeProperties() {
-        TruffleObject ret = (TruffleObject) sendKeys().call(obj);
+        TruffleObject ret = JavaInteropTest.sendKeys(obj);
         List<?> list = JavaInterop.asJavaObject(List.class, ret);
         assertEquals("Just one (overloaded) property: " + list, 1, list.size());
         assertEquals("x", list.get(0));
@@ -68,15 +95,13 @@ public class OverloadedTest {
     @Test
     public void readAndWriteField() {
         data.x = 11;
-        final Object raw = JavaInteropTest.message(Message.READ, obj, "x");
-        assertTrue("It is truffle object: " + raw, raw instanceof TruffleObject);
-        final TruffleObject wrap = (TruffleObject) raw;
-        assertTrue("Can be unboxed", (boolean) JavaInteropTest.message(Message.IS_BOXED, wrap));
-        final Object value = JavaInteropTest.message(Message.UNBOX, wrap);
-        assertEquals(11, value);
+        assertEquals(11, JavaInteropTest.message(Message.READ, obj, "x"));
 
-        JavaInteropTest.message(Message.WRITE, obj, "x", 10);
-        assertEquals(10, data.x);
+        JavaInteropTest.message(Message.WRITE, obj, "x", 12);
+        assertEquals(12, data.x);
+
+        JavaInteropTest.message(Message.WRITE, obj, "x", new UnboxableToInt(13));
+        assertEquals(13, data.x);
     }
 
     @Test
@@ -86,6 +111,68 @@ public class OverloadedTest {
 
         JavaInteropTest.message(Message.createInvoke(1), obj, "x", 10);
         assertEquals(20, data.x);
+
+        JavaInteropTest.message(Message.createInvoke(1), obj, "x", new UnboxableToInt(21));
+        assertEquals(42, data.x);
     }
 
+    @Test
+    public void testOverloadingTruffleObjectArg() throws InteropException {
+        Node n = Message.createInvoke(1).createNode();
+        ForeignAccess.sendInvoke(n, obj, "x", new UnboxableToInt(21));
+        assertEquals(42, data.x);
+        ForeignAccess.sendInvoke(n, obj, "x", JavaInterop.asTruffleObject(BigInteger.TEN));
+        assertEquals(20, data.x);
+    }
+
+    @Test
+    public void testOverloadingNumber() throws InteropException {
+        Node n = Message.createInvoke(1).createNode();
+        Num num = new Num();
+        TruffleObject numobj = JavaInterop.asTruffleObject(num);
+        ForeignAccess.sendInvoke(n, numobj, "x", new UnboxableToInt(21));
+        assertEquals("int", num.parameter);
+        ForeignAccess.sendInvoke(n, numobj, "x", JavaInterop.asTruffleObject(new AtomicInteger(22)));
+        assertEquals("Number", num.parameter);
+        ForeignAccess.sendInvoke(n, numobj, "x", JavaInterop.asTruffleObject(BigInteger.TEN));
+        assertEquals("BigInteger", num.parameter);
+    }
+
+    @MessageResolution(receiverType = UnboxableToInt.class)
+    public static final class UnboxableToInt implements TruffleObject {
+
+        private final int value;
+
+        public UnboxableToInt(int value) {
+            this.value = value;
+        }
+
+        public int getValue() {
+            return value;
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return UnboxableToIntForeign.ACCESS;
+        }
+
+        static boolean isInstance(TruffleObject obj) {
+            return obj instanceof UnboxableToInt;
+        }
+
+        @Resolve(message = "UNBOX")
+        abstract static class UnboxINode extends Node {
+            Object access(UnboxableToInt obj) {
+                return obj.getValue();
+            }
+        }
+
+        @Resolve(message = "IS_BOXED")
+        abstract static class IsBoxedINode extends Node {
+            @SuppressWarnings("unused")
+            Object access(UnboxableToInt obj) {
+                return true;
+            }
+        }
+    }
 }

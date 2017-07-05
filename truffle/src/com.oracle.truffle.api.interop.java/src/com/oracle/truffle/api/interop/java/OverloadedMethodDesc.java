@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,42 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import com.oracle.truffle.api.TruffleLanguage;
+import java.util.StringJoiner;
 
-abstract class JavaInteropLanguage extends TruffleLanguage<Object> {
+class OverloadedMethodDesc implements JavaMethodDesc {
+    private final SingleMethodDesc[] overloads;
+
+    OverloadedMethodDesc(SingleMethodDesc[] overloads) {
+        this.overloads = overloads;
+        assert overloads.length >= 2;
+    }
+
+    @Override
+    public SingleMethodDesc[] getOverloads() {
+        return overloads;
+    }
+
+    @Override
+    public String getName() {
+        return getOverloads()[0].getName();
+    }
+
+    @Override
+    public String toString() {
+        StringJoiner sj = new StringJoiner(", ", "Method[", "]");
+        for (SingleMethodDesc overload : getOverloads()) {
+            sj.add(overload.getReflectionMethod().toString());
+        }
+        return sj.toString();
+    }
+
+    @Override
+    public boolean isInternal() {
+        for (SingleMethodDesc overload : overloads) {
+            if (!overload.isInternal()) {
+                return false;
+            }
+        }
+        return true;
+    }
 }

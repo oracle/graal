@@ -38,9 +38,9 @@ class JavaFunctionMessageResolution {
         @Child private ExecuteMethodNode doExecute;
 
         public Object access(JavaFunctionObject function, Object[] args) {
-            if (doExecute == null || args.length != doExecute.numberOfArguments()) {
+            if (doExecute == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                doExecute = insert(new ExecuteMethodNode(args.length));
+                doExecute = insert(ExecuteMethodNode.create());
             }
             return doExecute.execute(function.method, function.obj, args, function.languageContext);
         }
