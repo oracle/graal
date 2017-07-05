@@ -39,11 +39,11 @@ public class CompiledNativeFunctionInterfaceTest extends GraalCompilerTest {
 
     static {
         NativeFunctionInterface nfi = NativeFunctionInterfaceRuntime.getNativeFunctionInterface();
-        if (nfi != null) {
-            sqrt = nfi.getFunctionHandle("sqrt", double.class, double.class);
-        } else {
-            sqrt = null;
+        NativeFunctionHandle handle = null;
+        if (nfi != null && !System.getProperty("os.name").toUpperCase().contains("SUNOS")) {
+            handle = nfi.getFunctionHandle("sqrt", double.class, double.class);
         }
+        sqrt = handle;
     }
 
     private static final NativeFunctionHandle sqrt;
