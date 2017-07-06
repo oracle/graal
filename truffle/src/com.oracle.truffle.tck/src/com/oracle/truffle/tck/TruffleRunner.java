@@ -44,6 +44,7 @@ import java.lang.annotation.Target;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import org.graalvm.polyglot.PolyglotContext;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -208,6 +209,7 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
      */
     public static final class RunWithPolyglotRule implements TestRule {
 
+        PolyglotContext context = null;
         Env testEnv = null;
 
         /**
@@ -224,6 +226,20 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
         @Override
         public Statement apply(Statement stmt, Description description) {
             return TruffleTestInvoker.withTruffleContext(this, stmt);
+        }
+
+        /**
+         * Get the current {@link PolyglotContext}. This should only be called from code that is
+         * executed by the {@link TruffleRunner}. In particular, this method can not be called from
+         * static initializers and constructors of test classes. Use {@link Before} or
+         * {@link BeforeClass} methods instead, or put the initialization code into the constructor
+         * of the {@link RootNode} of the test.
+         *
+         * @since 0.27
+         */
+        public PolyglotContext getPolyglotContext() {
+            assert context != null;
+            return context;
         }
 
         /**
