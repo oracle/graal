@@ -165,7 +165,7 @@ class PolyglotSourceImpl extends AbstractSourceImpl {
     }
 
     @Override
-    public Source build(Object origin, URI uri, String name, boolean interactive, boolean internal) {
+    public Source build(Object origin, URI uri, String name, String content, boolean interactive, boolean internal) {
         com.oracle.truffle.api.source.Source.Builder<?, ?, ?> builder;
         boolean needsName = false;
         if (origin instanceof File) {
@@ -191,6 +191,10 @@ class PolyglotSourceImpl extends AbstractSourceImpl {
             builder.name(name);
         } else if (needsName) {
             builder.name("Unnamed");
+        }
+
+        if (content != null) {
+            builder.content(content);
         }
 
         if (internal) {
