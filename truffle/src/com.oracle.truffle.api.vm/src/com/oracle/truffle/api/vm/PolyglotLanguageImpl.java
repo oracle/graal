@@ -26,6 +26,11 @@ package com.oracle.truffle.api.vm;
 
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.Map;
+import java.util.function.Predicate;
+
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;

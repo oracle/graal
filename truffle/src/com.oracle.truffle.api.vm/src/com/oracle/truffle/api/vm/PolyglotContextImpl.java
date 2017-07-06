@@ -44,6 +44,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
+
 
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
@@ -74,6 +76,7 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
     final InputStream in;
     final Map<String, String> options;
     final Map<String, Value> polyglotScope = new HashMap<>();
+    final Predicate<String> classFilter;
 
     // map from class to language index
     private final FinalIntMap languageIndexMap = new FinalIntMap();
@@ -85,11 +88,13 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
     PolyglotContextImpl(PolyglotEngineImpl engine, final OutputStream out,
                     OutputStream err,
                     InputStream in,
+                    Predicate<String> classFilter,
                     Map<String, String> options,
                     Map<String, String[]> applicationArguments,
                     Set<String> allowedPublicLanguages) {
         super(engine.impl);
         this.applicationArguments = applicationArguments;
+        this.classFilter = classFilter;
 
         if (out == null || out == INSTRUMENT.getOut(engine.out)) {
             this.out = engine.out;
@@ -114,9 +119,12 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
             values.putAll(options);
 
             PolyglotLanguageContextImpl languageContext = new PolyglotLanguageContextImpl(this, language, values, applicationArguments.get(language.getId()));
-
             this.contexts[language.index] = languageContext;
         }
+    }
+
+    Predicate<String> getClassFilter() {
+        return classFilter;
     }
 
     static PolyglotContextImpl current() {
