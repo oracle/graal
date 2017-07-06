@@ -404,9 +404,7 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
                 if (!closed) {
                     Thread thread = boundThread;
                     if (cancelIfExecuting) {
-                        if (Thread.currentThread() == thread) {
-                            throw new IllegalStateException(String.format("Cannot cancel an execution that is running on the current thread %s.", thread));
-                        } else if (thread != null) {
+                        if (thread != null && Thread.currentThread() != thread) {
                             if (closingLatch == null) {
                                 closingLatch = new CountDownLatch(1);
 
