@@ -24,14 +24,27 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
 
 public class LanguageSPITest {
@@ -177,6 +190,61 @@ public class LanguageSPITest {
         };
         context.eval("");
         assertEquals(1, langContext.disposeCalled);
+    }
+
+    @SuppressWarnings("serial")
+    private static class Interrupted extends RuntimeException implements TruffleException {
+
+        public boolean isCancelled() {
+            return true;
+        }
+
+        public Node getLocation() {
+            return null;
+        }
+    }
+
+    @Test
+    public void testCancelExecutionWhileSleeping() throws InterruptedException {
+        ExecutorService service = Executors.newFixedThreadPool(1);
+        try {
+            Engine engine = Engine.create();
+            Context context = engine.getLanguage(LanguageSPITestLanguage.ID).createContext();
+
+            CountDownLatch beforeSleep = new CountDownLatch(1);
+            CountDownLatch interrupt = new CountDownLatch(1);
+            AtomicInteger gotInterrupt = new AtomicInteger(0);
+            LanguageSPITestLanguage.runinside = new Callable<CallTarget>() {
+                public CallTarget call() throws Exception {
+                    try {
+                        beforeSleep.countDown();
+                        Thread.sleep(5000);
+                    } catch (InterruptedException e) {
+                        gotInterrupt.incrementAndGet();
+                        interrupt.countDown();
+                        throw new Interrupted();
+                    }
+                    return null;
+                }
+            };
+            Future<Value> future = service.submit(() -> context.eval(""));
+            beforeSleep.await(10000, TimeUnit.MILLISECONDS);
+            context.close(true);
+
+            interrupt.await(10000, TimeUnit.MILLISECONDS);
+            assertEquals(1, gotInterrupt.get());
+
+            try {
+                future.get();
+                fail();
+            } catch (ExecutionException e) {
+                PolyglotException polyglotException = (PolyglotException) e.getCause();
+                assertTrue(polyglotException.isCancelled());
+            }
+            engine.close();
+        } finally {
+            service.shutdown();
+        }
     }
 
 }
