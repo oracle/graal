@@ -102,7 +102,7 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
                 throw e;
             } catch (Throwable t) {
                 CompilerDirectives.transferToInterpreter();
-                final SulongStackTrace stackTrace = new SulongStackTrace();
+                final SulongStackTrace stackTrace = new SulongStackTrace(t.getMessage());
                 fillStackTrace(stackTrace, i);
                 throw new SulongRuntimeException(t, stackTrace);
             }

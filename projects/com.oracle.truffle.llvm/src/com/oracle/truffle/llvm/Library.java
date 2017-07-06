@@ -42,13 +42,13 @@ import java.util.zip.ZipInputStream;
 
 import com.oracle.truffle.api.source.Source;
 
-class SulongLibrary {
+class Library {
 
     private static final int BUFFER_SIZE = 1024;
 
     private File file;
 
-    SulongLibrary(File file) {
+    Library(File file) {
         this.file = file;
     }
 

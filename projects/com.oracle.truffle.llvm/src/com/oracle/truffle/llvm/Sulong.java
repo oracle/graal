@@ -30,7 +30,11 @@
 package com.oracle.truffle.llvm;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ServiceLoader;
 
+import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotContext;
@@ -40,7 +44,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.parser.factories.BasicSulongNodeFactory;
+import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -50,6 +54,15 @@ import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 @ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class})
 public final class Sulong extends LLVMLanguage {
 
+    private static final List<Configuration> configurations = new ArrayList<>();
+
+    static {
+        configurations.add(new BasicConfiguration());
+        for (Configuration f : ServiceLoader.load(Configuration.class)) {
+            configurations.add(f);
+        }
+    }
+
     @Override
     protected LLVMContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
         return new LLVMContext(env);
@@ -58,13 +71,13 @@ public final class Sulong extends LLVMLanguage {
     @Override
     protected void disposeContext(LLVMContext context) {
         context.printNativeCallStatistic();
-        LLVMLanguageProvider.disposeContext(context);
+        Runner.disposeContext(context);
     }
 
     @Override
     protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
         Source source = request.getSource();
-        return (new LLVMLanguageProvider(new BasicSulongNodeFactory())).parse(this, findLLVMContext(), source);
+        return (new Runner(getNodeFactory())).parse(this, findLLVMContext(), source);
     }
 
     @Override
@@ -121,7 +134,21 @@ public final class Sulong extends LLVMLanguage {
 
     @Override
     protected OptionDescriptors getOptionDescriptors() {
-        return OptionDescriptors.create(SulongEngineOption.describeOptions());
+        List<OptionDescriptor> optionDescriptors = new ArrayList<>();
+        for (Configuration c : configurations) {
+            optionDescriptors.addAll(c.getOptionDescriptors());
+        }
+        return OptionDescriptors.create(optionDescriptors);
+    }
+
+    private NodeFactory getNodeFactory() {
+        String config = findLLVMContext().getEnv().getOptions().get(SulongEngineOption.CONFIGURATION);
+        for (Configuration c : configurations) {
+            if (config.equals(c.getConfigurationName())) {
+                return c.getNodeFactory(findLLVMContext());
+            }
+        }
+        throw new IllegalStateException();
     }
 
 }

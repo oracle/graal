@@ -62,9 +62,7 @@ import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
  * {@link LLVMExpressionNode} and {@link LLVMExpressionNode} visible. The parser should not directly
  * instantiate a node, but instead use the factory facade.
  */
-public interface SulongNodeFactory {
-
-    String getConfigurationName();
+public interface NodeFactory {
 
     LLVMExpressionNode createInsertElement(LLVMParserRuntime runtime, Type resultType, LLVMExpressionNode vector, LLVMExpressionNode element, LLVMExpressionNode index);
 

@@ -61,14 +61,14 @@ import com.oracle.truffle.llvm.runtime.types.StructureType;
 public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     private final LLVMParserRuntime runtime;
     private final LLVMContext context;
-    private final SulongNodeFactory nodeFactory;
+    private final NodeFactory nodeFactory;
     private final FunctionDefinition method;
     private final Source source;
     private final FrameDescriptor frame;
     private final Map<InstructionBlock, List<Phi>> phis;
     private final Map<String, Integer> labels;
 
-    LazyToTruffleConverterImpl(LLVMParserRuntime runtime, LLVMContext context, SulongNodeFactory nodeFactory, FunctionDefinition method, Source source, FrameDescriptor frame,
+    LazyToTruffleConverterImpl(LLVMParserRuntime runtime, LLVMContext context, NodeFactory nodeFactory, FunctionDefinition method, Source source, FrameDescriptor frame,
                     Map<InstructionBlock, List<Phi>> phis,
                     Map<String, Integer> labels) {
         this.runtime = runtime;

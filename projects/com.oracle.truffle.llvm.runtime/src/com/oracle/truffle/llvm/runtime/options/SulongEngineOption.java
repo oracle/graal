@@ -47,6 +47,10 @@ public final class SulongEngineOption {
 
     public static final String OPTION_ARRAY_SEPARATOR = ":";
 
+    public static final OptionKey<String> CONFIGURATION = new OptionKey<>("basic");
+    public static final String CONFIGURATION_NAME = "llvm.configuration";
+    public static final String CONFIGURATION_INFO = "Sulongs configuration (default=basic).";
+
     public static final OptionKey<Integer> STACK_SIZE_KB = new OptionKey<>(81920);
     public static final String STACK_SIZE_KB_NAME = "llvm.stackSizeKB";
     public static final String STACK_SIZE_KB_INFO = "The stack size in KB.";
@@ -91,6 +95,8 @@ public final class SulongEngineOption {
 
     public static List<OptionDescriptor> describeOptions() {
         ArrayList<OptionDescriptor> options = new ArrayList<>();
+        options.add(OptionDescriptor.newBuilder(SulongEngineOption.CONFIGURATION, SulongEngineOption.CONFIGURATION_NAME).help(SulongEngineOption.CONFIGURATION_INFO).category(
+                        OptionCategory.USER).build());
         options.add(OptionDescriptor.newBuilder(SulongEngineOption.STACK_SIZE_KB, SulongEngineOption.STACK_SIZE_KB_NAME).help(SulongEngineOption.STACK_SIZE_KB_INFO).category(
                         OptionCategory.USER).build());
         options.add(OptionDescriptor.newBuilder(SulongEngineOption.LIBRARIES, SulongEngineOption.LIBRARIES_NAME).help(SulongEngineOption.LIBRARIES_INFO).category(
