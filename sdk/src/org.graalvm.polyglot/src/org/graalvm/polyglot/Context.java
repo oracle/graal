@@ -35,6 +35,14 @@ import java.util.Objects;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 
+/**
+ *
+ *
+ * Most methods of a context throw {@link PolyglotException} in case an error occured in a guest
+ * language. Please see the individual method for details.
+ *
+ * @since 1.0
+ */
 public final class Context implements AutoCloseable {
 
     final AbstractContextImpl impl;
@@ -50,7 +58,7 @@ public final class Context implements AutoCloseable {
      */
     public Value eval(Source source) {
         if (primaryLanguage == null) {
-            throw new IllegalArgumentException("This context was not created with a primary language. " +
+            throw new UnsupportedOperationException("This context was not created with a primary language. " +
                             "Use Context.eval(language, source) or create the context using Language.createContext() instead.");
         }
         return eval(primaryLanguage, source);
@@ -58,7 +66,7 @@ public final class Context implements AutoCloseable {
 
     public Value eval(CharSequence source) {
         if (primaryLanguage == null) {
-            throw new IllegalArgumentException("This context was not created with a primary language. " +
+            throw new UnsupportedOperationException("This context was not created with a primary language. " +
                             "Use Context.eval(language, source) or create the context using Language.createContext() instead.");
         }
         return eval(primaryLanguage, Source.create(source));
@@ -85,7 +93,7 @@ public final class Context implements AutoCloseable {
      */
     public Value lookup(String key) {
         if (primaryLanguage == null) {
-            throw new IllegalArgumentException("This context was not created with a primary language. " +
+            throw new UnsupportedOperationException("This context was not created with a primary language. " +
                             "Use Context.eval(language, source) or create the context using Language.createContext() instead.");
         }
         return lookup(primaryLanguage, key);
@@ -144,7 +152,7 @@ public final class Context implements AutoCloseable {
      * If internal errors occur during closing of the language then they are printed to the
      * configured {@link Builder#setErr(OutputStream) error output stream}. If a context was closed
      * then all its methods will throw an {@link IllegalStateException} when invoked. If an an
-     * attempt to close this context was successful then consecutive calls to close have no effect.
+     * attempt to close a context was successful then consecutive calls to close have no effect.
      *
      * @param cancelIfExecuting if <code>true</code> then currently executing contexts will be
      *            cancelled, else an {@link IllegalStateException} is thrown.
@@ -160,13 +168,13 @@ public final class Context implements AutoCloseable {
      * be able to free all native resources allocated by a context automatically, therefore it is
      * recommended to close contexts after use. If the source {@link #getEngine() engine} is closed
      * then this context is closed automatically. If the context is currently beeing executed on
-     * another thread then an {@link IllegalStateException} is thrown. To close currently executing
-     * contexts see {@link #close(boolean)}.
+     * another thread then an {@link IllegalStateException} is thrown. To close concurrently
+     * executing contexts see {@link #close(boolean)}.
      * <p>
      * If internal errors occur during closing of the language then they are printed to the
      * configured {@link Builder#setErr(OutputStream) error output stream}. If a context was closed
      * then all its methods will throw an {@link IllegalStateException} when invoked. If an an
-     * attempt to close this context was successful then consecutive calls to close have no effect.
+     * attempt to close a context was successful then consecutive calls to close have no effect.
      *
      * @throws IllegalStateException if the context is currently executing on another thread.
      * @see Engine#close() To close an engine.

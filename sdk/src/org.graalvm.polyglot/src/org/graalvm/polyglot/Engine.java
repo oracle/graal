@@ -50,7 +50,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
 
 /**
- * Represents an execution engine for polyglot applications. An engine consists of
+ * Represents an isolated execution engine to run polyglot applications. An engine consists of
  * {@link #getLanguages() guest languages} and {@link #getInstruments() instruments}. An engine can
  * be used to {@link #createPolyglotContext() create} {@link Context execution contexts}.
  * <p>
@@ -146,8 +146,9 @@ public final class Engine implements AutoCloseable {
     }
 
     /**
-     * Creates a new <i>polyglot</i> context that allows access to all installed
-     * {@link #getLanguages() languages}.
+     * Creates a new <i>polyglot</i> context without a primary language that allows access to all
+     * installed {@link #getLanguages() languages}. To limit a context to a single language use
+     * {@link Language#createContext()} instead.
      *
      * @see Context for further information on context instances.
      * @see Language#createContext() to create a context for a single language.
@@ -158,6 +159,12 @@ public final class Engine implements AutoCloseable {
         return new Context.Builder(this, null).setPolyglot(true).build();
     }
 
+    /**
+     * Creates a new context builder without primary language that allows access to all installed
+     * {@link #getLanguages() languages}.
+     *
+     * @return
+     */
     public Context.Builder newContextBuilder() {
         return new Context.Builder(this, null).setPolyglot(true);
     }
