@@ -4041,7 +4041,7 @@ public class BytecodeParser implements GraphBuilderContext {
                 other = condition.getX();
             }
 
-            if (injectedProbability != null && other != null && other.isConstant()) {
+            if (injectedProbability != null && injectedProbability.getProbability().isConstant() && other != null && other.isConstant()) {
                 double probabilityValue = injectedProbability.getProbability().asJavaConstant().asDouble();
                 return other.asJavaConstant().asInt() == 0 ? 1.0 - probabilityValue : probabilityValue;
             }
