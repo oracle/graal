@@ -93,8 +93,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceImpl;
  * derive values of these attributes from the location and/or content of the {@link Source} object.
  * However, to give the user that creates the source control over these attributes, the API offers
  * an easy way to alter values of these attributes by creating clones of the source via
- * {@link Builder#mimeType(java.lang.String)}, {@link Builder#setName(java.lang.String)},
- * {@link Builder#setURI(java.net.URI)} methods.
+ * {@link Builder#setName(java.lang.String)}, {@link Builder#setURI(java.net.URI)} methods.
  * </p>
  * <p>
  * While {@link Source} is immutable, the world around it is changing. The content of a file from
@@ -102,9 +101,9 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceImpl;
  * later. How can we balance the immutability with ability to see real state of the world? In this
  * case, one can load of a new version of the {@link Source#newBuilder(java.io.File) source for the
  * same file}. The newly loaded {@link Source} will be different than the previous one, however it
- * will have the same attributes ({@link #getName()}, presumably also {@link #getMimeType()}, etc.).
- * There isn't much to do about this - just keep in mind that there can be multiple different
- * {@link Source} objects representing the same {@link #getURI() source origin}.
+ * will have the same attributes ({@link #getName()}. There isn't much to do about this - just keep
+ * in mind that there can be multiple different {@link Source} objects representing the same
+ * {@link #getURI() source origin}.
  * </p>
  *
  * @since 1.0

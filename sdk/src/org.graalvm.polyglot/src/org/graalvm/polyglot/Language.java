@@ -86,8 +86,8 @@ public final class Language {
 
     /**
      * Returns <code>true</code> if a the language is suitable for interactive evaluation of
-     * {@link Source sources}. {@link #setInteractive() Interactive} languages should be displayed in
-     * interactive environments and presented to the user.
+     * {@link Source sources}. {@link #setInteractive() Interactive} languages should be displayed
+     * in interactive environments and presented to the user.
      *
      * @since 1.0
      */
