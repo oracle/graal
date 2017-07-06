@@ -97,7 +97,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     private final FrameDescriptor frame;
     private final Map<String, Integer> labels;
     private final List<Phi> blockPhis;
-    private final SulongNodeFactory nodeFactory;
+    private final NodeFactory nodeFactory;
     private final int argCount;
     private final LLVMSymbolResolver symbols;
     private final LLVMParserRuntime runtime;
@@ -109,7 +109,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     private LLVMControlFlowNode controlFlowNode;
 
     LLVMBitcodeInstructionVisitor(FrameDescriptor frame, Map<String, Integer> labels,
-                    List<Phi> blockPhis, SulongNodeFactory nodeFactory, int argCount, LLVMSymbolResolver symbols, LLVMParserRuntime runtime,
+                    List<Phi> blockPhis, NodeFactory nodeFactory, int argCount, LLVMSymbolResolver symbols, LLVMParserRuntime runtime,
                     ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos) {
         this.frame = frame;
         this.labels = labels;

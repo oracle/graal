@@ -35,8 +35,14 @@ import java.util.List;
 public final class SulongStackTrace {
 
     private final LinkedList<Element> trace = new LinkedList<>();
+    private final String summary;
+
+    public SulongStackTrace(String summary) {
+        this.summary = summary;
+    }
 
     public static final class Element {
+
         private final String actualFunctionName;
         private final String actualSourceName;
 
@@ -110,6 +116,8 @@ public final class SulongStackTrace {
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder();
+        sb.append(summary);
+        sb.append("\n\n");
         sb.append("C stack trace:\n");
         for (Element e : trace) {
             e.appendToStackTrace(sb);

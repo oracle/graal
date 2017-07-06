@@ -52,13 +52,13 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
     private final Map<String, Integer> labels;
     private final Map<InstructionBlock, List<Phi>> phis;
     private final LLVMSymbolResolver symbols;
-    private final SulongNodeFactory nodeFactory;
+    private final NodeFactory nodeFactory;
     private final int argCount;
     private final FunctionDefinition function;
     private final LLVMLivenessAnalysisResult liveness;
 
     LLVMBitcodeFunctionVisitor(LLVMParserRuntime runtime, FrameDescriptor frame, Map<String, Integer> labels,
-                    Map<InstructionBlock, List<Phi>> phis, SulongNodeFactory nodeFactory, int argCount, LLVMSymbolResolver symbols, FunctionDefinition functionDefinition,
+                    Map<InstructionBlock, List<Phi>> phis, NodeFactory nodeFactory, int argCount, LLVMSymbolResolver symbols, FunctionDefinition functionDefinition,
                     LLVMLivenessAnalysisResult liveness) {
         this.runtime = runtime;
         this.frame = frame;

@@ -43,16 +43,16 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
-import com.oracle.truffle.llvm.parser.SulongNodeFactory;
+import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
-public final class LLVMLanguageProvider {
+public final class Runner {
 
-    private final SulongNodeFactory nodeFactory;
+    private final NodeFactory nodeFactory;
 
-    public LLVMLanguageProvider(SulongNodeFactory nodeFactory) {
+    public Runner(NodeFactory nodeFactory) {
         this.nodeFactory = nodeFactory;
     }
 
@@ -64,7 +64,7 @@ public final class LLVMLanguageProvider {
                 mainFunction = parserResult.getMainCallTarget();
                 handleParserResult(context, parserResult);
             } else if (code.getMimeType().equals(Sulong.SULONG_LIBRARY_MIME_TYPE)) {
-                final SulongLibrary library = new SulongLibrary(new File(code.getPath()));
+                final Library library = new Library(new File(code.getPath()));
                 List<Source> sourceFiles = new ArrayList<>();
                 library.readContents(dependentLibrary -> {
                     context.addLibraryToNativeLookup(dependentLibrary);
@@ -125,7 +125,7 @@ public final class LLVMLanguageProvider {
             context.setBcLibrariesLoaded();
             visitBitcodeLibraries(context, source -> {
                 try {
-                    new LLVMLanguageProvider(nodeFactory).parse(language, context, source);
+                    new Runner(nodeFactory).parse(language, context, source);
                 } catch (Throwable t) {
                     throw new RuntimeException("Error while trying to parse dynamic library " + source.getName(), t);
                 }
