@@ -201,4 +201,36 @@ public class EngineAPITest {
         engine.close();
     }
 
+    @Test
+    public void testEngineContextInitialize1() {
+        Engine engine = Engine.create();
+        Context context = engine.createContext();
+        Assert.assertFalse(context.initialize(EngineAPITestLanguage.ID));
+        try {
+            // not allowed to access
+            Assert.assertTrue(context.initialize(LanguageSPITestLanguage.ID));
+            fail();
+        } catch (IllegalStateException e) {
+        }
+        engine.close();
+    }
+
+    @Test
+    public void testEngineContextInitialize2() {
+        Engine engine = Engine.create();
+        Context context = engine.getLanguage(EngineAPITestLanguage.ID).createPolyglotContext();
+        Assert.assertFalse(context.initialize(EngineAPITestLanguage.ID));
+        Assert.assertTrue(context.initialize(LanguageSPITestLanguage.ID));
+        engine.close();
+    }
+
+    @Test
+    public void testEngineContextInitialize3() {
+        Engine engine = Engine.create();
+        Context context = engine.getLanguage(EngineAPITestLanguage.ID).createContextBuilder().setPolyglot(true).build();
+        Assert.assertFalse(context.initialize(EngineAPITestLanguage.ID));
+        Assert.assertTrue(context.initialize(LanguageSPITestLanguage.ID));
+        engine.close();
+    }
+
 }
