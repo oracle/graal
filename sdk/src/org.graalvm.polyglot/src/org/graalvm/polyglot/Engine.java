@@ -165,7 +165,7 @@ public final class Engine implements AutoCloseable {
      *
      * @return
      */
-    public Context.Builder newContextBuilder() {
+    public Context.Builder createContextBuilder() {
         return new Context.Builder(this, null).setPolyglot(true);
     }
 
@@ -186,7 +186,7 @@ public final class Engine implements AutoCloseable {
     }
 
     /**
-     * @deprecated use {@link #newContextBuilder()}
+     * @deprecated use {@link #createContextBuilder()}
      */
     @SuppressWarnings("deprecation")
     @Deprecated
