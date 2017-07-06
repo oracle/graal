@@ -134,6 +134,22 @@ public class LanguageSPITest {
     }
 
     @Test
+    public void testContextCloseInsideFromSameThreadCancelExecution() {
+        Engine engine = Engine.create();
+        langContext = null;
+        Context context = engine.getLanguage(LanguageSPITestLanguage.ID).createContext();
+        LanguageSPITestLanguage.runinside = new Callable<CallTarget>() {
+            public CallTarget call() throws Exception {
+                context.close(true);
+                return null;
+            }
+        };
+        context.eval("");
+        engine.close();
+        assertEquals(1, langContext.disposeCalled);
+    }
+
+    @Test
     public void testEngineCloseInsideFromSameThread() {
         Engine engine = Engine.create();
         langContext = null;
@@ -141,6 +157,21 @@ public class LanguageSPITest {
         LanguageSPITestLanguage.runinside = new Callable<CallTarget>() {
             public CallTarget call() throws Exception {
                 engine.close();
+                return null;
+            }
+        };
+        context.eval("");
+        assertEquals(1, langContext.disposeCalled);
+    }
+
+    @Test
+    public void testEngineCloseInsideFromSameThreadCancelExecution() {
+        Engine engine = Engine.create();
+        langContext = null;
+        Context context = engine.getLanguage(LanguageSPITestLanguage.ID).createContext();
+        LanguageSPITestLanguage.runinside = new Callable<CallTarget>() {
+            public CallTarget call() throws Exception {
+                engine.close(true);
                 return null;
             }
         };
