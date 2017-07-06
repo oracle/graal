@@ -105,7 +105,7 @@ public abstract class WordFactory {
      * @return the value cast to Word
      */
     @FactoryOperation(opcode = FactoryOpcode.FROM_UNSIGNED)
-    public static <T extends Unsigned> T unsigned(long val) {
+    public static <T extends UnsignedWord> T unsigned(long val) {
         return boxFactory.box(val);
     }
 
@@ -129,7 +129,7 @@ public abstract class WordFactory {
      * @return the value cast to Word
      */
     @FactoryOperation(opcode = FactoryOpcode.FROM_UNSIGNED)
-    public static <T extends Unsigned> T unsigned(int val) {
+    public static <T extends UnsignedWord> T unsigned(int val) {
         return boxFactory.box(val & 0xffffffffL);
     }
 
@@ -141,7 +141,7 @@ public abstract class WordFactory {
      * @return the value cast to Word
      */
     @FactoryOperation(opcode = FactoryOpcode.FROM_SIGNED)
-    public static <T extends Signed> T signed(long val) {
+    public static <T extends SignedWord> T signed(long val) {
         return boxFactory.box(val);
     }
 
@@ -153,7 +153,7 @@ public abstract class WordFactory {
      * @return the value cast to Word
      */
     @FactoryOperation(opcode = FactoryOpcode.FROM_SIGNED)
-    public static <T extends Signed> T signed(int val) {
+    public static <T extends SignedWord> T signed(int val) {
         return boxFactory.box(val);
     }
 }
