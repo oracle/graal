@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.vm;
 
 import static com.oracle.truffle.api.vm.PolyglotImpl.engineError;
+import static com.oracle.truffle.api.vm.PolyglotImpl.isGuestInteropValue;
 import static com.oracle.truffle.api.vm.VMAccessor.JAVAINTEROP;
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 
@@ -205,6 +206,17 @@ final class PolyglotLanguageContextImpl implements VMObject {
             args[i] = toHostValue(values[i]);
         }
         return args;
+    }
+
+    Value lookup(String symbolName) {
+        ensureInitialized();
+        Object symbol = LANGUAGE.lookupSymbol(env, symbolName);
+        Value resolvedSymbol = null;
+        if (symbol != null) {
+            assert isGuestInteropValue(symbol);
+            resolvedSymbol = toHostValue(symbol);
+        }
+        return resolvedSymbol;
     }
 
 }

@@ -409,6 +409,13 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
+        public Object lookupSymbol(Object vmObject, Env env, LanguageInfo language, String symbolName) {
+            PolyglotLanguageContextImpl context = (PolyglotLanguageContextImpl) vmObject;
+            context.language.engine.checkState();
+            return context.lookup(symbolName);
+        }
+
+        @Override
         public void exportSymbol(Object vmObject, String symbolName, Object value) {
             PolyglotLanguageContextImpl context = (PolyglotLanguageContextImpl) vmObject;
             context.language.engine.checkState();

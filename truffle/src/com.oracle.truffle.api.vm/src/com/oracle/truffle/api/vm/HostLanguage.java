@@ -66,7 +66,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
 
         private Class<?> findClass(String clazz) {
             if (!this.env.getOptions().get(AllowClassLoading)) {
-                throw new IllegalArgumentException(String.format("Java class loading is disabled.", AllowClassLoading));
+                throw new IllegalArgumentException(String.format("Java class loading is disabled."));
             }
             Predicate<String> classFilter = internalContext.context.classFilter;
             if (classFilter != null && !classFilter.test(clazz)) {

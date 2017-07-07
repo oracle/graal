@@ -457,22 +457,7 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
         Object prev = enter();
         PolyglotLanguageContextImpl languageContext = this.contexts[((PolyglotLanguageImpl) languageImpl).index];
         try {
-            languageContext.ensureInitialized();
-            Object symbol = LANGUAGE.lookupSymbol(languageContext.env, symbolName);
-            Value resolvedSymbol = null;
-            if (symbol == null) {
-                Object global = LANGUAGE.languageGlobal(languageContext.env);
-                if (global != null) {
-                    Value globalHost = languageContext.toHostValue(global);
-                    if (globalHost.hasMember(symbolName)) {
-                        resolvedSymbol = globalHost.getMember(symbolName);
-                    }
-                }
-            } else {
-                assert isGuestInteropValue(symbol);
-                resolvedSymbol = languageContext.toHostValue(symbol);
-            }
-            return resolvedSymbol;
+            return languageContext.lookup(symbolName);
         } catch (Throwable e) {
             throw PolyglotImpl.wrapGuestException(languageContext, e);
         } finally {
