@@ -1,6 +1,5 @@
 cache:
   directories:
-  - cache/tools
   - $HOME/.cache/pip
   - $HOME/.m2
 dist: trusty
@@ -26,6 +25,8 @@ addons:
     - libc++abi1
     - libc++-dev
     - libc++abi-dev
+    - llvm-3.8
+    - clang-3.8
 install:
   - export MX_BINARY_SUITES="jvmci"
   - gem install mdl
@@ -42,21 +43,36 @@ install:
   - wget https://github.com/dougxc/openjdk8-jvmci-builder/releases/download/jvmci-0.23/jdk1.8.0_111-jvmci-0.23-linux-amd64.tar.gz
   - tar -xzf jdk1.8.0_111-jvmci-0.23-linux-amd64.tar.gz
   - export JAVA_HOME=`pwd`/jdk1.8.0_111-jvmci-0.23
+  - mx su-pulldragonegg
+  - export DRAGONEGG_LLVM=`pwd`/cache/tools/llvm
+  - export DRAGONEGG=`pwd`/cache/tools/dragonegg/dragonegg-3.2.src
+  - mkdir llvmDir
+  - cd llvmDir
+  - ln -s /usr/bin/clang-3.8 clang
+  - ln -s /usr/bin/clang++-3.8 clang++
+  - ln -s /usr/bin/opt-3.8 opt
+  - ln -s /usr/bin/llvm-link-3.8 llvm-link
+  - ln -s $DRAGONEGG_LLVM/bin/clang clang-3.2
+  - ln -s $DRAGONEGG_LLVM/bin/clang++ clang++-3.2
+  - ln -s $DRAGONEGG_LLVM/bin/llvm-as llvm-as-3.2
+  - ln -s $DRAGONEGG_LLVM/bin/opt opt-3.2
+  - ln -s $DRAGONEGG_LLVM/bin/llvm-config llvm-config-3.2
+  - export PATH=`pwd`:$PATH
+  - cd ..
 script:
-  - $TEST_COMMAND
-branches:
-  only:
-    - master
+  - $COMPILE_COMMAND && $TEST_COMMAND
 matrix:
   fast_finish: true
   include:
-  - env: TEST_COMMAND='mx su-checks --verbose' CLANG='suite version (3.2)'
+  - env: TEST_COMMAND='mx su-checks --verbose' COMPILE_COMMAND=''
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx su-travis1' CLANG='suite version (3.2)'
+  - env: TEST_COMMAND='mx unittest SulongSuite' COMPILE_COMMAND='mx build'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx su-suite gcc' CLANG='suite version (3.2)'
+  - env: TEST_COMMAND='mx su-suite llvm38 args assembly interop type vaargs pipe callback polyglot shootout nwcc38 parserTorture' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx su-travis2' CLANG='suite version (3.2)'
+  - env: TEST_COMMAND='mx su-suite gcc' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
+    jdk: oraclejdk8
+  - env: TEST_COMMAND='mx su-suite gcc38' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
     jdk: oraclejdk8
 after_failure:
   - find . -iname "*.log" -print0 | xargs -0 cat
