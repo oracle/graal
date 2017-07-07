@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
+import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
@@ -137,6 +138,8 @@ public final class SourceModel {
 
         private Function currentFunction = null;
 
+        private final MDTypeExtractor typeExtractor = new MDTypeExtractor();
+
         private Parser() {
             sourceModel = new SourceModel();
         }
@@ -171,7 +174,9 @@ public final class SourceModel {
                 Symbol mdLocalMDRef = call.getArgument(1);
                 if (mdLocalMDRef instanceof MetadataConstant) {
                     final long mdIndex = ((MetadataConstant) mdLocalMDRef).getValue();
-                    String varName = MDNameExtractor.getName(currentFunction.definition.getMetadata().getMDRef(mdIndex));
+                    final MDBaseNode mdLocal = currentFunction.definition.getMetadata().getMDRef(mdIndex);
+                    typeExtractor.parseType(mdLocal);
+                    String varName = MDNameExtractor.getName(mdLocal);
                     Variable var = new Variable(varName, alloca);
                     ((ValueInstruction) alloca).setSourceVariable(var);
                     currentFunction.locals.put(alloca, var);
@@ -186,6 +191,7 @@ public final class SourceModel {
                 String name = MDNameExtractor.getName(mdGlobal.getName());
                 Symbol symbol = MDSymbolExtractor.getSymbol(mdGlobal.getVariable());
                 Variable globalVar = new Variable(name, symbol);
+                typeExtractor.parseType(mdGlobal.getType());
                 sourceModel.globals.put(symbol, globalVar);
             }
         };
