@@ -32,11 +32,9 @@ package com.oracle.truffle.llvm.parser.listeners;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
-import com.oracle.truffle.llvm.parser.model.attributes.KnownAttribute;
-import com.oracle.truffle.llvm.parser.model.attributes.StringAttribute;
-import com.oracle.truffle.llvm.parser.records.ParameterAttributeGroupRecord;
 
 public class ParameterAttributes implements ParserListener {
 
@@ -123,21 +121,21 @@ public class ParameterAttributes implements ParserListener {
             long type = args[i++];
             switch ((int) type) {
                 case WELL_KNOWN_ATTRIBUTE_KIND: {
-                    ParameterAttributeGroupRecord attr = ParameterAttributeGroupRecord.decode(args[i++]);
-                    group.addAttribute(new KnownAttribute(attr));
+                    Attribute.Kind attr = Attribute.Kind.decode(args[i++]);
+                    group.addAttribute(new Attribute.KnownAttribute(attr));
                     break;
                 }
 
                 case WELL_KNOWN_INTEGER_ATTRIBUTE_KIND: {
-                    ParameterAttributeGroupRecord attr = ParameterAttributeGroupRecord.decode(args[i++]);
-                    group.addAttribute(new KnownAttribute(attr, args[i++]));
+                    Attribute.Kind attr = Attribute.Kind.decode(args[i++]);
+                    group.addAttribute(new Attribute.KnownIntegerValueAttribute(attr, (int) args[i++]));
                     break;
                 }
 
                 case STRING_ATTRIBUTE_KIND: {
                     StringBuilder strAttr = new StringBuilder();
                     i = readString(i, args, strAttr);
-                    group.addAttribute(new StringAttribute(strAttr.toString()));
+                    group.addAttribute(new Attribute.StringAttribute(strAttr.toString()));
                     break;
                 }
 
@@ -146,7 +144,7 @@ public class ParameterAttributes implements ParserListener {
                     i = readString(i, args, strAttr);
                     StringBuilder strVal = new StringBuilder();
                     i = readString(i, args, strVal);
-                    group.addAttribute(new StringAttribute(strAttr.toString(), strVal.toString()));
+                    group.addAttribute(new Attribute.StringValueAttribute(strAttr.toString(), strVal.toString()));
                     break;
                 }
 

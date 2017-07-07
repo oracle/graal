@@ -70,4 +70,5 @@ public final class SulongSuite extends BaseSuiteHarness {
     protected String getTestName() {
         return testName;
     }
+
 }

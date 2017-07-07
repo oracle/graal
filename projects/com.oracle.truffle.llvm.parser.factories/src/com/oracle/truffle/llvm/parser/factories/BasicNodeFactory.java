@@ -137,6 +137,7 @@ import com.oracle.truffle.llvm.runtime.NativeResolver;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStructByValueNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
@@ -651,5 +652,10 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public RootNode createGlobalRootNodeWrapping(LLVMParserRuntime runtime, RootCallTarget mainCallTarget, Type returnType) {
         return LLVMFunctionFactory.createGlobalRootNodeWrapping(runtime.getLanguage(), mainCallTarget, returnType);
+    }
+
+    @Override
+    public LLVMExpressionNode createCopyStructByValue(LLVMParserRuntime runtime, int length, int alignment, LLVMExpressionNode parameterNode) {
+        return LLVMStructByValueNodeGen.create(parameterNode, length, alignment);
     }
 }

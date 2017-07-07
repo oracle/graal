@@ -29,7 +29,144 @@
  */
 package com.oracle.truffle.llvm.parser.model.attributes;
 
-public interface Attribute {
+public abstract class Attribute {
 
-    String getIrString();
+    public enum Kind {
+
+        UNUSED_0,
+
+        ALIGN, // code 1
+        ALWAYSINLINE,
+        BYVAL,
+        INLINEHINT,
+        INREG,
+        MINSIZE,
+        NAKED,
+        NEST,
+        NOALIAS,
+        NOBUILTIN,
+        NOCAPTURE,
+        NODUPLICATES,
+        NOIMPLICITFLOAT,
+        NOINLINE,
+        NONLAZYBIND,
+        NOREDZONE,
+        NORETURN,
+        NOUNWIND,
+        OPTSIZE,
+        READNONE,
+        READONLY,
+        RETURNED,
+        RETURNS_TWICE,
+        SIGNEXT,
+        ALIGNSTACK,
+        SSP,
+        SSPREQ,
+        SSPSTRONG,
+        SRET,
+        SANITIZE_ADDRESS,
+        SANITIZE_THREAD,
+        SANITIZE_MEMORY,
+        UWTABLE,
+        ZEROEXT,
+        BUILTIN,
+        COLD,
+        OPTNONE,
+        INALLOCA,
+        NONNULL,
+        JUMPTABLE,
+        DEREFERENCEABLE,
+        DEREFERENCEABLE_OR_NULL,
+        CONVERGENT,
+        SAFESTACK,
+        ARGMEMONLY,
+        SWIFTSELF,
+        SWIFTERROR,
+        NORECURSE,
+        INACCESSIBLEMEMONLY,
+        INACCESSIBLEMEMONLY_OR_ARGMEMONLY,
+        ALLOCSIZE,
+        WRITEONLY;
+
+        public static Kind decode(long id) {
+            return values()[(int) id];
+        }
+
+        public String getIrString() {
+            return name().toLowerCase();
+        }
+    }
+
+    public static class KnownAttribute extends Attribute {
+        protected final Kind paramAttr;
+
+        public KnownAttribute(Kind paramAttr) {
+            this.paramAttr = paramAttr;
+        }
+
+        public Kind getAttr() {
+            return paramAttr;
+        }
+
+        @Override
+        public String getIrString() {
+            return paramAttr.getIrString();
+        }
+    }
+
+    public static final class KnownIntegerValueAttribute extends KnownAttribute {
+        private final int value;
+
+        public KnownIntegerValueAttribute(Kind paramAttr, int value) {
+            super(paramAttr);
+            this.value = value;
+        }
+
+        public int getValue() {
+            return value;
+        }
+
+        @Override
+        public String getIrString() {
+            if (paramAttr == Kind.ALIGN) {
+                return String.format("%s %d", paramAttr.getIrString(), value);
+            } else {
+                return String.format("%s(%d)", paramAttr.getIrString(), value);
+            }
+        }
+    }
+
+    public static class StringAttribute extends Attribute {
+        protected final String stringAttr;
+
+        public StringAttribute(String stringAttr) {
+            this.stringAttr = stringAttr;
+        }
+
+        @Override
+        public String getIrString() {
+            return String.format("\"%s\"", stringAttr);
+        }
+    }
+
+    public static final class StringValueAttribute extends StringAttribute {
+        private final String value;
+
+        public StringValueAttribute(String stringAttr, String value) {
+            super(stringAttr);
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        @Override
+        public String getIrString() {
+            return String.format("\"%s\"=\"%s\"", stringAttr, value);
+        }
+
+    }
+
+    public abstract String getIrString();
 }
