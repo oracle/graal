@@ -33,7 +33,6 @@ public class TestCallback implements TruffleObject {
 
     public interface Function {
 
-        @TruffleBoundary
         Object call(Object... args);
     }
 
@@ -45,6 +44,7 @@ public class TestCallback implements TruffleObject {
         this.function = function;
     }
 
+    @TruffleBoundary
     Object call(Object... args) {
         if (args.length == arity) {
             Object ret = function.call(args);

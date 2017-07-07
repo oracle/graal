@@ -26,6 +26,7 @@ package com.oracle.truffle.tck;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
@@ -34,6 +35,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
+import com.oracle.truffle.tck.TruffleRunner.RunWithPolyglotRule;
 import com.oracle.truffle.tck.TruffleRunner.Warmup;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -42,8 +44,17 @@ import java.lang.annotation.Target;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import org.graalvm.polyglot.PolyglotContext;
+import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
+import org.junit.runner.Description;
 import org.junit.runner.RunWith;
 import org.junit.runner.Runner;
 import org.junit.runners.BlockJUnit4ClassRunner;
@@ -83,6 +94,13 @@ import org.junit.runners.parameterized.TestWithParameters;
  * checking the expected side effects of the test code.
  * <p>
  * {@codesnippet TruffleRunnerSnippets#ExampleTest}
+ *
+ * <h4>Running a test in the polyglot engine</h4>
+ *
+ * If a test should be run in the context of a polyglot engine, {@link RunWithPolyglotRule} can be
+ * used.
+ * <p>
+ * {@codesnippet TruffleRunnerSnippets#RunWithPolyglotRule}
  *
  * @see Warmup warmup iterations and compilation
  * @see ParametersFactory parameterized Truffle AST tests
@@ -172,6 +190,71 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
         @Override
         public Runner createRunnerForTestWithParameters(TestWithParameters test) throws InitializationError {
             return new ParameterizedRunner(test);
+        }
+    }
+
+    /**
+     * JUnit rule to run the tests in the context of a polyglot engine. This can be used as a
+     * {@link ClassRule} or as a {@link Rule}.
+     * <p>
+     * If used as {@link ClassRule}, a single context is created for all unit tests in this class,
+     * and all tests (and also other methods like {@link BeforeClass}, {@link Before} {@link After}
+     * and {@link AfterClass}) are executed in this context.
+     * <p>
+     * If used as {@link Rule}, a new context is created for each unit test. The {@link Before} and
+     * {@link After} actions are also executed in this context. No context is available in the
+     * {@link BeforeClass} and {@link AfterClass} methods.
+     *
+     * @since 0.27
+     */
+    public static final class RunWithPolyglotRule implements TestRule {
+
+        PolyglotContext context = null;
+        Env testEnv = null;
+
+        /**
+         * @since 0.27
+         */
+        public RunWithPolyglotRule() {
+        }
+
+        /**
+         * Internal method used by the JUnit framework. Do not call directly.
+         *
+         * @since 0.27
+         */
+        @Override
+        public Statement apply(Statement stmt, Description description) {
+            return TruffleTestInvoker.withTruffleContext(this, stmt);
+        }
+
+        /**
+         * Get the current {@link PolyglotContext}. This should only be called from code that is
+         * executed by the {@link TruffleRunner}. In particular, this method can not be called from
+         * static initializers and constructors of test classes. Use {@link Before} or
+         * {@link BeforeClass} methods instead, or put the initialization code into the constructor
+         * of the {@link RootNode} of the test.
+         *
+         * @since 0.27
+         */
+        public PolyglotContext getPolyglotContext() {
+            assert context != null;
+            return context;
+        }
+
+        /**
+         * Get an environment to access the polyglot engine using interop. This can be used to run
+         * setup tasks, and to do mock interop access into the polyglot engine. This should only be
+         * called from code that is executed by the {@link TruffleRunner}. In particular, this
+         * method can not be called from static initializers and constructors of test classes. Use
+         * {@link Before} or {@link BeforeClass} methods instead, or put the initialization code
+         * into the constructor of the {@link RootNode} of the test.
+         *
+         * @since 0.27
+         */
+        public Env getTruffleTestEnv() {
+            assert testEnv != null;
+            return testEnv;
         }
     }
 
@@ -343,5 +426,28 @@ class TruffleRunnerSnippets {
         }
     }
     // END: TruffleRunnerSnippets#ParameterizedTest
+    // Checkstyle: resume
+
+    // Checkstyle: stop
+    // BEGIN: TruffleRunnerSnippets#RunWithPolyglotRule
+    @RunWith(TruffleRunner.class)
+    public static class PolyglotTest {
+
+        @ClassRule RunWithPolyglotRule runWithPolyglot = new RunWithPolyglotRule();
+
+        private static Object prepared;
+
+        @BeforeClass
+        public void prepare() {
+            prepared = runWithPolyglot.getTruffleTestEnv().importSymbol("...");
+        }
+
+        @Test
+        public void executeTest(@Inject(TestExecuteNode.class) CallTarget target) {
+            Object ret = target.call(prepared);
+            Assert.assertEquals(expectedRetValue(), ret);
+        }
+    }
+    // END: TruffleRunnerSnippets#RunWithPolyglotRule
     // Checkstyle: resume
 }

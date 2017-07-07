@@ -25,6 +25,7 @@
 package com.oracle.truffle.nfi.test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -128,6 +129,7 @@ public class ArrayNFITest extends NFITest {
                 verifyArray(array);
                 return ForeignAccess.sendExecute(executeSum, sum, wrappedArray, arrayLength);
             } catch (InteropException ex) {
+                CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(ex);
             }
         }
