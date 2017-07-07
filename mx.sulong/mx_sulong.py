@@ -381,6 +381,10 @@ def runChecks(args=None):
         optionalRetValue = command(vmArgs)
         if optionalRetValue:
             error = True
+            if parsedArgs.verbose:
+                mx.log('failed {0}'.format(checkName))
+        elif parsedArgs.verbose:
+            mx.log('passed {0}'.format(checkName))
     if error:
         exit(-1)
 
