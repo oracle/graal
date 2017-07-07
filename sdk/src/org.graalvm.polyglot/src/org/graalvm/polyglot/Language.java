@@ -111,21 +111,11 @@ public final class Language {
      * build()}.
      *
      * @since 1.0
+     * @deprecated use {@link Context#create(String...) Context.create(language) instead}
      */
+    @Deprecated
     public Context createContext() {
         return createContextBuilder().build();
-    }
-
-    /**
-     * Creates a new {@link Context.Builder#setPolyglot(boolean) polyglot} context with default
-     * configuration and this language as primary language. This is a short-cut method for
-     * {@link #createContextBuilder()}.{@link Context.Builder#setPolyglot(boolean)
-     * setPolyglot(true)}.{@link Context.Builder#build() build()}.
-     *
-     * @since 1.0
-     */
-    public Context createPolyglotContext() {
-        return createContextBuilder().setPolyglot(true).build();
     }
 
     /**
@@ -133,9 +123,11 @@ public final class Language {
      * customized configuration.
      *
      * @since 1.0
+     * @deprecated {@link Context#newBuilder()} instead.
      */
+    @Deprecated
     public Context.Builder createContextBuilder() {
-        return new Context.Builder(getEngine(), this);
+        return new Context.Builder(this.getId()).engine(getEngine());
     }
 
     /**

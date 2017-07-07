@@ -29,16 +29,12 @@ import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 import static com.oracle.truffle.api.vm.VMAccessor.NODES;
 import static com.oracle.truffle.api.vm.VMAccessor.SPI;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.spi.FileTypeDetector;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -46,7 +42,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.TimeUnit;
@@ -57,12 +52,10 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -72,7 +65,6 @@ import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.impl.SourceAccessor;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
 class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineImpl implements VMObject {
@@ -110,6 +102,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     final OptionValuesImpl engineOptionValues;
     final OptionValuesImpl compilerOptionValues;
     final ClassLoader contextClassLoader;
+    final boolean boundEngine;
     private final Set<PolyglotContextImpl> contexts = new LinkedHashSet<>();
 
     volatile OptionDescriptors allOptions;
@@ -118,7 +111,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     private volatile CancelHandler cancelHandler;
 
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options, long timeout, TimeUnit timeoutUnit,
-                    boolean sandbox, boolean useSystemProperties, ClassLoader contextClassLoader) {
+                    boolean sandbox, boolean useSystemProperties, ClassLoader contextClassLoader, boolean boundEngine) {
         super(impl);
         this.instrumentationHandler = INSTRUMENT.createInstrumentationHandler(this, out, err, in);
         this.impl = impl;
@@ -129,6 +122,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         this.timeoutUnit = timeoutUnit;
         this.contextClassLoader = contextClassLoader;
         this.sandbox = sandbox;
+        this.boundEngine = boundEngine;
         Map<String, LanguageInfo> languageInfos = new LinkedHashMap<>();
         this.idToLanguage = Collections.unmodifiableMap(initializeLanguages(languageInfos));
         this.idToLanguageInfo = Collections.unmodifiableMap(languageInfos);
@@ -475,39 +469,12 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             return null;
         }
         Path path = Paths.get(filePath);
-        String mimeType = null;
-        try {
-            mimeType = getMimeType(path);
-        } catch (IOException e) {
-        }
-        Language foundLanguage = null;
-        if (mimeType != null) {
-            for (Language language : idToPublicLanguage.values()) {
-                PolyglotLanguageImpl languageData = (PolyglotLanguageImpl) impl.getAPIAccess().getImpl(language);
-                if (languageData.cache.getMimeTypes().contains(mimeType)) {
-                    foundLanguage = language;
-                    break;
-                }
-            }
-        }
-        return foundLanguage;
-    }
 
-    static String getMimeType(Path filePath) throws IOException {
-        if (!TruffleOptions.AOT) {
-            Collection<ClassLoader> loaders = SourceAccessor.allLoaders();
-            for (ClassLoader l : loaders) {
-                for (FileTypeDetector detector : ServiceLoader.load(FileTypeDetector.class, l)) {
-                    String mimeType = detector.probeContentType(filePath);
-                    if (mimeType != null) {
-                        return mimeType;
-                    }
-                }
-            }
+        String languageId = PolyglotSourceImpl.findLanguageImpl(path);
+        if (languageId != null) {
+            return idToPublicLanguage.get(languageId);
         }
-
-        String found = Files.probeContentType(filePath);
-        return found;
+        return null;
     }
 
     OptionDescriptors getAllOptions() {
@@ -668,18 +635,35 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     @SuppressWarnings({"hiding", "deprecation"})
     public synchronized org.graalvm.polyglot.PolyglotContext createPolyglotContext(OutputStream out, OutputStream err, InputStream in, Map<String, String[]> arguments, Map<String, String> options) {
         checkState();
-        PolyglotContextImpl contextImpl = new PolyglotContextImpl(this, out, err, in, options, arguments, null);
+        PolyglotContextImpl contextImpl = new PolyglotContextImpl(this, out, err, in, options, arguments, getLanguages().keySet());
         addContext(contextImpl);
         return impl.getAPIAccess().newPolyglotContext(api, contextImpl);
     }
 
     @Override
-    @SuppressWarnings("hiding")
-    public synchronized Context createContext(OutputStream out, OutputStream err, InputStream in, Map<String, String> options, Map<String, String[]> arguments,
-                    Language primaryLanguage,
-                    AbstractLanguageImpl onlyLanguage) {
+    @SuppressWarnings({"hiding"})
+    public synchronized Context createContext(OutputStream out, OutputStream err, InputStream in,
+                    Map<String, String> options, Map<String, String[]> arguments,
+                    String[] onlyLanguages) {
         checkState();
-        PolyglotContextImpl contextImpl = new PolyglotContextImpl(this, out, err, in, options, arguments, (PolyglotLanguageImpl) onlyLanguage);
+        Language primaryLanguage = null;
+        if (onlyLanguages.length == 1) {
+            primaryLanguage = getLanguage(onlyLanguages[0]);
+        }
+
+        if (boundEngine && !contexts.isEmpty()) {
+            throw new IllegalArgumentException("Automatically created engines cannot be used to create more than one context. " +
+                            "Use Engine.newBuilder().build() to construct it and pass the engine using Context.newBuilder().engine(engine).build().");
+        }
+
+        Set<String> allowedLanguages;
+        if (onlyLanguages.length == 0) {
+            allowedLanguages = getLanguages().keySet();
+        } else {
+            allowedLanguages = new HashSet<>(Arrays.asList(onlyLanguages));
+        }
+
+        PolyglotContextImpl contextImpl = new PolyglotContextImpl(this, out, err, in, options, arguments, allowedLanguages);
         addContext(contextImpl);
         return impl.getAPIAccess().newContext(contextImpl, primaryLanguage);
     }

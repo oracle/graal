@@ -70,8 +70,7 @@ public class EvalLauncher {
             return;
         }
 
-        Engine engine = Engine.newBuilder().setOptions(options).build();
-        Context context = engine.createContext();
+        Context context = Context.newBuilder().setOptions(options).build();
 
         for (String script : scripts) {
             int index = script.indexOf(':');
@@ -80,7 +79,7 @@ public class EvalLauncher {
                 return;
             }
             String languageId = script.substring(0, index);
-            if (engine.getLanguage(languageId) == null) {
+            if (context.getEngine().getLanguages().containsKey(languageId)) {
                 System.err.println(String.format("Error: Invalid language %s provided.\nUse --help for usage information.", languageId));
                 return;
             }

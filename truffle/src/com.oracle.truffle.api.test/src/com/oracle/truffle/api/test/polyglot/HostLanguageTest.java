@@ -50,14 +50,14 @@ public class HostLanguageTest {
 
         MyClass clazz = new MyClass();
         Value value;
-        Context context = language.createContext();
-        value = context.eval(MyClass.class.getName());
+        Context context = Context.newBuilder("java").engine(engine).build();
+        value = context.eval("java", MyClass.class.getName());
         assertTrue(value.isHostObject());
         assertSame(MyClass.class, value.asHostObject());
         // context class loader is captured when the engine is created to create new instances.
         assertSame(clazz.getClass().getClassLoader(), ((Class<?>) value.asHostObject()).getClassLoader());
 
-        value = context.lookup(MyClass.class.getName());
+        value = context.lookup("java", MyClass.class.getName());
         assertTrue(value.isHostObject());
         assertSame(MyClass.class, value.asHostObject());
         assertSame(clazz.getClass().getClassLoader(), ((Class<?>) value.asHostObject()).getClassLoader());

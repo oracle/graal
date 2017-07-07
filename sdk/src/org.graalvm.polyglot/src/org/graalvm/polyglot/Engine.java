@@ -35,7 +35,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
-import java.util.concurrent.TimeUnit;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -50,19 +49,24 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
 
 /**
- * Represents an isolated execution engine to run polyglot applications. An engine consists of
- * {@link #getLanguages() guest languages} and {@link #getInstruments() instruments}. An engine can
- * be used to {@link #createPolyglotContext() create} {@link Context execution contexts}.
+ * An execution engine for Graal {@linkplain Language guest languages} that allows to inspect the
+ * the installed {@link #getLanguages() guest languages}, {@link #getInstruments() instruments} and
+ * their available options.
+ * <p>
+ * {@link #create()Creating } an engine explicitly is useful if just meta-data needs to be accessed
+ * and no guest language code needs to be executed. In addition, it can be used to share common
+ * configuration between multiple {@link Context context} instances. For that, first a new engine
+ * instance needs to be configured and created using {@link #newBuilder()}. Then the engine can be
+ * {@link Context.Builder#engine(Engine) provided} when the context is built. The options for
+ * contexts that were created using a shared engine are limited to language options only. In this
+ * configuration engine, compiler and instrument options can only be set via the engine.
  * <p>
  * An instrument alters and/or monitors the execution of guest language source code. Common examples
  * for instruments are debuggers, profilers or monitoring tools. Instruments are enabled via
  * {@link Instrument#getOptions() options} passed to the {@link Builder#setOption(String, String)
- * engine} when it is constructed.
+ * engine} when the engine or context is constructed.
  *
- * @see Context
- * @see Value
- * @see Language
- * @see Instrument
+ * TODO
  *
  * @since 1.0
  */
@@ -80,7 +84,7 @@ public final class Engine implements AutoCloseable {
     }
 
     /**
-     * Returns an installed language by looking it up using its unique id. Shortcut for
+     * Gets an installed language by looking it up using its unique id. Shortcut for
      * <code>engine.getLanguages().get(languageId)</code>. Returns <code>null</code> if the language
      * was not found. Examples for language ids are: <code>"js"</code>, <code>"r"</code> or
      * <code>"ruby"</code>. Throws {@link IllegalArgumentException} if an invalid languageId was
@@ -118,7 +122,9 @@ public final class Engine implements AutoCloseable {
      * source object could not be detected.
      *
      * @since 1.0
+     * @deprecated use {@link Source#findLanguage(java.io.File)} instead.
      */
+    @Deprecated
     public Language detectLanguage(Source source) {
         return impl.detectLanguage(source.impl);
     }
@@ -143,30 +149,6 @@ public final class Engine implements AutoCloseable {
      */
     public OptionDescriptors getOptions() {
         return impl.getOptions();
-    }
-
-    /**
-     * Creates a new <i>polyglot</i> context without a primary language that allows access to all
-     * installed {@link #getLanguages() languages}. To limit a context to a single language use
-     * {@link Language#createContext()} instead.
-     *
-     * @see Context for further information on context instances.
-     * @see Language#createContext() to create a context for a single language.
-     * @return
-     * @since 1.0
-     */
-    public Context createContext() {
-        return new Context.Builder(this, null).setPolyglot(true).build();
-    }
-
-    /**
-     * Creates a new context builder without primary language that allows access to all installed
-     * {@link #getLanguages() languages}.
-     *
-     * @return
-     */
-    public Context.Builder createContextBuilder() {
-        return new Context.Builder(this, null).setPolyglot(true);
     }
 
     /**
@@ -256,6 +238,12 @@ public final class Engine implements AutoCloseable {
         private InputStream in = System.in;
         private Map<String, String> options = new HashMap<>();
         private boolean useSystemProperties = true;
+        private boolean boundEngine;
+
+        Builder setBoundEngine(boolean boundEngine) {
+            this.boundEngine = boundEngine;
+            return this;
+        }
 
         public Builder setOut(OutputStream out) {
             Objects.requireNonNull(out);
@@ -273,20 +261,6 @@ public final class Engine implements AutoCloseable {
             Objects.requireNonNull(in);
             this.in = in;
             return this;
-        }
-
-        // not implemented yet. planned in the future
-        Builder setTimeout(long timeout, TimeUnit unit) {
-            Objects.requireNonNull(unit);
-            if (timeout <= 0) {
-                throw new IllegalArgumentException("Timeout must be greater than zero.");
-            }
-            return this.setOption("Timeout", Long.toString(unit.toMillis(timeout)));
-        }
-
-        // not implemented yet. planned in the future
-        Builder setMaximumAllocatedBytes(long bytes) {
-            return this.setOption("MaximumAllocatedBytes", Long.toString(bytes));
         }
 
         /**
@@ -357,7 +331,7 @@ public final class Engine implements AutoCloseable {
                 throw new IllegalStateException("The Polyglot API implementation failed to load.");
             }
             return loadedImpl.buildEngine(out, err, in, options, 0, null,
-                            false, 0, useSystemProperties);
+                            false, 0, useSystemProperties, boundEngine);
         }
 
     }
@@ -395,8 +369,8 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Source newSource(Object impl) {
-            return new Source(impl);
+        public Source newSource(String language, Object impl) {
+            return new Source(language, impl);
         }
 
         @Override

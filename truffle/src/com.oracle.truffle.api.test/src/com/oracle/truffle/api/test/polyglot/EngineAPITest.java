@@ -22,11 +22,11 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import java.util.HashMap;
@@ -171,61 +171,22 @@ public class EngineAPITest {
 
     @Test
     public void testLanguageContextInitialize1() {
-        Engine engine = Engine.create();
-        Context context = engine.getLanguage(EngineAPITestLanguage.ID).createContext();
-        Assert.assertFalse(context.initialize(EngineAPITestLanguage.ID));
+        Context context = Context.create(EngineAPITestLanguage.ID);
+        Assert.assertTrue(context.initialize(EngineAPITestLanguage.ID));
         try {
             // not allowed to access
             Assert.assertTrue(context.initialize(LanguageSPITestLanguage.ID));
             fail();
         } catch (IllegalStateException e) {
         }
-        engine.close();
+        context.close();
     }
 
     @Test
     public void testLanguageContextInitialize2() {
-        Engine engine = Engine.create();
-        Context context = engine.getLanguage(EngineAPITestLanguage.ID).createPolyglotContext();
-        Assert.assertFalse(context.initialize(EngineAPITestLanguage.ID));
-        Assert.assertTrue(context.initialize(LanguageSPITestLanguage.ID));
-        engine.close();
-    }
-
-    @Test
-    public void testLanguageContextInitialize3() {
-        Engine engine = Engine.create();
-        Context context = engine.getLanguage(EngineAPITestLanguage.ID).createContextBuilder().setPolyglot(true).build();
-        Assert.assertFalse(context.initialize(EngineAPITestLanguage.ID));
-        Assert.assertTrue(context.initialize(LanguageSPITestLanguage.ID));
-        engine.close();
-    }
-
-    @Test
-    public void testEngineContextInitialize1() {
-        Engine engine = Engine.create();
-        Context context = engine.createContext();
+        Context context = Context.create();
         Assert.assertTrue(context.initialize(EngineAPITestLanguage.ID));
         Assert.assertTrue(context.initialize(LanguageSPITestLanguage.ID));
-        engine.close();
+        context.close();
     }
-
-    @Test
-    public void testEngineContextInitialize2() {
-        Engine engine = Engine.create();
-        Context context = engine.getLanguage(EngineAPITestLanguage.ID).createPolyglotContext();
-        Assert.assertFalse(context.initialize(EngineAPITestLanguage.ID));
-        Assert.assertTrue(context.initialize(LanguageSPITestLanguage.ID));
-        engine.close();
-    }
-
-    @Test
-    public void testEngineContextInitialize3() {
-        Engine engine = Engine.create();
-        Context context = engine.getLanguage(EngineAPITestLanguage.ID).createContextBuilder().setPolyglot(true).build();
-        Assert.assertFalse(context.initialize(EngineAPITestLanguage.ID));
-        Assert.assertTrue(context.initialize(LanguageSPITestLanguage.ID));
-        engine.close();
-    }
-
 }

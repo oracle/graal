@@ -124,10 +124,22 @@ public final class Source {
         return IMPL;
     }
 
+    // non final to support legacy code
+    String language;
     final Object impl;
 
-    Source(Object impl) {
+    Source(String language, Object impl) {
+        this.language = language;
         this.impl = impl;
+    }
+
+    /**
+     * Returns the language this source created with.
+     *
+     * @since 1.0
+     */
+    public String getLanguage() {
+        return language;
     }
 
     /**
@@ -348,49 +360,89 @@ public final class Source {
         return IMPL.equals(impl, otherImpl);
     }
 
+    public static Builder newBuilder(String language, CharSequence source, String name) {
+        return new Builder(language, source).name(name);
+    }
+
+    public static Builder newBuilder(String language, File source) {
+        return new Builder(language, source);
+    }
+
+    public static Builder newBuilder(String language, URL source, String name) {
+        return new Builder(language, source).name(name);
+    }
+
+    public static Builder newBuilder(String language, Reader source, String name) {
+        return new Builder(language, source).name(name);
+    }
+
+    /**
+     * @deprecated use {@link #newBuilder(String, CharSequence)}
+     */
+    @Deprecated
     public static Builder newBuilder(CharSequence source) {
         return new Builder(source);
     }
 
+    /**
+     * @deprecated use {@link #newBuilder(String, File)}
+     */
+    @Deprecated
     public static Builder newBuilder(File source) {
         return new Builder(source);
     }
 
-    public static Builder newBuilder(URL source) {
-        return new Builder(source);
-    }
-
+    /**
+     * @deprecated use {@link #newBuilder(String, File)}
+     */
     @Deprecated
-    public static Builder newBuilder(Reader source) {
-        return new Builder(source);
-    }
-
-    public static String detectLanguage(File file) {
-        return null;
-    }
-
     public static Source create(CharSequence source) {
         try {
             return newBuilder(source).build();
         } catch (IOException e) {
             throw new AssertionError("Should not reach here");
         }
+
     }
 
-    public static Source create(File source) throws IOException {
-        return newBuilder(source).build();
+    public static Source create(String language, CharSequence source) {
+        return newBuilder(language, source, "Unnamed").buildLiteral();
     }
 
-    public static Source create(String name, URL source) throws IOException {
-        return newBuilder(source).name(name).build();
+    /**
+     * Creates a new
+     *
+     * @throws IOException if an error occured during loading of hte file.
+     * @since 1.0
+     */
+    public static Source create(String language, File source) throws IOException {
+        return newBuilder(language, source).build();
     }
 
-    public static Source create(String name, Reader source) throws IOException {
-        return newBuilder(source).name(name).build();
+    /**
+     * Finds a language for a given {@link File file} instance. Typically the language is identified
+     * using the file extension and/or using it contents. Returns <code>null</code> if the language
+     * of the given file could not be detected.
+     *
+     * @since 1.0
+     */
+    public static String findLanguage(File file) {
+        return IMPL.findLanguage(file);
+    }
+
+    /**
+     * Finds an installed language using a given mime-type. Returns <code>null</code> if no language
+     * was found for a given mime-type.
+     *
+     * @since 1.0
+     */
+    public static String findLanguage(String mimeType) {
+        return IMPL.findLanguage(mimeType);
     }
 
     public static class Builder {
 
+        private final String language;
         private final Object origin;
         private URI uri;
         private String name;
@@ -398,7 +450,16 @@ public final class Source {
         private boolean internal;
         private String content;
 
+        Builder(String language, Object origin) {
+            Objects.requireNonNull(language);
+            Objects.requireNonNull(origin);
+            this.language = language;
+            this.origin = origin;
+        }
+
+        // legacy constructor
         Builder(Object origin) {
+            this.language = null;
             this.origin = origin;
         }
 
@@ -445,7 +506,7 @@ public final class Source {
         }
 
         /**
-         * @deprecated use {@link #setName(String)}
+         * @deprecated use {@link #interactive(boolean)}
          */
         @Deprecated
         public Builder interactive() {
@@ -466,7 +527,7 @@ public final class Source {
         }
 
         /**
-         * @deprecated use {@link #setName(String)}
+         * @deprecated use {@link #internal(boolean)}
          */
         @Deprecated
         public Builder internal() {
@@ -497,17 +558,11 @@ public final class Source {
          * @since 1.0
          */
         public Source build() throws IOException {
-            return getImpl().build(origin, uri, name, content, interactive, internal);
+            return getImpl().build(language, origin, uri, name, content, interactive, internal);
         }
 
         /**
-         * Uses configuration of this builder to create new {@link Source} object. This method may
-         * throw an exception - especially when dealing with files (e.g.
-         * {@link Source#newBuilder(java.net.URL)}, {@link Source#newBuilder(java.io.File)} or
-         * {@link Source#newBuilder(java.io.Reader)} this method may throw {@link IOException} that
-         * one needs to deal with. In case of other building styles (like
-         * {@link Source#newBuilder(java.lang.String)} one doesn't need to capture any exception
-         * when calling this method.
+         * Uses configuration of this builder to create new {@link Source} object.
          *
          * @return the source object
          * @since 1.0
@@ -517,7 +572,7 @@ public final class Source {
                 throw new UnsupportedOperationException("This method is only supported for string literal. Use build() instead.");
             }
             try {
-                return getImpl().build(origin, uri, name, content, interactive, internal);
+                return build();
             } catch (IOException e) {
                 throw new AssertionError("No error expected.", e);
             }
@@ -535,7 +590,8 @@ class SourceSnippets {
      File file = new File(dir, name);
      assert name.endsWith(".java") : "Imagine proper file";
 
-     Source source = Source.create(file);
+     String language = Source.findLanguage(file);
+     Source source = Source.create(language, file);
 
      assert file.getName().equals(source.getName());
      assert file.getPath().equals(source.getPath());
@@ -557,9 +613,8 @@ class SourceSnippets {
  public static Source fromURL(Class<?> relativeClass) throws URISyntaxException, IOException {
      // BEGIN: SourceSnippets#fromURL
      URL resource = relativeClass.getResource("sample.js");
-     Source source = Source.newBuilder(resource)
-         .name("sample.js")
-         .build();
+     Source source = Source.newBuilder("js", resource, "sample.js")
+                     .build();
      assert resource.toExternalForm().equals(source.getPath());
      assert "sample.js".equals(source.getName());
      assert resource.toURI().equals(source.getURI());
@@ -570,8 +625,7 @@ class SourceSnippets {
  public static Source fromURLWithOwnContent(Class<?> relativeClass) throws IOException {
      // BEGIN: SourceSnippets#fromURLWithOwnContent
      URL resource = relativeClass.getResource("sample.js");
-     Source source = Source.newBuilder(resource)
-         .name("sample.js")
+     Source source = Source.newBuilder("js", resource, "sample.js")
          .content("{}")
          .build();
      assert resource.toExternalForm().equals(source.getPath());
@@ -587,8 +641,7 @@ class SourceSnippets {
      Reader stream = new InputStreamReader(
                      relativeClass.getResourceAsStream("sample.js")
      );
-     Source source = Source.newBuilder(stream)
-         .name("sample.js")
+     Source source = Source.newBuilder("js", stream, "sample.js")
          .build();
      assert "sample.js".equals(source.getName());
      // END: SourceSnippets#fromReader
@@ -597,9 +650,9 @@ class SourceSnippets {
 
  public static Source fromAString() {
      // BEGIN: SourceSnippets#fromAString
-     Source source = Source.newBuilder("function() {\n"
+     Source source = Source.newBuilder("js", "function() {\n"
          + "  return 'Hi';\n"
-         + "}\n").buildLiteral();
+         + "}\n", "<literal>").buildLiteral();
      // END: SourceSnippets#fromAString
      return source;
  }

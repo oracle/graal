@@ -51,7 +51,7 @@ public final class PolyglotContext implements AutoCloseable {
     }
 
     public Value eval(String languageId, String source) {
-        return getContext(languageId).eval(source);
+        return getContext(languageId).eval(languageId, source);
     }
 
     public Value eval(String languageId, Source source) {
@@ -63,7 +63,7 @@ public final class PolyglotContext implements AutoCloseable {
     }
 
     public Value eval(Language language, String source) {
-        return getContext(language).eval(source);
+        return getContext(language).eval(language.getId(), source);
     }
 
     public Context getContext(String languageId) {
@@ -95,7 +95,7 @@ public final class PolyglotContext implements AutoCloseable {
             return prevContext;
         }
         Context context = new Context(impl, language);
-        context.initialize(language);
+        context.initialize(language.getId());
         contexts.put(language.getId(), context);
         return context;
     }

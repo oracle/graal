@@ -33,19 +33,69 @@ import java.util.Map;
 import java.util.Objects;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 
 /**
+ * A polyglot execution context for Graal {@linkplain Language guest languages} that support
+ * <em>interoperability</em> among the languages and with Java.
  *
+ * <h4>Sample Usage</h4>
+ *
+ * <h4>Context Creation</h4>
+ *
+ * A context can be created using its default configuration by invoked the static
+ * {@link #create(String...) create()} method. The create method allows to limit which languages are
+ * accessible in the context. If no language is passed then all installed languages are accessible.
+ * <p>
+ * To customize the configuration a context builder can be created using
+ * {@link #newBuilder(String...)}. In addtion to the {@link #create(String...)} method, the context
+ * builder allows to configure the input, error and output streams, engine and context options as
+ * well as application arguments. A context can be created using a {@link Builder#engine(Engine)
+ * shared engine} which allows share configuration and instruments between multiple execution
+ * contexts. See {@link Engine} for further details.
+ * <p>
+ * After use a context needs to be {@link #close() closed} in order to free all allocated resources.
+ * A context can be closed from any thread if no code is currently executing in the same context.
+ * There is also the ability to cancel a running execution of a different thread using the boolean
+ * <code>cancelIfRunning</code> parameter of the {@link #close(boolean) close} method. Contexts are
+ * {@link AutoCloseable} in order to allow them to be used with the try with resource Java
+ * statement.
+ *
+ * <h4>Evaluation</h4>
+ *
+ * Before evaluation a language needs to be initialized. Languages are initialized automatically,
+ * the first time a {@linkplain Source#getLanguage() language} is used. It is possible to
+ * {@link Context#initialize(String) force} the initialization of a language. Languages remain
+ * initialized for the lifetime of the context.
+ * <p>
+ *
+ * <h4>Polyglot Values</h4>
+ *
+ * <h4>Symbol Lookup</h4>
+ *
+ * <h4>Interoperability</h4>
+ *
+ * <h4>Exception Handling</h4>
  *
  * Most methods of a context throw {@link PolyglotException} in case an error occured in a guest
- * language. Please see the individual method for details.
+ * language.
+ *
+ * <h4>Proxys</h4>
+ *
+ * <h4>Thread-Safety</h4>
+ *
+ * Guest language code execution is single-threaded. Therefore only one Thread can execute guest
+ * language code at a time. However the executing thread can change as long as there are no two
+ * threads executing at the same time. If two threads access one context at the same time then an
+ * {@link IllegalStateException} is thrown. Meta-data access using the {@link #getEngine() engine}
+ * is always thread safe.
  *
  * @since 1.0
  */
 public final class Context implements AutoCloseable {
 
     final AbstractContextImpl impl;
+
+    // primary language is deprecated and will be removed.
     private final Language primaryLanguage;
 
     Context(AbstractContextImpl impl, Language language) {
@@ -53,11 +103,19 @@ public final class Context implements AutoCloseable {
         this.primaryLanguage = language;
     }
 
+    public Engine getEngine() {
+        return impl.getEngineImpl();
+    }
+
     /**
      * Evaluates a source in the primary language of the context.
      */
     public Value eval(Source source) {
-        return eval(primaryLanguage, source);
+        return eval(primaryLanguage != null ? primaryLanguage : getEngine().getLanguage(source.getLanguage()), source);
+    }
+
+    public Value eval(String languageId, CharSequence source) {
+        return eval(Source.create(languageId, source));
     }
 
     @Deprecated
@@ -66,48 +124,53 @@ public final class Context implements AutoCloseable {
             throw new UnsupportedOperationException("This context was not created with a primary language. " +
                             "Use Context.eval(language, source) or create the context using Language.createContext() instead.");
         }
-        return eval(primaryLanguage, Source.create(source));
+        return eval(primaryLanguage, Source.create(primaryLanguage.getId(), source));
     }
 
-    public Value eval(String languageId, CharSequence source) {
-        return eval(getEngine().getLanguage(languageId), Source.create(source));
-    }
-
+    @Deprecated
     public Value eval(String languageId, Source source) {
+        // hack to support legacy code
         return eval(getEngine().getLanguage(languageId), source);
     }
 
+    @Deprecated
     public Value eval(Language language, CharSequence source) {
-        return eval(language, Source.create(source));
+        return eval(language, Source.create(language.getId(), source));
     }
 
+    @Deprecated
     public Value eval(Language language, Source source) {
+        source.language = language.getId();
         return impl.eval(language.impl, source.impl);
     }
 
     /**
      * Perform a lookup for a symbol in the top-most scope of the language.
+     *
+     * @deprecated
      */
+    @Deprecated
     public Value lookup(String key) {
         if (primaryLanguage == null) {
             throw new UnsupportedOperationException("This context was not created with a primary language. " +
                             "Use Context.eval(language, source) or create the context using Language.createContext() instead.");
         }
-        return lookup(primaryLanguage, key);
+        return lookup(primaryLanguage.getId(), key);
+    }
+
+    /**
+     * @deprecated use {@link #lookupSymbol(String, String)} instead.
+     */
+    @Deprecated
+    public Value lookup(String language, String symbol) {
+        return impl.lookup(getEngine().getLanguage(language).impl, symbol);
     }
 
     /**
      * Perform a lookup for a symbol in the top-most scope of the language.
      */
-    public Value lookup(String language, String key) {
-        return lookup(getEngine().getLanguage(language), key);
-    }
-
-    /**
-     * Perform a lookup for a symbol in the top-most scope of the language.
-     */
-    public Value lookup(Language language, String key) {
-        return impl.lookup(language.impl, key);
+    public Value lookupSymbol(String language, String symbol) {
+        return impl.lookup(getEngine().getLanguage(language).impl, symbol);
     }
 
     public Value importSymbol(String key) {
@@ -125,15 +188,7 @@ public final class Context implements AutoCloseable {
      * @returns <code>true</code> if the language needed to be initialized.
      */
     public boolean initialize(String language) {
-        return initialize(getEngine().getLanguage(language));
-    }
-
-    public boolean initialize(Language language) {
-        return impl.initializeLanguage(language.impl);
-    }
-
-    public Engine getEngine() {
-        return impl.getEngineImpl();
+        return impl.initializeLanguage(getEngine().getLanguage(language).impl);
     }
 
     /**
@@ -181,25 +236,31 @@ public final class Context implements AutoCloseable {
         close(false);
     }
 
-    public static Builder newBuilder() {
-        return new Builder(Engine.create());
+    public static Context create(String... onlyLanguages) {
+        return newBuilder(onlyLanguages).build();
+    }
+
+    public static Builder newBuilder(String... onlyLanguages) {
+        return new Builder(onlyLanguages);
     }
 
     public static final class Builder {
 
-        private final Engine engine;
-        private Language primaryLanguage;
+        private Engine sharedEngine;
+        private String[] onlyLanguages;
 
         private OutputStream out;
         private OutputStream err;
         private InputStream in;
         private Map<String, String> options;
         private Map<String, String[]> arguments;
-        private boolean polyglot;
 
-        Builder(Engine engine, Language primaryLanguage) {
-            this.engine = engine;
-            this.primaryLanguage = primaryLanguage;
+        Builder(String... onlyLanguages) {
+            Objects.requireNonNull(onlyLanguages);
+            for (String onlyLanguage : onlyLanguages) {
+                Objects.requireNonNull(onlyLanguage);
+            }
+            this.onlyLanguages = onlyLanguages;
         }
 
         /**
@@ -212,23 +273,17 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * If set to <code>true</code> allows access to other guest languages other than the primary
-         * language. If set to <code>false</code> all accesses to the language will result in an
-         * {@link IllegalStateException}.
-         *
-         * @since 1.0
-         */
-        public Builder setPolyglot(boolean polyglot) {
-            this.polyglot = polyglot;
-            return this;
-        }
-
-        /**
          * @deprecated use {@link #setErr(OutputStream)} instead
          */
         @Deprecated
         public Builder setErr(PrintStream err) {
             this.err = err;
+            return this;
+        }
+
+        public Builder engine(Engine engine) {
+            Objects.requireNonNull(engine);
+            this.sharedEngine = engine;
             return this;
         }
 
@@ -269,16 +324,18 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Sets the application arguments for the primary language context.
+         * Shortcut for setting multiple {@link #setOption(String, String) options} using a map. All
+         * values of the provided map must be non-null.
          *
-         * @see #setArguments(String, String[])
+         * @param options a map options.
+         * @see #setOption(String, String) To set a single option.
          * @since 1.0
          */
-        public Builder setArguments(String[] args) {
-            if (primaryLanguage == null) {
-                throw new IllegalArgumentException("No primary language in use. Use setArguments(String, STring[]) instead.");
+        public Builder setOptions(Map<String, String> options) {
+            for (String key : options.keySet()) {
+                setOption(key, options.get(key));
             }
-            return setArguments(primaryLanguage, args);
+            return this;
         }
 
         /**
@@ -295,7 +352,23 @@ public final class Context implements AutoCloseable {
          */
         public Builder setArguments(String languageId, String[] args) {
             Objects.requireNonNull(args);
-            return setArguments(engine.getLanguage(languageId), args);
+            return setArguments(sharedEngine.getLanguage(languageId), args);
+        }
+
+        /**
+         * Sets the application arguments for the primary language context.
+         *
+         * @see #setArguments(String, String[])
+         * @since 1.0
+         * @deprecated use {@link #setArguments(String, String[])}
+         */
+        @Deprecated
+        public Builder setArguments(String[] args) {
+            if (onlyLanguages == null || onlyLanguages.length != 1) {
+                throw new IllegalArgumentException("No primary language in use. Use setArguments(String, STring[]) instead.");
+            }
+            setArguments(onlyLanguages[0], args);
+            return this;
         }
 
         /**
@@ -308,7 +381,9 @@ public final class Context implements AutoCloseable {
          * @param languageId the languageId available in the engine.
          * @param args an array of arguments passed to the guest language program
          * @since 1.0
+         * @deprecated use {@link #setArguments(String, String[])} instead.
          */
+        @Deprecated
         public Builder setArguments(Language language, String[] args) {
             Objects.requireNonNull(language);
             Objects.requireNonNull(args);
@@ -319,7 +394,7 @@ public final class Context implements AutoCloseable {
                     newArgs[i] = Objects.requireNonNull(args[i]);
                 }
             }
-            if (language.getEngine() != engine) {
+            if (language.getEngine() != sharedEngine) {
                 throw new IllegalArgumentException("Invalid language from another engine provided.");
             }
             if (arguments == null) {
@@ -329,33 +404,31 @@ public final class Context implements AutoCloseable {
             return this;
         }
 
-        /**
-         * Shortcut for setting multiple {@link #setOption(String, String) options} using a map. All
-         * values of the provided map must be non-null.
-         *
-         * @param options a map options.
-         * @see #setOption(String, String) To set a single option.
-         * @since 1.0
-         */
-        public Builder setOptions(Map<String, String> options) {
-            for (String key : options.keySet()) {
-                setOption(key, options.get(key));
-            }
-            return this;
-        }
-
         public Context build() {
-            Language primary = primaryLanguage;
-            AbstractLanguageImpl onlyLanguage = !polyglot && primary != null ? primary.impl : null;
-            Context context = engine.impl.createContext(out, err, in,
-                            options == null ? Collections.emptyMap() : options,
-                            arguments == null ? Collections.emptyMap() : arguments,
-                            primary, onlyLanguage);
-
-            if (primary != null) {
-                context.initialize(primary);
+            Engine engine = this.sharedEngine;
+            if (engine == null) {
+                org.graalvm.polyglot.Engine.Builder engineBuilder = Engine.newBuilder().setOptions(options == null ? Collections.emptyMap() : options);
+                if (out != null) {
+                    engineBuilder.setOut(out);
+                }
+                if (err != null) {
+                    engineBuilder.setErr(err);
+                }
+                if (in != null) {
+                    engineBuilder.setIn(in);
+                }
+                engineBuilder.setBoundEngine(true);
+                engine = engineBuilder.build();
+                return engine.impl.createContext(null, null, null, Collections.emptyMap(),
+                                arguments == null ? Collections.emptyMap() : arguments,
+                                onlyLanguages);
+            } else {
+                return engine.impl.createContext(out, err, in,
+                                options == null ? Collections.emptyMap() : options,
+                                arguments == null ? Collections.emptyMap() : arguments,
+                                onlyLanguages);
             }
-            return context;
+
         }
 
     }

@@ -116,7 +116,7 @@ final class PolyglotLanguageContextImpl implements VMObject {
         if (disposed) {
             throw new IllegalStateException(String.format("Context is already disposed for language %s.", language.getId()));
         }
-        boolean accessPermitted = language.isHost() || language.cache.isInternal() || context.singlePublicLanguage == null || context.singlePublicLanguage == language;
+        boolean accessPermitted = language.isHost() || language.cache.isInternal() || context.allowedPublicLanguages.contains(language.info.getId());
         if (!accessPermitted) {
             throw new IllegalStateException(String.format("Access to language '%s' is not permitted. ", language.getId()));
         }

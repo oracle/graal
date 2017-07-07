@@ -6,7 +6,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
@@ -19,11 +18,10 @@ public class CancelExecution {
     public static void main(String[] args) throws InterruptedException {
         ExecutorService service = Executors.newFixedThreadPool(1);
         try {
-            Engine engine = Engine.create();
-            Context context = engine.getLanguage("js").createContext();
+            Context context = Context.create("js");
 
             // we submit a harmful infinite script to the executor
-            Future<Value> future = service.submit(() -> context.eval("while(true);"));
+            Future<Value> future = service.submit(() -> context.eval("js", "while(true);"));
 
             // wait some time to let the execution complete.
             Thread.sleep(1000);
@@ -46,7 +44,6 @@ public class CancelExecution {
                  */
                 assert polyglotException.isCancelled();
             }
-            engine.close();
         } finally {
             service.shutdown();
         }

@@ -24,6 +24,7 @@
  */
 package org.graalvm.polyglot.impl;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -80,7 +81,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Value newValue(Object value, AbstractValueImpl impl);
 
-        public abstract Source newSource(Object impl);
+        public abstract Source newSource(String language, Object impl);
 
         public abstract SourceSection newSourceSection(Source source, Object impl);
 
@@ -111,7 +112,7 @@ public abstract class AbstractPolyglotImpl {
     }
 
     public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                    long maximumAllowedAllocationBytes, boolean useSystemProperties);
+                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine);
 
     public abstract AbstractSourceImpl getSourceImpl();
 
@@ -126,7 +127,7 @@ public abstract class AbstractPolyglotImpl {
             this.engineImpl = engineImpl;
         }
 
-        public abstract Source build(Object origin, URI uri, String name, String content, boolean interactive, boolean internal) throws IOException;
+        public abstract Source build(String language, Object origin, URI uri, String name, String content, boolean interactive, boolean internal) throws IOException;
 
         public abstract String getName(Object impl);
 
@@ -165,6 +166,10 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean equals(Object impl, Object otherImpl);
 
         public abstract boolean isInternal(Object impl);
+
+        public abstract String findLanguage(File file);
+
+        public abstract String findLanguage(String mimeType);
     }
 
     public abstract static class AbstractSourceSectionImpl {
@@ -248,8 +253,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract OptionDescriptors getOptions();
 
-        public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, Map<String, String> options, Map<String, String[]> arguments, Language primaryLanguage,
-                        AbstractLanguageImpl onlyLanguage);
+        public abstract Context createContext(OutputStream out, OutputStream err, InputStream in,
+                        Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages);
 
     }
 
