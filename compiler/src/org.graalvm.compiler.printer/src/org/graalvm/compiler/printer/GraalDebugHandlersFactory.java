@@ -28,6 +28,7 @@ import static org.graalvm.compiler.debug.DebugOptions.PrintGraphHost;
 import static org.graalvm.compiler.debug.DebugOptions.PrintXmlGraphPort;
 import static org.graalvm.compiler.debug.DebugOptions.ShowDumpFiles;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.InetSocketAddress;
@@ -117,7 +118,13 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
         return new CanonicalStringGraphPrinter(snippetReflection);
     }
 
-    public static String sanitizedFileName(String name) {
+    public static String sanitizedFileName(String n) {
+        /*
+         * First ensure that the name does not contain the directory separator (which would be
+         * considered a valid path).
+         */
+        String name = n.replace(File.separatorChar, '_');
+
         try {
             Paths.get(name);
             return name;
@@ -220,7 +227,7 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
                 // This means `id` is very long
                 String suffix = timestamp + ext;
                 int idLengthLimit = Math.min(MAX_FILE_NAME_LENGTH - suffix.length(), id.length());
-                fileName = id.substring(0, idLengthLimit) + suffix;
+                fileName = sanitizedFileName(id.substring(0, idLengthLimit) + suffix);
             } else {
                 if (label == null) {
                     fileName = sanitizedFileName(id + timestamp + ext);
