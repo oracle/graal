@@ -57,13 +57,10 @@ public final class Context implements AutoCloseable {
      * Evaluates a source in the primary language of the context.
      */
     public Value eval(Source source) {
-        if (primaryLanguage == null) {
-            throw new UnsupportedOperationException("This context was not created with a primary language. " +
-                            "Use Context.eval(language, source) or create the context using Language.createContext() instead.");
-        }
         return eval(primaryLanguage, source);
     }
 
+    @Deprecated
     public Value eval(CharSequence source) {
         if (primaryLanguage == null) {
             throw new UnsupportedOperationException("This context was not created with a primary language. " +
@@ -182,6 +179,10 @@ public final class Context implements AutoCloseable {
      */
     public void close() {
         close(false);
+    }
+
+    public static Builder newBuilder() {
+        return new Builder(Engine.create());
     }
 
     public static final class Builder {
