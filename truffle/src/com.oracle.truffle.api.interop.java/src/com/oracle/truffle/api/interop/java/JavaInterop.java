@@ -647,7 +647,7 @@ public final class JavaInterop {
     static Object toGuestObject(Object obj, Object languageContext) {
         assert !isPrimitive(obj);
         EngineSupport engine = ACCESSOR.engine();
-        if (engine == null) {
+        if (engine == null || languageContext == null) {
             assert !(obj instanceof Value || obj instanceof Proxy);
             return asTruffleObject(obj, languageContext);
         }
