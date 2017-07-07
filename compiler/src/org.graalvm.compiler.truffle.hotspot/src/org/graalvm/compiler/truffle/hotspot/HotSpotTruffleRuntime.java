@@ -310,7 +310,8 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         PhaseSuite<HighTierContext> graphBuilderSuite = getGraphBuilderSuite(codeCache, suitesProvider);
         Backend backend = getHotSpotBackend();
         CompilationResultBuilderFactory factory = getOptimizedCallTargetInstrumentationFactory(backend.getTarget().arch.getName());
-        return compileGraph(graph, javaMethod, providers, backend, graphBuilderSuite, OptimisticOptimizations.ALL, graph.getProfilingInfo(), suites, lirSuites, new CompilationResult(), factory);
+        return compileGraph(graph, javaMethod, providers, backend, graphBuilderSuite, OptimisticOptimizations.ALL, graph.getProfilingInfo(), suites, lirSuites, new CompilationResult(compilationId),
+                        factory);
     }
 
     private HotSpotBackend getHotSpotBackend() {
