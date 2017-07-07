@@ -42,10 +42,12 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.NeedsStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "source")})
 @NodeFields({@NodeField(name = "length", type = int.class), @NodeField(name = "alignment", type = int.class)})
+@NeedsStack
 public abstract class LLVMStructByValueNode extends LLVMExpressionNode {
     private final LLVMProfiledMemMove profiledMemMove = new LLVMProfiledMemMove();
 
