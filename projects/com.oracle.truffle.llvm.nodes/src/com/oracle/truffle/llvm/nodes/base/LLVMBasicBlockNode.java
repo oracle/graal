@@ -66,6 +66,7 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
     private final String blockName;
 
     private final BranchProfile controlFlowExceptionProfile = BranchProfile.create();
+    private final BranchProfile blockEntered = BranchProfile.create();
 
     @CompilationFinal(dimensions = 1) private final long[] successorExecutionCount;
     @CompilationFinal private long totalExecutionCount = 0;
@@ -86,6 +87,7 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
 
     @ExplodeLoop
     public void executeStatements(VirtualFrame frame) {
+        blockEntered.enter();
         for (int i = 0; i < statements.length; i++) {
             LLVMExpressionNode statement = statements[i];
             try {
