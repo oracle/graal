@@ -231,11 +231,11 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
         }
 
         /**
-         * Get the current {@link PolyglotContext}. This should only be called from code that is
-         * executed by the {@link TruffleRunner}. In particular, this method can not be called from
-         * static initializers and constructors of test classes. Use {@link Before} or
-         * {@link BeforeClass} methods instead, or put the initialization code into the constructor
-         * of the {@link RootNode} of the test.
+         * Get the current {@link Context}. This should only be called from code that is executed by
+         * the {@link TruffleRunner}. In particular, this method can not be called from static
+         * initializers and constructors of test classes. Use {@link Before} or {@link BeforeClass}
+         * methods instead, or put the initialization code into the constructor of the
+         * {@link RootNode} of the test.
          *
          * @since 0.27
          */
