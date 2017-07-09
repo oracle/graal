@@ -244,6 +244,7 @@ public final class Context implements AutoCloseable {
         return new Builder(onlyLanguages);
     }
 
+    @SuppressWarnings("hiding")
     public static final class Builder {
 
         private Engine sharedEngine;
@@ -287,19 +288,46 @@ public final class Context implements AutoCloseable {
             return this;
         }
 
-        public Builder setOut(OutputStream out) {
+        public Builder out(OutputStream out) {
+            Objects.requireNonNull(out);
             this.out = out;
             return this;
         }
 
-        public Builder setErr(OutputStream err) {
+        /**
+         * @deprecated use {@link #out(OutputStream)} instead.
+         */
+        @Deprecated
+        public Builder setOut(OutputStream out) {
+            return out(out);
+        }
+
+        public Builder err(OutputStream err) {
+            Objects.requireNonNull(err);
             this.err = err;
             return this;
         }
 
-        public Builder setIn(InputStream in) {
+        /**
+         * @deprecated use {@link #err(OutputStream)} instead.
+         */
+        @Deprecated
+        public Builder setErr(OutputStream err) {
+            return err(err);
+        }
+
+        public Builder in(InputStream in) {
+            Objects.requireNonNull(in);
             this.in = in;
             return this;
+        }
+
+        /**
+         * @deprecated use {@link #in(InputStream)} instead.
+         */
+        @Deprecated
+        public Builder setIn(InputStream in) {
+            return in(in);
         }
 
         /**
@@ -313,7 +341,7 @@ public final class Context implements AutoCloseable {
          * @see Engine.Builder#setOption(String, String) To specify an option for the engine.
          * @since 1.0
          */
-        public Builder setOption(String key, String value) {
+        public Builder option(String key, String value) {
             Objects.requireNonNull(key);
             Objects.requireNonNull(value);
             if (this.options == null) {
@@ -331,11 +359,27 @@ public final class Context implements AutoCloseable {
          * @see #setOption(String, String) To set a single option.
          * @since 1.0
          */
-        public Builder setOptions(Map<String, String> options) {
+        public Builder options(Map<String, String> options) {
             for (String key : options.keySet()) {
                 setOption(key, options.get(key));
             }
             return this;
+        }
+
+        /**
+         * @deprecated use {@link #option(String, String)} instead.
+         */
+        @Deprecated
+        public Builder setOption(String key, String value) {
+            return option(key, value);
+        }
+
+        /**
+         * @deprecated use {@link #options(Map)} instead
+         */
+        @Deprecated
+        public Builder setOptions(Map<String, String> options) {
+            return options(options);
         }
 
         /**
@@ -345,14 +389,26 @@ public final class Context implements AutoCloseable {
          * {@link Context#eval(Source) evaluated} guest language scripts. Passing no arguments to a
          * language then it is equivalent to providing an empty arguments array.
          *
-         * @param languageId the languageId available in the engine.
+         * @param language the language id of the primary language.
          * @param args an array of arguments passed to the guest language program
          * @throws IllegalArgumentException if an invalid language id was specified.
          * @since 1.0
          */
-        public Builder setArguments(String languageId, String[] args) {
+        public Builder arguments(String language, String[] args) {
+            Objects.requireNonNull(language);
             Objects.requireNonNull(args);
-            return setArguments(sharedEngine.getLanguage(languageId), args);
+            String[] newArgs = args;
+            if (args.length > 0) {
+                newArgs = new String[args.length];
+                for (int i = 0; i < args.length; i++) { // defensive copy
+                    newArgs[i] = Objects.requireNonNull(args[i]);
+                }
+            }
+            if (arguments == null) {
+                arguments = new HashMap<>();
+            }
+            arguments.put(language, newArgs);
+            return this;
         }
 
         /**
@@ -367,55 +423,22 @@ public final class Context implements AutoCloseable {
             if (onlyLanguages == null || onlyLanguages.length != 1) {
                 throw new IllegalArgumentException("No primary language in use. Use setArguments(String, STring[]) instead.");
             }
-            setArguments(onlyLanguages[0], args);
-            return this;
-        }
-
-        /**
-         * Sets the guest language application arguments for a language {@link Context context}.
-         * Application arguments are typcially made available to guest language implementations. It
-         * depends on the language whether and how they are accessible within the
-         * {@link Context#eval(Source) evaluated} guest language scripts. Passing no arguments to a
-         * language then it is equivalent to providing an empty arguments array.
-         *
-         * @param languageId the languageId available in the engine.
-         * @param args an array of arguments passed to the guest language program
-         * @since 1.0
-         * @deprecated use {@link #setArguments(String, String[])} instead.
-         */
-        @Deprecated
-        public Builder setArguments(Language language, String[] args) {
-            Objects.requireNonNull(language);
-            Objects.requireNonNull(args);
-            String[] newArgs = args;
-            if (args.length > 0) {
-                newArgs = new String[args.length];
-                for (int i = 0; i < args.length; i++) { // defensive copy
-                    newArgs[i] = Objects.requireNonNull(args[i]);
-                }
-            }
-            if (language.getEngine() != sharedEngine) {
-                throw new IllegalArgumentException("Invalid language from another engine provided.");
-            }
-            if (arguments == null) {
-                arguments = new HashMap<>();
-            }
-            arguments.put(language.getId(), newArgs);
+            arguments(onlyLanguages[0], args);
             return this;
         }
 
         public Context build() {
             Engine engine = this.sharedEngine;
             if (engine == null) {
-                org.graalvm.polyglot.Engine.Builder engineBuilder = Engine.newBuilder().setOptions(options == null ? Collections.emptyMap() : options);
+                org.graalvm.polyglot.Engine.Builder engineBuilder = Engine.newBuilder().options(options == null ? Collections.emptyMap() : options);
                 if (out != null) {
-                    engineBuilder.setOut(out);
+                    engineBuilder.out(out);
                 }
                 if (err != null) {
-                    engineBuilder.setErr(err);
+                    engineBuilder.err(err);
                 }
                 if (in != null) {
-                    engineBuilder.setIn(in);
+                    engineBuilder.in(in);
                 }
                 engineBuilder.setBoundEngine(true);
                 engine = engineBuilder.build();
