@@ -69,16 +69,16 @@ public class SLSharedCodeSeparatedEnvTest {
     @Before
     public void initializeEngines() {
         osRuntime = new ByteArrayOutputStream();
-        engine = Engine.newBuilder().setOut(osRuntime).setErr(osRuntime).build();
+        engine = Engine.newBuilder().out(osRuntime).err(osRuntime).build();
 
         os1 = new ByteArrayOutputStream();
         os2 = new ByteArrayOutputStream();
 
         int instances = SLLanguage.counter;
         // @formatter:off
-        e1 = engine.getLanguage("sl").createContextBuilder().setOut(os1).build();
+        e1 = Context.newBuilder("sl").engine(engine).out(os1).build();
         e1.exportSymbol("extra", 1);
-        e2 = engine.getLanguage("sl").createContextBuilder().setOut(os2).build();
+        e2 = Context.newBuilder("sl").engine(engine).out(os2).build();
         e2.exportSymbol("extra", 2);
         assertEquals("One SLLanguage instance created", instances + 1, SLLanguage.counter);
     }
@@ -97,11 +97,11 @@ public class SLSharedCodeSeparatedEnvTest {
             "}";
         // @formatter:on
 
-        e1.eval(sayHello);
+        e1.eval("sl", sayHello);
         assertEquals("Ahoj1\n", os1.toString("UTF-8"));
         assertEquals("", os2.toString("UTF-8"));
 
-        e2.eval(sayHello);
+        e2.eval("sl", sayHello);
         assertEquals("Ahoj1\n", os1.toString("UTF-8"));
         assertEquals("Ahoj2\n", os2.toString("UTF-8"));
     }
@@ -117,11 +117,11 @@ public class SLSharedCodeSeparatedEnvTest {
                         "}";
         // @formatter:on
 
-        e1.eval(sayHello);
+        e1.eval("sl", sayHello);
         assertEquals("Ahoj1\n", os1.toString("UTF-8"));
         assertEquals("", os2.toString("UTF-8"));
 
-        e2.eval(sayHello);
+        e2.eval("sl", sayHello);
         assertEquals("Ahoj1\n", os1.toString("UTF-8"));
         assertEquals("Ahoj2\n", os2.toString("UTF-8"));
 

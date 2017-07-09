@@ -29,6 +29,7 @@ import java.util.Collections;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
 
@@ -47,14 +48,14 @@ public class ProfilerRetrievalTest {
 
     @Test
     public void testFromLanguage() {
-        Value profilerValue = Engine.create().getLanguage(LanguageThatNeedsProfiler.ID).createContext().lookup("profiler");
+        Value profilerValue = Context.create(LanguageThatNeedsProfiler.ID).lookup(LanguageThatNeedsProfiler.ID, "profiler");
         Assert.assertTrue(profilerValue.asBoolean());
     }
 
     @Test
     public void testFromInstrument() {
         InstrumentThatNeedsProfiler.haveProfiler = false;
-        Engine.newBuilder().setOption(InstrumentThatNeedsProfiler.ID + ".prof", "").build();
+        Engine.newBuilder().option(InstrumentThatNeedsProfiler.ID + ".prof", "").build();
         Assert.assertTrue(InstrumentThatNeedsProfiler.haveProfiler);
     }
 
