@@ -37,8 +37,8 @@ import java.util.Objects;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceImpl;
 
 /**
- * Representation of a source code unit and its contents. Source instances are created by using one
- * of existing factory methods, each loading the file from a different source/medium.
+ * Representation of a source code unit and its contents that can be evaluated in an execution
+ * {@link Context context}. Each source is assocated with the the id of the language.
  *
  * <h3>From a file on disk</h3>
  *
@@ -93,7 +93,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceImpl;
  * derive values of these attributes from the location and/or content of the {@link Source} object.
  * However, to give the user that creates the source control over these attributes, the API offers
  * an easy way to alter values of these attributes by creating clones of the source via
- * {@link Builder#setName(java.lang.String)}, {@link Builder#setURI(java.net.URI)} methods.
+ * {@link Builder#name(java.lang.String)}, {@link Builder#uri(java.net.URI)} methods.
  * </p>
  * <p>
  * While {@link Source} is immutable, the world around it is changing. The content of a file from
@@ -410,16 +410,6 @@ public final class Source {
     }
 
     /**
-     * Creates a new
-     *
-     * @throws IOException if an error occured during loading of hte file.
-     * @since 1.0
-     */
-    public static Source create(String language, File source) throws IOException {
-        return newBuilder(language, source).build();
-    }
-
-    /**
      * Finds a language for a given {@link File file} instance. Typically the language is identified
      * using the file extension and/or using it contents. Returns <code>null</code> if the language
      * of the given file could not be detected.
@@ -592,7 +582,7 @@ class SourceSnippets {
      assert name.endsWith(".java") : "Imagine proper file";
 
      String language = Source.findLanguage(file);
-     Source source = Source.create(language, file);
+     Source source = Source.newBuilder(language, file).build();
 
      assert file.getName().equals(source.getName());
      assert file.getPath().equals(source.getPath());

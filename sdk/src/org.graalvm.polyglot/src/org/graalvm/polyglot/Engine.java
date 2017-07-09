@@ -185,10 +185,10 @@ public final class Engine implements AutoCloseable {
     /**
      * Closes this engine and frees up allocated native resources. If there are still open context
      * instances that were created using this engine and they are currently not beeing executed then
-     * all they will be closed automatically. If an an attempt to close the engine was successful
-     * then consecutive calls to close have no effect. If a context got cancelled then the cancelled
-     * thread will throw a {@link PolyglotException} where the
-     * {@link PolyglotException#isCancelled() cancelled} flag is set.
+     * they will be closed automatically. If an attempt to close an engine was successful then
+     * consecutive calls to close have no effect. If a context is cancelled then the currently
+     * executing thread will throw a {@link PolyglotException}. The exception indicates that it was
+     * {@link PolyglotException#isCancelled() cancelled}.
      *
      * @param cancelIfExecuting if <code>true</code> then currently executing contexts will be
      *            cancelled, else an {@link IllegalStateException} is thrown.

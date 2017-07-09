@@ -184,14 +184,12 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Closes this context and frees up potentially allocated native resources. Languages might not
-     * be able to free all native resources allocated by a context automatically, therefore it is
-     * recommended to close contexts after use. If the source {@link #getEngine() engine} is closed
-     * then this context is closed automatically. If a context got cancelled then the cancelled
-     * thread will throw a {@link PolyglotException} where the
-     * {@link PolyglotException#isCancelled() cancelled} flag is set. Please note that cancelling a
-     * single context can negatively affect the performance of other executing contexts of the same
-     * engine while the cancellation request is processed.
+     * Closes this context and frees up potentially allocated native resources. A context is not
+     * able to free all native resources allocated automatically, therefore it is necessary to close
+     * contexts after use. If a context is cancelled then the currently executing thread will throw
+     * a {@link PolyglotException}. The exception indicates that it was
+     * {@link PolyglotException#isCancelled() cancelled}. Please note that cancelling a single
+     * context can negatively affect the performance of other executing contexts of the same engine.
      * <p>
      * If internal errors occur during closing of the language then they are printed to the
      * configured {@link Builder#setErr(OutputStream) error output stream}. If a context was closed
