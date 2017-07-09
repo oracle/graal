@@ -324,7 +324,8 @@ public final class Context implements AutoCloseable {
 
         /**
          * Sets a class filter that allows to limit the classes that are allowed to be loaded by
-         * guest languages.
+         * guest languages. If the filter returns <code>true</code> then the class is accessible,
+         * else it is not accessible and throws an guest language error when accessed.
          *
          * @param classFilter a predicate that returns <code>true</code> or <code>false</code> for a
          *            java qualified class name.
