@@ -353,7 +353,7 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
                 languageContext.ensureInitialized();
                 target = LANGUAGE.parse(languageContext.env, source, null);
                 if (target == null) {
-                    target = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(languageContext.toGuestValue(null)));
+                    throw new IllegalStateException(String.format("Parsing resulted in a null CallTarget for %s.", source));
                 }
                 languageContext.sourceCache.put(source, target);
             }
