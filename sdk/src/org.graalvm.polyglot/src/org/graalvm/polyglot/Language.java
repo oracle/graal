@@ -67,7 +67,7 @@ public final class Language {
     }
 
     /**
-     * Retruns a human readable name of the language implementation.
+     * Gets a human readable name of the language implementation.
      *
      * @since 1.0
      */
