@@ -53,20 +53,14 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
  * the installed {@link #getLanguages() guest languages}, {@link #getInstruments() instruments} and
  * their available options.
  * <p>
- * {@link #create()Creating } an engine explicitly is useful if just meta-data needs to be accessed
- * and no guest language code needs to be executed. In addition, it can be used to share common
- * configuration between multiple {@link Context context} instances. For that, first a new engine
- * instance needs to be configured and created using {@link #newBuilder()}. Then the engine can be
- * {@link Context.Builder#engine(Engine) provided} when the context is built. The options for
- * contexts that were created using a shared engine are limited to language options only. In this
- * configuration engine, compiler and instrument options can only be set via the engine.
+ * By default every context creates its own {@link Engine engine} instance implicitely when
+ * {@link Context.Builder#build() instantiated}. Multiple contexts can share the same engine using
+ * {@link Context.Builder#engine(Engine) with the context builder}. If contexts share the same
+ * engine then they share instruments and configuration. Also, {@link Value value} instances can
+ * only be exchanged between contexts that are associated with same engine.
  * <p>
- * An instrument alters and/or monitors the execution of guest language source code. Common examples
- * for instruments are debuggers, profilers or monitoring tools. Instruments are enabled via
- * {@link Instrument#getOptions() options} passed to the {@link Builder#setOption(String, String)
- * engine} when the engine or context is constructed.
- *
- * TODO
+ * It can be useful to {@link Engine#create() create} an engine instance without a context to only
+ * access metadata for installed languages, instruments and their available options.
  *
  * @since 1.0
  */
@@ -108,10 +102,19 @@ public final class Engine implements AutoCloseable {
         return impl.getLanguages();
     }
 
-    public Instrument getInstrument(String id) {
-        return impl.getInstrument(id);
+    public Instrument getInstrument(String instrument) {
+        return impl.getInstrument(instrument);
     }
 
+    /**
+     * Gets all installed instruments of this engine. An instrument alters and/or monitors the
+     * execution of guest language source code. Common examples for instruments are debuggers,
+     * profilers or monitoring tools. Instruments are enabled via {@link Instrument#getOptions()
+     * options} passed to the {@link Builder#option(String, String) engine} when the engine or
+     * context is constructed.
+     *
+     * @since 1.0
+     */
     public Map<String, Instrument> getInstruments() {
         return impl.getInstruments();
     }
@@ -141,9 +144,8 @@ public final class Engine implements AutoCloseable {
      *
      * @see Language#getOptions() To get a list of options for a language.
      * @see Instrument#getOptions() To get a list of options for an instrument.
-     * @see Builder#setOption(String, String) To set an option for an engine, language or
-     *      instrument.
-     * @see Context.Builder#setOption(String, String) To set an option for a context.
+     * @see Builder#option(String, String) To set an option for an engine, language or instrument.
+     * @see Context.Builder#option(String, String) To set an option for a context.
      *
      * @since 1.0
      */
