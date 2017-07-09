@@ -47,7 +47,7 @@ public final class Language {
 
     /**
      * Gets the primary identification string of this language. The language id is used as the
-     * primary way of identifying languages in the polyglot API.
+     * primary way of identifying languages in the polyglot API. (eg. "js")
      *
      * @returns a language id string
      * @since 1.0
@@ -57,7 +57,7 @@ public final class Language {
     }
 
     /**
-     * Gets a human readable name of the language.
+     * Gets a human readable name of the language. (eg. "JavaScript")
      *
      * @returns this language name
      * @since 1.0
@@ -67,7 +67,8 @@ public final class Language {
     }
 
     /**
-     * Gets a human readable name of the language implementation.
+     * Gets a human readable name of the language implementation (eg. "Graal.JS"). Returns
+     * <code>null</code> if no implementation name was specified.
      *
      * @since 1.0
      */

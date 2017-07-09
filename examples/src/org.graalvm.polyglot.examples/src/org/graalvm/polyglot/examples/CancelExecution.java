@@ -23,12 +23,12 @@ public class CancelExecution {
             // we submit a harmful infinite script to the executor
             Future<Value> future = service.submit(() -> context.eval("js", "while(true);"));
 
-            // wait some time to let the execution complete.
+            // wait some time to let the execution start.
             Thread.sleep(1000);
 
             /*
              * closes the context and cancels the running execution. This can be done on any
-             * parallel thread. Alternatively Engine.close(true) can be used to close all running
+             * parallel thread. Alternatively context.close(true) can be used to close all running
              * contexts of an engine.
              */
             context.close(true);

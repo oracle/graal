@@ -189,10 +189,11 @@ public final class Context implements AutoCloseable {
      * contexts after use. If a context is cancelled then the currently executing thread will throw
      * a {@link PolyglotException}. The exception indicates that it was
      * {@link PolyglotException#isCancelled() cancelled}. Please note that cancelling a single
-     * context can negatively affect the performance of other executing contexts of the same engine.
+     * context can negatively affect the performance of other executing contexts constructed with
+     * the same engine.
      * <p>
      * If internal errors occur during closing of the language then they are printed to the
-     * configured {@link Builder#setErr(OutputStream) error output stream}. If a context was closed
+     * configured {@link Builder#err(OutputStream) error output stream}. If a context was closed
      * then all its methods will throw an {@link IllegalStateException} when invoked. If an an
      * attempt to close a context was successful then consecutive calls to close have no effect.
      *
@@ -208,13 +209,12 @@ public final class Context implements AutoCloseable {
     /**
      * Closes this context and frees up potentially allocated native resources. Languages might not
      * be able to free all native resources allocated by a context automatically, therefore it is
-     * recommended to close contexts after use. If the source {@link #getEngine() engine} is closed
-     * then this context is closed automatically. If the context is currently beeing executed on
+     * recommended to close contexts after use. If the context is currently beeing executed on
      * another thread then an {@link IllegalStateException} is thrown. To close concurrently
      * executing contexts see {@link #close(boolean)}.
      * <p>
      * If internal errors occur during closing of the language then they are printed to the
-     * configured {@link Builder#setErr(OutputStream) error output stream}. If a context was closed
+     * configured {@link Builder#err(OutputStream) error output stream}. If a context was closed
      * then all its methods will throw an {@link IllegalStateException} when invoked. If an an
      * attempt to close a context was successful then consecutive calls to close have no effect.
      *
