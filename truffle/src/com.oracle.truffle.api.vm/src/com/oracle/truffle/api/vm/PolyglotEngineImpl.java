@@ -29,6 +29,7 @@ import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 import static com.oracle.truffle.api.vm.VMAccessor.NODES;
 import static com.oracle.truffle.api.vm.VMAccessor.SPI;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Path;
@@ -470,7 +471,11 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         }
         Path path = Paths.get(filePath);
 
-        String languageId = PolyglotSourceImpl.findLanguageImpl(path);
+        String languageId = null;
+        try {
+            languageId = PolyglotSourceImpl.findLanguageImpl(path);
+        } catch (IOException e) {
+        }
         if (languageId != null) {
             return idToPublicLanguage.get(languageId);
         }

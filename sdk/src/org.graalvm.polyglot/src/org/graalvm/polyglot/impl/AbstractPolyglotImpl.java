@@ -167,7 +167,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean isInternal(Object impl);
 
-        public abstract String findLanguage(File file);
+        public abstract String findLanguage(File file) throws IOException;
 
         public abstract String findLanguage(String mimeType);
     }

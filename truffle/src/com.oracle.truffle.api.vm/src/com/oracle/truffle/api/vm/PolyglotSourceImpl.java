@@ -166,18 +166,14 @@ class PolyglotSourceImpl extends AbstractSourceImpl {
     }
 
     @Override
-    public String findLanguage(File file) {
+    public String findLanguage(File file) throws IOException {
         Objects.requireNonNull(file);
         Path path = Paths.get(file.toURI());
         return findLanguageImpl(path);
     }
 
-    static String findLanguageImpl(Path path) {
-        String mimeType = null;
-        try {
-            mimeType = getMimeType(path);
-        } catch (IOException e) {
-        }
+    static String findLanguageImpl(Path path) throws IOException {
+        String mimeType = getMimeType(path);
 
         if (mimeType != null) {
             LanguageCache cache = LanguageCache.languages().get(mimeType);

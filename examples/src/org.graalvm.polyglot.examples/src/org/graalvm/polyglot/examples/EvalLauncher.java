@@ -70,7 +70,7 @@ public class EvalLauncher {
             return;
         }
 
-        Context context = Context.newBuilder().setOptions(options).build();
+        Context context = Context.newBuilder().options(options).build();
 
         for (String script : scripts) {
             int index = script.indexOf(':');
