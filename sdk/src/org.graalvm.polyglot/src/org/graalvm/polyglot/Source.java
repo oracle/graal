@@ -63,47 +63,39 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceImpl;
  * <h3>Source from a literal text</h3>
  *
  * An anonymous immutable code snippet can be created from a string via the
- * {@link Source#newBuilder(java.lang.CharSequence) } factory method: <br>
+ * {@link Source#newBuilder(String, java.lang.CharSequence, String) } factory method: <br>
  *
  * {@link SourceSnippets#fromAString}
- *
- * the created {@link Source} doesn't have associated {@link #getMimeType() mime type}. One has to
- * explicitly attach via {@link Builder#mimeType(java.lang.String)} method. The created
- * {@link Source} doesn't have associated {@link #getName() name}, one has to attach it via
- * {@link Builder#setName(java.lang.String)} method.
  *
  * <h3>Reading from a stream</h3>
  *
  * If one has a {@link Reader} one can convert its content into a {@link Source} via
- * {@link Source#newBuilder(java.io.Reader)} method: <br>
+ * {@link Source#newBuilder(String, java.io.Reader, String)} method: <br>
  *
  * {@link SourceSnippets#fromReader}
  *
- * the content is <em>read eagerly</em> once the {@link Builder#build()} method is called. It
- * doesn't have associated {@link #getName() name}. The name should be explicitly provided by
- * {@link Builder#setName(java.lang.String) } method.
- *
+ * the content is <em>read eagerly</em> once the {@link Builder#build()} method is called.
  *
  * <h2>Immutability of {@link Source}</h2>
  *
  * <p>
  * {@link Source} is an immutable object - once (lazily) loaded, it remains the same. The source
- * object can be associated with various attributes like {@link #getName()} , {@link #getURI() ()},
- * {@link #getMimeType()} and these are immutable as well. The system makes the best effort to
- * derive values of these attributes from the location and/or content of the {@link Source} object.
- * However, to give the user that creates the source control over these attributes, the API offers
- * an easy way to alter values of these attributes by creating clones of the source via
+ * object can be associated with various attributes like {@link #getName()} and {@link #getURI()}
+ * and these are immutable as well. The system makes the best effort to derive values of these
+ * attributes from the location and/or content of the {@link Source} object. However, to give the
+ * user that creates the source control over these attributes, the API offers an easy way to alter
+ * values of these attributes by creating clones of the source via
  * {@link Builder#name(java.lang.String)}, {@link Builder#uri(java.net.URI)} methods.
  * </p>
  * <p>
  * While {@link Source} is immutable, the world around it is changing. The content of a file from
- * which a {@link Source#newBuilder(java.io.File) source has been read} may change few seconds
- * later. How can we balance the immutability with ability to see real state of the world? In this
- * case, one can load of a new version of the {@link Source#newBuilder(java.io.File) source for the
- * same file}. The newly loaded {@link Source} will be different than the previous one, however it
- * will have the same attributes ({@link #getName()}. There isn't much to do about this - just keep
- * in mind that there can be multiple different {@link Source} objects representing the same
- * {@link #getURI() source origin}.
+ * which a {@link Source#newBuilder(String, java.io.File) source has been read} may change few
+ * seconds later. How can we balance the immutability with ability to see real state of the world?
+ * In this case, one can load of a new version of the {@link Source#newBuilder(String, File) source
+ * for the same file}. The newly loaded {@link Source} will be different than the previous one,
+ * however it will have the same attributes ({@link #getName()}. There isn't much to do about this -
+ * just keep in mind that there can be multiple different {@link Source} objects representing the
+ * same {@link #getURI() source origin}.
  * </p>
  *
  * @since 1.0
@@ -169,8 +161,8 @@ public final class Source {
      * provided by an entity which is able to interactively read output and provide an input during
      * the source execution; that can be a user I/O through an interactive shell for instance.
      * <p>
-     * One can specify whether a source is interactive when {@link Builder#setInteractive() building
-     * it}.
+     * One can specify whether a source is interactive when {@link Builder#interactive(boolean)
+     * building it}.
      *
      * @return whether this source is marked as <em>interactive</em>
      * @since 1.0
@@ -315,7 +307,8 @@ public final class Source {
      * On the other hand, tools should be free to make <em>internal</em> sources visible in
      * (possibly privileged) modes that are useful for language implementors.
      * <p>
-     * One can specify whether a source is internal when {@link Builder#setInternal() building it}.
+     * One can specify whether a source is internal when {@link Builder#internal(boolean) building
+     * it}.
      *
      * @return whether this source is marked as <em>internal</em>
      * @since 1.0

@@ -47,10 +47,10 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
  * accessible in the context. If no language is passed then all installed languages are accessible.
  * <p>
  * To customize the configuration a context builder can be created using
- * {@link #newBuilder(String...)}. In addtion to the {@link #create(String...)} method, the context
+ * {@link #newBuilder(String...)}. In addition to the {@link #create(String...)} method, the context
  * builder allows to configure the input, error and output streams, engine and context options as
  * well as application arguments. A context can be created using a {@link Builder#engine(Engine)
- * shared engine} which allows share configuration and instruments between multiple execution
+ * shared engine} which allows to share configuration and instruments between multiple execution
  * contexts. See {@link Engine} for further details.
  * <p>
  * After use a context needs to be {@link #close() closed} in order to free all allocated resources.
