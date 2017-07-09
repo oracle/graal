@@ -24,19 +24,6 @@
  */
 package com.oracle.truffle.tck;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.tck.TruffleRunner.Inject;
-import com.oracle.truffle.tck.TruffleRunner.RunWithPolyglotRule;
-import com.oracle.truffle.tck.TruffleRunner.Warmup;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -44,7 +31,8 @@ import java.lang.annotation.Target;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import org.graalvm.polyglot.PolyglotContext;
+
+import org.graalvm.polyglot.Context;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -68,6 +56,20 @@ import org.junit.runners.model.Statement;
 import org.junit.runners.parameterized.BlockJUnit4ClassRunnerWithParameters;
 import org.junit.runners.parameterized.ParametersRunnerFactory;
 import org.junit.runners.parameterized.TestWithParameters;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.tck.TruffleRunner.Inject;
+import com.oracle.truffle.tck.TruffleRunner.RunWithPolyglotRule;
+import com.oracle.truffle.tck.TruffleRunner.Warmup;
 
 /**
  * JUnit test runner for unit testing Truffle AST interpreters.
@@ -209,7 +211,7 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
      */
     public static final class RunWithPolyglotRule implements TestRule {
 
-        PolyglotContext context = null;
+        Context context = null;
         Env testEnv = null;
 
         /**
@@ -237,7 +239,7 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
          *
          * @since 0.27
          */
-        public PolyglotContext getPolyglotContext() {
+        public Context getPolyglotContext() {
             assert context != null;
             return context;
         }
