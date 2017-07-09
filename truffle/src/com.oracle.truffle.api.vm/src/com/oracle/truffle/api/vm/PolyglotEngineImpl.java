@@ -658,7 +658,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
         if (boundEngine && !contexts.isEmpty()) {
             throw new IllegalArgumentException("Automatically created engines cannot be used to create more than one context. " +
-                            "Use Engine.newBuilder().build() to construct it and pass the engine using Context.newBuilder().engine(engine).build().");
+                            "Use Engine.newBuilder().build() to construct a new engine and pass it using Context.newBuilder().engine(engine).build().");
         }
 
         Set<String> allowedLanguages;

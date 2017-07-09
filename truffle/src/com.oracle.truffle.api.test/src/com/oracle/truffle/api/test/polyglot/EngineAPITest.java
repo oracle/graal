@@ -189,4 +189,17 @@ public class EngineAPITest {
         Assert.assertTrue(context.initialize(LanguageSPITestLanguage.ID));
         context.close();
     }
+
+    @Test
+    public void testCreateContextWithAutomaticEngine() {
+        Context context = Context.create();
+
+        try {
+            Context.newBuilder().engine(context.getEngine()).build();
+            fail();
+        } catch (IllegalArgumentException e) {
+
+        }
+
+    }
 }
