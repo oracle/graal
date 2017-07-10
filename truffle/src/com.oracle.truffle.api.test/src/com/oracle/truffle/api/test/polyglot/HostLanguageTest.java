@@ -39,7 +39,7 @@ public class HostLanguageTest {
 
     @Test
     public void testHostLanguage() {
-        Context context = Context.newBuilder("java").setOption("java.AllowClassLoading", "true").build();
+        Context context = Context.newBuilder("java").option("java.AllowClassLoading", "true").build();
         Language language = context.getEngine().getLanguage("java");
 
         assertTrue(language.isHost());
