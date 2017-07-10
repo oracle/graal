@@ -7,7 +7,7 @@ builds += [
 
   # Linux AMD64
   ${gateBootstrap8}            ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-8-linux-amd64"}
-  ${gateBootstrapLabs8}        ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-labsjdk8-linux-amd64"}, targets : [weekly]
+  ${gateBootstrapLabs8}        ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-labsjdk8-linux-amd64", targets : [weekly]}
   ${gateBootstrap8FullVerify}  ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrapfullverify-8-linux-amd64"}
   ${gateBootstrap9}            ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-9-linux-amd64"}
   ${gateBootstrap9EA}          ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-9EA-linux-amd64", targets : [weekly]}
