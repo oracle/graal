@@ -123,7 +123,7 @@ mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default', ['-server', '-XX:-Enabl
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'hosted', ['-server', '-XX:+EnableJVMCI']), _suite, 3)
 
 def build_jvmci_vm_variants(raw_name, raw_config_name, extra_args, variants, include_default=True, suite=None, priority=0):
-    for prefix, args in [('', ['-XX:+UseJVMCICompiler']), ('hosted-', [])]:
+    for prefix, args in [('', ['-XX:+UseJVMCICompiler']), ('hosted-', ['-XX:-UseJVMCICompiler'])]:
         extended_raw_config_name = prefix + raw_config_name
         extended_extra_args = extra_args + args
         if include_default:
