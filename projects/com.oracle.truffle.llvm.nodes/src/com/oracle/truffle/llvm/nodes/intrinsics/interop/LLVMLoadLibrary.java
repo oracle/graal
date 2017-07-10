@@ -27,13 +27,37 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.test.options;
+package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-public final class TestOptions {
-    public static final Boolean IGNORE_FORTRAN = Boolean.valueOf(System.getProperty("sulongtest.ignoreFortran"));
-    public static final String TEST_DISCOVERY_PATH = System.getProperty("sulongtest.testDiscoveryPath");
-    public static final String TEST_AOT_IMAGE = System.getProperty("sulongtest.testAOTImage");
-    public static final String TEST_AOT_ARGS = System.getProperty("sulongtest.testAOTArgs");
-    public static final String PROJECT_ROOT = System.getProperty("sulongtest.projectRoot");
-    public static final String TEST_SUITE_PATH = System.getProperty("sulongtest.testSuitePath");
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+
+@NodeChild(type = LLVMExpressionNode.class)
+public abstract class LLVMLoadLibrary extends LLVMIntrinsic {
+
+    @Specialization
+    public Object executeIntrinsic(String value) {
+        return value;
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization(limit = "2", guards = "constantPointer(id, cachedPtr)")
+    public Object executeIntrinsicCached(LLVMAddress id, @Cached("pointerOf(id)") long cachedPtr,
+                    @Cached("readString(id)") String cachedId, @Cached("getContext()") LLVMContext context) {
+        context.addLibraryToNativeLookup(cachedId);
+        return null;
+    }
+
+    @Specialization
+    public Object executeIntrinsic(LLVMAddress value, @Cached("getContext()") LLVMContext context) {
+        String name = LLVMTruffleIntrinsicUtil.readString(value);
+        context.addLibraryToNativeLookup(name);
+        return null;
+    }
+
 }
