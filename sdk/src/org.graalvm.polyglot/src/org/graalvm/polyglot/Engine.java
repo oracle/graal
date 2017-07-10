@@ -102,8 +102,8 @@ public final class Engine implements AutoCloseable {
         return impl.getLanguages();
     }
 
-    public Instrument getInstrument(String instrument) {
-        return impl.getInstrument(instrument);
+    public Instrument getInstrument(String instrumentId) {
+        return impl.getInstrument(instrumentId);
     }
 
     /**
