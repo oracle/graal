@@ -406,7 +406,8 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
                         closingLatch = new CountDownLatch(1);
 
                         // account for race condition when we already left the execution in
-                        // the meantime. in such a case #leave(Object) will never be called.
+                        // the meantime. in such a case #leave(Object) will not have called
+                        // close(false). Closing close(false) twice is fine.
                         if (enteredCount.get() <= 0) {
                             closeImpl(false);
                         }
