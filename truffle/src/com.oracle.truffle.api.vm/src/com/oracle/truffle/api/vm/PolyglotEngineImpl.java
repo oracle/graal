@@ -388,7 +388,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                     PolyglotContextImpl[] localContexts = contexts.toArray(new PolyglotContextImpl[0]);
                     for (PolyglotContextImpl context : localContexts) {
                         assert !context.closed : "should not be in the contexts list";
-                        Thread t = context.boundThread;
+                        Thread t = context.boundThread.get();
                         try {
                             boolean performClose = true;
                             if (t != null && t != Thread.currentThread()) {
@@ -550,7 +550,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                 enableCancel();
 
                 for (PolyglotContextImpl context : localContexts) {
-                    Thread thread = context.boundThread;
+                    Thread thread = context.boundThread.get();
                     if (thread != null && context.closingLatch != null) {
                         /*
                          * We send an interrupt to the thread to wake up and to run some guest
