@@ -53,10 +53,9 @@ suite = {
 
     "DACAPO" : {
       "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-bach.jar",
-        "http://softlayer.dl.sourceforge.net/project/dacapobench/9.12-bach/dacapo-9.12-bach.jar",
+        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-bach-patched.jar",
       ],
-      "sha1" : "2626a9546df09009f6da0df854e6dc1113ef7dd4",
+      "sha1" : "e39957904b7e79caf4fa54f30e8e4ee74d4e9e37",
     },
 
     "DACAPO_SCALA" : {
