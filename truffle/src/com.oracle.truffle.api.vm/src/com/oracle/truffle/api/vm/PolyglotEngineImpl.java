@@ -381,55 +381,51 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     }
 
     @Override
-    public void ensureClosed(boolean cancelIfExecuting, boolean ignoreCloseFailure) {
+    public synchronized void ensureClosed(boolean cancelIfExecuting, boolean ignoreCloseFailure) {
         if (!closed) {
-            synchronized (this) {
-                if (!closed) {
-                    PolyglotContextImpl[] localContexts = contexts.toArray(new PolyglotContextImpl[0]);
-                    for (PolyglotContextImpl context : localContexts) {
-                        assert !context.closed : "should not be in the contexts list";
-                        Thread t = context.boundThread.get();
-                        try {
-                            boolean performClose = true;
-                            if (t != null && t != Thread.currentThread()) {
-                                if (!ignoreCloseFailure) {
-                                    if (cancelIfExecuting) {
-                                        performClose = true;
-                                    } else {
-                                        throw new IllegalStateException(String.format("One of the context instances is currently executing on thread %s. " +
-                                                        "Set cancelIfExecuting to true to stop the execution on this thread.", t));
-                                    }
-                                } else {
-                                    performClose = false;
-                                }
+            PolyglotContextImpl[] localContexts = contexts.toArray(new PolyglotContextImpl[0]);
+            for (PolyglotContextImpl context : localContexts) {
+                assert !context.closed : "should not be in the contexts list";
+                Thread t = context.boundThread.get();
+                try {
+                    boolean performClose = true;
+                    if (t != null && t != Thread.currentThread()) {
+                        if (!ignoreCloseFailure) {
+                            if (cancelIfExecuting) {
+                                performClose = true;
+                            } else {
+                                throw new IllegalStateException(String.format("One of the context instances is currently executing on thread %s. " +
+                                                "Set cancelIfExecuting to true to stop the execution on this thread.", t));
                             }
-                            if (performClose) {
-                                context.closeImpl(cancelIfExecuting);
-                            }
-                        } catch (Throwable e) {
-                            if (!ignoreCloseFailure) {
-                                throw e;
-                            }
+                        } else {
+                            performClose = false;
                         }
                     }
-                    if (cancelIfExecuting) {
-                        getCancelHandler().waitForClosing(localContexts);
+                    if (performClose) {
+                        context.closeImpl(cancelIfExecuting);
                     }
-
-                    contexts.clear();
-                    for (Instrument instrument : idToInstrument.values()) {
-                        PolyglotInstrumentImpl instrumentImpl = (PolyglotInstrumentImpl) getAPIAccess().getImpl(instrument);
-                        try {
-                            instrumentImpl.ensureClosed();
-                        } catch (Throwable e) {
-                            if (!ignoreCloseFailure) {
-                                throw e;
-                            }
-                        }
+                } catch (Throwable e) {
+                    if (!ignoreCloseFailure) {
+                        throw e;
                     }
-                    closed = true;
                 }
             }
+            if (cancelIfExecuting) {
+                getCancelHandler().waitForClosing(localContexts);
+            }
+
+            contexts.clear();
+            for (Instrument instrument : idToInstrument.values()) {
+                PolyglotInstrumentImpl instrumentImpl = (PolyglotInstrumentImpl) getAPIAccess().getImpl(instrument);
+                try {
+                    instrumentImpl.ensureClosed();
+                } catch (Throwable e) {
+                    if (!ignoreCloseFailure) {
+                        throw e;
+                    }
+                }
+            }
+            closed = true;
         }
     }
 
