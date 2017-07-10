@@ -383,9 +383,29 @@ public abstract class TruffleInstrument {
          * @param value a known value of that language
          * @return a human readable string representation of the value.
          * @since 0.17
+         * @deprecated use
+         *             {@link #toString(com.oracle.truffle.api.nodes.LanguageInfo, java.lang.Object)}
+         *             and retrieve {@link LanguageInfo} from
+         *             <code>node.getRootNode().getLanguageInfo()</code>.
          */
+        @Deprecated
         public String toString(Node node, Object value) {
             final TruffleLanguage.Env env = getLangEnv(node);
+            return AccessorInstrumentHandler.langAccess().toStringIfVisible(env, value, false);
+        }
+
+        /**
+         * Uses the provided language to print a string representation of this value. The behavior
+         * of this method is undefined if a type unknown to the language is passed as a value.
+         *
+         * @param language a language
+         * @param value a known value of that language
+         * @return a human readable string representation of the value.
+         * @see #findLanguage(java.lang.Object)
+         * @since 0.27
+         */
+        public String toString(LanguageInfo language, Object value) {
+            final TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(language);
             return AccessorInstrumentHandler.langAccess().toStringIfVisible(env, value, false);
         }
 
@@ -399,9 +419,33 @@ public abstract class TruffleInstrument {
          * @param value a value to find the meta-object of
          * @return the meta-object, or <code>null</code>
          * @since 0.22
+         * @deprecated use
+         *             {@link #findMetaObject(com.oracle.truffle.api.nodes.LanguageInfo, java.lang.Object)}
+         *             and retrieve {@link LanguageInfo} from
+         *             <code>node.getRootNode().getLanguageInfo()</code>.
          */
+        @Deprecated
         public Object findMetaObject(Node node, Object value) {
             final TruffleLanguage.Env env = getLangEnv(node);
+            return AccessorInstrumentHandler.langAccess().findMetaObject(env, value);
+        }
+
+        /**
+         * Uses the provided language to find a meta-object of a value, if any. The meta-object
+         * represents a description of the object, reveals it's kind and it's features. Some
+         * information that a meta-object might define includes the base object's type, interface,
+         * class, methods, attributes, etc. When no meta-object is known, <code>null</code> is
+         * returned. For the best results, use the {@link #findLanguage(java.lang.Object) value's
+         * language}, if any.
+         *
+         * @param language a language
+         * @param value a value to find the meta-object of
+         * @return the meta-object, or <code>null</code>
+         * @see #findLanguage(java.lang.Object)
+         * @since 0.27
+         */
+        public Object findMetaObject(LanguageInfo language, Object value) {
+            final TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(language);
             return AccessorInstrumentHandler.langAccess().findMetaObject(env, value);
         }
 
@@ -412,10 +456,57 @@ public abstract class TruffleInstrument {
          * @param value a value to get the source location for
          * @return a source location of the object, or <code>null</code>
          * @since 0.22
+         * @deprecated use
+         *             {@link #findSourceLocation(com.oracle.truffle.api.nodes.LanguageInfo, java.lang.Object)}
+         *             and retrieve {@link LanguageInfo} from
+         *             <code>node.getRootNode().getLanguageInfo()</code>.
          */
+        @Deprecated
         public SourceSection findSourceLocation(Node node, Object value) {
             final TruffleLanguage.Env env = getLangEnv(node);
             return AccessorInstrumentHandler.langAccess().findSourceLocation(env, value);
+        }
+
+        /**
+         * Uses the provided language to find a source location where a value is declared, if any.
+         * For the best results, use the {@link #findLanguage(java.lang.Object) value's language},
+         * if any.
+         *
+         * @param language a language
+         * @param value a value to get the source location for
+         * @return a source location of the object, or <code>null</code>
+         * @see #findLanguage(java.lang.Object)
+         * @since 0.27
+         */
+        public SourceSection findSourceLocation(LanguageInfo language, Object value) {
+            final TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(language);
+            return AccessorInstrumentHandler.langAccess().findSourceLocation(env, value);
+        }
+
+        /**
+         * Find a language that created the value, if any. This method will return <code>null</code>
+         * for values representing a primitive value, or objects that are not associated with any
+         * language.
+         *
+         * @param value the value to find a language of
+         * @return the language, or <code>null</code> when there is no language associated with the
+         *         value.
+         * @since 0.27
+         */
+        public LanguageInfo findLanguage(Object value) {
+            if (value == null ||
+                            value instanceof Boolean ||
+                            value instanceof Byte ||
+                            value instanceof Short ||
+                            value instanceof Integer ||
+                            value instanceof Long ||
+                            value instanceof Float ||
+                            value instanceof Double ||
+                            value instanceof Character ||
+                            value instanceof String) {
+                return null;
+            }
+            return AccessorInstrumentHandler.engineAccess().getObjectLanguage(value, vmObject);
         }
 
         private static TruffleLanguage.Env getLangEnv(Node node) {
