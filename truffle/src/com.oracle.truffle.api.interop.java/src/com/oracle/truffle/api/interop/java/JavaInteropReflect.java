@@ -629,26 +629,4 @@ final class JavaInteropReflect {
         noUnderscore(sb.append('L'), type.getName());
         sb.append("_2");
     }
-
-    static String findFunctionalInterfaceMethodName(final Class<?> clazz) {
-        if (TruffleOptions.AOT) {
-            return null;
-        }
-
-        for (final Class<?> iface : clazz.getInterfaces()) {
-            if (iface.isAnnotationPresent(FunctionalInterface.class)) {
-                for (final Method m : iface.getMethods()) {
-                    if (Modifier.isAbstract(m.getModifiers())) {
-                        return m.getName();
-                    }
-                }
-            }
-        }
-
-        Class<?> superclass = clazz.getSuperclass();
-        if (superclass != null) {
-            return findFunctionalInterfaceMethodName(superclass);
-        }
-        return null;
-    }
 }

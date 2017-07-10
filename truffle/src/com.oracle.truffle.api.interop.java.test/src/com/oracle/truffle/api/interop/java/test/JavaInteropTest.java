@@ -522,16 +522,15 @@ public class JavaInteropTest {
     @Test
     public void functionalInterfaceOverridingObjectMethods() throws Exception {
         assertTrue("yes, it is", isJavaFunctionalInterface(FunctionalWithObjectMethodOverrides.class));
-        TruffleObject object = JavaInterop.asTruffleObject((FunctionalWithObjectMethodOverrides) (args) -> null);
+        TruffleObject object = JavaInterop.asTruffleObject((FunctionalWithObjectMethodOverrides) (args) -> args.length >= 1 ? args[0] : null);
         TruffleObject keysObject = ForeignAccess.sendKeys(Message.KEYS.createNode(), object);
         List<?> keyList = JavaInterop.asJavaObject(List.class, keysObject);
         assertArrayEquals(new Object[]{"call"}, keyList.toArray());
+        assertEquals(42, ForeignAccess.sendExecute(Message.createExecute(1).createNode(), object, 42));
     }
 
     @FunctionalInterface
     public interface FunctionalWithObjectMethodOverrides {
-        Object call(Object... args);
-
         @Override
         boolean equals(Object obj);
 
@@ -540,6 +539,8 @@ public class JavaInteropTest {
 
         @Override
         String toString();
+
+        Object call(Object... args);
     }
 
     @Test
