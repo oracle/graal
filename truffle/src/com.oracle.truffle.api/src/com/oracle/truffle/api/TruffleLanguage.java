@@ -897,6 +897,24 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Looks up symbol in the top-most scope of the language. Returns <code>null</code> if no
+         * symbol was found.
+         * <p>
+         * The returned object can either be <code>TruffleObject</code> (e.g. a native object from
+         * the other language) to support interoperability between languages, {@link String} or one
+         * of the Java primitive wrappers ( {@link Integer}, {@link Double}, {@link Byte},
+         * {@link Boolean}, etc.).
+         * <p>
+         *
+         * @param language the language too lookup. must not be null.
+         * @param symbolName the name of the symbol in the top-most scope.
+         * @since 0.27
+         */
+        public Object lookupSymbol(@SuppressWarnings("hiding") LanguageInfo language, String symbolName) {
+            return AccessAPI.engineAccess().lookupSymbol(vmObject, this, language, symbolName);
+        }
+
+        /**
          * Returns an iterable collection of global symbols that are exported for a given name.
          * Multiple languages may export a symbol with a particular name. This method is intended to
          * be used to disambiguate exported symbols. The objects returned from the iterable conform

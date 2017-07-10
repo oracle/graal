@@ -1663,6 +1663,12 @@ public class PolyglotEngine {
         }
 
         @Override
+        public Object lookupSymbol(Object vmObject, Env env, LanguageInfo targetLanguage, String symbolName) {
+            // not supported in PolyglotEngine.
+            return null;
+        }
+
+        @Override
         public void exportSymbol(Object vmObject, String symbolName, Object value) {
             Language language = (Language) vmObject;
             HashMap<String, Object> global = language.engine().globals;

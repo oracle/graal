@@ -118,6 +118,8 @@ public abstract class Accessor {
 
         public abstract Object importSymbol(Object vmObject, Env env, String symbolName);
 
+        public abstract Object lookupSymbol(Object vmObject, Env env, LanguageInfo language, String symbolName);
+
         public abstract boolean isMimeTypeSupported(Object languageShared, String mimeType);
 
         public abstract void registerDebugger(Object vm, Object debugger);

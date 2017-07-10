@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
@@ -253,7 +254,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract OptionDescriptors getOptions();
 
-        public abstract Context createContext(OutputStream out, OutputStream err, InputStream in,
+        public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, Predicate<String> classFilter,
                         Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages);
 
     }

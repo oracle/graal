@@ -23,6 +23,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added [@Option](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/Option.html) annotation to allow simple declaration of options in TruffleLanguage or TruffleInstrument subclasses.
 * Added [TruffleLanguage.RunWithPolyglotRule](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/tck/TruffleRunner.RunWithPolyglotRule.html) JUnit rule to allow running unit tests in the context of a polyglot engine.
 * Added implementationName property to [TruffleLanguage.Registration](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Registration#implementationName) to specify a human readable name of the language implementation name.
+* Added TruffleLanguage.Env.lookupSymbol() to be used by other languages to support language lookups in their top-most scope.
 
 
 ## Version 0.26
