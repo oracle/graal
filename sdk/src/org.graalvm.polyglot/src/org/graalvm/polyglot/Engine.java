@@ -35,7 +35,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
-import java.util.concurrent.TimeUnit;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -50,18 +49,23 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
 
 /**
- * An engine represents an the execution environment for polyglot applications. Using an engine
- * contexts can be created. Contexts can either be single language contexts that are
- * {@link Language#createContext() created} using a {@link Language language} or polyglot contexts
- * that are {@link Engine#createPolyglotContext() created} from the engine. Contexts allow to
- * {@link Context#eval(Source) evaluate} guest language code directly and polylgot contexts require
- * to evaluate code code should be run in.
+ * An execution engine for Graal {@linkplain Language guest languages} that allows to inspect the
+ * the installed {@link #getLanguages() guest languages}, {@link #getInstruments() instruments} and
+ * their available options.
+ * <p>
+ * By default every context creates its own {@link Engine engine} instance implicitely when
+ * {@link Context.Builder#build() instantiated}. Multiple contexts can share the same engine using
+ * {@link Context.Builder#engine(Engine) with the context builder}. If contexts share the same
+ * engine then they share instruments and configuration. Also, {@link Value value} instances can
+ * only be exchanged between contexts that are associated with same engine.
+ * <p>
+ * It can be useful to {@link Engine#create() create} an engine instance without a context to only
+ * access metadata for installed languages, instruments and their available options.
  *
+ * @since 1.0
  */
 // TODO document that the current context class loader is captured when the engine is created.
 public final class Engine implements AutoCloseable {
-
-    public static final String OPTION_COMPILER_TRACE_COMPILATION = "compiler.TraceCompilation";
 
     final AbstractEngineImpl impl;
 
@@ -74,7 +78,7 @@ public final class Engine implements AutoCloseable {
     }
 
     /**
-     * Returns an installed language by looking it up using its unique id. Shortcut for
+     * Gets an installed language by looking it up using its unique id. Shortcut for
      * <code>engine.getLanguages().get(languageId)</code>. Returns <code>null</code> if the language
      * was not found. Examples for language ids are: <code>"js"</code>, <code>"r"</code> or
      * <code>"ruby"</code>. Throws {@link IllegalArgumentException} if an invalid languageId was
@@ -98,10 +102,19 @@ public final class Engine implements AutoCloseable {
         return impl.getLanguages();
     }
 
-    public Instrument getInstrument(String id) {
-        return impl.getInstrument(id);
+    public Instrument getInstrument(String instrumentId) {
+        return impl.getInstrument(instrumentId);
     }
 
+    /**
+     * Gets all installed instruments of this engine. An instrument alters and/or monitors the
+     * execution of guest language source code. Common examples for instruments are debuggers,
+     * profilers or monitoring tools. Instruments are enabled via {@link Instrument#getOptions()
+     * options} passed to the {@link Builder#option(String, String) engine} when the engine or
+     * context is constructed.
+     *
+     * @since 1.0
+     */
     public Map<String, Instrument> getInstruments() {
         return impl.getInstruments();
     }
@@ -112,21 +125,11 @@ public final class Engine implements AutoCloseable {
      * source object could not be detected.
      *
      * @since 1.0
+     * @deprecated use {@link Source#findLanguage(java.io.File)} instead.
      */
+    @Deprecated
     public Language detectLanguage(Source source) {
         return impl.detectLanguage(source.impl);
-    }
-
-    // TODO implement timeout features
-
-    @SuppressWarnings("unused")
-    void startTimeout(long timeout, TimeUnit unit) {
-    }
-
-    void resetTimeout() {
-    }
-
-    void clearTimeout() {
     }
 
     /**
@@ -136,15 +139,13 @@ public final class Engine implements AutoCloseable {
      * <li><b>engine</b>: options to configure the behavior of this engine.
      * <li><b>compiler</b>: options to configure the optimizing compiler.
      * </ul>
-     * Language or instrument optionds need to be retrieved using separate methods.
+     * The language and instrument specific options need to be retrieved using
+     * {@link Instrument#getOptions()} or {@link Language#getOptions()}.
      *
      * @see Language#getOptions() To get a list of options for a language.
      * @see Instrument#getOptions() To get a list of options for an instrument.
-     * @see Builder#setOption(String, String) To set an option for an engine, language or
-     *      instrument.
-     * @see Context.Builder#setOption(String, String) To set an option for a context.
-     * @see PolyglotContext.Builder#setOption(String, String) To set an option for a polyglot
-     *      context.
+     * @see Builder#option(String, String) To set an option for an engine, language or instrument.
+     * @see Context.Builder#option(String, String) To set an option for a context.
      *
      * @since 1.0
      */
@@ -152,12 +153,29 @@ public final class Engine implements AutoCloseable {
         return impl.getOptions();
     }
 
-    public PolyglotContext createPolyglotContext() {
-        return newPolyglotContextBuilder().build();
+    /**
+     * Creates a new <i>polyglot</i> context that allows access to all installed
+     * {@link #getLanguages() languages}.
+     *
+     * @see Context for further information on context instances.
+     * @see Language#createContext() to create a context for a single language.
+     * @return
+     * @since 1.0
+     * @deprecated use {@link #createContext()} instead.
+     */
+    @SuppressWarnings("deprecation")
+    @Deprecated
+    public org.graalvm.polyglot.PolyglotContext createPolyglotContext() {
+        return new org.graalvm.polyglot.PolyglotContext.Builder(this).build();
     }
 
-    public PolyglotContext.Builder newPolyglotContextBuilder() {
-        return new PolyglotContext.Builder(this);
+    /**
+     * @deprecated use {@link #createContextBuilder()}
+     */
+    @SuppressWarnings("deprecation")
+    @Deprecated
+    public org.graalvm.polyglot.PolyglotContext.Builder newPolyglotContextBuilder() {
+        return new org.graalvm.polyglot.PolyglotContext.Builder(this);
     }
 
     public String getVersion() {
@@ -167,15 +185,33 @@ public final class Engine implements AutoCloseable {
     /**
      * Closes this engine and frees up allocated native resources. If there are still open context
      * instances that were created using this engine and they are currently not beeing executed then
+     * they will be closed automatically. If an attempt to close an engine was successful then
+     * consecutive calls to close have no effect. If a context is cancelled then the currently
+     * executing thread will throw a {@link PolyglotException}. The exception indicates that it was
+     * {@link PolyglotException#isCancelled() cancelled}.
+     *
+     * @param cancelIfExecuting if <code>true</code> then currently executing contexts will be
+     *            cancelled, else an {@link IllegalStateException} is thrown.
+     * @since 1.0
+     */
+    public void close(boolean cancelIfExecuting) {
+        impl.ensureClosed(cancelIfExecuting, false);
+    }
+
+    /**
+     * Closes this engine and frees up allocated native resources. If there are still open context
+     * instances that were created using this engine and they are currently not beeing executed then
      * all they will be closed automatically. If an an attempt to close the engine was successful
      * then consecutive calls to close have no effect.
      *
      * @throws IllegalStateException if there currently executing open context instances.
+     * @see #close(boolean)
+     * @see Engine#close()
      * @since 1.0
      */
     @Override
     public void close() {
-        impl.ensureClosed(false);
+        close(false);
     }
 
     public static Engine create() {
@@ -197,6 +233,7 @@ public final class Engine implements AutoCloseable {
         return getImpl().loadLanguageClass(className);
     }
 
+    @SuppressWarnings("hiding")
     public static final class Builder {
 
         private OutputStream out = System.out;
@@ -204,37 +241,62 @@ public final class Engine implements AutoCloseable {
         private InputStream in = System.in;
         private Map<String, String> options = new HashMap<>();
         private boolean useSystemProperties = true;
+        private boolean boundEngine;
 
-        public Builder setOut(OutputStream out) {
+        Builder setBoundEngine(boolean boundEngine) {
+            this.boundEngine = boundEngine;
+            return this;
+        }
+
+        public Builder out(OutputStream out) {
             Objects.requireNonNull(out);
             this.out = out;
             return this;
         }
 
-        public Builder setErr(OutputStream err) {
+        /**
+         * @deprecated use {@link #out(OutputStream)} instead.
+         */
+        @Deprecated
+        public Builder setOut(OutputStream out) {
+            return out(out);
+        }
+
+        public Builder err(OutputStream err) {
             Objects.requireNonNull(err);
             this.err = err;
             return this;
         }
 
-        public Builder setIn(InputStream in) {
+        /**
+         * @deprecated use {@link #err(OutputStream)} instead.
+         */
+        @Deprecated
+        public Builder setErr(OutputStream err) {
+            return err(err);
+        }
+
+        public Builder in(InputStream in) {
             Objects.requireNonNull(in);
             this.in = in;
             return this;
         }
 
-        // not implemented yet. planned in the future
-        Builder setTimeout(long timeout, TimeUnit unit) {
-            Objects.requireNonNull(unit);
-            if (timeout <= 0) {
-                throw new IllegalArgumentException("Timeout must be greater than zero.");
-            }
-            return this.setOption("Timeout", Long.toString(unit.toMillis(timeout)));
+        /**
+         * @deprecated use {@link #in(InputStream)} instead.
+         */
+        @Deprecated
+        public Builder setIn(InputStream in) {
+            return in(in);
         }
 
-        // not implemented yet. planned in the future
-        Builder setMaximumAllocatedBytes(long bytes) {
-            return this.setOption("MaximumAllocatedBytes", Long.toString(bytes));
+        /**
+         * @deprecated use {@link #useSystemProperties(boolean)} instead
+         */
+        @Deprecated
+        public Builder setUseSystemProperties(boolean enabled) {
+            useSystemProperties = enabled;
+            return this;
         }
 
         /**
@@ -254,14 +316,17 @@ public final class Engine implements AutoCloseable {
          * @see #build() To build the engine instance.
          * @since 1.0
          */
-        public Builder setUseSystemProperties(boolean enabled) {
+        public Builder useSystemProperties(boolean enabled) {
             useSystemProperties = enabled;
             return this;
         }
 
-        // not implemented yet. planned in the future
-        Builder setSandbox(@SuppressWarnings("unused") boolean value) {
-            return this;
+        /**
+         * @deprecated use {@link #option(String, String)} instead.
+         */
+        @Deprecated
+        public Builder setOption(String key, String value) {
+            return option(key, value);
         }
 
         /**
@@ -276,11 +341,19 @@ public final class Engine implements AutoCloseable {
          *      instrument}.
          * @since 1.0
          */
-        public Builder setOption(String key, String value) {
+        public Builder option(String key, String value) {
             Objects.requireNonNull(key, "Key must not be null.");
             Objects.requireNonNull(value, "Value must not be null.");
             options.put(key, value);
             return this;
+        }
+
+        /**
+         * @deprecated use {@link #options(Map)} instead
+         */
+        @Deprecated
+        public Builder setOptions(Map<String, String> options) {
+            return options(options);
         }
 
         /**
@@ -291,7 +364,7 @@ public final class Engine implements AutoCloseable {
          * @see #setOption(String, String) To set a single option.
          * @since 1.0
          */
-        public Builder setOptions(Map<String, String> options) {
+        public Builder options(Map<String, String> options) {
             for (String key : options.keySet()) {
                 Objects.requireNonNull(options.get(key), "All option values must be non-null.");
             }
@@ -305,7 +378,7 @@ public final class Engine implements AutoCloseable {
                 throw new IllegalStateException("The Polyglot API implementation failed to load.");
             }
             return loadedImpl.buildEngine(out, err, in, options, 0, null,
-                            false, 0, useSystemProperties);
+                            false, 0, useSystemProperties, boundEngine);
         }
 
     }
@@ -318,13 +391,8 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public PolyglotContext newPolyglotContext(Engine engine, AbstractContextImpl impl) {
-            return new PolyglotContext(engine, impl);
-        }
-
-        @Override
         public Context newContext(AbstractContextImpl impl, Language languageImpl) {
-            return new Context(impl, languageImpl, false);
+            return new Context(impl, languageImpl);
         }
 
         @Override
@@ -348,13 +416,19 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Source newSource(Object impl) {
-            return new Source(impl);
+        public Source newSource(String language, Object impl) {
+            return new Source(language, impl);
         }
 
         @Override
         public SourceSection newSourceSection(Source source, Object impl) {
             return new SourceSection(source, impl);
+        }
+
+        @Override
+        @SuppressWarnings("deprecation")
+        public org.graalvm.polyglot.PolyglotContext newPolyglotContext(Engine engine, AbstractContextImpl impl) {
+            return new org.graalvm.polyglot.PolyglotContext(engine, impl);
         }
 
         @Override

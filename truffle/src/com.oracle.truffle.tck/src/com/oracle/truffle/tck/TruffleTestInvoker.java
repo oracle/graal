@@ -24,6 +24,19 @@
  */
 package com.oracle.truffle.tck;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
+
+import org.graalvm.polyglot.Context;
+import org.junit.Test;
+import org.junit.runners.model.FrameworkMethod;
+import org.junit.runners.model.Statement;
+import org.junit.runners.model.TestClass;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -34,20 +47,8 @@ import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Function;
-import org.junit.Test;
-import org.junit.runners.model.FrameworkMethod;
-import org.junit.runners.model.Statement;
-import org.junit.runners.model.TestClass;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 import com.oracle.truffle.tck.TruffleRunner.RunWithPolyglotRule;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.PolyglotContext;
 
 final class TruffleTestInvoker<T extends CallTarget> extends TVMCI.TestAccessor<T> {
 
@@ -111,18 +112,16 @@ final class TruffleTestInvoker<T extends CallTarget> extends TVMCI.TestAccessor<
 
         @Override
         public void evaluate() throws Throwable {
-            PolyglotContext prevContext = rule.context;
-            try (Engine engine = Engine.create()) {
-                try (PolyglotContext context = engine.createPolyglotContext()) {
-                    rule.context = context;
-                    context.exportSymbol("currentTestStatement", this);
-                    context.eval("truffletestinvoker", "");
-                    if (throwable != null) {
-                        throw throwable;
-                    }
-                } finally {
-                    rule.context = prevContext;
+            Context prevContext = rule.context;
+            try (Context context = Context.create()) {
+                rule.context = context;
+                context.exportSymbol("currentTestStatement", this);
+                context.eval("truffletestinvoker", "");
+                if (throwable != null) {
+                    throw throwable;
                 }
+            } finally {
+                rule.context = prevContext;
             }
         }
 

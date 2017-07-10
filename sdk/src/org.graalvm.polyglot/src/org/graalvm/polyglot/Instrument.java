@@ -27,6 +27,17 @@ package org.graalvm.polyglot;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
 
+/**
+ * A handle for an <em>instrument</em> installed in an {@link Engine engine}.The instrument is
+ * usable from other threads. The handle provides access to the instrument's metadata and allows to
+ * {@link #lookup(Class) lookup} instrument specific services.
+ * <p>
+ * All methods here, as well as instrumentation services in general, can be used safely from any
+ * thread.
+ *
+ * @see Engine#getInstruments()
+ * @since 1.0
+ */
 public final class Instrument {
 
     final AbstractInstrumentImpl impl;
@@ -35,25 +46,50 @@ public final class Instrument {
         this.impl = impl;
     }
 
+    /**
+     * Gets the id clients can use to acquire this instrument.
+     *
+     * @return this instrument's unique id
+     * @since 1.0
+     */
     public String getId() {
         return impl.getId();
     }
 
+    /**
+     * Gets a human readable name of this instrument.
+     *
+     * @return this instrument's user-friendly name
+     * @since 1.0
+     */
     public String getName() {
         return impl.getName();
     }
 
+    /**
+     * Gets the options available for this instrument.
+     *
+     * @return the options as {@link OptionDescriptors}
+     * @since 1.0
+     */
     public OptionDescriptors getOptions() {
         return impl.getOptions();
     }
 
+    /**
+     * Gets the version of this instrument.
+     *
+     * @return this instrument's version
+     * @since 1.0
+     */
     public String getVersion() {
         return impl.getVersion();
     }
 
     /**
-     * Returns an additional internal service provided by this instrument, specified by type. Please
-     * note that services returned by this method are subject to change without notice.
+     * Looks an additional internal service up that is provided by this instrument using a Java
+     * type. Please note that services returned by this method are implementation specific and
+     * subject to change without notice.
      *
      * @param <T> the type of the internal service
      * @param type class of the service that is being requested

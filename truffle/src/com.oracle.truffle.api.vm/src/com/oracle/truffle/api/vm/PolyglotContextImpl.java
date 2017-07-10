@@ -40,7 +40,10 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
@@ -59,11 +62,11 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
 
     private static final PolyglotContextProfile CURRENT_CONTEXT = new PolyglotContextProfile();
 
-    volatile Thread boundThread;
+    final AtomicReference<Thread> boundThread = new AtomicReference<>(null);
     volatile boolean closed;
+    volatile CountDownLatch closingLatch;
     final AtomicInteger enteredCount = new AtomicInteger();
     final PolyglotEngineImpl engine;
-    final Thread initThread;
     @CompilationFinal(dimensions = 1) final PolyglotLanguageContextImpl[] contexts;
 
     final OutputStream out;
@@ -76,7 +79,7 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
     private final FinalIntMap languageIndexMap = new FinalIntMap();
 
     final Map<Object, CallTarget> javaInteropCache;
-    final PolyglotLanguageImpl singlePublicLanguage;
+    final Set<String> allowedPublicLanguages;
     final Map<String, String[]> applicationArguments;
 
     PolyglotContextImpl(PolyglotEngineImpl engine, final OutputStream out,
@@ -84,7 +87,7 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
                     InputStream in,
                     Map<String, String> options,
                     Map<String, String[]> applicationArguments,
-                    PolyglotLanguageImpl singlePublicLanguage) {
+                    Set<String> allowedPublicLanguages) {
         super(engine.impl);
         this.applicationArguments = applicationArguments;
 
@@ -99,11 +102,9 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
             this.err = INSTRUMENT.createDelegatingOutput(err, engine.err);
         }
         this.in = in == null ? engine.in : in;
-
         this.options = options;
-        this.singlePublicLanguage = singlePublicLanguage;
+        this.allowedPublicLanguages = allowedPublicLanguages;
         this.engine = engine;
-        this.initThread = Thread.currentThread();
         this.javaInteropCache = new HashMap<>();
         Collection<PolyglotLanguageImpl> languages = engine.idToLanguage.values();
         this.contexts = new PolyglotLanguageContextImpl[languages.size()];
@@ -132,34 +133,37 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
     }
 
     Object enter() {
+        enterThread();
         engine.checkState();
         if (closed) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Language context is already closed.");
         }
-        enterThread();
         enteredCount.incrementAndGet();
         return CURRENT_CONTEXT.enter(this);
     }
 
     void leave(Object prev) {
-        assert boundThread == Thread.currentThread();
+        assert boundThread.get() == Thread.currentThread();
         int result = enteredCount.decrementAndGet();
         if (result <= 0) {
-            boundThread = null;
+            boundThread.set(null);
+            if (closingLatch != null) {
+                close(false);
+            }
         }
         CURRENT_CONTEXT.leave((PolyglotContextImpl) prev);
     }
 
     private void enterThread() {
-        Thread thread = boundThread;
-        if (thread == null) {
-            boundThread = Thread.currentThread();
-        } else if (thread != Thread.currentThread()) {
-            throw new IllegalStateException(
-                            String.format("The context was accessed from thread %s but is currently accessed form thread %s. " +
-                                            "The context cannot be accessed from multiple threads at the same time. ",
-                                            boundThread, Thread.currentThread()));
+        Thread current = Thread.currentThread();
+        if (boundThread.get() != current) {
+            if (!boundThread.compareAndSet(null, current)) {
+                throw new IllegalStateException(
+                                String.format("The context was accessed from thread %s but is currently accessed form thread %s. " +
+                                                "The context cannot be accessed from multiple threads at the same time. ",
+                                                boundThread.get(), Thread.currentThread()));
+            }
         }
     }
 
@@ -307,7 +311,7 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
     }
 
     private PolyglotLanguageContextImpl getLanguageContextImpl(Class<? extends TruffleLanguage<?>> languageClass) {
-        assert boundThread == null || boundThread == Thread.currentThread() : "not designed for thread-safety";
+        assert boundThread.get() == null || boundThread.get() == Thread.currentThread() : "not designed for thread-safety";
         int indexValue = languageIndexMap.get(languageClass);
         if (indexValue == -1) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -322,12 +326,13 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
     }
 
     @Override
-    public void initializeLanguage(AbstractLanguageImpl languageImpl) {
+    public boolean initializeLanguage(AbstractLanguageImpl languageImpl) {
         PolyglotLanguageImpl language = (PolyglotLanguageImpl) languageImpl;
-        Object prev = enter();
         PolyglotLanguageContextImpl languageContext = this.contexts[language.index];
+        languageContext.checkAccess();
+        Object prev = enter();
         try {
-            languageContext.ensureInitialized();
+            return languageContext.ensureInitialized();
         } catch (Throwable t) {
             throw wrapGuestException(languageContext, t);
         } finally {
@@ -346,6 +351,9 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
             if (target == null) {
                 languageContext.ensureInitialized();
                 target = LANGUAGE.parse(languageContext.env, source, null);
+                if (target == null) {
+                    throw new IllegalStateException(String.format("Parsing resulted in a null CallTarget for %s.", source));
+                }
                 languageContext.sourceCache.put(source, target);
             }
             Object result = target.call(PolyglotImpl.EMPTY_ARGS);
@@ -363,8 +371,51 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
     }
 
     @Override
-    public void close() {
+    public void close(boolean cancelIfExecuting) {
+        closeImpl(cancelIfExecuting);
+        if (cancelIfExecuting) {
+            engine.getCancelHandler().waitForClosing(this);
+        }
+        if (engine.boundEngine) {
+            engine.ensureClosed(cancelIfExecuting, false);
+        }
+    }
+
+    void waitForClose() {
+        assert boundThread.get() == null || boundThread.get() != Thread.currentThread() : "cannot wait on current thread";
+        while (!closed) {
+            CountDownLatch closing = closingLatch;
+            if (closing == null) {
+                return;
+            }
+            try {
+                if (closing.await(100, TimeUnit.MILLISECONDS)) {
+                    return;
+                }
+            } catch (InterruptedException e) {
+            }
+        }
+    }
+
+    synchronized void closeImpl(boolean cancelIfExecuting) {
         if (!closed) {
+            Thread thread = boundThread.get();
+            if (cancelIfExecuting) {
+                if (thread != null && Thread.currentThread() != thread) {
+                    if (closingLatch == null) {
+                        closingLatch = new CountDownLatch(1);
+
+                        // account for race condition when we already left the execution in
+                        // the meantime. in such a case #leave(Object) will not have called
+                        // close(false). Closing close(false) twice is fine.
+                        if (enteredCount.get() <= 0) {
+                            closeImpl(false);
+                        }
+                    }
+                    return;
+                }
+            }
+
             Object prev = enter();
             try {
                 for (PolyglotLanguageContextImpl context : contexts) {
@@ -379,8 +430,14 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
                         ex.printStackTrace(new PrintStream(err));
                     }
                 }
-                closed = true;
                 engine.removeContext(this);
+                closed = true;
+
+                if (closingLatch != null) {
+                    closingLatch.countDown();
+                    closingLatch = null;
+                }
+
             } finally {
                 leave(prev);
             }

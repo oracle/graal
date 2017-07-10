@@ -207,6 +207,13 @@ public abstract class TruffleLanguage<C> {
         String name();
 
         /**
+         * Unique name of your language implementation.
+         *
+         * @return the implementation name of your language
+         */
+        String implementationName() default "";
+
+        /**
          * Unique string identifying the language version. This name will be exposed to users via
          * the {@link com.oracle.truffle.api.vm.PolyglotEngine.Language#getVersion()} getter.
          *

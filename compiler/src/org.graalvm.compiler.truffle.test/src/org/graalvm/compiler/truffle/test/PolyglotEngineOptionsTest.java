@@ -64,20 +64,19 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
     }
 
     private static void testCompilationThreshold(int value, String optionValue, Runnable doWhile) {
-        Engine.Builder builder = Engine.newBuilder();
+        Context.Builder builder = Context.newBuilder("sl");
         if (optionValue != null) {
-            builder.setOption(COMPILATION_THRESHOLD_OPTION, optionValue);
+            builder.option(COMPILATION_THRESHOLD_OPTION, optionValue);
         }
-        Engine engine = builder.build();
-        Context context = engine.getLanguage("sl").createContext();
+        Context context = builder.build();
 
         // installs isOptimized
         installSLBuiltin(context, SLIsOptimizedBuiltinFactory.getInstance());
 
-        context.eval("function test() {}");
+        context.eval("sl", "function test() {}");
 
-        Value test = context.lookup("test");
-        Value isOptimized = context.lookup("isOptimized");
+        Value test = context.lookup("sl", "test");
+        Value isOptimized = context.lookup("sl", "isOptimized");
         Assert.assertFalse(isOptimized.execute(test).asBoolean());
         for (int i = 0; i < value - 1; i++) {
             Assert.assertFalse(isOptimized.execute(test).asBoolean());
@@ -94,8 +93,8 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
     }
 
     private static void installSLBuiltin(Context context, NodeFactory<? extends SLBuiltinNode> builtin) {
-        context.eval("function installBuiltin(e) { return e(); }");
-        context.lookup("installBuiltin").execute(new ProxyExecutable() {
+        context.eval("sl", "function installBuiltin(e) { return e(); }");
+        context.lookup("sl", "installBuiltin").execute(new ProxyExecutable() {
             @Override
             public Object execute(Value... t) {
                 SLContext.getCurrent().installBuiltin(builtin);

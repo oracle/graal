@@ -34,6 +34,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 
+/**
+ * @deprecated use {@link Context} instead.
+ */
+@Deprecated
 public final class PolyglotContext implements AutoCloseable {
 
     private final Map<String, Context> contexts = new ConcurrentHashMap<>();
@@ -47,7 +51,7 @@ public final class PolyglotContext implements AutoCloseable {
     }
 
     public Value eval(String languageId, String source) {
-        return getContext(languageId).eval(source);
+        return getContext(languageId).eval(languageId, source);
     }
 
     public Value eval(String languageId, Source source) {
@@ -59,7 +63,7 @@ public final class PolyglotContext implements AutoCloseable {
     }
 
     public Value eval(Language language, String source) {
-        return getContext(language).eval(source);
+        return getContext(language).eval(language.getId(), source);
     }
 
     public Context getContext(String languageId) {
@@ -90,8 +94,8 @@ public final class PolyglotContext implements AutoCloseable {
         if (prevContext != null) {
             return prevContext;
         }
-        Context context = new Context(impl, language, true);
-        context.initializeLanguage();
+        Context context = new Context(impl, language);
+        context.initialize(language.getId());
         contexts.put(language.getId(), context);
         return context;
     }
@@ -123,7 +127,7 @@ public final class PolyglotContext implements AutoCloseable {
      * @since 1.0
      */
     public void close() {
-        impl.close();
+        impl.close(false);
     }
 
     public static class Builder {
@@ -169,11 +173,7 @@ public final class PolyglotContext implements AutoCloseable {
          */
         public Builder setArguments(String languageId, String[] args) {
             Objects.requireNonNull(args);
-            Language language = engine.getLanguage(languageId);
-            if (language == null) {
-                throw new IllegalArgumentException("Invalid language id specified.");
-            }
-            return setArguments(language, args);
+            return setArguments(engine.getLanguage(languageId), args);
         }
 
         /**

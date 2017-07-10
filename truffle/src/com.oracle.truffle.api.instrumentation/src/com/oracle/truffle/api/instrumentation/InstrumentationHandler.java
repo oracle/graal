@@ -106,11 +106,14 @@ final class InstrumentationHandler {
     private final InputStream in;
     private final Map<Class<?>, Set<Class<?>>> cachedProvidedTags = new ConcurrentHashMap<>();
 
+    private final EngineInstrumenter engineInstrumenter;
+
     private InstrumentationHandler(Object sourceVM, DispatchOutputStream out, DispatchOutputStream err, InputStream in) {
         this.sourceVM = sourceVM;
         this.out = out;
         this.err = err;
         this.in = in;
+        this.engineInstrumenter = new EngineInstrumenter();
     }
 
     Object getSourceVM() {
@@ -998,6 +1001,42 @@ final class InstrumentationHandler {
      * Provider of instrumentation services for {@linkplain TruffleLanguage language
      * implementations}.
      */
+    final class EngineInstrumenter extends AbstractInstrumenter {
+
+        @Override
+        void dispose() {
+        }
+
+        @Override
+        <T> T lookup(InstrumentationHandler handler, Class<T> type) {
+            return null;
+        }
+
+        @Override
+        boolean isInstrumentableRoot(RootNode rootNode) {
+            return true;
+        }
+
+        @Override
+        boolean isInstrumentableSource(Source source) {
+            return true;
+        }
+
+        @Override
+        void verifyFilter(SourceSectionFilter filter) {
+        }
+
+        @Override
+        public Set<Class<?>> queryTags(Node node) {
+            return queryTagsImpl(node, null);
+        }
+
+    }
+
+    /**
+     * Provider of instrumentation services for {@linkplain TruffleLanguage language
+     * implementations}.
+     */
     final class LanguageClientInstrumenter<T> extends AbstractInstrumenter {
 
         private final LanguageInfo languageInfo;
@@ -1414,6 +1453,11 @@ final class InstrumentationHandler {
             @Override
             public void createInstrument(Object instrumentationHandler, Object key, String[] expectedServices, OptionValues options) {
                 ((InstrumentationHandler) instrumentationHandler).createInstrument(key, expectedServices, options);
+            }
+
+            @Override
+            public Object getEngineInstrumenter(Object instrumentationHandler) {
+                return ((InstrumentationHandler) instrumentationHandler).engineInstrumenter;
             }
 
             @Override

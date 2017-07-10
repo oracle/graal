@@ -23,11 +23,10 @@
 package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
@@ -40,8 +39,8 @@ public class HostLanguageTest {
 
     @Test
     public void testHostLanguage() {
-        Engine engine = Engine.newBuilder().setOption("java.allowClassLoading", "true").build();
-        Language language = engine.getLanguage("java");
+        Context context = Context.newBuilder("java").option("java.allowClassLoading", "true").build();
+        Language language = context.getEngine().getLanguage("java");
 
         assertTrue(language.isHost());
         assertEquals("java", language.getId());
@@ -50,14 +49,13 @@ public class HostLanguageTest {
 
         MyClass clazz = new MyClass();
         Value value;
-        Context context = language.createContext();
-        value = context.eval(MyClass.class.getName());
+        value = context.eval("java", MyClass.class.getName());
         assertTrue(value.isHostObject());
         assertSame(MyClass.class, value.asHostObject());
         // context class loader is captured when the engine is created to create new instances.
         assertSame(clazz.getClass().getClassLoader(), ((Class<?>) value.asHostObject()).getClassLoader());
 
-        value = context.lookup(MyClass.class.getName());
+        value = context.lookup("java", MyClass.class.getName());
         assertTrue(value.isHostObject());
         assertSame(MyClass.class, value.asHostObject());
         assertSame(clazz.getClass().getClassLoader(), ((Class<?>) value.asHostObject()).getClassLoader());

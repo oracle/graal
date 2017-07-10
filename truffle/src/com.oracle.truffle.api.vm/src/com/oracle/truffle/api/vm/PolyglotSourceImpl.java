@@ -25,14 +25,25 @@
 package com.oracle.truffle.api.vm;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.net.URI;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.spi.FileTypeDetector;
+import java.util.Collection;
+import java.util.Objects;
+import java.util.ServiceLoader;
 
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceImpl;
+
+import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.source.impl.SourceAccessor;
 
 class PolyglotSourceImpl extends AbstractSourceImpl {
 
@@ -155,6 +166,52 @@ class PolyglotSourceImpl extends AbstractSourceImpl {
     }
 
     @Override
+    public String findLanguage(File file) throws IOException {
+        Objects.requireNonNull(file);
+        Path path = Paths.get(file.toURI());
+        return findLanguageImpl(path);
+    }
+
+    static String findLanguageImpl(Path path) throws IOException {
+        String mimeType = getMimeType(path);
+
+        if (mimeType != null) {
+            LanguageCache cache = LanguageCache.languages().get(mimeType);
+            if (cache != null) {
+                return cache.getId();
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public String findLanguage(String mimeType) {
+        Objects.requireNonNull(mimeType);
+        LanguageCache cache = LanguageCache.languages().get(mimeType);
+        if (cache != null) {
+            return cache.getId();
+        }
+        return null;
+    }
+
+    static String getMimeType(Path filePath) throws IOException {
+        if (!TruffleOptions.AOT) {
+            Collection<ClassLoader> loaders = SourceAccessor.allLoaders();
+            for (ClassLoader l : loaders) {
+                for (FileTypeDetector detector : ServiceLoader.load(FileTypeDetector.class, l)) {
+                    String mimeType = detector.probeContentType(filePath);
+                    if (mimeType != null) {
+                        return mimeType;
+                    }
+                }
+            }
+        }
+
+        String found = Files.probeContentType(filePath);
+        return found;
+    }
+
+    @Override
     public int hashCode(Object impl) {
         return impl.hashCode();
     }
@@ -165,7 +222,7 @@ class PolyglotSourceImpl extends AbstractSourceImpl {
     }
 
     @Override
-    public Source build(Object origin, URI uri, String name, boolean interactive, boolean internal) {
+    public Source build(String language, Object origin, URI uri, String name, String content, boolean interactive, boolean internal) {
         com.oracle.truffle.api.source.Source.Builder<?, ?, ?> builder;
         boolean needsName = false;
         if (origin instanceof File) {
@@ -193,6 +250,10 @@ class PolyglotSourceImpl extends AbstractSourceImpl {
             builder.name("Unnamed");
         }
 
+        if (content != null) {
+            builder.content(content);
+        }
+
         if (internal) {
             builder.internal();
         }
@@ -204,7 +265,7 @@ class PolyglotSourceImpl extends AbstractSourceImpl {
         builder.mimeType("x-unknown");
 
         try {
-            return engineImpl.getAPIAccess().newSource(builder.build());
+            return engineImpl.getAPIAccess().newSource(language, builder.build());
         } catch (Exception e) {
             if (e instanceof RuntimeException) {
                 throw (RuntimeException) e;

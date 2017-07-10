@@ -132,8 +132,12 @@ final class PolyglotExceptionFrameImpl extends AbstractStackFrameImpl {
         Node callNode = frame.getLocation();
         if (callNode != null) {
             com.oracle.truffle.api.source.SourceSection section = callNode.getEncapsulatingSourceSection();
-            Source source = engine.getAPIAccess().newSource(section.getSource());
-            location = engine.getAPIAccess().newSourceSection(source, section);
+            if (section != null) {
+                Source source = engine.getAPIAccess().newSource(language.getId(), section.getSource());
+                location = engine.getAPIAccess().newSourceSection(source, section);
+            } else {
+                location = null;
+            }
         } else {
             location = first ? exception.getSourceLocation() : null;
         }

@@ -24,22 +24,30 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.PolyglotContext;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
 
 public class LanguageSPITest {
-
-    private static final String LANGUAGE_SPI_TEST = "LanguageSPITest";
 
     static LanguageContext langContext;
 
@@ -48,7 +56,8 @@ public class LanguageSPITest {
         langContext = null;
         Engine engine = Engine.create();
 
-        Context context = engine.getLanguage(LANGUAGE_SPI_TEST).createContext();
+        Context context = Context.create(LanguageSPITestLanguage.ID);
+        assertTrue(context.initialize(LanguageSPITestLanguage.ID));
         assertNotNull(langContext);
         assertEquals(0, langContext.disposeCalled);
         context.close();
@@ -61,17 +70,10 @@ public class LanguageSPITest {
         langContext = null;
         Engine engine = Engine.create();
 
-        PolyglotContext context = engine.createPolyglotContext();
-        context.getContext(LANGUAGE_SPI_TEST);
+        Context context = Context.newBuilder().engine(engine).build();
+        context.initialize(LanguageSPITestLanguage.ID);
 
         assertNotNull(langContext);
-
-        try {
-            // not allowed to close internal context
-            context.getContext(LANGUAGE_SPI_TEST).close();
-            fail();
-        } catch (IllegalStateException e) {
-        }
 
         assertEquals(0, langContext.disposeCalled);
         context.close();
@@ -83,11 +85,11 @@ public class LanguageSPITest {
     public void testImplicitClose() {
         Engine engine = Engine.create();
         langContext = null;
-        PolyglotContext c = engine.createPolyglotContext();
-        c.getContext(LANGUAGE_SPI_TEST);
+        Context c = Context.newBuilder().engine(engine).build();
+        c.initialize(LanguageSPITestLanguage.ID);
         LanguageContext context1 = langContext;
 
-        engine.createPolyglotContext().getContext(LANGUAGE_SPI_TEST);
+        Context.newBuilder().engine(engine).build().initialize(LanguageSPITestLanguage.ID);
         LanguageContext context2 = langContext;
 
         c.close();
@@ -99,9 +101,9 @@ public class LanguageSPITest {
     @Test
     public void testImplicitCloseFromOtherThread() throws InterruptedException {
         Engine engine = Engine.create();
-        PolyglotContext context = engine.createPolyglotContext();
+        Context context = Context.newBuilder().engine(engine).build();
         langContext = null;
-        context.getContext(LANGUAGE_SPI_TEST);
+        context.initialize(LanguageSPITestLanguage.ID);
 
         Thread t = new Thread(new Runnable() {
             public void run() {
@@ -119,8 +121,8 @@ public class LanguageSPITest {
         langContext = null;
         Thread t = new Thread(new Runnable() {
             public void run() {
-                PolyglotContext context = engine.createPolyglotContext();
-                context.getContext(LANGUAGE_SPI_TEST);
+                Context context = Context.newBuilder().engine(engine).build();
+                context.initialize(LanguageSPITestLanguage.ID);
             }
         });
         t.start();
@@ -129,60 +131,151 @@ public class LanguageSPITest {
         assertEquals(1, langContext.disposeCalled);
     }
 
-    private static class LanguageContext {
-
-        int disposeCalled;
-
+    @Test
+    public void testContextCloseInsideFromSameThread() {
+        Engine engine = Engine.create();
+        langContext = null;
+        Context context = Context.newBuilder(LanguageSPITestLanguage.ID).engine(engine).build();
+        LanguageSPITestLanguage.runinside = new Callable<CallTarget>() {
+            public CallTarget call() throws Exception {
+                context.close();
+                return null;
+            }
+        };
+        context.eval(LanguageSPITestLanguage.ID, "");
+        engine.close();
+        assertEquals(1, langContext.disposeCalled);
     }
 
-    @TruffleLanguage.Registration(id = LANGUAGE_SPI_TEST, name = LANGUAGE_SPI_TEST, version = "1.0", mimeType = LANGUAGE_SPI_TEST)
-    public static class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
+    @Test
+    public void testContextCloseInsideFromSameThreadCancelExecution() {
+        Engine engine = Engine.create();
+        langContext = null;
+        Context context = Context.newBuilder(LanguageSPITestLanguage.ID).engine(engine).build();
+        LanguageSPITestLanguage.runinside = new Callable<CallTarget>() {
+            public CallTarget call() throws Exception {
+                context.close(true);
+                return null;
+            }
+        };
+        context.eval(LanguageSPITestLanguage.ID, "");
+        engine.close();
+        assertEquals(1, langContext.disposeCalled);
+    }
 
-        public static LanguageContext getContext() {
-            return getCurrentContext(LanguageSPITestLanguage.class);
+    @Test
+    public void testEngineCloseInsideFromSameThread() {
+        Engine engine = Engine.create();
+        langContext = null;
+        Context context = Context.newBuilder(LanguageSPITestLanguage.ID).engine(engine).build();
+        LanguageSPITestLanguage.runinside = new Callable<CallTarget>() {
+            public CallTarget call() throws Exception {
+                engine.close();
+                return null;
+            }
+        };
+        context.eval(LanguageSPITestLanguage.ID, "");
+        assertEquals(1, langContext.disposeCalled);
+    }
+
+    @Test
+    public void testEngineCloseInsideFromSameThreadCancelExecution() {
+        Engine engine = Engine.create();
+        langContext = null;
+        Context context = Context.newBuilder(LanguageSPITestLanguage.ID).engine(engine).build();
+        LanguageSPITestLanguage.runinside = new Callable<CallTarget>() {
+            public CallTarget call() throws Exception {
+                engine.close(true);
+                return null;
+            }
+        };
+        context.eval(LanguageSPITestLanguage.ID, "");
+        assertEquals(1, langContext.disposeCalled);
+    }
+
+    @SuppressWarnings("serial")
+    private static class Interrupted extends RuntimeException implements TruffleException {
+
+        public boolean isCancelled() {
+            return true;
         }
 
-        @Override
-        protected CallTarget parse(ParsingRequest request) throws Exception {
+        public Node getLocation() {
             return null;
         }
+    }
 
-        @Override
-        protected LanguageContext createContext(Env env) {
-            langContext = new LanguageContext();
-            return langContext;
-        }
+    @Test
+    public void testCancelExecutionWhileSleeping() throws InterruptedException {
+        ExecutorService service = Executors.newFixedThreadPool(1);
+        try {
+            Engine engine = Engine.create();
+            Context context = Context.newBuilder(LanguageSPITestLanguage.ID).engine(engine).build();
 
-        @Override
-        protected void disposeContext(LanguageContext context) {
-            assertSame(getContext(), context);
-            assertSame(context, getContextReference().get());
-
-            assertSame(context, new RootNode(this) {
-                @Override
-                public Object execute(VirtualFrame frame) {
+            CountDownLatch beforeSleep = new CountDownLatch(1);
+            CountDownLatch interrupt = new CountDownLatch(1);
+            AtomicInteger gotInterrupt = new AtomicInteger(0);
+            LanguageSPITestLanguage.runinside = new Callable<CallTarget>() {
+                public CallTarget call() throws Exception {
+                    try {
+                        beforeSleep.countDown();
+                        Thread.sleep(5000);
+                    } catch (InterruptedException e) {
+                        gotInterrupt.incrementAndGet();
+                        interrupt.countDown();
+                        throw new Interrupted();
+                    }
                     return null;
                 }
-            }.getLanguage(LanguageSPITestLanguage.class).getContextReference().get());
+            };
+            Future<Value> future = service.submit(() -> context.eval(LanguageSPITestLanguage.ID, ""));
+            beforeSleep.await(10000, TimeUnit.MILLISECONDS);
+            context.close(true);
 
-            context.disposeCalled++;
+            interrupt.await(10000, TimeUnit.MILLISECONDS);
+            assertEquals(1, gotInterrupt.get());
+
+            try {
+                future.get();
+                fail();
+            } catch (ExecutionException e) {
+                PolyglotException polyglotException = (PolyglotException) e.getCause();
+                assertTrue(polyglotException.isCancelled());
+            }
+            engine.close();
+        } finally {
+            service.shutdown();
+        }
+    }
+
+    @Test
+    public void testImplicitEngineClose() {
+        Context context = Context.create();
+        context.close();
+
+        try {
+            context.getEngine().getOptions();
+            fail();
+        } catch (IllegalStateException e) {
+            // expect closed
         }
 
-        @Override
-        protected Object lookupSymbol(LanguageContext context, String symbolName) {
-            return super.lookupSymbol(context, symbolName);
+        try {
+            context.getEngine().getLanguages();
+            fail();
+        } catch (IllegalStateException e) {
+            // expect closed
         }
 
-        @Override
-        protected Object getLanguageGlobal(LanguageContext context) {
-            return null;
+        try {
+            context.getEngine().getInstruments();
+            fail();
+        } catch (IllegalStateException e) {
+            // expect closed
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
+        // does not fail
+        context.getEngine().close();
     }
 
 }

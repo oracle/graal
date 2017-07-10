@@ -118,15 +118,15 @@ public final class PolyglotException extends RuntimeException {
     }
 
     /**
-     * Returns <code>true</code> if this exception was caused by a timeout event in the engine.
-     * Timeouts can either be caused by guest languages or if a
-     * {@link Engine#setTimeout(long, java.util.concurrent.TimeUnit) timout} was configured for the
-     * engine.
+     * Returns <code>true</code> if the execution was cancelled. The execution can be cancelled by
+     * {@link Context#close(boolean) closing} a context or if an instrument like a debugger decides
+     * to cancel the current execution. The context that caused a cancel event becomes unusable ie.
+     * closed.
      *
      * @since 1.0
      */
-    public boolean isTimeout() {
-        return impl.isTimeout();
+    public boolean isCancelled() {
+        return impl.isCancelled();
     }
 
     /**

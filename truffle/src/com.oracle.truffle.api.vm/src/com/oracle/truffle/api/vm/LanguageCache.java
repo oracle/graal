@@ -56,6 +56,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private final Set<String> mimeTypes;
     private final String id;
     private final String name;
+    private final String implementationName;
     private final String version;
     private final boolean interactive;
     private final boolean internal;
@@ -73,6 +74,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.loader = loader;
         this.className = info.getProperty(prefix + "className");
         this.name = info.getProperty(prefix + "name");
+        this.implementationName = info.getProperty(prefix + "implementationName");
         this.version = info.getProperty(prefix + "version");
         String resolvedId = info.getProperty(prefix + "id");
 
@@ -99,11 +101,12 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     @SuppressWarnings("unchecked")
-    LanguageCache(String id, Set<String> mimeTypes, String name, String version, boolean interactive, boolean internal,
+    LanguageCache(String id, Set<String> mimeTypes, String name, String implementationName, String version, boolean interactive, boolean internal,
                     TruffleLanguage<?> instance) {
         this.id = id;
         this.className = instance.getClass().getName();
         this.mimeTypes = mimeTypes;
+        this.implementationName = implementationName;
         this.name = name;
         this.version = version;
         this.interactive = interactive;
@@ -210,6 +213,10 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     String getName() {
         return name;
+    }
+
+    String getImplementationName() {
+        return implementationName;
     }
 
     String getVersion() {
