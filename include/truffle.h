@@ -143,6 +143,8 @@ void *truffle_managed_from_handle(void *nativeHandle);
 
 void *truffle_sulong_function_to_native_pointer(void *sulongFunctionPointer, const void *signature);
 
+void truffle_load_library(const char *string);
+
 #if defined(__cplusplus)
 }
 #endif
