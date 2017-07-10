@@ -39,6 +39,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -55,6 +56,7 @@ import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMException;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LazyToTruffleConverter;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugSlotType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -91,6 +93,10 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
         // this also precompiles the SourceSections for the contained instructions
         SourceSection sourceSection = runtime.getSourceSection(method);
+
+        if (context.getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
+            frame.findOrAddFrameSlot(LLVMDebugSlotType.FRAMESLOT_NAME, FrameSlotKind.Object);
+        }
 
         LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(frame, context, phis, method);
         LLVMBitcodeFunctionVisitor visitor = new LLVMBitcodeFunctionVisitor(runtime, frame, labels, phis, nodeFactory, method.getParameters().size(),

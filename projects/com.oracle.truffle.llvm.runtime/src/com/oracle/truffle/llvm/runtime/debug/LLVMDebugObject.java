@@ -27,50 +27,54 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata.debuginfo;
+package com.oracle.truffle.llvm.runtime.debug;
 
-import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
-import com.oracle.truffle.llvm.parser.metadata.MDEnumerator;
-import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
-import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
-import com.oracle.truffle.llvm.parser.metadata.MDString;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
 
-final class MDNameExtractor implements MDFollowRefVisitor {
+/**
+ * Interface of an object describing a source-level variable. Debuggers can use this to display the
+ * original source-level state of an executed LLVM IR file.
+ */
+public interface LLVMDebugObject extends TruffleObject {
 
-    static final String DEFAULT_STRING = "<na>";
-
-    static String getName(MDBaseNode container) {
-        if (container == null) {
-            return DEFAULT_STRING;
-        }
-
-        final MDNameExtractor visitor = new MDNameExtractor();
-        container.accept(visitor);
-        return visitor.str;
+    static boolean isInstance(TruffleObject object) {
+        return object instanceof LLVMDebugObject;
     }
 
-    private MDNameExtractor() {
-    }
+    /**
+     * Get an object describing the referenced variable's type for the debugger to show.
+     *
+     * @return the type of the referenced object
+     */
+    Object getType();
 
-    private String str = DEFAULT_STRING;
+    /**
+     * If this is a complex object return the identifiers for its members.
+     *
+     * @return the keys or null
+     */
+    Object[] getKeys();
+
+    /**
+     * If this is a complex object return the member that is identified by the given key.
+     *
+     * @param identifier the object identifying the member
+     *
+     * @return the member or {@code null} if the key does not identify a member
+     */
+    Object getMember(Object identifier);
+
+    /**
+     * A representation of the current value of the referenced variable for the debugger to show.
+     *
+     * @return a string describing the referenced value
+     */
+    @Override
+    String toString();
 
     @Override
-    public void visit(MDString md) {
-        str = md.getString();
-    }
-
-    @Override
-    public void visit(MDGlobalVariable mdGlobal) {
-        mdGlobal.getName().accept(this);
-    }
-
-    @Override
-    public void visit(MDLocalVariable mdLocal) {
-        mdLocal.getName().accept(this);
-    }
-
-    @Override
-    public void visit(MDEnumerator mdEnumElement) {
-        mdEnumElement.getName().accept(this);
+    default ForeignAccess getForeignAccess() {
+        return LLVMDebugObjectMessageResolutionForeign.ACCESS;
     }
 }

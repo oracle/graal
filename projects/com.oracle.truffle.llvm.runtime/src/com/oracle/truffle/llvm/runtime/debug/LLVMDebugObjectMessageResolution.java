@@ -27,33 +27,36 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata.debuginfo;
+package com.oracle.truffle.llvm.runtime.debug;
 
-import java.util.function.Supplier;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.nodes.Node;
 
-public final class DIPointerType extends DIType {
+@MessageResolution(receiverType = LLVMDebugObject.class)
+public class LLVMDebugObjectMessageResolution {
 
-    private Supplier<DIType> baseType;
+    @Resolve(message = "KEYS")
+    public abstract static class LLVMDebugObjectPropertiesNode extends Node {
 
-    DIPointerType(long size, long align, long offset) {
-        this(DIType.UNKNOWN_TYPE::getName, size, align, offset, () -> DIType.UNKNOWN_TYPE);
+        @CompilerDirectives.TruffleBoundary
+        private static Object obtainKeys(LLVMDebugObject receiver) {
+            Object[] keys = receiver.getKeys();
+            return JavaInterop.asTruffleObject(keys);
+        }
+
+        public Object access(LLVMDebugObject receiver) {
+            return obtainKeys(receiver);
+        }
     }
 
-    private DIPointerType(Supplier<String> nameSupplier, long size, long align, long offset, Supplier<DIType> baseType) {
-        super(nameSupplier, size, align, offset);
-        this.baseType = baseType;
-    }
+    @Resolve(message = "READ")
+    public abstract static class LLVMDebugObjectForeignReadNode extends Node {
 
-    public DIType getBaseType() {
-        return baseType.get();
-    }
-
-    public void setBaseType(Supplier<DIType> baseType) {
-        this.baseType = baseType;
-    }
-
-    @Override
-    DIType getOffset(long newOffset) {
-        return new DIPointerType(this::getName, getSize(), getAlign(), newOffset, this::getBaseType);
+        public Object access(LLVMDebugObject receiver, Object name) {
+            return receiver.getMember(name);
+        }
     }
 }

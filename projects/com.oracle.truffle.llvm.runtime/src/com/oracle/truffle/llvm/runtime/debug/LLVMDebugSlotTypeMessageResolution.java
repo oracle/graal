@@ -27,39 +27,40 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata.debuginfo;
+package com.oracle.truffle.llvm.runtime.debug;
 
-public final class DIBasicType extends DIType {
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.object.DynamicObject;
 
-    private final Kind kind;
+@MessageResolution(receiverType = LLVMDebugSlotType.class)
+public class LLVMDebugSlotTypeMessageResolution {
 
-    DIBasicType(String name, long size, long align, long offset, Kind kind) {
-        super(() -> name, size, align, offset);
-        this.kind = kind;
+    @Resolve(message = "KEYS")
+    public abstract static class LLVMDebugObjectPropertiesNode extends Node {
+
+        @CompilerDirectives.TruffleBoundary
+        private static Object obtainKeys(DynamicObject receiver) {
+            Object[] keys = receiver.getShape().getKeyList().toArray();
+            return JavaInterop.asTruffleObject(keys);
+        }
+
+        public Object access(DynamicObject receiver) {
+            return obtainKeys(receiver);
+        }
     }
 
-    public Kind getKind() {
-        return kind;
-    }
+    @Resolve(message = "READ")
+    public abstract static class LLVMDebugObjectForeignReadNode extends Node {
 
-    public enum Kind {
-        UNKNOWN,
-        ADDRESS,
-        BOOLEAN,
-        FLOATING,
-        SIGNED,
-        SIGNED_CHAR,
-        UNSIGNED,
-        UNSIGNED_CHAR;
-    }
-
-    @Override
-    DIType getOffset(long newOffset) {
-        return new DIBasicType(getName(), getSize(), getAlign(), newOffset, kind);
-    }
-
-    @Override
-    public String toString() {
-        return getName();
+        public Object access(DynamicObject receiver, Object name) {
+            if (receiver.containsKey(name)) {
+                return receiver.get(name);
+            }
+            return null;
+        }
     }
 }

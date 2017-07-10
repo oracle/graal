@@ -27,44 +27,63 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata.debuginfo;
+package com.oracle.truffle.llvm.runtime.debug;
 
 import java.util.function.Supplier;
 
-public final class DIArrayLikeType extends DIType {
+public final class LLVMDebugPointerType extends LLVMDebugType {
 
-    private Supplier<DIType> baseType;
-    private Supplier<Long> length;
+    private Supplier<LLVMDebugType> baseType;
 
-    DIArrayLikeType(long size, long align, long offset) {
-        this(DIType.UNKNOWN_TYPE::getName, size, align, offset, () -> DIType.UNKNOWN_TYPE, () -> -1L);
+    public LLVMDebugPointerType(long size, long align, long offset) {
+        this(LLVMDebugType.UNKNOWN_TYPE::getName, size, align, offset, () -> LLVMDebugType.UNKNOWN_TYPE);
     }
 
-    private DIArrayLikeType(Supplier<String> name, long size, long align, long offset, Supplier<DIType> baseType, Supplier<Long> length) {
-        super(size, align, offset);
-        setName(name);
+    private LLVMDebugPointerType(Supplier<String> nameSupplier, long size, long align, long offset, Supplier<LLVMDebugType> baseType) {
+        super(nameSupplier, size, align, offset);
         this.baseType = baseType;
-        this.length = length;
     }
 
-    public DIType getBaseType() {
+    public LLVMDebugType getBaseType() {
         return baseType.get();
     }
 
-    public long getLength() {
-        return length.get();
-    }
-
-    public void setBaseType(Supplier<DIType> baseType) {
+    public void setBaseType(Supplier<LLVMDebugType> baseType) {
         this.baseType = baseType;
     }
 
-    public void setLength(long length) {
-        this.length = () -> length;
+    @Override
+    public LLVMDebugType getOffset(long newOffset) {
+        return new LLVMDebugPointerType(this::getName, getSize(), getAlign(), newOffset, this::getBaseType);
     }
 
     @Override
-    DIType getOffset(long newOffset) {
-        return new DIArrayLikeType(this::getName, getSize(), getAlign(), newOffset, this::getBaseType, length);
+    public boolean isPointer() {
+        return true;
+    }
+
+    @Override
+    public boolean isAggregate() {
+        return false;
+    }
+
+    @Override
+    public int getElementCount() {
+        return 1;
+    }
+
+    @Override
+    public String getElementName(long i) {
+        return "target";
+    }
+
+    @Override
+    public LLVMDebugType getElementType(long i) {
+        return getBaseType();
+    }
+
+    @Override
+    public LLVMDebugType getElementType(String name) {
+        return getBaseType();
     }
 }

@@ -50,6 +50,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NativeIntrinsicProvider;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
@@ -185,4 +186,7 @@ public interface NodeFactory {
     LLVMExpressionNode createCopyStructByValue(LLVMParserRuntime runtime, int length, int alignment, LLVMExpressionNode parameterNode);
 
     LLVMExpressionNode createVarArgCompoundValue(LLVMParserRuntime runtime, int length, int alignment, LLVMExpressionNode parameterNode);
+
+    LLVMExpressionNode createLocalDebugDeclaration(String varName, LLVMDebugType type, FrameSlot debugSlot, LLVMExpressionNode valueProvider);
+
 }

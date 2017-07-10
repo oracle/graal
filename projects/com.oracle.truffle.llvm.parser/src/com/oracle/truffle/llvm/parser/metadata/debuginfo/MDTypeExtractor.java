@@ -33,32 +33,49 @@ import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDBasicType;
 import com.oracle.truffle.llvm.parser.metadata.MDCompositeType;
 import com.oracle.truffle.llvm.parser.metadata.MDDerivedType;
+import com.oracle.truffle.llvm.parser.metadata.MDEnumerator;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDNode;
 import com.oracle.truffle.llvm.parser.metadata.MDReference;
 import com.oracle.truffle.llvm.parser.metadata.MDSubrange;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugArrayLikeType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugBasicType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugDecoratorType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugEnumLikeType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugMemberType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugPointerType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugStructLikeType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugType;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 final class MDTypeExtractor implements MetadataVisitor {
 
-    void parseType(MDBaseNode mdType) {
+    private static final String COUNT_NAME = "<count>";
+
+    LLVMDebugType parseType(MDBaseNode mdType) {
+        if (mdType == null) {
+            return null;
+        }
         mdType.accept(this);
+        return parsedTypes.getOrDefault(mdType, LLVMDebugType.UNKNOWN_TYPE);
     }
 
-    private final Map<MDBaseNode, DIType> parsedTypes = new HashMap<>();
+    private final Map<MDBaseNode, LLVMDebugType> parsedTypes = new HashMap<>();
 
     MDTypeExtractor() {
     }
 
     @Override
     public void ifVisitNotOverwritten(MDBaseNode md) {
-        parsedTypes.put(md, DIType.UNKNOWN_TYPE);
+        parsedTypes.put(md, LLVMDebugType.UNKNOWN_TYPE);
     }
 
     @Override
@@ -70,35 +87,35 @@ final class MDTypeExtractor implements MetadataVisitor {
             long align = mdType.getAlign();
             long offset = mdType.getOffset();
 
-            DIBasicType.Kind kind;
+            LLVMDebugBasicType.Kind kind;
             switch (mdType.getEncoding()) {
                 case DW_ATE_ADDRESS:
-                    kind = DIBasicType.Kind.ADDRESS;
+                    kind = LLVMDebugBasicType.Kind.ADDRESS;
                     break;
                 case DW_ATE_BOOLEAN:
-                    kind = DIBasicType.Kind.BOOLEAN;
+                    kind = LLVMDebugBasicType.Kind.BOOLEAN;
                     break;
                 case DW_ATE_FLOAT:
-                    kind = DIBasicType.Kind.FLOATING;
+                    kind = LLVMDebugBasicType.Kind.FLOATING;
                     break;
                 case DW_ATE_SIGNED:
-                    kind = DIBasicType.Kind.SIGNED;
+                    kind = LLVMDebugBasicType.Kind.SIGNED;
                     break;
                 case DW_ATE_SIGNED_CHAR:
-                    kind = DIBasicType.Kind.SIGNED_CHAR;
+                    kind = LLVMDebugBasicType.Kind.SIGNED_CHAR;
                     break;
                 case DW_ATE_UNSIGNED:
-                    kind = DIBasicType.Kind.UNSIGNED;
+                    kind = LLVMDebugBasicType.Kind.UNSIGNED;
                     break;
                 case DW_ATE_UNSIGNED_CHAR:
-                    kind = DIBasicType.Kind.UNSIGNED_CHAR;
+                    kind = LLVMDebugBasicType.Kind.UNSIGNED_CHAR;
                     break;
                 default:
-                    kind = DIBasicType.Kind.UNKNOWN;
+                    kind = LLVMDebugBasicType.Kind.UNKNOWN;
                     break;
             }
 
-            final DIType type = new DIBasicType(name, size, align, offset, kind);
+            final LLVMDebugType type = new LLVMDebugBasicType(name, size, align, offset, kind);
             parsedTypes.put(mdType, type);
         }
     }
@@ -113,21 +130,21 @@ final class MDTypeExtractor implements MetadataVisitor {
             switch (mdType.getTag()) {
 
                 case DW_TAG_ARRAY_TYPE: {
-                    final DIArrayLikeType type = new DIArrayLikeType(size, align, offset);
+                    final LLVMDebugArrayLikeType type = new LLVMDebugArrayLikeType(size, align, offset);
                     parsedTypes.put(mdType, type);
 
                     final MDReference mdBaseType = mdType.getDerivedFrom();
                     mdBaseType.accept(this);
-                    DIType baseType = parsedTypes.get(mdBaseType);
+                    LLVMDebugType baseType = parsedTypes.get(mdBaseType);
                     if (baseType == null) {
-                        baseType = DIType.UNKNOWN_TYPE;
+                        baseType = LLVMDebugType.UNKNOWN_TYPE;
                     }
-                    final DIType finalBaseType = baseType; // to be used in lambdas
+                    final LLVMDebugType finalBaseType = baseType; // to be used in lambdas
                     type.setBaseType(() -> finalBaseType);
 
-                    final List<DIType> members = new ArrayList<>(1);
+                    final List<LLVMDebugType> members = new ArrayList<>(1);
                     getElements(mdType.getMemberDescriptors(), members);
-                    if (members.size() == 1 && DIType.COUNT_NAME.equals(members.get(0).getName())) {
+                    if (members.size() == 1 && COUNT_NAME.equals(members.get(0).getName())) {
                         type.setLength(members.get(0).getSize());
                     } else {
                         type.setLength(-1);
@@ -137,23 +154,33 @@ final class MDTypeExtractor implements MetadataVisitor {
                     break;
                 }
 
+                case DW_TAG_CLASS_TYPE:
+                case DW_TAG_UNION_TYPE:
                 case DW_TAG_STRUCTURE_TYPE: {
-                    final DIStructLikeType type = new DIStructLikeType(size, align, offset);
+                    final LLVMDebugStructLikeType type = new LLVMDebugStructLikeType(size, align, offset);
                     final String parsedName = MDNameExtractor.getName(mdType.getName());
-                    type.setName(() -> String.format("struct %s", parsedName));
+
+                    if (mdType.getTag() == MDCompositeType.Tag.DW_TAG_CLASS_TYPE) {
+                        type.setName(() -> parsedName);
+                    } else if (mdType.getTag() == MDCompositeType.Tag.DW_TAG_STRUCTURE_TYPE) {
+                        type.setName(() -> String.format("struct %s", parsedName));
+                    } else {
+                        type.setName(() -> String.format("union %s", parsedName));
+                    }
+
                     parsedTypes.put(mdType, type);
 
-                    final List<DIType> members = new ArrayList<>();
+                    final List<LLVMDebugType> members = new ArrayList<>();
                     getElements(mdType.getMemberDescriptors(), members);
-                    for (final DIType member : members) {
-                        if (member instanceof DIMemberType) {
-                            type.addMember((DIMemberType) member);
+                    for (final LLVMDebugType member : members) {
+                        if (member instanceof LLVMDebugMemberType) {
+                            type.addMember((LLVMDebugMemberType) member);
 
                         } else {
                             // we should never get here because the offsets will be wrong, but this
                             // is still better than crashing outright and for testing it at least
                             // does not fail silently
-                            final DIMemberType namedMember = new DIMemberType("<unknown>", member.getSize(), member.getAlign(), member.getOffset());
+                            final LLVMDebugMemberType namedMember = new LLVMDebugMemberType("<unknown>", member.getSize(), member.getAlign(), member.getOffset());
                             namedMember.setElementType(member);
                             type.addMember(namedMember);
                         }
@@ -161,9 +188,22 @@ final class MDTypeExtractor implements MetadataVisitor {
                     break;
                 }
 
+                case DW_TAG_ENUMERATION_TYPE: {
+                    final String parsedName = MDNameExtractor.getName(mdType.getName());
+                    final LLVMDebugEnumLikeType type = new LLVMDebugEnumLikeType(() -> String.format("enum %s", parsedName), size, align, offset);
+                    parsedTypes.put(mdType, type);
+
+                    final List<LLVMDebugType> members = new ArrayList<>();
+                    getElements(mdType.getMemberDescriptors(), members);
+                    for (final LLVMDebugType member : members) {
+                        type.addValue((int) member.getOffset(), member.getName());
+                    }
+                    break;
+                }
+
                 default:
                     // TODO parse other kinds and remove this
-                    parsedTypes.put(mdType, DIType.UNKNOWN_TYPE);
+                    parsedTypes.put(mdType, LLVMDebugType.UNKNOWN_TYPE);
             }
         }
     }
@@ -179,38 +219,83 @@ final class MDTypeExtractor implements MetadataVisitor {
 
                 case DW_TAG_MEMBER: {
                     final String name = MDNameExtractor.getName(mdType.getName());
-                    final DIMemberType type = new DIMemberType(name, size, align, offset);
+                    final LLVMDebugMemberType type = new LLVMDebugMemberType(name, size, align, offset);
                     parsedTypes.put(mdType, type);
 
                     final MDReference mdBaseType = mdType.getBaseType();
                     mdBaseType.accept(this);
-                    DIType baseType = parsedTypes.get(mdBaseType);
+                    LLVMDebugType baseType = parsedTypes.get(mdBaseType);
                     if (baseType == null) {
-                        baseType = DIType.UNKNOWN_TYPE;
+                        baseType = LLVMDebugType.UNKNOWN_TYPE;
                     }
                     type.setElementType(baseType);
                     break;
                 }
 
                 case DW_TAG_POINTER_TYPE: {
-                    final DIPointerType type = new DIPointerType(size, align, offset);
+                    final LLVMDebugPointerType type = new LLVMDebugPointerType(size, align, offset);
                     parsedTypes.put(mdType, type);
 
                     final MDReference mdBaseType = mdType.getBaseType();
                     mdBaseType.accept(this);
-                    DIType baseType = parsedTypes.get(mdBaseType);
+                    LLVMDebugType baseType = parsedTypes.get(mdBaseType);
                     if (baseType == null) {
-                        baseType = DIType.UNKNOWN_TYPE;
+                        baseType = LLVMDebugType.UNKNOWN_TYPE;
                     }
-                    final DIType finalBaseType = baseType; // to be used in lambdas
+                    final LLVMDebugType finalBaseType = baseType; // to be used in lambdas
                     type.setBaseType(() -> finalBaseType);
                     type.setName(() -> String.format("*%s", finalBaseType.getName()));
                     break;
                 }
 
+                case DW_TAG_TYPEDEF:
+                case DW_TAG_VOLATILE_TYPE:
+                case DW_TAG_CONST_TYPE: {
+                    final Function<String, String> decorator;
+                    switch (mdType.getTag()) {
+                        case DW_TAG_VOLATILE_TYPE:
+                            decorator = s -> String.format("volatile %s", s);
+                            break;
+                        case DW_TAG_CONST_TYPE:
+                            decorator = s -> String.format("const %s", s);
+                            break;
+                        case DW_TAG_TYPEDEF: {
+                            final String name = MDNameExtractor.getName(mdType.getName());
+                            decorator = s -> name;
+                            break;
+                        }
+                        default:
+                            decorator = Function.identity();
+                    }
+                    final LLVMDebugDecoratorType type = new LLVMDebugDecoratorType(size, align, offset, decorator);
+                    parsedTypes.put(mdType, type);
+                    final MDReference mdBaseType = mdType.getBaseType();
+                    mdBaseType.accept(this);
+                    LLVMDebugType baseType = parsedTypes.get(mdBaseType);
+                    if (baseType == null) {
+                        baseType = LLVMDebugType.UNKNOWN_TYPE;
+                    }
+                    final LLVMDebugType finalBaseType = baseType; // to be used in lambdas
+                    type.setBaseType(() -> finalBaseType);
+                    break;
+                }
+
+                case DW_TAG_INHERITANCE: {
+                    final LLVMDebugMemberType type = new LLVMDebugMemberType("super" + mdType.toString(), size, align, offset);
+                    parsedTypes.put(mdType, type);
+
+                    final MDReference mdBaseType = mdType.getBaseType();
+                    mdBaseType.accept(this);
+                    final LLVMDebugType baseType = parsedTypes.getOrDefault(mdBaseType, LLVMDebugType.UNKNOWN_TYPE);
+                    type.setElementType(baseType);
+                    type.setName(() -> String.format("super (%s)", baseType.getName()));
+
+                    break;
+                }
+
                 default:
                     // TODO parse other kinds and remove this
-                    parsedTypes.put(mdType, DIType.UNKNOWN_TYPE);
+                    parsedTypes.put(mdType, LLVMDebugType.UNKNOWN_TYPE);
             }
         }
     }
@@ -221,7 +306,7 @@ final class MDTypeExtractor implements MetadataVisitor {
             if (!parsedTypes.containsKey(mdRef)) {
                 final MDBaseNode target = mdRef.get();
                 target.accept(this);
-                final DIType parsedType = parsedTypes.get(target);
+                final LLVMDebugType parsedType = parsedTypes.get(target);
                 if (parsedType != null) {
                     parsedTypes.put(mdRef, parsedType);
                 }
@@ -232,7 +317,14 @@ final class MDTypeExtractor implements MetadataVisitor {
     @Override
     public void visit(MDSubrange mdRange) {
         // for array types the member descriptors contain this as the only element
-        parsedTypes.put(mdRange, new DIType(() -> DIType.COUNT_NAME, mdRange.getSize(), 0L, 0L));
+        parsedTypes.put(mdRange, new IntermediaryType(() -> COUNT_NAME, mdRange.getSize(), 0L, 0L));
+    }
+
+    @Override
+    public void visit(MDEnumerator mdEnumElement) {
+        final String representation = MDNameExtractor.getName(mdEnumElement.getName());
+        final long id = mdEnumElement.getValue();
+        parsedTypes.put(mdEnumElement, new IntermediaryType(() -> representation, 0, 0, id));
     }
 
     @Override
@@ -244,15 +336,29 @@ final class MDTypeExtractor implements MetadataVisitor {
 
     @Override
     public void visit(MDGlobalVariable mdGlobal) {
-        mdGlobal.getType().accept(this);
+        if (!parsedTypes.containsKey(mdGlobal)) {
+            final MDReference typeRef = mdGlobal.getType();
+            typeRef.accept(this);
+            final LLVMDebugType type = parsedTypes.get(typeRef);
+            if (type != null) {
+                parsedTypes.put(mdGlobal, type);
+            }
+        }
     }
 
     @Override
     public void visit(MDLocalVariable mdLocal) {
-        mdLocal.getType().accept(this);
+        if (!parsedTypes.containsKey(mdLocal)) {
+            final MDReference typeRef = mdLocal.getType();
+            typeRef.accept(this);
+            final LLVMDebugType type = parsedTypes.get(typeRef);
+            if (type != null) {
+                parsedTypes.put(mdLocal, type);
+            }
+        }
     }
 
-    private void getElements(MDReference elemRef, List<DIType> elemTypes) {
+    private void getElements(MDReference elemRef, List<LLVMDebugType> elemTypes) {
         if (elemRef == MDReference.VOID) {
             return;
         }
@@ -263,9 +369,24 @@ final class MDTypeExtractor implements MetadataVisitor {
             for (MDBaseNode elemNode : elemListNode) {
                 elemNode.accept(this);
                 if (elemNode != MDReference.VOID && elemNode instanceof MDReference) {
-                    elemTypes.add(parsedTypes.get(((MDReference) elemNode).get()));
+                    final LLVMDebugType elemType = parsedTypes.get(((MDReference) elemNode).get());
+                    if (elemType != LLVMDebugType.UNKNOWN_TYPE) {
+                        elemTypes.add(elemType);
+                    }
                 }
             }
+        }
+    }
+
+    private static final class IntermediaryType extends LLVMDebugType {
+
+        IntermediaryType(Supplier<String> nameSupplier, long size, long align, long offset) {
+            super(nameSupplier, size, align, offset);
+        }
+
+        @Override
+        public LLVMDebugType getOffset(long newOffset) {
+            return this;
         }
     }
 }

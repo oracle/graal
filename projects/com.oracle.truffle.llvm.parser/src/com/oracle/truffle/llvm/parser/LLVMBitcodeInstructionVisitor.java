@@ -35,16 +35,19 @@ import java.util.Map;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionKind;
+import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.enums.AsmDialect;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.InlineAsmConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.MetadataConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.AllocateInstruction;
@@ -83,9 +86,11 @@ import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMException;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugSlotType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -287,7 +292,29 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         if (target instanceof FunctionDeclaration) {
             final String name = ((FunctionDeclaration) target).getName();
-            if ("@llvm.dbg.declare".equals(name) || "@llvm.dbg.value".equals(name)) {
+            if ("@llvm.dbg.declare".equals(name) && call.getArgumentCount() >= 3) {
+                if (runtime.getContext().getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
+                    Symbol allocationSiteSymbol = call.getArgument(0);
+                    if (allocationSiteSymbol instanceof MetadataConstant) {
+                        Symbol resolvedAllocationSiteSymbol = symbols.getSymbol((MetadataConstant) allocationSiteSymbol);
+                        if (resolvedAllocationSiteSymbol != null && resolvedAllocationSiteSymbol instanceof ValueInstruction) {
+                            SourceModel.Variable var = ((ValueInstruction) resolvedAllocationSiteSymbol).getSourceVariable();
+                            FrameSlot valueSlot = frame.findFrameSlot(((ValueInstruction) resolvedAllocationSiteSymbol).getFrameSlotName());
+                            FrameSlot debugSlot = frame.findOrAddFrameSlot(LLVMDebugSlotType.FRAMESLOT_NAME, FrameSlotKind.Object);
+                            // TODO the argument to the call is a metadata constant so lifetime
+                            // analysis does not consider that the referenced object needs to be
+                            // alive at this point
+                            LLVMExpressionNode valueRead = nodeFactory.createFrameRead(runtime, resolvedAllocationSiteSymbol.getType(), valueSlot);
+                            LLVMExpressionNode debugDeclaration = nodeFactory.createLocalDebugDeclaration(var.getName(), var.getType(), debugSlot, valueRead);
+                            addInstruction(debugDeclaration);
+                            return;
+                        }
+                    }
+                }
+                handleNullerInfo();
+                return;
+
+            } else if ("@llvm.dbg.declare".equals(name) || "@llvm.dbg.value".equals(name)) {
                 // these intrinsics are debug information and should be resolved during parsing, not
                 // at runtime
                 handleNullerInfo();

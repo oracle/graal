@@ -27,35 +27,41 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata.debuginfo;
+package com.oracle.truffle.llvm.runtime.debug;
 
-public final class DIMemberType extends DIType {
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Supplier;
 
-    private DIType elementType;
+public final class LLVMDebugEnumLikeType extends LLVMDebugType {
 
-    DIMemberType(String name, long size, long align, long offset) {
-        super(() -> name, size, align, offset);
+    private final Map<Long, String> values;
+
+    public LLVMDebugEnumLikeType(Supplier<String> nameSupplier, long size, long align, long offset) {
+        this(nameSupplier, size, align, offset, new HashMap<>());
     }
 
-    public DIType getElementType() {
-        return elementType;
+    private LLVMDebugEnumLikeType(Supplier<String> nameSupplier, long size, long align, long offset, Map<Long, String> values) {
+        super(nameSupplier, size, align, offset);
+        this.values = values;
     }
 
-    public void setElementType(DIType elementType) {
-        this.elementType = elementType;
-    }
-
-    /**
-     * Return the element type with the offset of this type.
-     *
-     * @return the element type with the offset of this type
-     */
-    DIType getOffsetElementType() {
-        return elementType != null ? elementType.getOffset(getOffset()) : null;
+    public void addValue(long id, String representation) {
+        values.put(id, representation);
     }
 
     @Override
-    public String toString() {
-        return String.format("%s: %s", getName(), elementType != null ? elementType.getName() : null);
+    public String getElementName(long i) {
+        return values.get(i);
+    }
+
+    @Override
+    public LLVMDebugType getOffset(long newOffset) {
+        return new LLVMDebugEnumLikeType(this::getName, getSize(), getAlign(), getOffset(), values);
+    }
+
+    @Override
+    public boolean isEnum() {
+        return true;
     }
 }

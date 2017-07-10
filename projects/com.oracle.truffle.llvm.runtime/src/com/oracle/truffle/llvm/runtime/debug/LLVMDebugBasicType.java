@@ -27,73 +27,64 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata.debuginfo;
+package com.oracle.truffle.llvm.runtime.debug;
 
-import java.util.function.Supplier;
+public final class LLVMDebugBasicType extends LLVMDebugType {
 
-public class DIType {
-    static final String COUNT_NAME = "<count>";
-    static final String ANON_NAME = MDNameExtractor.DEFAULT_STRING;
+    private final Kind kind;
 
-    static final DIType UNKNOWN_TYPE = new DIType(() -> "<unknown>", 0, 0, 0);
-
-    private Supplier<String> nameSupplier;
-
-    private long size;
-
-    private long align;
-
-    private long offset;
-
-    DIType(Supplier<String> nameSupplier, long size, long align, long offset) {
-        this.nameSupplier = nameSupplier;
-        this.size = size;
-        this.align = align;
-        this.offset = offset;
+    public LLVMDebugBasicType(String name, long size, long align, long offset, Kind kind) {
+        super(() -> name, size, align, offset);
+        this.kind = kind;
     }
 
-    DIType(long size, long align, long offset) {
-        this(null, size, align, offset);
+    public Kind getKind() {
+        return kind;
     }
 
-    public String getName() {
-        return nameSupplier.get();
-    }
-
-    public long getSize() {
-        return size;
-    }
-
-    public long getAlign() {
-        return align;
-    }
-
-    public long getOffset() {
-        return offset;
-    }
-
-    public void setName(Supplier<String> nameSupplier) {
-        this.nameSupplier = nameSupplier;
-    }
-
-    public void setSize(long size) {
-        this.size = size;
-    }
-
-    public void setAlign(long align) {
-        this.align = align;
-    }
-
-    public void setOffset(long offset) {
-        this.offset = offset;
-    }
-
-    DIType getOffset(long newOffset) {
-        return new DIType(nameSupplier, size, align, newOffset);
+    @Override
+    public LLVMDebugType getOffset(long newOffset) {
+        return new LLVMDebugBasicType(getName(), getSize(), getAlign(), newOffset, kind);
     }
 
     @Override
     public String toString() {
         return getName();
+    }
+
+    @Override
+    public boolean isAggregate() {
+        return false;
+    }
+
+    @Override
+    public int getElementCount() {
+        return 0;
+    }
+
+    @Override
+    public String getElementName(long i) {
+        return null;
+    }
+
+    @Override
+    public LLVMDebugType getElementType(long i) {
+        return null;
+    }
+
+    @Override
+    public LLVMDebugType getElementType(String name) {
+        return null;
+    }
+
+    public enum Kind {
+        UNKNOWN,
+        ADDRESS,
+        BOOLEAN,
+        FLOATING,
+        SIGNED,
+        SIGNED_CHAR,
+        UNSIGNED,
+        UNSIGNED_CHAR;
     }
 }

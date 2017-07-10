@@ -42,6 +42,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruc
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugType;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 import java.util.HashMap;
@@ -91,9 +92,12 @@ public final class SourceModel {
 
         private final Symbol symbol;
 
-        private Variable(String name, Symbol symbol) {
+        private final LLVMDebugType type;
+
+        private Variable(String name, Symbol symbol, LLVMDebugType type) {
             this.name = name;
             this.symbol = symbol;
+            this.type = type;
         }
 
         public String getName() {
@@ -102,6 +106,10 @@ public final class SourceModel {
 
         public Symbol getSymbol() {
             return symbol;
+        }
+
+        public LLVMDebugType getType() {
+            return type;
         }
 
         @Override
@@ -175,9 +183,9 @@ public final class SourceModel {
                 if (mdLocalMDRef instanceof MetadataConstant) {
                     final long mdIndex = ((MetadataConstant) mdLocalMDRef).getValue();
                     final MDBaseNode mdLocal = currentFunction.definition.getMetadata().getMDRef(mdIndex);
-                    typeExtractor.parseType(mdLocal);
+                    LLVMDebugType type = typeExtractor.parseType(mdLocal);
                     String varName = MDNameExtractor.getName(mdLocal);
-                    Variable var = new Variable(varName, alloca);
+                    Variable var = new Variable(varName, alloca, type);
                     ((ValueInstruction) alloca).setSourceVariable(var);
                     currentFunction.locals.put(alloca, var);
                 }
@@ -190,8 +198,8 @@ public final class SourceModel {
             public void visit(MDGlobalVariable mdGlobal) {
                 String name = MDNameExtractor.getName(mdGlobal.getName());
                 Symbol symbol = MDSymbolExtractor.getSymbol(mdGlobal.getVariable());
-                Variable globalVar = new Variable(name, symbol);
-                typeExtractor.parseType(mdGlobal.getType());
+                LLVMDebugType type = typeExtractor.parseType(mdGlobal.getType());
+                Variable globalVar = new Variable(name, symbol, type);
                 sourceModel.globals.put(symbol, globalVar);
             }
         };

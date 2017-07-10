@@ -135,6 +135,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountSetBitsNodeFactory
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI16NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI32NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI64NodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugDeclarationNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI8NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64BitVACopyNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64BitVAEnd;
@@ -182,6 +183,7 @@ import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReaso
 import com.oracle.truffle.llvm.runtime.NativeAllocator;
 import com.oracle.truffle.llvm.runtime.NativeIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.NativeResolver;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugType;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
@@ -897,5 +899,10 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMExpressionNode createVarArgCompoundValue(LLVMParserRuntime runtime, int length, int alignment, LLVMExpressionNode parameterNode) {
         return LLVMVarArgCompoundAddressNodeGen.create(parameterNode, length, alignment);
+    }
+
+    @Override
+    public LLVMExpressionNode createLocalDebugDeclaration(String varName, LLVMDebugType type, FrameSlot debugSlot, LLVMExpressionNode valueProvider) {
+        return LLVMDebugDeclarationNodeGen.create(varName, type, debugSlot, valueProvider);
     }
 }

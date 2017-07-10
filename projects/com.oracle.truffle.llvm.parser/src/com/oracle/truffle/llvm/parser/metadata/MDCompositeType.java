@@ -110,8 +110,7 @@ public final class MDCompositeType extends MDType implements MDBaseNode {
         DW_TAG_STRUCTURE_TYPE(19),
         DW_TAG_UNION_TYPE(23),
         DW_TAG_VECTOR_TYPE(259),
-        DW_TAG_SUBROUTINE_TYPE(21),
-        DW_TAG_INHERITANCE(28);
+        DW_TAG_SUBROUTINE_TYPE(21);
 
         private final int id;
 

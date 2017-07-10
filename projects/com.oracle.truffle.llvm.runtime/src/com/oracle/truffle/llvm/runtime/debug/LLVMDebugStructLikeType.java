@@ -27,28 +27,28 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata.debuginfo;
+package com.oracle.truffle.llvm.runtime.debug;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
-public final class DIStructLikeType extends DIType {
+public final class LLVMDebugStructLikeType extends LLVMDebugType {
 
-    private final List<DIMemberType> members;
+    private final List<LLVMDebugMemberType> members;
 
-    DIStructLikeType(long size, long align, long offset) {
+    public LLVMDebugStructLikeType(long size, long align, long offset) {
         super(size, align, offset);
         this.members = new ArrayList<>();
     }
 
-    private DIStructLikeType(Supplier<String> name, long size, long align, long offset, List<DIMemberType> members) {
+    private LLVMDebugStructLikeType(Supplier<String> name, long size, long align, long offset, List<LLVMDebugMemberType> members) {
         super(size, align, offset);
         setName(name);
         this.members = members;
     }
 
-    public void addMember(DIMemberType member) {
+    public void addMember(LLVMDebugMemberType member) {
         members.add(member);
     }
 
@@ -64,7 +64,7 @@ public final class DIStructLikeType extends DIType {
         }
     }
 
-    public DIType getMemberType(int i) {
+    public LLVMDebugType getMemberType(int i) {
         if (0 <= i && i < members.size()) {
             return members.get(i).getOffsetElementType();
         } else {
@@ -73,7 +73,46 @@ public final class DIStructLikeType extends DIType {
     }
 
     @Override
-    DIType getOffset(long newOffset) {
-        return new DIStructLikeType(this::getName, getSize(), getAlign(), newOffset, members);
+    public LLVMDebugType getOffset(long newOffset) {
+        return new LLVMDebugStructLikeType(this::getName, getSize(), getAlign(), newOffset, members);
+    }
+
+    @Override
+    public boolean isAggregate() {
+        return true;
+    }
+
+    @Override
+    public int getElementCount() {
+        return members.size();
+    }
+
+    @Override
+    public String getElementName(long i) {
+        if (0 <= i && i < members.size()) {
+            return members.get((int) i).getName();
+        }
+        return null;
+    }
+
+    @Override
+    public LLVMDebugType getElementType(long i) {
+        if (0 <= i && i < members.size()) {
+            return members.get((int) i).getOffsetElementType();
+        }
+        return null;
+    }
+
+    @Override
+    public LLVMDebugType getElementType(String name) {
+        if (name == null) {
+            return null;
+        }
+        for (final LLVMDebugMemberType member : members) {
+            if (name.equals(member.getName())) {
+                return member.getOffsetElementType();
+            }
+        }
+        return null;
     }
 }
