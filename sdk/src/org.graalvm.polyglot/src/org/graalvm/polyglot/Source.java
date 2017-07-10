@@ -361,8 +361,8 @@ public final class Source {
         return new Builder(language, source);
     }
 
-    public static Builder newBuilder(String language, URL source, String name) {
-        return new Builder(language, source).name(name);
+    public static Builder newBuilder(String language, URL source) {
+        return new Builder(language, source);
     }
 
     public static Builder newBuilder(String language, Reader source, String name) {
@@ -601,7 +601,7 @@ class SourceSnippets {
  public static Source fromURL(Class<?> relativeClass) throws URISyntaxException, IOException {
      // BEGIN: SourceSnippets#fromURL
      URL resource = relativeClass.getResource("sample.js");
-     Source source = Source.newBuilder("js", resource, "sample.js")
+     Source source = Source.newBuilder("js", resource)
                      .build();
      assert resource.toExternalForm().equals(source.getPath());
      assert "sample.js".equals(source.getName());
@@ -613,7 +613,7 @@ class SourceSnippets {
  public static Source fromURLWithOwnContent(Class<?> relativeClass) throws IOException {
      // BEGIN: SourceSnippets#fromURLWithOwnContent
      URL resource = relativeClass.getResource("sample.js");
-     Source source = Source.newBuilder("js", resource, "sample.js")
+     Source source = Source.newBuilder("js", resource)
          .content("{}")
          .build();
      assert resource.toExternalForm().equals(source.getPath());
