@@ -33,7 +33,7 @@ import java.util.Objects;
 final class TypeAndClass<T> {
     static final TypeAndClass<Object> ANY = new TypeAndClass<>(null, Object.class);
 
-    private final Object type;
+    private final Type type;
     final Class<T> clazz;
 
     TypeAndClass(Type type, Class<T> clazz) {
@@ -76,4 +76,24 @@ final class TypeAndClass<T> {
         return new TypeAndClass<>(method.getGenericReturnType(), method.getReturnType());
     }
 
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((clazz == null) ? 0 : clazz.hashCode());
+        result = prime * result + ((type == null) ? 0 : type.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (!(obj instanceof TypeAndClass<?>)) {
+            return false;
+        }
+        TypeAndClass<?> other = (TypeAndClass<?>) obj;
+        return Objects.equals(clazz, other.clazz) && Objects.equals(type, other.type);
+    }
 }

@@ -22,10 +22,14 @@
  */
 package org.graalvm.compiler.truffle.phases;
 
-import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaUtil;
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
@@ -42,20 +46,17 @@ import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaUtil;
 
-public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
+public abstract class InstrumentPhase extends BasePhase<PhaseContext> {
     private static final String[] OMITTED_STACK_PATTERNS = new String[]{
                     OptimizedCallTarget.class.getName() + ".callProxy",
                     OptimizedCallTarget.class.getName() + ".callRoot",
@@ -86,7 +87,7 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
         return TruffleCompilerOptions.TruffleInstrumentFilter.getValue(options);
     }
 
-    protected static void insertCounter(StructuredGraph graph, HighTierContext context, JavaConstant tableConstant,
+    protected static void insertCounter(StructuredGraph graph, PhaseContext context, JavaConstant tableConstant,
                     FixedWithNextNode targetNode, int slotIndex) {
         assert (tableConstant != null);
         TypeReference typeRef = TypeReference.createExactTrusted(context.getMetaAccess().lookupJavaType(tableConstant));
@@ -107,7 +108,7 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
     }
 
     @Override
-    protected void run(StructuredGraph graph, HighTierContext context) {
+    protected void run(StructuredGraph graph, PhaseContext context) {
         JavaConstant tableConstant = snippetReflection.forObject(instrumentation.getAccessTable());
         try {
             instrumentGraph(graph, context, tableConstant);
@@ -116,7 +117,7 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
         }
     }
 
-    protected abstract void instrumentGraph(StructuredGraph graph, HighTierContext context, JavaConstant tableConstant);
+    protected abstract void instrumentGraph(StructuredGraph graph, PhaseContext context, JavaConstant tableConstant);
 
     protected abstract int instrumentationPointSlotCount();
 

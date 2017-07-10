@@ -43,7 +43,8 @@ def _run_netbeans_app(app_name, env=None, args=None):
         executable = join(extractPath, name, 'bin', name)
 
     # Check whether the current installation is up-to-date
-    if exists(executable) and not exists(mx.library(dist).get_path(resolve=False)):
+    versionFile = join(extractPath, name, mx.library(dist).sha1)
+    if exists(executable) and not exists(versionFile):
         mx.log('Updating ' + app_name)
         shutil.rmtree(join(extractPath, name))
 
@@ -52,6 +53,8 @@ def _run_netbeans_app(app_name, env=None, args=None):
     if not exists(executable):
         zf = zipfile.ZipFile(archive, 'r')
         zf.extractall(extractPath)
+        with open(versionFile, 'a'):
+            os.utime(versionFile, None)
 
     if not exists(executable):
         mx.abort(app_name + ' binary does not exist: ' + executable)

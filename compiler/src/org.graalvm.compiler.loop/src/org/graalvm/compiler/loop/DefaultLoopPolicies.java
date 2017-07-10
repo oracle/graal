@@ -37,6 +37,7 @@ import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -44,6 +45,7 @@ import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.VirtualState.VirtualClosure;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.debug.ControlFlowAnchorNode;
 import org.graalvm.compiler.nodes.java.TypeSwitchNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -60,6 +62,9 @@ public class DefaultLoopPolicies implements LoopPolicies {
     @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollMaxNodes = new OptionKey<>(300);
     @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollMaxIterations = new OptionKey<>(600);
     @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> ExactFullUnrollMaxNodes = new OptionKey<>(1200);
+    @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> ExactPartialUnrollMaxNodes = new OptionKey<>(200);
+
+    @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> UnrollMaxIterations = new OptionKey<>(16);
 
     @Override
     public boolean shouldPeel(LoopEx loop, ControlFlowGraph cfg, MetaAccessProvider metaAccess) {
@@ -88,6 +93,48 @@ public class DefaultLoopPolicies implements LoopPolicies {
         if (maxTrips <= FullUnrollMaxIterations.getValue(options) && size * (maxTrips - 1) <= maxNodes) {
             // check whether we're allowed to unroll this loop
             return loop.canDuplicateLoop();
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public boolean shouldPartiallyUnroll(LoopEx loop) {
+        if (!loop.isCounted()) {
+            return false;
+        }
+        OptionValues options = loop.entryPoint().getOptions();
+        LoopBeginNode loopBegin = loop.loopBegin();
+        int maxNodes = ExactPartialUnrollMaxNodes.getValue(options);
+        maxNodes = Math.min(maxNodes, Math.max(0, MaximumDesiredSize.getValue(options) - loop.loopBegin().graph().getNodeCount()));
+        int size = Math.max(1, loop.size() - 1 - loop.loopBegin().phis().count());
+        int unrollFactor = loopBegin.getUnrollFactor();
+        if (unrollFactor == 1) {
+            double loopFrequency = loopBegin.loopFrequency();
+            if (loopBegin.isSimpleLoop() && loopFrequency < 5.0) {
+                return false;
+            }
+            loopBegin.setLoopOrigFrequency(loopFrequency);
+        }
+        int maxUnroll = UnrollMaxIterations.getValue(options);
+        // Now correct size for the next unroll. UnrollMaxIterations == 1 means perform the
+        // pre/main/post transformation but don't actually unroll the main loop.
+        size += size;
+        if (maxUnroll == 1 && loopBegin.isSimpleLoop() || size <= maxNodes && unrollFactor < maxUnroll) {
+            // Will the next unroll fit?
+            if ((int) loopBegin.loopOrigFrequency() < (unrollFactor * 2)) {
+                return false;
+            }
+            // Check whether we're allowed to unroll this loop
+            for (Node node : loop.inside().nodes()) {
+                if (node instanceof ControlFlowAnchorNode) {
+                    return false;
+                }
+                if (node instanceof InvokeNode) {
+                    return false;
+                }
+            }
+            return true;
         } else {
             return false;
         }

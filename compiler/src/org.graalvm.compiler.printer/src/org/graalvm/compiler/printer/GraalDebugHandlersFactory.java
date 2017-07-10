@@ -28,6 +28,7 @@ import static org.graalvm.compiler.debug.DebugOptions.PrintGraphHost;
 import static org.graalvm.compiler.debug.DebugOptions.PrintXmlGraphPort;
 import static org.graalvm.compiler.debug.DebugOptions.ShowDumpFiles;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.InetSocketAddress;
@@ -117,7 +118,13 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
         return new CanonicalStringGraphPrinter(snippetReflection);
     }
 
-    public static String sanitizedFileName(String name) {
+    public static String sanitizedFileName(String n) {
+        /*
+         * First ensure that the name does not contain the directory separator (which would be
+         * considered a valid path).
+         */
+        String name = n.replace(File.separatorChar, '_');
+
         try {
             Paths.get(name);
             return name;
@@ -191,7 +198,7 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
                 id = compilationId.toString(CompilationIdentifier.Verbosity.ID);
             }
         } else {
-            label = graph == null ? "<no graph>" : graph.name != null ? graph.name : graph.toString();
+            label = graph == null ? null : graph.name != null ? graph.name : graph.toString();
             id = "UnknownCompilation-" + unknownCompilationId.incrementAndGet();
         }
         String ext = UniquePathUtilities.formatExtension(extension);
@@ -220,13 +227,17 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
                 // This means `id` is very long
                 String suffix = timestamp + ext;
                 int idLengthLimit = Math.min(MAX_FILE_NAME_LENGTH - suffix.length(), id.length());
-                fileName = id.substring(0, idLengthLimit) + suffix;
+                fileName = sanitizedFileName(id.substring(0, idLengthLimit) + suffix);
             } else {
-                String adjustedLabel = label;
-                if (label.length() > labelLengthLimit) {
-                    adjustedLabel = label.substring(0, labelLengthLimit - ELLIPSIS.length()) + ELLIPSIS;
+                if (label == null) {
+                    fileName = sanitizedFileName(id + timestamp + ext);
+                } else {
+                    String adjustedLabel = label;
+                    if (label.length() > labelLengthLimit) {
+                        adjustedLabel = label.substring(0, labelLengthLimit - ELLIPSIS.length()) + ELLIPSIS;
+                    }
+                    fileName = sanitizedFileName(id + '[' + adjustedLabel + ']' + timestamp + ext);
                 }
-                fileName = sanitizedFileName(id + '[' + adjustedLabel + ']' + timestamp + ext);
             }
             Path result = dumpDir.resolve(fileName);
             try {

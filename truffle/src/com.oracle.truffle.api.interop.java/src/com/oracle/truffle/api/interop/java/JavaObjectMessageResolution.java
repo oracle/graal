@@ -26,14 +26,12 @@ package com.oracle.truffle.api.interop.java;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -48,9 +46,6 @@ import com.oracle.truffle.api.nodes.Node;
 @MessageResolution(receiverType = JavaObject.class)
 class JavaObjectMessageResolution {
 
-    /**
-     * The generated class uses {@link Specialization}.
-     */
     @Resolve(message = "GET_SIZE")
     abstract static class ArrayGetSizeNode extends Node {
 
@@ -90,11 +85,11 @@ class JavaObjectMessageResolution {
             }
 
             // (1) look for a method; if found, invoke it on obj.
-            Method foundMethod = JavaInteropReflect.findMethod(object, name, args);
+            JavaMethodDesc foundMethod = JavaInteropReflect.findMethod(object, name, args);
             if (foundMethod != null) {
-                if (doExecute == null || args.length != doExecute.numberOfArguments()) {
+                if (doExecute == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    doExecute = insert(new ExecuteMethodNode(args.length));
+                    doExecute = insert(ExecuteMethodNode.create());
                 }
                 return doExecute.execute(foundMethod, object.obj, args, object.languageContext);
             }
@@ -133,25 +128,31 @@ class JavaObjectMessageResolution {
 
     @Resolve(message = "NEW")
     abstract static class NewNode extends Node {
+        @Child private ExecuteMethodNode doExecute;
 
         public Object access(JavaObject object, Object[] args) {
             return execute(object, args);
         }
 
         @TruffleBoundary
-        private static Object execute(JavaObject receiver, Object[] args) {
-            if (receiver.obj != null) {
+        private Object execute(JavaObject receiver, Object[] args) {
+            if (!receiver.isClass()) {
                 throw new IllegalStateException("Can only work on classes: " + receiver.obj);
             }
             if (TruffleOptions.AOT) {
                 throw new IllegalStateException();
             }
-            for (int i = 0; i < args.length; i++) {
-                if (args[i] instanceof JavaObject) {
-                    args[i] = ((JavaObject) args[i]).obj;
-                }
+            if (doExecute == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                doExecute = insert(ExecuteMethodNode.create());
             }
-            return JavaInteropReflect.newConstructor(receiver.clazz, args);
+            JavaClassDesc classDesc = JavaClassDesc.forClass(receiver.clazz);
+            JavaMethodDesc method = classDesc.lookupConstructor();
+            if (method != null) {
+                return doExecute.execute(method, null, args, receiver.languageContext);
+            } else {
+                throw UnsupportedTypeException.raise(new Object[]{receiver});
+            }
         }
     }
 
@@ -169,7 +170,7 @@ class JavaObjectMessageResolution {
         @Child private ToPrimitiveNode primitive = ToPrimitiveNode.create();
 
         public Object access(JavaObject object) {
-            return primitive.isPrimitive(object.obj);
+            return JavaInterop.isPrimitive(object.obj);
         }
 
     }
@@ -179,8 +180,7 @@ class JavaObjectMessageResolution {
         @Child private ToPrimitiveNode primitive = ToPrimitiveNode.create();
 
         public Object access(JavaObject object) {
-            Object result = primitive.toPrimitive(object.obj, null);
-            return result == null ? JavaObject.NULL : result;
+            return JavaInterop.isPrimitive(object.obj) ? object.obj : JavaObject.NULL;
         }
 
     }
@@ -188,7 +188,7 @@ class JavaObjectMessageResolution {
     @Resolve(message = "READ")
     abstract static class ReadFieldNode extends Node {
 
-        @Child private ArrayReadNode read = ArrayReadNodeGen.create();
+        @Child private ArrayReadNode read = ArrayReadNode.create();
 
         public Object access(JavaObject object, Number index) {
             return read.executeWithTarget(object, index);
@@ -215,8 +215,8 @@ class JavaObjectMessageResolution {
     @Resolve(message = "WRITE")
     abstract static class WriteFieldNode extends Node {
 
-        @Child private ToJavaNode toJava = ToJavaNodeGen.create();
-        @Child private ArrayWriteNode write = ArrayWriteNodeGen.create();
+        @Child private ToJavaNode toJava = ToJavaNode.create();
+        @Child private ArrayWriteNode write = ArrayWriteNode.create();
 
         public Object access(JavaObject receiver, String name, Object value) {
             Object obj = receiver.obj;
@@ -257,7 +257,7 @@ class JavaObjectMessageResolution {
                     fields[i++] = Objects.toString(key, null);
                 }
             } else {
-                fields = TruffleOptions.AOT ? new String[0] : JavaInteropReflect.findUniquePublicMemberNames(receiver.clazz, receiver.obj != null, includeInternal);
+                fields = TruffleOptions.AOT ? new String[0] : JavaInteropReflect.findUniquePublicMemberNames(receiver.clazz, !receiver.isClass(), includeInternal);
             }
             return JavaInterop.asTruffleObject(fields);
         }
@@ -268,7 +268,7 @@ class JavaObjectMessageResolution {
     abstract static class PropertyInfoNode extends Node {
 
         @TruffleBoundary
-        public Object access(JavaObject receiver, Number index) {
+        public int access(JavaObject receiver, Number index) {
             int i = index.intValue();
             if (i != index.doubleValue()) {
                 // No non-integer indexes
@@ -277,20 +277,17 @@ class JavaObjectMessageResolution {
             if (i < 0) {
                 return 0;
             }
-            Object obj = receiver.obj;
-            try {
-                int length = Array.getLength(obj);
-                if (i >= length) {
-                    return 0;
+            if (receiver.isArray()) {
+                int length = Array.getLength(receiver.obj);
+                if (i < length) {
+                    return 0b111;
                 }
-                return 0b111;
-            } catch (IllegalArgumentException notAnArr) {
-                return 0;
             }
+            return 0;
         }
 
         @TruffleBoundary
-        public Object access(JavaObject receiver, String name) {
+        public int access(JavaObject receiver, String name) {
             if (receiver.obj instanceof Map) {
                 Map<?, ?> map = (Map<?, ?>) receiver.obj;
                 if (map.containsKey(name)) {
@@ -305,16 +302,18 @@ class JavaObjectMessageResolution {
             if (JavaInteropReflect.isField(receiver, name)) {
                 return 0b111;
             }
+            if (JavaInteropReflect.isMethod(receiver, name)) {
+                if (JavaInteropReflect.isInternalMethod(receiver, name)) {
+                    return 0b11111;
+                } else {
+                    return 0b1111;
+                }
+            }
+            if (JavaInteropReflect.isJNIMethod(receiver, name)) {
+                return 0b11111;
+            }
             if (JavaInteropReflect.isMemberType(receiver, name)) {
                 return 0b11;
-            }
-            if (JavaInteropReflect.isMethod(receiver, name)) {
-                return 0b1111;
-            }
-            if (name.contains("__")) {
-                if (JavaInteropReflect.isJNIMethod(receiver, name)) {
-                    return 0b11111;
-                }
             }
             return 0;
         }
@@ -351,20 +350,16 @@ class JavaObjectMessageResolution {
             if (TruffleOptions.AOT) {
                 throw UnsupportedMessageException.raise(Message.createExecute(args.length));
             }
-            if (doExecute == null || args.length != doExecute.numberOfArguments()) {
+            if (doExecute == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                doExecute = insert(new ExecuteMethodNode(args.length));
+                doExecute = insert(ExecuteMethodNode.create());
             }
             Object obj = receiver.obj;
             String functionalInterfaceMethodName = JavaInteropReflect.findFunctionalInterfaceMethodName(obj.getClass());
             if (functionalInterfaceMethodName != null) {
-                Method method = JavaInteropReflect.findMethod(receiver, functionalInterfaceMethodName);
+                JavaMethodDesc method = JavaInteropReflect.findMethod(receiver, functionalInterfaceMethodName);
                 if (method != null) {
-                    if (method.getParameterCount() == args.length || method.isVarArgs()) {
-                        return doExecute.execute(method, obj, args, receiver.languageContext);
-                    } else {
-                        throw ArityException.raise(method.getParameterCount(), args.length);
-                    }
+                    return doExecute.execute(method, obj, args, receiver.languageContext);
                 }
             }
             throw UnsupportedMessageException.raise(Message.createExecute(args.length));

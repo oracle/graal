@@ -26,6 +26,7 @@ package com.oracle.truffle.nfi.test;
 
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.ClassRule;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -39,20 +40,27 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.tck.TruffleRunner;
 
 public class NFITest {
+
+    @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule();
 
     protected static TruffleObject defaultLibrary;
     protected static TruffleObject testLibrary;
 
     private static CallTarget lookupAndBind;
 
+    private static TruffleObject loadLibrary(String lib) {
+        Source source = Source.newBuilder(lib).name("loadLibrary").mimeType("application/x-native").build();
+        CallTarget target = runWithPolyglot.getTruffleTestEnv().parse(source);
+        return (TruffleObject) target.call();
+    }
+
     @BeforeClass
     public static void loadLibraries() {
-        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
-        defaultLibrary = engine.eval(Source.newBuilder("default").name("(load default)").mimeType("application/x-native").build()).as(TruffleObject.class);
-        testLibrary = engine.eval(Source.newBuilder("load '" + System.getProperty("native.test.lib") + "'").name("(load test)").mimeType("application/x-native").build()).as(TruffleObject.class);
+        defaultLibrary = loadLibrary("default");
+        testLibrary = loadLibrary("load '" + System.getProperty("native.test.lib") + "'");
         lookupAndBind = Truffle.getRuntime().createCallTarget(new LookupAndBindNode());
     }
 
@@ -75,6 +83,7 @@ public class NFITest {
                 TruffleObject symbol = (TruffleObject) ForeignAccess.sendRead(lookupSymbol, library, symbolName);
                 return ForeignAccess.sendInvoke(bind, symbol, "bind", signature);
             } catch (InteropException e) {
+                CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(e);
             }
         }

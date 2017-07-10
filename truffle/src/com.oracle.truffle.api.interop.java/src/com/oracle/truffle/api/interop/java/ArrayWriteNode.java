@@ -34,7 +34,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
 
 abstract class ArrayWriteNode extends Node {
-    final ToJavaNode toJavaNode = ToJavaNodeGen.create();
+    @Child private ToJavaNode toJavaNode = ToJavaNode.create();
 
     protected abstract Object executeWithTarget(JavaObject receiver, Object index, Object value);
 
@@ -70,5 +70,9 @@ abstract class ArrayWriteNode extends Node {
             throw UnknownIdentifierException.raise(String.valueOf(index));
         }
         return JavaObject.NULL;
+    }
+
+    static ArrayWriteNode create() {
+        return ArrayWriteNodeGen.create();
     }
 }

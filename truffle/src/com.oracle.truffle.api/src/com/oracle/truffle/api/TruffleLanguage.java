@@ -669,6 +669,10 @@ public abstract class TruffleLanguage<C> {
      * should be provided for meta-objects, when possible. The meta-object may have properties
      * describing their structure.
      * <p>
+     * NOTE: Allocating the meta object must not be treated as or cause any
+     * {@link com.oracle.truffle.api.instrumentation.AllocationListener reported guest language
+     * value allocations}
+     * <p>
      * When no meta-object is known, return <code>null</code>. The default implementation returns
      * <code>null</code>.
      *

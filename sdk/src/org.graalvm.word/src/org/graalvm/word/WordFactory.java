@@ -87,6 +87,17 @@ public abstract class WordFactory {
     }
 
     /**
+     * The null pointer, i.e., the pointer with no bits set. There is no difference to a signed or
+     * unsigned {@link #zero}.
+     *
+     * @return the null pointer.
+     */
+    @FactoryOperation(opcode = FactoryOpcode.ZERO)
+    public static <T extends PointerBase> T nullPointer() {
+        return boxFactory.box(0L);
+    }
+
+    /**
      * Unsafe conversion from a Java long value to a Word. The parameter is treated as an unsigned
      * 64-bit value (in contrast to the semantics of a Java long).
      *
@@ -94,7 +105,7 @@ public abstract class WordFactory {
      * @return the value cast to Word
      */
     @FactoryOperation(opcode = FactoryOpcode.FROM_UNSIGNED)
-    public static <T extends Unsigned> T unsigned(long val) {
+    public static <T extends UnsignedWord> T unsigned(long val) {
         return boxFactory.box(val);
     }
 
@@ -118,7 +129,7 @@ public abstract class WordFactory {
      * @return the value cast to Word
      */
     @FactoryOperation(opcode = FactoryOpcode.FROM_UNSIGNED)
-    public static <T extends Unsigned> T unsigned(int val) {
+    public static <T extends UnsignedWord> T unsigned(int val) {
         return boxFactory.box(val & 0xffffffffL);
     }
 
@@ -130,7 +141,7 @@ public abstract class WordFactory {
      * @return the value cast to Word
      */
     @FactoryOperation(opcode = FactoryOpcode.FROM_SIGNED)
-    public static <T extends Signed> T signed(long val) {
+    public static <T extends SignedWord> T signed(long val) {
         return boxFactory.box(val);
     }
 
@@ -142,7 +153,7 @@ public abstract class WordFactory {
      * @return the value cast to Word
      */
     @FactoryOperation(opcode = FactoryOpcode.FROM_SIGNED)
-    public static <T extends Signed> T signed(int val) {
+    public static <T extends SignedWord> T signed(int val) {
         return boxFactory.box(val);
     }
 }

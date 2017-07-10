@@ -1690,13 +1690,6 @@ public final class DebugContext implements AutoCloseable {
     }
 
     /**
-     * Creates an object for counting value frequencies.
-     */
-    public static DebugHistogram createHistogram(String name) {
-        return new DebugHistogramImpl(name);
-    }
-
-    /**
      * Creates a {@linkplain TimerKey timer}.
      * <p>
      * A disabled timer has virtually no overhead.

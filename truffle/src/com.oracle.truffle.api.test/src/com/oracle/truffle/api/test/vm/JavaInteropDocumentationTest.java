@@ -70,7 +70,7 @@ public class JavaInteropDocumentationTest {
         assertEquals("Result is 200", 200, res);
     }
 
-    interface Operation {
+    public interface Operation {
         int mul(int x, int y);
     }
 }

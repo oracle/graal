@@ -197,11 +197,6 @@ public class PartialEvaluator {
     @SuppressWarnings("try")
     public StructuredGraph createGraph(DebugContext debug, final OptimizedCallTarget callTarget, TruffleInlining inliningDecision, ResolvedJavaMethod rootMethod, AllowAssumptions allowAssumptions,
                     CompilationIdentifier compilationId, SpeculationLog log, CancellableCompileTask task) {
-        try (Scope c = debug.scope("TruffleTree")) {
-            debug.dump(DebugContext.BASIC_LEVEL, new TruffleTreeDumpHandler.TruffleTreeDump(callTarget), "%s", callTarget);
-        } catch (Throwable e) {
-            throw debug.handle(e);
-        }
 
         String name = callTarget.toString();
         OptionValues options = TruffleCompilerOptions.getOptions();
@@ -216,6 +211,12 @@ public class PartialEvaluator {
         // @formatter:on
 
         try (DebugContext.Scope s = debug.scope("CreateGraph", graph); Indent indent = debug.logAndIndent("createGraph %s", graph)) {
+
+            try (Scope c = debug.scope("TruffleTree")) {
+                debug.dump(DebugContext.BASIC_LEVEL, new TruffleTreeDumpHandler.TruffleTreeDump(callTarget), "%s", callTarget);
+            } catch (Throwable e) {
+                throw debug.handle(e);
+            }
 
             PhaseContext baseContext = new PhaseContext(providers);
             HighTierContext tierContext = new HighTierContext(providers, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
