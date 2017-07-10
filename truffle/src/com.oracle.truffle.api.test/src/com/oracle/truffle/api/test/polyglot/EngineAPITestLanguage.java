@@ -28,7 +28,9 @@ import org.graalvm.options.OptionKey;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.EngineAPITestLanguage.LanguageContext;
 
 @TruffleLanguage.Registration(id = EngineAPITestLanguage.ID, implementationName = EngineAPITestLanguage.IMPL_NAME, name = EngineAPITestLanguage.NAME, version = EngineAPITestLanguage.VERSION, mimeType = EngineAPITestLanguage.MIME)
@@ -83,7 +85,7 @@ public class EngineAPITestLanguage extends TruffleLanguage<LanguageContext> {
 
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
-        return null;
+        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
     }
 
     @Override

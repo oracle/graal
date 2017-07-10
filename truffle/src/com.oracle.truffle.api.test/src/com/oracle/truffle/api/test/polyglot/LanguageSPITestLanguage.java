@@ -27,6 +27,7 @@ import static org.junit.Assert.assertSame;
 import java.util.concurrent.Callable;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -58,7 +59,7 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
                 runinside = null;
             }
         }
-        return null;
+        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
     }
 
     @Override
