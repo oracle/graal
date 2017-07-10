@@ -33,6 +33,7 @@ public final class TestOptions {
     public static final Boolean IGNORE_FORTRAN = Boolean.valueOf(System.getProperty("sulongtest.ignoreFortran"));
     public static final String TEST_DISCOVERY_PATH = System.getProperty("sulongtest.testDiscoveryPath");
     public static final String TEST_AOT_IMAGE = System.getProperty("sulongtest.testAOTImage");
+    public static final String TEST_AOT_ARGS = System.getProperty("sulongtest.testAOTArgs");
     public static final String PROJECT_ROOT = System.getProperty("sulongtest.projectRoot");
     public static final String TEST_SUITE_PATH = System.getProperty("sulongtest.testSuitePath");
 }

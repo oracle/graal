@@ -109,7 +109,9 @@ public class ProcessUtil {
                 return new ProcessResult(bitcodeFile.getName(), result, "", stdout);
             }
         } else {
-            return executeNativeCommand(TestOptions.TEST_AOT_IMAGE + " " + bitcodeFile.getAbsolutePath() + " " + concatCommand(args));
+            String aotArgs = TestOptions.TEST_AOT_ARGS == null ? "" : TestOptions.TEST_AOT_ARGS + " ";
+            String cmdline = TestOptions.TEST_AOT_IMAGE + " " + aotArgs + bitcodeFile.getAbsolutePath() + " " + concatCommand(args);
+            return executeNativeCommand(cmdline);
         }
     }
 
