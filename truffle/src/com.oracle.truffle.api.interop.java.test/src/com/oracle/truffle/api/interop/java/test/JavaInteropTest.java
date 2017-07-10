@@ -762,6 +762,21 @@ public class JavaInteropTest {
         assertTrue(KeyInfo.isInvocable(keyInfo));
     }
 
+    @Test
+    public void testSystemMethod() throws InteropException {
+        TruffleObject system = JavaInterop.asTruffleObject(System.class);
+        Object value = ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), system, "getProperty", "file.separator");
+        assertThat(value, CoreMatchers.instanceOf(String.class));
+        assertThat(value, CoreMatchers.anyOf(CoreMatchers.equalTo("/"), CoreMatchers.equalTo("\\")));
+
+        Object getProperty = ForeignAccess.sendRead(Message.READ.createNode(), system, "getProperty");
+        assertThat(getProperty, CoreMatchers.instanceOf(TruffleObject.class));
+        assertTrue("IS_EXECUTABLE", ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), (TruffleObject) getProperty));
+        value = ForeignAccess.sendExecute(Message.createExecute(1).createNode(), (TruffleObject) getProperty, "file.separator");
+        assertThat(value, CoreMatchers.instanceOf(String.class));
+        assertThat(value, CoreMatchers.anyOf(CoreMatchers.equalTo("/"), CoreMatchers.equalTo("\\")));
+    }
+
     public static final class TestJavaObject {
         public int aField = 10;
     }

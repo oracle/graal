@@ -182,7 +182,7 @@ final class JavaInteropReflect {
         }
 
         JavaClassDesc classDesc = JavaClassDesc.forClass(object.clazz);
-        return classDesc.lookupMethod(name);
+        return classDesc.lookupMethod(name, object.isClass());
     }
 
     private JavaInteropReflect() {
