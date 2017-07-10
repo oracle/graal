@@ -48,14 +48,14 @@ public class LLVMProfiledMemSet {
                     long v32 = v16 << 16 | v16;
                     long v64 = v32 << 32 | v32;
 
-                    for (int i = 0; CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, i < i64ValuesToWrite); i++) {
+                    for (long i = 0; CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, i < i64ValuesToWrite); i++) {
                         LLVMMemory.putI64(current, v64);
                         current += 8;
                     }
                 }
 
                 long i8ValuesToWrite = length & 0x07;
-                for (int i = 0; CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, i < i8ValuesToWrite); i++) {
+                for (long i = 0; CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, i < i8ValuesToWrite); i++) {
                     LLVMMemory.putI8(current, value);
                     current++;
                 }
