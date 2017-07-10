@@ -254,7 +254,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract OptionDescriptors getOptions();
 
-        public abstract Context createContext(OutputStream out, OutputStream err, InputStream in,
+        public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, Predicate<String> classFilter,
                         Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages);
 
     }
