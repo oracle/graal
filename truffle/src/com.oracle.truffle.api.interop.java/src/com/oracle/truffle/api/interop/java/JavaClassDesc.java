@@ -32,8 +32,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiFunction;
@@ -80,10 +80,10 @@ final class JavaClassDesc {
         };
 
         Members(Class<?> type) {
-            Map<String, JavaMethodDesc> methodMap = new HashMap<>();
-            Map<String, JavaMethodDesc> staticMethodMap = new HashMap<>();
-            Map<String, Field> fieldMap = new HashMap<>();
-            Map<String, Field> staticFieldMap = new HashMap<>();
+            Map<String, JavaMethodDesc> methodMap = new LinkedHashMap<>();
+            Map<String, JavaMethodDesc> staticMethodMap = new LinkedHashMap<>();
+            Map<String, Field> fieldMap = new LinkedHashMap<>();
+            Map<String, Field> staticFieldMap = new LinkedHashMap<>();
             JavaMethodDesc ctor = null;
 
             if (Modifier.isPublic(type.getModifiers())) {
@@ -271,7 +271,7 @@ final class JavaClassDesc {
         }
 
         private static Map<String, JavaMethodDesc> collectJNINamedMethods(Map<String, JavaMethodDesc> methods) {
-            Map<String, JavaMethodDesc> jniMethods = new HashMap<>();
+            Map<String, JavaMethodDesc> jniMethods = new LinkedHashMap<>();
             for (JavaMethodDesc method : methods.values()) {
                 for (JavaMethodDesc m : method.getOverloads()) {
                     if (m instanceof SingleMethodDesc.ConcreteMethod) {
