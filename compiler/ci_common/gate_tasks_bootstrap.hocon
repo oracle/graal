@@ -2,21 +2,24 @@
 builds += [
   # Darwin AMD64
   ${gateBootstrapLite8}        ${gateDarwinAMD64Bootstrap}  {name: "gate-compiler-bootstraplite-8-darwin-amd64"}
+  ${gateBootstrapLiteLabs8}    ${gateDarwinAMD64Bootstrap}  {name: "gate-compiler-bootstraplite-labsjdk8-darwin-amd64", targets : [weekly]}
   ${gateBootstrapLite9}        ${gateDarwinAMD64Bootstrap}  {name: "gate-compiler-bootstraplite-9-darwin-amd64", targets : [weekly]}
 
   # Linux AMD64
   ${gateBootstrap8}            ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-8-linux-amd64"}
+  ${gateBootstrapLabs8}        ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-labsjdk8-linux-amd64"}, targets : [weekly]
   ${gateBootstrap8FullVerify}  ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrapfullverify-8-linux-amd64"}
   ${gateBootstrap9}            ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-9-linux-amd64"}
   ${gateBootstrap9EA}          ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-9EA-linux-amd64", targets : [weekly]}
 
   # Solaris SPARC
   ${gateBootstrap8}            ${gateSolarisSPARCBootstrap} {name: "gate-compiler-bootstrap-8-solaris-sparcv9",   timelimit: "1:00:00"}
+  ${gateBootstrapLabs8}        ${gateSolarisSPARCBootstrap} {name: "gate-compiler-bootstrap-labsjdk8-solaris-sparcv9",   timelimit: "1:00:00", targets : [weekly]}
   ${gateBootstrap9}            ${gateSolarisSPARCBootstrap} {name: "gate-compiler-bootstrap-9-solaris-sparcv9",   timelimit: "1:00:00", targets : [weekly]}
   ${gateBootstrap9EA}          ${gateSolarisSPARCBootstrap} {name: "gate-compiler-bootstrap-9EA-solaris-sparcv9", timelimit: "1:00:00", targets : [weekly]}
 
   # Linux SPARC
-  ${gateBootstrap8}            ${gateLinuxSPARCBootstrap} {name: "gate-compiler-bootstrap-8-linux-sparcv9",   timelimit: "1:00:00", targets : [weekly]}
+  ${gateBootstrapLabs8}        ${gateLinuxSPARCBootstrap} {name: "gate-compiler-bootstrap-labsjdk8-linux-sparcv9", timelimit: "1:00:00", targets : [weekly]}
 
   # Linux AMD64 TraceRA
   ${gateBootstrap8FullVerify}  ${gateLinuxAMD64TraceRABootstrap} {name: "gate-compiler-bootstrapfullverify-8-linux-amd64-tracera", targets : [weekly]}

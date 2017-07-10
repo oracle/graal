@@ -3,10 +3,11 @@ overlay = 2fa6fa642a6de2b8f07acc7940ce526193d9ab93
 
 jdk-downloads: {
   java7 : {name : oraclejdk, version : "7",    platformspecific: true}
-  java8 : {name : labsjdk, version : "8u121-jvmci-0.29", platformspecific: true}
+  java8 : {name : openjdk, version : "8u121-jvmci-0.30", platformspecific: true}
   java9 : {name : labsjdk, version : "9-20170703-141343", platformspecific: true}
   java9EA : {name : labsjdk, version : "9+176", platformspecific: true}
-  java8Debug : {name : labsjdk, version : "8u121-jvmci-0.29-fastdebug", platformspecific: true}
+  java8Debug : {name : openjdk, version : "8u121-jvmci-0.30-fastdebug", platformspecific: true}
+  labsjdk8 : {name : labsjdk, version : "8u121-jvmci-0.30", platformspecific: true}
 }
 
 # Overlay placeholder for pinning mx to a specific revision
