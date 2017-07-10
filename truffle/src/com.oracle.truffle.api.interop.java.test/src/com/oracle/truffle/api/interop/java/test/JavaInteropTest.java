@@ -777,6 +777,21 @@ public class JavaInteropTest {
         assertThat(value, CoreMatchers.anyOf(CoreMatchers.equalTo("/"), CoreMatchers.equalTo("\\")));
     }
 
+    @Test
+    public void testExecuteClass() {
+        TruffleObject hashMapClass = JavaInterop.asTruffleObject(HashMap.class);
+        assertThrowsExceptionWithCause(() -> ForeignAccess.sendExecute(Message.createExecute(0).createNode(), hashMapClass), UnsupportedMessageException.class);
+        assertFalse("IS_EXECUTABLE", ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), hashMapClass));
+    }
+
+    @Test
+    public void testNewClass() throws InteropException {
+        TruffleObject hashMapClass = JavaInterop.asTruffleObject(HashMap.class);
+        Object hashMap = ForeignAccess.sendNew(Message.createNew(0).createNode(), hashMapClass);
+        assertThat(hashMap, CoreMatchers.instanceOf(TruffleObject.class));
+        assertTrue(JavaInterop.isJavaObject(HashMap.class, (TruffleObject) hashMap));
+    }
+
     public static final class TestJavaObject {
         public int aField = 10;
     }
