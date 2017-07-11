@@ -57,11 +57,11 @@ import java.util.function.Supplier;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.CompilerThreadFactory;
-import org.graalvm.compiler.core.RetryableCompilation;
+import org.graalvm.compiler.core.CompilationWrapper;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugOutputDirectory;
+import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -554,7 +554,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         }
     }
 
-    protected abstract DebugOutputDirectory getDebugOutputDirectory();
+    protected abstract DiagnosticsOutputDirectory getDebugOutputDirectory();
 
     protected final void compileMethod(DebugContext initialDebug,
                     TruffleCompiler compiler,
@@ -563,7 +563,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
                     CompilationIdentifier compilationId,
                     CancellableCompileTask task) {
 
-        RetryableCompilation<Void> compilation = new RetryableCompilation<Void>(getDebugOutputDirectory()) {
+        CompilationWrapper<Void> compilation = new CompilationWrapper<Void>(getDebugOutputDirectory()) {
 
             @Override
             public String toString() {
@@ -576,12 +576,17 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
             }
 
             @Override
-            protected Void run(DebugContext debug, Throwable failure) {
+            protected Void handleException(Throwable t) {
+                return null;
+            }
+
+            @Override
+            protected Void performCompilation(DebugContext debug) {
                 compiler.compileMethod(debug, optimizedCallTarget, rootMethod, compilationId, task);
                 return null;
             }
         };
-        compilation.runWithRetry(initialDebug);
+        compilation.run(initialDebug);
     }
 
     /**

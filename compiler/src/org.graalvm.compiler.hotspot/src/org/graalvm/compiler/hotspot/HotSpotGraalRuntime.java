@@ -40,7 +40,7 @@ import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
-import org.graalvm.compiler.debug.DebugOutputDirectory;
+import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
 import org.graalvm.compiler.debug.GlobalMetrics;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
@@ -94,7 +94,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     private final GraalHotSpotVMConfig config;
 
     private final OptionValues options;
-    private final DebugOutputDirectory outputDirectory;
+    private final DiagnosticsOutputDirectory outputDirectory;
     private final HotSpotGraalMBean mBean;
 
     /**
@@ -113,7 +113,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
             options = initialOptions;
         }
 
-        outputDirectory = new DebugOutputDirectory(options);
+        outputDirectory = new DiagnosticsOutputDirectory(options);
         snippetCounterGroups = GraalOptions.SnippetCounters.getValue(options) ? new ArrayList<>() : null;
         CompilerConfiguration compilerConfiguration = compilerConfigurationFactory.createCompilerConfiguration();
 
@@ -295,7 +295,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     }
 
     @Override
-    public DebugOutputDirectory getOutputDirectory() {
+    public DiagnosticsOutputDirectory getOutputDirectory() {
         return outputDirectory;
     }
 }

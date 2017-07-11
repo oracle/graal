@@ -25,7 +25,7 @@ package org.graalvm.compiler.hotspot;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
-import org.graalvm.compiler.debug.DebugOutputDirectory;
+import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.options.OptionValues;
@@ -94,5 +94,5 @@ public interface HotSpotGraalRuntimeProvider extends GraalRuntime, RuntimeProvid
     /**
      * Gets a directory into which diagnostics such crash reports and dumps should be written.
      */
-    DebugOutputDirectory getOutputDirectory();
+    DiagnosticsOutputDirectory getOutputDirectory();
 }

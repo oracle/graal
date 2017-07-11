@@ -36,7 +36,7 @@ import jdk.vm.ci.runtime.JVMCICompiler;
 /**
  * Utility for printing an informational line to {@link TTY} upon completion of compiling a method.
  */
-public class CompilationPrinter {
+public final class CompilationPrinter {
 
     private final CompilationIdentifier id;
     private final JavaMethod method;

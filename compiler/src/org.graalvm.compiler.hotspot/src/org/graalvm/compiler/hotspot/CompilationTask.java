@@ -22,10 +22,8 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import static org.graalvm.compiler.core.GraalCompilerOptions.ExitVMOnBailout;
-import static org.graalvm.compiler.core.GraalCompilerOptions.ExitVMOnException;
-import static org.graalvm.compiler.core.GraalCompilerOptions.PrintBailout;
-import static org.graalvm.compiler.core.GraalCompilerOptions.PrintStackTraceOnException;
+import static org.graalvm.compiler.core.CompilationWrapper.ExceptionAction.ExitVM;
+import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationFailureAction;
 import static org.graalvm.compiler.core.phases.HighTier.Options.Inline;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 
@@ -34,15 +32,16 @@ import java.util.List;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.CompilationPrinter;
-import org.graalvm.compiler.core.RetryableCompilation;
+import org.graalvm.compiler.core.CompilationWrapper;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.TimerKey;
+import org.graalvm.compiler.options.EnumOptionKey;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
@@ -61,8 +60,6 @@ import jdk.vm.ci.runtime.JVMCICompiler;
 import jdk.vm.ci.services.JVMCIServiceLocator;
 
 public class CompilationTask {
-
-    private static final CounterKey BAILOUTS = DebugContext.counter("Bailouts");
 
     private static final EventProvider eventProvider;
 
@@ -93,11 +90,11 @@ public class CompilationTask {
     private final boolean useProfilingInfo;
     private final OptionValues options;
 
-    final class HotSpotRetryableCompilation extends RetryableCompilation<HotSpotCompilationRequestResult> {
+    final class HotSpotCompilationWrapper extends CompilationWrapper<HotSpotCompilationRequestResult> {
         private final EventProvider.CompilationEvent compilationEvent;
         CompilationResult result;
 
-        HotSpotRetryableCompilation(EventProvider.CompilationEvent compilationEvent) {
+        HotSpotCompilationWrapper(EventProvider.CompilationEvent compilationEvent) {
             super(compiler.getGraalRuntime().getOutputDirectory());
             this.compilationEvent = compilationEvent;
         }
@@ -110,12 +107,54 @@ public class CompilationTask {
 
         @Override
         public String toString() {
-            return getMethod().format("%H.%n");
+            return getMethod().format("%H.%n(%p)");
+        }
+
+        @Override
+        protected HotSpotCompilationRequestResult handleException(Throwable t) {
+            if (t instanceof BailoutException) {
+                BailoutException bailout = (BailoutException) t;
+                /*
+                 * Handling of permanent bailouts: Permanent bailouts that can happen for example
+                 * due to unsupported unstructured control flow in the bytecodes of a method must
+                 * not be retried. Hotspot compile broker will ensure that no recompilation at the
+                 * given tier will happen if retry is false.
+                 */
+                return HotSpotCompilationRequestResult.failure(bailout.getMessage(), !bailout.isPermanent());
+            }
+            // Log a failure event.
+            EventProvider.CompilerFailureEvent event = eventProvider.newCompilerFailureEvent();
+            if (event.shouldWrite()) {
+                event.setCompileId(getId());
+                event.setMessage(t.getMessage());
+                event.commit();
+            }
+
+            /*
+             * Treat random exceptions from the compiler as indicating a problem compiling this
+             * method. Report the result of toString instead of getMessage to ensure that the
+             * exception type is included in the output in case there's no detail mesage.
+             */
+            return HotSpotCompilationRequestResult.failure(t.toString(), false);
+        }
+
+        @Override
+        protected ExceptionAction lookupAction(OptionValues values, EnumOptionKey<ExceptionAction> actionKey) {
+            /*
+             * Automatically exit VM on non-bailout during bootstrap or when asserts are enabled but
+             * respect CompilationFailureAction if it has been explicitly set.
+             */
+            if (actionKey == CompilationFailureAction && !actionKey.hasBeenSet(values)) {
+                if (Assertions.ENABLED || compiler.getGraalRuntime().isBootstrapping()) {
+                    return ExitVM;
+                }
+            }
+            return super.lookupAction(values, actionKey);
         }
 
         @SuppressWarnings("try")
         @Override
-        protected HotSpotCompilationRequestResult run(DebugContext debug, Throwable retryCause) {
+        protected HotSpotCompilationRequestResult performCompilation(DebugContext debug) {
             HotSpotResolvedJavaMethod method = getMethod();
             int entryBCI = getEntryBCI();
             final boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
@@ -128,9 +167,6 @@ public class CompilationTask {
                 compilationEvent.begin();
                 result = compiler.compile(method, entryBCI, useProfilingInfo, compilationId, options, debug);
             } catch (Throwable e) {
-                if (retryCause != null) {
-                    log("Exception during retry", e);
-                }
                 throw debug.handle(e);
             } finally {
                 // End the compilation event.
@@ -271,46 +307,9 @@ public class CompilationTask {
             }
         }
 
-        HotSpotRetryableCompilation compilation = new HotSpotRetryableCompilation(compilationEvent);
+        HotSpotCompilationWrapper compilation = new HotSpotCompilationWrapper(compilationEvent);
         try (DebugCloseable a = CompilationTime.start(debug)) {
-            return compilation.runWithRetry(debug);
-        } catch (BailoutException bailout) {
-            BAILOUTS.increment(debug);
-            if (ExitVMOnBailout.getValue(options)) {
-                TTY.out.println(method.format("Bailout in %H.%n(%p)"));
-                bailout.printStackTrace(TTY.out);
-                System.exit(-1);
-            } else if (PrintBailout.getValue(options)) {
-                TTY.out.println(method.format("Bailout in %H.%n(%p)"));
-                bailout.printStackTrace(TTY.out);
-            }
-            /*
-             * Handling of permanent bailouts: Permanent bailouts that can happen for example due to
-             * unsupported unstructured control flow in the bytecodes of a method must not be
-             * retried. Hotspot compile broker will ensure that no recompilation at the given tier
-             * will happen if retry is false.
-             */
-            final boolean permanentBailout = bailout.isPermanent();
-            if (permanentBailout && PrintBailout.getValue(options)) {
-                TTY.println("Permanent bailout %s compiling method %s %s.", bailout.getMessage(), HotSpotGraalCompiler.str(method), (isOSR ? "OSR" : ""));
-            }
-            return HotSpotCompilationRequestResult.failure(bailout.getMessage(), !permanentBailout);
-        } catch (Throwable t) {
-            // Log a failure event.
-            EventProvider.CompilerFailureEvent event = eventProvider.newCompilerFailureEvent();
-            if (event.shouldWrite()) {
-                event.setCompileId(getId());
-                event.setMessage(t.getMessage());
-                event.commit();
-            }
-
-            handleException(t);
-            /*
-             * Treat random exceptions from the compiler as indicating a problem compiling this
-             * method. Report the result of toString instead of getMessage to ensure that the
-             * exception type is included in the output in case there's no detail mesage.
-             */
-            return HotSpotCompilationRequestResult.failure(t.toString(), false);
+            return compilation.run(debug);
         } finally {
             try {
                 int compiledBytecodes = 0;
@@ -338,37 +337,8 @@ public class CompilationTask {
                     compilationEvent.commit();
                 }
             } catch (Throwable t) {
-                handleException(t);
+                return compilation.handleException(t);
             }
-        }
-    }
-
-    protected void handleException(Throwable t) {
-        /*
-         * Automatically enable ExitVMOnException during bootstrap or when asserts are enabled but
-         * respect ExitVMOnException if it has been explicitly set.
-         */
-        boolean exitVMOnException = ExitVMOnException.getValue(options);
-        if (!ExitVMOnException.hasBeenSet(options)) {
-            assert (exitVMOnException = true) == true;
-            if (!exitVMOnException) {
-                HotSpotGraalRuntimeProvider runtime = compiler.getGraalRuntime();
-                if (runtime.isBootstrapping()) {
-                    exitVMOnException = true;
-                }
-            }
-        }
-
-        if (PrintStackTraceOnException.getValue(options) || exitVMOnException) {
-            try {
-                t.printStackTrace(TTY.out);
-            } catch (Throwable throwable) {
-                // Don't let an exception here change the other control flow
-            }
-        }
-
-        if (exitVMOnException) {
-            System.exit(-1);
         }
     }
 

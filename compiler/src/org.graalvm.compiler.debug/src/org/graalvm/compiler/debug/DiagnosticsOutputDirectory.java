@@ -45,14 +45,14 @@ import org.graalvm.compiler.options.OptionValues;
  * Manages a directory into which diagnostics such crash reports and dumps should be written. The
  * directory is archived and deleted when {@link #close()} is called.
  */
-public class DebugOutputDirectory implements AutoCloseable {
+public class DiagnosticsOutputDirectory implements AutoCloseable {
 
     /**
      * Use an illegal file name to denote that {@link #close()} has been called.
      */
     private static final String CLOSED = "\u0000";
 
-    public DebugOutputDirectory(OptionValues options) {
+    public DiagnosticsOutputDirectory(OptionValues options) {
         this.options = options;
     }
 
@@ -118,7 +118,7 @@ public class DebugOutputDirectory implements AutoCloseable {
             // directory specified by the DumpPath option.
             baseDir = Paths.get(".");
         }
-        return baseDir.resolve("graal_output_" + getExecutionID()).toAbsolutePath().toString();
+        return baseDir.resolve("graal_diagnostics_" + getExecutionID()).toAbsolutePath().toString();
     }
 
     /**
