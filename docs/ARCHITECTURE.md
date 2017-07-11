@@ -58,7 +58,7 @@ interpreter, and are otherwise kept simple to be compiled to efficient
 machine code.
 * Since extensibility is important, the parser (`com.oracle.truffle.llvm.parser`)
 does not import the node implementations (`com.oracle.truffle.llvm.nodes`)
-to directly instantiate the Truffle nodes. Instead, the `SulongNodeFactory`
+to directly instantiate the Truffle nodes. Instead, the `NodeFactory`
 facade class provides an abstraction to transparently construct Truffle nodes
 for LLVM IR constructs. Sulong loads different node factory facades with a
 `ServiceLoader` in the `Sulong` class.
@@ -71,7 +71,7 @@ functions.
 ## Architectural styles and patterns
 
 * Interpreter pattern implemented by the Truffle nodes in `com.oracle.truffle.llvm.nodes`
-* Adapted facade pattern combined with factory pattern in `SulongNodeFactory`
+* Adapted facade pattern combined with factory pattern in `NodeFactory`
 to simplify the instantiation of the nodes
 * Adapted visitor pattern in `LLVMParserRuntime` and other classes to traverse
 the AST produced from the LLVM IR file and construct Truffle nodes for it

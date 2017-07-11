@@ -51,36 +51,41 @@ Next, you need to download a recent
 [labsjdk](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html).
 Extract it inside the `sulong-dev` directory:
 
-    tar -zxf labsjdk-8u111-jvmci-0.23-linux-amd64.tar.gz
+    tar -zxf labsjdk-8u121-jvmci-0.29-linux-amd64.tar.gz
 
 Set `JAVA_HOME` to point to the extracted labsjdk from above:
 
-    echo JAVA_HOME=`pwd`/labsjdk1.8.0_111-jvmci-0.23 > sulong/mx.sulong/env
+    echo JAVA_HOME=`pwd`/labsjdk1.8.0_121-jvmci-0.29 > sulong/mx.sulong/env
+
+Sulong partially consists of C/C++ code that is compiled using `make`. To speed
+up the build process you can edit the `MAKEFLAGS` environment variable:
+
+    echo MAKEFLAGS=-j9 > sulong/mx.sulong/env
 
 Finally, build the project:
 
     cd sulong && mx build
 
-The mx tool will ask you to choose between its server and jvmci
-configuration. For now, just select server. You can read the differences
-between the configurations on
-[the Graal wiki](https://wiki.openjdk.java.net/display/Graal/Instructions). The first
-build will take some time because mx has not only to build Sulong,
-but also its dependencies and the Graal VM.
+The first build will take some time because `mx` has not only to build Sulong,
+but also its dependencies and primary testsuite.
 
 Now, Sulong is ready to start. You can for example compile a C file named
-`test.c` (see further below) with mx and then use Sulong to execute it:
+`test.c` (see further below) with clang and then use Sulong to execute it:
 
-    mx su-clang -c -emit-llvm -o test.bc test.c
+    clang -c -emit-llvm -o test.bc test.c
     mx su-run test.bc
 
 For best experience we suggest to use clang 3.8, though versions 3.2, 3.3 and
 3.8 to 4.0 should also work. Additionally, if you compile with the `-g` option
 Sulong can provide source-file information in stacktraces.
 
-Libraries to load can be specified using the `-l` flag, as in a compiler:
+You can specify additional libraries to load with the `-Dpolyglot.llvm.libraries`
+option. These can be precompiled libraries (\*.so / \*.dylib) as well as LLVM bitcode
+files. The `-Dpolyglot.llvm.libraryPath` option can be used to amend the search
+path for the specifed libraries with a relative path. Both options can be given
+multiple arguments separated by `:`.
 
-    mx su-run -lz test.bc
+    mx su-run -Dpolyglot.llvm.libraryPath=lib -Dpolyglot.llvm.libraries=liba.so test.bc
 
 If you want to use the project from within Eclipse, use the following
 command to generate the Eclipse project files (there is also mx ideinit
@@ -98,23 +103,8 @@ append the `--mx-python-modules` argument to this. Since the configuration files
 consist of Python code, you will probably want to install the
 [Python Language Support Plugin](https://plugins.jetbrains.com/plugin/631-python).
 
-If you want to inspect the command line that mx generates for a mx
-command you can use the -v flag.
-
-Sulong Library Files
---------------------
-
-You can package LLVM bitcode and a list of library dependencies using the
-`su-link` linker command to create a `.su` file which is easy to manage and
-distribute. You can also specify other libraries to load when this library
-is loaded using the `-l` flag:
-
-    mx su-link -o test.su -lz test.bc
-
-You can run this `.su` file directly and it will know to load dependencies that
-you specified at link-time:
-
-    mx su-run test.su
+If you want to inspect the command line that `mx` generates for a `mx`
+command you can use the `-v` flag.
 
 From where does the project name originate?
 -------------------------------------------
