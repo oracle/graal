@@ -622,7 +622,7 @@ public final class LLVMInteropTest {
     static Object staticStorage;
 
     @FunctionalInterface
-    interface ReturnObject {
+    public interface ReturnObject {
         void storeObject(Object o);
     }
 
