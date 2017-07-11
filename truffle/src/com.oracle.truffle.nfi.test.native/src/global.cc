@@ -22,42 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#include <stdint.h>
 #include <trufflenfi.h>
 
+static TruffleContext *ctx;
+static double (*globalCallback)(double x);
 
-#define GEN_NUMERIC_TEST(name, type) \
-    \
-    type increment_##name(type arg) { \
-        return arg + 1; \
-    } \
-    \
-    type callback_##name(type (*fn)(type), type arg) { \
-        return fn(arg + 1) * 2; \
-    } \
-    \
-    typedef type (*fnptr_##name)(type); \
-    \
-    fnptr_##name callback_ret_##name() { \
-        return increment_##name; \
-    } \
-    \
-    type pingpong_##name(TruffleEnv *env, fnptr_##name (*wrapFn)(TruffleEnv *env, fnptr_##name), type arg) { \
-        fnptr_##name wrapped = wrapFn(env, increment_##name); \
-        int ret = wrapped(arg + 1) * 2; \
-        (*env)->releaseClosureRef(env, wrapped); \
-        return ret; \
-    }
+extern "C" void initializeGlobalContext(TruffleEnv *env) {
+    ctx = env->getTruffleContext();
+}
 
+extern "C" TruffleObject registerGlobalCallback(double (*callback)(double)) {
+    TruffleEnv *env = ctx->getTruffleEnv();
+    globalCallback = callback;
+    TruffleObject callbackObj = env->getClosureObject(callback);
+    return env->releaseAndReturn(callbackObj);
+}
 
-GEN_NUMERIC_TEST(SINT8, int8_t)
-GEN_NUMERIC_TEST(UINT8, uint8_t)
-GEN_NUMERIC_TEST(SINT16, int16_t)
-GEN_NUMERIC_TEST(UINT16, uint16_t)
-GEN_NUMERIC_TEST(SINT32, int32_t)
-GEN_NUMERIC_TEST(UINT32, uint32_t)
-GEN_NUMERIC_TEST(SINT64, int64_t)
-GEN_NUMERIC_TEST(UINT64, uint64_t)
-GEN_NUMERIC_TEST(FLOAT, float)
-GEN_NUMERIC_TEST(DOUBLE, double)
-GEN_NUMERIC_TEST(POINTER, intptr_t)
+extern "C" double testGlobalCallback(double arg) {
+    return globalCallback(arg);
+}
