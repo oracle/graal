@@ -118,8 +118,8 @@ public final class Sulong extends LLVMLanguage {
         System.exit(status);
     }
 
-    public static int executeMain(File file, String[] args) {
-        org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.create(file);
+    public static int executeMain(File file, String[] args) throws Exception {
+        org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder(file).build();
         Engine engine = Engine.newBuilder().build();
         PolyglotContext polyglotContext = engine.newPolyglotContextBuilder().setArguments(LLVMLanguage.NAME, args).build();
         int result;

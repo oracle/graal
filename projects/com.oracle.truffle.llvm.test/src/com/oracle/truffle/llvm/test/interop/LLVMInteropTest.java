@@ -1103,9 +1103,15 @@ public final class LLVMInteropTest {
         }
 
         int run() {
-            File file = new File(TEST_DIR.toFile(), "/" + fileName + "/" + fileName + FILE_SUFFIX);
-            Source source = Source.newBuilder(file).build();
-            return context.eval("llvm", source).asInt();
+            try {
+                File file = new File(TEST_DIR.toFile(), "/" + fileName + "/" + fileName + FILE_SUFFIX);
+                Source source = Source.newBuilder(file).build();
+                return context.eval("llvm", source).asInt();
+            } catch (RuntimeException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         }
 
     }
