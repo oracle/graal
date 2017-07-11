@@ -53,14 +53,14 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
  * the installed {@link #getLanguages() guest languages}, {@link #getInstruments() instruments} and
  * their available options.
  * <p>
- * By default every context creates its own {@link Engine engine} instance implicitely when
+ * By default every context creates its own {@link Engine engine} instance implicitly when
  * {@link Context.Builder#build() instantiated}. Multiple contexts can share the same engine using
  * {@link Context.Builder#engine(Engine) with the context builder}. If contexts share the same
  * engine then they share instruments and configuration. Also, {@link Value value} instances can
  * only be exchanged between contexts that are associated with same engine.
  * <p>
- * It can be useful to {@link Engine#create() create} an engine instance without a context to only
- * access metadata for installed languages, instruments and their available options.
+ * It can be useful to {@link Engine#create() create} an engine instance without a context only to
+ * access metadata for installed languages, instruments, and their available options.
  *
  * @since 1.0
  */
@@ -78,11 +78,11 @@ public final class Engine implements AutoCloseable {
     }
 
     /**
-     * Gets an installed language by looking it up using its unique id. Shortcut for
+     * Gets an installed language by looking up the unique language ID. Shortcut for
      * <code>engine.getLanguages().get(languageId)</code>. Returns <code>null</code> if the language
-     * was not found. Examples for language ids are: <code>"js"</code>, <code>"r"</code> or
+     * was not found. Examples for language IDs are: <code>"js"</code>, <code>"r"</code> or
      * <code>"ruby"</code>. Throws {@link IllegalArgumentException} if an invalid languageId was
-     * provided. Use the map returned by {@link #getLanguages()} to find out whether a language is
+     * provided. Use the map returned by {@link #getLanguages()} to find out if a language is
      * installed.
      *
      * @param languageId the unique of the language
@@ -93,7 +93,7 @@ public final class Engine implements AutoCloseable {
     }
 
     /**
-     * Returns all installed languages mapped using the its unique ids. The returned map is
+     * Returns all installed languages mapped using their unique ids. The returned map is
      * unmodifiable and might be used from multiple threads.
      *
      * @since 1.0
@@ -109,7 +109,7 @@ public final class Engine implements AutoCloseable {
     /**
      * Gets all installed instruments of this engine. An instrument alters and/or monitors the
      * execution of guest language source code. Common examples for instruments are debuggers,
-     * profilers or monitoring tools. Instruments are enabled via {@link Instrument#getOptions()
+     * profilers, or monitoring tools. Instruments are enabled via {@link Instrument#getOptions()
      * options} passed to the {@link Builder#option(String, String) engine} when the engine or
      * context is constructed.
      *
@@ -131,7 +131,7 @@ public final class Engine implements AutoCloseable {
      *
      * @see Language#getOptions() To get a list of options for a language.
      * @see Instrument#getOptions() To get a list of options for an instrument.
-     * @see Builder#option(String, String) To set an option for an engine, language or instrument.
+     * @see Builder#option(String, String) To set an option for an engine, language, or instrument.
      * @see Context.Builder#option(String, String) To set an option for a context.
      *
      * @since 1.0
@@ -146,7 +146,7 @@ public final class Engine implements AutoCloseable {
 
     /**
      * Closes this engine and frees up allocated native resources. If there are still open context
-     * instances that were created using this engine and they are currently not beeing executed then
+     * instances that were created using this engine and they are currently not being executed then
      * they will be closed automatically. If an attempt to close an engine was successful then
      * consecutive calls to close have no effect. If a context is cancelled then the currently
      * executing thread will throw a {@link PolyglotException}. The exception indicates that it was
@@ -162,8 +162,8 @@ public final class Engine implements AutoCloseable {
 
     /**
      * Closes this engine and frees up allocated native resources. If there are still open context
-     * instances that were created using this engine and they are currently not beeing executed then
-     * all they will be closed automatically. If an an attempt to close the engine was successful
+     * instances that were created using this engine and they are currently not being executed then
+     * all they will be closed automatically. If an attempt to close the engine was successful
      * then consecutive calls to close have no effect.
      *
      * @throws IllegalStateException if there currently executing open context instances.
@@ -233,8 +233,8 @@ public final class Engine implements AutoCloseable {
          * properties} if no explicit option is {@link #setOption(String, String) set}. The default
          * value is <code>true</code> indicating that the system properties should be used. System
          * properties are looked up with the prefix <i>"polyglot"</i> in order to disambiguate
-         * existing system properties. Eg. for the option with the key
-         * <code>"js.ECMACompatiblity"</code> the system property
+         * existing system properties. For example, for the option with the key
+         * <code>"js.ECMACompatiblity"</code>, the system property
          * <code>"polyglot.js.ECMACompatiblity"</code> is read. Invalid options specified using
          * system properties will cause the {@link #build() build} method to fail using an
          * {@link IllegalArgumentException}. System properties are read once when the engine is

@@ -28,9 +28,9 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
 
 /**
- * A handle for an <em>instrument</em> installed in an {@link Engine engine}.The instrument is
- * usable from other threads. The handle provides access to the instrument's metadata and allows to
- * {@link #lookup(Class) lookup} instrument specific services.
+ * A handle for an <em>instrument</em> installed in an {@link Engine engine}. The instrument is
+ * usable from other threads. The handle provides access to the metadata of the instrument and
+ * allows to {@link #lookup(Class) lookup} instrument specific services.
  * <p>
  * All methods here, as well as instrumentation services in general, can be used safely from any
  * thread.
@@ -47,9 +47,9 @@ public final class Instrument {
     }
 
     /**
-     * Gets the id clients can use to acquire this instrument.
+     * Gets the ID clients can use to acquire this instrument.
      *
-     * @return this instrument's unique id
+     * @return the unique ID for this instrument.
      * @since 1.0
      */
     public String getId() {
@@ -57,9 +57,9 @@ public final class Instrument {
     }
 
     /**
-     * Gets a human readable name of this instrument.
+     * Gets a human-readable name for this instrument.
      *
-     * @return this instrument's user-friendly name
+     * @return the user-friendly name for this instrument.
      * @since 1.0
      */
     public String getName() {
@@ -69,7 +69,7 @@ public final class Instrument {
     /**
      * Gets the options available for this instrument.
      *
-     * @return the options as {@link OptionDescriptors}
+     * @return the options as {@link OptionDescriptors}.
      * @since 1.0
      */
     public OptionDescriptors getOptions() {
@@ -79,7 +79,7 @@ public final class Instrument {
     /**
      * Gets the version of this instrument.
      *
-     * @return this instrument's version
+     * @return the version of this instrument.
      * @since 1.0
      */
     public String getVersion() {
@@ -87,13 +87,13 @@ public final class Instrument {
     }
 
     /**
-     * Looks an additional internal service up that is provided by this instrument using a Java
-     * type. Please note that services returned by this method are implementation specific and
+     * Looks up an additional internal service that is provided by this instrument using a Java
+     * type. Note that the services returned by this method are implementation specific and
      * subject to change without notice.
      *
-     * @param <T> the type of the internal service
-     * @param type class of the service that is being requested
-     * @return instance of requested type, <code>null</code> if no such service is available
+     * @param <T> the type of the internal service.
+     * @param type class of the service that is being requested.
+     * @return instance of requested type, <code>null</code> if no such service is available.
      * @since 1.0
      */
     public <T> T lookup(Class<T> type) {

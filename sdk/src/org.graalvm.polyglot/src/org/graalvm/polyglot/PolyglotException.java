@@ -119,8 +119,8 @@ public final class PolyglotException extends RuntimeException {
 
     /**
      * Returns <code>true</code> if the execution was cancelled. The execution can be cancelled by
-     * {@link Context#close(boolean) closing} a context or if an instrument like a debugger decides
-     * to cancel the current execution. The context that caused a cancel event becomes unusable ie.
+     * {@link Context#close(boolean) closing} a context or if an instrument such as a debugger decides
+     * to cancel the current execution. The context that caused a cancel event becomes unusable, i.e.
      * closed.
      *
      * @since 1.0
@@ -153,7 +153,7 @@ public final class PolyglotException extends RuntimeException {
     /**
      * Returns <code>true</code> if this exception indicates a syntax error that is indicating that
      * the syntax is incomplete. This allows guest language programmers to find out if more code is
-     * expected from a given source. For example an incomplete JavaScript program could look like
+     * expected from a given source. For example, an incomplete JavaScript program could look like
      * this:
      *
      * <pre>
@@ -171,7 +171,7 @@ public final class PolyglotException extends RuntimeException {
 
     /**
      * Returns an additional guest language object. The value is never <code>null</code> and returns
-     * a Value object where {@link Value#isNull()} returns true if it is not available.
+     * a Value object where {@link Value#isNull()} returns as true if it is not available.
      *
      * @since 1.0
      */
@@ -213,7 +213,7 @@ public final class PolyglotException extends RuntimeException {
         /**
          * Returns a Java stack trace element representation of the polyglot stack trace element.
          * This is supported for host stack frames as well as guest language stack frames. A
-         * convertion to the host frame format can be useful for interoperability.
+         * conversion to the host frame format can be useful for interoperability.
          *
          * @since 1.0
          */
