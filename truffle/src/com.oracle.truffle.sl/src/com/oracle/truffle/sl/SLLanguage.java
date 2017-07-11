@@ -49,6 +49,7 @@ import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.metadata.ScopeProvider;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
@@ -149,7 +150,11 @@ public final class SLLanguage extends TruffleLanguage<SLContext> implements Scop
 
     @Override
     protected boolean isObjectOfLanguage(Object object) {
-        return object instanceof SLFunction;
+        if (!(object instanceof TruffleObject)) {
+            return false;
+        }
+        TruffleObject truffleObject = (TruffleObject) object;
+        return truffleObject instanceof SLFunction || truffleObject instanceof SLBigNumber || SLContext.isSLObject(truffleObject);
     }
 
     @Override
