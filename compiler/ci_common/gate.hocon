@@ -58,19 +58,26 @@ gateBootstrapFullVerify : {
 }
 
 gateTest8               : ${gateTest} ${java8}
+gateTestLabs8           : ${gateTest} ${labsjdk8}
 gateTestCTW8            : ${gateTestCTW} ${java8}
+gateTestCTWLabs8        : ${gateTestCTW} ${labsjdk8}
 gateTestCTW9            : ${gateTestCTW} ${java9}
 gateTest8Debug          : ${gateTest} ${java8Debug}
 gateTest9               : ${gateTest} ${java9}
 gateTest9EA             : ${gateTest} ${java9EA}
-gateTestBenchmark8      : ${gateTestBenchmark} ${java8}
-gateTestBenchmark8Debug : ${gateTestBenchmark} ${java8Debug}
+# The benchmarks need to be run on an OracleJDK binary as
+# DaCapo batik accesses com/sun/image/codec/jpeg/TruncatedFileException
+# which is not in an OpenJDK binary.
+gateTestBenchmark8      : ${gateTestBenchmark} ${labsjdk8}
+gateTestBenchmark8Debug : ${gateTestBenchmark} ${labsjdk8Debug}
 gateTestBenchmark9      : ${gateTestBenchmark} ${java9}
 gateBootstrap8          : ${gateBootstrap} ${java8}
+gateBootstrapLabs8      : ${gateBootstrap} ${labsjdk8}
 gateBootstrap9          : ${gateBootstrap} ${java9}
 gateBootstrap9EA        : ${gateBootstrap} ${java9EA}
 gateBootstrap8FullVerify: ${gateBootstrapFullVerify} ${java8}
 gateBootstrapLite8      : ${gateBootstrapLite} ${java8}
+gateBootstrapLiteLabs8  : ${gateBootstrapLite} ${labsjdk8}
 gateBootstrapLite9      : ${gateBootstrapLite} ${java9}
 
 gateStyle : ${java8} ${eclipse} ${jdt} {
