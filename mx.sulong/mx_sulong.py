@@ -254,14 +254,14 @@ def pullInstallDragonEgg(args=None):
         localPath = pullsuite(gccToolDir, [url])
         tar(localPath, gccToolDir)
         os.remove(localPath)
-        mx.run(['patch', '-p1', _toolDir + 'dragonegg/dragonegg-3.2.src/Makefile', 'mx.sulong/dragonegg-mac.patch'])
+        mx.run(['patch', '-p1', join(_toolDir, 'dragonegg', 'dragonegg-3.2.src', 'Makefile'), join('mx.sulong', 'dragonegg-mac.patch')])
     os.environ['GCC'] = getGCC()
     os.environ['CXX'] = getGPP()
     os.environ['CC'] = getGCC()
     pullLLVMBinaries()
     os.environ['LLVM_CONFIG'] = findLLVMProgramForDragonegg('llvm-config')
     compileCommand = ['make']
-    return mx.run(compileCommand, cwd=_toolDir + 'dragonegg/dragonegg-3.2.src')
+    return mx.run(compileCommand, cwd=join(_toolDir, 'dragonegg', 'dragonegg-3.2.src'))
 
 def findLLVMProgramForDragonegg(program):
     """tries to find a supported version of an installed LLVM program; if the program is not found it downloads the LLVM binaries and checks there"""
@@ -563,7 +563,7 @@ def compileWithClang(args=None, version=None, out=None, err=None):
 def compileWithGCC(args=None):
     """runs GCC"""
     ensureLLVMBinariesExist()
-    gccPath = _toolDir + 'llvm/bin/gcc'
+    gccPath = join(_toolDir, 'llvm', 'bin', 'gcc')
     return mx.run([gccPath] + args)
 
 def opt(args=None, version=None, out=None, err=None):
