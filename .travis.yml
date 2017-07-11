@@ -26,6 +26,7 @@ addons:
     - libc++abi-dev
     - llvm-3.8
     - clang-3.8
+    - clang-format-3.8
 install:
   - export MX_BINARY_SUITES="jvmci"
   - gem install mdl
