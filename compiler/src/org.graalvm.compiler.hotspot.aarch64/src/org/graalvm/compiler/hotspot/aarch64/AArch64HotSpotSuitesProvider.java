@@ -62,7 +62,7 @@ public class AArch64HotSpotSuitesProvider extends HotSpotSuitesProvider {
         }
         findPhase.add(new AddressLoweringByUsePhase(addressLoweringByUse));
 
-        findPhase =  suites.getLowTier().findPhase(PropagateDeoptimizeProbabilityPhase.class);
+        findPhase = suites.getLowTier().findPhase(PropagateDeoptimizeProbabilityPhase.class);
         findPhase.add(new AArch64ReadReplacementPhase());
 
         return suites;
