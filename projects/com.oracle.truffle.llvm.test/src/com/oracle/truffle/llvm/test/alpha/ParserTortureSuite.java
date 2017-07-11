@@ -36,8 +36,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.PolyglotContext;
+import org.graalvm.polyglot.Context;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -71,9 +70,9 @@ public final class ParserTortureSuite {
             }
 
             try {
-                Engine engine = Engine.create();
-                PolyglotContext context = engine.createPolyglotContext();
-                context.eval(LLVMLanguage.NAME, org.graalvm.polyglot.Source.newBuilder(candidate.toFile()).build());
+                Context context = Context.create();
+                context.eval(org.graalvm.polyglot.Source.newBuilder(LLVMLanguage.NAME, candidate.toFile()).build());
+                context.close();
             } catch (Throwable e) {
                 throw e;
             }
