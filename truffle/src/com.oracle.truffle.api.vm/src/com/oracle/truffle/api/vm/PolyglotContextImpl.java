@@ -348,8 +348,8 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
     }
 
     @Override
-    public Value eval(Object languageImpl, Object sourceImpl) {
-        PolyglotLanguageImpl language = (PolyglotLanguageImpl) languageImpl;
+    public Value eval(String languageId, Object sourceImpl) {
+        PolyglotLanguageImpl language = engine.idToLanguage.get(languageId);
         Object prev = enter();
         PolyglotLanguageContextImpl languageContext = contexts[language.index];
         try {

@@ -107,31 +107,6 @@ public final class Language {
     }
 
     /**
-     * Creates a new context with default configuration and this language as primary language. This
-     * is a short-cut method for {@link #createContextBuilder()}.{@link Context.Builder#build()
-     * build()}.
-     *
-     * @since 1.0
-     * @deprecated use {@link Context#create(String...) Context.create(language) instead}
-     */
-    @Deprecated
-    public Context createContext() {
-        return createContextBuilder().build();
-    }
-
-    /**
-     * Creates a new context builder useful to build a {@link Context context} instance with
-     * customized configuration.
-     *
-     * @since 1.0
-     * @deprecated {@link Context#newBuilder()} instead.
-     */
-    @Deprecated
-    public Context.Builder createContextBuilder() {
-        return new Context.Builder(this.getId()).engine(getEngine());
-    }
-
-    /**
      * Returns the set of options provided by this language. Option values for languages can either
      * be provided wile building an {@link Engine.Builder#setOption(String, String) engine} or a
      * {@link Context.Builder#setOption(String, String) context}. The option descriptor
