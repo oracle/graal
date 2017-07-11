@@ -910,6 +910,9 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         if benchmarks is None:
             # No benchmark specified in the command line, so run everything.
             benchmarks = self.benchmarkList(bmSuiteArgs)
+        if 'batik' in benchmarks and not mx_compiler._is_batik_supported(mx_compiler.jdk):
+            return
+
         vmArgs = self.vmArgs(bmSuiteArgs)
         runArgs = self.runArgs(bmSuiteArgs)
         return vmArgs + ["-jar"] + [self.specJvmPath()] + runArgs + benchmarks
