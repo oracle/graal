@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -364,11 +365,31 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
                 languageContext.sourceCache.put(source, target);
             }
             Object result = target.call(PolyglotImpl.EMPTY_ARGS);
+
+            if (source.isInternal()) {
+                printResult(languageContext, result);
+            }
+
             return languageContext.toHostValue(result);
         } catch (Throwable e) {
             throw PolyglotImpl.wrapGuestException(languageContext, e);
         } finally {
             leave(prev);
+        }
+    }
+
+    @TruffleBoundary
+    private static void printResult(PolyglotLanguageContextImpl languageContext, Object result) {
+        String stringResult = LANGUAGE.toStringIfVisible(languageContext.env, result, true);
+        if (stringResult != null) {
+            try {
+                OutputStream out = languageContext.context.out;
+                out.write(stringResult.getBytes(StandardCharsets.UTF_8));
+                out.write(System.getProperty("line.separator").getBytes(StandardCharsets.UTF_8));
+            } catch (IOException ioex) {
+                // out stream has problems.
+                throw new IllegalStateException(ioex);
+            }
         }
     }
 
