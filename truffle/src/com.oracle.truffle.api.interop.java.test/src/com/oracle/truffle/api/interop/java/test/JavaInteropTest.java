@@ -105,6 +105,20 @@ public class JavaInteropTest {
     }
 
     @Test
+    public void conversionToClass2() {
+        TruffleObject expected = JavaInterop.asTruffleObject(Class.class);
+        TruffleObject computed = JavaInterop.toJavaClass(JavaInterop.asTruffleObject(Data.class));
+        assertEquals("Both class objects are the same", expected, computed);
+    }
+
+    @Test
+    public void conversionToClassNull() {
+        TruffleObject expected = JavaInterop.asTruffleObject(null);
+        TruffleObject computed = JavaInterop.toJavaClass(expected);
+        assertEquals(expected, computed);
+    }
+
+    @Test
     public void doubleWrap() {
         data.x = 32;
         data.y = 10.1;
