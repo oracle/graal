@@ -61,7 +61,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     protected AArch64ArithmeticLIRGenerator getArithmeticLIRGenerator() {
         return (AArch64ArithmeticLIRGenerator) getLIRGeneratorTool().getArithmetic();
     }
-
+    /*
     @MatchRule("(ZeroExtend Read=access)")
     @MatchRule("(ZeroExtend FloatingRead=access)")
     public ComplexMatchResult zeroExtend(ZeroExtendNode root, Access access) {
@@ -75,4 +75,5 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         AArch64Kind memoryKind = getMemoryKind(access);
         return builder -> getArithmeticLIRGenerator().emitExtendMemory(true, memoryKind, root.getResultBits(), (AArch64AddressValue) operand(access.getAddress()), getState(access));
     }
+    */
 }

@@ -696,6 +696,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.replacements",
         "org.graalvm.compiler.lir.aarch64",
+        "org.graalvm.compiler.core.aarch64",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",
