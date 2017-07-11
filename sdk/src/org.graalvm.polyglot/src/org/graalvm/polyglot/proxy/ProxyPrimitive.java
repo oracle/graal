@@ -28,7 +28,7 @@ public interface ProxyPrimitive extends Proxy {
 
     /**
      * Unboxes the proxy to a primitive value. A primitive value can either be String, byte, char,
-     * short, int, long, float and double.
+     * short, int, long, float, or double.
      */
     Object asPrimitive();
 

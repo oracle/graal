@@ -30,7 +30,7 @@ import org.graalvm.polyglot.Value;
 public interface ProxyExecutable extends Proxy {
 
     /**
-     * Can throw {@link IllegalArgumentException} if its not compatible.
+     * Can throw {@link IllegalArgumentException} if it is not compatible.
      *
      * @param t
      * @return
