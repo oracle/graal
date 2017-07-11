@@ -23,16 +23,16 @@ from mx_testsuites import SulongTestSuite #pylint: disable=unused-import
 os.environ["LC_NUMERIC"] = "C"  # required for some testcases
 
 _suite = mx.suite('sulong')
-_mx = join(_suite.dir, "mx.sulong/")
-_root = join(_suite.dir, "projects/")
-_libPath = join(_root, "com.oracle.truffle.llvm.libraries.bitcode/src")
-_testDir = join(_suite.dir, "tests/")
-_toolDir = join(_suite.dir, "cache/tools/")
-_clangPath = _toolDir + 'llvm/bin/clang'
+_mx = join(_suite.dir, "mx.sulong")
+_root = join(_suite.dir, "projects")
+_libPath = join(_root, "com.oracle.truffle.llvm.libraries.bitcode", "src")
+_testDir = join(_suite.dir, "tests")
+_toolDir = join(_suite.dir, "cache", "tools")
+_clangPath = join(_toolDir, "llvm", "bin", "clang")
 
-_dragonEggPath = _toolDir + 'dragonegg/dragonegg-3.2.src/dragonegg.so'
+_dragonEggPath = join(_toolDir, "dragonegg", "dragonegg-3.2.src", "dragonegg.so")
 
-_captureSrcDir = join(_root, "projects/com.oracle.truffle.llvm.pipe.native/src")
+_captureSrcDir = join(_root, "com.oracle.truffle.llvm.pipe.native", "src")
 
 
 # the supported GCC versions (see dragonegg.llvm.org)
@@ -45,12 +45,12 @@ supportedGCCVersions = [
 # the files that should be checked to not contain http links (but https ones)
 httpCheckFiles = [
     __file__,
-    _suite.dir + "/.travis.yml"
+    join(_suite.dir, ".travis.yml")
 ]
 
 # the file paths that we want to check with clang-format
 clangFormatCheckPaths = [
-    _suite.dir + '/include',
+    join(_suite.dir, "include"),
     _libPath,
     _captureSrcDir
 ]
