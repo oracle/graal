@@ -78,7 +78,9 @@ supportedLLVMVersions = [
 
 # the clang-format versions that can be used for formatting the test case C and C++ files
 clangFormatVersions = [
-    '3.4'
+    '3.8',
+    '3.9',
+    '4.0',
 ]
 
 # the basic LLVM dependencies for running the test cases and executing the mx commands
@@ -637,7 +639,7 @@ def checkCFile(targetFile):
     clangFormat = findInstalledLLVMProgram('clang-format', clangFormatVersions)
     if clangFormat is None:
         exit("Unable to find 'clang-format' executable with one the supported versions '" + ", ".join(clangFormatVersions) + "'")
-    formatCommand = [clangFormat, '-style={BasedOnStyle: llvm, ColumnLimit: 150}', targetFile]
+    formatCommand = [clangFormat, targetFile]
     formattedContent = subprocess.check_output(formatCommand).splitlines()
     with open(targetFile) as f:
         originalContent = f.read().splitlines()
