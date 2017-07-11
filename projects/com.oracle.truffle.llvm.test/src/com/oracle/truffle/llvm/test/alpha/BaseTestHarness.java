@@ -66,12 +66,16 @@ public abstract class BaseTestHarness {
 
     /**
      * This function can be overwritten to specify a filter on test file names. E.g. if one wants to
-     * only run unoptimized files on Sulong, use <code> s.endsWith("O0.ll") </code>
+     * only run unoptimized files on Sulong, use <code> s.endsWith("O0.bc") </code>
      *
      * @return a filter predicate
      */
     protected Predicate<String> filterFileName() {
-        return s -> true;
+        if (TestOptions.TEST_FILTER != null && !TestOptions.TEST_FILTER.isEmpty()) {
+            return s -> s.endsWith(TestOptions.TEST_FILTER);
+        } else {
+            return s -> true;
+        }
     }
 
     public static final Collection<Object[]> collectTestCases(Path configPath, Path suiteDir, Path sourceDir) throws AssertionError {
