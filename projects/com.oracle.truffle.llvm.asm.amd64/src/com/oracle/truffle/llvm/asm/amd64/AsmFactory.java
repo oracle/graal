@@ -183,6 +183,9 @@ class AsmFactory {
     private static final int REG_START_INDEX = 1;
     private static final String TEMP_REGISTER_PREFIX = "__$$tmp_r_";
 
+    private static final String CONSTRAINT_REG = "r";
+    private static final String CONSTRAINT_ANY = "imr"; // "g" -> "imr"
+
     private final FrameDescriptor frameDescriptor;
     private final List<LLVMExpressionNode> statements;
     private final List<LLVMExpressionNode> arguments;
@@ -338,12 +341,11 @@ class AsmFactory {
             int end = source.lastIndexOf('}');
             if (start != -1 && end != -1) {
                 registerName = source.substring(start + 1, end);
-            } else if (source.equals("r") || source.equals("imr")) { // "g" -> "imr"
+            } else if (source.equals(CONSTRAINT_REG) || source.equals(CONSTRAINT_ANY)) {
                 registerName = TEMP_REGISTER_PREFIX + argInfo.size();
                 isAnonymous = true;
-            } else if (source.length() == 1 && source.charAt(0) >= '0' && source.charAt(0) <= '9') {
-                // '0' - '9'
-                int id = source.charAt(0) - '0';
+            } else if (source.length() == 1 && Character.isDigit(source.charAt(0))) {
+                int id = Character.digit(source.charAt(0), 10);
                 Argument arg = argInfo.get(id);
                 assert isInput && !isOutput;
                 isInput = true;
@@ -652,61 +654,38 @@ class AsmFactory {
         statements.add(write);
     }
 
+    private static boolean isShiftOperation(String operation) {
+        return operation.startsWith("shl") || operation.startsWith("shr") || operation.startsWith("rol") || operation.startsWith("ror") || operation.startsWith("sal") || operation.startsWith("sar");
+    }
+
+    private static PrimitiveType getPrimitiveTypeFromSuffix(char suffix) {
+        switch (suffix) {
+            case 'b':
+                return PrimitiveType.I8;
+            case 'w':
+                return PrimitiveType.I16;
+            case 'l':
+                return PrimitiveType.I32;
+            case 'q':
+                return PrimitiveType.I64;
+            default:
+                throw new AsmParseException("invalid size");
+        }
+    }
+
     void createBinaryOperation(String operation, AsmOperand a, AsmOperand b) {
         LLVMExpressionNode srcA;
         LLVMExpressionNode srcB;
         LLVMExpressionNode out;
         AsmOperand dst = b;
         Type dstType;
-        if (operation.startsWith("shl") || operation.startsWith("shr") || operation.startsWith("rol") || operation.startsWith("ror") || operation.startsWith("sal") || operation.startsWith("sar")) {
+        char suffix = operation.charAt(operation.length() - 1);
+        dstType = getPrimitiveTypeFromSuffix(suffix);
+        srcB = getOperandLoad(dstType, b);
+        if (isShiftOperation(operation)) {
             srcA = getOperandLoad(PrimitiveType.I8, a);
-            switch (operation.charAt(operation.length() - 1)) {
-                case 'b':
-                    srcB = getOperandLoad(PrimitiveType.I8, b);
-                    dstType = PrimitiveType.I8;
-                    break;
-                case 'w':
-                    srcB = getOperandLoad(PrimitiveType.I16, b);
-                    dstType = PrimitiveType.I16;
-                    break;
-                case 'l':
-                    srcB = getOperandLoad(PrimitiveType.I32, b);
-                    dstType = PrimitiveType.I32;
-                    break;
-                case 'q':
-                    srcB = getOperandLoad(PrimitiveType.I64, b);
-                    dstType = PrimitiveType.I64;
-                    break;
-                default:
-                    throw new AsmParseException("invalid size");
-            }
         } else {
-            switch (operation.charAt(operation.length() - 1)) {
-                case 'b':
-                    srcA = getOperandLoad(PrimitiveType.I8, a);
-                    srcB = getOperandLoad(PrimitiveType.I8, b);
-                    dstType = PrimitiveType.I8;
-                    break;
-                case 'w':
-                    srcA = getOperandLoad(PrimitiveType.I16, a);
-                    srcB = getOperandLoad(PrimitiveType.I16, b);
-                    dstType = PrimitiveType.I16;
-                    break;
-                case 'l':
-                    srcA = getOperandLoad(PrimitiveType.I32, a);
-                    srcB = getOperandLoad(PrimitiveType.I32, b);
-                    dstType = PrimitiveType.I32;
-                    break;
-                case 'q':
-                    srcA = getOperandLoad(PrimitiveType.I64, a);
-                    srcB = getOperandLoad(PrimitiveType.I64, b);
-                    dstType = PrimitiveType.I64;
-                    break;
-                default:
-                    srcA = null;
-                    srcB = null;
-                    dstType = PrimitiveType.I8;
-            }
+            srcA = getOperandLoad(dstType, a);
         }
         switch (operation) {
             case "addb":

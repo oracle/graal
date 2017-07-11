@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.asm.amd64;
 
 class AsmMemoryOperand implements AsmOperand {
-    public static final int HEX = 16;
     public static final int SCALE_1 = 1;
     public static final int SCALE_2 = 2;
     public static final int SCALE_4 = 4;
@@ -48,11 +47,7 @@ class AsmMemoryOperand implements AsmOperand {
     }
 
     public int getDisplacement() {
-        if (displacement.startsWith("0x")) {
-            return Integer.parseInt(displacement.substring(2), HEX);
-        } else {
-            return Integer.parseInt(displacement);
-        }
+        return Integer.decode(displacement);
     }
 
     public AsmOperand getBase() {

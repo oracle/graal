@@ -37,10 +37,10 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild("level")
 public abstract class LLVMAMD64CpuidNode extends LLVMExpressionNode {
-    private final LLVMAMD64WriteI32RegisterNode eax;
-    private final LLVMAMD64WriteI32RegisterNode ebx;
-    private final LLVMAMD64WriteI32RegisterNode ecx;
-    private final LLVMAMD64WriteI32RegisterNode edx;
+    @Child private LLVMAMD64WriteI32RegisterNode eax;
+    @Child private LLVMAMD64WriteI32RegisterNode ebx;
+    @Child private LLVMAMD64WriteI32RegisterNode ecx;
+    @Child private LLVMAMD64WriteI32RegisterNode edx;
 
     public LLVMAMD64CpuidNode(LLVMAMD64WriteI32RegisterNode eax, LLVMAMD64WriteI32RegisterNode ebx, LLVMAMD64WriteI32RegisterNode ecx, LLVMAMD64WriteI32RegisterNode edx) {
         this.eax = eax;
@@ -57,12 +57,14 @@ public abstract class LLVMAMD64CpuidNode extends LLVMExpressionNode {
         int d;
         switch (level) {
             case 0:
-                a = 0;
-                b = 0x6f6c7553;
-                c = 0x34364d56;
-                d = 0x4c4c676e;
+                // Get Vendor ID/Highest Function Parameter
+                a = 0; // no functions supported
+                b = 0x6f6c7553; // "Sulo"
+                d = 0x4c4c676e; // "ngLL"
+                c = 0x34364d56; // "VM64"
                 break;
             default:
+                // Fallback: bits cleared = feature(s) not available
                 a = 0;
                 b = 0;
                 c = 0;
