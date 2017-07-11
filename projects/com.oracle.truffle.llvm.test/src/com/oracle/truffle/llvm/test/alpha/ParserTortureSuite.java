@@ -73,7 +73,7 @@ public final class ParserTortureSuite {
             try {
                 Engine engine = Engine.create();
                 PolyglotContext context = engine.createPolyglotContext();
-                context.eval(LLVMLanguage.NAME, org.graalvm.polyglot.Source.create(candidate.toFile()));
+                context.eval(LLVMLanguage.NAME, org.graalvm.polyglot.Source.newBuilder(candidate.toFile()).build());
             } catch (Throwable e) {
                 throw e;
             }
