@@ -160,7 +160,7 @@ public class CompilationTask {
             final boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
             CompilationStatistics stats = CompilationStatistics.create(options, method, isOSR);
 
-            final CompilationPrinter printer = CompilationPrinter.get(options, compilationId, method, entryBCI);
+            final CompilationPrinter printer = CompilationPrinter.begin(options, compilationId, method, entryBCI);
 
             try (DebugContext.Scope s = debug.scope("Compiling", new DebugDumpScope(getIdString(), true))) {
                 // Begin the compilation event.

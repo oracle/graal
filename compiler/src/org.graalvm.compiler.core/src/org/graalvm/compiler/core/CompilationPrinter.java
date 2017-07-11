@@ -47,13 +47,16 @@ public final class CompilationPrinter {
     /**
      * Gets an object that will report statistics for a compilation if
      * {@link GraalCompilerOptions#PrintCompilation} is enabled and {@link TTY} is not suppressed.
+     * This method should be called just before a compilation starts as it captures pre-compilation
+     * data for the purpose of {@linkplain #finish(CompilationResult) printing} the post-compilation
+     * statistics.
      *
      * @param options used to get the value of {@link GraalCompilerOptions#PrintCompilation}
      * @param id the identifier for the compilation
      * @param method the method for which code is being compiled
      * @param entryBCI the BCI at which compilation starts
      */
-    public static CompilationPrinter get(OptionValues options, CompilationIdentifier id, JavaMethod method, int entryBCI) {
+    public static CompilationPrinter begin(OptionValues options, CompilationIdentifier id, JavaMethod method, int entryBCI) {
         if (PrintCompilation.getValue(options) && !TTY.isSuppressed()) {
             return new CompilationPrinter(id, method, entryBCI);
         }

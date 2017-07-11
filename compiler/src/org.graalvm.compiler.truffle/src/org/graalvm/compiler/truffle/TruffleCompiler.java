@@ -158,7 +158,7 @@ public abstract class TruffleCompiler {
 
     @SuppressWarnings("try")
     public void compileMethod(DebugContext debug, final OptimizedCallTarget compilable, ResolvedJavaMethod rootMethod, CompilationIdentifier compilationId, CancellableCompileTask task) {
-        final CompilationPrinter printer = CompilationPrinter.get(TruffleCompilerOptions.getOptions(), compilationId, new TruffleDebugJavaMethod(compilable), INVOCATION_ENTRY_BCI);
+        final CompilationPrinter printer = CompilationPrinter.begin(TruffleCompilerOptions.getOptions(), compilationId, new TruffleDebugJavaMethod(compilable), INVOCATION_ENTRY_BCI);
         StructuredGraph graph = null;
         compilationNotify.notifyCompilationStarted(compilable);
 
