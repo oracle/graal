@@ -1,25 +1,22 @@
 # Sulong test cases
 
-You can use `mx su-suite` to run all the test cases. You can selectively
-run one or several test suites with `mx su-suite <test suite names>`.
-The most important test cases are `mx su-suite sulong` (Sulong's own
-test suite which mostly consists of C files), `mx su-suite gcc`
-(selected GCC test cases), and `mx su-suite llvm` (selected LLVM test cases).
-
-The `mx su-suite` command is a conventient command that translates to
-`mx unittest <test suite class name>` and ensures that all path and options are set.
-For example, `mx su-suite sulong` corresponds to `mx unittest SulongSuite`.
-If you are in Sulongs root directory, you can use `mx unittest` as a direct
-replacement.
+Sulong's primary testsuite can be executed using `mx unittest SulongSuite`.
+Additionally, Sulong is also tested with selected external testsuites that
+can be executed using `mx su-suite`. Optional arguments to this command
+specify the testsuites to be executed. `mx su-suite -h` provides a list
+of available suites. The most important testsuites (beside the SulongSuite)
+are the `gcc38` and `llvm38` suites which consist of selected test cases from
+the official GCC 5.2 and LLVM 3.2 testsuites.
 
 To attach a debugger to Sulong tests, run `mx -d unittest SulongSuite` or
-`mx -d su-suite sulong`.
+`mx -d su-suite gcc38`.
 To get a verbose output of all tests that run as part of a suite, run
-`mx -v su-suite sulong`. This also prints names for all individual tests.
+`mx -v su-suite gcc38`. This also prints names for all individual tests.
+
 You can use the test names to run a single test of a suite.
 For example, `test[c/max-unsigned-short-to-float-cast.c]` is part of the
 SulongSuite. You can run this single test using
-`mx unittest SulongSuite#test[c/max-unsigned-short-to-float-cast.c]`
+`mx unittest SulongSuite#test[c/max-unsigned-short-to-float-cast.c]`.
 
 The test cases consist of LLVM IR, C, C++, and Fortran files. While
 Sulong's Truffle LLVM IR interpreter can directly execute the LLVM IR
@@ -28,8 +25,8 @@ before executing them.
 
 ## Fortran
 
-Some of our tests are Fortran files. Make sure you have GCC-4.6, G++-4.6,
-and GFortran-4.6 installed.
+Some of our tests are Fortran files. Make sure you have GCC, G++, and GFortran
+in version 4.5, 4.6 or 4.7 available.
 
 On the Mac you can use Homebrew:
 
@@ -37,21 +34,37 @@ On the Mac you can use Homebrew:
     brew install gcc46 --with-fortran
     brew link --force gmp4
 
+For the Fortran tests you also need to provide
+[DragonEgg](http://dragonegg.llvm.org/) 3.2 and Clang 3.2.
+
+[DragonEgg](http://dragonegg.llvm.org/) is a GCC plugin with which we
+can use GCC to compile a source language to LLVM IR. Sulong uses
+DragonEgg in its test cases to compile Fortran files to LLVM IR.
+Sulong also uses DragonEgg for the C/C++ test cases besides Clang to get
+additional "free" test cases for a given C/C++ file. DragonEgg requires
+a GCC in the aforementioned versions.
+
+`mx su-pulldragonegg` downloads both DragonEgg and Clang. You can set
+certain environment variables to tell Sulong where to find the binaries:
+
+- Sulong expects to find Clang 3.2 in `$DRAGONEGG_LLVM/bin`
+- Sulong expects to find GCC 4.5, 4.6 or 4.7 in `$DRAGONEGG_GCC/bin`
+- Sulong expects to find `dragonegg.so` under `$DRAGONEGG` or in `$DRAGONEGG_GCC/lib`
+
 On some versions of Mac OS X, `gcc46` may fail to install with a segmentation
 fault. You can find more details and suggestions on how to fix this here.
 
 However you install GCC on the Mac, you may then need to manually link the
- gcc libraries we use into a location where they can be found, as
- DYLD_LIBRARY_PATH cannot normally be set on the Mac.
+gcc libraries we use into a location where they can be found, as
+DYLD_LIBRARY_PATH cannot normally be set on the Mac.
 
     ln -s /usr/local/Cellar/gcc46/4.6.4/lib/gcc/4.6/libgfortran.3.dylib /usr/local/lib
 
 ## Test case options
 
 You can pass VM arguments as the last argument to the test runner. For
-example, you can use `mx su-suite sulong -Dsulong.Debug=true` to get useful
-information for debugging the test cases. With `mx su-options` you can
-get a complete list of options that you can use with Sulong.
+example, you can use `mx su-suite llvm38 -Dpolyglot.llvm.debug=true` to get useful
+information for debugging the test cases.
 
 ## Reference output
 
@@ -78,7 +91,7 @@ exclude files from this discovery, there are also `.exclude` files in
 the suite configuration, which are useful for test cases that crash the
 JVM process or which will not be supported by Sulong in the near future.
 
-## Test Suites
+## External test suites
 
 | test suite       | Class Name             | description                     |
 |------------------|------------------------|---------------------------------|
@@ -89,15 +102,11 @@ JVM process or which will not be supported by Sulong in the near future.
 | tck              | LLVMTckTest            | Certify Truffle compliance      |
 | nwcc             | NWCCSuite              | Test suite of the NWCC compiler |
 | assembly         | InlineAssemblyTest     | Inline assembler tests          |
-| sulong           | SulongSuite            | Sulong's own primary test suite |
 | gcc              | GCCSuite               | GCC's test suite                |
-| arguments        | MainArgsTest           | Tests main args passing         |
+| args             | MainArgsTest           | Tests main args passing         |
 | shootout         | ShootoutsSuite         | Language Benchmark game tests   |
-| sulongcpp38      | SulongCPPSuite         | C++ Exception Handling tests    |
+| vaargs           | VAArgsTest             | Varargs tests                   |
 
-These testsuites are compiled by either the Clang provided by mx or any Clang
-in versions 3.2 or 3.3 that are available on the system `PATH`. There are also
-`llvm38`, `nwcc38`, `sulong38`, `gcc38` suites which correspond to their
-counterparts without version number but are compiled by Clang in a version
-between 3.8 and 4.0. The `sulongcpp38` suite depends on such a Clang version
-since certain required features are not available in earlier versions.
+These testsuites are compiled by any Clang in versions 3.2 or 3.3 that are
+available on the system `PATH`. There are also `llvm38`, `nwcc38`, `gcc38` suites
+that are compiled by any version of Clang between 3.2 and 4.0 that is available.

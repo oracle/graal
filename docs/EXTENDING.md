@@ -17,20 +17,8 @@ Sulong's assumption is that all nodes inherit from either `LLVMNode` or
 implement statements, while `LLVMExpressionNode` returns a result and is
 used to implement expressions (see [`DATATYPES.md`](DATATYPES.md)).
 
-By exposing an implementation of the `SulongNodeFactory` interface as
-a service one can provide a custom implementation of `SulongNodeFactory`
-that the parser uses to create Truffle nodes. Changes to
-`SulongNodeFactory` are kept minimal, to not force projects that implement
-the `SulongNodeFactory` to frequently update their code.
-
-To use the node facade, an option (see `mx su-options`) exists to select
-a node facade implementation, which is currently `sulong.NodeConfiguration`.
-
-## Adding options
-
-Use the `OptionCategory` annotation to mark your class as containing options.
-Annotate individual options using `Option` annotation.
-An annotation processor generates a subclass of this class, which can be
-instantiated and allows accessing your options. If you want to make your
-options visible with `mx su-options`, instantiate the generated class in a
-class that implements the `LLVMOptionsServiceProvider`.
+By exposing an implementation of the `NodeFactory` interface as a service
+one can provide a custom implementation of `NodeFactory` that the parser
+uses to create Truffle nodes. Changes to `NodeFactory` are kept minimal,
+to not force projects that implement the `NodeFactory` to frequently
+update their code.
