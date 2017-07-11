@@ -89,6 +89,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
  *
  * @since 1.0
  */
+// TODO document that the current context class loader is captured when the engine is created.
 public final class Context implements AutoCloseable {
 
     final AbstractContextImpl impl;
@@ -142,9 +143,9 @@ public final class Context implements AutoCloseable {
      * free all native resources allocated automatically. For this reason it is necessary to close
      * contexts after use. If a context is cancelled then the currently executing thread will throw
      * a {@link PolyglotException}. The exception indicates that it was
-     * {@link PolyglotException#isCancelled() cancelled}. Note that cancelling a single context can
-     * negatively affect the performance of other executing contexts constructed with the same
-     * engine.
+     * {@link PolyglotException#isCancelled() cancelled}. Please note that canceling a single
+     * context can negatively affect the performance of other executing contexts constructed with
+     * the same engine.
      * <p>
      * If internal errors occur during closing of the language then they are printed to the
      * configured {@link Builder#err(OutputStream) error output stream}. If a context was closed
@@ -162,8 +163,8 @@ public final class Context implements AutoCloseable {
 
     /**
      * Closes this context and frees up potentially allocated native resources. Languages might not
-     * be able to free all native resources allocated by a context automatically. For this reason it
-     * is recommended to close contexts after use. If the context is currently being executed on
+     * be able to free all native resources allocated by a context automatically. For this reason it is
+     * recommended to close contexts after use. If the context is currently being executed on
      * another thread then an {@link IllegalStateException} is thrown. To close concurrently
      * executing contexts see {@link #close(boolean)}.
      * <p>
@@ -250,14 +251,19 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Set an option for this language {@link Context context}. If one of the set option keys or
-         * values is invalid then an {@link IllegalArgumentException} is thrown when the context is
-         * {@link #build() built}. The given key and value must not be <code>null</code>. Options
-         * for the engine or instruments can be specified using the
-         * {@link Engine.Builder#setOption(String, String) engine builder}.
+         * Set an option for this {@link Context context}. By default any options for the
+         * {@link Engine#getOptions() engine}, {@link Language#getOptions() language} or
+         * {@link Instrument#getOptions() instrument} can be set for a context. If an
+         * {@link #engine(Engine) explicit engine} is set for this context then only language
+         * options can be set. Instrument and engine options can be set exclusively on the explicit
+         * engine instance. If a language option was set for the context and the engine then the
+         * option of the context is going to take precedence.
+         * <p>
+         * If one of the set option keys or values is invalid then an
+         * {@link IllegalArgumentException} is thrown when the context is {@link #build() built}.
+         * The given key and value must not be <code>null</code>.
          *
-         * @see Language#getOptions() To list all available options for a {@link Language language}.
-         * @see Engine.Builder#setOption(String, String) To specify an option for the engine.
+         * @see Engine.Builder#option(String, String) To specify an option for the engine.
          * @since 1.0
          */
         public Builder option(String key, String value) {
@@ -275,7 +281,7 @@ public final class Context implements AutoCloseable {
          * values of the provided map must be non-null.
          *
          * @param options a map options.
-         * @see #setOption(String, String) To set a single option.
+         * @see #option(String, String) To set a single option.
          * @since 1.0
          */
         public Builder options(Map<String, String> options) {
