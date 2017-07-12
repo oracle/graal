@@ -46,6 +46,7 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Value;
+import org.graalvm.compiler.lir.LIRInstruction;
 
 public abstract class AMD64MoveFactory extends AMD64MoveFactoryBase {
 
@@ -67,6 +68,11 @@ public abstract class AMD64MoveFactory extends AMD64MoveFactoryBase {
             }
         }
         return false;
+    }
+
+    @Override
+    public boolean allowConstantToStackMove(Constant constant) {
+        return !(constant instanceof DataPointerConstant);
     }
 
     @Override
@@ -95,6 +101,15 @@ public abstract class AMD64MoveFactory extends AMD64MoveFactoryBase {
             return new LeaDataOp(dst, (DataPointerConstant) src);
         } else {
             throw GraalError.shouldNotReachHere(String.format("unsupported constant: %s", src));
+        }
+    }
+
+    @Override
+    public LIRInstruction createStackLoad(AllocatableValue result, Constant input) {
+        if (input instanceof JavaConstant) {
+            return new MoveFromConstOp(result, (JavaConstant) input);
+        } else {
+            throw GraalError.shouldNotReachHere(String.format("unsupported constant for stack load: %s", input));
         }
     }
 }

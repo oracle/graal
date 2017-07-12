@@ -296,7 +296,15 @@ public class MoveResolver {
         assert insertIdx != -1 : "must setup insert position first";
 
         AllocatableValue toOpr = toInterval.operand;
-        LIRInstruction move = getAllocator().getSpillMoveFactory().createLoad(toOpr, fromOpr);
+        LIRInstruction move;
+        if (LIRValueUtil.isStackSlotValue(toInterval.location())) {
+            if (!getAllocator().getSpillMoveFactory().allowConstantToStackMove(fromOpr)) {
+                throw GraalError.shouldNotReachHere("Cannot create constant to stack move: " + fromOpr);
+            }
+            move = getAllocator().getSpillMoveFactory().createStackLoad(toOpr, fromOpr);
+        } else {
+            move = getAllocator().getSpillMoveFactory().createLoad(toOpr, fromOpr);
+        }
         insertionBuffer.append(insertIdx, move);
 
         DebugContext debug = allocator.getDebug();

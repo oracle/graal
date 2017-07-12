@@ -57,7 +57,7 @@ public class AMD64HotSpotMoveFactory extends AMD64MoveFactory {
         if (value instanceof HotSpotConstant) {
             return ((HotSpotConstant) value).isCompressed();
         }
-        return true;
+        return super.allowConstantToStackMove(value);
     }
 
     @Override
