@@ -163,8 +163,8 @@ public final class Context implements AutoCloseable {
 
     /**
      * Closes this context and frees up potentially allocated native resources. Languages might not
-     * be able to free all native resources allocated by a context automatically. For this reason it is
-     * recommended to close contexts after use. If the context is currently being executed on
+     * be able to free all native resources allocated by a context automatically. For this reason it
+     * is recommended to close contexts after use. If the context is currently being executed on
      * another thread then an {@link IllegalStateException} is thrown. To close concurrently
      * executing contexts see {@link #close(boolean)}.
      * <p>
