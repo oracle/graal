@@ -74,8 +74,7 @@ public abstract class CompilationWrapper<T> {
          */
         Diagnose,
         /**
-         * Same as {@link #Diagnose} except that the VM process is exited if there is an exception
-         * during retry.
+         * Same as {@link #Diagnose} except that the VM process is exited after retrying.
          */
         ExitVM;
 
@@ -93,7 +92,7 @@ public abstract class CompilationWrapper<T> {
                     case Diagnose:
                         return action + ": Retry the compilation with extra diagnostics.";
                     case ExitVM:
-                        return action + ": Same as " + Diagnose + " except that the VM process exits if there is an exception during retry.";
+                        return action + ": Same as " + Diagnose + " except that the VM process exits after retrying.";
                 }
                 return null;
             }
@@ -221,7 +220,7 @@ public abstract class CompilationWrapper<T> {
             File dumpPath = new File(dir, dumpName);
             dumpPath.mkdirs();
             if (!dumpPath.exists()) {
-                TTY.println("Warning: could not create dump directory " + dumpPath);
+                TTY.println("Warning: could not create diagnostics directory " + dumpPath);
                 return handleException(cause);
             }
 
@@ -261,18 +260,16 @@ public abstract class CompilationWrapper<T> {
 
                 try (DebugContext retryDebug = createRetryDebugContext(retryOptions)) {
                     return performCompilation(retryDebug);
-                } catch (Throwable cause2) {
+                } catch (Throwable ignore) {
+                    // Failures during retry are silent
+                    return handleException(cause);
+                } finally {
                     if (action == ExitVM) {
                         synchronized (ExceptionAction.class) {
-                            PrintStream ps = TTY.out;
-                            ps.println("Exiting VM due to uncaught exception while re-compiling " + this + ":");
-                            cause2.printStackTrace(ps);
+                            TTY.println("Exiting VM after retry compilation of " + this);
                             System.exit(-1);
                         }
                     }
-
-                    // Except for the ExitVM action, failures during retry are silent
-                    return handleException(cause);
                 }
             }
         }
