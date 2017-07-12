@@ -131,6 +131,8 @@ void *truffle_read_string(const char *string);
 void *truffle_read_n_string(const char *string, int n);
 void *truffle_read_bytes(const char *bytes);
 void *truffle_read_n_bytes(const char *bytes, int n);
+const char *truffle_string_to_cstr(const char *string);
+void truffle_free_cstr(const char *truffle_allocated_cstr);
 
 // Managed operations
 void *truffle_managed_malloc(long size);

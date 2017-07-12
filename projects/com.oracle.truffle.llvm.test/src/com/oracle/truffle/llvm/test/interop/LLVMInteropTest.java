@@ -910,6 +910,19 @@ public final class LLVMInteropTest {
     }
 
     @Test
+    public void test077() {
+        Runner runner = new Runner("interop077");
+        final String testString = "this is a test";
+        runner.export(new FuncEInterface() {
+            @Override
+            public Object eval(Object x) {
+                return testString;
+            }
+        }, "getstring");
+        Assert.assertEquals(testString.length(), runner.run());
+    }
+
+    @Test
     public void testStrlen() throws Exception {
         Runner runner = new Runner("strlen");
         runner.run();
