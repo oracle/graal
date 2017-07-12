@@ -46,6 +46,7 @@ import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
+import com.oracle.truffle.api.vm.PolyglotValueImpl.EngineUnsupportedException;
 
 final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObject {
 
@@ -148,6 +149,12 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
 
     @Override
     public Throwable asHostException() {
+        if (!(exception instanceof HostException)) {
+            throw new EngineUnsupportedException(
+                            String.format("Unsupported operation %s.%s. You can ensure that the operation is supported using %s.%s.",
+                                            PolyglotException.class.getSimpleName(), "asHostException()",
+                                            PolyglotException.class.getSimpleName(), "isHostException()"));
+        }
         return ((HostException) exception).getOriginal();
     }
 
