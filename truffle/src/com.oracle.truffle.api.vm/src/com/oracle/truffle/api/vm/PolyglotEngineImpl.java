@@ -29,11 +29,8 @@ import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 import static com.oracle.truffle.api.vm.VMAccessor.NODES;
 import static com.oracle.truffle.api.vm.VMAccessor.SPI;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -461,27 +458,6 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         }
     }
 
-    @Override
-    public Language detectLanguage(Object sourceImpl) {
-        checkState();
-        com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) sourceImpl;
-        String filePath = source.getPath();
-        if (filePath == null) {
-            return null;
-        }
-        Path path = Paths.get(filePath);
-
-        String languageId = null;
-        try {
-            languageId = PolyglotSourceImpl.findLanguageImpl(path);
-        } catch (IOException e) {
-        }
-        if (languageId != null) {
-            return idToPublicLanguage.get(languageId);
-        }
-        return null;
-    }
-
     OptionDescriptors getAllOptions() {
         checkState();
         if (allOptions == null) {
@@ -637,25 +613,11 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     }
 
     @Override
-    @SuppressWarnings({"hiding", "deprecation"})
-    public synchronized org.graalvm.polyglot.PolyglotContext createPolyglotContext(OutputStream out, OutputStream err, InputStream in, Map<String, String[]> arguments, Map<String, String> options) {
-        checkState();
-        PolyglotContextImpl contextImpl = new PolyglotContextImpl(this, out, err, in, null, options, arguments, getLanguages().keySet());
-        addContext(contextImpl);
-        return impl.getAPIAccess().newPolyglotContext(api, contextImpl);
-    }
-
-    @Override
     @SuppressWarnings({"hiding"})
     public synchronized Context createContext(OutputStream out, OutputStream err, InputStream in, Predicate<String> classFilter,
                     Map<String, String> options, Map<String, String[]> arguments,
                     String[] onlyLanguages) {
         checkState();
-        Language primaryLanguage = null;
-        if (onlyLanguages.length == 1) {
-            primaryLanguage = getLanguage(onlyLanguages[0]);
-        }
-
         if (boundEngine && !contexts.isEmpty()) {
             throw new IllegalArgumentException("Automatically created engines cannot be used to create more than one context. " +
                             "Use Engine.newBuilder().build() to construct a new engine and pass it using Context.newBuilder().engine(engine).build().");
@@ -670,7 +632,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
         PolyglotContextImpl contextImpl = new PolyglotContextImpl(this, out, err, in, classFilter, options, arguments, allowedLanguages);
         addContext(contextImpl);
-        return impl.getAPIAccess().newContext(contextImpl, primaryLanguage);
+        return impl.getAPIAccess().newContext(contextImpl);
     }
 
 }

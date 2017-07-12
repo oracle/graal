@@ -26,7 +26,6 @@ package org.graalvm.polyglot;
 
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.PrintStream;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -96,12 +95,8 @@ public final class Context implements AutoCloseable {
 
     final AbstractContextImpl impl;
 
-    // primary language is deprecated and will be removed.
-    private final Language primaryLanguage;
-
-    Context(AbstractContextImpl impl, Language language) {
+    Context(AbstractContextImpl impl) {
         this.impl = impl;
-        this.primaryLanguage = language;
     }
 
     public Engine getEngine() {
@@ -112,51 +107,11 @@ public final class Context implements AutoCloseable {
      * Evaluates a source in the primary language of the context.
      */
     public Value eval(Source source) {
-        return eval(primaryLanguage != null ? primaryLanguage : getEngine().getLanguage(source.getLanguage()), source);
+        return impl.eval(source.getLanguage(), source.impl);
     }
 
     public Value eval(String languageId, CharSequence source) {
         return eval(Source.create(languageId, source));
-    }
-
-    @Deprecated
-    public Value eval(CharSequence source) {
-        if (primaryLanguage == null) {
-            throw new UnsupportedOperationException("This context was not created with a primary language. " +
-                            "Use Context.eval(language, source) or create the context using Language.createContext() instead.");
-        }
-        return eval(primaryLanguage, Source.create(primaryLanguage.getId(), source));
-    }
-
-    @Deprecated
-    public Value eval(String languageId, Source source) {
-        // hack to support legacy code
-        return eval(getEngine().getLanguage(languageId), source);
-    }
-
-    @Deprecated
-    public Value eval(Language language, CharSequence source) {
-        return eval(language, Source.create(language.getId(), source));
-    }
-
-    @Deprecated
-    public Value eval(Language language, Source source) {
-        source.language = language.getId();
-        return impl.eval(language.impl, source.impl);
-    }
-
-    /**
-     * Perform a lookup for a symbol in the top-most scope of the language.
-     *
-     * @deprecated
-     */
-    @Deprecated
-    public Value lookup(String key) {
-        if (primaryLanguage == null) {
-            throw new UnsupportedOperationException("This context was not created with a primary language. " +
-                            "Use Context.eval(language, source) or create the context using Language.createContext() instead.");
-        }
-        return lookup(primaryLanguage.getId(), key);
     }
 
     /**
@@ -256,24 +211,6 @@ public final class Context implements AutoCloseable {
             this.onlyLanguages = onlyLanguages;
         }
 
-        /**
-         * @deprecated use {@link #setOut(OutputStream)} instead
-         */
-        @Deprecated
-        public Builder setOut(PrintStream out) {
-            this.out = out;
-            return this;
-        }
-
-        /**
-         * @deprecated use {@link #setErr(OutputStream)} instead
-         */
-        @Deprecated
-        public Builder setErr(PrintStream err) {
-            this.err = err;
-            return this;
-        }
-
         public Builder engine(Engine engine) {
             Objects.requireNonNull(engine);
             this.sharedEngine = engine;
@@ -286,40 +223,16 @@ public final class Context implements AutoCloseable {
             return this;
         }
 
-        /**
-         * @deprecated use {@link #out(OutputStream)} instead.
-         */
-        @Deprecated
-        public Builder setOut(OutputStream out) {
-            return out(out);
-        }
-
         public Builder err(OutputStream err) {
             Objects.requireNonNull(err);
             this.err = err;
             return this;
         }
 
-        /**
-         * @deprecated use {@link #err(OutputStream)} instead.
-         */
-        @Deprecated
-        public Builder setErr(OutputStream err) {
-            return err(err);
-        }
-
         public Builder in(InputStream in) {
             Objects.requireNonNull(in);
             this.in = in;
             return this;
-        }
-
-        /**
-         * @deprecated use {@link #in(InputStream)} instead.
-         */
-        @Deprecated
-        public Builder setIn(InputStream in) {
-            return in(in);
         }
 
         /**
@@ -332,7 +245,7 @@ public final class Context implements AutoCloseable {
          *
          * @since 1.0
          */
-        public Builder setJavaClassFilter(Predicate<String> classFilter) {
+        public Builder javaClassFilter(Predicate<String> classFilter) {
             Objects.requireNonNull(classFilter);
             this.classFilter = classFilter;
             return this;
@@ -369,25 +282,9 @@ public final class Context implements AutoCloseable {
          */
         public Builder options(Map<String, String> options) {
             for (String key : options.keySet()) {
-                setOption(key, options.get(key));
+                option(key, options.get(key));
             }
             return this;
-        }
-
-        /**
-         * @deprecated use {@link #option(String, String)} instead.
-         */
-        @Deprecated
-        public Builder setOption(String key, String value) {
-            return option(key, value);
-        }
-
-        /**
-         * @deprecated use {@link #options(Map)} instead
-         */
-        @Deprecated
-        public Builder setOptions(Map<String, String> options) {
-            return options(options);
         }
 
         /**
@@ -416,22 +313,6 @@ public final class Context implements AutoCloseable {
                 arguments = new HashMap<>();
             }
             arguments.put(language, newArgs);
-            return this;
-        }
-
-        /**
-         * Sets the application arguments for the primary language context.
-         *
-         * @see #setArguments(String, String[])
-         * @since 1.0
-         * @deprecated use {@link #setArguments(String, String[])}
-         */
-        @Deprecated
-        public Builder setArguments(String[] args) {
-            if (onlyLanguages == null || onlyLanguages.length != 1) {
-                throw new IllegalArgumentException("No primary language in use. Use setArguments(String, STring[]) instead.");
-            }
-            arguments(onlyLanguages[0], args);
             return this;
         }
 
