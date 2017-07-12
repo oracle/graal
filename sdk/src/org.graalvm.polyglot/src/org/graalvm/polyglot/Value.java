@@ -176,7 +176,7 @@ public final class Value {
     }
 
     /**
-     * Return as coerced original java type.
+     * Return as coerced original Java type.
      *
      * @param clazz
      * @return

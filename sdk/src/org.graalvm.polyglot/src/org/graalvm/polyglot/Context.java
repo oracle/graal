@@ -35,38 +35,38 @@ import java.util.function.Predicate;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 
 /**
- * A polyglot execution context for Graal {@linkplain Language guest languages} that support
- * <em>interoperability</em> among the languages and with Java.
+ * A polyglot execution context for Graal {@linkplain Language guest languages} that supports
+ * <em>interoperability</em> between languages and with Java.
  *
  * <h4>Sample Usage</h4>
  *
- * <h4>Context Creation</h4>
+ * <h4>Context Creation and Disposal</h4>
  *
- * A context can be created using its default configuration by invoked the static
- * {@link #create(String...) create()} method. The create method allows to limit which languages are
- * accessible in the context. If no language is passed then all installed languages are accessible.
+ * Create a context with default configuration by invoking the static method
+ * {@link #create(String...) create()}, which optionally restricts the languages that may be used in
+ * the context. Create a context with custom configuration with a {@linkplain #newBuilder(String...)
+ * builder}. In addition to restricting languages, the builder can configure input, error and output
+ * streams, both engine and context options, and application arguments.
  * <p>
- * To customize the configuration a context builder can be created using
- * {@link #newBuilder(String...)}. In addition to the {@link #create(String...)} method, the context
- * builder allows to configure the input, error and output streams, engine and context options as
- * well as application arguments. A context can be created using a {@link Builder#engine(Engine)
- * shared engine} which allows to share configuration and instruments between multiple execution
- * contexts. See {@link Engine} for further details.
+ * Multiple contexts created with a single {@link Builder#engine(Engine) execution engine}, also
+ * share configurations and {@link Instrument instruments}. See {@link Engine} for more details.
  * <p>
- * After use a context needs to be {@link #close() closed} in order to free all allocated resources.
- * A context can be closed from any thread if no code is currently executing in the same context.
- * There is also the ability to cancel a running execution of a different thread using the boolean
- * <code>cancelIfRunning</code> parameter of the {@link #close(boolean) close} method. Contexts are
- * {@link AutoCloseable} in order to allow them to be used with the try with resource Java
- * statement.
+ * A context that is no longer needed should be {@link #close() closed} to guarantee that all
+ * allocated resources are freed. If no code is currently executing in a context then it may be
+ * closed from any thread. If code is currently executing in a context, a different thread can close
+ * it using the boolean <code>cancelIfRunning</code> parameter of the {@link #close(boolean) close}
+ * method. Contexts are {@link AutoCloseable} so they may be used with the Java
+ * {@code try-with-resources} statement.
+ *
+ * <h4>Language Initialization</h4>
+ *
+ * Each language performs some initialization in a context before it can be
+ * {@linkplain Source#getLanguage() used}, after which it remains initialized for the lifetime of
+ * the context. Initialization is by default lazy and automatic, but it can be
+ * {@link Context#initialize(String) forced}.
+ * <p>
  *
  * <h4>Evaluation</h4>
- *
- * Before evaluation a language needs to be initialized. Languages are initialized automatically,
- * the first time a {@linkplain Source#getLanguage() language} is used. It is possible to
- * {@link Context#initialize(String) force} the initialization of a language. Languages remain
- * initialized for the lifetime of the context.
- * <p>
  *
  * <h4>Polyglot Values</h4>
  *
@@ -76,21 +76,20 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
  *
  * <h4>Exception Handling</h4>
  *
- * Most methods of a context throw {@link PolyglotException} in case an error occured in a guest
- * language.
+ * Most methods of a context throw {@link PolyglotException} if errors occur in guest languages.
  *
  * <h4>Proxys</h4>
  *
  * <h4>Thread-Safety</h4>
  *
- * Guest language code execution is single-threaded. Therefore only one Thread can execute guest
- * language code at a time. However the executing thread can change as long as there are no two
- * threads executing at the same time. If two threads access one context at the same time then an
- * {@link IllegalStateException} is thrown. Meta-data access using the {@link #getEngine() engine}
- * is always thread safe.
+ * A context only permits guest language code execution by one thread at a time, but it need not
+ * always be the same thread. An attempt to execute code in a context where an execution is
+ * currently underway will result in an {@link IllegalStateException}. On the other hand it is
+ * always thread-safe to access meta-data from the context's {@link #getEngine() engine}.
  *
  * @since 1.0
  */
+// TODO document that the current context class loader is captured when the engine is created.
 public final class Context implements AutoCloseable {
 
     final AbstractContextImpl impl;
@@ -140,18 +139,18 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Closes this context and frees up potentially allocated native resources. A context is not
-     * able to free all native resources allocated automatically, therefore it is necessary to close
+     * Closes this context and frees up potentially allocated native resources. A context cannot
+     * free all native resources allocated automatically. For this reason it is necessary to close
      * contexts after use. If a context is cancelled then the currently executing thread will throw
      * a {@link PolyglotException}. The exception indicates that it was
-     * {@link PolyglotException#isCancelled() cancelled}. Please note that cancelling a single
+     * {@link PolyglotException#isCancelled() cancelled}. Please note that canceling a single
      * context can negatively affect the performance of other executing contexts constructed with
      * the same engine.
      * <p>
      * If internal errors occur during closing of the language then they are printed to the
      * configured {@link Builder#err(OutputStream) error output stream}. If a context was closed
-     * then all its methods will throw an {@link IllegalStateException} when invoked. If an an
-     * attempt to close a context was successful then consecutive calls to close have no effect.
+     * then all its methods will throw an {@link IllegalStateException} when invoked. If an attempt
+     * to close a context was successful then consecutive calls to close have no effect.
      *
      * @param cancelIfExecuting if <code>true</code> then currently executing contexts will be
      *            cancelled, else an {@link IllegalStateException} is thrown.
@@ -164,15 +163,15 @@ public final class Context implements AutoCloseable {
 
     /**
      * Closes this context and frees up potentially allocated native resources. Languages might not
-     * be able to free all native resources allocated by a context automatically, therefore it is
-     * recommended to close contexts after use. If the context is currently beeing executed on
+     * be able to free all native resources allocated by a context automatically. For this reason it
+     * is recommended to close contexts after use. If the context is currently being executed on
      * another thread then an {@link IllegalStateException} is thrown. To close concurrently
      * executing contexts see {@link #close(boolean)}.
      * <p>
      * If internal errors occur during closing of the language then they are printed to the
      * configured {@link Builder#err(OutputStream) error output stream}. If a context was closed
-     * then all its methods will throw an {@link IllegalStateException} when invoked. If an an
-     * attempt to close a context was successful then consecutive calls to close have no effect.
+     * then all its methods will throw an {@link IllegalStateException} when invoked. If an attempt
+     * to close a context was successful then consecutive calls to close have no effect.
      *
      * @throws IllegalStateException if the context is currently executing on another thread.
      * @see Engine#close() To close an engine.
@@ -182,10 +181,24 @@ public final class Context implements AutoCloseable {
         close(false);
     }
 
+    /**
+     * Creates a context with default configuration.
+     *
+     * @param onlyLanguages names of languages permitted in this context, {@code null} if all
+     *            languages are permitted
+     * @return a new context
+     */
     public static Context create(String... onlyLanguages) {
         return newBuilder(onlyLanguages).build();
     }
 
+    /**
+     * Creates a builder for constructing a context with custom configuration.
+     *
+     * @param onlyLanguages names of languages permitted in this context, {@code null} if all
+     *            languages are permitted
+     * @return a builder that can create a context
+     */
     public static Builder newBuilder(String... onlyLanguages) {
         return new Builder(onlyLanguages);
     }
@@ -236,12 +249,12 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Sets a class filter that allows to limit the classes that are allowed to be loaded by
-         * guest languages. If the filter returns <code>true</code> then the class is accessible,
-         * else it is not accessible and throws an guest language error when accessed.
+         * Sets a class filter that allows to limit the classes that guest languages are allowed to
+         * load. If the filter returns <code>true</code> then the class is accessible, else it is
+         * not accessible and throws a guest language error when accessed.
          *
          * @param classFilter a predicate that returns <code>true</code> or <code>false</code> for a
-         *            java qualified class name.
+         *            Java qualified class name.
          *
          * @since 1.0
          */
@@ -252,14 +265,19 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Set an option for this language {@link Context context}. If one of the set option keys or
-         * values is invalid then an {@link IllegalArgumentException} is thrown when the context is
-         * {@link #build() built}. The given key and value must not be <code>null</code>. Options
-         * for the engine or instruments can be specified using the
-         * {@link Engine.Builder#setOption(String, String) engine builder}.
+         * Set an option for this {@link Context context}. By default any options for the
+         * {@link Engine#getOptions() engine}, {@link Language#getOptions() language} or
+         * {@link Instrument#getOptions() instrument} can be set for a context. If an
+         * {@link #engine(Engine) explicit engine} is set for this context then only language
+         * options can be set. Instrument and engine options can be set exclusively on the explicit
+         * engine instance. If a language option was set for the context and the engine then the
+         * option of the context is going to take precedence.
+         * <p>
+         * If one of the set option keys or values is invalid then an
+         * {@link IllegalArgumentException} is thrown when the context is {@link #build() built}.
+         * The given key and value must not be <code>null</code>.
          *
-         * @see Language#getOptions() To list all available options for a {@link Language language}.
-         * @see Engine.Builder#setOption(String, String) To specify an option for the engine.
+         * @see Engine.Builder#option(String, String) To specify an option for the engine.
          * @since 1.0
          */
         public Builder option(String key, String value) {
@@ -277,7 +295,7 @@ public final class Context implements AutoCloseable {
          * values of the provided map must be non-null.
          *
          * @param options a map options.
-         * @see #setOption(String, String) To set a single option.
+         * @see #option(String, String) To set a single option.
          * @since 1.0
          */
         public Builder options(Map<String, String> options) {
@@ -289,13 +307,13 @@ public final class Context implements AutoCloseable {
 
         /**
          * Sets the guest language application arguments for a language {@link Context context}.
-         * Application arguments are typcially made available to guest language implementations. It
-         * depends on the language whether and how they are accessible within the
+         * Application arguments are typically made available to guest language implementations. It
+         * depends on the language if and how they are accessible within the
          * {@link Context#eval(Source) evaluated} guest language scripts. Passing no arguments to a
-         * language then it is equivalent to providing an empty arguments array.
+         * language is equivalent to providing an empty arguments array.
          *
          * @param language the language id of the primary language.
-         * @param args an array of arguments passed to the guest language program
+         * @param args an array of arguments passed to the guest language program.
          * @throws IllegalArgumentException if an invalid language id was specified.
          * @since 1.0
          */
