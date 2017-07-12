@@ -366,7 +366,7 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
             }
             Object result = target.call(PolyglotImpl.EMPTY_ARGS);
 
-            if (source.isInternal()) {
+            if (source.isInteractive()) {
                 printResult(languageContext, result);
             }
 
