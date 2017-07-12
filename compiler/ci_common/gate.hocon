@@ -65,9 +65,6 @@ gateTestCTW9            : ${gateTestCTW} ${java9}
 gateTest8Debug          : ${gateTest} ${java8Debug}
 gateTest9               : ${gateTest} ${java9}
 gateTest9EA             : ${gateTest} ${java9EA}
-# The benchmarks need to be run on an OracleJDK binary as
-# DaCapo batik accesses com/sun/image/codec/jpeg/TruncatedFileException
-# which is not in an OpenJDK binary.
 gateTestBenchmark8      : ${gateTestBenchmark} ${labsjdk8}
 gateTestBenchmark8Debug : ${gateTestBenchmark} ${labsjdk8Debug}
 gateTestBenchmark9      : ${gateTestBenchmark} ${java9}
