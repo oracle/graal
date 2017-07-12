@@ -22,37 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.nfi;
+#include <trufflenfi.h>
 
-class NativeAccess {
+static TruffleContext *ctx;
+static double (*globalCallback)(double x);
 
-    static {
-        String nfiLib = System.getProperty("truffle.nfi.library");
-        if (nfiLib == null) {
-            System.loadLibrary("trufflenfi");
-            nfiLib = System.mapLibraryName("trufflenfi");
-        } else {
-            System.load(nfiLib);
-        }
-        initialize(nfiLib, LibFFIType.simpleTypeMap);
-    }
+extern "C" void initializeGlobalContext(TruffleEnv *env) {
+    ctx = env->getTruffleContext();
+}
 
-    static void ensureInitialized() {
-    }
+extern "C" TruffleObject registerGlobalCallback(double (*callback)(double)) {
+    TruffleEnv *env = ctx->getTruffleEnv();
+    globalCallback = callback;
+    TruffleObject callbackObj = env->getClosureObject(callback);
+    return env->releaseAndReturn(callbackObj);
+}
 
-    // initialized by native code
-    // Checkstyle: stop field name check
-    static int RTLD_GLOBAL;
-    static int RTLD_LOCAL;
-    static int RTLD_LAZY;
-    static int RTLD_NOW;
-    // Checkstyle: resume field name check
-
-    private static native void initialize(String libName, LibFFIType[] simpleTypeMap);
-
-    static native long loadLibrary(String name, int flags);
-
-    static native void freeLibrary(long library);
-
-    static native long lookup(long library, String name);
+extern "C" double testGlobalCallback(double arg) {
+    return globalCallback(arg);
 }

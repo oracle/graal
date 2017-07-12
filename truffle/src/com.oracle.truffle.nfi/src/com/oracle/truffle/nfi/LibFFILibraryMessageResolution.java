@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.CanResolve;
@@ -38,6 +39,8 @@ import com.oracle.truffle.nfi.LibFFILibraryMessageResolutionFactory.CachedLookup
 class LibFFILibraryMessageResolution {
 
     abstract static class CachedLookupSymbolNode extends Node {
+
+        private final ContextReference<NFIContext> ctxRef = NFILanguage.getCurrentContextReference();
 
         protected abstract TruffleObject executeLookup(LibFFILibrary receiver, String symbol);
 
@@ -57,7 +60,7 @@ class LibFFILibraryMessageResolution {
                 return preBound;
             }
             try {
-                return receiver.lookupSymbol(symbol);
+                return ctxRef.get().lookupSymbol(receiver, symbol);
             } catch (UnsatisfiedLinkError ex) {
                 throw UnknownIdentifierException.raise(symbol);
             }

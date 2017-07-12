@@ -56,11 +56,13 @@ import java.util.List;
  * <pre>
  * Signature ::= '(' [ Type { ',' Type } ] [ '...' Type { ',' Type } ] ')' ':' Type
  *
- * Type ::= Signature | SimpleType | ArrayType
+ * Type ::= Signature | SimpleType | ArrayType | EnvType
  *
  * SimpleType ::= ident
  *
  * ArrayType ::= '[' SimpleType ']'
+ *
+ * EnvType ::= 'env'
  * </pre>
  */
 public final class Parser {
@@ -180,7 +182,7 @@ public final class Parser {
             case OPENBRACKET:
                 return parseArrayType();
             case IDENTIFIER:
-                return parseSimpleType();
+                return parseSimpleType(true);
             default:
                 throw new IllegalArgumentException(String.format("expected type, but got '%s'", lexer.currentValue()));
         }
@@ -225,16 +227,20 @@ public final class Parser {
 
     private NativeArrayTypeMirror parseArrayType() {
         expect(Token.OPENBRACKET);
-        NativeSimpleTypeMirror elementType = parseSimpleType();
+        NativeTypeMirror elementType = parseSimpleType(false);
         expect(Token.CLOSEBRACKET);
 
         return new NativeArrayTypeMirror(elementType);
     }
 
-    private NativeSimpleTypeMirror parseSimpleType() {
+    private NativeTypeMirror parseSimpleType(boolean envAllowed) {
         expect(Token.IDENTIFIER);
         String identifier = lexer.currentValue();
-        NativeSimpleType simpleType = NativeSimpleType.valueOf(identifier.toUpperCase());
-        return new NativeSimpleTypeMirror(simpleType);
+        if (envAllowed && "env".equalsIgnoreCase(identifier)) {
+            return new NativeEnvTypeMirror();
+        } else {
+            NativeSimpleType simpleType = NativeSimpleType.valueOf(identifier.toUpperCase());
+            return new NativeSimpleTypeMirror(simpleType);
+        }
     }
 }

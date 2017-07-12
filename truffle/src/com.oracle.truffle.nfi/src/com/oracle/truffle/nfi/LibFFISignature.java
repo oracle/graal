@@ -25,8 +25,6 @@
 package com.oracle.truffle.nfi;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.nfi.LibFFIType.Direction;
 import com.oracle.truffle.nfi.types.NativeSignature;
 import com.oracle.truffle.nfi.NativeAllocation.FreeDestructor;
@@ -36,8 +34,8 @@ import java.util.List;
 
 final class LibFFISignature {
 
-    public static LibFFISignature create(NativeSignature signature) {
-        LibFFISignature ret = new LibFFISignature(signature);
+    public static LibFFISignature create(NFIContext context, NativeSignature signature) {
+        LibFFISignature ret = new LibFFISignature(context, signature);
         NativeAllocation.registerNativeAllocation(ret, new FreeDestructor(ret.cif));
         return ret;
     }
@@ -48,11 +46,13 @@ final class LibFFISignature {
     private final int primitiveSize;
     private final int objectCount;
 
+    private final int realArgCount;
+
     private final long cif;
 
     private final Direction allowedCallDirection;
 
-    private LibFFISignature(NativeSignature signature) {
+    private LibFFISignature(NFIContext context, NativeSignature signature) {
         if (signature.getRetType() instanceof NativeArrayTypeMirror) {
             throw new IllegalArgumentException("array type as return value is not supported");
         }
@@ -60,7 +60,7 @@ final class LibFFISignature {
         boolean allowJavaToNativeCall = true;
         boolean allowNativeToJavaCall = true;
 
-        this.retType = LibFFIType.lookupRetType(signature.getRetType());
+        this.retType = context.lookupRetType(signature.getRetType());
 
         switch (retType.allowedDataFlowDirection) {
             /*
@@ -78,7 +78,7 @@ final class LibFFISignature {
         List<NativeTypeMirror> args = signature.getArgTypes();
         this.argTypes = new LibFFIType[args.size()];
         for (int i = 0; i < argTypes.length; i++) {
-            LibFFIType argType = LibFFIType.lookupArgType(args.get(i));
+            LibFFIType argType = context.lookupArgType(args.get(i));
             if (argType instanceof LibFFIType.VoidType) {
                 throw new IllegalArgumentException("void is not a valid argument type");
             }
@@ -109,13 +109,14 @@ final class LibFFISignature {
         }
 
         if (signature.isVarargs()) {
-            this.cif = prepareSignatureVarargs(this.retType, signature.getFixedArgCount(), this.argTypes);
+            this.cif = context.prepareSignatureVarargs(this.retType, signature.getFixedArgCount(), this.argTypes);
         } else {
-            this.cif = prepareSignature(this.retType, this.argTypes);
+            this.cif = context.prepareSignature(this.retType, this.argTypes);
         }
 
         int primSize = 0;
         int objCount = 0;
+        int argCount = 0;
 
         for (LibFFIType type : this.argTypes) {
             int align = type.alignment;
@@ -124,10 +125,14 @@ final class LibFFISignature {
             }
             primSize += type.size;
             objCount += type.objectCount;
+            if (!type.injectedArgument) {
+                argCount++;
+            }
         }
 
         this.primitiveSize = primSize;
         this.objectCount = objCount;
+        this.realArgCount = argCount;
     }
 
     public NativeArgumentBuffer.Array prepareBuffer() {
@@ -146,10 +151,14 @@ final class LibFFISignature {
         return allowedCallDirection;
     }
 
-    public Object execute(long functionPointer, NativeArgumentBuffer.Array argBuffer) {
+    public int getRealArgCount() {
+        return realArgCount;
+    }
+
+    public Object execute(NFIContext ctx, long functionPointer, NativeArgumentBuffer.Array argBuffer) {
         CompilerAsserts.partialEvaluationConstant(retType);
         if (retType instanceof LibFFIType.ObjectType) {
-            Object ret = executeObject(functionPointer, argBuffer.prim, argBuffer.getPatchCount(), argBuffer.patches, argBuffer.objects);
+            Object ret = ctx.executeObject(cif, functionPointer, argBuffer.prim, argBuffer.getPatchCount(), argBuffer.patches, argBuffer.objects);
             if (ret == null) {
                 return new NativePointer(0);
             } else {
@@ -157,25 +166,12 @@ final class LibFFISignature {
             }
         } else if (retType instanceof LibFFIType.SimpleType) {
             LibFFIType.SimpleType simpleType = (LibFFIType.SimpleType) retType;
-            long ret = executePrimitive(functionPointer, argBuffer.prim, argBuffer.getPatchCount(), argBuffer.patches, argBuffer.objects);
+            long ret = ctx.executePrimitive(cif, functionPointer, argBuffer.prim, argBuffer.getPatchCount(), argBuffer.patches, argBuffer.objects);
             return simpleType.fromPrimitive(ret);
         } else {
             NativeArgumentBuffer.Array retBuffer = new NativeArgumentBuffer.Array(retType.size, retType.objectCount);
-            executeNative(functionPointer, argBuffer.prim, argBuffer.getPatchCount(), argBuffer.patches, argBuffer.objects, retBuffer.prim);
+            ctx.executeNative(cif, functionPointer, argBuffer.prim, argBuffer.getPatchCount(), argBuffer.patches, argBuffer.objects, retBuffer.prim);
             return retType.deserialize(retBuffer);
         }
     }
-
-    @TruffleBoundary
-    private native void executeNative(long functionPointer, byte[] primArgs, int patchCount, int[] patchOffsets, Object[] objArgs, byte[] ret);
-
-    @TruffleBoundary
-    private native long executePrimitive(long functionPointer, byte[] primArgs, int patchCount, int[] patchOffsets, Object[] objArgs);
-
-    @TruffleBoundary
-    private native TruffleObject executeObject(long functionPointer, byte[] primArgs, int patchCount, int[] patchOffsets, Object[] objArgs);
-
-    private static native long prepareSignature(LibFFIType retType, LibFFIType... args);
-
-    private static native long prepareSignatureVarargs(LibFFIType retType, int nFixedArgs, LibFFIType... args);
 }

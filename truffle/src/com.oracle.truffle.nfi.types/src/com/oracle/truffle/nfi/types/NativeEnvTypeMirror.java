@@ -24,22 +24,9 @@
  */
 package com.oracle.truffle.nfi.types;
 
-public abstract class NativeTypeMirror {
+final class NativeEnvTypeMirror extends NativeTypeMirror {
 
-    private final Kind kind;
-
-    public enum Kind {
-        SIMPLE,
-        ARRAY,
-        FUNCTION,
-        ENV;
-    }
-
-    NativeTypeMirror(Kind kind) {
-        this.kind = kind;
-    }
-
-    public final Kind getKind() {
-        return kind;
+    NativeEnvTypeMirror() {
+        super(Kind.ENV);
     }
 }

@@ -25,20 +25,59 @@
 #ifndef __TRUFFLE_INTERNAL_H
 #define __TRUFFLE_INTERNAL_H
 
+#include "trufflenfi.h"
 #include <ffi.h>
+#include <jni.h>
 
-JNIEnv *getEnv();
-void initializeClosure(JNIEnv *);
-void initializeSignature(JNIEnv *);
-void initializeLookup(JNIEnv *, jstring);
+struct __TruffleContextInternal {
+    const struct __TruffleThreadAPI *functions;
+    JavaVM *javaVM;
+    jobject NFIContext;
 
-ffi_cif *get_ffi_cif(JNIEnv *env, jobject signature);
+
+    jmethodID CallTarget_call;
+
+    jfieldID LibFFISignature_cif;
+    jfieldID LibFFISignature_argTypes;
+
+    jfieldID LibFFIType_type;
+    jclass LibFFIType_EnvType;
+    jclass LibFFIType_ObjectType;
+    jclass LibFFIType_StringType;
+
+    jclass NativeString;
+    jfieldID NativeString_nativePointer;
+
+    jmethodID NFIContext_getNativeEnv;
+    jmethodID NFIContext_createClosureNativePointer;
+    jmethodID NFIContext_newClosureRef;
+    jmethodID NFIContext_releaseClosureRef;
+    jmethodID NFIContext_getClosureObject;
+
+    jfieldID RetPatches_count;
+    jfieldID RetPatches_patches;
+    jfieldID RetPatches_objects;
+
+    jclass Object;
+    jclass String;
+    jclass UnsatisfiedLinkError;
+};
+
+struct __TruffleEnvInternal {
+    const struct __TruffleNativeAPI *functions;
+    struct __TruffleContextInternal *context;
+    JNIEnv *jniEnv;
+};
+
+extern const struct __TruffleNativeAPI truffleNativeAPI;
+extern const struct __TruffleThreadAPI truffleThreadAPI;
 
 // keep this in sync with the code in com.oracle.truffle.nfi.NativeArgumentBuffer$TypeTag
 enum TypeTag {
     OBJECT = 0,
     STRING,
     CLOSURE,
+    ENV,
 
     BOOLEAN_ARRAY,
     BYTE_ARRAY,

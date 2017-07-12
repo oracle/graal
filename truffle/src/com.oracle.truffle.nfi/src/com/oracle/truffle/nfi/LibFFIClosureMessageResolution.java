@@ -22,24 +22,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.nfi.types;
+package com.oracle.truffle.nfi;
 
-public abstract class NativeTypeMirror {
+import com.oracle.truffle.api.interop.CanResolve;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 
-    private final Kind kind;
+@MessageResolution(receiverType = LibFFIClosure.class)
+class LibFFIClosureMessageResolution {
 
-    public enum Kind {
-        SIMPLE,
-        ARRAY,
-        FUNCTION,
-        ENV;
+    @Resolve(message = "IS_POINTER")
+    abstract static class IsNativeClosureNode extends Node {
+
+        public boolean access(@SuppressWarnings("unused") LibFFIClosure receiver) {
+            return true;
+        }
     }
 
-    NativeTypeMirror(Kind kind) {
-        this.kind = kind;
+    @Resolve(message = "AS_POINTER")
+    abstract static class AsNativeClosureNode extends Node {
+
+        public long access(LibFFIClosure receiver) {
+            return receiver.nativePointer.getCodePointer();
+        }
     }
 
-    public final Kind getKind() {
-        return kind;
+    @CanResolve
+    abstract static class CanResolveLibFFIClosureNode extends Node {
+
+        public boolean test(TruffleObject receiver) {
+            return receiver instanceof LibFFIClosure;
+        }
     }
 }

@@ -24,10 +24,12 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import org.junit.AfterClass;
 import static org.junit.Assert.assertEquals;
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -37,6 +39,11 @@ public class StringAsInterfaceNFITest {
 
     @BeforeClass
     public static void loadLibraries() {
+        if (TruffleOptions.AOT) {
+            // skip these tests on AOT, since JavaInterop is not yet supported
+            return;
+        }
+
         engine = PolyglotEngine.newBuilder().build();
         stdlib = engine.eval(Source.newBuilder("default {\n" + //
                         "  strdup(string):string;\n" + //
@@ -48,7 +55,9 @@ public class StringAsInterfaceNFITest {
 
     @AfterClass
     public static void cleanUp() {
-        engine.dispose();
+        if (engine != null) {
+            engine.dispose();
+        }
     }
 
     interface StdLib {
@@ -65,18 +74,21 @@ public class StringAsInterfaceNFITest {
 
     @Test
     public void testDuplicateAString() {
+        Assume.assumeFalse("disable test on AOT", TruffleOptions.AOT);
         String copy = stdlib.strdup("Ahoj");
         assertEquals("Ahoj", copy);
     }
 
     @Test
     public void testAllocAndRelease() {
+        Assume.assumeFalse("disable test on AOT", TruffleOptions.AOT);
         long mem = stdlib.malloc(512);
         stdlib.free(mem);
     }
 
     @Test
     public void canViewDefaultLibraryAsAnotherInterface() {
+        Assume.assumeFalse("disable test on AOT", TruffleOptions.AOT);
         Strndup second = engine.eval(Source.newBuilder("default {\n" + //
                         "  strndup(string, UINT32):string;\n" + //
                         "}" //
