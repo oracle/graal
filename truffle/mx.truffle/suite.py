@@ -37,12 +37,11 @@ suite = {
     # ------------- Libraries -------------
 
     "JLINE" : {
-      "sha1" : "5296978fd0c28c778ddbb6e1dc0c30cadb998eca",
-      "sourceSha1" : "cfc632deac8a2004fe1d36ae93f3f21b0a27290b",
+      "sha1" : "fdedd5f2522122102f0b3db85fe7aa563a009926",
       "maven" : {
         "groupId" : "jline",
         "artifactId" : "jline",
-        "version" : "2.14.3",
+        "version" : "2.14.5",
       }
     },
 
