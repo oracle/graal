@@ -12,19 +12,13 @@ read the papers [Self-optimizing AST interpreters](http://dl.acm.org/citation.cf
 and [One VM to rule them all](http://dl.acm.org/citation.cfm?id=2509581).
 A heavily documented Truffle language sample implementation is
 [SimpleLanguage](https://github.com/graalvm/simplelanguage).
-To understand how Sulong calls native functions you can read the paper
-[An efficient native function interface for Java](http://dl.acm.org/citation.cfm?id=2500832).
-
-To start working with the code you can try to tackle one of the
-[open issues](https://github.com/graalvm/sulong/issues?utf8=%E2%9C%93&q=is%3Aissue+is%3Aopen+label%3Abeginner+).
-Do not hesitate to ask questions!
 
 ## Mx
 
 ### How does mx execute a specific command?
 
 To get a command line command you can use the `-v` mx option. For
-example, `mx -v su-tests` prints the command line when executing the
+example, `mx -v test` prints the command line when executing the
 Sulong test cases.
 
 ### What can I do when Java files got corrupted?
@@ -35,9 +29,9 @@ Java or native projects you can use `mx clean` with the options
 
 ### How can I debug a failing test case?
 
-To attach a debugger to Sulong tests, run `mx -d su-suite sulong`.
+To attach a debugger to Sulong tests, run `mx -d test gcc`.
 To get a verbose output of all tests that run as part of a suite, run
-`mx -v su-suite sulong`. This also prints names for all individual tests.
+`mx -v test gcc`. This also prints names for all individual tests.
 You can use the test names to run a single test of a suite.
 For example, `test[c/max-unsigned-short-to-float-cast.c]` is part of the
 SulongSuite. You can run this single test using
@@ -63,7 +57,7 @@ output information on how it executed the command.
 To debug the execution of a bitcode file in Eclipse, first start an mx
 command with the `-d` flag, e.g.:
 
-    $ mx -d su-run test.ll
+    $ mx -d lli test.ll
     Listening for transport dt_socket at address: 8000
 
 In Eclipse, set a breakpoint, navigate to
@@ -71,38 +65,3 @@ In Eclipse, set a breakpoint, navigate to
 of the debug configurations, e.g.,`truffle-attach-localhost-8000`.
 After clicking `Debug`, execution starts and the program should stop at
 the specified breakpoint.
-
-## Errors
-
-### `UnsatisfiedLinkError` in `HotSpotNativeFunctionInterface`
-
-With new installations of Sulong it can happen, that a shared
-library needed by the test cases (or other parts of Sulong) cannot be found.
-
-For example, the following error could appear:
-
-    Exception in thread "main" java.lang.UnsatisfiedLinkError:
-    /usr/lib/libxml2.so: cannot open shared object file: No such file or directory
-        at com.oracle.graal.truffle.hotspot.nfi.HotSpotNativeFunctionInterface.getLibraryHandle(HotSpotNativeFunctionInterface.java:68)
-        at com.oracle.graal.truffle.hotspot.nfi.HotSpotNativeFunctionInterface.getLibraryHandle(HotSpotNativeFunctionInterface.java:1)
-        at com.oracle.truffle.llvm.nativeint.NativeLookup.getNativeFunctionHandles(NativeLookup.java:99)
-        at com.oracle.truffle.llvm.nativeint.NativeLookup.getLibraryHandles(NativeLookup.java:84)
-        at com.oracle.truffle.llvm.nativeint.NativeLookup.lookupSymbol(NativeLookup.java:120)
-        at com.oracle.truffle.llvm.nativeint.NativeLookup.getNativeHandle(NativeLookup.java:153)
-
-In case of an `UnsatisfiedLinkError`, first check whether the external
-dependencies are installed. You can check the package names of the
-external dependencies for Ubuntu in the `.travis.yml` file.
-There you can find the command `sudo apt-get install -y libxml2-dev`
-to install the library on Ubuntu. For other distributions, you usually
-can find packages with the same content under a similar name.
-
-If installing the library does not solve the problem, then probably
-because the shared library is expected to be at a certain location,
-such as in `/usr/lib` in the example above.
-In such a case, first identify the location of the library (e.g.,
-`locate libxml2.so`) and then explicitly specify location and name
-of the library using the `-Dpolyglot.llvm.libraryPath` and
-`-Dpolyglot.llvm.libraries` options. Alternatively you can create a
-link to the library in the expected location
-(e.g., `ln -s /usr/lib/x86_64-linux-gnu/libxml2.so /usr/lib/libxml2.so`).

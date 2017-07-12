@@ -4,9 +4,10 @@ An Architecture Haiku is ["a one-page, quick-to-build, uber-terse design descrip
 
 ## Solution description
 
-Sulong is a system to run C, Fortran, and other native languages on the JVM.
-Sulong uses LLVM frontends to compile languages to LLVM IR.
-It then executes this IR with a new Truffle LLVM IR interpreter.
+Sulong is an LLVM bitcode interpreter that allows you to run C, Fortran,
+and other native languages on the Graal VM.
+Use LLVM frontends to compile languages to LLVM bitcode.
+Sulong execute LLVM bitcode using a Truffle language implementation.
 Sulong uses the Graal compiler to compile frequently executed functions
 to machine code.
 
@@ -16,7 +17,7 @@ Sulong must run on 64-bit Mac and Linux systems supported by both LLVM and Graal
 
 ## Functional Requirements
 
-Sulong should be able to execute all LLVM languages on the JVM.
+Sulong should be able to execute all LLVM bitcode on Graal VM.
 The current focus is on single-threaded C and Fortran programs.
 Other languages are not fully supported, and, e.g., C++ exception handling
 is not yet implemented.
@@ -32,26 +33,12 @@ Sulong.
 long running server processes and thus aims to achieve the best possible
 run-time peak performance. It does not focus on start-up time, warm-up time,
 or memory consumption.
-* Extensibility over complexity: Sulong's node factory for instantiating
-Truffle nodes should be easy replaceable and composable with other node
-factories. Abstractions in the parser support this use case, but make the
-parser code more complex.
-* Native code interoperability over security: Sulong allocates LLVM IR
-objects using unmanaged memory to efficiently call native functions
-without having to convert or marshal data structures. However, using
-unmanaged memory means that the Sulong Truffle interpreter can crash or
-corrupt the executing process when dereferencing or writing to invalid
-addresses.
-
-## Top Quality Attributes
-
-Truffle and native code interoperability > Peak performance > Extensibility
 
 ## Design rationales
 
 * Since Truffle interoperability is important, Sulong complies with the
 Truffle API and provides interoperability intrinsics
-(see `LLVMNativeIntrinsicsProvider` and `include/truffle.h`).
+(see `include/truffle.h`).
 * Since peak performance is important, Truffle nodes performs profiling
 (e.g, in `LLVMValueProfilingNode` and `LLVMBasicBlockNode`) in the
 interpreter, and are otherwise kept simple to be compiled to efficient
@@ -74,4 +61,4 @@ functions.
 * Adapted facade pattern combined with factory pattern in `NodeFactory`
 to simplify the instantiation of the nodes
 * Adapted visitor pattern in `LLVMParserRuntime` and other classes to traverse
-the AST produced from the LLVM IR file and construct Truffle nodes for it
+the AST produced from the LLVM IR file and construct Truffle nodes for it.

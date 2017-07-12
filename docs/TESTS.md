@@ -2,16 +2,16 @@
 
 Sulong's primary testsuite can be executed using `mx unittest SulongSuite`.
 Additionally, Sulong is also tested with selected external testsuites that
-can be executed using `mx su-suite`. Optional arguments to this command
-specify the testsuites to be executed. `mx su-suite -h` provides a list
+can be executed using `mx test`. Optional arguments to this command
+specify the testsuites to be executed. `mx test -h` provides a list
 of available suites. The most important testsuites (beside the SulongSuite)
 are the `gcc38` and `llvm38` suites which consist of selected test cases from
 the official GCC 5.2 and LLVM 3.2 testsuites.
 
 To attach a debugger to Sulong tests, run `mx -d unittest SulongSuite` or
-`mx -d su-suite gcc38`.
+`mx -d test gcc38`.
 To get a verbose output of all tests that run as part of a suite, run
-`mx -v su-suite gcc38`. This also prints names for all individual tests.
+`mx -v test gcc38`. This also prints names for all individual tests.
 
 You can use the test names to run a single test of a suite.
 For example, `test[c/max-unsigned-short-to-float-cast.c]` is part of the
@@ -44,7 +44,7 @@ Sulong also uses DragonEgg for the C/C++ test cases besides Clang to get
 additional "free" test cases for a given C/C++ file. DragonEgg requires
 a GCC in the aforementioned versions.
 
-`mx su-pulldragonegg` downloads both DragonEgg and Clang. You can set
+`mx pulldragonegg` downloads both DragonEgg and Clang. You can set
 certain environment variables to tell Sulong where to find the binaries:
 
 - Sulong expects to find Clang 3.2 in `$DRAGONEGG_LLVM/bin`
@@ -63,7 +63,7 @@ DYLD_LIBRARY_PATH cannot normally be set on the Mac.
 ## Test case options
 
 You can pass VM arguments as the last argument to the test runner. For
-example, you can use `mx su-suite llvm38 -Dpolyglot.llvm.debug=true` to get useful
+example, you can use `mx test llvm38 -Dpolyglot.llvm.debug=true` to get useful
 information for debugging the test cases.
 
 ## Reference output
@@ -86,7 +86,7 @@ files.
 
 The test suites which have configuration files usually offer an option
 to execute all test cases that are not included in the `.include` files,
-in order to find newly supported test cases (see `mx su-options`). To
+in order to find newly supported test cases. To
 exclude files from this discovery, there are also `.exclude` files in
 the suite configuration, which are useful for test cases that crash the
 JVM process or which will not be supported by Sulong in the near future.

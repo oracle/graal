@@ -1,19 +1,90 @@
 ![Sulong Logo](https://raw.githubusercontent.com/mrigger/sulong-logos/master/sulong_black_with_text_transparent_300x185.png)
 
-Sulong (Graal LLVM) is an interpreter for LLVM IR written in
-Java using the Truffle language implementation framework and Graal as a
-just-in-time (JIT) compiler.
+Sulong is a high-performance LLVM bitcode interpreter build on the
+GraalVM by [Oracle Labs](https://labs.oracle.com).
 
-With Sulong you can execute C/C++, Fortran, and other programs written
-in a LLVM language on the JVM. To execute a program by Sulong, you have
-to compile the program to LLVM IR by a LLVM front end such as Clang. By
-using Truffle and Java the interpreter implementation is simple and is
-thus a great platform for experimentation. On the other hand, dynamic
-optimizations and JIT compilation with Graal still provides native
-execution speed (improving performance is work in progress). Through
-Truffle's language interoperability capabilities, you will soon be able
-to call functions from/to other languages on Truffle such as Ruby,
-JavaScript, or R.
+Sulong is written in Java and uses the Truffle language implementation
+framework and Graal as a dynamic compiler.
+
+With Sulong you can execute C/C++, Fortran, and other programs that can
+be transformed to LLVM bitcode on Graal VM. To execute a program, you
+have to compile the program to LLVM bitcode by a LLVM front end such
+as `clang`.
+
+Graal VM
+--------
+
+Sulong is part of the [Graal VM](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index.html).
+Graal VM supports Linux or Mac OS X on x86 64-bit systems.
+
+1. Download the [Graal VM](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index.html)
+binaries.
+2. Extract the archive to your file system.
+3. Add the Graal VM `/bin` folder to your `PATH` environment variable.
+
+To run programs in LLVM bitcode format on Graal VM, use:
+
+
+    lli [LLI Options] [Graal VM Options] [Polyglot Options] filename.bc [program args]
+
+
+Where `filename.bc` is a single program source file in LLVM bitcode format.
+Graal VM executes the LLVM bitcode using Sulong as an interpreter.
+Note: LLVM bitcode is platform dependent. The program must be compiled to
+bitcode for the appropriate platform.
+
+#### LLI Options
+
+- `-L <path>` sets a path where lli searches for libraries. You can specify `-L` multiple times.
+
+- `--lib <libraries>` adds external library sources (e.g. `--lib /path/to/libexample.so` or `--lib /path/to/example.bc`). These library sources are
+precompiled native libraries or bitcode files. You can specify `--lib` multiple times.
+*Note:* You must specify the library `example` with `--lib /path/to/libexample.so` as opposed to common linker `-l` options.
+
+#### Graal VM Options
+
+- `--jvm` executes the application in JVM mode instead of executing the
+Graal VM native image.
+
+- `--jvm.<option>` passes JVM options to Graal VM.
+List available JVM options with `--jvm.help`.
+
+- `--graal.<property>=<value>` passes settings to the Graal compiler.
+For example, `--graal.DumpOnError=true` sends the compiler intermediate
+representation (IR) to dump handlers if errors occur.
+
+#### Polyglot Options
+
+- `--polyglot` enables you to interoperate with other programming languages.
+
+- `--<languageID>.<property>=<value>` passes properties to guest languages
+through the Graal Polyglot SDK.
+
+#### Compiling to LLVM bitcode format
+
+Graal VM can execute C/C++, Fortran, and other programs that can be compiled to
+LLVM bitcode. As a first step, you have to compile the program to LLVM bitcode
+using an LLVM frontend such as `clang`. C/C++ code can be compiled to LLVM
+bitcode using `clang` with the `-emit-llvm` option.
+
+Let's compile `test.c`
+
+```c
+#include <stdio.h>
+
+int main() {
+  printf("Hello from Sulong!");
+  return 0;
+}
+```
+
+to an LLVM bitcode file `test.bc`.
+
+    clang -c -emit-llvm -o test.bc test.c
+
+You can then run `test.bc` on Graal VM as follows:
+
+    lli test.bc
 
 Build Dependencies
 ------------------
@@ -73,7 +144,7 @@ Now, Sulong is ready to start. You can for example compile a C file named
 `test.c` (see further below) with clang and then use Sulong to execute it:
 
     clang -c -emit-llvm -o test.bc test.c
-    mx su-run test.bc
+    mx lli test.bc
 
 For best experience we suggest to use clang 3.8, though versions 3.2, 3.3 and
 3.8 to 4.0 should also work. Additionally, if you compile with the `-g` option
@@ -85,7 +156,7 @@ files. The `-Dpolyglot.llvm.libraryPath` option can be used to amend the search
 path for the specifed libraries with a relative path. Both options can be given
 multiple arguments separated by `:`.
 
-    mx su-run -Dpolyglot.llvm.libraryPath=lib -Dpolyglot.llvm.libraries=liba.so test.bc
+    mx lli -Dpolyglot.llvm.libraryPath=lib -Dpolyglot.llvm.libraries=liba.so test.bc
 
 If you want to use the project from within Eclipse, use the following
 command to generate the Eclipse project files (there is also mx ideinit
@@ -124,14 +195,14 @@ LLVM is an umbrella project for a modular and reusable compiler
 infrastructure written in C++. It includes a compiler frontend `clang`
 for compiling C, C++, Objective C and Objective C++ to LLVM bitcode IR.
 Many of the other tools such as the optimizer `opt`, assembler,
-linker, and backends then operate on the LLVM IR, to finally produce
+linker, and backends then operate on the LLVM bitcode, to finally produce
 machine code. LLVM envisions that transformations and analyses can be
 applied during compile-time, link-time, runtime, and offline.
 
-What is LLVM IR?
-----------------
+What is LLVM bitcode?
+---------------------
 
-LLVM IR is a language that resembles assembler, but which provides
+LLVM bitcode is a language that resembles assembler, but which provides
 type-safety and has virtual registers that are in Static Single
 Assignment (SSA) form.
 
@@ -145,9 +216,9 @@ int main() {
 }
 ```
 
-When compiling the C file with Clang to human readable LLVM IR with
+When compiling the C file with Clang to human readable LLVM bitcode with
 `clang -O3 -emit-llvm -c -o test.bc test.c` and looking at the `test.ll`
-file, one can see a LLVM IR program that looks similar to the following:
+file, one can see a LLVM bitcode program that looks similar to the following:
 
 ```
 ; ModuleID = 'test.c'
@@ -215,10 +286,5 @@ Further Information
 The logo was designed by
 [Valentina Caruso](https://www.behance.net/volantina).
 
-Links:
-
-* LLVM IR: [http://llvm.org/docs/LangRef.html](http://llvm.org/docs/LangRef.html)
-* Instructions to build Graal:
-    [https://wiki.openjdk.java.net/display/Graal/Instructions](https://wiki.openjdk.java.net/display/Graal/Instructions)
-* Truffle and Graal publications, presentations, and videos:
-    [https://wiki.openjdk.java.net/display/Graal/Publications+and+Presentations](https://wiki.openjdk.java.net/display/Graal/Publications+and+Presentations)
+Sulong is developed in a research collaboration with
+[Johannes Kepler University, Linz](www.ssw.jku.at).
