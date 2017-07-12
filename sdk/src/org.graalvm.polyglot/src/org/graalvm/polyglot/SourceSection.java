@@ -26,6 +26,16 @@ package org.graalvm.polyglot;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceSectionImpl;
 
+/**
+ * Description of contiguous section of text within a {@link Source} of program code.; supports
+ * multiple modes of access to the text and its location.
+ *
+ * Two available source sections are considered equal if their sources, start and length are equal.
+ * {@link #isAvailable() Unavailable} source sections are compared by identity. Source sections are
+ * designed to be used as keys in hash maps.
+ *
+ * @since 1.0
+ */
 public final class SourceSection {
 
     static volatile AbstractSourceSectionImpl IMPL;
@@ -40,10 +50,9 @@ public final class SourceSection {
 
     /**
      * Returns whether this is a special instance that signifies that source information is
-     * available. Unavailable source sections can be created using
-     * {@link Source#createUnavailableSection()}. Available source sections are never equal to
-     * unavailable source sections. Unavailable source sections return the same indices and lengths
-     * as empty source sections starting at character index <code>0</code>.
+     * available. Available source sections are never equal to unavailable source sections.
+     * Unavailable source sections return the same indices and lengths as empty source sections
+     * starting at character index <code>0</code>.
      *
      * @since 1.0
      */

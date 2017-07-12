@@ -78,14 +78,8 @@ public final class Engine implements AutoCloseable {
     }
 
     /**
-     * <<<<<<< HEAD Gets an installed language by looking up the unique language ID. Shortcut for
-     * <code>engine.getLanguages().get(languageId)</code>. Returns <code>null</code> if the language
-     * was not found. Examples for language IDs are: <code>"js"</code>, <code>"r"</code> or
-     * <code>"ruby"</code>. Throws {@link IllegalArgumentException} if an invalid languageId was
-     * provided. Use the map returned by {@link #getLanguages()} to find out if a language is
-     * installed. ======= Gets an installed language by looking it up using its unique id. Shortcut
-     * for <code>engine.getLanguages().get(languageId)</code>. An example for the language id of
-     * JavaScript for example is {@code js}. >>>>>>> Some javadoc fixes.
+     * Gets an installed language by looking up the unique language ID. An example for the language
+     * id of JavaScript for example is <code>"js"</code>.
      *
      * @throws IllegalArgumentException if an invalid language id was provided
      * @param languageId the unique of the language
