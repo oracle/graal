@@ -53,17 +53,16 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
  * shared engine} which allows to share configuration and instruments between multiple execution
  * contexts. See {@link Engine} for further details.
  * <p>
- * After use a context needs to be {@link #close() closed} to free all allocated resources.
- * A context can be closed from any thread if no code is currently executing in that context.
- * It is also possible to cancel a running execution of a different thread using the boolean
+ * After use a context needs to be {@link #close() closed} to free all allocated resources. A
+ * context can be closed from any thread if no code is currently executing in that context. It is
+ * also possible to cancel a running execution of a different thread using the boolean
  * <code>cancelIfRunning</code> parameter of the {@link #close(boolean) close} method. Contexts are
- * {@link AutoCloseable} to allow them to be used with the 'try-with-resources' Java
- * statement.
+ * {@link AutoCloseable} to allow them to be used with the 'try-with-resources' Java statement.
  *
  * <h4>Evaluation</h4>
  *
- * Before evaluation a language needs to be initialized. Languages are initialized automatically
- * the first time a {@linkplain Source#getLanguage() language} is used. It is possible to
+ * Before evaluation a language needs to be initialized. Languages are initialized automatically the
+ * first time a {@linkplain Source#getLanguage() language} is used. It is possible to
  * {@link Context#initialize(String) force} the initialization of a language. Languages remain
  * initialized for the lifetime of the context.
  * <p>
@@ -76,8 +75,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
  *
  * <h4>Exception Handling</h4>
  *
- * Most methods of a context throw {@link PolyglotException} if errors occur in guest
- * languages.
+ * Most methods of a context throw {@link PolyglotException} if errors occur in guest languages.
  *
  * <h4>Proxys</h4>
  *
@@ -144,14 +142,14 @@ public final class Context implements AutoCloseable {
      * free all native resources allocated automatically. For this reason it is necessary to close
      * contexts after use. If a context is cancelled then the currently executing thread will throw
      * a {@link PolyglotException}. The exception indicates that it was
-     * {@link PolyglotException#isCancelled() cancelled}. Note that cancelling a single
-     * context can negatively affect the performance of other executing contexts constructed with
-     * the same engine.
+     * {@link PolyglotException#isCancelled() cancelled}. Note that cancelling a single context can
+     * negatively affect the performance of other executing contexts constructed with the same
+     * engine.
      * <p>
      * If internal errors occur during closing of the language then they are printed to the
      * configured {@link Builder#err(OutputStream) error output stream}. If a context was closed
-     * then all its methods will throw an {@link IllegalStateException} when invoked. If an
-     * attempt to close a context was successful then consecutive calls to close have no effect.
+     * then all its methods will throw an {@link IllegalStateException} when invoked. If an attempt
+     * to close a context was successful then consecutive calls to close have no effect.
      *
      * @param cancelIfExecuting if <code>true</code> then currently executing contexts will be
      *            cancelled, else an {@link IllegalStateException} is thrown.
@@ -171,8 +169,8 @@ public final class Context implements AutoCloseable {
      * <p>
      * If internal errors occur during closing of the language then they are printed to the
      * configured {@link Builder#err(OutputStream) error output stream}. If a context was closed
-     * then all its methods will throw an {@link IllegalStateException} when invoked. If an
-     * attempt to close a context was successful then consecutive calls to close have no effect.
+     * then all its methods will throw an {@link IllegalStateException} when invoked. If an attempt
+     * to close a context was successful then consecutive calls to close have no effect.
      *
      * @throws IllegalStateException if the context is currently executing on another thread.
      * @see Engine#close() To close an engine.
@@ -236,9 +234,9 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Sets a class filter that allows to limit the classes that guest languages are allowed
-         * to load. If the filter returns <code>true</code> then the class is accessible,
-         * else it is not accessible and throws a guest language error when accessed.
+         * Sets a class filter that allows to limit the classes that guest languages are allowed to
+         * load. If the filter returns <code>true</code> then the class is accessible, else it is
+         * not accessible and throws a guest language error when accessed.
          *
          * @param classFilter a predicate that returns <code>true</code> or <code>false</code> for a
          *            Java qualified class name.

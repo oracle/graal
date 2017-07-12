@@ -48,8 +48,8 @@ public final class OptionType<T> {
      *
      * @param name the name of the type.
      * @param defaultValue the default value to use if no value is given.
-     * @param stringConverter a function that converts a string value to the option value.
-     *            Can throw {@link IllegalArgumentException} to indicate an invalid string.
+     * @param stringConverter a function that converts a string value to the option value. Can throw
+     *            {@link IllegalArgumentException} to indicate an invalid string.
      * @param validator used for validating the option value. Throws
      *            {@link IllegalArgumentException} if the value is invalid.
      *
@@ -72,8 +72,8 @@ public final class OptionType<T> {
      *
      * @param name the name of the type.
      * @param defaultValue the default value to use if no value is given.
-     * @param stringConverter a function that converts a string value to the option value.
-     *            Can throw {@link IllegalArgumentException} to indicate an invalid string.
+     * @param stringConverter a function that converts a string value to the option value. Can throw
+     *            {@link IllegalArgumentException} to indicate an invalid string.
      *
      * @since 1.0
      */
@@ -115,7 +115,8 @@ public final class OptionType<T> {
     }
 
     /**
-     * Validates an option value and throws an {@link IllegalArgumentException} if the value is invalid.
+     * Validates an option value and throws an {@link IllegalArgumentException} if the value is
+     * invalid.
      *
      * @throws IllegalArgumentException if the value is invalid or cannot be converted.
      * @since 1.0

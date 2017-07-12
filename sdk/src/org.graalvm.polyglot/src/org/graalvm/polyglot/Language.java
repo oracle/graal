@@ -30,8 +30,8 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 
 /**
  * A handle for a Truffle language installed in a {@link Engine engine}. The handle provides access
- * to the language metadata, including the language {@linkplain #getId() id},
- * {@linkplain #getName() name} and {@linkplain #getVersion() version}
+ * to the language metadata, including the language {@linkplain #getId() id}, {@linkplain #getName()
+ * name} and {@linkplain #getVersion() version}
  *
  * @see Engine#getLanguage(String) To return a single language.
  * @see Engine#getLanguages() To return all installed languages.

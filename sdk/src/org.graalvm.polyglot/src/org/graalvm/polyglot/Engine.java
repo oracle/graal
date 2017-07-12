@@ -163,8 +163,8 @@ public final class Engine implements AutoCloseable {
     /**
      * Closes this engine and frees up allocated native resources. If there are still open context
      * instances that were created using this engine and they are currently not being executed then
-     * all they will be closed automatically. If an attempt to close the engine was successful
-     * then consecutive calls to close have no effect.
+     * all they will be closed automatically. If an attempt to close the engine was successful then
+     * consecutive calls to close have no effect.
      *
      * @throws IllegalStateException if there currently executing open context instances.
      * @see #close(boolean)

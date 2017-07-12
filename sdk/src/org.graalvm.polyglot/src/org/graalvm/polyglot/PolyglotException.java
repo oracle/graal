@@ -119,9 +119,9 @@ public final class PolyglotException extends RuntimeException {
 
     /**
      * Returns <code>true</code> if the execution was cancelled. The execution can be cancelled by
-     * {@link Context#close(boolean) closing} a context or if an instrument such as a debugger decides
-     * to cancel the current execution. The context that caused a cancel event becomes unusable, i.e.
-     * closed.
+     * {@link Context#close(boolean) closing} a context or if an instrument such as a debugger
+     * decides to cancel the current execution. The context that caused a cancel event becomes
+     * unusable, i.e. closed.
      *
      * @since 1.0
      */

@@ -88,8 +88,8 @@ public final class Instrument {
 
     /**
      * Looks up an additional internal service that is provided by this instrument using a Java
-     * type. Note that the services returned by this method are implementation specific and
-     * subject to change without notice.
+     * type. Note that the services returned by this method are implementation specific and subject
+     * to change without notice.
      *
      * @param <T> the type of the internal service.
      * @param type class of the service that is being requested.
