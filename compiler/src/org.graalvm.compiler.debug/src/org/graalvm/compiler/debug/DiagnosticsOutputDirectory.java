@@ -45,7 +45,7 @@ import org.graalvm.compiler.options.OptionValues;
  * Manages a directory into which diagnostics such crash reports and dumps should be written. The
  * directory is archived and deleted when {@link #close()} is called.
  */
-public class DiagnosticsOutputDirectory implements AutoCloseable {
+public class DiagnosticsOutputDirectory {
 
     /**
      * Use an illegal file name to denote that {@link #close()} has been called.
@@ -64,8 +64,7 @@ public class DiagnosticsOutputDirectory implements AutoCloseable {
      * Gets the path to the output directory managed by this object, creating if it doesn't exist
      * and has not been deleted.
      *
-     * @returns the directory or {@code null} if the directory does not exist and could not be
-     *          created or has already been deleted
+     * @returns the directory or {@code null} if the could not be created or has been deleted
      */
     public String getPath() {
         return getPath(true);
@@ -124,7 +123,6 @@ public class DiagnosticsOutputDirectory implements AutoCloseable {
     /**
      * Archives and deletes this directory if it exists.
      */
-    @Override
     public void close() {
         archiveAndDelete();
     }
@@ -132,16 +130,16 @@ public class DiagnosticsOutputDirectory implements AutoCloseable {
     /**
      * Archives and deletes the {@linkplain #getPath() output directory} if it exists.
      */
-    private void archiveAndDelete() {
+    private synchronized void archiveAndDelete() {
         String outDir = getPath(false);
         if (outDir != null) {
+            // Notify other threads calling getPath() that the directory is deleted.
+            // This attempts to mitigate other threads writing to the directory
+            // while it is being archived and deleted.
+            path = CLOSED;
+
             Path dir = Paths.get(outDir);
             if (dir.toFile().exists()) {
-                try {
-                    // Give threads a chance to finishing dumping
-                    Thread.sleep(1000);
-                } catch (InterruptedException e1) {
-                }
                 File zip = new File(outDir + ".zip").getAbsoluteFile();
                 List<Path> toDelete = new ArrayList<>();
                 try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zip))) {
@@ -168,17 +166,26 @@ public class DiagnosticsOutputDirectory implements AutoCloseable {
                     // Keep this in sync with the catch_files in common.hocon
                     TTY.println("Graal diagnostic output saved in %s", zip);
                 } catch (IOException e) {
-                    TTY.printf("IO error archiving %s:%n%s%n", dir, e);
+                    TTY.printf("IO error archiving %s:%n%s. The directory will not be deleted and must be " +
+                                    "manually removed once the VM exits.%n", dir, e);
+                    toDelete.clear();
                 }
-                for (Path p : toDelete) {
-                    try {
-                        Files.delete(p);
-                    } catch (IOException e) {
-                        TTY.printf("IO error deleting %s:%n%s%n", p, e);
+                if (!toDelete.isEmpty()) {
+                    IOException lastDeletionError = null;
+                    for (Path p : toDelete) {
+                        try {
+                            Files.delete(p);
+                        } catch (IOException e) {
+                            lastDeletionError = e;
+                        }
+                    }
+                    if (lastDeletionError != null) {
+                        TTY.printf("IO error deleting %s:%n%s. This is most likely due to a compilation on " +
+                                        "another thread holding a handle to a file within this directory. " +
+                                        "Please delete the directory manually once the VM exits.%n", dir, lastDeletionError);
                     }
                 }
             }
-            path = CLOSED;
         }
     }
 }
