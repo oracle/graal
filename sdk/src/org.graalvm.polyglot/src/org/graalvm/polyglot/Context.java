@@ -40,32 +40,33 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
  *
  * <h4>Sample Usage</h4>
  *
- * <h4>Context Creation</h4>
+ * <h4>Context Creation and Disposal</h4>
  *
- * A context can be created using its default configuration by invoked the static
- * {@link #create(String...) create()} method. The create method allows to limit which languages are
- * accessible in the context. If no language is passed then all installed languages are accessible.
+ * Create a context with default configuration by invoking the static method
+ * {@link #create(String...) create()}, which optionally restricts the languages that may be used in
+ * the context. Create a context with custom configuration with a {@linkplain #newBuilder(String...)
+ * builder}. In addition to restricting languages, the builder can configure input, error and output
+ * streams, both engine and context options, and application arguments.
  * <p>
- * A context builder can be created to customize the configuration using
- * {@link #newBuilder(String...)}. In addition to the {@link #create(String...)} method, the context
- * builder allows to configure the input, error, and output streams; engine and context options; as
- * well as application arguments. A context can be created using a {@link Builder#engine(Engine)
- * shared engine} which allows to share configuration and instruments between multiple execution
- * contexts. See {@link Engine} for further details.
+ * Multiple contexts created with a single {@link Builder#engine(Engine) execution engine}, also
+ * share configurations and {@link Instrument instruments}. See {@link Engine} for more details.
  * <p>
- * After use a context needs to be {@link #close() closed} to free all allocated resources. A
- * context can be closed from any thread if no code is currently executing in that context. It is
- * also possible to cancel a running execution of a different thread using the boolean
- * <code>cancelIfRunning</code> parameter of the {@link #close(boolean) close} method. Contexts are
- * {@link AutoCloseable} to allow them to be used with the 'try-with-resources' Java statement.
+ * A context that is no longer needed should be {@link #close() closed} to guarantee that all
+ * allocated resources are freed. If no code is currently executing in a context then it may be
+ * closed from any thread. If code is currently executing in a context, a different thread can close
+ * it using the boolean <code>cancelIfRunning</code> parameter of the {@link #close(boolean) close}
+ * method. Contexts are {@link AutoCloseable} so they may be used with the Java
+ * {@code try-with-resources} statement.
+ *
+ * <h4>Language Initialization</h4>
+ *
+ * Each language performs some initialization in a context before it can be
+ * {@linkplain Source#getLanguage() used}, after which it remains initialized for the lifetime of
+ * the context. Initialization is by default lazy and automatic, but it can be
+ * {@link Context#initialize(String) forced}.
+ * <p>
  *
  * <h4>Evaluation</h4>
- *
- * Before evaluation a language needs to be initialized. Languages are initialized automatically the
- * first time a {@linkplain Source#getLanguage() language} is used. It is possible to
- * {@link Context#initialize(String) force} the initialization of a language. Languages remain
- * initialized for the lifetime of the context.
- * <p>
  *
  * <h4>Polyglot Values</h4>
  *
@@ -81,11 +82,10 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
  *
  * <h4>Thread-Safety</h4>
  *
- * Guest language code execution is single-threaded. Therefore only one Thread can execute guest
- * language code at a time. However the executing thread can change as long as there are no two
- * threads executing at the same time. If two threads access one context at the same time then an
- * {@link IllegalStateException} is thrown. Meta-data access using the {@link #getEngine() engine}
- * is always thread safe.
+ * A context only permits guest language code execution by one thread at a time, but it need not
+ * always be the same thread. An attempt to execute code in a context where an execution is
+ * currently underway will result in an {@link IllegalStateException}. On the other hand it is
+ * always thread-safe to access meta-data from the context's {@link #getEngine() engine}.
  *
  * @since 1.0
  */
@@ -181,10 +181,24 @@ public final class Context implements AutoCloseable {
         close(false);
     }
 
+    /**
+     * Creates a context with default configuration.
+     *
+     * @param onlyLanguages names of languages permitted in this context, {@code null} if all
+     *            languages are permitted
+     * @return a new context
+     */
     public static Context create(String... onlyLanguages) {
         return newBuilder(onlyLanguages).build();
     }
 
+    /**
+     * Creates a builder for constructing a context with custom configuration.
+     *
+     * @param onlyLanguages names of languages permitted in this context, {@code null} if all
+     *            languages are permitted
+     * @return a builder that can create a context
+     */
     public static Builder newBuilder(String... onlyLanguages) {
         return new Builder(onlyLanguages);
     }

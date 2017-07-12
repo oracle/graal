@@ -53,7 +53,7 @@ public final class OptionKey<T> {
     }
 
     /**
-     * Contructs a new option key given a default value and option key. The default value and the
+     * Constructs a new option key given a default value and option key. The default value and the
      * type must not be <code>null</code>.
      *
      * @since 1.0
