@@ -1530,6 +1530,16 @@ public class PolyglotEngine {
         }
 
         @Override
+        public boolean isHostAccessAllowed(Object vmObject, Env env) {
+            return false;
+        }
+
+        @Override
+        public Object lookupHostSymbol(Object vmObject, Env env, String symbolName) {
+            return null;
+        }
+
+        @Override
         public Object getVMFromLanguageObject(Object engineObject) {
             return ((LanguageShared) engineObject).runtime;
         }

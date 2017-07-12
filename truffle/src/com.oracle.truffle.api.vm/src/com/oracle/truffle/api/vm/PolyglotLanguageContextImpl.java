@@ -208,9 +208,13 @@ final class PolyglotLanguageContextImpl implements VMObject {
         return args;
     }
 
-    Value lookup(String symbolName) {
+    Object lookupGuest(String symbolName) {
         ensureInitialized();
-        Object symbol = LANGUAGE.lookupSymbol(env, symbolName);
+        return LANGUAGE.lookupSymbol(env, symbolName);
+    }
+
+    Value lookupHost(String symbolName) {
+        Object symbol = lookupGuest(symbolName);
         Value resolvedSymbol = null;
         if (symbol != null) {
             assert isGuestInteropValue(symbol);

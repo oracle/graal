@@ -28,30 +28,24 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import org.graalvm.options.OptionCategory;
-import org.graalvm.options.OptionDescriptors;
-import org.graalvm.options.OptionKey;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.vm.HostLanguage.HostContext;
 
 /*
  * Java host language implementation.
  */
-@Option.Group("java")
 class HostLanguage extends TruffleLanguage<HostContext> {
-
-    @Option(category = OptionCategory.USER, help = "Allow Java class loading in guest languages.") //
-    static final OptionKey<Boolean> AllowClassLoading = new OptionKey<>(true);
 
     static class HostContext {
 
@@ -65,15 +59,15 @@ class HostLanguage extends TruffleLanguage<HostContext> {
         }
 
         private Class<?> findClass(String clazz) {
-            if (!this.env.getOptions().get(AllowClassLoading)) {
-                throw new IllegalArgumentException(String.format("Java class loading is disabled."));
+            if (!internalContext.context.hostAccessAllowed) {
+                throw new HostLanguageException(String.format("Host class access is not allowed."));
             }
             Predicate<String> classFilter = internalContext.context.classFilter;
             if (classFilter != null && !classFilter.test(clazz)) {
-                throw new IllegalArgumentException(String.format("Access to class %s is not allowed.", clazz));
+                throw new HostLanguageException(String.format("Access to host class %s is not allowed.", clazz));
             }
             if (TruffleOptions.AOT) {
-                throw new IllegalArgumentException(String.format("The Java class %s is not accessible in native mode.", clazz));
+                throw new HostLanguageException(String.format("The host class %s is not accessible in native mode.", clazz));
             }
             try {
                 Class<?> loadedClass = classCache.get(clazz);
@@ -83,8 +77,21 @@ class HostLanguage extends TruffleLanguage<HostContext> {
                 }
                 return loadedClass;
             } catch (ClassNotFoundException e) {
-                throw new IllegalArgumentException(String.format("Access to class %s is not allowed or does not exist.", clazz));
+                throw new HostLanguageException(String.format("Access to host class %s is not allowed or does not exist.", clazz));
             }
+        }
+
+    }
+
+    @SuppressWarnings("serial")
+    private static class HostLanguageException extends RuntimeException implements TruffleException {
+
+        HostLanguageException(String message) {
+            super(message);
+        }
+
+        public Node getLocation() {
+            return null;
         }
 
     }
@@ -166,11 +173,6 @@ class HostLanguage extends TruffleLanguage<HostContext> {
         } else {
             return JavaInterop.asTruffleValue(value.getClass());
         }
-    }
-
-    @Override
-    protected OptionDescriptors getOptionDescriptors() {
-        return new HostLanguageOptionDescriptors();
     }
 
 }

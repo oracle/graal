@@ -77,9 +77,9 @@ public class SLSharedCodeSeparatedEnvTest {
         int instances = SLLanguage.counter;
         // @formatter:off
         e1 = Context.newBuilder("sl").engine(engine).out(os1).build();
-        e1.exportSymbol("extra", 1);
+        e1.put("extra", 1);
         e2 = Context.newBuilder("sl").engine(engine).out(os2).build();
-        e2.exportSymbol("extra", 2);
+        e2.put("extra", 2);
         assertEquals("One SLLanguage instance created", instances + 1, SLLanguage.counter);
     }
 
