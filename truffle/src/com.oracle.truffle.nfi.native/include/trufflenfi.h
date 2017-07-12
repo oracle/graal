@@ -37,11 +37,32 @@ struct __TruffleNativeAPI;
 struct __TruffleThreadAPI;
 
 #ifdef __cplusplus
-typedef __TruffleContext TruffleContext;
+/**
+ * Environment pointer that can be used to call functions of the {@link struct __TruffleNativeAPI}.
+ * The environment pointer can be injected as argument to native calls using the `env` datatype in
+ * the function signature. For example, a native function with signature `(env, double) : double`
+ * expects one `double` argument on the Truffle side, but on the native side the signature is
+ * `double fn(TruffleEnv*, double)`.
+ *
+ * The TruffleEnv* is strictly local to the current call, it is not allowed to keep it alive after
+ * the call returns. If necessary, the `TruffleContext*` can be obtained using `getTruffleContext`.
+ * This object can be stored, and later used to get a fresh `TruffleEnv*`.
+ */
 typedef __TruffleEnv TruffleEnv;
+
+/**
+ * Reference to a Truffle {@link org.graalvm.polyglot.Context}. This can be used to attach and detach
+ * new threads, and to get a reference to a `TruffleEnv*` to call {@link struct __TruffleNativeAPI}
+ * functions.
+ *
+ * This object is valid as long as the corresponding {@link org.graalvm.polyglot.Context} is alive.
+ *
+ * @see struct __TruffleThreadAPI
+ */
+typedef __TruffleContext TruffleContext;
 #else
-typedef const struct __TruffleThreadAPI *TruffleContext;
 typedef const struct __TruffleNativeAPI *TruffleEnv;
+typedef const struct __TruffleThreadAPI *TruffleContext;
 #endif
 
 struct __TruffleNativeAPI {
