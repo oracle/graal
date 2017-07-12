@@ -357,6 +357,8 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
         PolyglotLanguageImpl language = engine.idToLanguage.get(languageId);
         if (language == null) {
             engine.getLanguage(languageId); // will trigger the error
+            assert false;
+            return null;
         }
         Object prev = enter();
         PolyglotLanguageContextImpl languageContext = contexts[language.index];
