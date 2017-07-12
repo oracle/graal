@@ -37,8 +37,9 @@ import org.graalvm.compiler.lir.LIRInsertionBuffer;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
-import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicSet;
+import org.graalvm.util.Equivalence;
+
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.Value;
@@ -298,9 +299,6 @@ public class MoveResolver {
         AllocatableValue toOpr = toInterval.operand;
         LIRInstruction move;
         if (LIRValueUtil.isStackSlotValue(toInterval.location())) {
-            if (!getAllocator().getSpillMoveFactory().allowConstantToStackMove(fromOpr)) {
-                throw GraalError.shouldNotReachHere("Cannot create constant to stack move: " + fromOpr);
-            }
             move = getAllocator().getSpillMoveFactory().createStackLoad(toOpr, fromOpr);
         } else {
             move = getAllocator().getSpillMoveFactory().createLoad(toOpr, fromOpr);
@@ -490,7 +488,8 @@ public class MoveResolver {
         }
 
         assert !fromInterval.operand.equals(toInterval.operand) : "from and to interval equal: " + fromInterval;
-        assert LIRKind.verifyMoveKinds(toInterval.kind(), fromInterval.kind(), allocator.getRegisterAllocationConfig()) : String.format("Kind mismatch: %s vs. %s, from=%s, to=%s", fromInterval.kind(),
+        assert LIRKind.verifyMoveKinds(toInterval.kind(), fromInterval.kind(), allocator.getRegisterAllocationConfig()) : String.format("Kind mismatch: %s vs. %s, from=%s, to=%s",
+                        fromInterval.kind(),
                         toInterval.kind(), fromInterval, toInterval);
         mappingFrom.add(fromInterval);
         mappingFromOpr.add(null);
