@@ -354,6 +354,15 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                 if (!language.initialized) {
                     continue;
                 }
+                if (language.cache.singletonLanguage instanceof HostLanguage) {
+                    // The HostLanguage might not have context created even when JavaObjects exist
+                    // Check it separately:
+                    if (((HostLanguage) language.cache.singletonLanguage).isObjectOfLanguage(obj)) {
+                        return language.info;
+                    } else {
+                        continue;
+                    }
+                }
                 Env env = context.env;
                 if (env != null && LANGUAGE.isObjectOfLanguage(env, obj)) {
                     return language.info;
