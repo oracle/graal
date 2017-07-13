@@ -127,7 +127,7 @@ deploy-binaries-darwin: ${deploy-binaries} ${darwin-amd64} ${darwin-llvm} {
 }
 
 builds = [
-  ${gateStyle} { name: gate-style, run: [[mx, check, --verbose, checkstyle, canonicalizeprojects, httpcheck, checkoverlap, clangformatcheck, pylint, eclipseformat ]] }
+  ${gateStyle} { name: gate-style, run: [[mx, check, --verbose, checkstyle, mdl, canonicalizeprojects, httpcheck, checkoverlap, clangformatcheck, pylint, eclipseformat ]] }
   ${gateTest32} ${requireJDT} { name: gate-full-build, run: [[mx, check, --verbose, ecj, findbugs]] }
   ${gateTest32} ${requireGCC} { name: gate-suite-gcc, run: [[mx, build, --dependencies, SULONG_TEST], [mx, test, gcc]] }
   ${gateTest32} ${requireGCC} { name: gate-travis1, run: [[mx, travis1]] }
