@@ -48,11 +48,11 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceImpl;
  *
  * {@link SourceSnippets#fromFile}
  *
- * The starting point is {@link Source#newBuilder(java.io.File)} method.
+ * The starting point is {@link Source#newBuilder(String, java.io.File)} method.
  *
  * <h3>Read from an URL</h3>
  *
- * One can read remote or in JAR resources using the {@link Source#newBuilder(java.net.URL)}
+ * One can read remote or in JAR resources using the {@link Source#newBuilder(String, java.net.URL)}
  * factory: <br>
  *
  * {@link SourceSnippets#fromURL}
@@ -185,8 +185,8 @@ public final class Source {
      * Get the URI of the source. Every source has an associated {@link URI}, which can be used as a
      * persistent identification of the source. The {@link URI} returned by this method should be as
      * unique as possible, yet it can happen that different {@link Source sources} return the same
-     * {@link #getURI} - for example when content of a {@link Source#newBuilder(java.io.File) file
-     * on a disk} changes and is re-loaded.
+     * {@link #getURI} - for example when content of a
+     * {@link Source#newBuilder(String, java.io.File) file on a disk} changes and is re-loaded.
      *
      * @return a URI, never <code>null</code>
      * @since 1.0
@@ -353,22 +353,47 @@ public final class Source {
         return getImpl().equals(impl, otherImpl);
     }
 
+    /**
+     * TODO
+     *
+     * @since 1.0
+     */
     public static Builder newBuilder(String language, CharSequence source, String name) {
         return new Builder(language, source).name(name);
     }
 
+    /**
+     * TODO
+     *
+     * @since 1.0
+     */
     public static Builder newBuilder(String language, File source) {
         return new Builder(language, source);
     }
 
+    /**
+     * TODO
+     *
+     * @since 1.0
+     */
     public static Builder newBuilder(String language, URL source) {
         return new Builder(language, source);
     }
 
+    /**
+     * TODO
+     *
+     * @since 1.0
+     */
     public static Builder newBuilder(String language, Reader source, String name) {
         return new Builder(language, source).name(name);
     }
 
+    /**
+     * TODO
+     *
+     * @since 1.0
+     */
     public static Source create(String language, CharSequence source) {
         return newBuilder(language, source, "Unnamed").buildLiteral();
     }
@@ -395,6 +420,11 @@ public final class Source {
         return getImpl().findLanguage(mimeType);
     }
 
+    /**
+     * TODO
+     *
+     * @since 1.0
+     */
     public static class Builder {
 
         private final String language;
@@ -418,6 +448,11 @@ public final class Source {
             this.origin = origin;
         }
 
+        /**
+         * TODO
+         *
+         * @since 1.0
+         */
         public Builder name(String newName) {
             Objects.requireNonNull(newName);
             this.name = newName;
@@ -442,15 +477,13 @@ public final class Source {
         }
 
         /**
-         * Marks the source as interactive. {@link com.oracle.truffle.api.vm.PolyglotEngine#eval
-         * Evaluation} of interactive sources by an
-         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Language#isInteractive() interactive
-         * language} can use the {@link com.oracle.truffle.api.vm.PolyglotEngine} streams to print
-         * the result and read an input. However, non-interactive languages are expected to ignore
-         * the interactive property of sources and not use the polyglot engine streams. Any desired
-         * printing of the evaluated result provided by a non-interactive language needs to be
-         * handled by the caller. Calling of this method influences the result of
-         * {@link Source#isInteractive()}.
+         * Marks the source as interactive. {@link Context#eval Evaluation} of interactive sources
+         * by an {@link Language#isInteractive() interactive language} can use the {@link Context}
+         * output streams to print the result and read an input. However, non-interactive languages
+         * are expected to ignore the interactive property of sources and not use the polyglot
+         * engine streams. Any desired printing of the evaluated result provided by a
+         * non-interactive language needs to be handled by the caller. Calling of this method
+         * influences the result of {@link Source#isInteractive()}.
          *
          * @return the instance of this builder
          * @since 1.0
@@ -479,7 +512,7 @@ public final class Source {
          * default value for the method is deduced from the location or content, but one can change
          * it by using this method
          *
-         * @param ownUri the URL to use instead of default one, cannot be <code>null</code>
+         * @param newUri the URL to use instead of default one, cannot be <code>null</code>
          * @return the instance of this builder
          * @since 1.0
          */

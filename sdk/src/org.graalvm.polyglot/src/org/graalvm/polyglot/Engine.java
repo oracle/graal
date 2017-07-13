@@ -109,7 +109,7 @@ public final class Engine implements AutoCloseable {
      * enabled via {@link Instrument#getOptions() options} passed to the
      * {@link Builder#option(String, String) engine} when the engine or context is constructed.
      *
-     * @param languageId the unique of the language
+     * @param instrumentId the unique of the language
      * @throws IllegalArgumentException if an invalid languageId was provided
      * @see #getLanguages() To get map of all installed languages.
      * @since 1.0
@@ -180,10 +180,8 @@ public final class Engine implements AutoCloseable {
     /**
      * Closes this engine and frees up allocated native resources. If there are still open context
      * instances that were created using this engine and they are currently not being executed then
-     * <<<<<<< HEAD all they will be closed automatically. If an attempt to close the engine was
-     * successful then consecutive calls to close have no effect. ======= all they will be closed
-     * automatically. If an an attempt to close the engine was successful then consecutive calls to
-     * close have no effect. >>>>>>> Some javadoc fixes.
+     * they will be closed automatically. If an attempt to close the engine was successful then
+     * consecutive calls to close have no effect.
      *
      * @throws IllegalStateException if there currently executing open context instances.
      * @see #close(boolean)
@@ -227,6 +225,11 @@ public final class Engine implements AutoCloseable {
         return getImpl().loadLanguageClass(className);
     }
 
+    /**
+     * TODO
+     *
+     * @since 1.0
+     */
     @SuppressWarnings("hiding")
     public static final class Builder {
 
@@ -237,23 +240,46 @@ public final class Engine implements AutoCloseable {
         private boolean useSystemProperties = true;
         private boolean boundEngine;
 
+        /**
+         * TODO
+         *
+         * @since 1.0
+         */
+        Builder() {
+        }
+
         Builder setBoundEngine(boolean boundEngine) {
             this.boundEngine = boundEngine;
             return this;
         }
 
+        /**
+         * TODO
+         *
+         * @since 1.0
+         */
         public Builder out(OutputStream out) {
             Objects.requireNonNull(out);
             this.out = out;
             return this;
         }
 
+        /**
+         * TODO
+         *
+         * @since 1.0
+         */
         public Builder err(OutputStream err) {
             Objects.requireNonNull(err);
             this.err = err;
             return this;
         }
 
+        /**
+         * TODO
+         *
+         * @since 1.0
+         */
         public Builder in(InputStream in) {
             Objects.requireNonNull(in);
             this.in = in;
@@ -262,7 +288,7 @@ public final class Engine implements AutoCloseable {
 
         /**
          * Specifies whether the engine should use {@link System#getProperty(String) system
-         * properties} if no explicit option is {@link #setOption(String, String) set}. The default
+         * properties} if no explicit option is {@link #option(String, String) set}. The default
          * value is <code>true</code> indicating that the system properties should be used. System
          * properties are looked up with the prefix <i>"polyglot"</i> in order to disambiguate
          * existing system properties. For example, for the option with the key
@@ -304,11 +330,11 @@ public final class Engine implements AutoCloseable {
         }
 
         /**
-         * Shortcut for setting multiple {@link #setOption(String, String) options} using a map. All
+         * Shortcut for setting multiple {@link #option(String, String) options} using a map. All
          * values of the provided map must be non-null.
          *
          * @param options a map options.
-         * @see #setOption(String, String) To set a single option.
+         * @see #option(String, String) To set a single option.
          * @since 1.0
          */
         public Builder options(Map<String, String> options) {
@@ -319,6 +345,11 @@ public final class Engine implements AutoCloseable {
             return this;
         }
 
+        /**
+         * TODO
+         *
+         * @since 1.0
+         */
         public Engine build() {
             AbstractPolyglotImpl loadedImpl = getImpl();
             if (loadedImpl == null) {

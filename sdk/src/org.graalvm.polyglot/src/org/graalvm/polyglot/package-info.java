@@ -22,71 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.polyglot.proxy;
-
-import java.util.Map;
-
-import org.graalvm.polyglot.Value;
-
 /**
- * TODO
+ * The Graal-SDK polyglot API allows to embed Graal languages in Java applications.
+ * <p>
+ * To get started quickly create a new {@link org.graalvm.polyglot.Context} using
+ * {@link org.graalvm.polyglot.Context#create(String...)} and then evaluate guest language code
+ * using {@link org.graalvm.polyglot.Context#eval(String, CharSequence)}.
  *
+ * <p>
+ * See <a href="http://www.graalvm.org/docs/embed">graalvm.org</a> for more examples on how to use
+ * this API.
+ *
+ * @see org.graalvm.polyglot.Context#create(String...) To construct a new execution context.
  * @since 1.0
  */
-public interface ProxyObject extends Proxy {
-
-    /**
-     * TODO
-     *
-     * @since 1.0
-     */
-    Object getMember(String key);
-
-    /**
-     * TODO
-     *
-     * @since 1.0
-     */
-    ProxyArray getMemberKeys();
-
-    /**
-     * TODO
-     *
-     * @since 1.0
-     */
-    boolean hasMember(String key);
-
-    /**
-     * TODO
-     *
-     * @since 1.0
-     */
-    void putMember(String key, Value value);
-
-    /**
-     * TODO
-     *
-     * @since 1.0
-     */
-    static ProxyObject fromMap(Map<String, Object> values) {
-        return new ProxyObject() {
-
-            public void putMember(String key, Value value) {
-                values.put(key, value.isHostObject() ? value.asHostObject() : value);
-            }
-
-            public boolean hasMember(String key) {
-                return values.containsKey(key);
-            }
-
-            public ProxyArray getMemberKeys() {
-                return ProxyArray.fromArray(values.keySet().toArray());
-            }
-
-            public Object getMember(String key) {
-                return values.get(key);
-            }
-        };
-    }
-
-}
+package org.graalvm.polyglot;

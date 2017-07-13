@@ -28,14 +28,39 @@ import java.util.List;
 
 import org.graalvm.polyglot.Value;
 
+/**
+ * TODO
+ *
+ * @since 1.0
+ */
 public interface ProxyArray extends Proxy {
 
+    /**
+     * TODO
+     *
+     * @since 1.0
+     */
     Object get(long index);
 
+    /**
+     * TODO
+     *
+     * @since 1.0
+     */
     void set(long index, Value value);
 
+    /**
+     * TODO
+     *
+     * @since 1.0
+     */
     long getSize();
 
+    /**
+     * TODO
+     *
+     * @since 1.0
+     */
     static ProxyArray fromArray(Object... values) {
         return new ProxyArray() {
             public Object get(long index) {
@@ -60,6 +85,11 @@ public interface ProxyArray extends Proxy {
         };
     }
 
+    /**
+     * TODO
+     *
+     * @since 1.0
+     */
     static ProxyArray fromList(List<Object> values) {
         return new ProxyArray() {
 

@@ -24,11 +24,18 @@
  */
 package org.graalvm.polyglot.proxy;
 
+/**
+ * TODO
+ *
+ * @since 1.0
+ */
 public interface ProxyPrimitive extends Proxy {
 
     /**
      * Unboxes the proxy to a primitive value. A primitive value can either be String, byte, char,
      * short, int, long, float, or double.
+     *
+     * @since 1.0
      */
     Object asPrimitive();
 

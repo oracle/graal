@@ -22,71 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.polyglot.proxy;
-
-import java.util.Map;
-
-import org.graalvm.polyglot.Value;
-
 /**
- * TODO
+ * The Graal SDK proxy interfaces allow to mimic guest language objects in Graal languages. For
+ * example, one can implement the {@link org.graalvm.polyglot.proxy.ProxyObject} interface and then
+ * pass the object to a guest language. The guest language will then treat this instance as an
+ * object. For instance if the language tries to write into a field it will call
+ * {@link org.graalvm.polyglot.proxy.ProxyObject#putMember(String, org.graalvm.polyglot.Value)}. The
+ * API is designed to be language agnostic, therefore they it can be used with any Graal guest
+ * language.
+ * <p>
+ * See <link <a href="http://www.graalvm.org/docs/embed">graalvm.org</a> for more examples on how to
+ * use this API.
  *
+ * @see org.graalvm.polyglot.proxy.Proxy for more an overview over all available proxy interfaces.
  * @since 1.0
  */
-public interface ProxyObject extends Proxy {
-
-    /**
-     * TODO
-     *
-     * @since 1.0
-     */
-    Object getMember(String key);
-
-    /**
-     * TODO
-     *
-     * @since 1.0
-     */
-    ProxyArray getMemberKeys();
-
-    /**
-     * TODO
-     *
-     * @since 1.0
-     */
-    boolean hasMember(String key);
-
-    /**
-     * TODO
-     *
-     * @since 1.0
-     */
-    void putMember(String key, Value value);
-
-    /**
-     * TODO
-     *
-     * @since 1.0
-     */
-    static ProxyObject fromMap(Map<String, Object> values) {
-        return new ProxyObject() {
-
-            public void putMember(String key, Value value) {
-                values.put(key, value.isHostObject() ? value.asHostObject() : value);
-            }
-
-            public boolean hasMember(String key) {
-                return values.containsKey(key);
-            }
-
-            public ProxyArray getMemberKeys() {
-                return ProxyArray.fromArray(values.keySet().toArray());
-            }
-
-            public Object getMember(String key) {
-                return values.get(key);
-            }
-        };
-    }
-
-}
+package org.graalvm.polyglot.proxy;

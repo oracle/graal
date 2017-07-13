@@ -26,14 +26,18 @@ package org.graalvm.polyglot.proxy;
 
 import org.graalvm.polyglot.Value;
 
+/**
+ * TODO
+ *
+ * @since 1.0
+ */
 @FunctionalInterface
 public interface ProxyExecutable extends Proxy {
 
     /**
-     * Can throw {@link IllegalArgumentException} if it is not compatible.
+     * TODO
      *
-     * @param t
-     * @return
+     * @since 1.0
      */
     Object execute(Value... t);
 

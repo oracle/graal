@@ -24,8 +24,18 @@
  */
 package org.graalvm.polyglot.proxy;
 
+/**
+ * TODO
+ *
+ * @since 1.0
+ */
 public interface ProxyNativeObject extends Proxy {
 
+    /**
+     * TODO
+     *
+     * @since 1.0
+     */
     long asPointer();
 
 }

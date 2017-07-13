@@ -31,8 +31,8 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 
 /**
- * Represents an exception that originates from a Graal guest language, Java interoperability or a
- * Proxy implementation.
+ * An exception caused by executing Graal guest languages. Can originate from a guest or from the
+ * host language.
  *
  * @since 1.0
  */
@@ -277,6 +277,8 @@ public final class PolyglotException extends RuntimeException {
     /**
      * Represents a polyglot stack frame originating from a guest language or the host language
      * Java.
+     *
+     * @since 1.0
      */
     public static final class StackFrame {
 
@@ -286,10 +288,22 @@ public final class PolyglotException extends RuntimeException {
             this.impl = impl;
         }
 
+        /**
+         * Returns true if the stack frame originates from the host language. Host frames do not
+         * provide a {@link #getSourceLocation() source location}. Instead the Java stack frame can
+         * be accessed using {@link #toHostFrame()}.
+         *
+         * @since 1.0
+         */
         public boolean isHostFrame() {
             return impl.isHostFrame();
         }
 
+        /**
+         * Returns true if the stack frame originates from the guest language.
+         *
+         * @since 1.0
+         */
         public boolean isGuestFrame() {
             return !impl.isHostFrame();
         }
@@ -305,18 +319,43 @@ public final class PolyglotException extends RuntimeException {
             return impl.toHostFrame();
         }
 
+        /**
+         * Returns the source location of the stack frame or <code>null</code> if no source location
+         * is available. Host frames do never provide a source location.
+         *
+         * @since 1.0
+         */
         public SourceSection getSourceLocation() {
             return impl.getSourceLocation();
         }
 
+        /**
+         * Returns the root name of this stack frame. In case of the host language the Java method
+         * name is returned. In guest languages it returns a useful identifier for code. For
+         * example, in JavaScript this can be the function name.
+         *
+         * @since 1.0
+         */
         public String getRootName() {
             return impl.getRootName();
         }
 
+        /**
+         * Returns the language of this stack frame. In case of the host language a synthetic Java
+         * language object is returned.
+         *
+         * @since 1.0
+         */
         public Language getLanguage() {
             return impl.getLanguage();
         }
 
+        /**
+         * Returns a string representation of this stack frame. The format is inspired by the Java
+         * stack frame format.
+         *
+         * @since 1.0
+         */
         @Override
         public String toString() {
             return impl.toStringImpl(0);
