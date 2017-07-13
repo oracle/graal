@@ -554,7 +554,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         }
     }
 
-    protected abstract DiagnosticsOutputDirectory getDebugOutputDirectory();
+    protected DiagnosticsOutputDirectory getDebugOutputDirectory() {
+        return new DiagnosticsOutputDirectory(getInitialOptions());
+    }
 
     protected final void compileMethod(DebugContext initialDebug,
                     TruffleCompiler compiler,
