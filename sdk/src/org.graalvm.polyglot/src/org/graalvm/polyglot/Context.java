@@ -123,6 +123,7 @@ public final class Context implements AutoCloseable {
      * Provides access to meta-data about the underlying Graal {@linkplain Engine engine}.
      *
      * @return the Graal {@link Engine} being used by this context
+     * @since 1.0
      */
     public Engine getEngine() {
         return impl.getEngineImpl();
@@ -130,46 +131,43 @@ public final class Context implements AutoCloseable {
 
     /**
      * Evaluates guest language code, using the Graal {@linkplain Language language} that matches
-     * the code's {@linkplain Source#getMimeType() MIME type}. {@link Source} objects may wrap
-     * references to guest language code (e.g. a filename or URL) or may represent code literally.
-     * <p>
-     * The result is wrapped in an instance of {@link Value}, for which Java-typed access (objects)
-     * can be created using {@link Value#as(Class) Value.as(Class)}.
+     * the code's {@linkplain Source#getLanguage() language}. The language needs to be specified
+     * when the source is created. The result is accessible using the language agnostic {@link Value
+     * value} API.
      *
-     * @param source guest language code, presumed to have an associated MIME type
-     * @return result of the evaluation wrapped in a non-null {@link Value}
+     * @param source a source object to evaluate
+     * @return result of the evaluation. The returned instance is is never <code>null</code>, but
+     *         the result might represent a {@link Value#isNull() null} guest language value.
+     * @throws PolyglotException in case parsing or evaluation of the guest language code failed.
+     * @since 1.0
      */
     public Value eval(Source source) {
         return impl.eval(source.getLanguage(), source.impl);
     }
 
     /**
-     * Evaluates literal guest language code using a specified Graal {@linkplain Language language}.
+     * Evaluates a guest language code literal, using a specified Graal {@linkplain Language
+     * language}. The result is accessible using the language agnostic {@link Value value} API.
      *
-     * <p>
-     * The result is wrapped in an instance of {@link Value}, for which Java-typed access (objects)
-     * can be created using {@link Value#as(Class) Value.as(Class)}.
-     *
-     * @param languageId
+     * @param languageId the id of the language evaluate the code in, eg <code>"js"</code>.
      * @param source textual source code
      * @return result of the evaluation wrapped in a non-null {@link Value}
+     * @since 1.0
      */
     public Value eval(String languageId, CharSequence source) {
         return eval(Source.create(languageId, source));
     }
 
     /**
-     * Evaluates a symbol in the top-most scope of a specified language.
-     * <p>
-     * The result is wrapped in an instance of {@link Value}, for which Java-typed access (objects)
-     * can be created using {@link Value#as(Class) Value.as(Class)}.
+     * Looks a symbol up in the top-most scope of a specified language. The result is accessible
+     * using the language agnostic {@link Value value} API.
      *
-     * @param language
+     * @param languageId
      * @param symbol name of a symbol
      * @return result of the evaluation wrapped in a non-null {@link Value}
      */
-    public Value lookup(String language, String symbol) {
-        return impl.lookup(getEngine().getLanguage(language).impl, symbol);
+    public Value lookup(String languageId, String symbol) {
+        return impl.lookup(getEngine().getLanguage(languageId).impl, symbol);
     }
 
     /**
