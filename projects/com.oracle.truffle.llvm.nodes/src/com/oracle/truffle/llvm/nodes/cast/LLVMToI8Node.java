@@ -38,6 +38,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToI64Node.LLVMToI64BitNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
@@ -49,6 +50,8 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
 @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
 public abstract class LLVMToI8Node extends LLVMExpressionNode {
@@ -163,6 +166,28 @@ public abstract class LLVMToI8Node extends LLVMExpressionNode {
         @Specialization
         public byte executeI8(byte from) {
             return from;
+        }
+    }
+
+    public abstract static class LLVMToI8BitNode extends LLVMToI8Node {
+
+        @Specialization
+        public byte executeI8(byte from) {
+            return from;
+        }
+
+        @Specialization
+        public byte executeI1Vector(LLVMI1Vector from) {
+            return (byte) LLVMToI64BitNode.castI1Vector(from, Byte.SIZE);
+        }
+
+        @Specialization
+        public byte executeI8Vector(LLVMI8Vector from) {
+            if (from.getLength() != 1) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError("invalid vector size!");
+            }
+            return from.getValue(0);
         }
     }
 

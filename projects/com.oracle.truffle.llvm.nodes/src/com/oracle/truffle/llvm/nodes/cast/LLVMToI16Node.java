@@ -38,6 +38,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToI64Node.LLVMToI64BitNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
@@ -46,6 +47,9 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
 public abstract class LLVMToI16Node extends LLVMExpressionNode {
 
@@ -150,6 +154,34 @@ public abstract class LLVMToI16Node extends LLVMExpressionNode {
         @Specialization
         public short executeLLVMFunction(short from) {
             return from;
+        }
+    }
+
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
+    public abstract static class LLVMToI16BitNode extends LLVMToI16Node {
+
+        @Specialization
+        public short executeI16(short from) {
+            return from;
+        }
+
+        @Specialization
+        public short executeI1Vector(LLVMI1Vector from) {
+            return (short) LLVMToI64BitNode.castI1Vector(from, Short.SIZE);
+        }
+
+        @Specialization
+        public short executeI8Vector(LLVMI8Vector from) {
+            return (short) LLVMToI64BitNode.castI8Vector(from, Short.SIZE / Byte.SIZE);
+        }
+
+        @Specialization
+        public short executeI16Vector(LLVMI16Vector from) {
+            if (from.getLength() != 1) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError("invalid vector size!");
+            }
+            return from.getValue(0);
         }
     }
 }
