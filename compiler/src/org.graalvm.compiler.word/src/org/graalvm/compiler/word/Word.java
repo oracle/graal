@@ -58,6 +58,14 @@ import org.graalvm.word.WordFactory;
 
 public abstract class Word extends WordFactory implements SignedWord, UnsignedWord, Pointer {
 
+    static {
+        WordFactory.boxFactory = new BoxFactoryImpl();
+    }
+
+    public static void ensureInitialized() {
+        /* Calling this method ensures that the static initializer has been executed. */
+    }
+
     /**
      * Links a method to a canonical operation represented by an {@link Opcode} val.
      */

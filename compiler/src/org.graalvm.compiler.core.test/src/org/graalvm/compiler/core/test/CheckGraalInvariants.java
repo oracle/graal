@@ -183,6 +183,9 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                         String name = zipEntry.getName();
                         if (name.endsWith(".class")) {
                             String className = name.substring(0, name.length() - ".class".length()).replace('/', '.');
+                            if (className.startsWith("org.graalvm.nativeimage")) {
+                                continue;
+                            }
                             classNames.add(className);
                         }
                     }

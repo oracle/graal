@@ -28,7 +28,6 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.lang.reflect.InvocationTargetException;
 
 public abstract class WordFactory {
 
@@ -54,19 +53,7 @@ public abstract class WordFactory {
         <T extends WordBase> T box(long val);
     }
 
-    protected static final BoxFactory boxFactory;
-
-    static {
-        try {
-            /*
-             * We know the implementation class, but cannot reference it statically because we need
-             * to break the dependency between the interface and the implementation.
-             */
-            boxFactory = (BoxFactory) Class.forName("org.graalvm.compiler.word.Word$BoxFactoryImpl").getConstructor().newInstance();
-        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-            throw new ExceptionInInitializerError("Could not find and initialize the word type factory. The Graal compiler needs to be on the class path to use the word type.");
-        }
-    }
+    protected static BoxFactory boxFactory;
 
     /**
      * We allow subclassing, because only subclasses can access the protected inner classes that we

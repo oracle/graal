@@ -151,6 +151,9 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
                         String name = zipEntry.getName();
                         if (name.endsWith(".class") && !name.equals("module-info.class")) {
                             String className = name.substring(0, name.length() - ".class".length()).replace('/', '.');
+                            if (className.startsWith("org.graalvm.nativeimage")) {
+                                continue;
+                            }
                             try {
                                 checkClass(metaAccess, getSnippetReflection(), className);
                             } catch (ClassNotFoundException e) {
