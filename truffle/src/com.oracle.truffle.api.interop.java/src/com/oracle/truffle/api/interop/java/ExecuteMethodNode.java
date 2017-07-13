@@ -40,6 +40,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -508,6 +509,8 @@ abstract class ExecuteMethodNode extends Node {
         Object ret;
         try {
             ret = method.invoke(obj, arguments);
+        } catch (IllegalArgumentException ex) {
+            throw UnsupportedTypeException.raise(arguments);
         } catch (Throwable ex) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(ex);
