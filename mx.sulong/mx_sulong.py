@@ -622,6 +622,12 @@ def checkNoHttp(args=None):
                 exit(-1)
             line_number += 1
 
+# used by mx_sulong_benchmarks:
+
+def opt(args=None, version=None, out=None, err=None):
+    """runs opt"""
+    return mx.run([findLLVMProgram('opt', version)] + args, out=out, err=err)
+
 # Project classes
 
 import glob
