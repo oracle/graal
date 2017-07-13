@@ -101,8 +101,8 @@ sulongSuite : {
     run: [
         [mx, build],
         [mx, unittest, SulongSuite],
-        [mx, su-suite, nwcc38],
-        [mx, su-suite, llvm38],
+        [mx, test, nwcc38],
+        [mx, test, llvm38],
     ]
 }
 
@@ -127,15 +127,15 @@ deploy-binaries-darwin: ${deploy-binaries} ${darwin-amd64} ${darwin-llvm} {
 }
 
 builds = [
-  ${gateStyle} { name: gate-style, run: [[mx, su-checks, --verbose, mdl, checkstyle, canonicalizeprojects, httpcheck, checkoverlap, clangformatcheck, pylint, eclipseformat ]] }
-  ${gateTest32} ${requireJDT} { name: gate-full-build, run: [[mx, su-checks, --verbose, ecj, findbugs]] }
-  ${gateTest32} ${requireGCC} { name: gate-suite-gcc, run: [[mx, build, --dependencies, SULONG_TEST], [mx, su-suite, gcc]] }
-  ${gateTest32} ${requireGCC} { name: gate-travis1, run: [[mx, su-travis1]] }
-  ${gateTest32} ${requireGCC} { name: gate-travis2, run: [[mx, su-travis2]] }
+  ${gateStyle} { name: gate-style, run: [[mx, check, --verbose, checkstyle, canonicalizeprojects, httpcheck, checkoverlap, clangformatcheck, pylint, eclipseformat ]] }
+  ${gateTest32} ${requireJDT} { name: gate-full-build, run: [[mx, check, --verbose, ecj, findbugs]] }
+  ${gateTest32} ${requireGCC} { name: gate-suite-gcc, run: [[mx, build, --dependencies, SULONG_TEST], [mx, test, gcc]] }
+  ${gateTest32} ${requireGCC} { name: gate-travis1, run: [[mx, travis1]] }
+  ${gateTest32} ${requireGCC} { name: gate-travis2, run: [[mx, travis2]] }
   ${gateTest38-linux} ${requireGCC} ${sulongSuite} { name: gate-sulong-v38-linux }
   ${gateTest38-darwin} ${sulongSuite} { name: gate-sulong-v38-darwin }
-  ${gateTest38-linux} { name: gate-gcc-v38, run: [[mx, build, --dependencies, SULONG_TEST], [mx, su-suite, gcc38]] }
-  ${gateTest38-linux} { name: gate-var-v38, run: [[mx, build, --dependencies, SULONG_TEST], [mx, su-suite, interop], [mx, su-suite, assembly], [mx, su-suite, args], [mx, su-suite, callback], [mx, su-suite, vaargs]] }
+  ${gateTest38-linux} { name: gate-gcc-v38, run: [[mx, build, --dependencies, SULONG_TEST], [mx, test, gcc38]] }
+  ${gateTest38-linux} { name: gate-var-v38, run: [[mx, build, --dependencies, SULONG_TEST], [mx, test, interop], [mx, test, assembly], [mx, test, args], [mx, test, callback], [mx, test, vaargs]] }
 
   ${deploy-binaries-linux} { name: postmerge-deploy-binaries-linux-amd64 }
   ${deploy-binaries-darwin} { name: postmerge-deploy-binaries-darwin-amd64 }

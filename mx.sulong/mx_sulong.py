@@ -363,9 +363,6 @@ def runLLVM(args=None, out=None):
     vmArgs, sulongArgs = truffle_extract_VM_args(args)
     return mx.run_java(getCommonOptions(False) + vmArgs + getClasspathOptions() + ["com.oracle.truffle.llvm.Sulong"] + sulongArgs, out=out)
 
-def runTests(args=None):
-    mx_testsuites.runSuite(args)
-
 def runChecks(args=None):
     """runs all the static analysis tools or selected ones (see -h or --help)"""
     vmArgs, otherArgs = truffle_extract_VM_args(args)
@@ -540,42 +537,6 @@ def findGCCProgram(gccProgram, optional=False):
     else:
         return installedProgram
 
-def getGCCProgramPath(args=None):
-    """gets a path with a supported version of the specified GCC program (e.g. gfortran)"""
-    if args is None or len(args) != 1:
-        exit("please supply one GCC program to be located!")
-    else:
-        mx.log(findGCCProgram(args[0]))
-
-def getLLVMProgramPath(args=None):
-    """gets a path with a supported version of the specified LLVM program (e.g. clang)"""
-    if args is None or len(args) != 1:
-        exit("please supply one LLVM program to be located!")
-    else:
-        mx.log(findLLVMProgram(args[0]))
-
-def compileWithClang(args=None, version=None, out=None, err=None):
-    """runs Clang"""
-    return mx.run([findLLVMProgram('clang', version)] + args, out=out, err=err)
-
-def compileWithGCC(args=None):
-    """runs GCC"""
-    ensureLLVMBinariesExist()
-    gccPath = _toolDir + 'llvm/bin/gcc'
-    return mx.run([gccPath] + args)
-
-def opt(args=None, version=None, out=None, err=None):
-    """runs opt"""
-    return mx.run([findLLVMProgram('opt', version)] + args, out=out, err=err)
-
-def link(args=None):
-    """Links LLVM bitcode into an su file."""
-    return mx.run_java(getClasspathOptions() + ["com.oracle.truffle.llvm.runtime.Linker"] + args)
-
-def compileWithClangPP(args=None, version=None, out=None, err=None):
-    """runs Clang++"""
-    return mx.run([findLLVMProgram('clang++', version)] + args, out=out, err=err)
-
 def getClasspathOptions():
     """gets the classpath of the Sulong distributions"""
     return mx.get_runtime_jvm_args('SULONG')
@@ -702,25 +663,10 @@ checkCases = {
 }
 
 mx.update_commands(_suite, {
-    'su-checks' : [runChecks, ''],
-    'su-tests' : [runTests, ''],
-    'su-suite' : [mx_testsuites.runSuite, ''],
-    'su-clang' : [compileWithClang, ''],
-    'su-pulldragonegg' : [pullInstallDragonEgg, ''],
-    'su-run' : [runLLVM, ''],
-    'su-clang++' : [compileWithClangPP, ''],
-    'su-opt' : [opt, ''],
-    'su-link' : [link, ''],
-    'su-gcc' : [dragonEgg, ''],
-    'su-gfortran' : [dragonEggGFortran, ''],
-    'su-g++' : [dragonEggGPP, ''],
-    'su-travis1' : [travis1, ''],
-    'su-travis2' : [travis2, ''],
-    'su-ecj-strict' : [compileWithEcjStrict, ''],
-    'su-mdlcheck' : [mdlCheck, ''],
-    'su-clangformatcheck' : [clangformatcheck, ''],
-    'su-httpcheck' : [checkNoHttp, ''],
-    'su-get-llvm-program' : [getLLVMProgramPath, ''],
-    'su-get-gcc-program' : [getGCCProgramPath, ''],
-    'su-compile-tests' : [mx_testsuites.compileSuite, ''],
+    'check' : [runChecks, ''],
+    'test' : [mx_testsuites.runSuite, ''],
+    'pulldragonegg' : [pullInstallDragonEgg, ''],
+    'lli' : [runLLVM, ''],
+    'travis1' : [travis1, ''],
+    'travis2' : [travis2, ''],
 })
