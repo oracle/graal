@@ -322,18 +322,6 @@ class JavaObjectMessageResolution {
         }
     }
 
-    @Resolve(message = "com.oracle.truffle.api.interop.java.ClassMessage")
-    abstract static class ClassMessageNode extends Node {
-        protected Object access(JavaObject receiver) {
-            if (receiver.isClass()) {
-                return new JavaObject(null, receiver.clazz.getClass());
-            } else {
-                return new JavaObject(null, receiver.clazz);
-            }
-        }
-
-    }
-
     @Resolve(message = "IS_EXECUTABLE")
     abstract static class IsExecutableObjectNode extends Node {
 
