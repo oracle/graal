@@ -35,57 +35,78 @@ import java.util.function.Predicate;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 
 /**
- * A polyglot execution context for Graal {@linkplain Language guest languages} that supports
- * <em>interoperability</em> between languages and with Java.
+ * Polyglot (multi-language) access to a Graal {@linkplain Engine engine} for evaluating code
+ * written in Graal-supported {@linkplain Language guest languages}, with support for
+ * <em>interoperability</em> among those languages and with Java.
  *
  * <h4>Sample Usage</h4>
  *
+ * Evaluate a fragment of Javascript code with a new context:
+ *
+ * <pre>
+ * Context.create().eval("js", "42")
+ * </pre>
+ *
  * <h4>Context Creation and Disposal</h4>
  *
- * Create a context with default configuration by invoking the static method
- * {@link #create(String...) create()}, which optionally restricts the languages that may be used in
- * the context. Create a context with custom configuration with a {@linkplain #newBuilder(String...)
- * builder}. In addition to restricting languages, the builder can configure input, error and output
- * streams, both engine and context options, and application arguments.
+ * Create a default context with the static method {@link #create(String...)}, which optionally
+ * specifies the languages that may be used in the context. Create a context with custom
+ * configuration by using a {@linkplain #newBuilder(String...) builder}. The builder can configure
+ * input, error and output streams, both engine and context options, and application arguments.
  * <p>
- * Multiple contexts created with a single {@link Builder#engine(Engine) execution engine}, also
- * share configurations and {@link Instrument instruments}. See {@link Engine} for more details.
- * <p>
- * A context that is no longer needed should be {@link #close() closed} to guarantee that all
- * allocated resources are freed. If no code is currently executing in a context then it may be
- * closed from any thread. If code is currently executing in a context, a different thread can close
- * it using the boolean <code>cancelIfRunning</code> parameter of the {@link #close(boolean) close}
- * method. Contexts are {@link AutoCloseable} so they may be used with the Java
+ * A context that is no longer needed should be {@linkplain #close() closed} to guarantee that all
+ * allocated resources are freed. Contexts are {@link AutoCloseable} for use with the Java
  * {@code try-with-resources} statement.
+ *
+ * <h4>Isolation</h4>
+ *
+ * Each context is by default isolated from all other instances with respect to both language
+ * evaluation semantics and resource consumption. Contexts can be optionally
+ * {@linkplain Builder#engine(Engine) configured} to share a single underlying engine; see
+ * {@link Engine} for more details about sharing.
  *
  * <h4>Language Initialization</h4>
  *
- * Each language performs some initialization in a context before it can be
- * {@linkplain Source#getLanguage() used}, after which it remains initialized for the lifetime of
- * the context. Initialization is by default lazy and automatic, but it can be
- * {@link Context#initialize(String) forced}.
+ * Each Graal language performs some initialization in a context before it can be used to execute
+ * code, after which it remains initialized for the lifetime of the context. Initialization is by
+ * default lazy and automatic, but it can be {@link Context#initialize(String) forced}.
  * <p>
  *
  * <h4>Evaluation</h4>
  *
  * <h4>Polyglot Values</h4>
  *
+ * See {@link Value}
+ *
  * <h4>Symbol Lookup</h4>
+ *
+ * After evaluating code that creates top-level named values, a context treats those values as Graal
+ * <em>symbols</em> that can be {@link #lookup(String, String) retrieved} by specifying the language
+ * and name.
+ * <p>
+ * Each context provides access to a shared (global) collection of Graal <em>symbols</em> that can
+ * be {@link #importSymbol(String) retrieved} by name.
  *
  * <h4>Interoperability</h4>
  *
  * <h4>Exception Handling</h4>
  *
- * Most methods of a context throw {@link PolyglotException} if errors occur in guest languages.
+ * Most context methods throw {@link PolyglotException} when errors occur in guest languages.
  *
- * <h4>Proxys</h4>
+ * <h4>Proxies</h4>
  *
  * <h4>Thread-Safety</h4>
  *
- * A context only permits guest language code execution by one thread at a time, but it need not
- * always be the same thread. An attempt to execute code in a context where an execution is
- * currently underway will result in an {@link IllegalStateException}. On the other hand it is
- * always thread-safe to access meta-data from the context's {@link #getEngine() engine}.
+ * A context permits guest language code evaluation on only one thread at a time, but it need not
+ * always be the same thread. An attempt to execute code in a context where an evaluation is
+ * currently underway will fail with an {@link IllegalStateException}.
+ * <p>
+ * Meta-data from the context's underlying {@link #getEngine() engine} can be retrieved safely by
+ * any thread at any time.
+ * <p>
+ * A context may be {@linkplain #close() closed} from any thread, but only if the context is not
+ * currently executing code. If a context is currently executing code, a different thread can kill
+ * the execution and close the context using {@link #close(boolean)} .
  *
  * @since 1.0
  */
@@ -98,23 +119,54 @@ public final class Context implements AutoCloseable {
         this.impl = impl;
     }
 
+    /**
+     * Provides access to meta-data about the underlying Graal {@linkplain Engine engine}.
+     *
+     * @return the Graal {@link Engine} being used by this context
+     */
     public Engine getEngine() {
         return impl.getEngineImpl();
     }
 
     /**
-     * Evaluates a source in the primary language of the context.
+     * Evaluates guest language code, using the Graal {@linkplain Language language} that matches
+     * the code's {@linkplain Source#getMimeType() MIME type}. {@link Source} objects may wrap
+     * references to guest language code (e.g. a filename or URL) or may represent code literally.
+     * <p>
+     * The result is wrapped in an instance of {@link Value}, for which Java-typed access (objects)
+     * can be created using {@link Value#as(Class) Value.as(Class)}.
+     *
+     * @param source guest language code, presumed to have an associated MIME type
+     * @return result of the evaluation wrapped in a non-null {@link Value}
      */
     public Value eval(Source source) {
         return impl.eval(source.getLanguage(), source.impl);
     }
 
+    /**
+     * Evaluates literal guest language code using a specified Graal {@linkplain Language language}.
+     *
+     * <p>
+     * The result is wrapped in an instance of {@link Value}, for which Java-typed access (objects)
+     * can be created using {@link Value#as(Class) Value.as(Class)}.
+     *
+     * @param languageId
+     * @param source textual source code
+     * @return result of the evaluation wrapped in a non-null {@link Value}
+     */
     public Value eval(String languageId, CharSequence source) {
         return eval(Source.create(languageId, source));
     }
 
     /**
-     * Perform a lookup for a symbol in the top-most scope of the language.
+     * Evaluates a symbol in the top-most scope of a specified language.
+     * <p>
+     * The result is wrapped in an instance of {@link Value}, for which Java-typed access (objects)
+     * can be created using {@link Value#as(Class) Value.as(Class)}.
+     *
+     * @param language
+     * @param symbol name of a symbol
+     * @return result of the evaluation wrapped in a non-null {@link Value}
      */
     public Value lookup(String language, String symbol) {
         return impl.lookup(getEngine().getLanguage(language).impl, symbol);
