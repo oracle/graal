@@ -323,12 +323,12 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public Map<String, LanguageInfo> getLanguages(Object vmObject) {
-            return getEngine(vmObject).idToLanguageInfo;
+            return getEngine(vmObject).idToInternalLanguageInfo;
         }
 
         @Override
         public Map<String, InstrumentInfo> getInstruments(Object vmObject) {
-            return getEngine(vmObject).idToInstrumentInfo;
+            return getEngine(vmObject).idToInternalInstrumentInfo;
         }
 
         private static PolyglotEngineImpl getEngine(Object vmObject) throws AssertionError {

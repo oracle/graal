@@ -227,7 +227,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return className;
     }
 
-    public boolean isInternal() {
+    boolean isInternal() {
         return internal;
     }
 
