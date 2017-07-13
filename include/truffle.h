@@ -147,6 +147,8 @@ void *truffle_sulong_function_to_native_pointer(void *sulongFunctionPointer, con
 
 void truffle_load_library(const char *string);
 
+void *truffle_polyglot_eval(const char *mimeType, const char *code);
+
 #if defined(__cplusplus)
 }
 #endif
