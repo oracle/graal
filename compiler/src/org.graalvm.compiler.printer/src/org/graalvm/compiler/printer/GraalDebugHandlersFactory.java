@@ -54,7 +54,7 @@ import org.graalvm.compiler.debug.DebugHandler;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.debug.UniquePathUtilities;
+import org.graalvm.compiler.debug.PathUtilities;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodeinfo.Verbosity;
@@ -201,7 +201,7 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
             label = graph == null ? null : graph.name != null ? graph.name : graph.toString();
             id = "UnknownCompilation-" + unknownCompilationId.incrementAndGet();
         }
-        String ext = UniquePathUtilities.formatExtension(extension);
+        String ext = PathUtilities.formatExtension(extension);
         Path result = createUnique(DebugOptions.getDumpDirectory(options), id, label, ext, createDirectory);
         if (ShowDumpFiles.getValue(options)) {
             TTY.println("Dumping debug output to %s", result.toAbsolutePath().toString());
