@@ -98,7 +98,7 @@ public final class Sulong extends LLVMLanguage {
 
     @Override
     protected boolean isObjectOfLanguage(Object object) {
-        throw new AssertionError();
+        return false; // TODO
     }
 
     @Override
