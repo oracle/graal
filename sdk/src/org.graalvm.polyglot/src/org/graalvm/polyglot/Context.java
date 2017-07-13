@@ -313,24 +313,49 @@ public final class Context implements AutoCloseable {
             this.onlyLanguages = onlyLanguages;
         }
 
+        /**
+         * TODO
+         *
+         * @since 1.0
+         */
         public Builder engine(Engine engine) {
             Objects.requireNonNull(engine);
             this.sharedEngine = engine;
             return this;
         }
 
+        /**
+         * Sets the standard output stream to be used for this context. If not set then the standard
+         * output stream configured for the {@link #engine(Engine) engine} is used or standard error
+         * stream.
+         *
+         * @since 1.0
+         */
         public Builder out(OutputStream out) {
             Objects.requireNonNull(out);
             this.out = out;
             return this;
         }
 
+        /**
+         * Sets the error output stream to be used for this context. If not set then either the
+         * error stream configured for the {@link #engine(Engine) engine} is used or standard error
+         * stream.
+         *
+         * @since 1.0
+         */
         public Builder err(OutputStream err) {
             Objects.requireNonNull(err);
             this.err = err;
             return this;
         }
 
+        /**
+         * Sets the input stream to be used for this context. If not set then either the input
+         * stream configured for the {@link #engine(Engine) engine} is used or standard in stream.
+         *
+         * @since 1.0
+         */
         public Builder in(InputStream in) {
             Objects.requireNonNull(in);
             this.in = in;
@@ -338,9 +363,7 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Allows guest languages to access the host language by loading new classes. If host
-         * language instances or classes are provided using {@link Context#put(String, Object)} or
-         * by passing it into the language then the language has automatically access to it.
+         * Allows guest languages to access the host language by loading new classes.
          *
          * @since 1.0
          */
@@ -404,7 +427,7 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Shortcut for setting multiple {@link #setOption(String, String) options} using a map. All
+         * Shortcut for setting multiple {@link #option(String, String) options} using a map. All
          * values of the provided map must be non-null.
          *
          * @param options a map options.
@@ -447,6 +470,11 @@ public final class Context implements AutoCloseable {
             return this;
         }
 
+        /**
+         * TODO
+         *
+         * @since 1.0
+         */
         public Context build() {
             Engine engine = this.sharedEngine;
             if (engine == null) {

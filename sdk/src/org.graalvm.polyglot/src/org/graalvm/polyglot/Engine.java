@@ -81,8 +81,8 @@ public final class Engine implements AutoCloseable {
      * Gets an installed language by looking up the unique language ID. An example for the language
      * id of JavaScript for example is <code>"js"</code>.
      *
-     * @throws IllegalArgumentException if an invalid language id was provided
      * @param languageId the unique of the language
+     * @throws IllegalArgumentException if an invalid language id was provided
      * @see #getLanguages() To get map of all installed languages.
      * @since 1.0
      */
@@ -109,8 +109,8 @@ public final class Engine implements AutoCloseable {
      * enabled via {@link Instrument#getOptions() options} passed to the
      * {@link Builder#option(String, String) engine} when the engine or context is constructed.
      *
-     * @throws IllegalArgumentException if an invalid languageId was provided
      * @param languageId the unique of the language
+     * @throws IllegalArgumentException if an invalid languageId was provided
      * @see #getLanguages() To get map of all installed languages.
      * @since 1.0
      */
@@ -133,7 +133,7 @@ public final class Engine implements AutoCloseable {
 
     /**
      * Returns all options available for the engine. The engine offers options with the following
-     * {@link OptionDescriptor#getGroup() groups}:
+     * {@link OptionDescriptor#getKey() groups}:
      * <ul>
      * <li><b>engine</b>: options to configure the behavior of this engine.
      * <li><b>compiler</b>: options to configure the optimizing compiler.
