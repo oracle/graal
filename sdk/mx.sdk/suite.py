@@ -61,6 +61,17 @@ suite = {
       "javaCompliance" : "1.8",
       "workingSets" : "API,SDK",
     },
+
+    "org.graalvm.nativeimage" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.word",
+      ],
+      "checkstyle" : "org.graalvm.word",
+      "javaCompliance" : "1.8",
+      "workingSets" : "API,SDK",
+    },
   },
   "licenses" : {
     "UPL" : {
@@ -86,5 +97,14 @@ suite = {
       "distDependencies" : [
       ],
     },
-  },
+    "NATIVE_IMAGE_API": {
+      "subDir": "src",
+      "dependencies": [
+        "org.graalvm.nativeimage",
+      ],
+      "distDependencies": [
+        "sdk:WORD_API",
+      ]
+    },
+ },
 }
