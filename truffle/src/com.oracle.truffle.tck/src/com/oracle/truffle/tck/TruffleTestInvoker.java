@@ -115,7 +115,7 @@ final class TruffleTestInvoker<T extends CallTarget> extends TVMCI.TestAccessor<
             Context prevContext = rule.context;
             try (Context context = Context.create()) {
                 rule.context = context;
-                context.exportSymbol("currentTestStatement", this);
+                context.put("currentTestStatement", this);
                 context.eval("truffletestinvoker", "");
                 if (throwable != null) {
                     throw throwable;

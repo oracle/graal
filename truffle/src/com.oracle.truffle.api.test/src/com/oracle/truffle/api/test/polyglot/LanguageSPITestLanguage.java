@@ -24,7 +24,7 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertSame;
 
-import java.util.concurrent.Callable;
+import java.util.function.Function;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -38,11 +38,12 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
 
     static final String ID = "LanguageSPITest";
 
-    static Callable<CallTarget> runinside;
+    static Function<Env, Object> runinside;
 
     static class LanguageContext {
 
         int disposeCalled;
+        Env env;
 
     }
 
@@ -52,23 +53,24 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
 
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
-        CallTarget target = null;
+        Object result = "null result";
         if (runinside != null) {
             try {
-                target = runinside.call();
+                result = runinside.apply(getContext().env);
             } finally {
                 runinside = null;
             }
         }
-        if (target != null) {
-            return target;
+        if (result == null) {
+            result = "null result";
         }
-        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(result));
     }
 
     @Override
     protected LanguageContext createContext(Env env) {
         LanguageSPITest.langContext = new LanguageContext();
+        LanguageSPITest.langContext.env = env;
         return LanguageSPITest.langContext;
     }
 

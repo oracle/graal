@@ -72,8 +72,9 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
      * Context index for the host language.
      */
     static final int HOST_LANGUAGE_INDEX = 0;
-    static final String HOST_LANGUAGE_ID = "java";
-    private static final Set<String> RESERVED_IDS = new HashSet<>(Arrays.asList("graal", "truffle", "engine", "language", "instrument", "graalvm", "context", "polyglot", "compiler", "vm"));
+    static final String HOST_LANGUAGE_ID = "host";
+    private static final Set<String> RESERVED_IDS = new HashSet<>(
+                    Arrays.asList(HOST_LANGUAGE_ID, "graal", "truffle", "engine", "language", "instrument", "graalvm", "context", "polyglot", "compiler", "vm"));
 
     private static final Map<PolyglotEngineImpl, Void> ENGINES = Collections.synchronizedMap(new WeakHashMap<>());
     private static volatile boolean shutdownHookInitialized = false;
@@ -103,6 +104,8 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     final ClassLoader contextClassLoader;
     final boolean boundEngine;
     private final Set<PolyglotContextImpl> contexts = new LinkedHashSet<>();
+
+    PolyglotLanguageImpl hostLanguage;
 
     volatile OptionDescriptors allOptions;
     volatile boolean closed;
@@ -280,13 +283,10 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         Map<String, PolyglotLanguageImpl> langs = new LinkedHashMap<>();
         Map<String, LanguageCache> cachedLanguages = LanguageCache.languages();
         Set<LanguageCache> uniqueLanguages = new LinkedHashSet<>();
-        LanguageCache hostCache = createHostLanguageCache();
-        if (hostCache != null) {
-            uniqueLanguages.add(hostCache);
-        }
         uniqueLanguages.addAll(cachedLanguages.values());
+        this.hostLanguage = createLanguage(createHostLanguageCache(), HOST_LANGUAGE_INDEX);
 
-        int index = 0;
+        int index = 1;
         for (LanguageCache cache : uniqueLanguages) {
             PolyglotLanguageImpl languageImpl = createLanguage(cache, index);
 
@@ -300,7 +300,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             index++;
         }
 
-        langs.get(HOST_LANGUAGE_ID).ensureInitialized();
+        this.hostLanguage.ensureInitialized();
 
         return langs;
     }
@@ -315,7 +315,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
     private static LanguageCache createHostLanguageCache() {
         return new LanguageCache(HOST_LANGUAGE_ID, Collections.emptySet(),
-                        "Java", "Java", System.getProperty("java.version"), false, false, new HostLanguage());
+                        "Host", "Host", System.getProperty("java.version"), false, false, new HostLanguage());
     }
 
     private static void verifyId(String id, String className) {
@@ -614,9 +614,9 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
     @Override
     @SuppressWarnings({"hiding"})
-    public synchronized Context createContext(OutputStream out, OutputStream err, InputStream in, Predicate<String> classFilter,
-                    Map<String, String> options, Map<String, String[]> arguments,
-                    String[] onlyLanguages) {
+    public synchronized Context createContext(OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
+                    Predicate<String> classFilter, Map<String, String> options,
+                    Map<String, String[]> arguments, String[] onlyLanguages) {
         checkState();
         if (boundEngine && !contexts.isEmpty()) {
             throw new IllegalArgumentException("Automatically created engines cannot be used to create more than one context. " +
@@ -630,7 +630,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             allowedLanguages = new HashSet<>(Arrays.asList(onlyLanguages));
         }
 
-        PolyglotContextImpl contextImpl = new PolyglotContextImpl(this, out, err, in, classFilter, options, arguments, allowedLanguages);
+        PolyglotContextImpl contextImpl = new PolyglotContextImpl(this, out, err, in, allowHostAccess, classFilter, options, arguments, allowedLanguages);
         addContext(contextImpl);
         return impl.getAPIAccess().newContext(contextImpl);
     }

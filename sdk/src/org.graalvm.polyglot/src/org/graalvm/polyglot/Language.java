@@ -101,7 +101,9 @@ public final class Language {
      * Returns <code>true</code> if this language object represents the Java host language.
      * 
      * @since 1.0
+     * @deprecated no replacement
      */
+    @Deprecated
     public boolean isHost() {
         return impl.isHost();
     }
