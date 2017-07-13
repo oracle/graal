@@ -121,24 +121,8 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Puts a symbol into the polyglot scope. The polyglot scope is used to exchange symbols between
-     * guest languages and the host language. Guest languages can put and get symbols through
-     * language specific APIs. For example, in JavaScript symbols of the polyglot scope can be
-     * accessed using <code>Interop.get("key")</code> and set using
-     * <code>Interop.put("key", value)</code>. Any Java value or {@link Value} instance is allowed
-     * to be passed as value.
-     *
-     * @param the key of the symbol
-     * @since 1.0
-     */
-    public void put(String key, Object value) {
-        Objects.requireNonNull(key);
-        impl.exportSymbol(key, value);
-    }
-
-    /**
-     * Gets a symbol from the polyglot scope or <code>null</code> if the symbol is not defined. The
-     * polyglot scope is used to exchange symbols between guest languages and also the host
+     * Imports a symbol from the polyglot scope or <code>null</code> if the symbol is not defined.
+     * The polyglot scope is used to exchange symbols between guest languages and also the host
      * language. Guest languages can put and get symbols through language specific APIs. For
      * example, in JavaScript symbols of the polyglot scope can be get using
      * <code>Interop.get("key")</code> and set using <code>Interop.put("key", value)</code>.
@@ -146,23 +130,21 @@ public final class Context implements AutoCloseable {
      * @param the key of the symbol
      * @since 1.0
      */
-    public Value get(String key) {
-        Objects.requireNonNull(key);
-        return impl.importSymbol(key);
-    }
-
-    /**
-     * @deprecated use {@link #get(String)} instead
-     */
-    @Deprecated
     public Value importSymbol(String key) {
         return impl.importSymbol(key);
     }
 
     /**
-     * @deprecated use {@link #put(String, Object)} instead
+     * Exports a symbol into the polyglot scope. The polyglot scope is used to exchange symbols
+     * between guest languages and the host language. Guest languages can put and get symbols
+     * through language specific APIs. For example, in JavaScript symbols of the polyglot scope can
+     * be accessed using <code>Interop.get("key")</code> and set using
+     * <code>Interop.put("key", value)</code>. Any Java value or {@link Value} instance is allowed
+     * to be passed as value.
+     *
+     * @param the key of the symbol
+     * @since 1.0
      */
-    @Deprecated
     public void exportSymbol(String key, Object value) {
         impl.exportSymbol(key, value);
     }
