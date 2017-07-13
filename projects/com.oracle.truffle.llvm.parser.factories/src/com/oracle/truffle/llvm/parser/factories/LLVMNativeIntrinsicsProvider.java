@@ -84,6 +84,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMTruffleOnlyIntrinsicsFacto
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMTruffleOnlyIntrinsicsFactory.LLVMStrlenNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMTruffleReadBytesNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMLoadLibraryNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotEvalNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMSulongFunctionToNativePointerNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleAddressToFunctionNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleBinaryFactory.LLVMTruffleHasSizeNodeGen;
@@ -787,6 +788,14 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
             @Override
             protected RootCallTarget generate(FunctionType type) {
                 return wrap("@truffle_load_library", LLVMLoadLibraryNodeGen.create(LLVMArgNodeGen.create(1)));
+            }
+        });
+
+        factories.put("@truffle_polyglot_eval", new LLVMNativeIntrinsicFactory(true, true) {
+
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@truffle_polyglot_eval", LLVMPolyglotEvalNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
     }
