@@ -23,16 +23,16 @@ from mx_testsuites import SulongTestSuite #pylint: disable=unused-import
 os.environ["LC_NUMERIC"] = "C"  # required for some testcases
 
 _suite = mx.suite('sulong')
-_mx = join(_suite.dir, "mx.sulong/")
-_root = join(_suite.dir, "projects/")
-_libPath = join(_root, "com.oracle.truffle.llvm.libraries.bitcode/src")
-_testDir = join(_suite.dir, "tests/")
-_toolDir = join(_suite.dir, "cache/tools/")
-_clangPath = _toolDir + 'llvm/bin/clang'
+_mx = join(_suite.dir, "mx.sulong")
+_root = join(_suite.dir, "projects")
+_libPath = join(_root, "com.oracle.truffle.llvm.libraries.bitcode", "src")
+_testDir = join(_suite.dir, "tests")
+_toolDir = join(_suite.dir, "cache", "tools")
+_clangPath = join(_toolDir, "llvm", "bin", "clang")
 
-_dragonEggPath = _toolDir + 'dragonegg/dragonegg-3.2.src/dragonegg.so'
+_dragonEggPath = join(_toolDir, "dragonegg", "dragonegg-3.2.src", "dragonegg.so")
 
-_captureSrcDir = join(_root, "projects/com.oracle.truffle.llvm.pipe.native/src")
+_captureSrcDir = join(_root, "com.oracle.truffle.llvm.pipe.native", "src")
 
 
 # the supported GCC versions (see dragonegg.llvm.org)
@@ -45,12 +45,12 @@ supportedGCCVersions = [
 # the files that should be checked to not contain http links (but https ones)
 httpCheckFiles = [
     __file__,
-    _suite.dir + "/.travis.yml"
+    join(_suite.dir, ".travis.yml")
 ]
 
 # the file paths that we want to check with clang-format
 clangFormatCheckPaths = [
-    _suite.dir + '/include',
+    join(_suite.dir, "include"),
     _libPath,
     _captureSrcDir
 ]
@@ -78,7 +78,9 @@ supportedLLVMVersions = [
 
 # the clang-format versions that can be used for formatting the test case C and C++ files
 clangFormatVersions = [
-    '3.4'
+    '3.8',
+    '3.9',
+    '4.0',
 ]
 
 # the basic LLVM dependencies for running the test cases and executing the mx commands
@@ -252,14 +254,14 @@ def pullInstallDragonEgg(args=None):
         localPath = pullsuite(gccToolDir, [url])
         tar(localPath, gccToolDir)
         os.remove(localPath)
-        mx.run(['patch', '-p1', _toolDir + 'dragonegg/dragonegg-3.2.src/Makefile', 'mx.sulong/dragonegg-mac.patch'])
+        mx.run(['patch', '-p1', join(_toolDir, 'dragonegg', 'dragonegg-3.2.src', 'Makefile'), join('mx.sulong', 'dragonegg-mac.patch')])
     os.environ['GCC'] = getGCC()
     os.environ['CXX'] = getGPP()
     os.environ['CC'] = getGCC()
     pullLLVMBinaries()
     os.environ['LLVM_CONFIG'] = findLLVMProgramForDragonegg('llvm-config')
     compileCommand = ['make']
-    return mx.run(compileCommand, cwd=_toolDir + 'dragonegg/dragonegg-3.2.src')
+    return mx.run(compileCommand, cwd=join(_toolDir, 'dragonegg', 'dragonegg-3.2.src'))
 
 def findLLVMProgramForDragonegg(program):
     """tries to find a supported version of an installed LLVM program; if the program is not found it downloads the LLVM binaries and checks there"""
@@ -362,9 +364,6 @@ def runLLVM(args=None, out=None):
     """uses Sulong to execute a LLVM IR file"""
     vmArgs, sulongArgs = truffle_extract_VM_args(args)
     return mx.run_java(getCommonOptions(False) + vmArgs + getClasspathOptions() + ["com.oracle.truffle.llvm.Sulong"] + sulongArgs, out=out)
-
-def runTests(args=None):
-    mx_testsuites.runSuite(args)
 
 def runChecks(args=None):
     """runs all the static analysis tools or selected ones (see -h or --help)"""
@@ -540,42 +539,6 @@ def findGCCProgram(gccProgram, optional=False):
     else:
         return installedProgram
 
-def getGCCProgramPath(args=None):
-    """gets a path with a supported version of the specified GCC program (e.g. gfortran)"""
-    if args is None or len(args) != 1:
-        exit("please supply one GCC program to be located!")
-    else:
-        mx.log(findGCCProgram(args[0]))
-
-def getLLVMProgramPath(args=None):
-    """gets a path with a supported version of the specified LLVM program (e.g. clang)"""
-    if args is None or len(args) != 1:
-        exit("please supply one LLVM program to be located!")
-    else:
-        mx.log(findLLVMProgram(args[0]))
-
-def compileWithClang(args=None, version=None, out=None, err=None):
-    """runs Clang"""
-    return mx.run([findLLVMProgram('clang', version)] + args, out=out, err=err)
-
-def compileWithGCC(args=None):
-    """runs GCC"""
-    ensureLLVMBinariesExist()
-    gccPath = _toolDir + 'llvm/bin/gcc'
-    return mx.run([gccPath] + args)
-
-def opt(args=None, version=None, out=None, err=None):
-    """runs opt"""
-    return mx.run([findLLVMProgram('opt', version)] + args, out=out, err=err)
-
-def link(args=None):
-    """Links LLVM bitcode into an su file."""
-    return mx.run_java(getClasspathOptions() + ["com.oracle.truffle.llvm.runtime.Linker"] + args)
-
-def compileWithClangPP(args=None, version=None, out=None, err=None):
-    """runs Clang++"""
-    return mx.run([findLLVMProgram('clang++', version)] + args, out=out, err=err)
-
 def getClasspathOptions():
     """gets the classpath of the Sulong distributions"""
     return mx.get_runtime_jvm_args('SULONG')
@@ -637,7 +600,7 @@ def checkCFile(targetFile):
     clangFormat = findInstalledLLVMProgram('clang-format', clangFormatVersions)
     if clangFormat is None:
         exit("Unable to find 'clang-format' executable with one the supported versions '" + ", ".join(clangFormatVersions) + "'")
-    formatCommand = [clangFormat, '-style={BasedOnStyle: llvm, ColumnLimit: 150}', targetFile]
+    formatCommand = [clangFormat, targetFile]
     formattedContent = subprocess.check_output(formatCommand).splitlines()
     with open(targetFile) as f:
         originalContent = f.read().splitlines()
@@ -702,25 +665,10 @@ checkCases = {
 }
 
 mx.update_commands(_suite, {
-    'su-checks' : [runChecks, ''],
-    'su-tests' : [runTests, ''],
-    'su-suite' : [mx_testsuites.runSuite, ''],
-    'su-clang' : [compileWithClang, ''],
-    'su-pulldragonegg' : [pullInstallDragonEgg, ''],
-    'su-run' : [runLLVM, ''],
-    'su-clang++' : [compileWithClangPP, ''],
-    'su-opt' : [opt, ''],
-    'su-link' : [link, ''],
-    'su-gcc' : [dragonEgg, ''],
-    'su-gfortran' : [dragonEggGFortran, ''],
-    'su-g++' : [dragonEggGPP, ''],
-    'su-travis1' : [travis1, ''],
-    'su-travis2' : [travis2, ''],
-    'su-ecj-strict' : [compileWithEcjStrict, ''],
-    'su-mdlcheck' : [mdlCheck, ''],
-    'su-clangformatcheck' : [clangformatcheck, ''],
-    'su-httpcheck' : [checkNoHttp, ''],
-    'su-get-llvm-program' : [getLLVMProgramPath, ''],
-    'su-get-gcc-program' : [getGCCProgramPath, ''],
-    'su-compile-tests' : [mx_testsuites.compileSuite, ''],
+    'check' : [runChecks, ''],
+    'test' : [mx_testsuites.runSuite, ''],
+    'pulldragonegg' : [pullInstallDragonEgg, ''],
+    'lli' : [runLLVM, ''],
+    'travis1' : [travis1, ''],
+    'travis2' : [travis2, ''],
 })
