@@ -18,7 +18,6 @@ addons:
     - g++-4.6
     - gfortran-4.6
     - libgmp3-dev
-    - clang-format-3.4
     - gobjc++-4.6
     - gcc-4.6-plugin-dev
     - libc++1
@@ -27,6 +26,7 @@ addons:
     - libc++abi-dev
     - llvm-3.8
     - clang-3.8
+    - clang-format-3.8
 install:
   - export MX_BINARY_SUITES="jvmci"
   - gem install mdl
