@@ -25,7 +25,7 @@
 package org.graalvm.polyglot.proxy;
 
 /**
- * TODO
+ *
  *
  * @since 1.0
  */

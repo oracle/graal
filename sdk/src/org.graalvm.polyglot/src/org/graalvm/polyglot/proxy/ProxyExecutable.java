@@ -27,7 +27,7 @@ package org.graalvm.polyglot.proxy;
 import org.graalvm.polyglot.Value;
 
 /**
- * TODO
+ *
  *
  * @since 1.0
  */
@@ -35,7 +35,7 @@ import org.graalvm.polyglot.Value;
 public interface ProxyExecutable extends Proxy {
 
     /**
-     * TODO
+     *
      *
      * @since 1.0
      */
