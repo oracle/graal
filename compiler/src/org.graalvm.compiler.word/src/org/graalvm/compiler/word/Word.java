@@ -59,6 +59,7 @@ import org.graalvm.word.WordFactory;
 public abstract class Word extends WordFactory implements SignedWord, UnsignedWord, Pointer {
 
     static {
+        assert WordFactory.boxFactory == null : "BoxFactory must be initialized only once.";
         WordFactory.boxFactory = new BoxFactoryImpl();
     }
 

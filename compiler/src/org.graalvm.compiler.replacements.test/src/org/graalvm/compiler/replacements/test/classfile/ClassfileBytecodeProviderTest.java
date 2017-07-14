@@ -151,7 +151,11 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
                         String name = zipEntry.getName();
                         if (name.endsWith(".class") && !name.equals("module-info.class")) {
                             String className = name.substring(0, name.length() - ".class".length()).replace('/', '.');
-                            if (className.startsWith("org.graalvm.nativeimage")) {
+                            if (isInNativeImage(className)) {
+                                /*
+                                 * Native image requires non-graalsdk classes to be present in the
+                                 * classpath.
+                                 */
                                 continue;
                             }
                             try {
@@ -166,6 +170,10 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
                 }
             }
         }
+    }
+
+    private static boolean isInNativeImage(String className) {
+        return className.startsWith("org.graalvm.nativeimage");
     }
 
     protected void checkClass(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, String className) throws ClassNotFoundException {
