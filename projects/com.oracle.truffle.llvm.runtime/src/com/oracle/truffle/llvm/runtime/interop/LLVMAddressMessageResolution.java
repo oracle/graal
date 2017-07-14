@@ -34,7 +34,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAddressMessageResolutionNode.LLVMAddressReadMessageResolutionNode;
@@ -94,9 +93,7 @@ public class LLVMAddressMessageResolution {
         protected Object access(VirtualFrame frame, LLVMTruffleAddress receiver, int index) {
             if (isNull(receiver)) {
                 CompilerDirectives.transferToInterpreter();
-                UnsupportedOperationException exception = new UnsupportedOperationException(String.format("Cannot read (identifier = %s) from null (0x0) pointer.", String.valueOf(index)));
-                throw UnsupportedTypeException.raise(exception,
-                                new Object[]{receiver});
+                throw UnknownIdentifierException.raise(String.format("Cannot read (identifier = %s) from null (0x0) pointer.", String.valueOf(index)));
             }
             if (node == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -125,8 +122,7 @@ public class LLVMAddressMessageResolution {
         protected Object access(VirtualFrame frame, LLVMTruffleAddress receiver, int index, Object value) {
             if (isNull(receiver)) {
                 CompilerDirectives.transferToInterpreter();
-                throw UnsupportedTypeException.raise(new UnsupportedOperationException(String.format("Cannot read (identifier = %s) from null (0x0) pointer.", String.valueOf(index))),
-                                new Object[]{receiver});
+                throw UnknownIdentifierException.raise(String.format("Cannot read (identifier = %s) from null (0x0) pointer.", String.valueOf(index)));
             }
             if (node == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
