@@ -86,25 +86,21 @@ suite = {
       "moduleName" : "org.graalvm.sdk",
       "dependencies" : [
         "org.graalvm.polyglot",
+        "org.graalvm.nativeimage",
       ],
       "distDependencies" : [],
     },
     "WORD_API" : {
       "subDir" : "src",
+      "moduleName" : "org.graalvm.word",
       "dependencies" : [
         "org.graalvm.word",
       ],
       "distDependencies" : [
       ],
-    },
-    "NATIVE_IMAGE_API": {
-      "subDir": "src",
-      "dependencies": [
-        "org.graalvm.nativeimage",
+      "overlaps" : [
+        "GRAAL_SDK",
       ],
-      "distDependencies": [
-        "sdk:WORD_API",
-      ]
     },
  },
 }

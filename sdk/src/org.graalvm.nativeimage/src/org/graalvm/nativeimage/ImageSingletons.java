@@ -79,7 +79,7 @@ public final class ImageSingletons {
 
     static {
         try {
-            SUPPORT = (ImageSingletonsSupport) Class.forName("com.oracle.svm.hosted.ImageSingletonsSupportImpl").newInstance();
+            SUPPORT = (ImageSingletonsSupport) Class.forName("com.oracle.svm.hosted.ImageSingletonsSupportImpl", true, Thread.currentThread().getContextClassLoader()).newInstance();
         } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | SecurityException | ClassNotFoundException ex) {
             throw new Error("Class path of native image generator is not set up correctly");
         }
