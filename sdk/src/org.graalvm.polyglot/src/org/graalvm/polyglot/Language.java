@@ -50,7 +50,7 @@ public final class Language {
      * Gets the primary identification string of this language. The language id is used as the
      * primary way of identifying languages in the polyglot API. (eg. <code>js</code>)
      *
-     * @returns a language ID string.
+     * @return a language ID string.
      * @since 1.0
      */
     public String getId() {
@@ -60,7 +60,7 @@ public final class Language {
     /**
      * Gets a human-readable name for the language (for example, "JavaScript").
      *
-     * @returns the user-friendly name for this language.
+     * @return the user-friendly name for this language.
      * @since 1.0
      */
     public String getName() {
@@ -88,8 +88,8 @@ public final class Language {
 
     /**
      * Returns <code>true</code> if a the language is suitable for interactive evaluation of
-     * {@link Source sources}. {@link #setInteractive() Interactive} languages should be displayed
-     * in interactive environments and presented to the user.
+     * {@link Source sources}. {@link #isInteractive() Interactive} languages should be displayed in
+     * interactive environments and presented to the user.
      *
      * @since 1.0
      */
@@ -99,7 +99,7 @@ public final class Language {
 
     /**
      * Returns <code>true</code> if this language object represents the Java host language.
-     * 
+     *
      * @since 1.0
      * @deprecated no replacement
      */
@@ -110,8 +110,8 @@ public final class Language {
 
     /**
      * Returns the set of options provided by this language. Option values for languages can either
-     * be provided while building an {@link Engine.Builder#setOption(String, String) engine} or a
-     * {@link Context.Builder#setOption(String, String) context}. The option descriptor
+     * be provided while building an {@link Engine.Builder#option(String, String) engine} or a
+     * {@link Context.Builder#option(String, String) context}. The option descriptor
      * {@link OptionDescriptor#getName() name} must be used as the option name.
      *
      * @since 1.0

@@ -22,21 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.polyglot.proxy;
-
 /**
+ * The Graal SDK proxy interfaces allow to mimic guest language objects in Graal languages. For
+ * example, one can implement the {@link org.graalvm.polyglot.proxy.ProxyObject} interface and then
+ * pass the object to a guest language. The guest language will then treat this instance as an
+ * object. For instance if the language tries to write into a field it will call
+ * {@link org.graalvm.polyglot.proxy.ProxyObject#putMember(String, org.graalvm.polyglot.Value)}. The
+ * API is designed to be language agnostic, therefore they it can be used with any Graal guest
+ * language.
+ * <p>
+ * See <link <a href="http://www.graalvm.org/docs/embed">graalvm.org</a> for more examples on how to
+ * use this API.
  *
- *
+ * @see org.graalvm.polyglot.proxy.Proxy for more an overview over all available proxy interfaces.
  * @since 1.0
  */
-public interface ProxyPrimitive extends Proxy {
-
-    /**
-     * Unboxes the proxy to a primitive value. A primitive value can either be String, byte, char,
-     * short, int, long, float, or double.
-     *
-     * @since 1.0
-     */
-    Object asPrimitive();
-
-}
+package org.graalvm.polyglot.proxy;

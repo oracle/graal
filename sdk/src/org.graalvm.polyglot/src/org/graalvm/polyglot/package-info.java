@@ -22,21 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.polyglot.proxy;
-
 /**
+ * The Graal-SDK polyglot API allows to embed Graal languages in Java applications.
+ * <p>
+ * To get started quickly create a new {@link org.graalvm.polyglot.Context} using
+ * {@link org.graalvm.polyglot.Context#create(String...)} and then evaluate guest language code
+ * using {@link org.graalvm.polyglot.Context#eval(String, CharSequence)}.
  *
+ * <p>
+ * See <a href="http://www.graalvm.org/docs/embed">graalvm.org</a> for more examples on how to use
+ * this API.
  *
+ * @see org.graalvm.polyglot.Context#create(String...) To construct a new execution context.
  * @since 1.0
  */
-public interface ProxyPrimitive extends Proxy {
-
-    /**
-     * Unboxes the proxy to a primitive value. A primitive value can either be String, byte, char,
-     * short, int, long, float, or double.
-     *
-     * @since 1.0
-     */
-    Object asPrimitive();
-
-}
+package org.graalvm.polyglot;
