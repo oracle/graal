@@ -350,10 +350,6 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                                         duplicateId, className1, className2));
     }
 
-    private PolyglotInstrumentImpl getData(Instrument language) {
-        return (PolyglotInstrumentImpl) impl.getAPIAccess().getImpl(language);
-    }
-
     final void checkState() {
         if (closed) {
             throw new IllegalStateException("Engine is already closed.");
@@ -481,8 +477,8 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                     for (PolyglotLanguageImpl language : idToLanguage.values()) {
                         allDescriptors.add(language.getOptions());
                     }
-                    for (Instrument instrument : idToPublicInstrument.values()) {
-                        allDescriptors.add(getData(instrument).getOptions());
+                    for (PolyglotInstrumentImpl instrument : idToInstrument.values()) {
+                        allDescriptors.add(instrument.getOptions());
                     }
                     allOptions = OptionDescriptors.createUnion(allDescriptors.toArray(new OptionDescriptors[0]));
                 }
