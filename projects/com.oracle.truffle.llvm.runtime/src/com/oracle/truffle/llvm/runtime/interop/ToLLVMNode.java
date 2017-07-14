@@ -167,7 +167,7 @@ public abstract class ToLLVMNode extends Node {
                 return (int) convertPrimitive(int.class, unboxed);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
+                throw new IllegalStateException("Foreign value is not unboxable!", e);
             }
         }
     }
@@ -231,7 +231,7 @@ public abstract class ToLLVMNode extends Node {
                 return (long) convertPrimitive(long.class, unboxed);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
+                throw new IllegalStateException("Foreign value is not unboxable!", e);
             }
         }
     }
@@ -296,7 +296,7 @@ public abstract class ToLLVMNode extends Node {
                 return (short) convertPrimitive(short.class, unboxed);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
+                throw new IllegalStateException("Foreign value is not unboxable!", e);
             }
         }
     }
@@ -361,7 +361,7 @@ public abstract class ToLLVMNode extends Node {
                 return (byte) convertPrimitive(byte.class, unboxed);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
+                throw new IllegalStateException("Foreign value is not unboxable!", e);
             }
         }
     }
@@ -426,7 +426,7 @@ public abstract class ToLLVMNode extends Node {
                 return (char) convertPrimitive(char.class, unboxed);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
+                throw new IllegalStateException("Foreign value is not unboxable!", e);
             }
         }
     }
@@ -490,7 +490,7 @@ public abstract class ToLLVMNode extends Node {
                 return (float) convertPrimitive(float.class, unboxed);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
+                throw new IllegalStateException("Foreign value is not unboxable!", e);
             }
         }
     }
@@ -554,7 +554,7 @@ public abstract class ToLLVMNode extends Node {
                 return (double) convertPrimitive(double.class, unboxed);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
+                throw new IllegalStateException("Foreign value is not unboxable!", e);
             }
         }
     }
@@ -619,7 +619,7 @@ public abstract class ToLLVMNode extends Node {
                 return (boolean) convertPrimitive(boolean.class, unboxed);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
+                throw new IllegalStateException("Foreign value is not unboxable!", e);
             }
         }
     }
@@ -693,7 +693,7 @@ public abstract class ToLLVMNode extends Node {
                 return LLVMAddress.fromLong(raw);
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(ex);
+                throw new IllegalStateException("Foreign value is not a pointer!", ex);
             }
         }
 
@@ -767,7 +767,7 @@ public abstract class ToLLVMNode extends Node {
                 return LLVMAddress.fromLong(raw);
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(ex);
+                throw new IllegalStateException("Foreign value is not a pointer!", ex);
             }
         }
 

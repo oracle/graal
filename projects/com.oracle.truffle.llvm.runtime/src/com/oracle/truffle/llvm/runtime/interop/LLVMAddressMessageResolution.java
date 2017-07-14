@@ -33,6 +33,8 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAddressMessageResolutionNode.LLVMAddressReadMessageResolutionNode;
@@ -92,13 +94,22 @@ public class LLVMAddressMessageResolution {
         protected Object access(VirtualFrame frame, LLVMTruffleAddress receiver, int index) {
             if (isNull(receiver)) {
                 CompilerDirectives.transferToInterpreter();
-                throw new UnsupportedOperationException(String.format("Cannot read (identifier = %s) from null (0x0) pointer.", String.valueOf(index)));
+                UnsupportedOperationException exception = new UnsupportedOperationException(String.format("Cannot read (identifier = %s) from null (0x0) pointer.", String.valueOf(index)));
+                throw UnsupportedTypeException.raise(exception,
+                                new Object[]{receiver});
             }
             if (node == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 node = insert(LLVMAddressReadMessageResolutionNodeGen.create());
             }
             return node.executeWithTarget(frame, receiver, index);
+        }
+
+        @SuppressWarnings("unused")
+        protected Object access(VirtualFrame frame, LLVMTruffleAddress receiver, String name) {
+            CompilerDirectives.transferToInterpreter();
+            String message = String.format("Identifier %s is currently unsupported. Please use a numeric index to access a C pointer.", name);
+            throw UnknownIdentifierException.raise(message);
         }
     }
 
@@ -114,13 +125,20 @@ public class LLVMAddressMessageResolution {
         protected Object access(VirtualFrame frame, LLVMTruffleAddress receiver, int index, Object value) {
             if (isNull(receiver)) {
                 CompilerDirectives.transferToInterpreter();
-                throw new UnsupportedOperationException(String.format("Cannot read (identifier = %s) from null (0x0) pointer.", String.valueOf(index)));
+                throw UnsupportedTypeException.raise(new UnsupportedOperationException(String.format("Cannot read (identifier = %s) from null (0x0) pointer.", String.valueOf(index))),
+                                new Object[]{receiver});
             }
             if (node == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 node = insert(LLVMAddressWriteMessageResolutionNodeGen.create());
             }
             return node.executeWithTarget(frame, receiver, index, value);
+        }
+
+        @SuppressWarnings("unused")
+        protected Object access(VirtualFrame frame, LLVMTruffleAddress receiver, String name, Object value) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnknownIdentifierException.raise(String.format("Identifier %s is currently unsupported. Please use a numeric index to access a C pointer.", name));
         }
 
     }
