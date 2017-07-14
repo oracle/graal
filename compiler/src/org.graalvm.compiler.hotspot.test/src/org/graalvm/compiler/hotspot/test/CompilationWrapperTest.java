@@ -83,8 +83,10 @@ public class CompilationWrapperTest extends GraalCompilerTest {
     }
 
     private static void testHelper(List<String> extraVmArgs, String... mainClassAndArgs) throws IOException, InterruptedException {
+        final File dumpPath = new File(CompilationWrapperTest.class.getSimpleName() + "_" + System.currentTimeMillis()).getAbsoluteFile();
         List<String> vmArgs = withoutDebuggerArguments(getVMCommandLine());
         vmArgs.removeIf(a -> a.startsWith("-Dgraal."));
+        vmArgs.add("-Dgraal.DumpPath=" + dumpPath);
         // Force output to a file even if there's a running IGV instance available.
         vmArgs.add("-Dgraal.PrintGraphFile=true");
         vmArgs.addAll(extraVmArgs);
@@ -116,8 +118,11 @@ public class CompilationWrapperTest extends GraalCompilerTest {
             Assert.fail(String.format("Did not find '%s' in output of command:%n%s", diagnosticOutputFilePrefix, proc));
         }
 
+        String[] dumpPathEntries = dumpPath.list();
+
         File zip = new File(diagnosticOutputZip).getAbsoluteFile();
         Assert.assertTrue(zip.toString(), zip.exists());
+        Assert.assertArrayEquals(dumpPathEntries, new String[]{zip.getName()});
         try {
             int bgv = 0;
             int cfg = 0;
@@ -141,6 +146,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
             }
         } finally {
             zip.delete();
+            dumpPath.delete();
         }
     }
 }

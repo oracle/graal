@@ -1,6 +1,6 @@
 # Eigth of a M7 processor with 4 cores, 8 threads each
 
-m7_eighth.c2 : {
+m7_eighth.c2 : ${labsjdk8} {
   targets: [weekly]
   capabilities: [solaris, m7_eighth]
   environment : {
@@ -16,7 +16,7 @@ builds += [
   ${bench-dacapo}              ${m7_eighth.c2} { name: "bench-compiler-dacapo-solaris-m7_eighth-c2" }
   ${bench-scala-dacapo}        ${m7_eighth.c2} { name: "bench-compiler-scala-dacapo-solaris-m7_eighth-c2" }
   ${bench-specjvm2008-Single}  ${m7_eighth.c2} { name: "bench-compiler-specjvm2008-Single-solaris-m7_eighth-c2" }
-  ${bench-specjvm2008-OneVM}   ${m7_eighth.c2} { name: "bench-compiler-specjvm2008-OneVM-solaris-m7_eighth-c2" }  
+  ${bench-specjvm2008-OneVM}   ${m7_eighth.c2} { name: "bench-compiler-specjvm2008-OneVM-solaris-m7_eighth-c2" }
   ${bench-specjbb2015}         ${m7_eighth.c2} { name: "bench-compiler-specjbb2015-solaris-m7_eighth-c2" }
-#  ${bench-micros-graal}        ${m7_eighth.c2} { name: "bench-compiler-jmh-micros-graal-solaris-m7_eighth-c2" }
+#  ${bench-micros-graal}       ${m7_eighth.c2} { name: "bench-compiler-jmh-micros-graal-solaris-m7_eighth-c2" }
 ]
