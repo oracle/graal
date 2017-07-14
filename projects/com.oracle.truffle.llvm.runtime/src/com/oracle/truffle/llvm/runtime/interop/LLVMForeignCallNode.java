@@ -35,6 +35,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -163,8 +164,6 @@ abstract class LLVMForeignCallNode extends LLVMNode {
     }
 
     private static void throwArgLengthException(int minLength, int actualLength) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("At least ").append(minLength).append(" arguments expected, but only ").append(actualLength).append(" arguments received.");
-        throw new IllegalStateException(sb.toString());
+        throw ArityException.raise(minLength, actualLength);
     }
 }

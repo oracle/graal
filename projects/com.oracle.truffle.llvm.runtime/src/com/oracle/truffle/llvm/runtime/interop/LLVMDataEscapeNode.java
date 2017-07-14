@@ -143,49 +143,49 @@ public abstract class LLVMDataEscapeNode extends Node {
     @Specialization
     public TruffleObject escapingVector(LLVMI8Vector vector, LLVMContext context) {
         CompilerDirectives.transferToInterpreter();
-        throw new IllegalStateException("Not yet implemented");
+        throw new IllegalStateException("Exporting Vectors is not yet supported!");
     }
 
     @Specialization
     public TruffleObject escapingVector(LLVMI64Vector vector, LLVMContext context) {
         CompilerDirectives.transferToInterpreter();
-        throw new IllegalStateException("Not yet implemented");
+        throw new IllegalStateException("Exporting Vectors is not yet supported!");
     }
 
     @Specialization
     public TruffleObject escapingVector(LLVMI32Vector vector, LLVMContext context) {
         CompilerDirectives.transferToInterpreter();
-        throw new IllegalStateException("Not yet implemented");
+        throw new IllegalStateException("Exporting Vectors is not yet supported!");
     }
 
     @Specialization
     public TruffleObject escapingVector(LLVMI1Vector vector, LLVMContext context) {
         CompilerDirectives.transferToInterpreter();
-        throw new IllegalStateException("Not yet implemented");
+        throw new IllegalStateException("Exporting Vectors is not yet supported!");
     }
 
     @Specialization
     public TruffleObject escapingVector(LLVMI16Vector vector, LLVMContext context) {
         CompilerDirectives.transferToInterpreter();
-        throw new IllegalStateException("Not yet implemented");
+        throw new IllegalStateException("Exporting Vectors is not yet supported!");
     }
 
     @Specialization
     public TruffleObject escapingVector(LLVMFloatVector vector, LLVMContext context) {
         CompilerDirectives.transferToInterpreter();
-        throw new IllegalStateException("Not yet implemented");
+        throw new IllegalStateException("Exporting Vectors is not yet supported!");
     }
 
     @Specialization
     public TruffleObject escapingVector(LLVMDoubleVector vector, LLVMContext context) {
         CompilerDirectives.transferToInterpreter();
-        throw new IllegalStateException("Not yet implemented");
+        throw new IllegalStateException("Exporting Vectors is not yet supported!");
     }
 
     @Specialization
     public TruffleObject escapingVarbit(LLVMIVarBit vector, LLVMContext context) {
         CompilerDirectives.transferToInterpreter();
-        throw new IllegalStateException("Not yet implemented");
+        throw new IllegalStateException("Exporting VarBit is not yet supported!");
     }
 
     @Specialization
