@@ -99,8 +99,11 @@ abstract class Content {
         } else {
             digest = Integer.toString(System.identityHashCode(this), 16);
         }
+        if (name != null) {
+            digest += '/' + name;
+        }
         try {
-            return new URI(URI_SCHEME, digest + '/' + name, null);
+            return new URI(URI_SCHEME, digest, null);
         } catch (URISyntaxException ex) {
             throw new Error(ex);    // Should not happen
         }
