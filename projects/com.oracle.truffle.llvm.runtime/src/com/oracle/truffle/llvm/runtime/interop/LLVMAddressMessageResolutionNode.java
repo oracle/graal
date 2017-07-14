@@ -66,7 +66,9 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
             return (PrimitiveType) ((PointerType) t).getPointeeType();
         } else {
             CompilerDirectives.transferToInterpreter();
-            throw new UnsupportedOperationException(t.toString());
+            throw new UnsupportedOperationException(
+                            String.format("Pointer with (currently) unsupported type dereferenced (unsupported: %s) - please only dereference pointers to primitive types from foreign languages (e.g. int*).",
+                                            t.toString()));
         }
     }
 
@@ -76,7 +78,9 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
             return (PrimitiveType) t;
         } else {
             CompilerDirectives.transferToInterpreter();
-            throw new UnsupportedOperationException(t.toString());
+            throw new UnsupportedOperationException(
+                            String.format("Pointer with (currently) unsupported type dereferenced (unsupported: %s) - please only dereference pointers to primitive types from foreign languages (e.g. int*).",
+                                            t.toString()));
         }
     }
 
@@ -155,7 +159,9 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
                     return LLVMMemory.getDouble(ptr + cachedIndex * DOUBLE_SIZE);
                 default:
                     CompilerDirectives.transferToInterpreter();
-                    throw new UnsupportedOperationException();
+                    throw new UnsupportedOperationException(
+                                    String.format("Pointer with (currently) unsupported type dereferenced (unsupported: %s) - please only dereference pointers to primitive types from foreign languages (I1, I8, I16, I32, I64, float, double).",
+                                                    primitiveType.getPrimitiveKind().toString()));
             }
         }
 
@@ -267,7 +273,9 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
                     break;
                 default:
                     CompilerDirectives.transferToInterpreter();
-                    throw new UnsupportedOperationException();
+                    throw new UnsupportedOperationException(
+                                    String.format("Pointer with (currently) unsupported type dereferenced (unsupported: %s) - please only dereference pointers to primitive types from foreign languages (I1, I8, I16, I32, I64, float, double).",
+                                                    primitiveType.getPrimitiveKind().toString()));
             }
         }
 
@@ -413,7 +421,9 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
                     break;
                 default:
                     CompilerDirectives.transferToInterpreter();
-                    throw new UnsupportedOperationException();
+                    throw new UnsupportedOperationException(
+                                    String.format("Pointer with (currently) unsupported type dereferenced (unsupported: %s) - please only dereference pointers to primitive types from foreign languages (I1, I8, I16, I32, I64, float, double).",
+                                                    primitiveType.getPrimitiveKind().toString()));
             }
         }
 
