@@ -1,17 +1,29 @@
 # overlay version
-overlay = 2fa6fa642a6de2b8f07acc7940ce526193d9ab93
+overlay = 29b847f04b62506b6a9e07806ce476e99b6d850a
 
-jdk-downloads: {
-  java8 : {name : openjdk, version : "8u121-jvmci-0.30", platformspecific: true}
-  java9 : {name : labsjdk, version : "9-20170703-141343", platformspecific: true}
-  java9EA : {name : labsjdk, version : "9+176", platformspecific: true}
-  java8Debug : {name : openjdk, version : "8u121-jvmci-0.30-fastdebug", platformspecific: true}
+# labsjdk* are JDKs based on OracleJDK binaries
+# openjdk* are JDKs based on OpenJDK binaries
+jdks: {
+  openjdk8 : {name : openjdk, version : "8u121-jvmci-0.30", platformspecific: true}
   labsjdk8 : {name : labsjdk, version : "8u121-jvmci-0.30", platformspecific: true}
+  labsjdk9 : {name : labsjdk, version : "9-20170703-141343", platformspecific: true}
+  labsjdk9EA : {name : labsjdk, version : "9+176", platformspecific: true}
+  openjdk8Debug : {name : openjdk, version : "8u121-jvmci-0.30-fastdebug", platformspecific: true}
   labsjdk8Debug : {name : labsjdk, version : "8u121-jvmci-0.30-fastdebug", platformspecific: true}
 }
 
 # Overlay placeholder for pinning mx to a specific revision
 mx : {}
+
+labsjdk8 :      { downloads : { JAVA_HOME : ${jdks.labsjdk8} }}
+labsjdk8Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk8Debug} }}
+
+openjdk8 :      { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
+openjdk8Debug : { downloads : { JAVA_HOME : ${jdks.openjdk8Debug} }}
+
+labsjdk9 :      { downloads : { JAVA_HOME : ${jdks.labsjdk9},   EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8} ]} }}
+labsjdk9EA :    { downloads : { JAVA_HOME : ${jdks.labsjdk9EA}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8} ]} }}
+
 
 common : ${mx} {
   timelimit : "30:00"
@@ -66,45 +78,6 @@ linux-sparcv9 : ${linux} {
   capabilities : [linux, sparcv9]
 }
 
-labsjdk8 : {
-  downloads : {
-    JAVA_HOME : ${jdk-downloads.labsjdk8}
-  }
-}
-
-labsjdk8Debug : {
-  downloads : {
-    JAVA_HOME : ${jdk-downloads.labsjdk8Debug}
-  }
-}
-
-java8 : {
-  downloads : {
-    JAVA_HOME : ${jdk-downloads.java8}
-  }
-}
-
-java8Debug : {
-  downloads : {
-    JAVA_HOME : ${jdk-downloads.java8Debug}
-  }
-}
-
-java9 : {
-  downloads : {
-    EXTRA_JAVA_HOMES : { pathlist :[
-      ${jdk-downloads.java8}
-    ]}
-    JAVA_HOME : ${jdk-downloads.java9}
-  }
-}
-
-java9EA : ${java9} {
-  downloads : {
-    JAVA_HOME : ${jdk-downloads.java9EA}
-  }
-}
-
 eclipse : {
   downloads : {
     ECLIPSE : {name: eclipse, version: "4.5.2", platformspecific: true}
@@ -121,7 +94,7 @@ jdt : {
 }
 
 # for cases where a maven package is not easily accessible
-maven-download-unix : ${java8} {
+maven-download-unix : ${labsjdk8} {
   downloads : {
     MAVEN_HOME: {name: maven, version: "3.3.9", platformspecific: false}
   }
@@ -144,7 +117,7 @@ darwin-deploy : ${darwin} ${maven-download-unix} {
   }
 }
 
-deploy-binaries : ${java8} {
+deploy-binaries : ${labsjdk8} {
   targets : [post-merge, deploy]
   run : [
     ["mx", "--strict-compliance", "build"]
@@ -152,7 +125,7 @@ deploy-binaries : ${java8} {
   ]
 }
 
-maven-deploy-dry-run : ${java8} {
+maven-deploy-dry-run : ${labsjdk8} {
   targets : [gate]
   run : [
     ["mx", "--strict-compliance", "build"]

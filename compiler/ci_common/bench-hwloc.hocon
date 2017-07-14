@@ -1,5 +1,5 @@
 # hwloc (Hardware Locality) provides means to bind a process to NUMA nodes
-hwloc.bench-common-8 : {
+hwloc.bench-common : {
   packages: {hwloc: ">=1.9"}
   environment: {
     BASE_BENCH_RESULTS_FILE_NAME: "bench-results.json"
@@ -15,8 +15,8 @@ hwloc.bench-common-8 : {
     "*output.log"
   ]
 }
-hwloc.scala.bench-common-8 : ${hwloc.bench-common-8} {
-  teardown : ${hwloc.bench-common-8.teardown} [
+hwloc.scala.bench-common : ${hwloc.bench-common} {
+  teardown : ${hwloc.bench-common.teardown} [
     ["bench-uploader.py", "--url", "${BENCH_SERVER_URL}", "serial-node0-${BASE_BENCH_RESULTS_FILE_NAME}"]
     ["bench-uploader.py", "--url", "${BENCH_SERVER_URL}", "serial-node1-${BASE_BENCH_RESULTS_FILE_NAME}"]
   ]
@@ -36,7 +36,7 @@ export.node1: [export, "MACHINE_NODE=1", "BENCH_RESULTS_FILE_PATH=node1-${BASE_B
 export.serial.node0: [export, "MACHINE_NODE=0", "BENCH_RESULTS_FILE_PATH=serial-node0-${BASE_BENCH_RESULTS_FILE_NAME}"]
 export.serial.node1: [export, "MACHINE_NODE=1", "BENCH_RESULTS_FILE_PATH=serial-node1-${BASE_BENCH_RESULTS_FILE_NAME}"]
 
-bench-dacapo-hwloc: ${bench-dacapo} ${hwloc.bench-common-8} {
+bench-dacapo-hwloc: ${bench-dacapo} ${hwloc.bench-common} {
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
@@ -47,7 +47,7 @@ bench-dacapo-hwloc: ${bench-dacapo} ${hwloc.bench-common-8} {
   ]
 }
 
-bench-dacapo-timing-hwloc: ${bench-dacapo-timing} ${hwloc.bench-common-8} {
+bench-dacapo-timing-hwloc: ${bench-dacapo-timing} ${hwloc.bench-common} {
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
@@ -58,7 +58,7 @@ bench-dacapo-timing-hwloc: ${bench-dacapo-timing} ${hwloc.bench-common-8} {
   ]
 }
 
-bench-dacapo-move-profiling-hwloc: ${bench-dacapo-move-profiling} ${hwloc.bench-common-8} {
+bench-dacapo-move-profiling-hwloc: ${bench-dacapo-move-profiling} ${hwloc.bench-common} {
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
@@ -82,7 +82,7 @@ bench-hwloc-only-scala-actors : {
 }
 
 
-bench-scala-dacapo-hwloc: ${bench-scala-dacapo} ${hwloc.scala.bench-common-8} {
+bench-scala-dacapo-hwloc: ${bench-scala-dacapo} ${hwloc.scala.bench-common} {
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
@@ -97,7 +97,7 @@ bench-scala-dacapo-hwloc: ${bench-scala-dacapo} ${hwloc.scala.bench-common-8} {
   ]
 }
 
-bench-scala-dacapo-timing-hwloc: ${bench-scala-dacapo-timing} ${hwloc.scala.bench-common-8} {
+bench-scala-dacapo-timing-hwloc: ${bench-scala-dacapo-timing} ${hwloc.scala.bench-common} {
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
@@ -112,7 +112,7 @@ bench-scala-dacapo-timing-hwloc: ${bench-scala-dacapo-timing} ${hwloc.scala.benc
   ]
 }
 
-bench-scala-dacapo-move-profiling-hwloc: ${bench-scala-dacapo-move-profiling} ${hwloc.scala.bench-common-8} {
+bench-scala-dacapo-move-profiling-hwloc: ${bench-scala-dacapo-move-profiling} ${hwloc.scala.bench-common} {
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
@@ -129,7 +129,7 @@ bench-scala-dacapo-move-profiling-hwloc: ${bench-scala-dacapo-move-profiling} ${
 
 # Renaissance-related targets
 
-bench-renaissance-hwloc: ${bench-renaissance} ${hwloc.bench-common-8} {
+bench-renaissance-hwloc: ${bench-renaissance} ${hwloc.bench-common} {
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
