@@ -158,7 +158,7 @@ public abstract class TruffleInstrument {
      * Returns a set of option descriptors that are supported by this instrument. Option values are
      * accessible using the {@link Env#getOptions() environment} when the instrument is
      * {@link #onCreate(Env) created}. By default no options are available for an instrument.
-     * Options returned by this method must specifiy the {@link Registration#id() instrument id} as
+     * Options returned by this method must specify the {@link Registration#id() instrument id} as
      * {@link OptionDescriptor#getName() name} prefix for each option. For example if the id of the
      * instrument is "debugger" then a valid option name would be "debugger.Enabled". The instrument
      * will automatically be {@link #onCreate(Env) created} if one of the specified options was
