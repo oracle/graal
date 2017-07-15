@@ -1619,6 +1619,20 @@ public class PolyglotEngine {
         }
 
         @Override
+        public LanguageInfo getObjectLanguage(Object obj, Object vmObject) {
+            for (LanguageShared ls : ((Instrument) vmObject).getRuntime().getLanguages()) {
+                if (!ls.initialized) {
+                    continue;
+                }
+                Env env = ls.currentLanguage().getEnv(false);
+                if (env != null && LANGUAGE.isObjectOfLanguage(env, obj)) {
+                    return ls.language;
+                }
+            }
+            return null;
+        }
+
+        @Override
         public Object getCurrentVM() {
             return PolyglotEngine.GLOBAL_PROFILE.get();
         }

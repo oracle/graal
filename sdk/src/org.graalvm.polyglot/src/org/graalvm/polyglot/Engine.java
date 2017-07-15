@@ -120,19 +120,6 @@ public final class Engine implements AutoCloseable {
     }
 
     /**
-     * Detects a language for a given source object. Languages implement a way to detect languages
-     * based on its file name or its code. Returns <code>null</code> if the language of the given
-     * source object could not be detected.
-     *
-     * @since 1.0
-     * @deprecated use {@link Source#findLanguage(java.io.File)} instead.
-     */
-    @Deprecated
-    public Language detectLanguage(Source source) {
-        return impl.detectLanguage(source.impl);
-    }
-
-    /**
      * Returns all options available for the engine. The engine offers options with the following
      * {@link OptionDescriptor#getGroup() groups}:
      * <ul>
@@ -151,31 +138,6 @@ public final class Engine implements AutoCloseable {
      */
     public OptionDescriptors getOptions() {
         return impl.getOptions();
-    }
-
-    /**
-     * Creates a new <i>polyglot</i> context that allows access to all installed
-     * {@link #getLanguages() languages}.
-     *
-     * @see Context for further information on context instances.
-     * @see Language#createContext() to create a context for a single language.
-     * @return
-     * @since 1.0
-     * @deprecated use {@link #createContext()} instead.
-     */
-    @SuppressWarnings("deprecation")
-    @Deprecated
-    public org.graalvm.polyglot.PolyglotContext createPolyglotContext() {
-        return new org.graalvm.polyglot.PolyglotContext.Builder(this).build();
-    }
-
-    /**
-     * @deprecated use {@link #createContextBuilder()}
-     */
-    @SuppressWarnings("deprecation")
-    @Deprecated
-    public org.graalvm.polyglot.PolyglotContext.Builder newPolyglotContextBuilder() {
-        return new org.graalvm.polyglot.PolyglotContext.Builder(this);
     }
 
     public String getVersion() {
@@ -254,48 +216,15 @@ public final class Engine implements AutoCloseable {
             return this;
         }
 
-        /**
-         * @deprecated use {@link #out(OutputStream)} instead.
-         */
-        @Deprecated
-        public Builder setOut(OutputStream out) {
-            return out(out);
-        }
-
         public Builder err(OutputStream err) {
             Objects.requireNonNull(err);
             this.err = err;
             return this;
         }
 
-        /**
-         * @deprecated use {@link #err(OutputStream)} instead.
-         */
-        @Deprecated
-        public Builder setErr(OutputStream err) {
-            return err(err);
-        }
-
         public Builder in(InputStream in) {
             Objects.requireNonNull(in);
             this.in = in;
-            return this;
-        }
-
-        /**
-         * @deprecated use {@link #in(InputStream)} instead.
-         */
-        @Deprecated
-        public Builder setIn(InputStream in) {
-            return in(in);
-        }
-
-        /**
-         * @deprecated use {@link #useSystemProperties(boolean)} instead
-         */
-        @Deprecated
-        public Builder setUseSystemProperties(boolean enabled) {
-            useSystemProperties = enabled;
             return this;
         }
 
@@ -322,14 +251,6 @@ public final class Engine implements AutoCloseable {
         }
 
         /**
-         * @deprecated use {@link #option(String, String)} instead.
-         */
-        @Deprecated
-        public Builder setOption(String key, String value) {
-            return option(key, value);
-        }
-
-        /**
          * Sets an option for an {@link Engine engine}, {@link Language language} or
          * {@link Instrument instrument}. If one of the set option keys or values is invalid then an
          * {@link IllegalArgumentException} is thrown when the engine is {@link #build() built}. The
@@ -346,14 +267,6 @@ public final class Engine implements AutoCloseable {
             Objects.requireNonNull(value, "Value must not be null.");
             options.put(key, value);
             return this;
-        }
-
-        /**
-         * @deprecated use {@link #options(Map)} instead
-         */
-        @Deprecated
-        public Builder setOptions(Map<String, String> options) {
-            return options(options);
         }
 
         /**
@@ -391,8 +304,8 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Context newContext(AbstractContextImpl impl, Language languageImpl) {
-            return new Context(impl, languageImpl);
+        public Context newContext(AbstractContextImpl impl) {
+            return new Context(impl);
         }
 
         @Override
@@ -423,12 +336,6 @@ public final class Engine implements AutoCloseable {
         @Override
         public SourceSection newSourceSection(Source source, Object impl) {
             return new SourceSection(source, impl);
-        }
-
-        @Override
-        @SuppressWarnings("deprecation")
-        public org.graalvm.polyglot.PolyglotContext newPolyglotContext(Engine engine, AbstractContextImpl impl) {
-            return new org.graalvm.polyglot.PolyglotContext(engine, impl);
         }
 
         @Override

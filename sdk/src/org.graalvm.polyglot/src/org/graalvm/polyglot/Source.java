@@ -117,7 +117,7 @@ public final class Source {
     }
 
     // non final to support legacy code
-    String language;
+    final String language;
     final Object impl;
 
     Source(String language, Object impl) {
@@ -143,7 +143,7 @@ public final class Source {
      * @since 1.0
      */
     public String getName() {
-        return IMPL.getName(impl);
+        return getImpl().getName(impl);
     }
 
     /**
@@ -153,7 +153,7 @@ public final class Source {
      * @since 1.0
      */
     public String getPath() {
-        return IMPL.getPath(impl);
+        return getImpl().getPath(impl);
     }
 
     /**
@@ -168,7 +168,7 @@ public final class Source {
      * @since 1.0
      */
     public boolean isInteractive() {
-        return IMPL.isInteractive(impl);
+        return getImpl().isInteractive(impl);
     }
 
     /**
@@ -178,7 +178,7 @@ public final class Source {
      * @since 1.0
      */
     public URL getURL() {
-        return IMPL.getURL(impl);
+        return getImpl().getURL(impl);
     }
 
     /**
@@ -192,7 +192,7 @@ public final class Source {
      * @since 1.0
      */
     public URI getURI() {
-        return IMPL.getURI(impl);
+        return getImpl().getURI(impl);
     }
 
     /**
@@ -201,7 +201,7 @@ public final class Source {
      * @since 1.0
      */
     public Reader getReader() {
-        return IMPL.getReader(impl);
+        return getImpl().getReader(impl);
     }
 
     /**
@@ -211,7 +211,7 @@ public final class Source {
      * @since 1.0
      */
     public InputStream getInputStream() {
-        return IMPL.getInputStream(impl);
+        return getImpl().getInputStream(impl);
     }
 
     /**
@@ -221,7 +221,7 @@ public final class Source {
      * @since 1.0
      */
     public int getLength() {
-        return IMPL.getLength(impl);
+        return getImpl().getLength(impl);
     }
 
     /**
@@ -231,7 +231,7 @@ public final class Source {
      * @since 1.0
      */
     public CharSequence getCode() {
-        return IMPL.getCode(impl);
+        return getImpl().getCode(impl);
     }
 
     /**
@@ -241,7 +241,7 @@ public final class Source {
      * @since 1.0
      */
     public CharSequence getCode(int lineNumber) {
-        return IMPL.getCode(impl, lineNumber);
+        return getImpl().getCode(impl, lineNumber);
     }
 
     /**
@@ -252,7 +252,7 @@ public final class Source {
      * @since 1.0
      */
     public int getLineCount() {
-        return IMPL.getLineCount(impl);
+        return getImpl().getLineCount(impl);
     }
 
     /**
@@ -263,7 +263,7 @@ public final class Source {
      * @since 1.0
      */
     public int getLineNumber(int offset) throws IllegalArgumentException {
-        return IMPL.getLineNumber(impl, offset);
+        return getImpl().getLineNumber(impl, offset);
     }
 
     /**
@@ -274,7 +274,7 @@ public final class Source {
      * @since 1.0
      */
     public int getColumnNumber(int offset) throws IllegalArgumentException {
-        return IMPL.getColumnNumber(impl, offset);
+        return getImpl().getColumnNumber(impl, offset);
     }
 
     /**
@@ -284,7 +284,7 @@ public final class Source {
      * @since 1.0
      */
     public int getLineStartOffset(int lineNumber) throws IllegalArgumentException {
-        return IMPL.getLineStartOffset(impl, lineNumber);
+        return getImpl().getLineStartOffset(impl, lineNumber);
     }
 
     /**
@@ -295,7 +295,7 @@ public final class Source {
      * @since 1.0
      */
     public int getLineLength(int lineNumber) throws IllegalArgumentException {
-        return IMPL.getLineLength(impl, lineNumber);
+        return getImpl().getLineLength(impl, lineNumber);
     }
 
     /**
@@ -314,7 +314,7 @@ public final class Source {
      * @since 1.0
      */
     public boolean isInternal() {
-        return IMPL.isInternal(impl);
+        return getImpl().isInternal(impl);
     }
 
     /**
@@ -324,7 +324,7 @@ public final class Source {
      */
     @Override
     public String toString() {
-        return IMPL.toString(impl);
+        return getImpl().toString(impl);
     }
 
     /**
@@ -334,7 +334,7 @@ public final class Source {
      */
     @Override
     public int hashCode() {
-        return IMPL.hashCode(impl);
+        return getImpl().hashCode(impl);
     }
 
     /**
@@ -350,7 +350,7 @@ public final class Source {
         } else {
             return false;
         }
-        return IMPL.equals(impl, otherImpl);
+        return getImpl().equals(impl, otherImpl);
     }
 
     public static Builder newBuilder(String language, CharSequence source, String name) {
@@ -369,35 +369,6 @@ public final class Source {
         return new Builder(language, source).name(name);
     }
 
-    /**
-     * @deprecated use {@link #newBuilder(String, CharSequence)}
-     */
-    @Deprecated
-    public static Builder newBuilder(CharSequence source) {
-        return new Builder(source);
-    }
-
-    /**
-     * @deprecated use {@link #newBuilder(String, File)}
-     */
-    @Deprecated
-    public static Builder newBuilder(File source) {
-        return new Builder(source);
-    }
-
-    /**
-     * @deprecated use {@link #newBuilder(String, File)}
-     */
-    @Deprecated
-    public static Source create(CharSequence source) {
-        try {
-            return newBuilder(source).build();
-        } catch (IOException e) {
-            throw new AssertionError("Should not reach here");
-        }
-
-    }
-
     public static Source create(String language, CharSequence source) {
         return newBuilder(language, source, "Unnamed").buildLiteral();
     }
@@ -411,7 +382,7 @@ public final class Source {
      * @since 1.0
      */
     public static String findLanguage(File file) throws IOException {
-        return IMPL.findLanguage(file);
+        return getImpl().findLanguage(file);
     }
 
     /**
@@ -421,7 +392,7 @@ public final class Source {
      * @since 1.0
      */
     public static String findLanguage(String mimeType) {
-        return IMPL.findLanguage(mimeType);
+        return getImpl().findLanguage(mimeType);
     }
 
     public static class Builder {
@@ -490,14 +461,6 @@ public final class Source {
         }
 
         /**
-         * @deprecated use {@link #interactive(boolean)}
-         */
-        @Deprecated
-        public Builder interactive() {
-            return interactive(true);
-        }
-
-        /**
          * Marks the source as internal. Internal sources are those that aren't created by user, but
          * rather inherently present by the language system. Calling this method influences result
          * of create {@link Source#isInternal()}
@@ -508,14 +471,6 @@ public final class Source {
         public Builder internal(@SuppressWarnings("hiding") boolean internal) {
             this.internal = internal;
             return this;
-        }
-
-        /**
-         * @deprecated use {@link #internal(boolean)}
-         */
-        @Deprecated
-        public Builder internal() {
-            return internal(true);
         }
 
         /**

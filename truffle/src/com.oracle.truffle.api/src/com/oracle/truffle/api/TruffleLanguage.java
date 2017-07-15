@@ -1185,6 +1185,11 @@ public abstract class TruffleLanguage<C> {
             return spi.findSourceLocation(context, rawValue);
         }
 
+        boolean isObjectOfLanguage(Object obj) {
+            final Object rawValue = AccessAPI.engineAccess().findOriginalObject(obj);
+            return spi.isObjectOfLanguage(rawValue);
+        }
+
         void dispose() {
             spi.disposeContext(context);
         }
@@ -1539,6 +1544,11 @@ public abstract class TruffleLanguage<C> {
         @Override
         public SourceSection findSourceLocation(Env env, Object obj) {
             return env.findSourceLocation(obj);
+        }
+
+        @Override
+        public boolean isObjectOfLanguage(Env env, Object value) {
+            return env.isObjectOfLanguage(value);
         }
 
         @Override

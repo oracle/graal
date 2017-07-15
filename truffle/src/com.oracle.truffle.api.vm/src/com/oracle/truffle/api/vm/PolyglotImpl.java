@@ -347,6 +347,22 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
+        public LanguageInfo getObjectLanguage(Object obj, Object vmObject) {
+            PolyglotLanguageContextImpl[] contexts = PolyglotContextImpl.requireContext().contexts;
+            for (PolyglotLanguageContextImpl context : contexts) {
+                PolyglotLanguageImpl language = context.language;
+                if (!language.initialized) {
+                    continue;
+                }
+                Env env = context.env;
+                if (env != null && LANGUAGE.isObjectOfLanguage(env, obj)) {
+                    return language.info;
+                }
+            }
+            return null;
+        }
+
+        @Override
         public Object getCurrentVM() {
             PolyglotContextImpl context = PolyglotContextImpl.current();
             if (context == null) {

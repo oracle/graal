@@ -451,9 +451,24 @@ def _gate_java_benchmark(args, successRe):
     if not re.search(successRe, out.data, re.MULTILINE):
         mx.abort('Could not find benchmark success pattern: ' + successRe)
 
+def _is_batik_supported(jdk):
+    """
+    Determines if Batik runs on the given jdk. Batik's JPEGRegistryEntry contains a reference
+    to TruncatedFileException, which is specific to the Sun/Oracle JDK. On a different JDK,
+    this results in a NoClassDefFoundError: com/sun/image/codec/jpeg/TruncatedFileException
+    """
+    try:
+        subprocess.check_output([jdk.javap, 'com.sun.image.codec.jpeg.TruncatedFileException'])
+        return True
+    except subprocess.CalledProcessError:
+        mx.warn('Batik uses Sun internal class com.sun.image.codec.jpeg.TruncatedFileException which is not present in ' + jdk.home)
+        return False
+
 def _gate_dacapo(name, iterations, extraVMarguments=None):
     vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-Djava.net.preferIPv4Stack=true', '-Dgraal.ExitVMOnException=true'] + _remove_empty_entries(extraVMarguments)
     dacapoJar = mx.library('DACAPO').get_path(True)
+    if name == 'batik' and not _is_batik_supported(jdk):
+        return
     _gate_java_benchmark(vmargs + ['-jar', dacapoJar, name, '-n', str(iterations)], r'^===== DaCapo 9\.12 ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
 
 def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
