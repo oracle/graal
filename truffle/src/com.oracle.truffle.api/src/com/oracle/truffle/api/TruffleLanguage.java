@@ -272,7 +272,7 @@ public abstract class TruffleLanguage<C> {
      * {@link Env#parse(com.oracle.truffle.api.source.Source, java.lang.String...) calls into other
      * languages} and assuming your language is already initialized and others can see it would be
      * wrong - until you return from this method, the initialization isn't over. Should there be a
-     * need to perform complex initializaton, do it by overriding the
+     * need to perform complex initialization, do it by overriding the
      * {@link #initializeContext(java.lang.Object)} method.
      *
      * @param env the environment the language is supposed to operate in
@@ -285,7 +285,7 @@ public abstract class TruffleLanguage<C> {
      * Perform any complex initialization. The
      * {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env) } factory method shouldn't
      * do any complex operations. Just create the instance of the context, let the runtime system
-     * register it properly. Should there be a need to perform complex initializaton, override this
+     * register it properly. Should there be a need to perform complex initialization, override this
      * method and let the runtime call it <em>later</em> to finish any <em>post initialization</em>
      * actions. Example:
      *
@@ -570,7 +570,7 @@ public abstract class TruffleLanguage<C> {
      * @param node node where execution halted, {@code null} if no execution context
      * @param mFrame frame where execution halted, {@code null} if no execution context
      * @return result of running the code in the context, or at top level if no execution context.
-     * @throws Exception if the evaluation cannot be performed
+     * @throws IOException if the evaluation cannot be performed
      * @since 0.8 or earlier
      * @deprecated override {@link #parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest)}
      *             and use {@link ParsingRequest#getFrame()} to obtain the current frame information
@@ -630,7 +630,7 @@ public abstract class TruffleLanguage<C> {
      * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setIn input} streams. When
      * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval} is called over an
      * {@link Source#isInteractive() interactive source} of a language that controls its interactive
-     * behavior, it is the reponsibility of the language itself to print the result to
+     * behavior, it is the responsibility of the language itself to print the result to
      * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut(OutputStream) standard output}
      * or {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setErr(OutputStream) error output}
      * and/or access {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setIn(InputStream)
