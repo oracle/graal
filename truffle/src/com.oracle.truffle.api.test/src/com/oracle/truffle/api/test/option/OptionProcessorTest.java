@@ -49,7 +49,7 @@ public class OptionProcessorTest {
     @Test
     public void testTestLang() {
         Engine engine = Engine.create();
-        OptionDescriptors descriptors = engine.getLanguage("optiontestlang1").getOptions();
+        OptionDescriptors descriptors = engine.getInstruments().get("optiontestlang1").getOptions();
 
         OptionDescriptor descriptor;
         OptionDescriptor descriptor1;
@@ -83,7 +83,7 @@ public class OptionProcessorTest {
     public void testOptionsInstrument() {
 
         Engine engine = Engine.create();
-        OptionDescriptors descriptors = engine.getInstrument("optiontestinstr1").getOptions();
+        OptionDescriptors descriptors = engine.getInstruments().get("optiontestinstr1").getOptions();
 
         OptionDescriptor descriptor;
         OptionDescriptor descriptor1;

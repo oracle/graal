@@ -370,7 +370,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     }
 
     @Override
-    public Language getLanguage(String id) {
+    public Language requirePublicLanguage(String id) {
         checkState();
         Language language = idToPublicLanguage.get(id);
         if (language == null) {
@@ -380,7 +380,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     }
 
     @Override
-    public Instrument getInstrument(String id) {
+    public Instrument requirePublicInstrument(String id) {
         checkState();
         Instrument instrument = idToPublicInstrument.get(id);
         if (instrument == null) {

@@ -85,9 +85,11 @@ public final class Engine implements AutoCloseable {
      * @throws IllegalArgumentException if an invalid language id was provided
      * @see #getLanguages() To get map of all installed languages.
      * @since 1.0
+     * @deprecated use {@link #getLanguage()}.{@link Map#get(Object) get(id)} instead
      */
+    @Deprecated
     public Language getLanguage(String languageId) {
-        return impl.getLanguage(languageId);
+        return impl.requirePublicLanguage(languageId);
     }
 
     /**
@@ -113,9 +115,11 @@ public final class Engine implements AutoCloseable {
      * @throws IllegalArgumentException if an invalid languageId was provided
      * @see #getLanguages() To get map of all installed languages.
      * @since 1.0
+     * @deprecated use {@link #getInstruments()}.{@link Map#get(Object) get(id)} instead
      */
+    @Deprecated
     public Instrument getInstrument(String instrumentId) {
-        return impl.getInstrument(instrumentId);
+        return impl.requirePublicInstrument(instrumentId);
     }
 
     /**

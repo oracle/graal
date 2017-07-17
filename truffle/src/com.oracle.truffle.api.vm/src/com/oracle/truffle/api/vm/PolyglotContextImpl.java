@@ -50,7 +50,6 @@ import java.util.function.Predicate;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -338,8 +337,8 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
     }
 
     @Override
-    public boolean initializeLanguage(AbstractLanguageImpl languageImpl) {
-        PolyglotLanguageImpl language = (PolyglotLanguageImpl) languageImpl;
+    public boolean initializeLanguage(String languageId) {
+        PolyglotLanguageImpl language = requirePublicLanguage(languageId);
         PolyglotLanguageContextImpl languageContext = this.contexts[language.index];
         languageContext.checkAccess();
         Object prev = enter();
@@ -354,12 +353,7 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
 
     @Override
     public Value eval(String languageId, Object sourceImpl) {
-        PolyglotLanguageImpl language = engine.idToLanguage.get(languageId);
-        if (language == null) {
-            engine.getLanguage(languageId); // will trigger the error
-            assert false;
-            return null;
-        }
+        PolyglotLanguageImpl language = requirePublicLanguage(languageId);
         Object prev = enter();
         PolyglotLanguageContextImpl languageContext = contexts[language.index];
         try {
@@ -385,6 +379,16 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
         } finally {
             leave(prev);
         }
+    }
+
+    private PolyglotLanguageImpl requirePublicLanguage(String languageId) {
+        PolyglotLanguageImpl language = engine.idToLanguage.get(languageId);
+        if (language == null) {
+            engine.requirePublicLanguage(languageId); // will trigger the error
+            assert false;
+            return null;
+        }
+        return language;
     }
 
     @TruffleBoundary
@@ -482,9 +486,10 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
     }
 
     @Override
-    public Value lookup(Object languageImpl, String symbolName) {
+    public Value lookup(String languageId, String symbolName) {
+        PolyglotLanguageImpl language = requirePublicLanguage(languageId);
         Object prev = enter();
-        PolyglotLanguageContextImpl languageContext = this.contexts[((PolyglotLanguageImpl) languageImpl).index];
+        PolyglotLanguageContextImpl languageContext = this.contexts[language.index];
         try {
             return languageContext.lookupHost(symbolName);
         } catch (Throwable e) {

@@ -208,13 +208,13 @@ public abstract class AbstractPolyglotImpl {
             Objects.requireNonNull(impl);
         }
 
-        public abstract Value lookup(Object languageImpl, String key);
+        public abstract Value lookup(String language, String key);
 
         public abstract Value importSymbol(String key);
 
         public abstract void exportSymbol(String key, Object value);
 
-        public abstract boolean initializeLanguage(AbstractLanguageImpl languageImpl);
+        public abstract boolean initializeLanguage(String languageId);
 
         public abstract Value eval(String language, Object sourceImpl);
 
@@ -230,9 +230,9 @@ public abstract class AbstractPolyglotImpl {
             Objects.requireNonNull(impl);
         }
 
-        public abstract Language getLanguage(String id);
+        public abstract Language requirePublicLanguage(String id);
 
-        public abstract Instrument getInstrument(String id);
+        public abstract Instrument requirePublicInstrument(String id);
 
         // Runtime
 

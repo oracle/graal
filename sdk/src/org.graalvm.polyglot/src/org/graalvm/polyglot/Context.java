@@ -168,7 +168,7 @@ public final class Context implements AutoCloseable {
      * @since 1.0
      */
     public Value lookup(String languageId, String symbol) {
-        return impl.lookup(getEngine().getLanguage(languageId).impl, symbol);
+        return impl.lookup(languageId, symbol);
     }
 
     /**
@@ -216,7 +216,7 @@ public final class Context implements AutoCloseable {
      * @since 1.0
      */
     public boolean initialize(String languageId) {
-        return impl.initializeLanguage(getEngine().getLanguage(languageId).impl);
+        return impl.initializeLanguage(languageId);
     }
 
     /**
