@@ -92,7 +92,6 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         vmArgs.addAll(extraVmArgs);
 
         Subprocess proc = SubprocessUtil.java(vmArgs, mainClassAndArgs);
-        System.out.println(proc);
 
         String forcedCrashString = "Forced crash after compiling";
         String diagnosticOutputFilePrefix = "Graal diagnostic output saved in ";
