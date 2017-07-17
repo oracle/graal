@@ -372,6 +372,7 @@ import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.LoadMethodNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
+import org.graalvm.compiler.nodes.extended.VolatileReadProxyNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
@@ -1234,6 +1235,10 @@ public class BytecodeParser implements GraphBuilderContext {
             return LoadFieldNode.createOverrideStamp(getConstantFieldProvider(), getConstantReflection(), getMetaAccess(), getOptions(),
                             stamp, receiver, field, false, false);
         }
+    }
+
+    protected VolatileReadProxyNode genVolatileFieldReadProxy(ValueNode fieldRead) {
+        return new VolatileReadProxyNode(fieldRead);
     }
 
     protected ValueNode emitExplicitNullCheck(ValueNode receiver) {
@@ -3788,10 +3793,21 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
 
-        frameState.push(resolvedField.getJavaKind(), append(genLoadField(receiver, resolvedField)));
+        ValueNode fieldRead = append(genLoadField(receiver, resolvedField));
+        frameState.push(resolvedField.getJavaKind(), fieldRead);
+
         if (resolvedField.getDeclaringClass().getName().equals("Ljava/lang/ref/Reference;") && resolvedField.getName().equals("referent")) {
             LocationIdentity referentIdentity = new FieldLocationIdentity(resolvedField);
             append(new MembarNode(0, referentIdentity));
+        }
+
+        if (resolvedField.isVolatile() && fieldRead instanceof LoadFieldNode) {
+            VolatileReadProxyNode readProxy = append(genVolatileFieldReadProxy(fieldRead));
+
+            frameState.pop(resolvedField.getJavaKind());
+            frameState.push(resolvedField.getJavaKind(), readProxy);
+
+            readProxy.setStateAfter(frameState.create(stream.nextBCI(), readProxy));
         }
     }
 
