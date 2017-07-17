@@ -28,16 +28,46 @@ import java.util.Map;
 
 import org.graalvm.polyglot.Value;
 
+/**
+ *
+ *
+ * @since 1.0
+ */
 public interface ProxyObject extends Proxy {
 
+    /**
+     *
+     *
+     * @since 1.0
+     */
     Object getMember(String key);
 
+    /**
+     *
+     *
+     * @since 1.0
+     */
     ProxyArray getMemberKeys();
 
+    /**
+     *
+     *
+     * @since 1.0
+     */
     boolean hasMember(String key);
 
+    /**
+     *
+     *
+     * @since 1.0
+     */
     void putMember(String key, Value value);
 
+    /**
+     *
+     *
+     * @since 1.0
+     */
     static ProxyObject fromMap(Map<String, Object> values) {
         return new ProxyObject() {
 

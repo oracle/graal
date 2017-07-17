@@ -209,8 +209,8 @@ public class NumericNFITest extends NFITest {
 
     private String getPingPongSignature() {
         String fnPointer = String.format("(%s):%s", type, type);
-        String wrapPointer = String.format("(%s):%s", fnPointer, fnPointer);
-        return String.format("(%s, %s) : %s", wrapPointer, type, type);
+        String wrapPointer = String.format("(env, %s):%s", fnPointer, fnPointer);
+        return String.format("(env, %s, %s) : %s", wrapPointer, type, type);
     }
 
     /**

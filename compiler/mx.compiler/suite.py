@@ -1049,7 +1049,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.debug",
-        "sdk:WORD_API",
+        "sdk:GRAAL_SDK",
       ],
       "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -1308,7 +1308,7 @@ suite = {
         "org.graalvm.compiler.graph",
       ],
       "distDependencies" : [
-        "sdk:WORD_API",
+        "sdk:GRAAL_SDK",
         "JVMCI_API",
         "GRAAL_NODEINFO",
         "GRAAL_OPTIONS",
@@ -1474,7 +1474,6 @@ suite = {
       "overlaps" : [
         "GRAAL_OPTIONS",
         "GRAAL_NODEINFO",
-        "sdk:WORD_API",
         "GRAAL_API",
         "GRAAL_COMPILER",
         "GRAAL_RUNTIME",
@@ -1510,6 +1509,7 @@ suite = {
         "org.graalvm.compiler.truffle.hotspot.aarch64",
       ],
       "distDependencies" : [
+        "sdk:GRAAL_SDK",
         "truffle:TRUFFLE_API",
       ],
       "exclude" : [

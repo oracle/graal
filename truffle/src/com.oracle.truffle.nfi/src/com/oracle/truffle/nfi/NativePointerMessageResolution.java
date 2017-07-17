@@ -25,6 +25,7 @@
 package com.oracle.truffle.nfi;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
@@ -43,6 +44,8 @@ class NativePointerMessageResolution {
 
     abstract static class SignatureCacheNode extends Node {
 
+        private final ContextReference<NFIContext> ctxRef = NFILanguage.getCurrentContextReference();
+
         protected abstract LibFFISignature execute(Object signature);
 
         @Specialization(guards = "checkSignature(signature, cachedSignature)")
@@ -57,7 +60,7 @@ class NativePointerMessageResolution {
         @TruffleBoundary
         protected LibFFISignature parse(String signature) {
             NativeSignature parsed = Parser.parseSignature(signature);
-            return LibFFISignature.create(parsed);
+            return LibFFISignature.create(ctxRef.get(), parsed);
         }
 
         protected static boolean checkSignature(String signature, String cachedSignature) {

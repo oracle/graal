@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,37 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.nfi;
+package org.graalvm.nativeimage.c.function;
 
-class NativeAccess {
+import org.graalvm.word.PointerBase;
 
-    static {
-        String nfiLib = System.getProperty("truffle.nfi.library");
-        if (nfiLib == null) {
-            System.loadLibrary("trufflenfi");
-            nfiLib = System.mapLibraryName("trufflenfi");
-        } else {
-            System.load(nfiLib);
-        }
-        initialize(nfiLib, LibFFIType.simpleTypeMap);
-    }
-
-    static void ensureInitialized() {
-    }
-
-    // initialized by native code
-    // Checkstyle: stop field name check
-    static int RTLD_GLOBAL;
-    static int RTLD_LOCAL;
-    static int RTLD_LAZY;
-    static int RTLD_NOW;
-    // Checkstyle: resume field name check
-
-    private static native void initialize(String libName, LibFFIType[] simpleTypeMap);
-
-    static native long loadLibrary(String name, int flags);
-
-    static native void freeLibrary(long library);
-
-    static native long lookup(long library, String name);
+/**
+ * Pointer to executable code. This interface exists mainly to improve static type checking, i.e.,
+ * to prevent mixing code pointers and non-code pointers by accident.
+ */
+public interface CodePointer extends PointerBase {
 }

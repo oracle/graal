@@ -88,6 +88,7 @@ public final class InstrumentRegistrationProcessor extends AbstractProcessor {
             p.setProperty(prefix + "name", annotation.name());
             p.setProperty(prefix + "version", annotation.version());
             p.setProperty(prefix + "className", className);
+            p.setProperty(prefix + "internal", Boolean.toString(annotation.internal()));
 
             int serviceCounter = 0;
             for (AnnotationMirror anno : l.getAnnotationMirrors()) {

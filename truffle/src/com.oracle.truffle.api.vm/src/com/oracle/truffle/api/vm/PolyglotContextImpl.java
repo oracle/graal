@@ -77,6 +77,7 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
     final Map<String, String> options;
     final Map<String, Value> polyglotScope = new HashMap<>();
     final Predicate<String> classFilter;
+    final boolean hostAccessAllowed;
 
     // map from class to language index
     private final FinalIntMap languageIndexMap = new FinalIntMap();
@@ -88,11 +89,13 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
     PolyglotContextImpl(PolyglotEngineImpl engine, final OutputStream out,
                     OutputStream err,
                     InputStream in,
+                    boolean hostAccessAllowed,
                     Predicate<String> classFilter,
                     Map<String, String> options,
                     Map<String, String[]> applicationArguments,
                     Set<String> allowedPublicLanguages) {
         super(engine.impl);
+        this.hostAccessAllowed = hostAccessAllowed;
         this.applicationArguments = applicationArguments;
         this.classFilter = classFilter;
 
@@ -112,7 +115,8 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
         this.engine = engine;
         this.javaInteropCache = new HashMap<>();
         Collection<PolyglotLanguageImpl> languages = engine.idToLanguage.values();
-        this.contexts = new PolyglotLanguageContextImpl[languages.size()];
+        this.contexts = new PolyglotLanguageContextImpl[languages.size() + 1];
+        this.contexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX] = new PolyglotLanguageContextImpl(this, engine.hostLanguage, null, applicationArguments.get(PolyglotEngineImpl.HOST_LANGUAGE_ID));
 
         for (PolyglotLanguageImpl language : languages) {
             OptionValuesImpl values = language.getOptionValues().copy();
@@ -351,6 +355,11 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
     @Override
     public Value eval(String languageId, Object sourceImpl) {
         PolyglotLanguageImpl language = engine.idToLanguage.get(languageId);
+        if (language == null) {
+            engine.getLanguage(languageId); // will trigger the error
+            assert false;
+            return null;
+        }
         Object prev = enter();
         PolyglotLanguageContextImpl languageContext = contexts[language.index];
         try {
@@ -366,7 +375,7 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
             }
             Object result = target.call(PolyglotImpl.EMPTY_ARGS);
 
-            if (source.isInternal()) {
+            if (source.isInteractive()) {
                 printResult(languageContext, result);
             }
 
@@ -477,7 +486,7 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
         Object prev = enter();
         PolyglotLanguageContextImpl languageContext = this.contexts[((PolyglotLanguageImpl) languageImpl).index];
         try {
-            return languageContext.lookup(symbolName);
+            return languageContext.lookupHost(symbolName);
         } catch (Throwable e) {
             throw PolyglotImpl.wrapGuestException(languageContext, e);
         } finally {

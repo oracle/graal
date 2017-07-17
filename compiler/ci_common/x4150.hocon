@@ -16,7 +16,7 @@ x4150.default-g1gc : ${x4150.default} {
 }
 
 builds += [
-  ${x4150.default} ${bench-specjbb2005} { name: "bench-compiler-specjbb2005-linux-x4150"}
+  ${x4150.default} ${bench-specjbb2005} ${openjdk8} { name: "bench-compiler-specjbb2005-linux-x4150"}
 
-  ${x4150.default-g1gc} ${bench-specjbb2005} { targets : [weekly, bench], name: "bench-compiler-specjbb2005-g1gc-linux-x4150"}  
+  ${x4150.default-g1gc} ${bench-specjbb2005} ${openjdk8} { targets : [weekly, bench], name: "bench-compiler-specjbb2005-g1gc-linux-x4150"}  
 ]

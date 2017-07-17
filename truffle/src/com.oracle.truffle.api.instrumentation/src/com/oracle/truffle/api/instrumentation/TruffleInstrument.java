@@ -546,6 +546,14 @@ public abstract class TruffleInstrument {
         String version() default "";
 
         /**
+         * Specifies whether the instrument is accessible using the polyglot API. Internal
+         * instruments are only accessible from other instruments or guest languages.
+         *
+         * @since 0.27
+         */
+        boolean internal() default false;
+
+        /**
          * Declarative list of classes this instrument is known to provide. The instrument is
          * supposed to override its
          * {@link #onCreate(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env) onCreate}

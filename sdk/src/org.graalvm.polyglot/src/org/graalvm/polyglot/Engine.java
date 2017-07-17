@@ -53,18 +53,18 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
  * the installed {@link #getLanguages() guest languages}, {@link #getInstruments() instruments} and
  * their available options.
  * <p>
- * By default every context creates its own {@link Engine engine} instance implicitely when
- * {@link Context.Builder#build() instantiated}. Multiple contexts can share the same engine using
- * {@link Context.Builder#engine(Engine) with the context builder}. If contexts share the same
- * engine then they share instruments and configuration. Also, {@link Value value} instances can
- * only be exchanged between contexts that are associated with same engine.
+ * By default every context creates its own {@link Engine engine} instance implicitly when
+ * {@link Context.Builder#build() instantiated}. Multiple contexts can use an
+ * {@link Context.Builder#engine(Engine) explicit engine} when using a context builder. If contexts
+ * share the same engine instance then they share instruments and its configuration. Also,
+ * {@link Value value} instances can only be exchanged between contexts that are associated with
+ * same engine.
  * <p>
  * It can be useful to {@link Engine#create() create} an engine instance without a context to only
- * access metadata for installed languages, instruments and their available options.
+ * access meta-data for installed languages, instruments and their available options.
  *
  * @since 1.0
  */
-// TODO document that the current context class loader is captured when the engine is created.
 public final class Engine implements AutoCloseable {
 
     final AbstractEngineImpl impl;
@@ -78,14 +78,12 @@ public final class Engine implements AutoCloseable {
     }
 
     /**
-     * Gets an installed language by looking it up using its unique id. Shortcut for
-     * <code>engine.getLanguages().get(languageId)</code>. Returns <code>null</code> if the language
-     * was not found. Examples for language ids are: <code>"js"</code>, <code>"r"</code> or
-     * <code>"ruby"</code>. Throws {@link IllegalArgumentException} if an invalid languageId was
-     * provided. Use the map returned by {@link #getLanguages()} to find out whether a language is
-     * installed.
+     * Gets an installed language by looking up the unique language ID. An example for the language
+     * id of JavaScript for example is <code>"js"</code>.
      *
      * @param languageId the unique of the language
+     * @throws IllegalArgumentException if an invalid language id was provided
+     * @see #getLanguages() To get map of all installed languages.
      * @since 1.0
      */
     public Language getLanguage(String languageId) {
@@ -93,8 +91,8 @@ public final class Engine implements AutoCloseable {
     }
 
     /**
-     * Returns all installed languages mapped using the its unique ids. The returned map is
-     * unmodifiable and might be used from multiple threads.
+     * Gets a map of all installed languages with the language id as key and the language object as
+     * value. The returned map is unmodifiable and might be used from multiple threads.
      *
      * @since 1.0
      */
@@ -102,6 +100,20 @@ public final class Engine implements AutoCloseable {
         return impl.getLanguages();
     }
 
+    /**
+     * Gets an installed instrument by looking it up using its identifier. Shortcut for
+     * <code>engine.getLanguages().get(languageId)</code>.
+     * <p>
+     * An instrument alters and/or monitors the execution of guest language source code. Common
+     * examples for instruments are debuggers, profilers or monitoring tools. Instruments are
+     * enabled via {@link Instrument#getOptions() options} passed to the
+     * {@link Builder#option(String, String) engine} when the engine or context is constructed.
+     *
+     * @param instrumentId the unique of the language
+     * @throws IllegalArgumentException if an invalid languageId was provided
+     * @see #getLanguages() To get map of all installed languages.
+     * @since 1.0
+     */
     public Instrument getInstrument(String instrumentId) {
         return impl.getInstrument(instrumentId);
     }
@@ -109,7 +121,7 @@ public final class Engine implements AutoCloseable {
     /**
      * Gets all installed instruments of this engine. An instrument alters and/or monitors the
      * execution of guest language source code. Common examples for instruments are debuggers,
-     * profilers or monitoring tools. Instruments are enabled via {@link Instrument#getOptions()
+     * profilers, or monitoring tools. Instruments are enabled via {@link Instrument#getOptions()
      * options} passed to the {@link Builder#option(String, String) engine} when the engine or
      * context is constructed.
      *
@@ -121,7 +133,7 @@ public final class Engine implements AutoCloseable {
 
     /**
      * Returns all options available for the engine. The engine offers options with the following
-     * {@link OptionDescriptor#getGroup() groups}:
+     * {@link OptionDescriptor#getKey() groups}:
      * <ul>
      * <li><b>engine</b>: options to configure the behavior of this engine.
      * <li><b>compiler</b>: options to configure the optimizing compiler.
@@ -131,7 +143,7 @@ public final class Engine implements AutoCloseable {
      *
      * @see Language#getOptions() To get a list of options for a language.
      * @see Instrument#getOptions() To get a list of options for an instrument.
-     * @see Builder#option(String, String) To set an option for an engine, language or instrument.
+     * @see Builder#option(String, String) To set an option for an engine, language, or instrument.
      * @see Context.Builder#option(String, String) To set an option for a context.
      *
      * @since 1.0
@@ -140,13 +152,18 @@ public final class Engine implements AutoCloseable {
         return impl.getOptions();
     }
 
+    /**
+     * Gets the version string of the engine in an unspecified format.
+     *
+     * @since 1.0
+     */
     public String getVersion() {
         return impl.getVersion();
     }
 
     /**
      * Closes this engine and frees up allocated native resources. If there are still open context
-     * instances that were created using this engine and they are currently not beeing executed then
+     * instances that were created using this engine and they are currently not being executed then
      * they will be closed automatically. If an attempt to close an engine was successful then
      * consecutive calls to close have no effect. If a context is cancelled then the currently
      * executing thread will throw a {@link PolyglotException}. The exception indicates that it was
@@ -162,9 +179,9 @@ public final class Engine implements AutoCloseable {
 
     /**
      * Closes this engine and frees up allocated native resources. If there are still open context
-     * instances that were created using this engine and they are currently not beeing executed then
-     * all they will be closed automatically. If an an attempt to close the engine was successful
-     * then consecutive calls to close have no effect.
+     * instances that were created using this engine and they are currently not being executed then
+     * they will be closed automatically. If an attempt to close the engine was successful then
+     * consecutive calls to close have no effect.
      *
      * @throws IllegalStateException if there currently executing open context instances.
      * @see #close(boolean)
@@ -176,10 +193,23 @@ public final class Engine implements AutoCloseable {
         close(false);
     }
 
+    /**
+     * Creates a new engine instance with default configuration. The engine is constructed with the
+     * same configuration as it will be as when constructed implicitly using the context builder.
+     *
+     * @see Context#create(String...) to create a new execution context.
+     * @since 1.0
+     */
     public static Engine create() {
         return newBuilder().build();
     }
 
+    /**
+     * Creates a new context builder that allows to configure an engine instance.
+     *
+     * @see Context#newBuilder(String...) to construct a new execution context.
+     * @since 1.0
+     */
     public static Builder newBuilder() {
         return new Builder();
     }
@@ -195,6 +225,10 @@ public final class Engine implements AutoCloseable {
         return getImpl().loadLanguageClass(className);
     }
 
+    /**
+     *
+     * @since 1.0
+     */
     @SuppressWarnings("hiding")
     public static final class Builder {
 
@@ -205,23 +239,46 @@ public final class Engine implements AutoCloseable {
         private boolean useSystemProperties = true;
         private boolean boundEngine;
 
+        /**
+         *
+         *
+         * @since 1.0
+         */
+        Builder() {
+        }
+
         Builder setBoundEngine(boolean boundEngine) {
             this.boundEngine = boundEngine;
             return this;
         }
 
+        /**
+         *
+         *
+         * @since 1.0
+         */
         public Builder out(OutputStream out) {
             Objects.requireNonNull(out);
             this.out = out;
             return this;
         }
 
+        /**
+         *
+         *
+         * @since 1.0
+         */
         public Builder err(OutputStream err) {
             Objects.requireNonNull(err);
             this.err = err;
             return this;
         }
 
+        /**
+         *
+         *
+         * @since 1.0
+         */
         public Builder in(InputStream in) {
             Objects.requireNonNull(in);
             this.in = in;
@@ -230,18 +287,18 @@ public final class Engine implements AutoCloseable {
 
         /**
          * Specifies whether the engine should use {@link System#getProperty(String) system
-         * properties} if no explicit option is {@link #setOption(String, String) set}. The default
+         * properties} if no explicit option is {@link #option(String, String) set}. The default
          * value is <code>true</code> indicating that the system properties should be used. System
          * properties are looked up with the prefix <i>"polyglot"</i> in order to disambiguate
-         * existing system properties. Eg. for the option with the key
-         * <code>"js.ECMACompatiblity"</code> the system property
+         * existing system properties. For example, for the option with the key
+         * <code>"js.ECMACompatiblity"</code>, the system property
          * <code>"polyglot.js.ECMACompatiblity"</code> is read. Invalid options specified using
          * system properties will cause the {@link #build() build} method to fail using an
          * {@link IllegalArgumentException}. System properties are read once when the engine is
          * built and are never updated after that.
          *
          * @param enabled if <code>true</code> system properties will be used as options.
-         * @see #setOption(String, String) To specify option values directly.
+         * @see #option(String, String) To specify option values directly.
          * @see #build() To build the engine instance.
          * @since 1.0
          */
@@ -251,12 +308,14 @@ public final class Engine implements AutoCloseable {
         }
 
         /**
-         * Sets an option for an {@link Engine engine}, {@link Language language} or
-         * {@link Instrument instrument}. If one of the set option keys or values is invalid then an
+         * Sets an option for an {@link Engine#getOptions() engine}, {@link Language#getOptions()
+         * language} or {@link Instrument#getOptions() instrument}.
+         * <p>
+         * If one of the set option keys or values is invalid then an
          * {@link IllegalArgumentException} is thrown when the engine is {@link #build() built}. The
          * given key and value must not be <code>null</code>.
          *
-         * @see Engine#getOptions() To list all available options.
+         * @see Engine#getOptions() To list all available options for engines.
          * @see Language#getOptions() To list all available options for a {@link Language language}.
          * @see Instrument#getOptions() To list all available options for an {@link Instrument
          *      instrument}.
@@ -270,11 +329,11 @@ public final class Engine implements AutoCloseable {
         }
 
         /**
-         * Shortcut for setting multiple {@link #setOption(String, String) options} using a map. All
+         * Shortcut for setting multiple {@link #option(String, String) options} using a map. All
          * values of the provided map must be non-null.
          *
          * @param options a map options.
-         * @see #setOption(String, String) To set a single option.
+         * @see #option(String, String) To set a single option.
          * @since 1.0
          */
         public Builder options(Map<String, String> options) {
@@ -285,6 +344,11 @@ public final class Engine implements AutoCloseable {
             return this;
         }
 
+        /**
+         *
+         *
+         * @since 1.0
+         */
         public Engine build() {
             AbstractPolyglotImpl loadedImpl = getImpl();
             if (loadedImpl == null) {

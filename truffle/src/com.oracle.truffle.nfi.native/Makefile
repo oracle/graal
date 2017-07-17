@@ -30,13 +30,12 @@ QUIETLY$(MX_VERBOSE)  = @
 .PHONY: default
 
 NATIVE_CLASSES=com.oracle.truffle.nfi.ClosureNativePointer \
-	       com.oracle.truffle.nfi.NativeAccess \
 	       com.oracle.truffle.nfi.NativeAllocation \
 	       com.oracle.truffle.nfi.NativeString \
-	       com.oracle.truffle.nfi.LibFFIClosure \
-	       com.oracle.truffle.nfi.LibFFISignature
+	       com.oracle.truffle.nfi.NFIContext
 
-OBJECTS=closure.o \
+OBJECTS=api.o \
+	closure.o \
 	jni.o \
 	lookup.o \
 	signature.o

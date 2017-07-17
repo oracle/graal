@@ -24,10 +24,11 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.util.concurrent.Callable;
+import java.util.HashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -35,6 +36,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -42,8 +44,8 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
 
@@ -136,8 +138,8 @@ public class LanguageSPITest {
         Engine engine = Engine.create();
         langContext = null;
         Context context = Context.newBuilder(LanguageSPITestLanguage.ID).engine(engine).build();
-        LanguageSPITestLanguage.runinside = new Callable<CallTarget>() {
-            public CallTarget call() throws Exception {
+        LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
+            public Object apply(Env t) {
                 context.close();
                 return null;
             }
@@ -152,8 +154,8 @@ public class LanguageSPITest {
         Engine engine = Engine.create();
         langContext = null;
         Context context = Context.newBuilder(LanguageSPITestLanguage.ID).engine(engine).build();
-        LanguageSPITestLanguage.runinside = new Callable<CallTarget>() {
-            public CallTarget call() throws Exception {
+        LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
+            public Object apply(Env t) {
                 context.close(true);
                 return null;
             }
@@ -168,8 +170,8 @@ public class LanguageSPITest {
         Engine engine = Engine.create();
         langContext = null;
         Context context = Context.newBuilder(LanguageSPITestLanguage.ID).engine(engine).build();
-        LanguageSPITestLanguage.runinside = new Callable<CallTarget>() {
-            public CallTarget call() throws Exception {
+        LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
+            public Object apply(Env t) {
                 engine.close();
                 return null;
             }
@@ -183,8 +185,8 @@ public class LanguageSPITest {
         Engine engine = Engine.create();
         langContext = null;
         Context context = Context.newBuilder(LanguageSPITestLanguage.ID).engine(engine).build();
-        LanguageSPITestLanguage.runinside = new Callable<CallTarget>() {
-            public CallTarget call() throws Exception {
+        LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
+            public Object apply(Env t) {
                 engine.close(true);
                 return null;
             }
@@ -215,8 +217,8 @@ public class LanguageSPITest {
             CountDownLatch beforeSleep = new CountDownLatch(1);
             CountDownLatch interrupt = new CountDownLatch(1);
             AtomicInteger gotInterrupt = new AtomicInteger(0);
-            LanguageSPITestLanguage.runinside = new Callable<CallTarget>() {
-                public CallTarget call() throws Exception {
+            LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
+                public Object apply(Env t) {
                     try {
                         beforeSleep.countDown();
                         Thread.sleep(5000);
@@ -276,6 +278,55 @@ public class LanguageSPITest {
 
         // does not fail
         context.getEngine().close();
+    }
+
+    @Test
+    public void testLookupHost() {
+        Context context = Context.newBuilder().allowHostAccess(true).build();
+        LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
+            public Object apply(Env t) {
+                return t.lookupHostSymbol("java.util.HashMap");
+            }
+        };
+        Value value = context.eval(LanguageSPITestLanguage.ID, "");
+        assertTrue(value.isHostObject());
+        Object map = value.asHostObject();
+        assertSame(map, HashMap.class);
+    }
+
+    @Test
+    public void testLookupHostDisabled() {
+        Context context = Context.newBuilder().allowHostAccess(false).build();
+        LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
+            public Object apply(Env t) {
+                return t.lookupHostSymbol("java.util.HashMap");
+            }
+        };
+        try {
+            context.eval(LanguageSPITestLanguage.ID, "");
+            fail();
+        } catch (PolyglotException e) {
+            assertTrue(!e.isInternalError());
+        }
+    }
+
+    @Test
+    public void testIsHostAccessAllowed() {
+        Context context = Context.newBuilder().allowHostAccess(false).build();
+        LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
+            public Object apply(Env t) {
+                return t.isHostLookupAllowed();
+            }
+        };
+        assertTrue(!context.eval(LanguageSPITestLanguage.ID, "").asBoolean());
+
+        context = Context.newBuilder().allowHostAccess(true).build();
+        LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
+            public Object apply(Env t) {
+                return t.isHostLookupAllowed();
+            }
+        };
+        assertTrue(context.eval(LanguageSPITestLanguage.ID, "").asBoolean());
     }
 
 }

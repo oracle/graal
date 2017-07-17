@@ -16,7 +16,7 @@ x32.default-g1gc : ${x32.default} {
 }
 
 builds += [
-  ${x32.default} ${bench-renaissance-hwloc}         { name: "bench-compiler-renaissance-linux-x32" }
+  ${x32.default} ${bench-renaissance-hwloc}       ${openjdk8} { name: "bench-compiler-renaissance-linux-x32" }
 
-  ${x32.default-g1gc} ${bench-renaissance-hwloc}         { targets : [weekly, bench], name: "bench-compiler-renaissance-g1gc-linux-x32" }  
+  ${x32.default-g1gc} ${bench-renaissance-hwloc}  ${openjdk8} { targets : [weekly, bench], name: "bench-compiler-renaissance-g1gc-linux-x32" }  
 ]

@@ -39,6 +39,7 @@ abstract class NativeArgumentBuffer {
         OBJECT,
         STRING,
         CLOSURE,
+        ENV,
 
         BOOLEAN_ARRAY,
         BYTE_ARRAY,

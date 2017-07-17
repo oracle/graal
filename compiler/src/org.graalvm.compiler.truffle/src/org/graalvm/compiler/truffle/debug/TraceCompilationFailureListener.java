@@ -22,12 +22,14 @@
  */
 package org.graalvm.compiler.truffle.debug;
 
-import static org.graalvm.compiler.core.GraalCompilerOptions.PrintBailout;
+import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationBailoutAction;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
@@ -45,13 +47,17 @@ public final class TraceCompilationFailureListener extends AbstractDebugCompilat
 
     @Override
     public void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t) {
-        // if we failed compilation via cancellation graph might be null (depending on time of
-        // cancellation)
-        if (isPermanentBailout(t) || PrintBailout.getValue(graph == null ? TruffleCompilerOptions.getOptions() : graph.getOptions())) {
+        if (isPermanentBailout(t) || bailoutActionIsPrintOrGreater(graph)) {
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("Reason", t.toString());
             log(0, "opt fail", target.toString(), properties);
         }
+    }
+
+    private static boolean bailoutActionIsPrintOrGreater(StructuredGraph graph) {
+        // If failed compilation via cancellation, the graph might be null.
+        OptionValues options = graph == null ? TruffleCompilerOptions.getOptions() : graph.getOptions();
+        return CompilationBailoutAction.getValue(options).ordinal() >= ExceptionAction.Print.ordinal();
     }
 
     public static boolean isPermanentBailout(Throwable t) {

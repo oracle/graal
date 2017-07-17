@@ -917,6 +917,35 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Looks up a Java class in the top-most scope the host environment. Returns
+         * <code>null</code> if no symbol was found.
+         * <p>
+         * The returned object can either be <code>TruffleObject</code> (e.g. a native object from
+         * the other language) to support interoperability between languages, {@link String} or one
+         * of the Java primitive wrappers ( {@link Integer}, {@link Double}, {@link Byte},
+         * {@link Boolean}, etc.).
+         * <p>
+         *
+         * @param symbolName the name of the symbol in the the host language.
+         * @since 0.27
+         */
+        @TruffleBoundary
+        public Object lookupHostSymbol(String symbolName) {
+            return AccessAPI.engineAccess().lookupHostSymbol(vmObject, this, symbolName);
+        }
+
+        /**
+         * Returns <code>true</code> if host access is generally allowed. If this method returns
+         * <code>false</code> then {@link #lookupHostSymbol(String)} will always fail.
+         *
+         * @since 0.27
+         */
+        @TruffleBoundary
+        public boolean isHostLookupAllowed() {
+            return AccessAPI.engineAccess().isHostAccessAllowed(vmObject, this);
+        }
+
+        /**
          * Returns an iterable collection of global symbols that are exported for a given name.
          * Multiple languages may export a symbol with a particular name. This method is intended to
          * be used to disambiguate exported symbols. The objects returned from the iterable conform

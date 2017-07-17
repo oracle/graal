@@ -57,6 +57,7 @@ final class InstrumentCache {
     private final String id;
     private final String name;
     private final String version;
+    private final boolean internal;
     private final ClassLoader loader;
     private final Set<String> services;
 
@@ -87,6 +88,7 @@ final class InstrumentCache {
         this.className = info.getProperty(prefix + "className");
         this.name = info.getProperty(prefix + "name");
         this.version = info.getProperty(prefix + "version");
+        this.internal = Boolean.valueOf(info.getProperty(prefix + "internal"));
         String loadedId = info.getProperty(prefix + "id");
         if (loadedId.equals("")) {
             /* use class name default id */
@@ -111,6 +113,10 @@ final class InstrumentCache {
         if (TruffleOptions.AOT) {
             loadClass();
         }
+    }
+
+    public boolean isInternal() {
+        return internal;
     }
 
     static List<InstrumentCache> load(Collection<ClassLoader> loaders) {

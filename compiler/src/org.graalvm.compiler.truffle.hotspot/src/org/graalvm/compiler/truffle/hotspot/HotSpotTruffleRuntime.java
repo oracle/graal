@@ -44,9 +44,10 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompilationRequestIdentifier;
 import org.graalvm.compiler.core.target.Backend;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Activation;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
@@ -55,7 +56,6 @@ import org.graalvm.compiler.hotspot.HotSpotCompilationIdentifier;
 import org.graalvm.compiler.hotspot.HotSpotCompiledCodeBuilder;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
-import org.graalvm.compiler.hotspot.HotSpotRetryableCompilation;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
@@ -77,7 +77,6 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.compiler.truffle.CancellableCompileTask;
 import org.graalvm.compiler.truffle.DefaultTruffleCompiler;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
@@ -208,22 +207,9 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    protected void compileMethod(DebugContext initialDebug, TruffleCompiler compiler, OptimizedCallTarget optimizedCallTarget, ResolvedJavaMethod rootMethod, CompilationIdentifier compilationId,
-                    CancellableCompileTask task) {
+    protected DiagnosticsOutputDirectory getDebugOutputDirectory() {
         HotSpotGraalRuntimeProvider runtime = (HotSpotGraalRuntimeProvider) getRequiredGraalCapability(RuntimeProvider.class);
-        HotSpotRetryableCompilation<Void> compilation = new HotSpotRetryableCompilation<Void>(runtime) {
-            @Override
-            protected Void run(DebugContext debug, Throwable failure) {
-                HotSpotTruffleRuntime.super.compileMethod(debug, compiler, optimizedCallTarget, rootMethod, compilationId, task);
-                return null;
-            }
-
-            @Override
-            public String toString() {
-                return optimizedCallTarget.toString();
-            }
-        };
-        compilation.runWithRetry(initialDebug);
+        return runtime.getOutputDirectory();
     }
 
     @Override

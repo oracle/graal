@@ -13,9 +13,9 @@ gateLite : ${truffleCommon} {
 }
 
 builds += [
-  ${linux-amd64} ${java8} ${truffleCommon} ${eclipse} ${jdt} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-8"},
-  ${linux-amd64} ${java9} ${truffleCommon} ${eclipse} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-9"},
-  ${linux-amd64} ${java8} ${truffleCommon} {
+  ${linux-amd64} ${openjdk8} ${truffleCommon} ${eclipse} ${jdt} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-8"},
+  ${linux-amd64} ${labsjdk9} ${truffleCommon} ${eclipse} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-9"},
+  ${linux-amd64} ${openjdk8} ${truffleCommon} {
     run : [
         ["mx", "build"],
         ["mx", "javadoc"],
@@ -24,23 +24,23 @@ builds += [
     name: "gate-truffle-javadoc"
   },
   ${linux-amd64} ${linux-deploy} ${maven-deploy-dry-run} ${truffleCommon} {name: "gate-truffle-maven-dry-run"}
-  ${solaris-sparcv9} ${java8} ${gateLite} {
+  ${solaris-sparcv9} ${labsjdk8} ${gateLite} {
     targets : [ weekly ],
     name: "gate-truffle-solaris-lite-8"
   }
-  ${solaris-sparcv9} ${java9} ${gateLite} {
+  ${solaris-sparcv9} ${labsjdk9} ${gateLite} {
     targets : [ weekly ],
     name: "gate-truffle-solaris-lite-9"
   }
-  ${darwin-amd64} ${java8} ${gateLite} {
+  ${darwin-amd64} ${labsjdk8} ${gateLite} {
     targets : [ weekly ],
     name: "gate-truffle-mac-lite-8"
   }
-  ${darwin-amd64} ${java9} ${gateLite} {
+  ${darwin-amd64} ${labsjdk9} ${gateLite} {
     targets : [ weekly ],
     name: "gate-truffle-mac-lite-9"
   }
-  ${linux-amd64} ${java8} ${truffleCommon} {
+  ${linux-amd64} ${openjdk8} ${truffleCommon} {
     run : [
         ["mx", "build"],
         ["mx", "javadoc"],

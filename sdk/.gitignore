@@ -1,5 +1,5 @@
 mxbuild/**/*
-javadoc/**/*
+**/javadoc/**/*
 virtualenv/**/*
 downloads/**/*
 mx.sdk/*.pyc

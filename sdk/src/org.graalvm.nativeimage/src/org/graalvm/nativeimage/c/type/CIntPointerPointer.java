@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.interop.java;
+package org.graalvm.nativeimage.c.type;
 
-import com.oracle.truffle.api.interop.Message;
+import org.graalvm.nativeimage.c.struct.CPointerTo;
+import org.graalvm.word.PointerBase;
+import org.graalvm.word.SignedWord;
 
-final class ClassMessage extends Message {
-    private ClassMessage() {
-    }
+/**
+ * A pointer to a pointer to a 32-bit C primitive value.
+ */
+@CPointerTo(CIntPointer.class)
+public interface CIntPointerPointer extends PointerBase {
 
-    static final ClassMessage INSTANCE = new ClassMessage();
+    CIntPointer read();
 
-    @Override
-    public boolean equals(Object message) {
-        return message != null && message.getClass() == getClass();
-    }
+    CIntPointer read(int index);
 
-    @Override
-    public int hashCode() {
-        return getClass().hashCode();
-    }
+    CIntPointer read(SignedWord index);
+
+    void write(CIntPointer value);
+
+    void write(int index, CIntPointer value);
+
+    void write(SignedWord index, CIntPointer value);
+
+    CIntPointerPointer addressOf(int index);
+
+    CIntPointerPointer addressOf(SignedWord index);
 }
