@@ -35,16 +35,16 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.spi.LimitedValueProxy;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.spi.ValueProxy;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
 /**
  * Helper node that prevents deoptimization from rolling back a volatile read.
  */
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public final class VolatileReadProxyNode extends FixedWithNextNode implements Canonicalizable, LimitedValueProxy, Lowerable, StateSplit {
+public final class VolatileReadProxyNode extends FixedWithNextNode implements Canonicalizable, GuardingNode, Lowerable, StateSplit, ValueProxy {
 
     public static final NodeClass<VolatileReadProxyNode> TYPE = NodeClass.create(VolatileReadProxyNode.class);
 
@@ -94,6 +94,11 @@ public final class VolatileReadProxyNode extends FixedWithNextNode implements Ca
     @Override
     public ValueNode getOriginalNode() {
         return fieldRead;
+    }
+
+    @Override
+    public GuardingNode getGuard() {
+        return this;
     }
 
 }
