@@ -33,18 +33,22 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
+import com.oracle.truffle.llvm.parser.metadata.MDCompileUnit;
 import com.oracle.truffle.llvm.parser.metadata.MDFile;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
 import com.oracle.truffle.llvm.parser.metadata.MDLexicalBlock;
 import com.oracle.truffle.llvm.parser.metadata.MDLexicalBlockFile;
 import com.oracle.truffle.llvm.parser.metadata.MDLocation;
+import com.oracle.truffle.llvm.parser.metadata.MDNamedNode;
+import com.oracle.truffle.llvm.parser.metadata.MDOldNode;
 import com.oracle.truffle.llvm.parser.metadata.MDReference;
 import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
+import com.oracle.truffle.llvm.parser.metadata.MDTypedValue;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Call;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
@@ -192,7 +196,10 @@ final class SourceSectionGenerator {
         if (visitor.line <= 0 && instruction instanceof Call) {
             Symbol callTarget = ((Call) instruction).getCallTarget();
             if (callTarget instanceof FunctionDefinition) {
-                getFunctionDIAttachment((FunctionDefinition) callTarget).orElse(MDReference.VOID).accept(visitor);
+                final MDBaseNode di = getFunctionDI((FunctionDefinition) callTarget);
+                if (di != null) {
+                    di.accept(visitor);
+                }
             }
         }
 
@@ -200,15 +207,70 @@ final class SourceSectionGenerator {
     }
 
     SourceSection getOrDefault(FunctionDefinition function) {
-        return getFunctionDIAttachment(function).map(di -> {
+        final MDBaseNode di = getFunctionDI(function);
+        if (di != null) {
             SSVisitor visitor = new SSVisitor();
             di.accept(visitor);
             return visitor.generateSourceSection();
-        }).orElse(null);
+        }
+        return null;
     }
 
-    private static Optional<MDBaseNode> getFunctionDIAttachment(FunctionDefinition function) {
-        return Optional.ofNullable(function.getMetadataAttachment(MDKind.DBG_NAME));
+    private static MDBaseNode getFunctionDI(FunctionDefinition function) {
+        final MDBaseNode functionAttachment = function.getMetadataAttachment(MDKind.DBG_NAME);
+        if (functionAttachment != null) {
+            return functionAttachment;
+        }
+
+        final MDNamedNode cuNode = function.getMetadata().find(MDNamedNode.COMPILEUNIT_NAME);
+        if (cuNode == null) {
+            return null;
+        }
+
+        final FindOldSubprogramVisitor visitor = new FindOldSubprogramVisitor(function);
+        for (MDReference ref : cuNode) {
+            if (ref != MDReference.VOID) {
+                final MDBaseNode target = ref.get();
+                if (target instanceof MDCompileUnit) {
+                    final MDCompileUnit cu = (MDCompileUnit) target;
+                    if (cu.getSubprograms() != MDReference.VOID) {
+                        cu.getSubprograms().accept(visitor);
+                        if (visitor.found != null) {
+                            return visitor.found;
+                        }
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static final class FindOldSubprogramVisitor implements MDFollowRefVisitor {
+
+        private final FunctionDefinition search;
+
+        private MDSubprogram found = null;
+
+        private FindOldSubprogramVisitor(FunctionDefinition search) {
+            this.search = search;
+        }
+
+        @Override
+        public void visit(MDOldNode md) {
+            for (MDTypedValue value : md) {
+                if (value instanceof MDReference) {
+                    ((MDReference) value).accept(this);
+                }
+            }
+        }
+
+        @Override
+        public void visit(MDSubprogram md) {
+            if (search.equals(md.getFunction().get())) {
+                found = md;
+            }
+        }
     }
 
     static final String MIMETYPE_PLAINTEXT = "text/plain";

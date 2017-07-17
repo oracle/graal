@@ -49,6 +49,21 @@ public final class MetadataList {
         namedMetadata.add(namedNode);
     }
 
+    public MDNamedNode find(String name) {
+        if (parent != null) {
+            final MDNamedNode parentResult = parent.find(name);
+            if (parentResult != null) {
+                return parentResult;
+            }
+        }
+        for (MDNamedNode namedNode : namedMetadata) {
+            if (namedNode.getName().equals(name)) {
+                return namedNode;
+            }
+        }
+        return null;
+    }
+
     public void addKind(MDKind newKind) {
         mdKinds.add(newKind);
     }

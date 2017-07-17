@@ -33,6 +33,8 @@ import java.util.ArrayList;
 
 public final class MDNamedNode extends ArrayList<MDReference> implements MDBaseNode {
 
+    public static final String COMPILEUNIT_NAME = "llvm.dbg.cu";
+
     private static final long serialVersionUID = 1L;
 
     private final String name;
