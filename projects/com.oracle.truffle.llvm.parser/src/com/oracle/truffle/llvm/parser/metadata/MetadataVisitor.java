@@ -180,4 +180,8 @@ public interface MetadataVisitor {
     default void visit(MDLocation alias) {
         ifVisitNotOverwritten(alias);
     }
+
+    default void visit(MDGlobalVariableExpression alias) {
+        ifVisitNotOverwritten(alias);
+    }
 }

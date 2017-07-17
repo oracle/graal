@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,55 +27,37 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.records;
+package com.oracle.truffle.llvm.parser.metadata;
 
-public enum MetadataRecord {
-    UNKNOWN,
-    STRING,
-    VALUE,
-    NODE,
-    NAME,
-    DISTINCT_NODE,
-    KIND,
-    LOCATION,
-    OLD_NODE,
-    OLD_FN_NODE,
-    NAMED_NODE,
-    ATTACHMENT,
-    GENERIC_DEBUG,
-    SUBRANGE,
-    ENUMERATOR,
-    BASIC_TYPE,
-    FILE,
-    DERIVED_TYPE,
-    COMPOSITE_TYPE,
-    SUBROUTINE_TYPE,
-    COMPILE_UNIT,
-    SUBPROGRAM,
-    LEXICAL_BLOCK,
-    LEXICAL_BLOCK_FILE,
-    NAMESPACE,
-    TEMPLATE_TYPE,
-    TEMPLATE_VALUE,
-    GLOBAL_VAR,
-    LOCAL_VAR,
-    EXPRESSION,
-    OBJC_PROPERTY,
-    IMPORTED_ENTITY,
-    MODULE,
-    MACRO,
-    MACRO_FILE,
-    STRINGS,
-    GLOBAL_DECL_ATTACHMENT,
-    GLOBAL_VAR_EXPR,
-    INDEX_OFFSET,
-    INDEX;
+public final class MDGlobalVariableExpression implements MDBaseNode {
 
-    public static MetadataRecord decode(long id) {
-        if (id >= 0 && id < values().length) {
-            return values()[(int) id];
-        } else {
-            return UNKNOWN;
-        }
+    private static final int ARGINDEX_VARIABLE = 1;
+    private static final int ARGINDEX_EXPRESSION = 2;
+
+    private final MDReference globalVariable;
+    private final MDReference expression;
+
+    public MDGlobalVariableExpression(MDReference globalVariable, MDReference expression) {
+        this.globalVariable = globalVariable;
+        this.expression = expression;
+    }
+
+    public static MDGlobalVariableExpression create(long[] args, MetadataList md) {
+        final MDReference varRef = md.getMDRefOrNullRef(args[ARGINDEX_VARIABLE]);
+        final MDReference exprRef = md.getMDRefOrNullRef(args[ARGINDEX_EXPRESSION]);
+        return new MDGlobalVariableExpression(varRef, exprRef);
+    }
+
+    public MDReference getGlobalVariable() {
+        return globalVariable;
+    }
+
+    public MDReference getExpression() {
+        return expression;
+    }
+
+    @Override
+    public void accept(MetadataVisitor visitor) {
+        visitor.visit(this);
     }
 }
