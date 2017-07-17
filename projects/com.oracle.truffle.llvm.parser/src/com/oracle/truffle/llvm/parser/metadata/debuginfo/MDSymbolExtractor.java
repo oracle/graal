@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
+import com.oracle.truffle.llvm.parser.metadata.MDFnNode;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDSymbolReference;
 import com.oracle.truffle.llvm.parser.metadata.MDValue;
@@ -64,6 +65,11 @@ final class MDSymbolExtractor implements MDFollowRefVisitor {
         if (symRef.isPresent()) {
             sym = symRef.get();
         }
+    }
+
+    @Override
+    public void visit(MDFnNode fnNode) {
+        fnNode.getPointer().accept(this);
     }
 
     @Override

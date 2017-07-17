@@ -292,22 +292,24 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         if (target instanceof FunctionDeclaration) {
             final String name = ((FunctionDeclaration) target).getName();
-            if ("@llvm.dbg.declare".equals(name) && call.getArgumentCount() >= 3) {
+            if ("@llvm.dbg.declare".equals(name) && call.getArgumentCount() >= 1) {
                 if (runtime.getContext().getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
                     Symbol allocationSiteSymbol = call.getArgument(0);
                     if (allocationSiteSymbol instanceof MetadataConstant) {
                         Symbol resolvedAllocationSiteSymbol = symbols.getSymbol((MetadataConstant) allocationSiteSymbol);
                         if (resolvedAllocationSiteSymbol != null && resolvedAllocationSiteSymbol instanceof ValueInstruction) {
                             SourceModel.Variable var = ((ValueInstruction) resolvedAllocationSiteSymbol).getSourceVariable();
-                            FrameSlot valueSlot = frame.findFrameSlot(((ValueInstruction) resolvedAllocationSiteSymbol).getFrameSlotName());
-                            FrameSlot debugSlot = frame.findOrAddFrameSlot(LLVMDebugSlotType.FRAMESLOT_NAME, FrameSlotKind.Object);
-                            // TODO the argument to the call is a metadata constant so lifetime
-                            // analysis does not consider that the referenced object needs to be
-                            // alive at this point
-                            LLVMExpressionNode valueRead = nodeFactory.createFrameRead(runtime, resolvedAllocationSiteSymbol.getType(), valueSlot);
-                            LLVMExpressionNode debugDeclaration = nodeFactory.createLocalDebugDeclaration(var.getName(), var.getType(), debugSlot, valueRead);
-                            addInstruction(debugDeclaration);
-                            return;
+                            if (var != null) {
+                                FrameSlot valueSlot = frame.findFrameSlot(((ValueInstruction) resolvedAllocationSiteSymbol).getFrameSlotName());
+                                FrameSlot debugSlot = frame.findOrAddFrameSlot(LLVMDebugSlotType.FRAMESLOT_NAME, FrameSlotKind.Object);
+                                // TODO the argument to the call is a metadata constant so lifetime
+                                // analysis does not consider that the referenced object needs to be
+                                // alive at this point
+                                LLVMExpressionNode valueRead = nodeFactory.createFrameRead(runtime, resolvedAllocationSiteSymbol.getType(), valueSlot);
+                                LLVMExpressionNode debugDeclaration = nodeFactory.createLocalDebugDeclaration(var.getName(), var.getType(), debugSlot, valueRead);
+                                addInstruction(debugDeclaration);
+                                return;
+                            }
                         }
                     }
                 }

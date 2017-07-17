@@ -37,8 +37,10 @@ import com.oracle.truffle.llvm.parser.metadata.MDEnumerator;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDNode;
+import com.oracle.truffle.llvm.parser.metadata.MDOldNode;
 import com.oracle.truffle.llvm.parser.metadata.MDReference;
 import com.oracle.truffle.llvm.parser.metadata.MDSubrange;
+import com.oracle.truffle.llvm.parser.metadata.MDTypedValue;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugBasicType;
@@ -367,9 +369,21 @@ final class MDTypeExtractor implements MetadataVisitor {
         if (elemList instanceof MDNode) {
             MDNode elemListNode = (MDNode) elemList;
             for (MDBaseNode elemNode : elemListNode) {
-                elemNode.accept(this);
                 if (elemNode != MDReference.VOID && elemNode instanceof MDReference) {
+                    elemNode.accept(this);
                     final LLVMDebugType elemType = parsedTypes.get(((MDReference) elemNode).get());
+                    if (elemType != LLVMDebugType.UNKNOWN_TYPE) {
+                        elemTypes.add(elemType);
+                    }
+                }
+            }
+        } else if (elemList instanceof MDOldNode) {
+            MDOldNode elemListNode = (MDOldNode) elemList;
+            for (MDTypedValue elemNode : elemListNode) {
+                if (elemNode != MDReference.VOID && elemNode instanceof MDReference) {
+                    MDReference elementReference = (MDReference) elemNode;
+                    elementReference.accept(this);
+                    final LLVMDebugType elemType = parsedTypes.get(elementReference.get());
                     if (elemType != LLVMDebugType.UNKNOWN_TYPE) {
                         elemTypes.add(elemType);
                     }
