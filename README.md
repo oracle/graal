@@ -199,53 +199,6 @@ linker, and backends then operate on the LLVM bitcode, to finally produce
 machine code. LLVM envisions that transformations and analyses can be
 applied during compile-time, link-time, runtime, and offline.
 
-What is LLVM bitcode?
----------------------
-
-LLVM bitcode is a language that resembles assembler, but which provides
-type-safety and has virtual registers that are in Static Single
-Assignment (SSA) form.
-
-Consider the following C program:
-
-```C
-#include <stdio.h>
-
-int main() {
-    printf("Hello World \n");
-}
-```
-
-When compiling the C file with Clang to human readable LLVM bitcode with
-`clang -O3 -emit-llvm -c -o test.bc test.c` and looking at the `test.ll`
-file, one can see a LLVM bitcode program that looks similar to the following:
-
-```
-; ModuleID = 'test.c'
-target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-
-    i64:64:64-f32:32:32-f64:64:64-v64:64:64-v128:128:128-a0:0:64-
-    s0:64:64-f80:128:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
-
-@.str = private unnamed_addr constant [14 x i8]
-    c"Hello World \0A\00", align 1
-@str = internal constant [13 x i8] c"Hello World \00"
-
-define i32 @main() nounwind uwtable {
-  %puts = tail call i32 @puts(i8* getelementptr inbounds
-    ([13 x i8]* @str, i64 0, i64 0))
-  ret i32 0
-}
-
-declare i32 @puts(i8* nocapture) nounwind
-```
-
-The file contains a `datalayout` and `triple` that specifies how data
-should be laid out in memory, and which architecture should be targeted
-in the backend. One can also see global the global variables `@.str` and
-`@str`, the `@main` function as an entry to the program, and the
-`@puts` function declaration that refers to the C standard library
-`puts` function.
 
 What is Truffle?
 ----------------
@@ -256,23 +209,8 @@ to implement a (guest) language as an Abstract Syntax Tree (AST)
 interpreter. Additionally, Truffle provides many language independent
 facilities to the host language such as profiling, debugging, and
 language interoperability. When a Truffle AST is executed often and then
-JIT-compiled with Graal, Graal can exploit its knowledge about the
-Truffle framework and produce efficient machine code. Normally, the
-Truffle implementation can also run on any other JVM.
-However, Truffle LLVM relies on the Foreign Function Interface (FFI) of
-Graal to provide native interoperability (e.g., to call the native
-malloc) and thus has a direct dependency on Graal.
-
-What is Graal?
--------------
-
-[Graal](https://github.com/graalvm/graal/tree/master/compiler) is a JIT
-compiler written in Java that receives Java bytecode as
-an input and produces machine code. Currently, Graal is an alternative
-to the C1 and C2 compilers of the HotSpot VM. The term GraalVM refers to
-a HotSpot VM using Graal as its JIT compiler. Graal's focus is on
-speculative optimizations, while it also provides an advanced partial
-escape analysis.
+dynamically compiled with Graal, Graal can exploit its knowledge about the
+Truffle framework and produce efficient machine code.
 
 Build Status
 ------------
