@@ -37,6 +37,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -203,23 +204,33 @@ public abstract class LLVMCMathsIntrinsics {
     public abstract static class LLVMPow extends LLVMIntrinsic {
 
         @Specialization
-        public double executeIntrinsic(double a, double b) {
-            return Math.pow(a, b);
-        }
-
-        @Specialization
-        public double executeIntrinsic(double a, int b) {
-            return Math.pow(a, b);
-        }
-
-        @Specialization
-        public float executeDouble(float val, float pow) {
+        public float executeFloat(float val, int pow) {
             return (float) Math.pow(val, pow);
         }
 
         @Specialization
-        public float executeDouble(float val, int pow) {
+        public float executeFloat(float val, float pow) {
             return (float) Math.pow(val, pow);
+        }
+
+        @Specialization
+        public double executeDouble(double a, int b) {
+            return Math.pow(a, b);
+        }
+
+        @Specialization
+        public double executeDouble(double a, double b) {
+            return Math.pow(a, b);
+        }
+
+        @Specialization
+        public LLVM80BitFloat execute80BitFloat(LLVM80BitFloat val, int pow) {
+            return val.pow(pow);
+        }
+
+        @Specialization
+        public LLVM80BitFloat execute80BitFloat(LLVM80BitFloat val, LLVM80BitFloat pow) {
+            return val.pow(pow);
         }
 
         @Override

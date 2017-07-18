@@ -333,6 +333,14 @@ public final class LLVM80BitFloat {
         return fromDouble(getDoubleValue() % right.getDoubleValue());
     }
 
+    public LLVM80BitFloat pow(int right) {
+        return fromDouble(Math.pow(getDoubleValue(), right));
+    }
+
+    public LLVM80BitFloat pow(LLVM80BitFloat right) {
+        return fromDouble(Math.pow(getDoubleValue(), right.getDoubleValue()));
+    }
+
     public boolean isPositiveInfinity() {
         return this.equals(POSITIVE_INFINITY);
     }
