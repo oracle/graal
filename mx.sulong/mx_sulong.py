@@ -569,7 +569,7 @@ def mdlCheck(args=None):
             for f in files:
                 if f.endswith('.md') and not any(path.startswith(exclude) for exclude in mdlCheckExcludeDirectories):
                     absPath = path + '/' + f
-                    mdlCheckCommand = 'mdl -r~MD026,~MD002,~MD029,~MD032,~MD033 ' + absPath
+                    mdlCheckCommand = 'mdl -r~MD026,~MD002,~MD029,~MD032,~MD033,~MD003,~MD001' + absPath
                     try:
                         subprocess.check_output(mdlCheckCommand, stderr=subprocess.STDOUT, shell=True)
                     except subprocess.CalledProcessError as e:

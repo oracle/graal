@@ -21,21 +21,21 @@ Throws an unsupported exception, even though `HAS_SIZE` returned `true`.
 
 ### `READ`
 
-The name must be a Java `int`.
+The name must be a Java `int` or `long`.
 
 This is implemented for arrays only (`LLVMAddress`), and returns the array's
 element with the given index. Bounds are not checked.
 
 ### `WRITE`
 
-The name must be a Java `int`.
+The name must be a Java `int` or `long`.
 
 Stores the value in the array at the given position (works only for
 `LLVMAddress`). Bounds are not checked.
 
 ## How to explicitly send messages from Sulong
 
-TODO
+You can use the built-ins defined in `include\truffle.h`.
 
 ## What messages are sent for LLVM operations on foreign objects
 
@@ -44,11 +44,6 @@ TODO
 `object[index] = value` sends `WRITE`
 
 `object()` sends `EXECUTE`
-
-A reference to a foreign object being converted to an integer (possibly to make
-a native call) sends `UNBOX` and treats the returned value as a native memory
-address. This behaviour is likely to change in the future, but currently
-enables foreign objects to convert to a native representation if possible.
 
 ## Intrinsic functions
 
