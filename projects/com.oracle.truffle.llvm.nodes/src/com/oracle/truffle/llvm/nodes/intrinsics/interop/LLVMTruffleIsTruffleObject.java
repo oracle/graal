@@ -53,9 +53,14 @@ public abstract class LLVMTruffleIsTruffleObject extends LLVMIntrinsic {
         return true;
     }
 
-    @Fallback
+    @Specialization(guards = "notTruffleObject(object)")
     public boolean fallback(Object object) {
         return false;
+    }
+
+    // Workaround Truffle DSL bug, @Fallback should be used instead
+    protected boolean notTruffleObject(Object object) {
+        return !(object instanceof TruffleObject) && !(object instanceof LLVMTruffleObject && ((LLVMTruffleObject) object).getOffset() == 0);
     }
 
 }
