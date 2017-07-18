@@ -29,21 +29,33 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
+@SuppressWarnings("unused")
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleIsTruffleObject extends LLVMIntrinsic {
 
-    @SuppressWarnings("unused")
     @Specialization
-    public boolean executeIntrinsic(VirtualFrame frame, Object value) {
-        return value instanceof TruffleObject;
+    public boolean isTruffleObject(TruffleObject object) {
+        return true;
+    }
+
+    @Specialization(guards = "object.getOffset() == 0")
+    public boolean isLLVMTruffleObject(LLVMTruffleObject object) {
+        return true;
+    }
+
+    @Fallback
+    public boolean fallback(Object object) {
+        return false;
     }
 
 }
