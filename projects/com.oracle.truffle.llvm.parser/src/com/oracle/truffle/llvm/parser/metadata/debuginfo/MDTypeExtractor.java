@@ -131,6 +131,7 @@ final class MDTypeExtractor implements MetadataVisitor {
 
             switch (mdType.getTag()) {
 
+                case DW_TAG_VECTOR_TYPE:
                 case DW_TAG_ARRAY_TYPE: {
                     final LLVMDebugArrayLikeType type = new LLVMDebugArrayLikeType(size, align, offset);
                     parsedTypes.put(mdType, type);
@@ -141,18 +142,45 @@ final class MDTypeExtractor implements MetadataVisitor {
                     if (baseType == null) {
                         baseType = LLVMDebugType.UNKNOWN_TYPE;
                     }
-                    final LLVMDebugType finalBaseType = baseType; // to be used in lambdas
-                    type.setBaseType(() -> finalBaseType);
 
                     final List<LLVMDebugType> members = new ArrayList<>(1);
                     getElements(mdType.getMemberDescriptors(), members);
-                    if (members.size() == 1 && COUNT_NAME.equals(members.get(0).getName())) {
-                        type.setLength(members.get(0).getSize());
-                    } else {
-                        type.setLength(-1);
+
+                    for (int i = members.size() - 1; i > 0; i--) {
+                        final LLVMDebugType count = members.get(i);
+                        final long tmpSize = count.getSize() * baseType.getSize(); // TODO alignment
+                        final LLVMDebugArrayLikeType tmp = new LLVMDebugArrayLikeType(tmpSize, align, 0L);
+
+                        if (COUNT_NAME.equals(count.getName())) {
+                            tmp.setLength(count.getSize());
+                            final LLVMDebugType finalBaseType = baseType;
+                            tmp.setBaseType(() -> finalBaseType);
+                            if (mdType.getTag() == MDCompositeType.Tag.DW_TAG_VECTOR_TYPE) {
+                                tmp.setName(() -> String.format("%s<%d>", finalBaseType.getName(), tmp.getLength()));
+                            } else {
+                                tmp.setName(() -> String.format("%s[%d]", finalBaseType.getName(), tmp.getLength()));
+                            }
+                        } else {
+                            tmp.setLength(0);
+                        }
+                        baseType = tmp;
                     }
 
-                    type.setName(() -> String.format("%s[%d]", finalBaseType.getName(), type.getLength()));
+                    final LLVMDebugType count = members.get(0);
+                    if (COUNT_NAME.equals(count.getName())) {
+                        type.setLength(count.getSize());
+                        final LLVMDebugType finalBaseType = baseType;
+                        type.setBaseType(() -> finalBaseType);
+                        if (mdType.getTag() == MDCompositeType.Tag.DW_TAG_VECTOR_TYPE) {
+                            type.setName(() -> String.format("%s<%d>", finalBaseType.getName(), type.getLength()));
+                        } else {
+                            type.setName(() -> String.format("%s[%d]", finalBaseType.getName(), type.getLength()));
+                        }
+
+                    } else {
+                        type.setLength(0);
+                    }
+
                     break;
                 }
 

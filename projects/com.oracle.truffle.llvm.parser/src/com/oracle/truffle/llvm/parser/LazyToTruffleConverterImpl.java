@@ -94,13 +94,15 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         // this also precompiles the SourceSections for the contained instructions
         SourceSection sourceSection = runtime.getSourceSection(method);
 
+        boolean isLVIEnabled = false;
         if (context.getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
             frame.findOrAddFrameSlot(LLVMDebugSlotType.FRAMESLOT_NAME, FrameSlotKind.Object);
+            isLVIEnabled = true;
         }
 
         LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(frame, context, phis, method);
         LLVMBitcodeFunctionVisitor visitor = new LLVMBitcodeFunctionVisitor(runtime, frame, labels, phis, nodeFactory, method.getParameters().size(),
-                        new LLVMSymbolReadResolver(runtime, method, frame, labels), method, liveness);
+                        new LLVMSymbolReadResolver(runtime, method, frame, labels), method, liveness, isLVIEnabled);
         method.accept(visitor);
         FrameSlot[][] nullableBeforeBlock = getNullableFrameSlots(liveness.getNullableBeforeBlock());
         FrameSlot[][] nullableAfterBlock = getNullableFrameSlots(liveness.getNullableAfterBlock());
@@ -146,7 +148,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         }
         for (FunctionParameter parameter : parameters) {
             LLVMExpressionNode parameterNode = nodeFactory.createFunctionArgNode(argIndex++, parameter.getType());
-            FrameSlot slot = frame.findFrameSlot(parameter.getFrameSlotName());
+            FrameSlot slot = frame.findFrameSlot(parameter.getName());
             if (isStructByValue(parameter)) {
                 int size = runtime.getByteSize(((PointerType) parameter.getType()).getPointeeType());
                 int alignment = runtime.getByteAlignment(((PointerType) parameter.getType()).getPointeeType());

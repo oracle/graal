@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,22 +27,45 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.types.symbols;
+package com.oracle.truffle.llvm.runtime.debug;
 
-public interface ValueSymbol extends Symbol {
+public interface LLVMDebugValueProvider {
 
-    default int getAlign() {
-        return 0;
-    }
+    Object readBoolean(long offset);
 
-    default String getName() {
-        return LLVMIdentifier.UNKNOWN;
-    }
+    Object readByteSigned(long offset);
 
-    @Override
-    default boolean hasName() {
-        return true;
-    }
+    Object readByteUnsigned(long offset);
 
-    void setName(String name);
+    Object readCharSigned(long offset);
+
+    Object readCharUnsigned(long offset);
+
+    Object readShortSigned(long offset);
+
+    Object readShortUnsigned(long offset);
+
+    Object readIntSigned(long offset);
+
+    Object readIntUnsigned(long offset);
+
+    Object readLongSigned(long offset);
+
+    Object readLongUnsigned(long offset);
+
+    Object readFloat(long offset);
+
+    Object readDouble(long offset);
+
+    Object read80BitFloat(long offset);
+
+    Object readAddress(long offset);
+
+    Object readUnknown(long offset, long size);
+
+    boolean canReadId(long offset, int size);
+
+    long readId(long offset, int size);
+
+    Object computeAddress(long offset);
 }

@@ -91,7 +91,7 @@ public final class LLVMDebugArrayLikeType extends LLVMDebugType {
         if (0 <= i && i < getLength()) {
             final LLVMDebugType resolvedBaseType = baseType.get();
             // TODO element type alignment
-            return resolvedBaseType.getOffset(getOffset() + i * resolvedBaseType.getSize());
+            return resolvedBaseType.getOffset(i * resolvedBaseType.getSize());
         }
         return null;
     }

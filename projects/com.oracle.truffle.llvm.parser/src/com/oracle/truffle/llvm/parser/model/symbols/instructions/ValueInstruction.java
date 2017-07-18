@@ -73,15 +73,4 @@ public abstract class ValueInstruction extends Instruction implements ValueSymbo
     public void setSourceVariable(SourceModel.Variable sourceVariable) {
         this.sourceVariable = sourceVariable;
     }
-
-    @Override
-    public String getFrameSlotName() {
-        if (sourceVariable != null) {
-            String debugName = sourceVariable.getName();
-            if (debugName != null && !SourceModel.Variable.INVALID_NAME.equals(debugName)) {
-                return debugName;
-            }
-        }
-        return name;
-    }
 }

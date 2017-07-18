@@ -29,18 +29,21 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugSlotType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugType;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -67,7 +70,6 @@ public abstract class LLVMDebugDeclaration extends LLVMExpressionNode {
         final Object debugSlotVal = frame.getValue(debugSlot);
         DynamicObject debugObj;
 
-        // TODO the LLVMFunctionStartNode initializes frameslots of kind Object with an LLVMAddress
         if (debugSlotVal instanceof DynamicObject) {
             debugObj = (DynamicObject) debugSlotVal;
 
@@ -77,12 +79,34 @@ public abstract class LLVMDebugDeclaration extends LLVMExpressionNode {
         }
 
         final Object localsContainer = debugObj.get(LLVMDebugSlotType.LOCALS.getName());
-        ((DynamicObject) localsContainer).define(varName, instantiate(varType, address));
+        final LLVMDebugObject object = instantiate(varType, 0L, new LLVMAddressValueProvider(address));
+        ((DynamicObject) localsContainer).define(varName, object);
 
-        return frame.getArguments();
+        return null;
     }
 
-    private LLVMDebugObject instantiate(LLVMDebugType type, LLVMAddress baseAddress) {
+    @Specialization
+    public Object readGlobal(VirtualFrame frame, LLVMGlobalVariable global, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
+        final Object debugSlotVal = frame.getValue(debugSlot);
+        DynamicObject debugObj;
+
+        if (debugSlotVal instanceof DynamicObject) {
+            debugObj = (DynamicObject) debugSlotVal;
+
+        } else {
+            debugObj = LLVMDebugSlotType.createContainer();
+            frame.setObject(debugSlot, debugObj);
+        }
+
+        final Object globalsContainer = debugObj.get(LLVMDebugSlotType.GLOBALS.getName());
+        final LLVMAddress address = globalAccess.getNativeLocation(global);
+        final LLVMDebugObject object = instantiate(varType, 0L, new LLVMAddressValueProvider(address));
+        ((DynamicObject) globalsContainer).define(varName, object);
+
+        return null;
+    }
+
+    private LLVMDebugObject instantiate(LLVMDebugType type, long baseOffset, LLVMDebugValueProvider value) {
         if (type.isAggregate()) {
 
             final Map<Object, LLVMDebugObject> members = new HashMap<>(type.getElementCount());
@@ -90,24 +114,19 @@ public abstract class LLVMDebugDeclaration extends LLVMExpressionNode {
             for (int i = 0; i < type.getElementCount(); i++) {
                 final LLVMDebugType elementType = type.getElementType(i);
                 final String elementName = type.getElementName(i);
+                final long newOffset = baseOffset + (elementType.getOffset() / Byte.SIZE);
 
-                LLVMAddress address = baseAddress;
-                if (!address.equals(LLVMAddress.nullPointer())) {
-                    // TODO alignment
-                    address = address.increment(elementType.getOffset() / Byte.SIZE);
-                }
-
-                final LLVMDebugObject member = instantiate(elementType, address);
+                final LLVMDebugObject member = instantiate(elementType, newOffset, value);
                 memberIdentifiers[i] = elementName;
                 members.put(elementName, member);
             }
-            return new LLVMDebugObjectImpl.Complex(baseAddress, type, memberIdentifiers, Collections.unmodifiableMap(members));
+            return new LLVMDebugObjectImpl.Structured(value, baseOffset, type, memberIdentifiers, members);
 
         } else if (type.isEnum()) {
-            return new LLVMDebugObjectImpl.Enum(baseAddress, type);
+            return new LLVMDebugObjectImpl.Enum(value, baseOffset, type);
 
         } else {
-            return new LLVMDebugObjectImpl.Primitive(baseAddress, type);
+            return new LLVMDebugObjectImpl.Primitive(value, baseOffset, type);
         }
     }
 }

@@ -300,13 +300,12 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
                         if (resolvedAllocationSiteSymbol != null && resolvedAllocationSiteSymbol instanceof ValueInstruction) {
                             SourceModel.Variable var = ((ValueInstruction) resolvedAllocationSiteSymbol).getSourceVariable();
                             if (var != null) {
-                                FrameSlot valueSlot = frame.findFrameSlot(((ValueInstruction) resolvedAllocationSiteSymbol).getFrameSlotName());
                                 FrameSlot debugSlot = frame.findOrAddFrameSlot(LLVMDebugSlotType.FRAMESLOT_NAME, FrameSlotKind.Object);
                                 // TODO the argument to the call is a metadata constant so lifetime
                                 // analysis does not consider that the referenced object needs to be
                                 // alive at this point
-                                LLVMExpressionNode valueRead = nodeFactory.createFrameRead(runtime, resolvedAllocationSiteSymbol.getType(), valueSlot);
-                                LLVMExpressionNode debugDeclaration = nodeFactory.createLocalDebugDeclaration(var.getName(), var.getType(), debugSlot, valueRead);
+                                LLVMExpressionNode valueRead = symbols.resolve(resolvedAllocationSiteSymbol);
+                                LLVMExpressionNode debugDeclaration = nodeFactory.createDebugDeclaration(var.getName(), var.getType(), debugSlot, valueRead);
                                 addInstruction(debugDeclaration);
                                 return;
                             }
@@ -396,7 +395,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         List<LLVMExpressionNode> unwindValue = new ArrayList<>();
         if (blockPhis != null) {
             for (Phi phi : blockPhis) {
-                FrameSlot slot = getSlot(phi.getPhiValue().getFrameSlotName());
+                FrameSlot slot = getSlot(phi.getPhiValue().getName());
                 LLVMExpressionNode value = symbols.resolve(phi.getValue());
                 if (call.normalSuccessor() == phi.getBlock()) {
                     normalTo.add(slot);
@@ -420,7 +419,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         if (function == null) {
             function = symbols.resolve(target);
         }
-        LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(runtime, getSlot(call.getFrameSlotName()), function, argNodes, new FunctionType(targetType, argTypes, false),
+        LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(runtime, getSlot(call.getName()), function, argNodes, new FunctionType(targetType, argTypes, false),
                         regularIndex, unwindIndex, normalPhi,
                         unwindPhi, sourceSection);
 
@@ -461,7 +460,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         List<LLVMExpressionNode> unwindValue = new ArrayList<>();
         if (blockPhis != null) {
             for (Phi phi : blockPhis) {
-                FrameSlot slot = getSlot(phi.getPhiValue().getFrameSlotName());
+                FrameSlot slot = getSlot(phi.getPhiValue().getName());
                 LLVMExpressionNode value = symbols.resolve(phi.getValue());
                 if (call.normalSuccessor() == phi.getBlock()) {
                     normalTo.add(slot);
@@ -757,7 +756,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             Type[] types = new Type[phisPerSuccessor[i].size()];
             for (int j = 0; j < phisPerSuccessor[i].size(); j++) {
                 Phi phi = phisPerSuccessor[i].get(j);
-                to[j] = getSlot(phi.getPhiValue().getFrameSlotName());
+                to[j] = getSlot(phi.getPhiValue().getName());
                 from[j] = symbols.resolve(phi.getValue());
                 types[j] = phi.getValue().getType();
             }
@@ -810,7 +809,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     }
 
     private void createFrameWrite(LLVMExpressionNode result, ValueInstruction source, SourceSection sourceSection) {
-        final LLVMExpressionNode node = nodeFactory.createFrameWrite(runtime, source.getType(), result, getSlot(source.getFrameSlotName()), sourceSection);
+        final LLVMExpressionNode node = nodeFactory.createFrameWrite(runtime, source.getType(), result, getSlot(source.getName()), sourceSection);
         addInstruction(node);
     }
 
@@ -839,6 +838,10 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     private void addInstruction(LLVMExpressionNode node) {
         blockInstructions.add(node);
         handleNullerInfo();
+    }
+
+    public void addInstructionUnchecked(LLVMExpressionNode instruction) {
+        blockInstructions.add(instruction);
     }
 
     private void handleNullerInfo() {

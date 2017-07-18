@@ -37,6 +37,10 @@ import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionKind;
+import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
+import com.oracle.truffle.llvm.parser.metadata.MDFnNode;
+import com.oracle.truffle.llvm.parser.metadata.MDReference;
+import com.oracle.truffle.llvm.parser.metadata.MDValue;
 import com.oracle.truffle.llvm.parser.model.enums.Flag;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
@@ -532,5 +536,18 @@ public final class LLVMSymbolReadResolver {
         }
 
         return resolvedNode;
+    }
+
+    public Symbol getSymbol(MetadataConstant indexConstant) {
+        MDReference mdRef = method.getMetadata().getMDRef((int) indexConstant.getValue());
+        if (mdRef != MDReference.VOID) {
+            MDBaseNode referencedNode = mdRef.get();
+            if (referencedNode instanceof MDValue) {
+                return ((MDValue) referencedNode).getValue().get();
+            } else if (referencedNode instanceof MDFnNode) {
+                return ((MDFnNode) referencedNode).getPointer().get();
+            }
+        }
+        return null;
     }
 }

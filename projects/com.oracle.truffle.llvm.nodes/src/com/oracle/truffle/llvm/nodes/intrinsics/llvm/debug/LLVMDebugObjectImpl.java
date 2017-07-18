@@ -29,29 +29,29 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugBasicType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugDecoratorType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
 import java.util.Map;
 import java.util.Objects;
 
 abstract class LLVMDebugObjectImpl implements LLVMDebugObject {
 
-    private static final String UNAVAILABLE = "<unavailable>";
-
     private static final Object[] NO_KEYS = new Object[0];
 
-    protected final LLVMAddress address;
+    protected final long offset;
+
+    protected final LLVMDebugValueProvider value;
 
     protected final LLVMDebugType type;
 
-    LLVMDebugObjectImpl(LLVMAddress address, LLVMDebugType type) {
-        this.address = address;
+    LLVMDebugObjectImpl(LLVMDebugValueProvider value, long offset, LLVMDebugType type) {
+        this.value = value;
+        this.offset = offset;
         this.type = type;
     }
 
@@ -69,38 +69,18 @@ abstract class LLVMDebugObjectImpl implements LLVMDebugObject {
 
     static final class Enum extends LLVMDebugObjectImpl {
 
-        Enum(LLVMAddress address, LLVMDebugType type) {
-            super(address, type);
+        Enum(LLVMDebugValueProvider value, long offset, LLVMDebugType type) {
+            super(value, offset, type);
         }
 
         @Override
         Object getValue() {
-            if (address.equals(LLVMAddress.nullPointer())) {
-                return UNAVAILABLE;
+            if (!value.canReadId(offset, (int) type.getSize())) {
+                return "<unknown>";
             }
-
-            long id;
-            switch ((int) type.getSize()) {
-                case Byte.SIZE:
-                    id = LLVMMemory.getI8(address);
-                    break;
-
-                case Short.SIZE:
-                    id = LLVMMemory.getI16(address);
-                    break;
-
-                case Integer.SIZE:
-                    id = LLVMMemory.getI32(address);
-                    break;
-
-                case Long.SIZE:
-                    id = LLVMMemory.getI64(address);
-                    break;
-
-                default:
-                    return "<unknown>";
-            }
-            return type.getElementName(id);
+            final long id = value.readId(offset, (int) type.getSize());
+            final Object val = type.getElementName(id);
+            return val != null ? val : "<unknown>";
         }
 
         @Override
@@ -116,8 +96,8 @@ abstract class LLVMDebugObjectImpl implements LLVMDebugObject {
 
     static final class Primitive extends LLVMDebugObjectImpl {
 
-        Primitive(LLVMAddress address, LLVMDebugType type) {
-            super(address, type);
+        Primitive(LLVMDebugValueProvider value, long offset, LLVMDebugType type) {
+            super(value, offset, type);
         }
 
         @Override
@@ -132,17 +112,13 @@ abstract class LLVMDebugObjectImpl implements LLVMDebugObject {
 
         @Override
         public Object getValue() {
-            if (address.equals(LLVMAddress.nullPointer())) {
-                return UNAVAILABLE;
-            }
-
             LLVMDebugType actualType = this.type;
             if (actualType instanceof LLVMDebugDecoratorType) {
                 actualType = ((LLVMDebugDecoratorType) actualType).getTrueBaseType();
             }
 
             if (actualType.isPointer()) {
-                return LLVMMemory.getAddress(address);
+                return value.readAddress(offset);
             }
 
             if (actualType.isAggregate()) {
@@ -152,10 +128,10 @@ abstract class LLVMDebugObjectImpl implements LLVMDebugObject {
             if (actualType instanceof LLVMDebugBasicType) {
                 switch (((LLVMDebugBasicType) actualType).getKind()) {
                     case ADDRESS:
-                        return LLVMMemory.getAddress(address);
+                        return value.readAddress(offset);
 
                     case BOOLEAN:
-                        return LLVMMemory.getI1(address);
+                        return value.readBoolean(offset);
 
                     case FLOATING:
                         return readFloating();
@@ -164,87 +140,83 @@ abstract class LLVMDebugObjectImpl implements LLVMDebugObject {
                         return readSigned();
 
                     case SIGNED_CHAR:
-                        return (char) LLVMMemory.getI8(address);
+                        return value.readCharSigned(offset);
 
                     case UNSIGNED:
                         return readUnsigned();
 
                     case UNSIGNED_CHAR:
-                        return (char) Byte.toUnsignedInt(LLVMMemory.getI8(address));
+                        return value.readCharUnsigned(offset);
                 }
             }
 
-            return readUnknown();
+            return value.readUnknown(offset, type.getSize());
         }
 
         private Object readFloating() {
             switch ((int) type.getSize()) {
                 case Float.SIZE:
-                    return LLVMMemory.getFloat(address);
+                    return value.readFloat(offset);
 
                 case Double.SIZE:
-                    return LLVMMemory.getDouble(address);
+                    return value.readDouble(offset);
 
                 case LLVM80BitFloat.BIT_WIDTH:
-                    return LLVMMemory.get80BitFloat(address);
+                    return value.read80BitFloat(offset);
 
                 default:
-                    return readUnknown();
+                    return value.readUnknown(offset, type.getSize());
             }
         }
 
         private Object readSigned() {
             switch ((int) type.getSize()) {
                 case Byte.SIZE:
-                    return LLVMMemory.getI8(address);
+                    return value.readByteSigned(offset);
 
                 case Short.SIZE:
-                    return LLVMMemory.getI16(address);
+                    return value.readShortSigned(offset);
 
                 case Integer.SIZE:
-                    return LLVMMemory.getI32(address);
+                    return value.readIntSigned(offset);
 
                 case Long.SIZE:
-                    return LLVMMemory.getI64(address);
+                    return value.readLongSigned(offset);
 
                 default:
-                    return readUnknown();
+                    return value.readUnknown(offset, type.getSize());
             }
         }
 
         private Object readUnsigned() {
             switch ((int) type.getSize()) {
                 case Byte.SIZE:
-                    return Byte.toUnsignedInt(LLVMMemory.getI8(address));
+                    return value.readByteUnsigned(offset);
 
                 case Short.SIZE:
-                    return Short.toUnsignedInt(LLVMMemory.getI16(address));
+                    return value.readShortUnsigned(offset);
 
                 case Integer.SIZE:
-                    return Integer.toUnsignedLong(LLVMMemory.getI32(address));
+                    return value.readIntUnsigned(offset);
 
                 case Long.SIZE:
-                    return Long.toUnsignedString(LLVMMemory.getI64(address));
+                    return value.readLongUnsigned(offset);
 
                 default:
-                    return readUnknown();
+                    return value.readUnknown(offset, type.getSize());
             }
-        }
-
-        private Object readUnknown() {
-            return "unknown content of " + type.getSize() + " bits at " + address;
         }
     }
 
-    static final class Complex extends LLVMDebugObjectImpl {
+    static final class Structured extends LLVMDebugObjectImpl {
 
         // in the order of their actual declaration in the containing type
         private final Object[] memberIdentifiers;
 
         private final Map<Object, LLVMDebugObject> members;
 
-        Complex(LLVMAddress address, LLVMDebugType type, Object[] memberIdentifiers, Map<Object, LLVMDebugObject> members) {
-            super(address, type);
+        Structured(LLVMDebugValueProvider value, long offset, LLVMDebugType type, Object[] memberIdentifiers, Map<Object, LLVMDebugObject> members) {
+            super(value, offset, type);
             this.memberIdentifiers = memberIdentifiers;
             this.members = members;
         }
@@ -261,7 +233,7 @@ abstract class LLVMDebugObjectImpl implements LLVMDebugObject {
 
         @Override
         Object getValue() {
-            return address;
+            return value.computeAddress(offset);
         }
     }
 }

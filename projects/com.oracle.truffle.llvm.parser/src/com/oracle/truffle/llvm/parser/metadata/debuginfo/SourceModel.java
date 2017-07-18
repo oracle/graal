@@ -45,7 +45,9 @@ import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugType;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public final class SourceModel {
@@ -63,8 +65,11 @@ public final class SourceModel {
 
         private final Map<Symbol, Variable> locals = new HashMap<>();
 
-        private Function(FunctionDefinition definition) {
+        private final List<Variable> globals;
+
+        private Function(FunctionDefinition definition, List<Variable> globals) {
             this.definition = definition;
+            this.globals = globals;
         }
 
         public FunctionDefinition getDefinition() {
@@ -75,12 +80,8 @@ public final class SourceModel {
             return locals.get(symbol);
         }
 
-        public String getFrameSlotName(ValueInstruction symbol) {
-            if (locals.containsKey(symbol)) {
-                return locals.get(symbol).getName();
-            } else {
-                return symbol.getName();
-            }
+        public List<Variable> getGlobals() {
+            return globals;
         }
     }
 
@@ -118,26 +119,9 @@ public final class SourceModel {
         }
     }
 
-    private final Map<FunctionDefinition, Function> functions = new HashMap<>();
-
-    private final Map<Symbol, Variable> globals = new HashMap<>();
+    private final List<Variable> globals = new ArrayList<>();
 
     private SourceModel() {
-    }
-
-    public Function getFunction(FunctionDefinition functionDefinition) {
-        if (functions.containsKey(functionDefinition)) {
-            return functions.get(functionDefinition);
-
-        } else {
-            Function newFunction = new Function(functionDefinition);
-            functions.put(functionDefinition, newFunction);
-            return newFunction;
-        }
-    }
-
-    public Map<Symbol, Variable> getGlobals() {
-        return globals;
     }
 
     private static final class Parser implements ModelVisitor, MetadataVisitor, FunctionVisitor, InstructionVisitorAdapter {
@@ -154,9 +138,9 @@ public final class SourceModel {
 
         @Override
         public void visit(FunctionDefinition function) {
-            currentFunction = new Function(function);
-            sourceModel.functions.put(function, currentFunction);
+            currentFunction = new Function(function, sourceModel.globals);
             function.accept(this);
+            function.setSourceFunction(currentFunction);
             currentFunction = null;
         }
 
@@ -200,7 +184,7 @@ public final class SourceModel {
                 Symbol symbol = MDSymbolExtractor.getSymbol(mdGlobal.getVariable());
                 LLVMDebugType type = typeExtractor.parseType(mdGlobal.getType());
                 Variable globalVar = new Variable(name, symbol, type);
-                sourceModel.globals.put(symbol, globalVar);
+                sourceModel.globals.add(globalVar);
             }
         };
     }

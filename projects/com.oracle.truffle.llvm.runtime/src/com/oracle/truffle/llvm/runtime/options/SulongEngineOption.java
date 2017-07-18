@@ -94,7 +94,7 @@ public final class SulongEngineOption {
     public static final String PARSE_ONLY_INFO = "Only parses a bc file; execution is not possible.";
 
     // TODO set false per default or remove completely
-    public static final OptionKey<Boolean> ENABLE_LVI = new OptionKey<>(true);
+    public static final OptionKey<Boolean> ENABLE_LVI = new OptionKey<>(false);
     public static final String ENABLE_LVI_NAME = "llvm.enableLVI";
     public static final String ENABLE_LVI_INFO = "Enable source-level inspection of local variables.";
 

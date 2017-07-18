@@ -187,6 +187,6 @@ public interface NodeFactory {
 
     LLVMExpressionNode createVarArgCompoundValue(LLVMParserRuntime runtime, int length, int alignment, LLVMExpressionNode parameterNode);
 
-    LLVMExpressionNode createLocalDebugDeclaration(String varName, LLVMDebugType type, FrameSlot debugSlot, LLVMExpressionNode valueProvider);
+    LLVMExpressionNode createDebugDeclaration(String varName, LLVMDebugType type, FrameSlot debugSlot, LLVMExpressionNode valueProvider);
 
 }

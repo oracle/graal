@@ -50,12 +50,6 @@ public final class MetadataList {
     }
 
     public MDNamedNode find(String name) {
-        if (parent != null) {
-            final MDNamedNode parentResult = parent.find(name);
-            if (parentResult != null) {
-                return parentResult;
-            }
-        }
         for (MDNamedNode namedNode : namedMetadata) {
             if (namedNode.getName().equals(name)) {
                 return namedNode;
