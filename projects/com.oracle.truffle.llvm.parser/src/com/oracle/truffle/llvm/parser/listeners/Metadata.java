@@ -44,6 +44,7 @@ import com.oracle.truffle.llvm.parser.metadata.MDFile;
 import com.oracle.truffle.llvm.parser.metadata.MDFnNode;
 import com.oracle.truffle.llvm.parser.metadata.MDGenericDebug;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
+import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariableExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDImportedEntity;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
 import com.oracle.truffle.llvm.parser.metadata.MDLexicalBlock;
@@ -265,6 +266,26 @@ public final class Metadata implements ParserListener {
                 }
                 break;
             }
+
+            case GLOBAL_VAR_EXPR:
+                metadata.add(MDGlobalVariableExpression.create(args, metadata));
+                break;
+
+            case GLOBAL_DECL_ATTACHMENT: {
+                int i = 0;
+                final long globalIndex = args[i++];
+                while (i < args.length) {
+                    final MDKind attachmentKind = metadata.getKind(args[i++]);
+                    final MDReference attachment = metadata.getMDRefOrNullRef(args[i++]);
+                    metadata.addGlobalAttachment(globalIndex, new MDAttachment(attachmentKind, attachment));
+                }
+                break;
+            }
+
+            case INDEX_OFFSET:
+            case INDEX:
+                // llvm uses these to implement lazy loading, we can safely ignore them
+                break;
 
             default:
                 metadata.add(null);

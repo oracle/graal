@@ -48,7 +48,11 @@ public final class MetadataList {
     private final List<MDKind> mdKinds = new ArrayList<>();
 
     // TODO associate this with the actual instruction
+    // TODO multiple attachments to the same instruction are possible
     private final Map<Long, MDAttachment> instructionAttachments = new HashMap<>();
+
+    // TODO associate this with the actual global symbol
+    private final Map<Long, List<MDAttachment>> globalAttachments = new HashMap<>();
 
     private final List<MDAttachment> functionAttachments = new ArrayList<>();
 
@@ -78,6 +82,17 @@ public final class MetadataList {
 
     public void addKind(MDKind newKind) {
         mdKinds.add(newKind);
+    }
+
+    public void addGlobalAttachment(long globalIndex, MDAttachment attachment) {
+        final List<MDAttachment> attachments;
+        if (globalAttachments.containsKey(globalIndex)) {
+            attachments = globalAttachments.get(globalIndex);
+        } else {
+            attachments = new ArrayList<>();
+            globalAttachments.put(globalIndex, attachments);
+        }
+        attachments.add(attachment);
     }
 
     public void addAttachment(long instructionIndex, MDAttachment attachment) {
