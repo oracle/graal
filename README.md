@@ -24,22 +24,23 @@ binaries.
 
 To run programs in LLVM bitcode format on Graal VM, use:
 
+    lli [LLI Options] [Graal VM Options] [Polyglot Options] file.bc [program args]
 
-    lli [LLI Options] [Graal VM Options] [Polyglot Options] filename.bc [program args]
-
-
-Where `filename.bc` is a single program source file in LLVM bitcode format.
+Where `file.bc` is a single program source file in LLVM bitcode format.
 Graal VM executes the LLVM bitcode using Sulong as an interpreter.
 Note: LLVM bitcode is platform dependent. The program must be compiled to
 bitcode for the appropriate platform.
 
 #### LLI Options
 
-- `-L <path>` sets a path where lli searches for libraries. You can specify `-L` multiple times.
+- `-L <path>` sets a path where lli searches for libraries. You can specify `-L`
+multiple times.
 
-- `--lib <libraries>` adds external library sources (e.g. `--lib /path/to/libexample.so` or `--lib /path/to/example.bc`). These library sources are
-precompiled native libraries or bitcode files. You can specify `--lib` multiple times.
-*Note:* You must specify the library `example` with `--lib /path/to/libexample.so` as opposed to common linker `-l` options.
+- `--lib <libraries>` adds external library sources (e.g. `--lib /path/to/libexample.so`
+or `--lib /path/to/example.bc`). These library sources are precompiled native libraries
+or bitcode files. You can specify `--lib` multiple times. *Note:* You must specify
+the library `example` with `--lib /path/to/libexample.so` as opposed to common linker
+`-l` options.
 
 #### Graal VM Options
 
