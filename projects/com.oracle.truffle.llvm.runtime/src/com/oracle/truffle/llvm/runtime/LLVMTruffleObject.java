@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -75,6 +76,12 @@ public final class LLVMTruffleObject {
 
     public Type getType() {
         return type;
+    }
+
+    @TruffleBoundary
+    @Override
+    public String toString() {
+        return super.toString() + "(offset=" + getOffset() + ")";
     }
 
 }
