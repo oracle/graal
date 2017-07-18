@@ -38,27 +38,17 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 public final class LLVMTruffleObject {
     private final TruffleObject object;
     private final long offset;
-    private final String name;
     private final Type type;
 
     public LLVMTruffleObject(TruffleObject object, long offset, Type type) {
         this.object = object;
         this.offset = offset;
-        this.name = null;
-        this.type = type;
-    }
-
-    public LLVMTruffleObject(TruffleObject object, String name, Type type) {
-        this.object = object;
-        this.offset = 0;
-        this.name = name;
         this.type = type;
     }
 
     public LLVMTruffleObject(TruffleObject object, Type type) {
         this.object = object;
         this.offset = 0;
-        this.name = null;
         this.type = type;
     }
 
@@ -68,10 +58,6 @@ public final class LLVMTruffleObject {
 
     public TruffleObject getObject() {
         return object;
-    }
-
-    public String getName() {
-        return name;
     }
 
     public Type getType() {

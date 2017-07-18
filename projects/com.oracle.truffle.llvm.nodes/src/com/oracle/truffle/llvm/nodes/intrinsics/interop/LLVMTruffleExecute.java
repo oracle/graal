@@ -49,7 +49,7 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeGen;
-import com.oracle.truffle.llvm.runtime.interop.ToLLVMNode;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.NeedsStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -63,9 +63,9 @@ public abstract class LLVMTruffleExecute extends LLVMIntrinsic {
     @Children private final LLVMExpressionNode[] args;
     @Children private final LLVMDataEscapeNode[] prepareValuesForEscape;
     @Child private Node foreignExecute;
-    @Child private ToLLVMNode toLLVM;
+    @Child private ForeignToLLVM toLLVM;
 
-    public LLVMTruffleExecute(LLVMExpressionNode stackPointer, ToLLVMNode toLLVM, LLVMExpressionNode[] args, Type[] argTypes) {
+    public LLVMTruffleExecute(LLVMExpressionNode stackPointer, ForeignToLLVM toLLVM, LLVMExpressionNode[] args, Type[] argTypes) {
         this.toLLVM = toLLVM;
         this.args = args;
         this.stackPointer = stackPointer;
@@ -77,7 +77,7 @@ public abstract class LLVMTruffleExecute extends LLVMIntrinsic {
     }
 
     private static void checkLLVMTruffleObject(LLVMTruffleObject value) {
-        if (value.getOffset() != 0 || value.getName() != null) {
+        if (value.getOffset() != 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalAccessError("Pointee must be unmodified");
         }

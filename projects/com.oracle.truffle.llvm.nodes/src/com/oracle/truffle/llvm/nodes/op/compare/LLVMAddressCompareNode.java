@@ -46,7 +46,8 @@ import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
-import com.oracle.truffle.llvm.runtime.interop.ToLLVMNode;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
@@ -208,7 +209,7 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
             return LLVMAddress.fromLong(address.getFunctionPointer());
         }
 
-        @Child private ToLLVMNode toLLVM = ToLLVMNode.createNode(long.class);
+        @Child private ForeignToLLVM toLLVM = ForeignToLLVM.create(ForeignToLLVMType.I64);
 
         @Specialization
         protected LLVMAddress doLLVMBoxedPrimitive(LLVMBoxedPrimitive address) {

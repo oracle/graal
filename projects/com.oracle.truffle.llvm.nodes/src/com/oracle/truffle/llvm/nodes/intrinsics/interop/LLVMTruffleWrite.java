@@ -53,7 +53,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 public final class LLVMTruffleWrite {
 
     private static void checkLLVMTruffleObject(LLVMTruffleObject value) {
-        if (value.getOffset() != 0 || value.getName() != null) {
+        if (value.getOffset() != 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalAccessError("Pointee must be unmodified");
         }

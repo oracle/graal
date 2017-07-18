@@ -61,7 +61,6 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeGen;
-import com.oracle.truffle.llvm.runtime.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMProfiledMemMove;
@@ -621,8 +620,6 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
             globalAccess.putLLVMTruffleObject(descriptor, value);
             return null;
         }
-
-        @Child private ToLLVMNode toLLVM = ToLLVMNode.createNode(long.class);
 
         @Specialization
         public Object executeLLVMBoxedPrimitive(LLVMBoxedPrimitive value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
