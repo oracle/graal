@@ -29,17 +29,28 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleReadNString extends LLVMIntrinsic {
+
     @Specialization
     public Object executeIntrinsic(LLVMAddress value, int n) {
         return getString(value, n);
@@ -55,6 +66,35 @@ public abstract class LLVMTruffleReadNString extends LLVMIntrinsic {
             ptr += Byte.BYTES;
         }
         return sb.toString();
+    }
+
+    @Specialization
+    public Object interop(LLVMTruffleObject objectWithOffset, int n,
+                    @Cached("createForeignReadNode()") Node foreignRead,
+                    @Cached("createToByteNode()") ToLLVMNode toLLVM) {
+        long offset = objectWithOffset.getOffset();
+        TruffleObject object = objectWithOffset.getObject();
+        char[] chars = new char[n];
+        for (int i = 0; i < n; i++) {
+            Object rawValue;
+            try {
+                rawValue = ForeignAccess.sendRead(foreignRead, object, offset + n);
+            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
+            byte byteValue = (byte) toLLVM.executeWithTarget(rawValue);
+            chars[i] = (char) Byte.toUnsignedInt(byteValue);
+        }
+        return new String(chars);
+    }
+
+    protected ToLLVMNode createToByteNode() {
+        return ToLLVMNode.createNode(byte.class);
+    }
+
+    protected Node createForeignReadNode() {
+        return Message.READ.createNode();
     }
 
 }
