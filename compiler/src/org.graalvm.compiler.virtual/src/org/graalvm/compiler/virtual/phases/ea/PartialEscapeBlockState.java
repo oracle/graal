@@ -54,6 +54,19 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
      */
     private ObjectState[] objectStates;
 
+    public boolean contains(VirtualObjectNode firstV) {
+        for (ObjectState state : objectStates) {
+            if (state != null && state.isVirtual() && state.getEntries() != null) {
+                for (ValueNode entry : state.getEntries()) {
+                    if (entry == firstV) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     private static class RefCount {
         private int refCount = 1;
     }
