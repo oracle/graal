@@ -38,7 +38,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.interop.ToLLVMNode;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
@@ -82,7 +83,7 @@ public abstract class LLVMToI1Node extends LLVMExpressionNode {
     @Child private Node isNull = Message.IS_NULL.createNode();
     @Child private Node isBoxed = Message.IS_BOXED.createNode();
     @Child private Node unbox = Message.UNBOX.createNode();
-    @Child private ToLLVMNode toBool = ToLLVMNode.createNode(boolean.class);
+    @Child private ForeignToLLVM toBool = ForeignToLLVM.create(ForeignToLLVMType.I1);
 
     @Specialization(guards = "notLLVM(from)")
     public boolean executeTruffleObject(TruffleObject from) {

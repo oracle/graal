@@ -39,13 +39,14 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.interop.ToLLVMNode;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
 public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
 
-    @Child private ToLLVMNode toDouble = ToLLVMNode.createNode(double.class);
+    @Child private ForeignToLLVM toDouble = ForeignToLLVM.create(ForeignToLLVMType.DOUBLE);
 
     @Specialization
     public double executeLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
@@ -59,7 +60,7 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
     @Specialization(guards = "notLLVM(from)")
     public double executeTruffleObject(TruffleObject from) {
         if (ForeignAccess.sendIsNull(isNull, from)) {
-            return 0;
+            return 0.0;
         } else if (ForeignAccess.sendIsBoxed(isBoxed, from)) {
             try {
                 return (double) toDouble.executeWithTarget(ForeignAccess.sendUnbox(unbox, from));
@@ -76,7 +77,7 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
 
         @Specialization
         public double executeDouble(boolean from) {
-            return from ? 1 : 0;
+            return from ? 1.0 : 0.0;
         }
 
         @Specialization

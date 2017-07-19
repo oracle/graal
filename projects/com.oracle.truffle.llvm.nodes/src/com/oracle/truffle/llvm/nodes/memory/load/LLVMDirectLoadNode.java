@@ -50,7 +50,8 @@ import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
-import com.oracle.truffle.llvm.runtime.interop.ToLLVMNode;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -105,7 +106,7 @@ public abstract class LLVMDirectLoadNode {
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMAddressDirectLoadNode extends LLVMExpressionNode {
 
-        @Child protected ToLLVMNode toLLVM = ToLLVMNode.createNode(TruffleObject.class);
+        @Child protected ForeignToLLVM toLLVM = ForeignToLLVM.create(ForeignToLLVMType.POINTER);
 
         @Specialization
         public LLVMAddress executeAddress(LLVMAddress addr) {

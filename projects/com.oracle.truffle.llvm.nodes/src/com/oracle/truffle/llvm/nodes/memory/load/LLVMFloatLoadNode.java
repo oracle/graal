@@ -45,7 +45,8 @@ import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
-import com.oracle.truffle.llvm.runtime.interop.ToLLVMNode;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -53,7 +54,7 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMFloatLoadNode extends LLVMExpressionNode {
     @Child protected Node foreignRead = Message.READ.createNode();
-    @Child protected ToLLVMNode toLLVM = ToLLVMNode.createNode(float.class);
+    @Child protected ForeignToLLVM toLLVM = ForeignToLLVM.create(ForeignToLLVMType.FLOAT);
 
     protected float doForeignAccess(LLVMTruffleObject addr) {
         try {

@@ -44,7 +44,8 @@ import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
-import com.oracle.truffle.llvm.runtime.interop.ToLLVMNode;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -84,7 +85,7 @@ public abstract class LLVMToAddressNode extends LLVMExpressionNode {
         return from;
     }
 
-    @Child private ToLLVMNode toLong = ToLLVMNode.createNode(long.class);
+    @Child private ForeignToLLVM toLong = ForeignToLLVM.create(ForeignToLLVMType.I64);
 
     @Specialization
     public LLVMAddress executeLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
@@ -111,7 +112,7 @@ public abstract class LLVMToAddressNode extends LLVMExpressionNode {
             return LLVMAddress.fromLong(raw);
         } catch (UnsupportedMessageException ex) {
             CompilerDirectives.transferToInterpreter();
-            throw new RuntimeException(ex);
+            throw new IllegalStateException("Foreign value is not a pointer!", ex);
         }
     }
 

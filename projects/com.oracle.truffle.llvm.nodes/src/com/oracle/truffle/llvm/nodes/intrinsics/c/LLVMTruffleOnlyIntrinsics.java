@@ -47,7 +47,8 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
-import com.oracle.truffle.llvm.runtime.interop.ToLLVMNode;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -137,7 +138,7 @@ public final class LLVMTruffleOnlyIntrinsics {
 
         @Child private Node foreignHasSize = Message.HAS_SIZE.createNode();
         @Child private Node foreignGetSize = Message.GET_SIZE.createNode();
-        @Child private ToLLVMNode toLLVM = ToLLVMNode.createNode(long.class);
+        @Child private ForeignToLLVM toLLVM = ForeignToLLVM.create(ForeignToLLVMType.I64);
 
         @Specialization
         public long executeIntrinsic(TruffleObject object) {
@@ -192,10 +193,10 @@ public final class LLVMTruffleOnlyIntrinsics {
         @Child private Node readStr2 = Message.READ.createNode();
         @Child private Node getSize1 = Message.GET_SIZE.createNode();
         @Child private Node getSize2 = Message.GET_SIZE.createNode();
-        @Child private ToLLVMNode toLLVMSize1 = ToLLVMNode.createNode(long.class);
-        @Child private ToLLVMNode toLLVMSize2 = ToLLVMNode.createNode(long.class);
-        @Child private ToLLVMNode toLLVM1 = ToLLVMNode.createNode(char.class);
-        @Child private ToLLVMNode toLLVM2 = ToLLVMNode.createNode(char.class);
+        @Child private ForeignToLLVM toLLVMSize1 = ForeignToLLVM.create(ForeignToLLVMType.I64);
+        @Child private ForeignToLLVM toLLVMSize2 = ForeignToLLVM.create(ForeignToLLVMType.I64);
+        @Child private ForeignToLLVM toLLVM1 = ForeignToLLVM.create(ForeignToLLVMType.I8);
+        @Child private ForeignToLLVM toLLVM2 = ForeignToLLVM.create(ForeignToLLVMType.I8);
 
         @Specialization(limit = "20", guards = {"getSize1(str1) == size1", "getSize2(str2) == size2"})
         @ExplodeLoop
@@ -204,19 +205,19 @@ public final class LLVMTruffleOnlyIntrinsics {
                 int i;
                 for (i = 0; i < size1; i++) {
                     Object s1 = ForeignAccess.sendRead(readStr1, str1, i);
-                    char c1 = (char) toLLVM1.executeWithTarget(s1);
+                    byte c1 = (byte) toLLVM1.executeWithTarget(s1);
                     if (i >= size2) {
                         return c1;
                     }
                     Object s2 = ForeignAccess.sendRead(readStr2, str2, i);
-                    char c2 = (char) toLLVM2.executeWithTarget(s2);
+                    byte c2 = (byte) toLLVM2.executeWithTarget(s2);
                     if (c1 != c2) {
                         return c1 - c2;
                     }
                 }
                 if (i < size2) {
                     Object s2 = ForeignAccess.sendRead(readStr2, str2, i);
-                    char c2 = (char) toLLVM2.executeWithTarget(s2);
+                    byte c2 = (byte) toLLVM2.executeWithTarget(s2);
                     return -c2;
                 } else {
                     return 0;
@@ -251,8 +252,8 @@ public final class LLVMTruffleOnlyIntrinsics {
                 char[] arr = new char[(int) size2];
                 for (int i = 0; i < size2; i++) {
                     Object s2 = ForeignAccess.sendRead(readStr2, str2, i);
-                    char c2 = (char) toLLVM2.executeWithTarget(s2);
-                    arr[i] = c2;
+                    byte c2 = (byte) toLLVM2.executeWithTarget(s2);
+                    arr[i] = (char) c2;
                 }
                 return compare(str1, arr);
             } catch (Exception e) {
