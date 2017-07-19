@@ -32,17 +32,17 @@ package com.oracle.truffle.llvm.parser.model.enums;
 public enum Linkage {
 
     EXTERNAL("external", 0L),
-    WEAK("weak", 1L),
+    WEAK("weak", 1L, 16L),
     APPENDING("appending", 2L),
     INTERNAL("internal", 3L),
-    LINKONCE("linkonce", 4L),
+    LINKONCE("linkonce", 4L, 18L),
     DLL_IMPORT("dllimport", 5L),
     DLL_EXPORT("dllexport", 6L),
     EXTERN_WEAK("extern_weak", 7L),
     COMMON("common", 8L),
     PRIVATE("private", 9L),
-    WEAK_ODR("weak_odr", 10L),
-    LINK_ONCE_ODR("linkonce_odr", 11L),
+    WEAK_ODR("weak_odr", 10L, 17L),
+    LINK_ONCE_ODR("linkonce_odr", 11L, 19L),
     AVAILABLE_EXTERNALLY("available_externally", 12L),
     LINKER_PRIVATE("linker_private", 13L),
     LINKER_PRIVATE_WEAK("linker_private_weak", 14L),
@@ -50,21 +50,23 @@ public enum Linkage {
 
     private final String irString;
 
-    private final long encodedValue;
+    private final long[] encodedValue;
 
-    Linkage(String irString, long encodedValue) {
+    Linkage(String irString, long... encodedValue) {
         this.irString = irString;
         this.encodedValue = encodedValue;
     }
 
-    public long getEncodedValue() {
+    private long[] getEncodedValue() {
         return encodedValue;
     }
 
     public static Linkage decode(long value) {
         for (Linkage linkage : values()) {
-            if (linkage.getEncodedValue() == value) {
-                return linkage;
+            for (long l : linkage.getEncodedValue()) {
+                if (l == value) {
+                    return linkage;
+                }
             }
         }
         return EXTERNAL;
