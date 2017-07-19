@@ -52,7 +52,7 @@ final class LiteralSourceImpl extends Content implements Content.CreateURI {
 
     @Override
     public String getPath() {
-        return name;
+        return null;
     }
 
     @Override

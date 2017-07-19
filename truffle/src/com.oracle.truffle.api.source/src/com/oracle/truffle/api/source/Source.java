@@ -880,7 +880,7 @@ public abstract class Source {
             }
             r.close();
             LiteralSourceImpl ret = new LiteralSourceImpl(
-                            null, content);
+                            name, content);
             return ret;
         }
 
@@ -897,7 +897,7 @@ public abstract class Source {
                 content = r;
             }
             LiteralSourceImpl ret = new LiteralSourceImpl(
-                            null, content);
+                            name, content);
             return ret;
         }
     }
