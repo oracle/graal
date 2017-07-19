@@ -321,6 +321,7 @@ public class SourceBuilderTest {
         assertEquals("almostEmpty", source.getName());
         assertNull(source.getPath());
         assertNotNull(source.getURI());
+        assertTrue("URI ends with the name", source.getURI().toString().endsWith("almostEmpty"));
         assertEquals("truffle", source.getURI().getScheme());
         assertNull(source.getURL());
         assertEquals("text/plain", source.getMimeType());

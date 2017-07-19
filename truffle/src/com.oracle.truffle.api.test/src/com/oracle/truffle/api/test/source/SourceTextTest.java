@@ -24,6 +24,7 @@ package com.oracle.truffle.api.test.source;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -52,6 +53,11 @@ public class SourceTextTest {
     @Test
     public void noPath() {
         assertNull(emptySource.getPath());
+    }
+
+    @Test
+    public void uriEndsWithName() {
+        assertTrue(emptySource.getURI().toString().endsWith("emptySource"));
     }
 
     // Temp disable of empty text tests
