@@ -31,8 +31,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Tests that deoptimization upon volatile read will not roll back the read. The test cases rely on
- * the fact that invocations to GraalDirective utilities are substituted and not valid targets for
- * deoptimization.
+ * the fact that invocations to {@link GraalDirectives} utilities are substituted and not valid
+ * targets for deoptimization.
  */
 public class DeoptimizeOnVolatileReadTest extends GraalCompilerTest {
 
@@ -69,6 +69,7 @@ public class DeoptimizeOnVolatileReadTest extends GraalCompilerTest {
         }
 
         // The code should get deoptimized, and resume execution at the beginning of the method.
+        // Therefore it does not re-enter the branch as inCompiledCode() is false.
         assertEquals(new Result(0, null), actual);
         assertFalse(code.isValid());
     }

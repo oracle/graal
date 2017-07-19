@@ -31,24 +31,18 @@ import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.nodes.spi.ValueProxy;
-import org.graalvm.compiler.nodes.util.GraphUtil;
 
 /**
- * Helper node that prevents deoptimization from rolling back a volatile read.
+ * This node provides a state split along with the functionality of {@link FixedValueAnchorNode}.
  */
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public final class VolatileReadProxyNode extends FixedWithNextNode implements Canonicalizable, GuardingNode, Lowerable, StateSplit, ValueProxy {
+public final class StateSplitProxyNode extends FixedValueAnchorNode implements Canonicalizable, StateSplit {
 
-    public static final NodeClass<VolatileReadProxyNode> TYPE = NodeClass.create(VolatileReadProxyNode.class);
+    public static final NodeClass<StateSplitProxyNode> TYPE = NodeClass.create(StateSplitProxyNode.class);
 
-    @Input ValueNode fieldRead;
     @OptionalInput(InputType.State) FrameState stateAfter;
 
     @Override
@@ -68,36 +62,15 @@ public final class VolatileReadProxyNode extends FixedWithNextNode implements Ca
         return true;
     }
 
-    public VolatileReadProxyNode(ValueNode fieldRead) {
-        super(TYPE, fieldRead.stamp());
-
-        this.fieldRead = fieldRead;
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
-            replaceAtUsages(fieldRead);
-            GraphUtil.unlinkFixedNode(this);
-            safeDelete();
-        }
+    public StateSplitProxyNode(ValueNode object) {
+        super(TYPE, object);
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (fieldRead.isConstant()) {
-            return fieldRead;
+        if (object.isConstant()) {
+            return object;
         }
-        return this;
-    }
-
-    @Override
-    public ValueNode getOriginalNode() {
-        return fieldRead;
-    }
-
-    @Override
-    public GuardingNode getGuard() {
         return this;
     }
 

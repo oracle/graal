@@ -372,7 +372,7 @@ import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.LoadMethodNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
-import org.graalvm.compiler.nodes.extended.VolatileReadProxyNode;
+import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
@@ -1237,8 +1237,8 @@ public class BytecodeParser implements GraphBuilderContext {
         }
     }
 
-    protected VolatileReadProxyNode genVolatileFieldReadProxy(ValueNode fieldRead) {
-        return new VolatileReadProxyNode(fieldRead);
+    protected StateSplitProxyNode genVolatileFieldReadProxy(ValueNode fieldRead) {
+        return new StateSplitProxyNode(fieldRead);
     }
 
     protected ValueNode emitExplicitNullCheck(ValueNode receiver) {
@@ -3794,20 +3794,20 @@ public class BytecodeParser implements GraphBuilderContext {
         }
 
         ValueNode fieldRead = append(genLoadField(receiver, resolvedField));
-        frameState.push(resolvedField.getJavaKind(), fieldRead);
 
         if (resolvedField.getDeclaringClass().getName().equals("Ljava/lang/ref/Reference;") && resolvedField.getName().equals("referent")) {
             LocationIdentity referentIdentity = new FieldLocationIdentity(resolvedField);
             append(new MembarNode(0, referentIdentity));
         }
 
+        JavaKind fieldKind = resolvedField.getJavaKind();
+
         if (resolvedField.isVolatile() && fieldRead instanceof LoadFieldNode) {
-            VolatileReadProxyNode readProxy = append(genVolatileFieldReadProxy(fieldRead));
-
-            frameState.pop(resolvedField.getJavaKind());
-            frameState.push(resolvedField.getJavaKind(), readProxy);
-
+            StateSplitProxyNode readProxy = append(genVolatileFieldReadProxy(fieldRead));
+            frameState.push(fieldKind, readProxy);
             readProxy.setStateAfter(frameState.create(stream.nextBCI(), readProxy));
+        } else {
+            frameState.push(fieldKind, fieldRead);
         }
     }
 
