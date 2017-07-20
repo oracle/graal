@@ -23,13 +23,7 @@
  */
 package org.graalvm.compiler.core.test;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
-import org.junit.runners.Parameterized.Parameters;
 
 /*
  * Test compilation of ZeroExtend and SignExtend nodes

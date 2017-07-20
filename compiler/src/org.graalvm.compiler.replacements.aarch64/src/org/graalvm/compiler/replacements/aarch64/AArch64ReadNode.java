@@ -75,7 +75,6 @@ public class AArch64ReadNode extends ReadNode {
      * zero or sign extend into the read operation.
      *
      * @param readNode
-     * @return the replacement node
      */
     public static void replace(ReadNode readNode) {
         assert readNode.getUsageCount() == 1;
