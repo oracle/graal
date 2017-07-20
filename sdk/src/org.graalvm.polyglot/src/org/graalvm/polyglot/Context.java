@@ -283,8 +283,10 @@ public final class Context implements AutoCloseable {
      * @since 1.0
      */
     public static Builder newBuilder(String... onlyLanguages) {
-        return new Builder(onlyLanguages);
+        return EMPTY.new Builder(onlyLanguages);
     }
+
+    private static final Context EMPTY = new Context(null);
 
     /**
      * Builder class to construct {@link Context} instances.
@@ -293,7 +295,7 @@ public final class Context implements AutoCloseable {
      * @since 1.0
      */
     @SuppressWarnings("hiding")
-    public static final class Builder {
+    public final class Builder {
 
         private Engine sharedEngine;
         private String[] onlyLanguages;

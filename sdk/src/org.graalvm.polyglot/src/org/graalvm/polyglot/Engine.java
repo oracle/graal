@@ -215,7 +215,7 @@ public final class Engine implements AutoCloseable {
      * @since 1.0
      */
     public static Builder newBuilder() {
-        return new Builder();
+        return EMPTY.new Builder();
     }
 
     static AbstractPolyglotImpl getImpl() {
@@ -229,12 +229,14 @@ public final class Engine implements AutoCloseable {
         return getImpl().loadLanguageClass(className);
     }
 
+    private static final Engine EMPTY = new Engine(null);
+
     /**
      *
      * @since 1.0
      */
     @SuppressWarnings("hiding")
-    public static final class Builder {
+    public final class Builder {
 
         private OutputStream out = System.out;
         private OutputStream err = System.err;
@@ -432,8 +434,8 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public StackFrame newPolyglotStackTraceElement(AbstractStackFrameImpl impl) {
-            return new StackFrame(impl);
+        public StackFrame newPolyglotStackTraceElement(PolyglotException e, AbstractStackFrameImpl impl) {
+            return e.new StackFrame(impl);
         }
 
     }

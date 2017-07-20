@@ -372,7 +372,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
                 throw new NoSuchElementException();
             }
             fetchedNext = null;
-            return apiAccess.newPolyglotStackTraceElement(next);
+            return apiAccess.newPolyglotStackTraceElement(impl.api, next);
         }
 
         PolyglotExceptionFrameImpl fetchNext() {

@@ -93,7 +93,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract AbstractInstrumentImpl getImpl(Instrument value);
 
-        public abstract StackFrame newPolyglotStackTraceElement(AbstractStackFrameImpl impl);
+        public abstract StackFrame newPolyglotStackTraceElement(PolyglotException e, AbstractStackFrameImpl impl);
 
     }
 
