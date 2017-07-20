@@ -83,4 +83,19 @@ public enum Linkage {
     public static boolean isExtern(Linkage linkage) {
         return linkage == Linkage.EXTERNAL || linkage == Linkage.EXTERN_WEAK;
     }
+
+    public static boolean isWeak(Linkage linkage) {
+        switch (linkage) {
+            case WEAK:
+            case WEAK_ODR:
+            case EXTERN_WEAK:
+            case LINKONCE:
+            case LINK_ONCE_ODR:
+            case LINK_ONCE_ODR_AUTO_HIDE:
+            case AVAILABLE_EXTERNALLY:
+                return true;
+            default:
+                return false;
+        }
+    }
 }

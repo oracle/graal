@@ -162,7 +162,7 @@ public final class LLVMParserRuntime {
             if (!context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING)) {
                 lazyConverter.convert();
             }
-            functionDescriptor.declareInSulong(lazyConverter);
+            functionDescriptor.declareInSulong(lazyConverter, Linkage.isWeak(function.getLinkage()));
         }
     }
 
