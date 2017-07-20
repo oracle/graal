@@ -586,10 +586,7 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSourceSection, RootNode rootNode) {
-                if (rootSourceSection == null) {
-                    return true;
-                }
-                return isSourceIncluded(rootSourceSection.getSource());
+                return true;
             }
 
             @Override
@@ -628,9 +625,6 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSourceSection, RootNode rootNode) {
-                if (rootSourceSection == null) {
-                    return true;
-                }
                 return predicate.test(rootNode.getName());
             }
 
@@ -675,10 +669,7 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSourceSection, RootNode rootNode) {
-                if (rootSourceSection == null) {
-                    return true;
-                }
-                return isSourceIncluded(rootSourceSection.getSource());
+                return true;
             }
 
             @Override
@@ -707,10 +698,7 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSourceSection, RootNode rootNode) {
-                if (rootSourceSection == null) {
-                    return true;
-                }
-                return isSourceIncluded(rootSourceSection.getSource());
+                return true;
             }
 
             @Override
@@ -828,18 +816,7 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSection, RootNode rootNode) {
-                if (rootSection == null) {
-                    return true;
-                }
-                Source rootSource = rootSection.getSource();
-                if (rootSource != null) {
-                    for (SourceSection compareSection : sourceSections) {
-                        if (rootSource.equals(compareSection.getSource())) {
-                            return true;
-                        }
-                    }
-                }
-                return false;
+                return true;
             }
 
             @Override
@@ -907,10 +884,7 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSourceSection, RootNode rootNode) {
-                if (rootSourceSection == null) {
-                    return true;
-                }
-                return isIncluded(null, null, rootSourceSection);
+                return true;
             }
 
             @Override
@@ -952,13 +926,7 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSection, RootNode rootNode) {
-                if (rootSection == null) {
-                    return true;
-                }
-                if (!rootSection.isAvailable()) {
-                    return false;
-                }
-                return LineIn.isLineIn(rootSection, ranges);
+                return true;
             }
 
             @Override
@@ -999,13 +967,7 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSection, RootNode rootNode) {
-                if (rootSection == null) {
-                    return true;
-                }
-                if (!rootSection.isAvailable()) {
-                    return false;
-                }
-                return LineIn.isLineIn(rootSection, ranges);
+                return true;
             }
 
             @Override
@@ -1049,13 +1011,7 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSourceSection, RootNode rootNode) {
-                if (rootSourceSection == null) {
-                    return true;
-                }
-                if (!rootSourceSection.isAvailable()) {
-                    return false;
-                }
-                return isIncluded(null, null, rootSourceSection);
+                return true;
             }
 
             @Override

@@ -44,7 +44,9 @@ import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.impl.Accessor.InstrumentSupport;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -160,8 +162,9 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Method that updates the link to the parent in the array of specified new child nodes to this
-     * node.
+     * Inserts new node children into an AST that was already {@link #adoptChildren() adopted} by a
+     * {@link #getParent() parent}. The new children need to be assigned to its {@link Children
+     * children} field after insert was called.
      *
      * @param newChildren the array of new children whose parent should be updated
      * @return the array of new children
@@ -177,7 +180,9 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Method that updates the link to the parent in the specified new child node to this node.
+     * Inserts an new node into an AST that was already {@link #adoptChildren() adopted} by a
+     * {@link #getParent() parent}. The new child needs to be assigned to its {@link Child child}
+     * field after insert was called.
      *
      * @param newChild the new child whose parent should be updated
      * @return the new child
@@ -188,6 +193,34 @@ public abstract class Node implements NodeInterface, Cloneable {
         assert newChild != null;
         adoptHelper(newChild);
         return newChild;
+    }
+
+    /**
+     * Notifies the framework about the insertion of one or more nodes during execution. Otherwise,
+     * the framework assumes that {@link com.oracle.truffle.api.instrumentation.Instrumentable
+     * instrumentable} nodes remain unchanged after their root node is first
+     * {@link RootNode#execute(com.oracle.truffle.api.frame.VirtualFrame) executed}. Insertions
+     * don't need to be notified if it is known that none of the inserted nodes are instrumentable.
+     * <p>
+     * The provided {@link Node} and its children must be {@link #adoptChildren() adopted} in the
+     * AST before invoking this method. The caller must ensure that this method is invoked only once
+     * for a given node and its children.
+     * <p>
+     * Example usage: {@link com.oracle.truffle.api.nodes.NodeSnippets#notifyInserted}
+     *
+     * @param node the node tree that got inserted.
+     * @since 0.27
+     */
+    @SuppressWarnings("static-method")
+    protected final void notifyInserted(Node node) {
+        RootNode rootNode = node.getRootNode();
+        if (rootNode == null) {
+            throw new IllegalStateException("Node is not yet adopted and cannot be updated.");
+        }
+        InstrumentSupport support = ACCESSOR.instrumentSupport();
+        if (support != null) {
+            support.onNodeInserted(rootNode, node);
+        }
     }
 
     /** @since 0.8 or earlier */
@@ -608,6 +641,11 @@ public abstract class Node implements NodeInterface, Cloneable {
             return super.dumpSupport();
         }
 
+        @Override
+        protected InstrumentSupport instrumentSupport() {
+            return super.instrumentSupport();
+        }
+
         static final class AccessNodes extends Accessor.Nodes {
 
             @Override
@@ -736,4 +774,53 @@ class NodeSnippets {
 
     // END: com.oracle.truffle.api.nodes.NodeSnippets.ExpressionNode
 
+    public static void notifyInserted() {
+        class InstrumentableNode extends Node {
+            Object execute(@SuppressWarnings("unused") VirtualFrame frame) {
+                return null;
+            }
+        }
+
+        class MyLanguage extends TruffleLanguage<Object> {
+            @Override
+            protected Object createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
+                return null;
+            }
+
+            @Override
+            protected Object getLanguageGlobal(Object context) {
+                return null;
+            }
+
+            @Override
+            protected boolean isObjectOfLanguage(Object object) {
+                return false;
+            }
+        }
+
+        @SuppressWarnings("unused")
+        // @formatter:off
+        // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets#notifyInserted
+        class MyRootNode extends RootNode {
+
+            protected MyRootNode(MyLanguage language) {
+                super(language);
+            }
+
+            @Child InstrumentableNode child;
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                if (child == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    child = insert(new InstrumentableNode());
+                    notifyInserted(child);
+                }
+                return child.execute(frame);
+            }
+
+        }
+        // END: com.oracle.truffle.api.nodes.NodeSnippets#notifyInserted
+        // @formatter:on
+    }
 }

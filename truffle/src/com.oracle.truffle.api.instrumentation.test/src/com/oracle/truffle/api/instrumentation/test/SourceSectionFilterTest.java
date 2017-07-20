@@ -638,7 +638,7 @@ public class SourceSectionFilterTest {
         Assert.assertFalse(isInstrumentedNode(filter, source()));
 
         Assert.assertFalse(isInstrumented(filter, root, createNode(sampleSource1.createUnavailableSection())));
-        Assert.assertFalse(isInstrumentedRoot(filter, createNode(sampleSource1.createUnavailableSection())));
+        Assert.assertTrue(isInstrumentedRoot(filter, createNode(sampleSource1.createUnavailableSection())));
         Assert.assertFalse(isInstrumentedNode(filter, createNode(sampleSource1.createUnavailableSection())));
 
         Assert.assertTrue(isInstrumented(filter, root, createNode(sampleSource1.createSection(0, 5), tags(InstrumentationTestLanguage.EXPRESSION))));
@@ -647,7 +647,7 @@ public class SourceSectionFilterTest {
 
         Assert.assertFalse(isInstrumented(filter, root, createNode(sampleSource1.createSection(0, 5), tags(InstrumentationTestLanguage.STATEMENT))));
         Assert.assertTrue(isInstrumentedRoot(filter, createNode(sampleSource1.createSection(0, 5))));
-        Assert.assertFalse(isInstrumentedRoot(filter, createNode(sampleSource1.createSection(10, 5))));
+        Assert.assertTrue(isInstrumentedRoot(filter, createNode(sampleSource1.createSection(10, 5))));
         Assert.assertFalse(isInstrumentedNode(filter, createNode(sampleSource1.createSection(0, 5), tags(InstrumentationTestLanguage.STATEMENT))));
 
         Assert.assertNotNull(filter.toString());

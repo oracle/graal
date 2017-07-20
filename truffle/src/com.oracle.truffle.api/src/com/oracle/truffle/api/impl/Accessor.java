@@ -273,6 +273,8 @@ public abstract class Accessor {
 
         public abstract Object getEngineInstrumenter(Object instrumentationHandler);
 
+        public abstract void onNodeInserted(RootNode rootNode, Node tree);
+
     }
 
     protected abstract static class Frames {

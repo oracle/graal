@@ -154,7 +154,7 @@ final class InstrumentationHandler {
 
         // fast path no bindings attached
         if (!sourceSectionBindings.isEmpty()) {
-            visitRoot(root, new NotifyLoadedListenerVisitor(sourceSectionBindings));
+            visitRoot(root, root, new NotifyLoadedListenerVisitor(sourceSectionBindings));
         }
 
     }
@@ -171,7 +171,7 @@ final class InstrumentationHandler {
             return;
         }
 
-        visitRoot(root, new InsertWrappersVisitor(executionBindings));
+        visitRoot(root, root, new InsertWrappersVisitor(executionBindings));
     }
 
     void initializeInstrument(Object vmObject, Class<?> instrumentClass) {
@@ -367,7 +367,7 @@ final class InstrumentationHandler {
 
     private void visitRoots(Collection<RootNode> roots, AbstractNodeVisitor addBindingsVisitor) {
         for (RootNode root : roots) {
-            visitRoot(root, addBindingsVisitor);
+            visitRoot(root, root, addBindingsVisitor);
         }
     }
 
@@ -438,6 +438,15 @@ final class InstrumentationHandler {
             trace("END: Lazy updated for %s%n", sourceSection);
         }
         return root;
+    }
+
+    public void onNodeInserted(RootNode rootNode, Node tree) {
+        if (!sourceSectionBindings.isEmpty()) {
+            visitRoot(rootNode, tree, new NotifyLoadedListenerVisitor(sourceSectionBindings));
+        }
+        if (!executionBindings.isEmpty()) {
+            visitRoot(rootNode, tree, new InsertWrappersVisitor(executionBindings));
+        }
     }
 
     private static void notifySourceBindingsLoaded(Collection<EventBinding<?>> bindings, Source source) {
@@ -594,11 +603,11 @@ final class InstrumentationHandler {
         return tags;
     }
 
-    Set<Class<?>> getProvidedTags(RootNode root) {
-        return getProvidedTags(root.getLanguageInfo());
+    Set<Class<?>> getProvidedTags(Node root) {
+        return getProvidedTags(root.getRootNode().getLanguageInfo());
     }
 
-    private static boolean isInstrumentableNode(Node node, SourceSection sourceSection) {
+    static boolean isInstrumentableNode(Node node, SourceSection sourceSection) {
         return !(node instanceof WrapperNode) && !(node instanceof RootNode) && sourceSection != null;
     }
 
@@ -607,7 +616,7 @@ final class InstrumentationHandler {
         out.printf(message, args);
     }
 
-    private void visitRoot(final RootNode root, final AbstractNodeVisitor visitor) {
+    private void visitRoot(RootNode root, final Node node, final AbstractNodeVisitor visitor) {
         if (TRACE) {
             trace("BEGIN: Visit root %s for %s%n", root.toString(), visitor);
         }
@@ -619,7 +628,7 @@ final class InstrumentationHandler {
             if (TRACE) {
                 trace("BEGIN: Traverse root %s for %s%n", root.toString(), visitor);
             }
-            root.accept(visitor);
+            node.accept(visitor);
             if (TRACE) {
                 trace("END: Traverse root %s for %s%n", root.toString(), visitor);
             }
@@ -1458,6 +1467,14 @@ final class InstrumentationHandler {
             @Override
             public Object getEngineInstrumenter(Object instrumentationHandler) {
                 return ((InstrumentationHandler) instrumentationHandler).engineInstrumenter;
+            }
+
+            @Override
+            public void onNodeInserted(RootNode rootNode, Node tree) {
+                InstrumentationHandler handler = getHandler(rootNode);
+                if (handler != null) {
+                    handler.onNodeInserted(rootNode, tree);
+                }
             }
 
             @Override
