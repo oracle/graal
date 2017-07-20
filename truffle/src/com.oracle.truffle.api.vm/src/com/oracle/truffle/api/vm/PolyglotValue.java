@@ -883,14 +883,9 @@ abstract class PolyglotValue extends AbstractValueImpl {
         public long asNativePointer(Object receiver) {
             Object prev = languageContext.enter();
             try {
-                if (ForeignAccess.sendIsExecutable(isPointerNode, (TruffleObject) receiver)) {
-                    try {
-                        return ForeignAccess.sendAsPointer(asPointerNode, (TruffleObject) receiver);
-                    } catch (UnsupportedMessageException e) {
-                        // language implementation error!
-                        throw new AssertionError("Object returned true for isPointer but threw UnsupportedMessageException when converting to pointer.");
-                    }
-                } else {
+                try {
+                    return ForeignAccess.sendAsPointer(asPointerNode, (TruffleObject) receiver);
+                } catch (UnsupportedMessageException e) {
                     return super.asNativePointer(receiver);
                 }
             } catch (Throwable e) {
@@ -960,18 +955,14 @@ abstract class PolyglotValue extends AbstractValueImpl {
         public Value execute(Object receiver, Object[] arguments) {
             Object prev = languageContext.enter();
             try {
-                if (ForeignAccess.sendIsExecutable(isExecutableNode, (TruffleObject) receiver)) {
-                    try {
-                        return newValue(ForeignAccess.sendExecute(executeNode, (TruffleObject) receiver, languageContext.toGuestValues(arguments)));
-                    } catch (UnsupportedTypeException e) {
-                        throw handleUnsupportedType(e);
-                    } catch (ArityException e) {
-                        throw handleInvalidArity(e);
-                    } catch (UnsupportedMessageException e) {
-                        // language implementation error!
-                        throw new AssertionError("Object returned true for isExecutable but threw UnsupportedMessageException when executing.");
-                    }
-                } else {
+                try {
+                    return newValue(ForeignAccess.sendExecute(executeNode, (TruffleObject) receiver, languageContext.toGuestValues(arguments)));
+                } catch (UnsupportedTypeException e) {
+                    throw handleUnsupportedType(e);
+                } catch (ArityException e) {
+                    throw handleInvalidArity(e);
+                } catch (UnsupportedMessageException e) {
+                    // language implementation error!
                     return super.execute(receiver, arguments);
                 }
             } catch (Throwable e) {
