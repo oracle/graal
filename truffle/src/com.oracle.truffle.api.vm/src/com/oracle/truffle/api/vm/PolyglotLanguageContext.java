@@ -41,27 +41,27 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
-final class PolyglotLanguageContextImpl implements VMObject {
+final class PolyglotLanguageContext implements VMObject {
 
     private static final String[] EMPTY_STRING_ARRAY = new String[0];
 
     final PolyglotContextImpl context;
-    final PolyglotLanguageImpl language;
+    final PolyglotLanguage language;
     final Map<Object, CallTarget> sourceCache = new HashMap<>();
-    final Map<Class<?>, PolyglotValueImpl> valueCache = new HashMap<>();
+    final Map<Class<?>, PolyglotValue> valueCache = new HashMap<>();
     final OptionValues optionValues;
     final Value nullValue;
     final String[] applicationArguments;
     volatile boolean disposed;
     volatile Env env;
 
-    PolyglotLanguageContextImpl(PolyglotContextImpl context, PolyglotLanguageImpl language, OptionValues optionValues, String[] applicationArguments) {
+    PolyglotLanguageContext(PolyglotContextImpl context, PolyglotLanguage language, OptionValues optionValues, String[] applicationArguments) {
         this.context = context;
         this.language = language;
         this.optionValues = optionValues;
         this.applicationArguments = applicationArguments == null ? EMPTY_STRING_ARRAY : applicationArguments;
 
-        PolyglotValueImpl.createDefaultValueCaches(this);
+        PolyglotValue.createDefaultValueCaches(this);
         nullValue = toHostValue(toGuestValue(null));
     }
 
@@ -146,7 +146,7 @@ final class PolyglotLanguageContextImpl implements VMObject {
     Object toGuestValue(Object receiver) {
         if (receiver instanceof Value) {
             Value receiverValue = (Value) receiver;
-            PolyglotValueImpl argumentCache = (PolyglotValueImpl) context.engine.impl.getAPIAccess().getImpl(receiverValue);
+            PolyglotValue argumentCache = (PolyglotValue) context.engine.impl.getAPIAccess().getImpl(receiverValue);
             Thread valueThread = argumentCache.languageContext.context.boundThread.get();
             Thread currentThread = context.boundThread.get();
 
@@ -165,7 +165,7 @@ final class PolyglotLanguageContextImpl implements VMObject {
         } else if (PolyglotImpl.isGuestPrimitive(receiver)) {
             return receiver;
         } else if (receiver instanceof Proxy) {
-            return PolyglotProxyImpl.toProxyGuestObject(this, (Proxy) receiver);
+            return PolyglotProxy.toProxyGuestObject(this, (Proxy) receiver);
         } else {
             return JAVAINTEROP.toJavaGuestObject(receiver, this);
         }
@@ -175,17 +175,17 @@ final class PolyglotLanguageContextImpl implements VMObject {
         assert value != null;
         assert !(value instanceof Value);
         Object receiver = value;
-        PolyglotValueImpl cache = valueCache.get(receiver.getClass());
+        PolyglotValue cache = valueCache.get(receiver.getClass());
         if (cache == null) {
             if (receiver instanceof Proxy) {
-                receiver = PolyglotProxyImpl.toProxyGuestObject(this, (Proxy) receiver);
+                receiver = PolyglotProxy.toProxyGuestObject(this, (Proxy) receiver);
             } else {
                 receiver = JAVAINTEROP.toJavaGuestObject(receiver, this);
             }
 
             cache = valueCache.get(receiver.getClass());
             if (cache == null) {
-                cache = PolyglotValueImpl.createInteropValueCache(this);
+                cache = PolyglotValue.createInteropValueCache(this);
                 valueCache.put(receiver.getClass(), cache);
             }
         }

@@ -51,13 +51,13 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 
-abstract class PolyglotValueImpl extends AbstractValueImpl {
+abstract class PolyglotValue extends AbstractValueImpl {
 
-    final PolyglotLanguageContextImpl languageContext;
+    final PolyglotLanguageContext languageContext;
 
     final PolyglotImpl impl;
 
-    PolyglotValueImpl(PolyglotLanguageContextImpl context) {
+    PolyglotValue(PolyglotLanguageContext context) {
         super(context.getEngine().impl);
         this.impl = context.getEngine().impl;
         this.languageContext = context;
@@ -122,12 +122,12 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
         return languageContext.toHostValue(receiver);
     }
 
-    static PolyglotValueImpl createInteropValueCache(PolyglotLanguageContextImpl languageContext) {
+    static PolyglotValue createInteropValueCache(PolyglotLanguageContext languageContext) {
         return new Interop(languageContext);
     }
 
-    static void createDefaultValueCaches(PolyglotLanguageContextImpl context) {
-        Map<Class<?>, PolyglotValueImpl> valueCache = context.valueCache;
+    static void createDefaultValueCaches(PolyglotLanguageContext context) {
+        Map<Class<?>, PolyglotValue> valueCache = context.valueCache;
         valueCache.put(Boolean.class, new BooleanValueCache(context));
         valueCache.put(Byte.class, new ByteValueCache(context));
         valueCache.put(Short.class, new ShortValueCache(context));
@@ -141,9 +141,9 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
         valueCache.put(void.class, new Default(context));
     }
 
-    private static final class StringValueCache extends PolyglotValueImpl {
+    private static final class StringValueCache extends PolyglotValue {
 
-        StringValueCache(PolyglotLanguageContextImpl context) {
+        StringValueCache(PolyglotLanguageContext context) {
             super(context);
         }
 
@@ -159,9 +159,9 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
 
     }
 
-    private static final class BooleanValueCache extends PolyglotValueImpl {
+    private static final class BooleanValueCache extends PolyglotValue {
 
-        BooleanValueCache(PolyglotLanguageContextImpl context) {
+        BooleanValueCache(PolyglotLanguageContext context) {
             super(context);
         }
 
@@ -176,9 +176,9 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
         }
     }
 
-    private static final class ByteValueCache extends PolyglotValueImpl {
+    private static final class ByteValueCache extends PolyglotValue {
 
-        ByteValueCache(PolyglotLanguageContextImpl context) {
+        ByteValueCache(PolyglotLanguageContext context) {
             super(context);
         }
 
@@ -239,9 +239,9 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
 
     }
 
-    private static final class ShortValueCache extends PolyglotValueImpl {
+    private static final class ShortValueCache extends PolyglotValue {
 
-        ShortValueCache(PolyglotLanguageContextImpl context) {
+        ShortValueCache(PolyglotLanguageContext context) {
             super(context);
         }
 
@@ -310,9 +310,9 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
 
     }
 
-    private static final class CharacterValueCache extends PolyglotValueImpl {
+    private static final class CharacterValueCache extends PolyglotValue {
 
-        CharacterValueCache(PolyglotLanguageContextImpl context) {
+        CharacterValueCache(PolyglotLanguageContext context) {
             super(context);
         }
 
@@ -327,9 +327,9 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
         }
     }
 
-    private static final class LongValueCache extends PolyglotValueImpl {
+    private static final class LongValueCache extends PolyglotValue {
 
-        LongValueCache(PolyglotLanguageContextImpl context) {
+        LongValueCache(PolyglotLanguageContext context) {
             super(context);
         }
 
@@ -421,9 +421,9 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
         }
     }
 
-    private static final class FloatValueCache extends PolyglotValueImpl {
+    private static final class FloatValueCache extends PolyglotValue {
 
-        FloatValueCache(PolyglotLanguageContextImpl context) {
+        FloatValueCache(PolyglotLanguageContext context) {
             super(context);
         }
 
@@ -508,9 +508,9 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
 
     }
 
-    private static final class DoubleValueCache extends PolyglotValueImpl {
+    private static final class DoubleValueCache extends PolyglotValue {
 
-        DoubleValueCache(PolyglotLanguageContextImpl context) {
+        DoubleValueCache(PolyglotLanguageContext context) {
             super(context);
         }
 
@@ -605,9 +605,9 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
 
     }
 
-    private static final class IntValueCache extends PolyglotValueImpl {
+    private static final class IntValueCache extends PolyglotValue {
 
-        IntValueCache(PolyglotLanguageContextImpl context) {
+        IntValueCache(PolyglotLanguageContext context) {
             super(context);
         }
 
@@ -684,15 +684,15 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
 
     }
 
-    private static final class Default extends PolyglotValueImpl {
+    private static final class Default extends PolyglotValue {
 
-        Default(PolyglotLanguageContextImpl context) {
+        Default(PolyglotLanguageContext context) {
             super(context);
         }
 
     }
 
-    private static final class Interop extends PolyglotValueImpl {
+    private static final class Interop extends PolyglotValue {
 
         final Node isBoxedNode = Message.IS_BOXED.createNode();
         final Node unboxNode = Message.UNBOX.createNode();
@@ -712,7 +712,7 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
         final Node keysSizeNode = Message.GET_SIZE.createNode();
         final Node keysReadNode = Message.READ.createNode();
 
-        Interop(PolyglotLanguageContextImpl context) {
+        Interop(PolyglotLanguageContext context) {
             super(context);
         }
 
@@ -905,7 +905,7 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
             Object prev = languageContext.enter();
             try {
                 TruffleObject castReceiver = (TruffleObject) receiver;
-                return PolyglotProxyImpl.isProxyGuestObject(castReceiver) || JavaInterop.isJavaObject(castReceiver);
+                return PolyglotProxy.isProxyGuestObject(castReceiver) || JavaInterop.isJavaObject(castReceiver);
             } catch (Throwable e) {
                 throw wrapGuestException(languageContext, e);
             } finally {
@@ -918,8 +918,8 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
             Object prev = languageContext.enter();
             try {
                 TruffleObject castReceiver = (TruffleObject) receiver;
-                if (PolyglotProxyImpl.isProxyGuestObject(castReceiver)) {
-                    return PolyglotProxyImpl.toProxyHostObject(castReceiver);
+                if (PolyglotProxy.isProxyGuestObject(castReceiver)) {
+                    return PolyglotProxy.toProxyHostObject(castReceiver);
                 } else if (JavaInterop.isJavaObject(castReceiver)) {
                     return JavaInterop.asJavaObject(castReceiver);
                 } else {
@@ -1031,11 +1031,11 @@ abstract class PolyglotValueImpl extends AbstractValueImpl {
             }
         }
 
-        private PolyglotValueImpl getPrimitiveCache(Object primitive) {
+        private PolyglotValue getPrimitiveCache(Object primitive) {
             if (primitive == null) {
                 return languageContext.valueCache.get(void.class);
             }
-            PolyglotValueImpl cache = languageContext.valueCache.get(primitive.getClass());
+            PolyglotValue cache = languageContext.valueCache.get(primitive.getClass());
             if (cache == null) {
                 // TODO maybe this should be an assertion here because it likely means
                 // that unbox returned an invalid value.

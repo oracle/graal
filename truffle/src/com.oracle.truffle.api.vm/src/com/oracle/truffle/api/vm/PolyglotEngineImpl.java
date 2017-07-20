@@ -89,11 +89,11 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     final TimeUnit timeoutUnit;
     final boolean sandbox;
 
-    final Map<String, PolyglotLanguageImpl> idToLanguage;
+    final Map<String, PolyglotLanguage> idToLanguage;
     final Map<String, Language> idToPublicLanguage;
     final Map<String, LanguageInfo> idToInternalLanguageInfo;
 
-    final Map<String, PolyglotInstrumentImpl> idToInstrument;
+    final Map<String, PolyglotInstrument> idToInstrument;
     final Map<String, Instrument> idToPublicInstrument;
     final Map<String, InstrumentInfo> idToInternalInstrumentInfo;
 
@@ -107,7 +107,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     final boolean boundEngine;
     private final Set<PolyglotContextImpl> contexts = new LinkedHashSet<>();
 
-    PolyglotLanguageImpl hostLanguage;
+    PolyglotLanguage hostLanguage;
 
     volatile OptionDescriptors allOptions;
     volatile boolean closed;
@@ -152,21 +152,21 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
         Map<String, String> originalEngineOptions = new HashMap<>();
         Map<String, String> originalCompilerOptions = new HashMap<>();
-        Map<PolyglotLanguageImpl, Map<String, String>> languagesOptions = new HashMap<>();
-        Map<PolyglotInstrumentImpl, Map<String, String>> instrumentsOptions = new HashMap<>();
+        Map<PolyglotLanguage, Map<String, String>> languagesOptions = new HashMap<>();
+        Map<PolyglotInstrument, Map<String, String>> instrumentsOptions = new HashMap<>();
 
         parseOptions(options, useSystemProperties, originalEngineOptions, originalCompilerOptions, languagesOptions, instrumentsOptions);
 
         this.engineOptionValues.putAll(originalEngineOptions);
         this.compilerOptionValues.putAll(originalCompilerOptions);
 
-        for (PolyglotLanguageImpl language : languagesOptions.keySet()) {
+        for (PolyglotLanguage language : languagesOptions.keySet()) {
             language.getOptionValues().putAll(languagesOptions.get(language));
         }
 
         Map<String, Language> publicLanguages = new LinkedHashMap<>();
         for (String key : this.idToLanguage.keySet()) {
-            PolyglotLanguageImpl languageImpl = idToLanguage.get(key);
+            PolyglotLanguage languageImpl = idToLanguage.get(key);
             if (!languageImpl.cache.isInternal()) {
                 publicLanguages.put(key, languageImpl.api);
             }
@@ -175,18 +175,18 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
         Map<String, Instrument> publicInstruments = new LinkedHashMap<>();
         for (String key : this.idToInstrument.keySet()) {
-            PolyglotInstrumentImpl instrumentImpl = idToInstrument.get(key);
+            PolyglotInstrument instrumentImpl = idToInstrument.get(key);
             if (!instrumentImpl.cache.isInternal()) {
                 publicInstruments.put(key, instrumentImpl.api);
             }
         }
         idToPublicInstrument = Collections.unmodifiableMap(publicInstruments);
 
-        for (PolyglotInstrumentImpl instrument : instrumentsOptions.keySet()) {
+        for (PolyglotInstrument instrument : instrumentsOptions.keySet()) {
             instrument.getOptionValues().putAll(instrumentsOptions.get(instrument));
         }
 
-        for (PolyglotInstrumentImpl instrument : instrumentsOptions.keySet()) {
+        for (PolyglotInstrument instrument : instrumentsOptions.keySet()) {
             // we got options for this instrument -> create it.
             instrument.ensureCreated();
         }
@@ -210,7 +210,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
     private void parseOptions(Map<String, String> options, boolean useSystemProperties,
                     Map<String, String> originalEngineOptions, Map<String, String> originalCompilerOptions,
-                    Map<PolyglotLanguageImpl, Map<String, String>> languagesOptions, Map<PolyglotInstrumentImpl, Map<String, String>> instrumentsOptions) {
+                    Map<PolyglotLanguage, Map<String, String>> languagesOptions, Map<PolyglotInstrument, Map<String, String>> instrumentsOptions) {
         if (useSystemProperties) {
             for (Object systemKey : System.getProperties().keySet()) {
                 String key = (String) systemKey;
@@ -232,7 +232,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                 group = key;
             }
             String value = options.get(key);
-            PolyglotLanguageImpl language = idToLanguage.get(group);
+            PolyglotLanguage language = idToLanguage.get(group);
             if (language != null && !language.cache.isInternal()) {
                 Map<String, String> languageOptions = languagesOptions.get(language);
                 if (languageOptions == null) {
@@ -242,7 +242,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                 languageOptions.put(key, value);
                 continue;
             }
-            PolyglotInstrumentImpl instrument = idToInstrument.get(group);
+            PolyglotInstrument instrument = idToInstrument.get(group);
             if (instrument != null && !instrument.cache.isInternal()) {
                 Map<String, String> instrumentOptions = instrumentsOptions.get(instrument);
                 if (instrumentOptions == null) {
@@ -271,11 +271,11 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         return this;
     }
 
-    private Map<String, PolyglotInstrumentImpl> initializeInstruments(Map<String, InstrumentInfo> infos) {
-        Map<String, PolyglotInstrumentImpl> instruments = new LinkedHashMap<>();
+    private Map<String, PolyglotInstrument> initializeInstruments(Map<String, InstrumentInfo> infos) {
+        Map<String, PolyglotInstrument> instruments = new LinkedHashMap<>();
         List<InstrumentCache> cachedInstruments = InstrumentCache.load(SPI.allLoaders());
         for (InstrumentCache instrumentCache : cachedInstruments) {
-            PolyglotInstrumentImpl instrumentImpl = new PolyglotInstrumentImpl(this, instrumentCache);
+            PolyglotInstrument instrumentImpl = new PolyglotInstrument(this, instrumentCache);
             instrumentImpl.info = LANGUAGE.createInstrument(instrumentImpl, instrumentCache.getId(), instrumentCache.getName(), instrumentCache.getVersion());
             Instrument instrument = impl.getAPIAccess().newInstrument(instrumentImpl);
             instrumentImpl.api = instrument;
@@ -291,8 +291,8 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         return instruments;
     }
 
-    private Map<String, PolyglotLanguageImpl> initializeLanguages(Map<String, LanguageInfo> infos) {
-        Map<String, PolyglotLanguageImpl> langs = new LinkedHashMap<>();
+    private Map<String, PolyglotLanguage> initializeLanguages(Map<String, LanguageInfo> infos) {
+        Map<String, PolyglotLanguage> langs = new LinkedHashMap<>();
         Map<String, LanguageCache> cachedLanguages = LanguageCache.languages();
         Set<LanguageCache> uniqueLanguages = new LinkedHashSet<>();
         uniqueLanguages.addAll(cachedLanguages.values());
@@ -300,7 +300,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
         int index = 1;
         for (LanguageCache cache : uniqueLanguages) {
-            PolyglotLanguageImpl languageImpl = createLanguage(cache, index);
+            PolyglotLanguage languageImpl = createLanguage(cache, index);
 
             String id = languageImpl.cache.getId();
             verifyId(id, cache.getClassName());
@@ -317,8 +317,8 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         return langs;
     }
 
-    private PolyglotLanguageImpl createLanguage(LanguageCache cache, int index) {
-        PolyglotLanguageImpl languageImpl = new PolyglotLanguageImpl(this, cache, index, index == HOST_LANGUAGE_INDEX);
+    private PolyglotLanguage createLanguage(LanguageCache cache, int index) {
+        PolyglotLanguage languageImpl = new PolyglotLanguage(this, cache, index, index == HOST_LANGUAGE_INDEX);
         languageImpl.info = NODES.createLanguage(languageImpl, cache.getId(), cache.getName(), cache.getVersion(), cache.getMimeTypes());
         Language language = impl.getAPIAccess().newLanguage(languageImpl);
         languageImpl.api = language;
@@ -425,7 +425,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
             contexts.clear();
             for (Instrument instrument : idToPublicInstrument.values()) {
-                PolyglotInstrumentImpl instrumentImpl = (PolyglotInstrumentImpl) getAPIAccess().getImpl(instrument);
+                PolyglotInstrument instrumentImpl = (PolyglotInstrument) getAPIAccess().getImpl(instrument);
                 try {
                     instrumentImpl.ensureClosed();
                 } catch (Throwable e) {
@@ -474,10 +474,10 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                     List<OptionDescriptors> allDescriptors = new ArrayList<>();
                     allDescriptors.add(engineOptions);
                     allDescriptors.add(compilerOptions);
-                    for (PolyglotLanguageImpl language : idToLanguage.values()) {
+                    for (PolyglotLanguage language : idToLanguage.values()) {
                         allDescriptors.add(language.getOptions());
                     }
-                    for (PolyglotInstrumentImpl instrument : idToInstrument.values()) {
+                    for (PolyglotInstrument instrument : idToInstrument.values()) {
                         allDescriptors.add(instrument.getOptions());
                     }
                     allOptions = OptionDescriptors.createUnion(allDescriptors.toArray(new OptionDescriptors[0]));

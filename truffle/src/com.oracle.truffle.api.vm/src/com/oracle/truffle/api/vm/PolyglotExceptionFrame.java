@@ -39,15 +39,15 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
-final class PolyglotExceptionFrameImpl extends AbstractStackFrameImpl {
+final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
 
-    private final PolyglotLanguageImpl language;
+    private final PolyglotLanguage language;
     private final SourceSection sourceLocation;
     private final String rootName;
     private final boolean host;
     private StackTraceElement stackTrace;
 
-    private PolyglotExceptionFrameImpl(VMObject source, PolyglotLanguageImpl language,
+    private PolyglotExceptionFrame(VMObject source, PolyglotLanguage language,
                     SourceSection sourceLocation, String rootName, boolean isHost, StackTraceElement stackTrace) {
         super(source.getImpl());
         this.language = language;
@@ -110,7 +110,7 @@ final class PolyglotExceptionFrameImpl extends AbstractStackFrameImpl {
         return b.toString();
     }
 
-    static PolyglotExceptionFrameImpl createGuest(PolyglotExceptionImpl exception, TruffleStackTraceElement frame, boolean first) {
+    static PolyglotExceptionFrame createGuest(PolyglotExceptionImpl exception, TruffleStackTraceElement frame, boolean first) {
         if (frame == null) {
             return null;
         }
@@ -125,7 +125,7 @@ final class PolyglotExceptionFrameImpl extends AbstractStackFrameImpl {
         }
 
         PolyglotEngineImpl engine = exception.engine;
-        PolyglotLanguageImpl language = engine.idToLanguage.get(info.getId());
+        PolyglotLanguage language = engine.idToLanguage.get(info.getId());
         String rootName = targetRoot.getName();
 
         SourceSection location;
@@ -142,11 +142,11 @@ final class PolyglotExceptionFrameImpl extends AbstractStackFrameImpl {
             location = first ? exception.getSourceLocation() : null;
         }
 
-        return new PolyglotExceptionFrameImpl(exception, language, location, rootName, false, null);
+        return new PolyglotExceptionFrame(exception, language, location, rootName, false, null);
     }
 
-    static PolyglotExceptionFrameImpl createHost(PolyglotExceptionImpl exception, StackTraceElement hostStack) {
-        PolyglotLanguageImpl language = exception.engine.idToLanguage.get(PolyglotEngineImpl.HOST_LANGUAGE_ID);
+    static PolyglotExceptionFrame createHost(PolyglotExceptionImpl exception, StackTraceElement hostStack) {
+        PolyglotLanguage language = exception.engine.idToLanguage.get(PolyglotEngineImpl.HOST_LANGUAGE_ID);
 
         // source section for the host language is currently null
         // we should potentially in the future create a source section for the host language
@@ -154,7 +154,7 @@ final class PolyglotExceptionFrameImpl extends AbstractStackFrameImpl {
         SourceSection location = null;
 
         String rootname = hostStack.getClassName() + "." + hostStack.getMethodName();
-        return new PolyglotExceptionFrameImpl(exception, language, location, rootname, true, hostStack);
+        return new PolyglotExceptionFrame(exception, language, location, rootname, true, hostStack);
     }
 
     private static String spaces(int length) {
