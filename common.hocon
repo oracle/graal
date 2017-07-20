@@ -4,12 +4,12 @@ overlay = 29b847f04b62506b6a9e07806ce476e99b6d850a
 # labsjdk* are JDKs based on OracleJDK binaries
 # openjdk* are JDKs based on OpenJDK binaries
 jdks: {
-  openjdk8 : {name : openjdk, version : "8u121-jvmci-0.30", platformspecific: true}
-  labsjdk8 : {name : labsjdk, version : "8u121-jvmci-0.30", platformspecific: true}
+  openjdk8 : {name : openjdk, version : "8u121-jvmci-0.31", platformspecific: true}
+  labsjdk8 : {name : labsjdk, version : "8u121-jvmci-0.31", platformspecific: true}
   labsjdk9 : {name : labsjdk, version : "9-20170703-141343", platformspecific: true}
   labsjdk9EA : {name : labsjdk, version : "9+176", platformspecific: true}
-  openjdk8Debug : {name : openjdk, version : "8u121-jvmci-0.30-fastdebug", platformspecific: true}
-  labsjdk8Debug : {name : labsjdk, version : "8u121-jvmci-0.30-fastdebug", platformspecific: true}
+  openjdk8Debug : {name : openjdk, version : "8u121-jvmci-0.31-fastdebug", platformspecific: true}
+  labsjdk8Debug : {name : labsjdk, version : "8u121-jvmci-0.31-fastdebug", platformspecific: true}
 }
 
 # Overlay placeholder for pinning mx to a specific revision
