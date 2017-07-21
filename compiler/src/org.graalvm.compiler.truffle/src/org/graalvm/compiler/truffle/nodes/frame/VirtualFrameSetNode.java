@@ -42,8 +42,8 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
 
     @Input private ValueNode value;
 
-    public VirtualFrameSetNode(NewFrameNode frame, FrameSlot frameSlot, int accessTag, ValueNode value) {
-        super(TYPE, StampFactory.forVoid(), frame, frameSlot, accessTag);
+    public VirtualFrameSetNode(NewFrameNode frame, int frameSlotIndex, int accessTag, ValueNode value) {
+        super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, accessTag);
         this.value = value;
     }
 

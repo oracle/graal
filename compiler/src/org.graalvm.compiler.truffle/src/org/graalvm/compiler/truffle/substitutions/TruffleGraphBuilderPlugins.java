@@ -34,6 +34,14 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -104,14 +112,6 @@ import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 /**
  * Provides {@link InvocationPlugin}s for Truffle classes.
  */
@@ -122,31 +122,31 @@ public class TruffleGraphBuilderPlugins {
         public static final OptionKey<Boolean> TruffleIntrinsifyFrameAccess = new OptionKey<>(true);
     }
 
-    public static void registerInvocationPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, SnippetReflectionProvider snippetReflection, KnownTruffleFields knownTruffleFields) {
-
-        registerOptimizedAssumptionPlugins(plugins, knownTruffleFields);
+    public static void registerInvocationPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification,
+                             ConstantReflectionProvider constantReflection, SnippetReflectionProvider snippetReflection, KnownTruffleFields knownFields) {
+        registerOptimizedAssumptionPlugins(plugins, knownFields);
         registerExactMathPlugins(plugins);
         registerCompilerDirectivesPlugins(plugins, canDelayIntrinsification);
         registerCompilerAssertsPlugins(plugins, canDelayIntrinsification);
-        registerOptimizedCallTargetPlugins(plugins, canDelayIntrinsification, knownTruffleFields);
+        registerOptimizedCallTargetPlugins(plugins, canDelayIntrinsification, knownFields);
         registerCompilationFinalReferencePlugins(plugins, snippetReflection, canDelayIntrinsification);
 
         if (TruffleCompilerOptions.getValue(TruffleUseFrameWithoutBoxing)) {
-            registerFrameWithoutBoxingPlugins(plugins, canDelayIntrinsification, snippetReflection);
+            registerFrameWithoutBoxingPlugins(plugins, canDelayIntrinsification, constantReflection, knownFields);
         } else {
             registerFrameWithBoxingPlugins(plugins, canDelayIntrinsification);
         }
 
     }
 
-    public static void registerOptimizedAssumptionPlugins(InvocationPlugins plugins, KnownTruffleFields knownTruffleFields) {
+    public static void registerOptimizedAssumptionPlugins(InvocationPlugins plugins, KnownTruffleFields knownFields) {
         Registration r = new Registration(plugins, OptimizedAssumption.class);
         InvocationPlugin plugin = new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (receiver.isConstant() && b.getAssumptions() != null) {
-                    final JavaConstant assumption = (JavaConstant) receiver.get().asConstant();
-                    if (b.getConstantReflection().readFieldValue(knownTruffleFields.fieldOptimizedAssumptionIsValid, assumption).asBoolean()) {
+                    JavaConstant assumption = (JavaConstant) receiver.get().asConstant();
+                    if (b.getConstantReflection().readFieldValue(knownFields.fieldOptimizedAssumptionIsValid, assumption).asBoolean()) {
                         if (targetMethod.getName().equals("isValid")) {
                             b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
                         } else {
@@ -454,7 +454,7 @@ public class TruffleGraphBuilderPlugins {
         accessorKindToTag.put(JavaKind.Byte, (int) FrameWithoutBoxing.BYTE_TAG);
     }
 
-    public static void registerFrameWithoutBoxingPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, SnippetReflectionProvider snippetReflection) {
+    public static void registerFrameWithoutBoxingPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, ConstantReflectionProvider constantReflection, KnownTruffleFields knownFields) {
         Registration r = new Registration(plugins, FrameWithoutBoxing.class);
         registerFrameMethods(r);
         registerUnsafeCast(r, canDelayIntrinsification);
@@ -462,7 +462,7 @@ public class TruffleGraphBuilderPlugins {
 
         if (TruffleCompilerOptions.getValue(Options.TruffleIntrinsifyFrameAccess)) {
             for (Map.Entry<JavaKind, Integer> kindAndTag : accessorKindToTag.entrySet()) {
-                registerFrameAccessors(r, kindAndTag.getKey(), kindAndTag.getValue(), snippetReflection);
+                registerFrameAccessors(r, kindAndTag.getKey(), kindAndTag.getValue(), constantReflection, knownFields);
             }
         }
     }
@@ -491,14 +491,14 @@ public class TruffleGraphBuilderPlugins {
      * is a complicated method to intrinsify, and it is not used frequently enough to justify the
      * complexity of an intrinisification.
      */
-    private static void registerFrameAccessors(Registration r, JavaKind accessKind, int accessTag, SnippetReflectionProvider snippetReflection) {
+    private static void registerFrameAccessors(Registration r, JavaKind accessKind, int accessTag, ConstantReflectionProvider constantReflection, KnownTruffleFields knownFields) {
         String nameSuffix = accessKind.name();
         r.register2("get" + nameSuffix, Receiver.class, FrameSlot.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frameNode, ValueNode frameSlotNode) {
-                FrameSlot frameSlot = maybeGetConstantFrameSlot(snippetReflection, frameNode.get(false), frameSlotNode);
-                if (frameSlot != null) {
-                    b.addPush(accessKind, new VirtualFrameGetNode((NewFrameNode) frameNode.get(), frameSlot, accessKind, accessTag));
+                int frameSlotIndex = maybeGetConstantFrameSlotIndex(frameNode, frameSlotNode, constantReflection, knownFields);
+                if (frameSlotIndex >= 0) {
+                    b.addPush(accessKind, new VirtualFrameGetNode((NewFrameNode) frameNode.get(), frameSlotIndex, accessKind, accessTag));
                     return true;
                 }
                 return false;
@@ -508,9 +508,9 @@ public class TruffleGraphBuilderPlugins {
         r.register3("set" + nameSuffix, Receiver.class, FrameSlot.class, accessKind == JavaKind.Object ? Object.class : accessKind.toJavaClass(), new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frameNode, ValueNode frameSlotNode, ValueNode value) {
-                FrameSlot frameSlot = maybeGetConstantFrameSlot(snippetReflection, frameNode.get(false), frameSlotNode);
-                if (frameSlot != null) {
-                    b.add(new VirtualFrameSetNode((NewFrameNode) frameNode.get(), frameSlot, accessTag, value));
+                int frameSlotIndex = maybeGetConstantFrameSlotIndex(frameNode, frameSlotNode, constantReflection, knownFields);
+                if (frameSlotIndex >= 0) {
+                    b.add(new VirtualFrameSetNode((NewFrameNode) frameNode.get(), frameSlotIndex, accessTag, value));
                     return true;
                 }
                 return false;
@@ -520,9 +520,9 @@ public class TruffleGraphBuilderPlugins {
         r.register2("is" + nameSuffix, Receiver.class, FrameSlot.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frameNode, ValueNode frameSlotNode) {
-                FrameSlot frameSlot = maybeGetConstantFrameSlot(snippetReflection, frameNode.get(false), frameSlotNode);
-                if (frameSlot != null) {
-                    b.addPush(JavaKind.Boolean, new VirtualFrameIsNode((NewFrameNode) frameNode.get(), frameSlot, accessTag));
+                int frameSlotIndex = maybeGetConstantFrameSlotIndex(frameNode, frameSlotNode, constantReflection, knownFields);
+                if (frameSlotIndex >= 0) {
+                    b.addPush(JavaKind.Boolean, new VirtualFrameIsNode((NewFrameNode) frameNode.get(), frameSlotIndex, accessTag));
                     return true;
                 }
                 return false;
@@ -530,11 +530,14 @@ public class TruffleGraphBuilderPlugins {
         });
     }
 
-    static FrameSlot maybeGetConstantFrameSlot(SnippetReflectionProvider snippetReflection, ValueNode frameNode, ValueNode frameSlotNode) {
-        if (frameSlotNode.isConstant() && frameNode instanceof NewFrameNode && ((NewFrameNode) frameNode).getIntrinsifyAccessors()) {
-            return snippetReflection.asObject(FrameSlot.class, frameSlotNode.asJavaConstant());
+    static int maybeGetConstantFrameSlotIndex(Receiver frameNode, ValueNode frameSlotNode, ConstantReflectionProvider constantReflection, KnownTruffleFields knownFields) {
+        if (frameSlotNode.isConstant()) {
+            ValueNode frameNodeValue = frameNode.get(false);
+            if (frameNodeValue instanceof NewFrameNode && ((NewFrameNode) frameNodeValue).getIntrinsifyAccessors()) {
+                return constantReflection.readFieldValue(knownFields.fieldFrameSlotIndex, frameSlotNode.asJavaConstant()).asInt();
+            }
         }
-        return null;
+        return -1;
     }
 
     private static void registerFrameMethods(Registration r) {

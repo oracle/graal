@@ -49,18 +49,18 @@ public abstract class VirtualFrameAccessorNode extends FixedWithNextNode impleme
 
     @Input protected NewFrameNode frame;
 
-    protected final FrameSlot frameSlot;
+    protected final int frameSlotIndex;
     protected final int accessTag;
 
-    protected VirtualFrameAccessorNode(NodeClass<? extends VirtualFrameAccessorNode> c, Stamp stamp, NewFrameNode frame, FrameSlot frameSlot, int accessTag) {
+    protected VirtualFrameAccessorNode(NodeClass<? extends VirtualFrameAccessorNode> c, Stamp stamp, NewFrameNode frame, int frameSlotIndex, int accessTag) {
         super(c, stamp);
         this.frame = frame;
-        this.frameSlot = frameSlot;
+        this.frameSlotIndex = frameSlotIndex;
         this.accessTag = accessTag;
     }
 
     protected int getFrameSlotIndex() {
-        return frameSlot.getIndex();
+        return frameSlotIndex;
     }
 
     protected ValueNode getConstant(int n) {

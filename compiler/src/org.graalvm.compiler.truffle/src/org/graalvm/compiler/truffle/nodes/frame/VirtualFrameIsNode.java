@@ -43,8 +43,8 @@ import jdk.vm.ci.meta.JavaKind;
 public final class VirtualFrameIsNode extends VirtualFrameAccessorNode implements Virtualizable {
     public static final NodeClass<VirtualFrameIsNode> TYPE = NodeClass.create(VirtualFrameIsNode.class);
 
-    public VirtualFrameIsNode(NewFrameNode frame, FrameSlot frameSlot, int accessTag) {
-        super(TYPE, StampFactory.forKind(JavaKind.Boolean), frame, frameSlot, accessTag);
+    public VirtualFrameIsNode(NewFrameNode frame, int frameSlotIndex, int accessTag) {
+        super(TYPE, StampFactory.forKind(JavaKind.Boolean), frame, frameSlotIndex, accessTag);
     }
 
     @Override

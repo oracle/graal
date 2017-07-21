@@ -55,11 +55,12 @@ public class KnownTruffleFields {
     public final ResolvedJavaField fieldFrameDescriptorSlots;
 
     public final ResolvedJavaField fieldArrayListElementData;
+
     public final ResolvedJavaField fieldFrameSlotKind;
+    public final ResolvedJavaField fieldFrameSlotIndex;
+
     public final ResolvedJavaField fieldFrameSlotKindTag;
 
-    public final byte frameSlotKindObject = (byte) FrameSlotKind.Object.ordinal();
-    public final byte frameSlotKindIllegal = (byte) FrameSlotKind.Illegal.ordinal();
     public final ResolvedJavaField fieldOptimizedAssumptionIsValid;
 
     public KnownTruffleFields(MetaAccessProvider metaAccess) {
@@ -78,6 +79,7 @@ public class KnownTruffleFields {
 
             fieldArrayListElementData = metaAccess.lookupJavaField(ArrayList.class.getDeclaredField("elementData"));
             fieldFrameSlotKind = metaAccess.lookupJavaField(FrameSlot.class.getDeclaredField("kind"));
+            fieldFrameSlotIndex = metaAccess.lookupJavaField(FrameSlot.class.getDeclaredField("index"));
             fieldFrameSlotKindTag = metaAccess.lookupJavaField(FrameSlotKind.class.getDeclaredField("tag"));
 
             fieldOptimizedAssumptionIsValid = metaAccess.lookupJavaField(AbstractAssumption.class.getDeclaredField("isValid"));

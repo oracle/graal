@@ -46,8 +46,8 @@ import jdk.vm.ci.meta.JavaKind;
 public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implements Virtualizable {
     public static final NodeClass<VirtualFrameGetNode> TYPE = NodeClass.create(VirtualFrameGetNode.class);
 
-    public VirtualFrameGetNode(NewFrameNode frame, FrameSlot frameSlot, JavaKind accessKind, int accessTag) {
-        super(TYPE, StampFactory.forKind(accessKind), frame, frameSlot, accessTag);
+    public VirtualFrameGetNode(NewFrameNode frame, int frameSlotIndex, JavaKind accessKind, int accessTag) {
+        super(TYPE, StampFactory.forKind(accessKind), frame, frameSlotIndex, accessTag);
     }
 
     @Override
