@@ -1,4 +1,4 @@
-
+/*
  * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -80,8 +80,6 @@ public class KnownTruffleFields {
             fieldFrameSlotKind = metaAccess.lookupJavaField(FrameSlot.class.getDeclaredField("kind"));
             fieldFrameSlotKindTag = metaAccess.lookupJavaField(FrameSlotKind.class.getDeclaredField("tag"));
 
-            final ResolvedJavaType classFrameSlotKind = metaAccess.lookupJavaType(FrameSlotKind.class);
-            fieldFrameSlotKindTag = metaAccess.lookupJavaField(FrameSlot.class.getDeclaredField("tag"));
             fieldOptimizedAssumptionIsValid = metaAccess.lookupJavaField(AbstractAssumption.class.getDeclaredField("isValid"));
         } catch (NoSuchFieldException ex) {
             throw GraalError.shouldNotReachHere(ex);
