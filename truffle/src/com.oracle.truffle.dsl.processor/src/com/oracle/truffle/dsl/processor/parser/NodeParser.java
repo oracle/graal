@@ -71,6 +71,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.dsl.processor.CompileErrorException;
 import com.oracle.truffle.dsl.processor.Log;
+import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpressionResolver;
 import com.oracle.truffle.dsl.processor.expression.InvalidExpressionException;
@@ -393,8 +394,8 @@ public class NodeParser extends AbstractParser<NodeData> {
         }
 
         /*
-         * Sort elements by enclosing type to ensure that duplicate static methods are used from the
-         * most concrete subtype.
+         * Sort elements by enclosing type to ensure that duplicate static methods are used from the most
+         * concrete subtype.
          */
         Collections.sort(members, new Comparator<Element>() {
             Map<TypeMirror, Set<String>> cachedQualifiedNames = new HashMap<>();
@@ -1706,8 +1707,30 @@ public class NodeParser extends AbstractParser<NodeData> {
             }
         }
 
-        for (ExecutableElement unusedMethod : ElementFilter.methodsIn(unusedElements)) {
+        Map<String, List<ExecutableElement>> mappedElements = null;
+
+        outer: for (ExecutableElement unusedMethod : ElementFilter.methodsIn(unusedElements)) {
             if (unusedMethod.getModifiers().contains(Modifier.ABSTRACT)) {
+
+                // group by method name to avoid N^2 worst case complexity.
+                if (mappedElements == null) {
+                    mappedElements = new HashMap<>();
+                    for (ExecutableElement m : ElementFilter.methodsIn(unusedElements)) {
+                        mappedElements.computeIfAbsent(m.getSimpleName().toString(), (k) -> new ArrayList<>()).add(m);
+                    }
+                }
+
+                for (ExecutableElement otherMethod : mappedElements.get(unusedMethod.getSimpleName().toString())) {
+                    if (unusedMethod == otherMethod) {
+                        continue;
+                    }
+                    if (ProcessorContext.getInstance().getEnvironment().getElementUtils().overrides(otherMethod, unusedMethod, nodeData.getTemplateType())) {
+                        // the abstract method overridden by another method in the template type.
+                        // -> the method does not need an implementation.
+                        continue outer;
+                    }
+                }
+
                 nodeData.addError("The type %s must implement the inherited abstract method %s.", ElementUtils.getSimpleName(nodeData.getTemplateType()),
                                 ElementUtils.getReadableSignature(unusedMethod));
             }
