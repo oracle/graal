@@ -44,6 +44,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import jdk.vm.ci.meta.*;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -110,11 +111,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.SpeculationLog;
 
 /**
  * Class performing the partial evaluation starting from the root node of an AST.
@@ -160,6 +156,10 @@ public class PartialEvaluator {
 
     public Providers getProviders() {
         return providers;
+    }
+
+    public MetaAccessProvider getMetaAccess() {
+        return providers.getMetaAccess();
     }
 
     public SnippetReflectionProvider getSnippetReflection() {
@@ -257,7 +257,7 @@ public class PartialEvaluator {
         @Override
         public FloatingNode interceptParameter(GraphBuilderTool b, int index, StampPair stamp) {
             if (index == 0) {
-                return ConstantNode.forConstant(snippetReflection.forObject(receiver), providers.getMetaAccess());
+                return ConstantNode.forConstant(snippetReflection.forObject(receiver), getMetaAccess());
             }
             return null;
         }
@@ -332,7 +332,7 @@ public class PartialEvaluator {
             for (ValueNode argument : arguments) {
                 if (argument.isConstant()) {
                     JavaConstant constant = argument.asJavaConstant();
-                    if (constant.getJavaKind() == JavaKind.Object && snippetReflection.asObject(MethodHandle.class, constant) != null) {
+                    if (constant.getJavaKind() == JavaKind.Object && constant.isNonNull()) {
                         return true;
                     }
                 }
@@ -424,7 +424,7 @@ public class PartialEvaluator {
             plugins.appendInlineInvokePlugin(new InlineDuringParsingPlugin());
         }
 
-        Providers compilationUnitProviders = providers.copyWith(new TruffleConstantFieldProvider(providers.getConstantFieldProvider(), providers.getMetaAccess()));
+        Providers compilationUnitProviders = providers.copyWith(new TruffleConstantFieldProvider(providers.getConstantFieldProvider(), getMetaAccess()));
         return new CachingPEGraphDecoder(architecture, graph, compilationUnitProviders, newConfig, TruffleCompiler.Optimizations, AllowAssumptions.ifNonNull(graph.getAssumptions()),
                         loopExplosionPlugin, decodingInvocationPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList);
     }
@@ -469,7 +469,7 @@ public class PartialEvaluator {
         TruffleGraphBuilderPlugins.registerInvocationPlugins(invocationPlugins, canDelayIntrinsification, snippetReflection, knownTruffleFields);
 
         for (TruffleInvocationPluginProvider p : GraalServices.load(TruffleInvocationPluginProvider.class)) {
-            p.registerInvocationPlugins(providers.getMetaAccess(), invocationPlugins, canDelayIntrinsification, providers.getConstantReflection(), snippetReflection);
+            p.registerInvocationPlugins(getMetaAccess(), invocationPlugins, canDelayIntrinsification, providers.getConstantReflection(), snippetReflection);
         }
     }
 
