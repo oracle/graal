@@ -33,31 +33,33 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 
-final class PolyglotContextProfile {
+final class PolyglotContextProfile2 {
 
     // single context per engines
-    private final Assumption constantStoreAssumption = Truffle.getRuntime().createAssumption("dynamic context store");
-    private final Assumption dynamicStoreAssumption = Truffle.getRuntime().createAssumption("constant context store");
+    private static final Assumption constantStoreAssumption = Truffle.getRuntime().createAssumption("dynamic context store");
+    private static final Assumption dynamicStoreAssumption = Truffle.getRuntime().createAssumption("constant context store");
 
-    @CompilationFinal private WeakReference<PolyglotContextImpl> constantStore;
-    @CompilationFinal private final AtomicInteger constantEntered = new AtomicInteger(0);
+    @CompilationFinal private static WeakReference<PolyglotContextImpl> constantStore = new WeakReference<>(null);
+    @CompilationFinal private static int constantEntered = 0;
 
-    private volatile PolyglotContextImpl dynamicStore;
-    @CompilationFinal private volatile Thread singleThread;
+    private static volatile PolyglotContextImpl dynamicStore;
+    @CompilationFinal private static volatile Thread singleThread;
 
-    private volatile ThreadLocal<PolyglotContextImpl> threadStore;
+    private static volatile ThreadLocal<PolyglotContextImpl> threadStore;
 
-    PolyglotContextProfile() {
-        this.constantStore = new WeakReference<>(null);
+    private final PolyglotContextImpl context;
+
+    PolyglotContextProfile2(PolyglotContextImpl context) {
+        this.context = context;
     }
 
-    PolyglotContextImpl get() {
+    static PolyglotContextImpl get() {
         // can be used on the fast path
         PolyglotContextImpl store;
         if (constantStoreAssumption.isValid()) {
             // we can skip the constantEntered check in compiled code, because we are assume we are
             // always entered in such cases.
-            store = (CompilerDirectives.inCompiledCode() || constantEntered.get() > 0) ? constantStore.get() : null;
+            store = (CompilerDirectives.inCompiledCode() || constantEntered > 0) ? constantStore.get() : null;
         } else if (dynamicStoreAssumption.isValid()) {
             // multiple context single thread
             store = dynamicStore;
@@ -68,11 +70,54 @@ final class PolyglotContextProfile {
         return store;
     }
 
+    PolyglotContextImpl enter() {
+        context.enterThread();
+        context.engine.checkState();
+        if (context.closed) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException("Language context is already closed.");
+        }
+        context.enteredCount++;
+
+        if (constantStoreAssumption.isValid()) {
+            if (constantStore.get() == context) {
+                constantEntered++;
+                return null;
+            }
+        } else if (dynamicStoreAssumption.isValid()) {
+            PolyglotContextImpl prevStore = dynamicStore;
+            if (Thread.currentThread() == singleThread) {
+                dynamicStore = context;
+                return prevStore;
+            }
+        } else {
+            // fast path multiple threads
+            ThreadLocal<PolyglotContextImpl> tlstore = threadStore;
+            assert tlstore != null;
+            PolyglotContextImpl currentstore = getThreadLocalStore(tlstore);
+            if (currentstore != context) {
+                setThreadLocalStore(tlstore, context);
+            }
+            return currentstore;
+        }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        return slowPathProfile();
+    }
+
     void leave(PolyglotContextImpl prev) {
+        assert context.boundThread.get() == Thread.currentThread();
+        int result = --context.enteredCount;
+        if (result <= 0) {
+            context.boundThread.set(null);
+            if (context.closingLatch != null) {
+                CompilerDirectives.transferToInterpreter();
+                context.close(false);
+            }
+        }
         // only constant stores should not be cleared as they use a compilation final weak
         // reference.
         if (constantStoreAssumption.isValid()) {
-            constantEntered.incrementAndGet();
+            constantEntered--;
         } else if (dynamicStoreAssumption.isValid()) {
             dynamicStore = prev;
             assert singleThread == Thread.currentThread();
@@ -83,46 +128,19 @@ final class PolyglotContextProfile {
         }
     }
 
-    PolyglotContextImpl enter(PolyglotContextImpl store) {
-        assert store != null;
-        if (constantStoreAssumption.isValid()) {
-            if (constantStore.get() == store) {
-                constantEntered.incrementAndGet();
-                return null;
-            }
-        } else if (dynamicStoreAssumption.isValid()) {
-            PolyglotContextImpl prevStore = dynamicStore;
-            if (Thread.currentThread() == singleThread) {
-                dynamicStore = store;
-                return prevStore;
-            }
-        } else {
-            // fast path multiple threads
-            ThreadLocal<PolyglotContextImpl> tlstore = threadStore;
-            assert tlstore != null;
-            PolyglotContextImpl currentstore = getThreadLocalStore(tlstore);
-            if (currentstore != store) {
-                setThreadLocalStore(tlstore, store);
-            }
-            return currentstore;
-        }
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        return slowPathProfile(store);
-    }
-
     @TruffleBoundary
     private static void setThreadLocalStore(ThreadLocal<PolyglotContextImpl> tlstore, PolyglotContextImpl store) {
         tlstore.set(store);
     }
 
     @TruffleBoundary
-    private synchronized PolyglotContextImpl slowPathProfile(PolyglotContextImpl engine) {
+    private synchronized PolyglotContextImpl slowPathProfile() {
         PolyglotContextImpl prev = null;
         if (constantStoreAssumption.isValid()) {
             if (constantStore.get() == null) {
-                constantStore = new WeakReference<>(engine);
+                constantStore = new WeakReference<>(context);
                 singleThread = Thread.currentThread();
-                constantEntered.incrementAndGet();
+                constantEntered++;
                 return null;
             } else {
                 constantStoreAssumption.invalidate();
@@ -133,7 +151,7 @@ final class PolyglotContextProfile {
         if (dynamicStoreAssumption.isValid()) {
             Thread currentThread = Thread.currentThread();
             if (dynamicStore == null && singleThread == currentThread) {
-                dynamicStore = engine;
+                dynamicStore = context;
                 return prev;
             } else {
                 final PolyglotContextImpl initialEngine = dynamicStore == null ? prev : dynamicStore;
@@ -143,7 +161,7 @@ final class PolyglotContextProfile {
                         return initialEngine;
                     }
                 };
-                threadStore.set(engine);
+                threadStore.set(context);
                 dynamicStoreAssumption.invalidate();
                 prev = initialEngine;
             }

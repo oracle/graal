@@ -195,6 +195,10 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
             if (isHostException()) {
                 s.println(CAUSE_CAPTION + asHostException());
             }
+            if (isInternalError()) {
+                s.println("Original Internal Error: ");
+                s.printStackTrace(exception);
+            }
         }
     }
 
@@ -292,6 +296,8 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
 
         /** Prints the specified string as a line on this StreamOrWriter. */
         abstract void println(Object o);
+
+        abstract void printStackTrace(Throwable t);
     }
 
     private static class WrappedPrintStream extends PrintStreamOrWriter {
@@ -309,6 +315,11 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
         @Override
         void println(Object o) {
             printStream.println(o);
+        }
+
+        @Override
+        void printStackTrace(Throwable t) {
+            t.printStackTrace(printStream);
         }
     }
 
@@ -328,6 +339,11 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
         void println(Object o) {
             printWriter.println(o);
         }
+
+        @Override
+        void printStackTrace(Throwable t) {
+            t.printStackTrace(printWriter);
+        }
     }
 
     private static class StackFrameIterator implements Iterator<StackFrame> {
@@ -339,8 +355,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
         final Iterator<TruffleStackTraceElement> guestFrames;
         final Iterator<StackTraceElement> hostFrames;
         /*
-         * Initial host frames are skipped if the error is a regular non-internal guest language
-         * error.
+         * Initial host frames are skipped if the error is a regular non-internal guest language error.
          */
         final APIAccess apiAccess;
 

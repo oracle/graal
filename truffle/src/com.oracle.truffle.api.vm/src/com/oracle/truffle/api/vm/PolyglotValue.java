@@ -33,6 +33,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 
 import org.graalvm.polyglot.Language;
@@ -40,6 +41,10 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;
@@ -50,6 +55,9 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValuesNode;
+import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToHostValueNode;
 
 abstract class PolyglotValue extends AbstractValueImpl {
 
@@ -122,8 +130,8 @@ abstract class PolyglotValue extends AbstractValueImpl {
         return languageContext.toHostValue(receiver);
     }
 
-    static PolyglotValue createInteropValueCache(PolyglotLanguageContext languageContext) {
-        return new Interop(languageContext);
+    static PolyglotValue createInteropValueCache(PolyglotLanguageContext languageContext, Class<?> receiverType) {
+        return new Interop(languageContext, receiverType);
     }
 
     static void createDefaultValueCaches(PolyglotLanguageContext context) {
@@ -697,7 +705,6 @@ abstract class PolyglotValue extends AbstractValueImpl {
         final Node isBoxedNode = Message.IS_BOXED.createNode();
         final Node unboxNode = Message.UNBOX.createNode();
         final Node isExecutableNode = Message.IS_EXECUTABLE.createNode();
-        final Node executeNode = Message.createExecute(0).createNode();
         final Node isNullNode = Message.IS_NULL.createNode();
         final Node isPointerNode = Message.IS_POINTER.createNode();
         final Node asPointerNode = Message.AS_POINTER.createNode();
@@ -712,8 +719,13 @@ abstract class PolyglotValue extends AbstractValueImpl {
         final Node keysSizeNode = Message.GET_SIZE.createNode();
         final Node keysReadNode = Message.READ.createNode();
 
-        Interop(PolyglotLanguageContext context) {
+        final CallTarget executeTarget;
+        final Class<?> receiverType;
+
+        Interop(PolyglotLanguageContext context, Class<?> receiverType) {
             super(context);
+            this.receiverType = receiverType;
+            this.executeTarget = Truffle.getRuntime().createCallTarget(new ExecuteNode());
         }
 
         @Override
@@ -953,23 +965,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         @Override
         public Value execute(Object receiver, Object[] arguments) {
-            Object prev = languageContext.enter();
-            try {
-                try {
-                    return newValue(ForeignAccess.sendExecute(executeNode, (TruffleObject) receiver, languageContext.toGuestValues(arguments)));
-                } catch (UnsupportedTypeException e) {
-                    throw handleUnsupportedType(e);
-                } catch (ArityException e) {
-                    throw handleInvalidArity(e);
-                } catch (UnsupportedMessageException e) {
-                    // language implementation error!
-                    return super.execute(receiver, arguments);
-                }
-            } catch (Throwable e) {
-                throw wrapGuestException(languageContext, e);
-            } finally {
-                languageContext.leave(prev);
-            }
+            return (Value) executeTarget.call(receiver, arguments);
         }
 
         private PolyglotException handleInvalidArity(ArityException e) {
@@ -1122,6 +1118,56 @@ abstract class PolyglotValue extends AbstractValueImpl {
         public long asLong(Object receiver) {
             Object primitive = asPrimitive(receiver);
             return getPrimitiveCache(primitive).asLong(primitive);
+        }
+
+        private class ExecuteNode extends RootNode {
+
+            @Child private Node executeNode = Message.createExecute(0).createNode();
+            private final ToGuestValuesNode toGuestValues = languageContext.createToGuestValues();
+            private final ToHostValueNode toHostValue = languageContext.createToHostValue();
+
+            protected ExecuteNode() {
+                super(null);
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                Object[] args = frame.getArguments();
+                Object receiver = receiverType.cast(args[0]);
+                Object[] executeArgs = (Object[]) args[1];
+                Object prev = languageContext.enter();
+                try {
+                    try {
+                        return toHostValue.execute(ForeignAccess.sendExecute(executeNode, (TruffleObject) receiver, toGuestValues.execute(executeArgs)));
+                    } catch (UnsupportedTypeException e) {
+                        CompilerDirectives.transferToInterpreter();
+                        throw handleUnsupportedType(e);
+                    } catch (ArityException e) {
+                        CompilerDirectives.transferToInterpreter();
+                        throw handleInvalidArity(e);
+                    } catch (UnsupportedMessageException e) {
+                        CompilerDirectives.transferToInterpreter();
+                        // language implementation error!
+                        return Interop.super.execute(receiver, executeArgs);
+                    }
+                } catch (Throwable e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw wrapGuestException(languageContext, e);
+                } finally {
+                    languageContext.leave(prev);
+                }
+            }
+
+            @Override
+            public String getName() {
+                return "org.graalvm.polyglot.Value<" + receiverType.getSimpleName() + ">.execute";
+            }
+
+            @Override
+            public String toString() {
+                return getName();
+            }
+
         }
 
         private final class MemberSet extends AbstractSet<String> {

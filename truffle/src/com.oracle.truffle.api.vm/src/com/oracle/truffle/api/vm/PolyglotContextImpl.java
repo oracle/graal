@@ -43,7 +43,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
@@ -61,12 +60,10 @@ import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
 class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
 
-    private static final PolyglotContextProfile CURRENT_CONTEXT = new PolyglotContextProfile();
-
     final AtomicReference<Thread> boundThread = new AtomicReference<>(null);
     volatile boolean closed;
     volatile CountDownLatch closingLatch;
-    final AtomicInteger enteredCount = new AtomicInteger();
+    volatile int enteredCount = 0;
     final PolyglotEngineImpl engine;
     @CompilationFinal(dimensions = 1) final PolyglotLanguageContext[] contexts;
 
@@ -84,6 +81,7 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
     final Map<Object, CallTarget> javaInteropCache;
     final Set<String> allowedPublicLanguages;
     final Map<String, String[]> applicationArguments;
+    final PolyglotContextProfile2 profile = new PolyglotContextProfile2(this);
 
     PolyglotContextImpl(PolyglotEngineImpl engine, final OutputStream out,
                     OutputStream err,
@@ -131,11 +129,11 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
     }
 
     static PolyglotContextImpl current() {
-        return CURRENT_CONTEXT.get();
+        return PolyglotContextProfile2.get();
     }
 
     static PolyglotContextImpl requireContext() {
-        PolyglotContextImpl context = CURRENT_CONTEXT.get();
+        PolyglotContextImpl context = PolyglotContextProfile2.get();
         if (context == null) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("No current context found.");
@@ -144,32 +142,18 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
     }
 
     Object enter() {
-        enterThread();
-        engine.checkState();
-        if (closed) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Language context is already closed.");
-        }
-        enteredCount.incrementAndGet();
-        return CURRENT_CONTEXT.enter(this);
+        return profile.enter();
     }
 
     void leave(Object prev) {
-        assert boundThread.get() == Thread.currentThread();
-        int result = enteredCount.decrementAndGet();
-        if (result <= 0) {
-            boundThread.set(null);
-            if (closingLatch != null) {
-                close(false);
-            }
-        }
-        CURRENT_CONTEXT.leave((PolyglotContextImpl) prev);
+        profile.leave((PolyglotContextImpl) prev);
     }
 
-    private void enterThread() {
+    void enterThread() {
         Thread current = Thread.currentThread();
         if (boundThread.get() != current) {
             if (!boundThread.compareAndSet(null, current)) {
+                CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(
                                 String.format("The context was accessed from thread %s but is currently accessed form thread %s. " +
                                                 "The context cannot be accessed from multiple threads at the same time. ",
@@ -449,7 +433,7 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
                         // account for race condition when we already left the execution in
                         // the meantime. in such a case #leave(Object) will not have called
                         // close(false). Closing close(false) twice is fine.
-                        if (enteredCount.get() <= 0) {
+                        if (enteredCount <= 0) {
                             closeImpl(false);
                         }
                     }
