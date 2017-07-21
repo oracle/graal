@@ -681,7 +681,12 @@ public abstract class TruffleLanguage<C> {
      * value allocations}
      * <p>
      * When no meta-object is known, return <code>null</code>. The default implementation returns
-     * <code>null</code>.
+     * <code>null</code>. The meta-object should be an interop value. An interop value can be either
+     * a <code>TruffleObject</code> (e.g. a native object from the other language) to support
+     * interoperability between languages or a {@link String}.
+     * <p>
+     * It can be beneficial for performance to return the same value for each guest type (i.e. cache
+     * the meta-objects per context).
      *
      * @param context the execution context
      * @param value a value to find the meta-object of
