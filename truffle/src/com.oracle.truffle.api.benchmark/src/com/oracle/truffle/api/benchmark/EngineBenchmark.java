@@ -27,7 +27,6 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.openjdk.jmh.annotations.Benchmark;
-import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
@@ -38,19 +37,16 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
-@Warmup(iterations = 5)
-@Measurement(iterations = 3)
+@Warmup(iterations = 10)
+@Measurement(iterations = 5)
 public class EngineBenchmark extends TruffleBenchmark {
 
     private static final String TEST_LANGUAGE = "benchmark-test-language";
@@ -71,6 +67,7 @@ public class EngineBenchmark extends TruffleBenchmark {
         final Context context = Context.create(TEST_LANGUAGE);
         final Value value = context.eval(source);
         final Integer intValue = 42;
+        final Value hostValue = context.lookup(TEST_LANGUAGE, "context");
     }
 
     @Benchmark
@@ -79,15 +76,27 @@ public class EngineBenchmark extends TruffleBenchmark {
     }
 
     @Benchmark
-    public int executePolyglot(ContextState state) {
+    public int executePolyglot1(ContextState state) {
         return state.value.execute(state.intValue).asInt();
+    }
+
+    @Benchmark
+    public int executePolyglot2(ContextState state) {
+        int result = 0;
+        Value value = state.value;
+        result += value.execute(state.intValue).asInt();
+        result += value.execute(state.intValue, state.intValue).asInt();
+        result += value.execute(state.intValue, state.intValue, state.intValue).asInt();
+        result += value.execute(state.intValue, state.intValue, state.intValue, state.intValue).asInt();
+        return result;
     }
 
     @State(Scope.Thread)
     public static class CallTargetCallState {
         final Source source = Source.create(TEST_LANGUAGE, "");
         final Context context = Context.create(TEST_LANGUAGE);
-        final BenchmarkContext internalContext = context.lookup(TEST_LANGUAGE, "context").asHostObject();
+        final Value hostValue = context.lookup(TEST_LANGUAGE, "context");
+        final BenchmarkContext internalContext = hostValue.asHostObject();
         final Node executeNode = Message.createExecute(0).createNode();
         final Integer intValue = 42;
         final CallTarget callTarget = Truffle.getRuntime().createCallTarget(new RootNode(null) {
@@ -99,17 +108,34 @@ public class EngineBenchmark extends TruffleBenchmark {
     }
 
     @Benchmark
-    public Object executeForeign(CallTargetCallState state) {
-        try {
-            return ForeignAccess.sendExecute(state.executeNode, state.internalContext.object, state.intValue);
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            throw new AssertionError(e);
-        }
+    public Object executeCallTarget1(CallTargetCallState state) {
+        return state.callTarget.call(state.internalContext.object, state.intValue);
     }
 
     @Benchmark
-    public Object executeCallTarget(CallTargetCallState state) {
-        return state.callTarget.call(state.internalContext.object, state.intValue);
+    public Object executeCallTarget2(CallTargetCallState state) {
+        CallTarget callTarget = state.callTarget;
+        int result = 0;
+        result += (int) callTarget.call(state.internalContext.object, state.intValue);
+        result += (int) callTarget.call(state.internalContext.object, state.intValue, state.intValue);
+        result += (int) callTarget.call(state.internalContext.object, state.intValue, state.intValue, state.intValue);
+        result += (int) callTarget.call(state.internalContext.object, state.intValue, state.intValue, state.intValue, state.intValue);
+        return result;
+    }
+
+    @Benchmark
+    public Object isNativePointer(ContextState state) {
+        return state.value.isNativePointer();
+    }
+
+    @Benchmark
+    public Object asNativePointer(ContextState state) {
+        return state.value.asNativePointer();
+    }
+
+    @Benchmark
+    public Object hasMembers(ContextState state) {
+        return state.value.hasMembers();
     }
 
     @Benchmark
@@ -123,6 +149,11 @@ public class EngineBenchmark extends TruffleBenchmark {
     }
 
     @Benchmark
+    public Object hasArrayElements(ContextState state) {
+        return state.value.hasArrayElements();
+    }
+
+    @Benchmark
     public Object getArrayElement(ContextState state) {
         return state.value.getArrayElement(42);
     }
@@ -130,6 +161,21 @@ public class EngineBenchmark extends TruffleBenchmark {
     @Benchmark
     public Object setArrayElement(ContextState state) {
         return state.value.getArrayElement(42);
+    }
+
+    @Benchmark
+    public Object canExecute(ContextState state) {
+        return state.value.canExecute();
+    }
+
+    @Benchmark
+    public Object isHostObject(ContextState state) {
+        return state.hostValue.isHostObject();
+    }
+
+    @Benchmark
+    public Object asHostObject(ContextState state) {
+        return state.hostValue.asHostObject();
     }
 
     /*
@@ -183,6 +229,7 @@ public class EngineBenchmark extends TruffleBenchmark {
     public static class BenchmarkObject implements TruffleObject {
 
         Object value = 42;
+        long longValue = 42L;
 
         public ForeignAccess getForeignAccess() {
             return BenchmarkObjectMRForeign.ACCESS;
@@ -201,6 +248,10 @@ public class EngineBenchmark extends TruffleBenchmark {
         abstract static class ReadNode extends Node {
 
             public Object access(BenchmarkObject obj, String name) {
+                return obj.value;
+            }
+
+            public Object access(BenchmarkObject obj, Number name) {
                 return obj.value;
             }
         }
@@ -230,6 +281,22 @@ public class EngineBenchmark extends TruffleBenchmark {
             }
         }
 
+        @Resolve(message = "IS_POINTER")
+        abstract static class IsNativeNode extends Node {
+
+            public boolean access(Object obj) {
+                return true;
+            }
+        }
+
+        @Resolve(message = "AS_POINTER")
+        abstract static class AsPointerNode extends Node {
+
+            public long access(BenchmarkObject obj) {
+                return obj.longValue;
+            }
+        }
+
         @Resolve(message = "WRITE")
         abstract static class WriteNode extends Node {
 
@@ -238,7 +305,7 @@ public class EngineBenchmark extends TruffleBenchmark {
                 return value;
             }
 
-            public Object access(BenchmarkObject obj, int index, Object value) {
+            public Object access(BenchmarkObject obj, Number index, Object value) {
                 obj.value = value;
                 return value;
             }

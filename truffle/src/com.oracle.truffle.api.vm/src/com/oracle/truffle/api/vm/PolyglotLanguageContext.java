@@ -43,8 +43,8 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
 final class PolyglotLanguageContext implements VMObject {
@@ -55,6 +55,7 @@ final class PolyglotLanguageContext implements VMObject {
     final PolyglotLanguage language;
     final Map<Object, CallTarget> sourceCache = new HashMap<>();
     final Map<Class<?>, PolyglotValue> valueCache = new HashMap<>();
+    final PolyglotValue defaultValueCache;
     final OptionValues optionValues;
     final Value nullValue;
     final String[] applicationArguments;
@@ -69,6 +70,7 @@ final class PolyglotLanguageContext implements VMObject {
 
         PolyglotValue.createDefaultValueCaches(this);
         nullValue = toHostValue(toGuestValue(null));
+        defaultValueCache = new PolyglotValue.Default(this);
     }
 
     Object enter() {
@@ -161,7 +163,6 @@ final class PolyglotLanguageContext implements VMObject {
         @CompilationFinal private boolean needsCopy = false;
 
         private ToGuestValuesNode() {
-
         }
 
         @ExplodeLoop
@@ -176,28 +177,62 @@ final class PolyglotLanguageContext implements VMObject {
             }
             if (cachedLength == args.length) {
                 // fast path
-                Object[] newArgs = needsCopy ? new Object[toGuestValue.length] : args;
-                for (int i = 0; i < toGuestValue.length; i++) {
-                    Object arg = args[i];
-                    Object newArg = toGuestValue[i].execute(arg);
-                    if (needsCopy) {
-                        newArgs[i] = newArg;
-                    } else if (arg != newArg) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        newArgs = Arrays.copyOf(args, args.length);
-                        newArgs[i] = newArg;
-                        needsCopy = true;
-                    }
-                }
+                Object[] newArgs = fastToGuestValuesUnroll(args);
                 return newArgs;
             } else {
                 if (cachedLength != -2) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     cachedLength = -2;
+                    toGuestValue = Arrays.copyOf(toGuestValue, 1);
+                    if (toGuestValue[0] == null) {
+                        toGuestValue[0] = createToGuestValue();
+                    }
                 }
-                // slow path
-                return toGuestValues(args);
+                return fastToGuestValues(args);
             }
+        }
+
+        /*
+         * Specialization for constant number of arguments. Uses a profile for each argument.
+         */
+        @ExplodeLoop
+        private Object[] fastToGuestValuesUnroll(Object[] args) {
+            Object[] newArgs = needsCopy ? new Object[toGuestValue.length] : args;
+            for (int i = 0; i < toGuestValue.length; i++) {
+                Object arg = args[i];
+                Object newArg = toGuestValue[i].execute(arg);
+                if (needsCopy) {
+                    newArgs[i] = newArg;
+                } else if (arg != newArg) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    newArgs = Arrays.copyOf(args, args.length);
+                    newArgs[i] = newArg;
+                    needsCopy = true;
+                }
+            }
+            return newArgs;
+        }
+
+        /*
+         * Specialization that supports multiple argument lengths but uses a single profile for all
+         * arguments.
+         */
+        private Object[] fastToGuestValues(Object[] args) {
+            assert toGuestValue[0] != null;
+            Object[] newArgs = needsCopy ? new Object[args.length] : args;
+            for (int i = 0; i < args.length; i++) {
+                Object arg = args[i];
+                Object newArg = toGuestValue[0].execute(arg);
+                if (needsCopy) {
+                    newArgs[i] = newArg;
+                } else if (arg != newArg) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    newArgs = Arrays.copyOf(args, args.length);
+                    newArgs[i] = newArg;
+                    needsCopy = true;
+                }
+            }
+            return newArgs;
         }
 
     }
@@ -276,7 +311,7 @@ final class PolyglotLanguageContext implements VMObject {
         final APIAccess apiAccess = context.engine.impl.getAPIAccess();
         if (cache == null) {
             receiver = convertToInterop(receiver);
-            cache = lookupValueCache(receiver.getClass());
+            cache = lookupValueCache(receiver);
         }
         return apiAccess.newValue(receiver, cache);
     }
@@ -289,11 +324,12 @@ final class PolyglotLanguageContext implements VMObject {
         }
     }
 
-    PolyglotValue lookupValueCache(Class<?> type) {
-        PolyglotValue cache = valueCache.get(type);
+    PolyglotValue lookupValueCache(Object value) {
+        assert value instanceof TruffleObject;
+        PolyglotValue cache = valueCache.get(value.getClass());
         if (cache == null) {
-            cache = PolyglotValue.createInteropValueCache(PolyglotLanguageContext.this, type);
-            valueCache.put(type, cache);
+            cache = PolyglotValue.createInteropValueCache(PolyglotLanguageContext.this, (TruffleObject) value, value.getClass());
+            valueCache.put(value.getClass(), cache);
         }
         return cache;
     }
@@ -319,7 +355,7 @@ final class PolyglotLanguageContext implements VMObject {
                 if (cachedValue == null) {
                     receiver = convertToInterop(receiver);
                     cachedFallbackClass = receiver.getClass();
-                    cachedFallbackValue = lookupValueCache(receiver.getClass());
+                    cachedFallbackValue = lookupValueCache(receiver);
                     cache = cachedFallbackValue;
                 }
                 return apiAccess.newValue(receiver, cache);

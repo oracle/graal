@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.lang.ref.WeakReference;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashMap;
@@ -50,20 +51,31 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
-class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
+final class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
 
+    private static final Assumption constantStoreAssumption = Truffle.getRuntime().createAssumption("dynamic context store");
+    private static final Assumption dynamicStoreAssumption = Truffle.getRuntime().createAssumption("constant context store");
+    @CompilationFinal private static WeakReference<PolyglotContextImpl> contextConstant = new WeakReference<>(null);
+    private static volatile PolyglotContextImpl contextDynamic;
+    @CompilationFinal private static volatile Thread contextSingleThread;
+    private static volatile ThreadLocal<PolyglotContextImpl> contextThreadStore;
+
+    private final Assumption notClosingAssumption = Truffle.getRuntime().createAssumption("not closed");
     final AtomicReference<Thread> boundThread = new AtomicReference<>(null);
+
     volatile boolean closed;
     volatile CountDownLatch closingLatch;
-    volatile int enteredCount = 0;
+    int enteredCount = 0;
     final PolyglotEngineImpl engine;
     @CompilationFinal(dimensions = 1) final PolyglotLanguageContext[] contexts;
 
@@ -81,7 +93,6 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
     final Map<Object, CallTarget> javaInteropCache;
     final Set<String> allowedPublicLanguages;
     final Map<String, String[]> applicationArguments;
-    final PolyglotContextProfile2 profile = new PolyglotContextProfile2(this);
 
     PolyglotContextImpl(PolyglotEngineImpl engine, final OutputStream out,
                     OutputStream err,
@@ -129,11 +140,41 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
     }
 
     static PolyglotContextImpl current() {
-        return PolyglotContextProfile2.get();
+        // can be used on the fast path
+        PolyglotContextImpl store;
+        if (constantStoreAssumption.isValid()) {
+            // we can skip the constantEntered check in compiled code, because we are assume we are
+            // always entered in such cases.
+            if (CompilerDirectives.inCompiledCode()) {
+                store = contextConstant.get();
+            } else {
+                PolyglotContextImpl context = contextConstant.get();
+                if (context != null && context.enteredCount > 0) {
+                    store = context;
+                } else {
+                    store = null;
+                }
+            }
+        } else if (dynamicStoreAssumption.isValid()) {
+            // multiple context single thread
+            store = contextDynamic;
+        } else {
+            // multiple context multiple threads
+            store = getThreadLocalStore(contextThreadStore);
+        }
+        if (store != null) {
+            assert store.boundThread.get() == Thread.currentThread() : "Attempt to access context from an unbound thread.";
+        }
+        return store;
+    }
+
+    @TruffleBoundary
+    private static PolyglotContextImpl getThreadLocalStore(ThreadLocal<PolyglotContextImpl> tls) {
+        return tls.get();
     }
 
     static PolyglotContextImpl requireContext() {
-        PolyglotContextImpl context = PolyglotContextProfile2.get();
+        PolyglotContextImpl context = current();
         if (context == null) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("No current context found.");
@@ -141,25 +182,120 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
         return context;
     }
 
-    Object enter() {
-        return profile.enter();
-    }
-
-    void leave(Object prev) {
-        profile.leave((PolyglotContextImpl) prev);
-    }
-
-    void enterThread() {
+    PolyglotContextImpl enter() {
         Thread current = Thread.currentThread();
-        if (boundThread.get() != current) {
-            if (!boundThread.compareAndSet(null, current)) {
-                CompilerDirectives.transferToInterpreter();
+        Thread thread = this.boundThread.get();
+        if (thread != current) {
+            CompilerDirectives.transferToInterpreter();
+            int enterCount = this.enteredCount;
+            if (enterCount > 0 || !boundThread.compareAndSet(thread, current)) {
                 throw new IllegalStateException(
                                 String.format("The context was accessed from thread %s but is currently accessed form thread %s. " +
                                                 "The context cannot be accessed from multiple threads at the same time. ",
                                                 boundThread.get(), Thread.currentThread()));
             }
         }
+        if (!notClosingAssumption.isValid()) {
+            engine.checkState();
+            if (closed) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Language context is already closed.");
+            }
+        }
+        enteredCount++;
+        if (constantStoreAssumption.isValid()) {
+            if (contextConstant.get() == this) {
+                return null;
+            }
+        } else if (dynamicStoreAssumption.isValid()) {
+            PolyglotContextImpl prevStore = contextDynamic;
+            if (Thread.currentThread() == contextSingleThread) {
+                contextDynamic = this;
+                return prevStore;
+            }
+        } else {
+            // fast path multiple threads
+            ThreadLocal<PolyglotContextImpl> tlstore = contextThreadStore;
+            assert tlstore != null;
+            PolyglotContextImpl currentstore = getThreadLocalStore(tlstore);
+            if (currentstore != this) {
+                setThreadLocalStore(tlstore, this);
+            }
+            return currentstore;
+        }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        return enterSlowPath();
+    }
+
+    void leave(Object prev) {
+        assert boundThread.get() == Thread.currentThread() : "invalid thread when leaving";
+        int result = --enteredCount;
+        if (!notClosingAssumption.isValid()) {
+            if (result <= 0) {
+                if (closingLatch != null) {
+                    CompilerDirectives.transferToInterpreter();
+                    close(false);
+                }
+            }
+        }
+        // only constant stores should not be cleared as they use a compilation final weak
+        // reference.
+        if (constantStoreAssumption.isValid()) {
+            // nothing to do on leave.
+        } else if (dynamicStoreAssumption.isValid()) {
+            contextDynamic = (PolyglotContextImpl) prev;
+        } else {
+            ThreadLocal<PolyglotContextImpl> tlstore = contextThreadStore;
+            assert tlstore != null;
+            setThreadLocalStore(tlstore, (PolyglotContextImpl) prev);
+        }
+    }
+
+    @TruffleBoundary
+    private static void setThreadLocalStore(ThreadLocal<PolyglotContextImpl> tlstore, PolyglotContextImpl store) {
+        tlstore.set(store);
+    }
+
+    @TruffleBoundary
+    private synchronized PolyglotContextImpl enterSlowPath() {
+        PolyglotContextImpl prev = null;
+        if (constantStoreAssumption.isValid()) {
+            if (contextConstant.get() == null) {
+                contextConstant = new WeakReference<>(this);
+                contextSingleThread = Thread.currentThread();
+                return null;
+            } else {
+                constantStoreAssumption.invalidate();
+                prev = contextConstant.get();
+                contextConstant.clear();
+            }
+        }
+        if (dynamicStoreAssumption.isValid()) {
+            Thread currentThread = Thread.currentThread();
+            if (contextDynamic == null && contextSingleThread == currentThread) {
+                contextDynamic = this;
+                return prev;
+            } else {
+                final PolyglotContextImpl initialEngine = contextDynamic == null ? prev : contextDynamic;
+                contextThreadStore = new ThreadLocal<PolyglotContextImpl>() {
+                    @Override
+                    protected PolyglotContextImpl initialValue() {
+                        return initialEngine;
+                    }
+                };
+                contextThreadStore.set(this);
+                dynamicStoreAssumption.invalidate();
+                prev = initialEngine;
+            }
+        }
+        contextDynamic = null;
+
+        assert !constantStoreAssumption.isValid();
+        assert !dynamicStoreAssumption.isValid();
+
+        // ensure cleaned up speculation
+        assert contextThreadStore != null;
+        return prev;
     }
 
     Object importSymbolFromLanguage(String symbolName) {
@@ -428,14 +564,8 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
             if (cancelIfExecuting) {
                 if (thread != null && Thread.currentThread() != thread) {
                     if (closingLatch == null) {
+                        notClosingAssumption.invalidate();
                         closingLatch = new CountDownLatch(1);
-
-                        // account for race condition when we already left the execution in
-                        // the meantime. in such a case #leave(Object) will not have called
-                        // close(false). Closing close(false) twice is fine.
-                        if (enteredCount <= 0) {
-                            closeImpl(false);
-                        }
                     }
                     return;
                 }
@@ -456,6 +586,7 @@ class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
                     }
                 }
                 engine.removeContext(this);
+                notClosingAssumption.invalidate();
                 closed = true;
 
                 if (closingLatch != null) {
