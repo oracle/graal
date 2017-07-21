@@ -394,8 +394,8 @@ public class NodeParser extends AbstractParser<NodeData> {
         }
 
         /*
-         * Sort elements by enclosing type to ensure that duplicate static methods are used from the most
-         * concrete subtype.
+         * Sort elements by enclosing type to ensure that duplicate static methods are used from the
+         * most concrete subtype.
          */
         Collections.sort(members, new Comparator<Element>() {
             Map<TypeMirror, Set<String>> cachedQualifiedNames = new HashMap<>();
