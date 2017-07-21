@@ -145,12 +145,12 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
          */
         this.intrinsifyAccessorsSpeculation = new IntrinsifyFrameAccessorsSpeculationReason(frameDescriptor);
 
-        boolean intrinsifyAccessors = false;
+        boolean intrinsify = false;
         if (!constantReflection.readFieldValue(knownFields.fieldFrameDescriptorMaterializeCalled, frameDescriptor).asBoolean()) {
             SpeculationLog speculationLog = graph.getSpeculationLog();
-            intrinsifyAccessors = speculationLog != null && speculationLog.maySpeculate(intrinsifyAccessorsSpeculation);
+            intrinsify = speculationLog != null && speculationLog.maySpeculate(intrinsifyAccessorsSpeculation);
         }
-        this.intrinsifyAccessors = intrinsifyAccessors;
+        this.intrinsifyAccessors = intrinsify;
 
         JavaConstant defaultValue = constantReflection.readFieldValue(knownFields.fieldFrameDescriptorDefaultValue, frameDescriptor);
         this.frameDefaultValue = ConstantNode.forConstant(defaultValue, metaAccess, graph);
@@ -159,17 +159,17 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         JavaConstant slotArray = constantReflection.readFieldValue(knownFields.fieldArrayListElementData, slotArrayList);
         int slotsArrayLength = constantReflection.readArrayLength(slotArray);
         frameSlotKinds = new JavaKind[slotsArrayLength];
-        int frameSize = 0;
+        int count = 0;
         for (int i = 0; i < slotsArrayLength; i++) {
             JavaConstant slot = constantReflection.readArrayElement(slotArray, i);
             if (slot.isNonNull()) {
                 JavaConstant slotKind = constantReflection.readFieldValue(knownFields.fieldFrameSlotKind, slot);
                 if (slotKind.isNonNull()) {
-                    frameSlotKinds[frameSize++] = asJavaKind(constantReflection.readFieldValue(knownFields.fieldFrameSlotKindTag, slotKind));
+                    frameSlotKinds[count++] = asJavaKind(constantReflection.readFieldValue(knownFields.fieldFrameSlotKindTag, slotKind));
                 }
             }
         }
-        this.frameSize = frameSize;
+        this.frameSize = count;
 
         ResolvedJavaType frameType = knownFields.classFrameClass;
         ResolvedJavaField[] frameFields = frameType.getInstanceFields(true);
