@@ -498,7 +498,7 @@ public class TruffleGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frameNode, ValueNode frameSlotNode) {
                 int frameSlotIndex = maybeGetConstantFrameSlotIndex(frameNode, frameSlotNode, constantReflection, knownFields);
                 if (frameSlotIndex >= 0) {
-                    b.addPush(accessKind, new VirtualFrameGetNode((NewFrameNode) frameNode.get(), frameSlotIndex, accessKind, accessTag));
+                    b.addPush(accessKind, new VirtualFrameGetNode(frameNode, frameSlotIndex, accessKind, accessTag));
                     return true;
                 }
                 return false;
@@ -510,7 +510,7 @@ public class TruffleGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frameNode, ValueNode frameSlotNode, ValueNode value) {
                 int frameSlotIndex = maybeGetConstantFrameSlotIndex(frameNode, frameSlotNode, constantReflection, knownFields);
                 if (frameSlotIndex >= 0) {
-                    b.add(new VirtualFrameSetNode((NewFrameNode) frameNode.get(), frameSlotIndex, accessTag, value));
+                    b.add(new VirtualFrameSetNode(frameNode, frameSlotIndex, accessTag, value));
                     return true;
                 }
                 return false;
@@ -522,7 +522,7 @@ public class TruffleGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frameNode, ValueNode frameSlotNode) {
                 int frameSlotIndex = maybeGetConstantFrameSlotIndex(frameNode, frameSlotNode, constantReflection, knownFields);
                 if (frameSlotIndex >= 0) {
-                    b.addPush(JavaKind.Boolean, new VirtualFrameIsNode((NewFrameNode) frameNode.get(), frameSlotIndex, accessTag));
+                    b.addPush(JavaKind.Boolean, new VirtualFrameIsNode(frameNode, frameSlotIndex, accessTag));
                     return true;
                 }
                 return false;

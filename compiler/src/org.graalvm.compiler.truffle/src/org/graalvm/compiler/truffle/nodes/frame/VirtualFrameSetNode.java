@@ -29,12 +29,11 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.truffle.FrameWithoutBoxing;
-
-import com.oracle.truffle.api.frame.FrameSlot;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implements Virtualizable {
@@ -42,7 +41,7 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
 
     @Input private ValueNode value;
 
-    public VirtualFrameSetNode(NewFrameNode frame, int frameSlotIndex, int accessTag, ValueNode value) {
+    public VirtualFrameSetNode(Receiver frame, int frameSlotIndex, int accessTag, ValueNode value) {
         super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, accessTag);
         this.value = value;
     }
