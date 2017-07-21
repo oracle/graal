@@ -414,7 +414,7 @@ public class TruffleGraphBuilderPlugins {
         });
     }
 
-    public static void registerOptimizedCallTargetPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, KnownTruffleFields knownTruffleFields) {
+    public static void registerOptimizedCallTargetPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, KnownTruffleFields knownFields) {
         Registration r = new Registration(plugins, OptimizedCallTarget.class);
         r.register2("createFrame", FrameDescriptor.class, Object[].class, new InvocationPlugin() {
             @Override
@@ -426,10 +426,8 @@ public class TruffleGraphBuilderPlugins {
                     throw b.bailout("Parameter 'descriptor' is not a compile-time constant");
                 }
 
-                final ValueNode nonNullArguments = b.add(PiNode.create(args, StampFactory.objectNonNull(StampTool.typeReferenceOrNull(args))));
-                final NewFrameNode node = new NewFrameNode(knownTruffleFields, b.getMetaAccess(), b.getConstantReflection(), b.getGraph(),
-                                knownTruffleFields.classFrameClass, descriptor, nonNullArguments);
-                b.addPush(JavaKind.Object, node);
+                ValueNode nonNullArguments = b.add(PiNode.create(args, StampFactory.objectNonNull(StampTool.typeReferenceOrNull(args))));
+                b.addPush(JavaKind.Object, new NewFrameNode(b, descriptor, nonNullArguments, knownFields));
                 return true;
             }
         });
