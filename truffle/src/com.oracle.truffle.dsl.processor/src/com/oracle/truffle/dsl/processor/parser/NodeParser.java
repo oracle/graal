@@ -394,8 +394,8 @@ public class NodeParser extends AbstractParser<NodeData> {
         }
 
         /*
-         * Sort elements by enclosing type to ensure that duplicate static methods are used from the
-         * most concrete subtype.
+         * Sort elements by enclosing type to ensure that duplicate static methods are used from the most
+         * concrete subtype.
          */
         Collections.sort(members, new Comparator<Element>() {
             Map<TypeMirror, Set<String>> cachedQualifiedNames = new HashMap<>();
@@ -1716,7 +1716,13 @@ public class NodeParser extends AbstractParser<NodeData> {
                 if (mappedElements == null) {
                     mappedElements = new HashMap<>();
                     for (ExecutableElement m : ElementFilter.methodsIn(unusedElements)) {
-                        mappedElements.computeIfAbsent(m.getSimpleName().toString(), (k) -> new ArrayList<>()).add(m);
+                        String name = m.getSimpleName().toString();
+                        List<ExecutableElement> groupedElements = mappedElements.get(name);
+                        if (groupedElements == null) {
+                            groupedElements = new ArrayList<>();
+                            mappedElements.put(name, groupedElements);
+                        }
+                        groupedElements.add(m);
                     }
                 }
 
