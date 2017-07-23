@@ -64,6 +64,7 @@ import com.oracle.truffle.llvm.nodes.func.LLVMTypeIdForExceptionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFAbsNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMPowNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleGetArgNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMAssumeNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI16NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI32NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI64NodeGen;
@@ -535,6 +536,8 @@ public class BasicNodeFactory implements NodeFactory {
             case "@llvm.memset.p0i8.i32":
             case "@llvm.memset.p0i8.i64":
                 return LLVMMemSetNodeGen.create(args[1], args[2], args[3], args[4], args[5], sourceSection);
+            case "@llvm.assume":
+                return LLVMAssumeNodeGen.create(args[1], sourceSection);
             case "@llvm.donothing":
                 return LLVMNoOpNodeGen.create(sourceSection);
             case "@llvm.prefetch":
