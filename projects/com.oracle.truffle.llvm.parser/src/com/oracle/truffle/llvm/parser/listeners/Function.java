@@ -251,6 +251,10 @@ public final class Function implements ParserListener {
                 createCompareExchange(args, record);
                 break;
 
+            case ATOMICRMW:
+                createAtomicReadModifyWrite(args);
+                break;
+
             default:
                 throw new UnsupportedOperationException("Unsupported Record: " + record);
         }
@@ -629,6 +633,23 @@ public final class Function implements ParserListener {
         final long synchronizationScope = args[i];
 
         instructionBlock.createAtomicStore(destination, source, align, isVolatile, atomicOrdering, synchronizationScope);
+    }
+
+    private void createAtomicReadModifyWrite(long[] args) {
+        int i = 0;
+
+        final int ptr = getIndex(args[i++]);
+        final Type ptrType = symbols.get(ptr);
+        final int value = getIndex(args[i++]);
+        final int opcode = (int) args[i++];
+        final boolean isVolatile = args[i++] != 0;
+        final long atomicOrdering = args[i++];
+        final long synchronizationScope = args[i];
+
+        final Type type = ((PointerType) ptrType).getPointeeType();
+
+        instructionBlock.createAtomicReadModifyWrite(type, ptr, value, opcode, isVolatile, atomicOrdering, synchronizationScope);
+        symbols.add(type);
     }
 
     private void createBinaryOperation(long[] args) {

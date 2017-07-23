@@ -63,6 +63,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.InvokeInstructi
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.LandingpadInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.LoadInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.PhiInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.ReadModifyWriteInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ResumeInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ReturnInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SelectInstruction;
@@ -692,6 +693,12 @@ public final class LLVMLivenessAnalysis {
                 visitLocalRead(call.getArgument(i));
             }
             visitLocalRead(call.getCallTarget());
+        }
+
+        @Override
+        public void visit(ReadModifyWriteInstruction rmw) {
+            visitLocalRead(rmw.getPtr());
+            visitLocalRead(rmw.getValue());
         }
 
         protected abstract void visitLocalRead(Symbol symbol);
