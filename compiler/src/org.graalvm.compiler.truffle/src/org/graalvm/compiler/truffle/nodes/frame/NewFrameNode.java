@@ -166,17 +166,20 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         JavaConstant slotArray = constantReflection.readFieldValue(knownFields.fieldArrayListElementData, slotArrayList);
         int slotsArrayLength = constantReflection.readArrayLength(slotArray);
         frameSlotKinds = new JavaKind[slotsArrayLength];
-        int count = 0;
+        int limit = -1;
         for (int i = 0; i < slotsArrayLength; i++) {
+            JavaKind kind = null;
             JavaConstant slot = constantReflection.readArrayElement(slotArray, i);
             if (slot.isNonNull()) {
                 JavaConstant slotKind = constantReflection.readFieldValue(knownFields.fieldFrameSlotKind, slot);
                 if (slotKind.isNonNull()) {
-                    frameSlotKinds[count++] = asJavaKind(constantReflection.readFieldValue(knownFields.fieldFrameSlotKindTag, slotKind));
+                    kind = asJavaKind(constantReflection.readFieldValue(knownFields.fieldFrameSlotKindTag, slotKind));
+                    limit = i;
                 }
             }
+            frameSlotKinds[i] = kind;
         }
-        this.frameSize = count;
+        this.frameSize = limit + 1;
 
         ResolvedJavaType frameType = knownFields.classFrameClass;
         ResolvedJavaField[] frameFields = frameType.getInstanceFields(true);
@@ -214,6 +217,10 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         return intrinsifyAccessorsSpeculation;
     }
 
+    public boolean isValidSlotIndex(int index) {
+        return index >= 0 && index < frameSize && frameSlotKinds[index] != null;
+    }
+
     private static ResolvedJavaField findField(ResolvedJavaField[] fields, String fieldName) {
         for (ResolvedJavaField field : fields) {
             if (field.getName().equals(fieldName)) {
@@ -245,7 +252,11 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
             }
             if (virtualFramePrimitiveArray != null) {
                 for (int i = 0; i < frameSize; i++) {
-                    primitiveArrayEntryState[i] = ConstantNode.defaultForKind(frameSlotKinds[i], graph());
+                    JavaKind kind = frameSlotKinds[i];
+                    if (kind == null) {
+                        kind = JavaKind.Int;
+                    }
+                    primitiveArrayEntryState[i] = ConstantNode.defaultForKind(kind, graph());
                 }
             }
         }
