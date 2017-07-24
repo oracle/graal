@@ -259,24 +259,20 @@ final class LLVMCastsFactory {
         }
         if (targetType instanceof VariableBitWidthType) {
             return LLVMToIVarNoZeroExtNodeGen.create(fromNode, targetType.getBitSize());
-        } else if (hasJavaCastSemantics()) {
-            if (targetType instanceof PrimitiveType) {
-                switch (((PrimitiveType) targetType).getPrimitiveKind()) {
-                    case I8:
-                        return LLVMToI8NoZeroExtNodeGen.create(fromNode);
-                    case I32:
-                        return LLVMToI32NoZeroExtNodeGen.create(fromNode);
-                    case I64:
-                        return LLVMToI64NoZeroExtNodeGen.create(fromNode);
-                    case DOUBLE:
-                        return LLVMToDoubleNoZeroExtNodeGen.create(fromNode);
-                    case FLOAT:
-                        return LLVMToFloatNoZeroExtNodeGen.create(fromNode);
-                    default:
-                        throw new AssertionError(targetType);
-                }
-            } else {
-                throw new AssertionError(targetType);
+        } else if (targetType instanceof PrimitiveType) {
+            switch (((PrimitiveType) targetType).getPrimitiveKind()) {
+                case I8:
+                    return LLVMToI8NoZeroExtNodeGen.create(fromNode);
+                case I32:
+                    return LLVMToI32NoZeroExtNodeGen.create(fromNode);
+                case I64:
+                    return LLVMToI64NoZeroExtNodeGen.create(fromNode);
+                case DOUBLE:
+                    return LLVMToDoubleNoZeroExtNodeGen.create(fromNode);
+                case FLOAT:
+                    return LLVMToFloatNoZeroExtNodeGen.create(fromNode);
+                default:
+                    throw new AssertionError(targetType);
             }
         } else if (conv == LLVMConversionType.BITCAST && targetType instanceof VectorType) {
             switch (((VectorType) targetType).getElementType().getPrimitiveKind()) {
