@@ -1,3 +1,1 @@
-gcc-5.2.0/gcc/testsuite/gcc.dg/pr19402-2.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/signbit-sa.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr43305.c

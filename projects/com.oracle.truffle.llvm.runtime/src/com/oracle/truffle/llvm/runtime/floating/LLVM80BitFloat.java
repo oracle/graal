@@ -198,6 +198,30 @@ public final class LLVM80BitFloat {
         return equals(NEGATIVE_ZERO);
     }
 
+    public static LLVM80BitFloat fromFloat(float val) {
+        boolean sign = val < 0;
+        if (FloatHelper.isPositiveZero(val)) {
+            return new LLVM80BitFloat(POSITIVE_ZERO);
+        } else if (FloatHelper.isNegativeZero(val)) {
+            return new LLVM80BitFloat(NEGATIVE_ZERO);
+        } else if (FloatHelper.isPositiveInfinty(val)) {
+            return new LLVM80BitFloat(DOUBLE_INFINITY_CONVERSION_NUMBER);
+        } else if (FloatHelper.isNegativeInfinity(val)) {
+            return new LLVM80BitFloat(DOUBLE_MINUS_INFINITY_CONVERSION_NUMBER);
+        } else if (FloatHelper.isNaN(val)) {
+            return new LLVM80BitFloat(DOUBLE_NAN_CONVERSION_NUMBER);
+        } else {
+            int rawValue = Float.floatToRawIntBits(val);
+            int floatExponent = FloatHelper.getUnbiasedExponent(val);
+            int biasedExponent = floatExponent + EXPONENT_BIAS;
+            long leadingOne = (long) EXPLICIT_LEADING_ONE_BITS << (FRACTION_BIT_WIDTH - 1);
+            long floatFraction = rawValue & FloatHelper.FRACTION_MASK;
+            long shiftedFloatFraction = floatFraction << (FRACTION_BIT_WIDTH - FloatHelper.FLOAT_FRACTION_BIT_WIDTH - EXPLICIT_LEADING_ONE_BITS);
+            long fraction = shiftedFloatFraction | leadingOne;
+            return LLVM80BitFloat.fromRawValues(sign, biasedExponent, fraction);
+        }
+    }
+
     public static LLVM80BitFloat fromDouble(double val) {
         boolean sign = val < 0;
         if (DoubleHelper.isPositiveZero(val)) {
@@ -307,6 +331,14 @@ public final class LLVM80BitFloat {
 
     public LLVM80BitFloat rem(LLVM80BitFloat right) {
         return fromDouble(getDoubleValue() % right.getDoubleValue());
+    }
+
+    public LLVM80BitFloat pow(int right) {
+        return fromDouble(Math.pow(getDoubleValue(), right));
+    }
+
+    public LLVM80BitFloat pow(LLVM80BitFloat right) {
+        return fromDouble(Math.pow(getDoubleValue(), right.getDoubleValue()));
     }
 
     public boolean isPositiveInfinity() {

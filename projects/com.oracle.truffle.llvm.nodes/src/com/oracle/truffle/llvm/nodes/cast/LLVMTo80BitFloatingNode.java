@@ -61,8 +61,7 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVM80BitFloat executeLLVM80BitFloatNode(float from) {
-            // TODO implement
-            throw new AssertionError(from);
+            return LLVM80BitFloat.fromFloat(from);
         }
 
         @Specialization
@@ -96,8 +95,7 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVM80BitFloat executeLLVM80BitFloatNode(float from) {
-            // TODO implement
-            throw new AssertionError(from);
+            return LLVM80BitFloat.fromFloat(from);
         }
 
         @Specialization
