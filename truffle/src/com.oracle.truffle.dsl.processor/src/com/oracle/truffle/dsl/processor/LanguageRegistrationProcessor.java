@@ -25,9 +25,12 @@ package com.oracle.truffle.dsl.processor;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
+import java.util.TreeSet;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.FilerException;
@@ -59,7 +62,8 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
 
     private void generateFile(List<TypeElement> languages) {
         String filename = "META-INF/truffle/language";
-        Properties p = new Properties();
+        // sorted properties
+        Properties p = new SortedProperties();
         int cnt = 0;
         for (TypeElement l : languages) {
             Registration annotation = l.getAnnotation(Registration.class);
@@ -189,6 +193,14 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
             return;
         }
         processingEnv.getMessager().printMessage(Kind.WARNING, msg, e);
+    }
+
+    @SuppressWarnings("serial")
+    static class SortedProperties extends Properties {
+        @Override
+        public synchronized Enumeration<Object> keys() {
+            return Collections.enumeration(new TreeSet<>(super.keySet()));
+        }
     }
 
 }
