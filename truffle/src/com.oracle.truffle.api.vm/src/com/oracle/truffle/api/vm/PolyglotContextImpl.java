@@ -163,9 +163,15 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
             store = getThreadLocalStore(contextThreadStore);
         }
         if (store != null) {
-            assert store.boundThread.get() == Thread.currentThread() : "Attempt to access context from an unbound thread.";
+            assert validThread(store);
         }
         return store;
+    }
+
+    private static boolean validThread(PolyglotContextImpl store) {
+        Thread boundThread = store.boundThread.get();
+        assert boundThread == null || boundThread == Thread.currentThread() || store.enteredCount == 0 : "Attempt to access context from an unbound thread.";
+        return true;
     }
 
     @TruffleBoundary

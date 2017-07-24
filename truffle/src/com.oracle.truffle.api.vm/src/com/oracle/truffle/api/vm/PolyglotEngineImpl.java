@@ -395,16 +395,16 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             PolyglotContextImpl[] localContexts = contexts.toArray(new PolyglotContextImpl[0]);
             for (PolyglotContextImpl context : localContexts) {
                 assert !context.closed : "should not be in the contexts list";
-                Thread t = context.boundThread.get();
+                Thread boundThread = context.boundThread.get();
                 try {
                     boolean performClose = true;
-                    if (t != null && t != Thread.currentThread()) {
+                    if (boundThread != null && boundThread != Thread.currentThread() && context.enteredCount > 0) {
                         if (!ignoreCloseFailure) {
                             if (cancelIfExecuting) {
                                 performClose = true;
                             } else {
                                 throw new IllegalStateException(String.format("One of the context instances is currently executing on thread %s. " +
-                                                "Set cancelIfExecuting to true to stop the execution on this thread.", t));
+                                                "Set cancelIfExecuting to true to stop the execution on this thread.", boundThread));
                             }
                         } else {
                             performClose = false;
@@ -537,8 +537,8 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                     Thread thread = context.boundThread.get();
                     if (thread != null && context.closingLatch != null) {
                         /*
-                         * We send an interrupt to the thread to wake up and to run some guest language code in case they
-                         * are waiting in some async primitive.
+                         * We send an interrupt to the thread to wake up and to run some guest
+                         * language code in case they are waiting in some async primitive.
                          */
                         thread.interrupt();
                     }
