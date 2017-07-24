@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.cast;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -120,7 +119,6 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
     public abstract static class LLVMToLLVM80BitFloatBitNode extends LLVMTo80BitFloatingNode {
 
         @Specialization
-        @ExplodeLoop
         public LLVM80BitFloat executeI1Vector(LLVMI1Vector from) {
             if (from.getLength() != LLVM80BitFloat.BIT_WIDTH) {
                 CompilerDirectives.transferToInterpreter();
@@ -137,7 +135,6 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        @ExplodeLoop
         public LLVM80BitFloat executeI8Vector(LLVMI8Vector from) {
             if (from.getLength() != LLVM80BitFloat.BIT_WIDTH / Byte.SIZE) {
                 CompilerDirectives.transferToInterpreter();
@@ -151,7 +148,6 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        @ExplodeLoop
         public LLVM80BitFloat executeI16Vector(LLVMI16Vector from) {
             if (from.getLength() != LLVM80BitFloat.BIT_WIDTH / Short.SIZE) {
                 CompilerDirectives.transferToInterpreter();

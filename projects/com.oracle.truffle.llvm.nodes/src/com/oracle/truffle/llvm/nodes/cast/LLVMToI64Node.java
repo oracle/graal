@@ -37,7 +37,6 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
@@ -175,7 +174,6 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
 
     public abstract static class LLVMToI64BitNode extends LLVMToI64Node {
 
-        @ExplodeLoop
         protected static long castI1Vector(LLVMI1Vector from, int elem) {
             if (from.getLength() != elem) {
                 CompilerDirectives.transferToInterpreter();
@@ -188,7 +186,6 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
             return res;
         }
 
-        @ExplodeLoop
         protected static long castI8Vector(LLVMI8Vector from, int elem) {
             if (from.getLength() != elem) {
                 CompilerDirectives.transferToInterpreter();
@@ -201,7 +198,6 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
             return res;
         }
 
-        @ExplodeLoop
         protected static long castI16Vector(LLVMI16Vector from, int elem) {
             if (from.getLength() != elem) {
                 CompilerDirectives.transferToInterpreter();
@@ -214,7 +210,6 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
             return res;
         }
 
-        @ExplodeLoop
         protected static long castI32Vector(LLVMI32Vector from, int elem) {
             if (from.getLength() != elem) {
                 CompilerDirectives.transferToInterpreter();
@@ -227,7 +222,6 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
             return res;
         }
 
-        @ExplodeLoop
         protected static long castFloatVector(LLVMFloatVector from, int elem) {
             if (from.getLength() != elem) {
                 CompilerDirectives.transferToInterpreter();
