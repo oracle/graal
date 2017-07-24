@@ -45,112 +45,91 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI32RMWXchgNode extends LLVMI32RMWNode {
         @Specialization
         public int execute(LLVMGlobalVariable address, int value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            int old = globalAccess.getI32(address);
-            globalAccess.putI32(address, value);
-            return old;
+            LLVMAddress adr = globalAccess.getNativeLocation(address);
+            return LLVMMemory.getAndSetI32(adr, value);
         }
 
         @Specialization
         public int execute(LLVMAddress address, int value) {
-            int old = LLVMMemory.getI32(address);
-            LLVMMemory.putI32(address, value);
-            return old;
+            return LLVMMemory.getAndSetI32(address, value);
         }
     }
 
     public abstract static class LLVMI32RMWAddNode extends LLVMI32RMWNode {
         @Specialization
         public int execute(LLVMGlobalVariable address, int value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            int old = globalAccess.getI32(address);
-            globalAccess.putI32(address, old + value);
-            return old;
+            LLVMAddress adr = globalAccess.getNativeLocation(address);
+            return LLVMMemory.getAndAddI32(adr, value);
         }
 
         @Specialization
         public int execute(LLVMAddress address, int value) {
-            int old = LLVMMemory.getI32(address);
-            LLVMMemory.putI32(address, old + value);
-            return old;
+            return LLVMMemory.getAndAddI32(address, value);
         }
     }
 
     public abstract static class LLVMI32RMWSubNode extends LLVMI32RMWNode {
         @Specialization
         public int execute(LLVMGlobalVariable address, int value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            int old = globalAccess.getI32(address);
-            globalAccess.putI32(address, old - value);
-            return old;
+            LLVMAddress adr = globalAccess.getNativeLocation(address);
+            return LLVMMemory.getAndSubI32(adr, value);
         }
 
         @Specialization
         public int execute(LLVMAddress address, int value) {
-            int old = LLVMMemory.getI32(address);
-            LLVMMemory.putI32(address, old - value);
-            return old;
+            return LLVMMemory.getAndSubI32(address, value);
         }
     }
 
     public abstract static class LLVMI32RMWAndNode extends LLVMI32RMWNode {
         @Specialization
         public int execute(LLVMGlobalVariable address, int value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            int old = globalAccess.getI32(address);
-            globalAccess.putI32(address, old & value);
-            return old;
+            LLVMAddress adr = globalAccess.getNativeLocation(address);
+            return LLVMMemory.getAndOpI32(adr, value, (a, b) -> a & b);
         }
 
         @Specialization
         public int execute(LLVMAddress address, int value) {
-            int old = LLVMMemory.getI32(address);
-            LLVMMemory.putI32(address, old & value);
-            return old;
+            return LLVMMemory.getAndOpI32(address, value, (a, b) -> a & b);
         }
     }
 
     public abstract static class LLVMI32RMWNandNode extends LLVMI32RMWNode {
         @Specialization
         public int execute(LLVMGlobalVariable address, int value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            int old = globalAccess.getI32(address);
-            globalAccess.putI32(address, ~(old & value));
-            return old;
+            LLVMAddress adr = globalAccess.getNativeLocation(address);
+            return LLVMMemory.getAndOpI32(adr, value, (a, b) -> ~(a & b));
         }
 
         @Specialization
         public int execute(LLVMAddress address, int value) {
-            int old = LLVMMemory.getI32(address);
-            LLVMMemory.putI32(address, ~(old & value));
-            return old;
+            return LLVMMemory.getAndOpI32(address, value, (a, b) -> ~(a & b));
         }
     }
 
     public abstract static class LLVMI32RMWOrNode extends LLVMI32RMWNode {
         @Specialization
         public int execute(LLVMGlobalVariable address, int value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            int old = globalAccess.getI32(address);
-            globalAccess.putI32(address, old | value);
-            return old;
+            LLVMAddress adr = globalAccess.getNativeLocation(address);
+            return LLVMMemory.getAndOpI32(adr, value, (a, b) -> a | b);
         }
 
         @Specialization
         public int execute(LLVMAddress address, int value) {
-            int old = LLVMMemory.getI32(address);
-            LLVMMemory.putI32(address, old | value);
-            return old;
+            return LLVMMemory.getAndOpI32(address, value, (a, b) -> a | b);
         }
     }
 
     public abstract static class LLVMI32RMWXorNode extends LLVMI32RMWNode {
         @Specialization
         public int execute(LLVMGlobalVariable address, int value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            int old = globalAccess.getI32(address);
-            globalAccess.putI32(address, old ^ value);
-            return old;
+            LLVMAddress adr = globalAccess.getNativeLocation(address);
+            return LLVMMemory.getAndOpI32(adr, value, (a, b) -> a ^ b);
         }
 
         @Specialization
         public int execute(LLVMAddress address, int value) {
-            int old = LLVMMemory.getI32(address);
-            LLVMMemory.putI32(address, old ^ value);
-            return old;
+            return LLVMMemory.getAndOpI32(address, value, (a, b) -> a ^ b);
         }
     }
 

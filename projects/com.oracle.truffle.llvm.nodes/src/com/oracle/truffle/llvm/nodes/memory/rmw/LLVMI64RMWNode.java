@@ -45,112 +45,92 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI64RMWXchgNode extends LLVMI64RMWNode {
         @Specialization
         public long execute(LLVMGlobalVariable address, long value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            long old = globalAccess.getI64(address);
-            globalAccess.putI64(address, value);
-            return old;
+            LLVMAddress adr = globalAccess.getNativeLocation(address);
+            return LLVMMemory.getAndSetI64(adr, value);
         }
 
         @Specialization
         public long execute(LLVMAddress address, long value) {
-            long old = LLVMMemory.getI64(address);
-            LLVMMemory.putI64(address, value);
-            return old;
+            return LLVMMemory.getAndSetI64(address, value);
         }
     }
 
     public abstract static class LLVMI64RMWAddNode extends LLVMI64RMWNode {
         @Specialization
         public long execute(LLVMGlobalVariable address, long value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            long old = globalAccess.getI64(address);
-            globalAccess.putI64(address, old + value);
-            return old;
+            LLVMAddress adr = globalAccess.getNativeLocation(address);
+            return LLVMMemory.getAndAddI64(adr, value);
         }
 
         @Specialization
         public long execute(LLVMAddress address, long value) {
-            long old = LLVMMemory.getI64(address);
-            LLVMMemory.putI64(address, old + value);
-            return old;
+            return LLVMMemory.getAndAddI64(address, value);
         }
     }
 
     public abstract static class LLVMI64RMWSubNode extends LLVMI64RMWNode {
         @Specialization
         public long execute(LLVMGlobalVariable address, long value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            long old = globalAccess.getI64(address);
-            globalAccess.putI64(address, old - value);
-            return old;
+            LLVMAddress adr = globalAccess.getNativeLocation(address);
+            return LLVMMemory.getAndSubI64(adr, value);
         }
 
         @Specialization
         public long execute(LLVMAddress address, long value) {
-            long old = LLVMMemory.getI64(address);
-            LLVMMemory.putI64(address, old - value);
-            return old;
+            return LLVMMemory.getAndSubI64(address, value);
         }
     }
 
     public abstract static class LLVMI64RMWAndNode extends LLVMI64RMWNode {
         @Specialization
         public long execute(LLVMGlobalVariable address, long value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            long old = globalAccess.getI64(address);
-            globalAccess.putI64(address, old & value);
-            return old;
+            LLVMAddress adr = globalAccess.getNativeLocation(address);
+            return LLVMMemory.getAndOpI64(adr, value, (a, b) -> a & b);
         }
 
         @Specialization
         public long execute(LLVMAddress address, long value) {
-            long old = LLVMMemory.getI64(address);
-            LLVMMemory.putI64(address, old & value);
-            return old;
+            return LLVMMemory.getAndOpI64(address, value, (a, b) -> a & b);
         }
+
     }
 
     public abstract static class LLVMI64RMWNandNode extends LLVMI64RMWNode {
         @Specialization
         public long execute(LLVMGlobalVariable address, long value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            long old = globalAccess.getI64(address);
-            globalAccess.putI64(address, ~(old & value));
-            return old;
+            LLVMAddress adr = globalAccess.getNativeLocation(address);
+            return LLVMMemory.getAndOpI64(adr, value, (a, b) -> ~(a & b));
         }
 
         @Specialization
         public long execute(LLVMAddress address, long value) {
-            long old = LLVMMemory.getI64(address);
-            LLVMMemory.putI64(address, ~(old & value));
-            return old;
+            return LLVMMemory.getAndOpI64(address, value, (a, b) -> ~(a & b));
         }
     }
 
     public abstract static class LLVMI64RMWOrNode extends LLVMI64RMWNode {
         @Specialization
         public long execute(LLVMGlobalVariable address, long value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            long old = globalAccess.getI64(address);
-            globalAccess.putI64(address, old | value);
-            return old;
+            LLVMAddress adr = globalAccess.getNativeLocation(address);
+            return LLVMMemory.getAndOpI64(adr, value, (a, b) -> a | b);
         }
 
         @Specialization
         public long execute(LLVMAddress address, long value) {
-            long old = LLVMMemory.getI64(address);
-            LLVMMemory.putI64(address, old | value);
-            return old;
+            return LLVMMemory.getAndOpI64(address, value, (a, b) -> a | b);
         }
     }
 
     public abstract static class LLVMI64RMWXorNode extends LLVMI64RMWNode {
         @Specialization
         public long execute(LLVMGlobalVariable address, long value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            long old = globalAccess.getI64(address);
-            globalAccess.putI64(address, old ^ value);
-            return old;
+            LLVMAddress adr = globalAccess.getNativeLocation(address);
+            return LLVMMemory.getAndOpI64(adr, value, (a, b) -> a ^ b);
         }
 
         @Specialization
         public long execute(LLVMAddress address, long value) {
-            long old = LLVMMemory.getI64(address);
-            LLVMMemory.putI64(address, old ^ value);
-            return old;
+            return LLVMMemory.getAndOpI64(address, value, (a, b) -> a ^ b);
         }
     }
 

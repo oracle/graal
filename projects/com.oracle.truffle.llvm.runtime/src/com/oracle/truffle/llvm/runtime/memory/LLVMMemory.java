@@ -30,6 +30,9 @@
 package com.oracle.truffle.llvm.runtime.memory;
 
 import java.lang.reflect.Field;
+import java.util.function.BinaryOperator;
+import java.util.function.IntBinaryOperator;
+import java.util.function.LongBinaryOperator;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -576,4 +579,79 @@ public abstract class LLVMMemory {
         }
     }
 
+    public static long getAndSetI64(LLVMAddress address, long value) {
+        return UNSAFE.getAndSetLong(null, address.getVal(), value);
+    }
+
+    public static long getAndAddI64(LLVMAddress address, long value) {
+        return UNSAFE.getAndAddLong(null, address.getVal(), value);
+    }
+
+    public static long getAndSubI64(LLVMAddress address, long value) {
+        return UNSAFE.getAndAddLong(null, address.getVal(), -value);
+    }
+
+    public static long getAndOpI64(LLVMAddress address, long value, LongBinaryOperator f) {
+        long addr = address.getVal();
+        long old;
+        long nevv;
+        do {
+            old = getI64(address);
+            nevv = f.applyAsLong(old, value);
+        } while (UNSAFE.compareAndSwapLong(null, addr, old, nevv));
+        return nevv;
+    }
+
+    public static int getAndSetI32(LLVMAddress address, int value) {
+        return UNSAFE.getAndSetInt(null, address.getVal(), value);
+    }
+
+    public static int getAndAddI32(LLVMAddress address, int value) {
+        return UNSAFE.getAndAddInt(null, address.getVal(), value);
+    }
+
+    public static int getAndSubI32(LLVMAddress address, int value) {
+        return UNSAFE.getAndAddInt(null, address.getVal(), -value);
+    }
+
+    public static int getAndOpI32(LLVMAddress address, int value, IntBinaryOperator f) {
+        long addr = address.getVal();
+        int old;
+        int nevv;
+        do {
+            old = getI32(address);
+            nevv = f.applyAsInt(old, value);
+        } while (UNSAFE.compareAndSwapInt(null, addr, old, nevv));
+        return nevv;
+    }
+
+    public static short getAndOpI16(LLVMAddress address, short value, BinaryOperator<Short> f) {
+        short old;
+        short nevv;
+        do {
+            old = getI16(address);
+            nevv = f.apply(old, value);
+        } while (compareAndSwapI16(address, old, nevv).swap);
+        return nevv;
+    }
+
+    public static byte getAndOpI8(LLVMAddress address, byte value, BinaryOperator<Byte> f) {
+        byte old;
+        byte nevv;
+        do {
+            old = getI8(address);
+            nevv = f.apply(old, value);
+        } while (compareAndSwapI8(address, old, nevv).swap);
+        return nevv;
+    }
+
+    public static boolean getAndOpI1(LLVMAddress address, boolean value, BinaryOperator<Boolean> f) {
+        byte old;
+        boolean nevv;
+        do {
+            old = getI8(address);
+            nevv = f.apply(old != 0, value);
+        } while (compareAndSwapI8(address, old, (byte) (nevv ? 1 : 0)).swap);
+        return nevv;
+    }
 }

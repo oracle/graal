@@ -45,112 +45,91 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI8RMWXchgNode extends LLVMI8RMWNode {
         @Specialization
         public byte execute(LLVMGlobalVariable address, byte value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            byte old = globalAccess.getI8(address);
-            globalAccess.putI8(address, value);
-            return old;
+            LLVMAddress adr = globalAccess.getNativeLocation(address);
+            return LLVMMemory.getAndOpI8(adr, value, (a, b) -> b);
         }
 
         @Specialization
         public byte execute(LLVMAddress address, byte value) {
-            byte old = LLVMMemory.getI8(address);
-            LLVMMemory.putI8(address, value);
-            return old;
+            return LLVMMemory.getAndOpI8(address, value, (a, b) -> b);
         }
     }
 
     public abstract static class LLVMI8RMWAddNode extends LLVMI8RMWNode {
         @Specialization
         public byte execute(LLVMGlobalVariable address, byte value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            byte old = globalAccess.getI8(address);
-            globalAccess.putI8(address, (byte) (old + value));
-            return old;
+            LLVMAddress adr = globalAccess.getNativeLocation(address);
+            return LLVMMemory.getAndOpI8(adr, value, (a, b) -> ((byte) (a + b)));
         }
 
         @Specialization
         public byte execute(LLVMAddress address, byte value) {
-            byte old = LLVMMemory.getI8(address);
-            LLVMMemory.putI8(address, (byte) (old + value));
-            return old;
+            return LLVMMemory.getAndOpI8(address, value, (a, b) -> ((byte) (a + b)));
         }
     }
 
     public abstract static class LLVMI8RMWSubNode extends LLVMI8RMWNode {
         @Specialization
         public byte execute(LLVMGlobalVariable address, byte value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            byte old = globalAccess.getI8(address);
-            globalAccess.putI8(address, (byte) (old - value));
-            return old;
+            LLVMAddress adr = globalAccess.getNativeLocation(address);
+            return LLVMMemory.getAndOpI8(adr, value, (a, b) -> ((byte) (a - b)));
         }
 
         @Specialization
         public byte execute(LLVMAddress address, byte value) {
-            byte old = LLVMMemory.getI8(address);
-            LLVMMemory.putI8(address, (byte) (old - value));
-            return old;
+            return LLVMMemory.getAndOpI8(address, value, (a, b) -> ((byte) (a - b)));
         }
     }
 
     public abstract static class LLVMI8RMWAndNode extends LLVMI8RMWNode {
         @Specialization
         public byte execute(LLVMGlobalVariable address, byte value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            byte old = globalAccess.getI8(address);
-            globalAccess.putI8(address, (byte) (old & value));
-            return old;
+            LLVMAddress adr = globalAccess.getNativeLocation(address);
+            return LLVMMemory.getAndOpI8(adr, value, (a, b) -> ((byte) (a & b)));
         }
 
         @Specialization
         public byte execute(LLVMAddress address, byte value) {
-            byte old = LLVMMemory.getI8(address);
-            LLVMMemory.putI8(address, (byte) (old & value));
-            return old;
+            return LLVMMemory.getAndOpI8(address, value, (a, b) -> ((byte) (a & b)));
         }
     }
 
     public abstract static class LLVMI8RMWNandNode extends LLVMI8RMWNode {
         @Specialization
         public byte execute(LLVMGlobalVariable address, byte value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            byte old = globalAccess.getI8(address);
-            globalAccess.putI8(address, (byte) ~(old & value));
-            return old;
+            LLVMAddress adr = globalAccess.getNativeLocation(address);
+            return LLVMMemory.getAndOpI8(adr, value, (a, b) -> ((byte) ~(a & b)));
         }
 
         @Specialization
         public byte execute(LLVMAddress address, byte value) {
-            byte old = LLVMMemory.getI8(address);
-            LLVMMemory.putI8(address, (byte) ~(old & value));
-            return old;
+            return LLVMMemory.getAndOpI8(address, value, (a, b) -> ((byte) ~(a & b)));
         }
     }
 
     public abstract static class LLVMI8RMWOrNode extends LLVMI8RMWNode {
         @Specialization
         public byte execute(LLVMGlobalVariable address, byte value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            byte old = globalAccess.getI8(address);
-            globalAccess.putI8(address, (byte) (old | value));
-            return old;
+            LLVMAddress adr = globalAccess.getNativeLocation(address);
+            return LLVMMemory.getAndOpI8(adr, value, (a, b) -> ((byte) (a | b)));
         }
 
         @Specialization
         public byte execute(LLVMAddress address, byte value) {
-            byte old = LLVMMemory.getI8(address);
-            LLVMMemory.putI8(address, (byte) (old | value));
-            return old;
+            return LLVMMemory.getAndOpI8(address, value, (a, b) -> ((byte) (a | b)));
         }
     }
 
     public abstract static class LLVMI8RMWXorNode extends LLVMI8RMWNode {
         @Specialization
         public byte execute(LLVMGlobalVariable address, byte value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            byte old = globalAccess.getI8(address);
-            globalAccess.putI8(address, (byte) (old ^ value));
-            return old;
+            LLVMAddress adr = globalAccess.getNativeLocation(address);
+            return LLVMMemory.getAndOpI8(adr, value, (a, b) -> ((byte) (a ^ b)));
         }
 
         @Specialization
         public byte execute(LLVMAddress address, byte value) {
-            byte old = LLVMMemory.getI8(address);
-            LLVMMemory.putI8(address, (byte) (old ^ value));
-            return old;
+            return LLVMMemory.getAndOpI8(address, value, (a, b) -> ((byte) (a ^ b)));
         }
     }
 
