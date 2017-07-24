@@ -255,6 +255,10 @@ public final class Function implements ParserListener {
                 createAtomicReadModifyWrite(args);
                 break;
 
+            case FENCE:
+                createFence(args);
+                break;
+
             default:
                 throw new UnsupportedOperationException("Unsupported Record: " + record);
         }
@@ -650,6 +654,15 @@ public final class Function implements ParserListener {
 
         instructionBlock.createAtomicReadModifyWrite(type, ptr, value, opcode, isVolatile, atomicOrdering, synchronizationScope);
         symbols.add(type);
+    }
+
+    private void createFence(long[] args) {
+        int i = 0;
+
+        final long atomicOrdering = args[i++];
+        final long synchronizationScope = args[i];
+
+        instructionBlock.createFence(atomicOrdering, synchronizationScope);
     }
 
     private void createBinaryOperation(long[] args) {

@@ -55,6 +55,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareInstruct
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ConditionalBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractElementInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractValueInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.FenceInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.GetElementPointerInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.IndirectBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.InsertElementInstruction;
@@ -665,6 +666,13 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final LLVMExpressionNode result = nodeFactory.createReadModifyWrite(runtime, rmw.getOperator(), pointerNode, valueNode, type);
 
         createFrameWrite(result, rmw);
+    }
+
+    @Override
+    public void visit(FenceInstruction fence) {
+        final LLVMExpressionNode node = nodeFactory.createFence(runtime);
+
+        addInstruction(node);
     }
 
     @Override
