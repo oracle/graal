@@ -58,6 +58,12 @@ public final class Runner {
 
     public CallTarget parse(LLVMLanguage language, LLVMContext context, Source code) throws IOException {
         try {
+            /*
+             * TODO: currently, we need to load the bitcode libraries first. Otherwise, sulong is
+             * not able to link external variables which were defined in those libraries.
+             */
+            parseDynamicBitcodeLibraries(language, context);
+
             CallTarget mainFunction = null;
             if (code.getMimeType().equals(Sulong.LLVM_BITCODE_MIME_TYPE) || code.getMimeType().equals(Sulong.LLVM_BITCODE_BASE64_MIME_TYPE) || code.getMimeType().equals("x-unknown")) {
                 LLVMParserResult parserResult = parseBitcodeFile(code, language, context);
@@ -94,7 +100,6 @@ public final class Runner {
             } else {
                 throw new IllegalArgumentException("undeclared mime type: " + code.getMimeType());
             }
-            parseDynamicBitcodeLibraries(language, context);
             if (context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
                 return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
             } else {
