@@ -257,10 +257,10 @@ final class LLVMCastsFactory {
         if (targetType == PrimitiveType.X86_FP80) {
             return fromNode;
         }
-        if (hasJavaCastSemantics()) {
-            if (targetType instanceof VariableBitWidthType) {
-                return LLVMToIVarNoZeroExtNodeGen.create(fromNode, targetType.getBitSize());
-            } else if (targetType instanceof PrimitiveType) {
+        if (targetType instanceof VariableBitWidthType) {
+            return LLVMToIVarNoZeroExtNodeGen.create(fromNode, targetType.getBitSize());
+        } else if (hasJavaCastSemantics()) {
+            if (targetType instanceof PrimitiveType) {
                 switch (((PrimitiveType) targetType).getPrimitiveKind()) {
                     case I8:
                         return LLVMToI8NoZeroExtNodeGen.create(fromNode);
