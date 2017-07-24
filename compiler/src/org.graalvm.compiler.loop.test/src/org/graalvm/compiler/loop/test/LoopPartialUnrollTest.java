@@ -70,85 +70,6 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
         return false;
     }
 
-    public static long testMultiplySnippet(int arg) {
-        long r = 1;
-        for (int i = 0; branchProbability(0.99, i < arg); i++) {
-            r += r * i;
-        }
-        return r;
-    }
-
-    @Test
-    public void testMultiply() {
-        test("testMultiplySnippet", 9);
-    }
-
-    public static int testNestedSumSnippet(int d) {
-        int c = 0;
-        for (int i = 0; i < d; i++) {
-            for (int j = 0; branchProbability(0.99, j < i); j++) {
-                c += c + j & 0x3;
-            }
-        }
-        return c;
-    }
-
-    @Test
-    public void testNestedSumBy2() {
-        for (int i = 0; i < 1000; i++) {
-            test("testNestedSumBy2Snippet", i);
-        }
-    }
-
-    public static int testNestedSumBy2Snippet(int d) {
-        int c = 0;
-        for (int i = 0; i < d; i++) {
-            for (int j = 0; branchProbability(0.99, j < i); j += 2) {
-                c += c + j & 0x3;
-            }
-        }
-        return c;
-    }
-
-    @Test
-    public void testNestedSum() {
-        for (int i = 0; i < 1000; i++) {
-            test("testNestedSumSnippet", i);
-        }
-    }
-
-    public static int testSumDownSnippet(int d) {
-        int c = 0;
-        for (int j = d; branchProbability(0.99, j > -4); j--) {
-            c += c + j & 0x3;
-        }
-        return c;
-    }
-
-    @Test
-    public void testSumDown() {
-        test("testSumDownSnippet", 1);
-        for (int i = 0; i < 160; i++) {
-            test("testSumDownSnippet", i);
-        }
-    }
-
-    public static int testSumDownBy2Snippet(int d) {
-        int c = 0;
-        for (int j = d; branchProbability(0.99, j > -4); j -= 2) {
-            c += c + j & 0x3;
-        }
-        return c;
-    }
-
-    @Test
-    public void testSumDownBy2() {
-        test("testSumDownBy2Snippet", 1);
-        for (int i = 0; i < 160; i++) {
-            test("testSumDownBy2Snippet", i);
-        }
-    }
-
     public static long sumWithEqualityLimit(int[] text) {
         long sum = 0;
         for (int i = 0; branchProbability(0.99, i != text.length); ++i) {
@@ -168,36 +89,19 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
 
     @Test
     public void testLoopCarried() {
-        test("testLoopCarriedSnippet", 1, 2);
-        test("testLoopCarriedSnippet", 0, 4);
-        test("testLoopCarriedSnippet", 4, 0);
-    }
-
-    public static int testLoopCarriedSnippet(int a, int b) {
-        int c = a;
-        int d = b;
-        for (int j = 0; branchProbability(0.99, j < a); j++) {
-            d = c;
-            c += 1;
-        }
-        return c + d;
-    }
-
-    @Test
-    public void testLoopCarried2() {
         for (int i = 0; i < 64; i++) {
-            test("testLoopCarried2Snippet", i);
+            test("testLoopCarriedSnippet", i);
         }
     }
 
     @Test
-    public void testLoopCarried2Duplication() {
-        testDuplicateBody("testLoopCarried2Reference", "testLoopCarried2Snippet");
+    public void testLoopCarriedDuplication() {
+        testDuplicateBody("testLoopCarriedReference", "testLoopCarriedSnippet");
     }
 
     static volatile int volatileInt = 3;
 
-    public int testLoopCarried2Snippet(int iterations) {
+    public int testLoopCarriedSnippet(int iterations) {
         int a = 0;
         int b = 0;
         int c = 0;
@@ -213,7 +117,7 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
         return c;
     }
 
-    public int testLoopCarried2Reference(int iterations) {
+    public int testLoopCarriedReference(int iterations) {
         int a = 0;
         int b = 0;
         int c = 0;
