@@ -45,4 +45,29 @@ final class FloatHelper {
 
     static final float POSITIVE_INFINITY = Float.POSITIVE_INFINITY;
 
+    static final int FRACTION_MASK = BinaryHelper.getBitMask(FloatHelper.FLOAT_FRACTION_BIT_WIDTH);
+
+    static boolean isPositiveZero(float val) {
+        return Float.floatToIntBits(POSITIVE_ZERO) == Float.floatToIntBits(val);
+    }
+
+    static boolean isNegativeZero(float val) {
+        return Float.floatToIntBits(NEGATIVE_ZERO) == Float.floatToIntBits(val);
+    }
+
+    static boolean isPositiveInfinty(float val) {
+        return val == Float.POSITIVE_INFINITY;
+    }
+
+    static boolean isNegativeInfinity(float val) {
+        return val == Float.NEGATIVE_INFINITY;
+    }
+
+    static boolean isNaN(float val) {
+        return Float.isNaN(val);
+    }
+
+    static int getUnbiasedExponent(float val) {
+        return Math.getExponent(val);
+    }
 }
