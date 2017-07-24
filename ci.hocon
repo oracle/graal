@@ -126,6 +126,16 @@ deploy-binaries-linux: ${deploy-binaries} ${linux-amd64} ${requireGCC} {
 deploy-binaries-darwin: ${deploy-binaries} ${darwin-amd64} ${darwin-llvm} {
 }
 
+ruby-downstream-test: {
+    packages: {
+        ruby: "==2.1.0"
+    }
+    run: [
+        [mx, testdownstream, --repo, "https://github.com/graalvm/truffleruby.git",
+         --mx-command, "--dynamicimports sulong ruby_testdownstream_sulong"]
+    ]
+}
+
 builds = [
   ${gateStyle} { name: gate-style, run: [[mx, check, --verbose, checkstyle, mdl, canonicalizeprojects, httpcheck, checkoverlap, clangformatcheck, pylint, eclipseformat ]] }
   ${gateTest32} ${requireJDT} { name: gate-full-build, run: [[mx, check, --verbose, ecj, findbugs]] }
@@ -136,6 +146,7 @@ builds = [
   ${gateTest38-darwin} ${sulongSuite} { name: gate-sulong-v38-darwin }
   ${gateTest38-linux} { name: gate-gcc-v38, run: [[mx, build, --dependencies, SULONG_TEST], [mx, test, gcc38]] }
   ${gateTest38-linux} { name: gate-var-v38, run: [[mx, build, --dependencies, SULONG_TEST], [mx, test, interop], [mx, test, assembly], [mx, test, args], [mx, test, callback], [mx, test, vaargs]] }
+  ${gateTest38-linux} ${ruby-downstream-test} { name: gate-ruby-downstream }
 
   ${deploy-binaries-linux} { name: postmerge-deploy-binaries-linux-amd64 }
   ${deploy-binaries-darwin} { name: postmerge-deploy-binaries-darwin-amd64 }
