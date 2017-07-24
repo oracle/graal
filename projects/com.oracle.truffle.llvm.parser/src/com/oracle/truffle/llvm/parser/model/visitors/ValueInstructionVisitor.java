@@ -44,6 +44,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.InvokeInstructi
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.LandingpadInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.LoadInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.PhiInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.ReadModifyWriteInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SelectInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ShuffleVectorInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
@@ -135,5 +136,10 @@ public abstract class ValueInstructionVisitor implements InstructionVisitorAdapt
     @Override
     public void visit(CompareExchangeInstruction cmpxchg) {
         visitValueInstruction(cmpxchg);
+    }
+
+    @Override
+    public void visit(ReadModifyWriteInstruction rmw) {
+        visitValueInstruction(rmw);
     }
 }

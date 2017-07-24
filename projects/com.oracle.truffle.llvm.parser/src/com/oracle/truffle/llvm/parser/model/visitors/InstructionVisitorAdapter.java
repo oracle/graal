@@ -48,6 +48,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.InvokeInstructi
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.LandingpadInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.LoadInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.PhiInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.ReadModifyWriteInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ResumeInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ReturnInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SelectInstruction;
@@ -203,4 +204,10 @@ public interface InstructionVisitorAdapter extends InstructionVisitor {
     default void visit(CompareExchangeInstruction cmpxchg) {
         defaultAction(cmpxchg);
     }
+
+    @Override
+    default void visit(ReadModifyWriteInstruction rmw) {
+        defaultAction(rmw);
+    }
+
 }

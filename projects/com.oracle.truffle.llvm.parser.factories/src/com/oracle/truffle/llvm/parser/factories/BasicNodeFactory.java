@@ -120,6 +120,7 @@ import com.oracle.truffle.llvm.parser.metadata.DebugInfoGenerator;
 import com.oracle.truffle.llvm.parser.model.enums.CompareOperator;
 import com.oracle.truffle.llvm.parser.model.enums.Flag;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
+import com.oracle.truffle.llvm.parser.model.enums.ReadModifyWriteOperator;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.globals.GlobalConstant;
@@ -179,6 +180,11 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMExpressionNode createStore(LLVMParserRuntime runtime, LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type, SourceSection source) {
         return LLVMMemoryReadWriteFactory.createStore(runtime, pointerNode, valueNode, type, source);
+    }
+
+    @Override
+    public LLVMExpressionNode createReadModifyWrite(LLVMParserRuntime runtime, ReadModifyWriteOperator operator, LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type) {
+        return LLVMMemoryReadWriteFactory.createReadModifyWrite(operator, pointerNode, valueNode, type);
     }
 
     @Override
