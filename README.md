@@ -200,7 +200,6 @@ linker, and backends then operate on the LLVM bitcode, to finally produce
 machine code. LLVM envisions that transformations and analyses can be
 applied during compile-time, link-time, runtime, and offline.
 
-
 What is Truffle?
 ----------------
 
