@@ -129,7 +129,6 @@ public class TruffleGraphBuilderPlugins {
         registerCompilerDirectivesPlugins(plugins, canDelayIntrinsification);
         registerCompilerAssertsPlugins(plugins, canDelayIntrinsification);
         registerOptimizedCallTargetPlugins(plugins, canDelayIntrinsification, knownFields);
-        registerCompilationFinalReferencePlugins(plugins, snippetReflection, canDelayIntrinsification);
 
         if (TruffleCompilerOptions.getValue(TruffleUseFrameWithoutBoxing)) {
             registerFrameWithoutBoxingPlugins(plugins, canDelayIntrinsification, constantReflection, knownFields);
@@ -211,29 +210,6 @@ public class TruffleGraphBuilderPlugins {
                 }
             });
         }
-    }
-
-    public static void registerCompilationFinalReferencePlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, boolean canDelayIntrinsification) {
-        Registration r = new Registration(plugins, Reference.class);
-        r.register1("get", Receiver.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                if (canDelayIntrinsification) {
-                    return false;
-                }
-                if (receiver.isConstant()) {
-                    JavaConstant constant = (JavaConstant) receiver.get().asConstant();
-                    if (constant.isNonNull()) {
-                        Reference<?> reference = snippetReflection.asObject(Reference.class, constant);
-                        if (reference instanceof WeakReference<?> || reference instanceof SoftReference<?>) {
-                            b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(reference.get()), b.getMetaAccess()));
-                            return true;
-                        }
-                    }
-                }
-                return false;
-            }
-        });
     }
 
     public static void registerCompilerDirectivesPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification) {

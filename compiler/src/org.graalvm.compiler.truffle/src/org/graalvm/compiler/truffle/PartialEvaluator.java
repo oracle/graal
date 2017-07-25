@@ -120,7 +120,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 /**
  * Class performing the partial evaluation starting from the root node of an AST.
  */
-public class PartialEvaluator {
+public abstract class PartialEvaluator {
 
     protected final Providers providers;
     protected final Architecture architecture;
@@ -137,18 +137,18 @@ public class PartialEvaluator {
     private final KnownTruffleFields knownTruffleFields;
 
     public PartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, SnippetReflectionProvider snippetReflection, Architecture architecture,
-                    InstrumentPhase.Instrumentation instrumentation) {
+                    InstrumentPhase.Instrumentation instrumentation, KnownTruffleFields knownFields) {
         this.providers = providers;
         this.architecture = architecture;
         this.canonicalizer = new CanonicalizerPhase();
         this.snippetReflection = snippetReflection;
         this.instrumentation = instrumentation;
+        this.knownTruffleFields = knownFields;
 
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         this.callDirectMethod = metaAccess.lookupJavaMethod(OptimizedCallTarget.getCallDirectMethod());
         this.callInlinedMethod = metaAccess.lookupJavaMethod(OptimizedCallTarget.getCallInlinedMethod());
         this.callSiteProxyMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_NODE_METHOD);
-        this.knownTruffleFields = new KnownTruffleFields(metaAccess);
 
         try {
             callRootMethod = metaAccess.lookupJavaMethod(OptimizedCallTarget.class.getDeclaredMethod("callRoot", Object[].class));

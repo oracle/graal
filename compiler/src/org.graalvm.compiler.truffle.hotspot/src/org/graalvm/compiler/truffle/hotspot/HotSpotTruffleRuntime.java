@@ -77,7 +77,6 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.compiler.truffle.DefaultTruffleCompiler;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.TruffleCallBoundary;
@@ -194,7 +193,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
             // might occur for multiple compiler threads at the same time.
             if (truffleCompiler == null) {
                 try {
-                    truffleCompiler = DefaultTruffleCompiler.create(this);
+                    truffleCompiler = HotSpotTruffleCompiler.create(this);
                 } catch (Throwable e) {
                     if (!reportedTruffleCompilerInitializationFailure) {
                         // This should never happen so report it (once)

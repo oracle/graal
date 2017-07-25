@@ -27,8 +27,6 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.impl.AbstractAssumption;
 
-import java.lang.ref.SoftReference;
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -46,8 +44,6 @@ public class KnownTruffleFields {
 
     public final ResolvedJavaType classFrameClass;
     public final ResolvedJavaType classFrameDescriptor;
-    public final ResolvedJavaType classWeakReference;
-    public final ResolvedJavaType classSoftReference;
 
     public final ResolvedJavaField fieldFrameDescriptorDefaultValue;
     public final ResolvedJavaField fieldFrameDescriptorVersion;
@@ -69,8 +65,6 @@ public class KnownTruffleFields {
             classFrameClass = metaAccess.lookupJavaType(frameClass);
 
             classFrameDescriptor = metaAccess.lookupJavaType(FrameDescriptor.class);
-            classWeakReference = metaAccess.lookupJavaType(WeakReference.class);
-            classSoftReference = metaAccess.lookupJavaType(SoftReference.class);
 
             fieldFrameDescriptorDefaultValue = metaAccess.lookupJavaField(FrameDescriptor.class.getDeclaredField("defaultValue"));
             fieldFrameDescriptorVersion = metaAccess.lookupJavaField(FrameDescriptor.class.getDeclaredField("version"));
