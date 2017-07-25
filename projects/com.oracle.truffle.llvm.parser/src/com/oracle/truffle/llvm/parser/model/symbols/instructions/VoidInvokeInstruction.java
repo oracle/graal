@@ -32,6 +32,8 @@ package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
+import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
@@ -45,16 +47,18 @@ public final class VoidInvokeInstruction extends VoidInstruction implements Invo
 
     private Symbol target;
 
-    private final List<Symbol> arguments;
+    private final List<Symbol> arguments = new ArrayList<>();
 
     private final InstructionBlock normalSuccessor;
 
     private final InstructionBlock unwindSuccessor;
 
-    private VoidInvokeInstruction(InstructionBlock normalSuccessor, InstructionBlock unwindSuccessor) {
+    private final AttributesCodeEntry paramAttr;
+
+    private VoidInvokeInstruction(InstructionBlock normalSuccessor, InstructionBlock unwindSuccessor, AttributesCodeEntry paramAttr) {
         this.normalSuccessor = normalSuccessor;
         this.unwindSuccessor = unwindSuccessor;
-        arguments = new ArrayList<>();
+        this.paramAttr = paramAttr;
     }
 
     @Override
@@ -78,6 +82,21 @@ public final class VoidInvokeInstruction extends VoidInstruction implements Invo
     }
 
     @Override
+    public AttributesGroup getFunctionAttributesGroup() {
+        return paramAttr.getFunctionAttributesGroup();
+    }
+
+    @Override
+    public AttributesGroup getReturnAttributesGroup() {
+        return paramAttr.getReturnAttributesGroup();
+    }
+
+    @Override
+    public AttributesGroup getParameterAttributesGroup(int idx) {
+        return paramAttr.getParameterAttributesGroup(idx);
+    }
+
+    @Override
     public void replace(Symbol original, Symbol replacement) {
         if (target == original) {
             target = replacement;
@@ -90,8 +109,8 @@ public final class VoidInvokeInstruction extends VoidInstruction implements Invo
     }
 
     public static VoidInvokeInstruction fromSymbols(Symbols symbols, int targetIndex, int[] arguments, InstructionBlock normalSuccessor,
-                    InstructionBlock unwindSuccessor) {
-        final VoidInvokeInstruction inst = new VoidInvokeInstruction(normalSuccessor, unwindSuccessor);
+                    InstructionBlock unwindSuccessor, AttributesCodeEntry paramAttr) {
+        final VoidInvokeInstruction inst = new VoidInvokeInstruction(normalSuccessor, unwindSuccessor, paramAttr);
         inst.target = symbols.getSymbol(targetIndex, inst);
         if (inst.target instanceof FunctionDefinition) {
             Type[] types = ((FunctionDefinition) (inst.target)).getType().getArgumentTypes();

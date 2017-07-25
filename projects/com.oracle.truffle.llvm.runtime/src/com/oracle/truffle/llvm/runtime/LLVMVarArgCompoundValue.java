@@ -27,58 +27,59 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.attributes;
+package com.oracle.truffle.llvm.runtime;
 
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
+import com.oracle.truffle.api.CompilerDirectives.ValueType;
 
-public final class AttributesGroup {
+@ValueType
+public final class LLVMVarArgCompoundValue {
+    private final long addr;
+    private final int size;
+    private final int alignment;
 
-    private final long groupId;
-    private final long paramIdx;
-
-    private final List<Attribute> attributes = new LinkedList<>();
-
-    public static final long RETURN_VALUE_IDX = 0;
-    public static final long FUNCTION_ATTRIBUTE_IDX = 0xFFFFFFFFL;
-
-    public AttributesGroup(long groupId, long paramIdx) {
-        this.groupId = groupId;
-        this.paramIdx = paramIdx;
+    private LLVMVarArgCompoundValue(long val, int size, int alignment) {
+        this.addr = val;
+        this.size = size;
+        this.alignment = alignment;
     }
 
-    public List<Attribute> getAttributes() {
-        return Collections.unmodifiableList(attributes);
+    public static LLVMVarArgCompoundValue create(long val, int size, int alignment) {
+        return new LLVMVarArgCompoundValue(val, size, alignment);
     }
 
-    public void addAttribute(Attribute attr) {
-        attributes.add(attr);
+    public long getAddr() {
+        return addr;
     }
 
-    public long getGroupId() {
-        return groupId;
+    public int getSize() {
+        return size;
     }
 
-    public long getParamIdx() {
-        return paramIdx;
+    public int getAlignment() {
+        return alignment;
     }
 
-    public boolean isReturnValueAttribute() {
-        return paramIdx == RETURN_VALUE_IDX;
+    public LLVMVarArgCompoundValue increment(long incr) {
+        return new LLVMVarArgCompoundValue(addr + incr, size, alignment);
     }
 
-    public boolean isFunctionAttribute() {
-        return paramIdx == FUNCTION_ATTRIBUTE_IDX;
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof LLVMVarArgCompoundValue) {
+            LLVMVarArgCompoundValue curObj = (LLVMVarArgCompoundValue) obj;
+            return curObj.addr == addr && curObj.size == size && curObj.alignment == alignment;
+        } else {
+            return false;
+        }
     }
 
-    public boolean isParameterAttribute() {
-        return !isReturnValueAttribute() && !isFunctionAttribute();
+    @Override
+    public int hashCode() {
+        return Long.hashCode(addr) + 11 * Integer.hashCode(size) + 23 * Integer.hashCode(alignment);
     }
 
     @Override
     public String toString() {
-        return "AttributesGroup [groupId=" + groupId + ", paramIdx=" + paramIdx + ", attributes=" + attributes + "]";
+        return String.format("0x%x (%d align %d)", getAddr(), getSize(), getAlignment());
     }
-
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,27 +27,35 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.instructions;
+package com.oracle.truffle.llvm.runtime.memory;
 
-import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
-import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.NodeField;
+import com.oracle.truffle.api.dsl.NodeFields;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public interface Invoke extends TerminatingInstruction {
+@NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "source")})
+@NodeFields({@NodeField(name = "length", type = int.class), @NodeField(name = "alignment", type = int.class)})
+public abstract class LLVMVarArgCompoundAddressNode extends LLVMExpressionNode {
+    public abstract int getLength();
 
-    Symbol getArgument(int index);
+    public abstract int getAlignment();
 
-    int getArgumentCount();
+    @Specialization
+    public LLVMVarArgCompoundValue byValue(LLVMGlobalVariable source, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
+        return byValue(access.getNativeLocation(source));
+    }
 
-    Symbol getCallTarget();
+    @Specialization
+    public LLVMVarArgCompoundValue byValue(LLVMAddress source) {
+        return LLVMVarArgCompoundValue.create(source.getVal(), getLength(), getAlignment());
+    }
 
-    InstructionBlock normalSuccessor();
-
-    InstructionBlock unwindSuccessor();
-
-    AttributesGroup getFunctionAttributesGroup();
-
-    AttributesGroup getReturnAttributesGroup();
-
-    AttributesGroup getParameterAttributesGroup(int idx);
 }

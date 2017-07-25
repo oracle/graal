@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
+import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 public interface Call {
@@ -38,4 +39,10 @@ public interface Call {
     int getArgumentCount();
 
     Symbol getCallTarget();
+
+    AttributesGroup getFunctionAttributesGroup();
+
+    AttributesGroup getReturnAttributesGroup();
+
+    AttributesGroup getParameterAttributesGroup(int idx);
 }

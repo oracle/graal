@@ -89,3 +89,9 @@ test-suite-3.2.src/SingleSource/UnitTests/Integer/template2.cpp
 test-suite-3.2.src/SingleSource/UnitTests/2009-12-07-StructReturn.c
 test-suite-3.2.src/SingleSource/UnitTests/initp1.cpp
 test-suite-3.2.src/SingleSource/UnitTests/SignlessTypes/rem.c
+test-suite-3.2.src/SingleSource/UnitTests/2003-05-07-VarArgs.c
+test-suite-3.2.src/SingleSource/UnitTests/2003-08-11-VaListArg.c
+test-suite-3.2.src/SingleSource/UnitTests/2003-05-31-CastToBool.c
+test-suite-3.2.src/SingleSource/UnitTests/2007-03-02-VaCopy.c
+test-suite-3.2.src/SingleSource/UnitTests/Vector/constpool.c
+test-suite-3.2.src/SingleSource/UnitTests/SignlessTypes/ccc.c

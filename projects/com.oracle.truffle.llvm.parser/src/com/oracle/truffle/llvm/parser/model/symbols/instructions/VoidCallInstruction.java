@@ -32,6 +32,8 @@ package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
+import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
@@ -47,8 +49,11 @@ public final class VoidCallInstruction extends VoidInstruction implements Call {
 
     private final List<Symbol> arguments;
 
-    private VoidCallInstruction() {
+    private final AttributesCodeEntry paramAttr;
+
+    private VoidCallInstruction(AttributesCodeEntry paramAtt) {
         arguments = new ArrayList<>();
+        this.paramAttr = paramAtt;
     }
 
     @Override
@@ -72,6 +77,21 @@ public final class VoidCallInstruction extends VoidInstruction implements Call {
     }
 
     @Override
+    public AttributesGroup getFunctionAttributesGroup() {
+        return paramAttr.getFunctionAttributesGroup();
+    }
+
+    @Override
+    public AttributesGroup getReturnAttributesGroup() {
+        return paramAttr.getReturnAttributesGroup();
+    }
+
+    @Override
+    public AttributesGroup getParameterAttributesGroup(int idx) {
+        return paramAttr.getParameterAttributesGroup(idx);
+    }
+
+    @Override
     public void replace(Symbol original, Symbol replacement) {
         if (target == original) {
             target = replacement;
@@ -83,8 +103,8 @@ public final class VoidCallInstruction extends VoidInstruction implements Call {
         }
     }
 
-    public static VoidCallInstruction fromSymbols(Symbols symbols, int targetIndex, int[] arguments) {
-        final VoidCallInstruction inst = new VoidCallInstruction();
+    public static VoidCallInstruction fromSymbols(Symbols symbols, int targetIndex, int[] arguments, AttributesCodeEntry paramAttr) {
+        final VoidCallInstruction inst = new VoidCallInstruction(paramAttr);
         inst.target = symbols.getSymbol(targetIndex, inst);
         final Type[] argTypes;
         if (inst.target instanceof FunctionDefinition) {

@@ -40,6 +40,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.NeedsStack;
@@ -75,5 +76,10 @@ public abstract class LLVMStructByValueNode extends LLVMExpressionNode {
         LLVMAddress dest = LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), getLength(), getAlignment()));
         profiledMemMove.memmove(dest, source, getLength());
         return dest;
+    }
+
+    @Specialization
+    public LLVMAddress byValue(VirtualFrame frame, LLVMVarArgCompoundValue source) {
+        return byValue(frame, LLVMAddress.fromLong(source.getAddr()));
     }
 }
