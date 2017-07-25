@@ -25,9 +25,6 @@ package org.graalvm.compiler.truffle.substitutions;
 import static java.lang.Character.toUpperCase;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
 
-import java.lang.ref.Reference;
-import java.lang.ref.SoftReference;
-import java.lang.ref.WeakReference;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
@@ -42,7 +39,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -123,7 +119,7 @@ public class TruffleGraphBuilderPlugins {
     }
 
     public static void registerInvocationPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification,
-                             ConstantReflectionProvider constantReflection, SnippetReflectionProvider snippetReflection, KnownTruffleFields knownFields) {
+                             ConstantReflectionProvider constantReflection, KnownTruffleFields knownFields) {
         registerOptimizedAssumptionPlugins(plugins, knownFields);
         registerExactMathPlugins(plugins);
         registerCompilerDirectivesPlugins(plugins, canDelayIntrinsification);

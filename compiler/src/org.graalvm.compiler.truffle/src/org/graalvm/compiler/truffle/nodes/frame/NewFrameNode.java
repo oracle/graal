@@ -32,11 +32,12 @@ import java.util.List;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.IterableNodeType;
@@ -60,9 +61,8 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.nodes.AssumptionValidAssumption;
 import org.graalvm.compiler.truffle.substitutions.KnownTruffleFields;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 
-import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 
 /**
  * Intrinsic node representing the call for creating a frame in the {@link OptimizedCallTarget}

@@ -33,7 +33,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.truffle.substitutions.KnownTruffleFields;
 
-public class HotSpotKnownTruffleFields extends KnownTruffleFields {
+public final class HotSpotKnownTruffleFields extends KnownTruffleFields {
 
     public final ResolvedJavaType classWeakReference;
     public final ResolvedJavaType classSoftReference;
