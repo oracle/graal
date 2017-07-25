@@ -654,4 +654,9 @@ public abstract class LLVMMemory {
         } while (compareAndSwapI8(address, old, (byte) (nevv ? 1 : 0)).swap);
         return nevv;
     }
+
+    public static void fullFence() {
+        UNSAFE.fullFence();
+    }
+
 }

@@ -39,6 +39,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareInstruct
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ConditionalBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractElementInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractValueInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.FenceInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.GetElementPointerInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.IndirectBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.InsertElementInstruction;
@@ -208,6 +209,11 @@ public interface InstructionVisitorAdapter extends InstructionVisitor {
     @Override
     default void visit(ReadModifyWriteInstruction rmw) {
         defaultAction(rmw);
+    }
+
+    @Override
+    default void visit(FenceInstruction fence) {
+        defaultAction(fence);
     }
 
 }

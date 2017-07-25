@@ -54,6 +54,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareInstruct
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ConditionalBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractElementInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractValueInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.FenceInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.GetElementPointerInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.IndirectBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.InsertElementInstruction;
@@ -699,6 +700,10 @@ public final class LLVMLivenessAnalysis {
         public void visit(ReadModifyWriteInstruction rmw) {
             visitLocalRead(rmw.getPtr());
             visitLocalRead(rmw.getValue());
+        }
+
+        @Override
+        public void visit(FenceInstruction fence) {
         }
 
         protected abstract void visitLocalRead(Symbol symbol);

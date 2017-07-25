@@ -108,6 +108,7 @@ import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstruction.LLVMAllocaConst
 import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstructionFactory.LLVMAllocaConstInstructionNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMCompareExchangeNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.LLVMFenceNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNode.LLVMAddressArrayLiteralNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMStaticInitsBlockNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnreachableNode;
@@ -186,6 +187,11 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMExpressionNode createReadModifyWrite(LLVMParserRuntime runtime, ReadModifyWriteOperator operator, LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type) {
         return LLVMMemoryReadWriteFactory.createReadModifyWrite(operator, pointerNode, valueNode, type);
+    }
+
+    @Override
+    public LLVMExpressionNode createFence(LLVMParserRuntime runtime) {
+        return LLVMFenceNodeGen.create();
     }
 
     @Override

@@ -78,6 +78,8 @@ public interface NodeFactory {
 
     LLVMExpressionNode createReadModifyWrite(LLVMParserRuntime runtime, ReadModifyWriteOperator operator, LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type);
 
+    LLVMExpressionNode createFence(LLVMParserRuntime runtime);
+
     LLVMExpressionNode createLogicalOperation(LLVMParserRuntime runtime, LLVMExpressionNode left, LLVMExpressionNode right, LLVMLogicalInstructionKind opCode, Type llvmType, Flag[] flags);
 
     LLVMExpressionNode createLiteral(LLVMParserRuntime runtime, Object value, Type type);
