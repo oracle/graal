@@ -50,7 +50,13 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
 @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
 public abstract class LLVMToI64Node extends LLVMExpressionNode {
@@ -168,6 +174,66 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
 
     public abstract static class LLVMToI64BitNode extends LLVMToI64Node {
 
+        protected static long castI1Vector(LLVMI1Vector from, int elem) {
+            if (from.getLength() != elem) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError("invalid vector size!");
+            }
+            long res = 0;
+            for (int i = 0; i < elem; i++) {
+                res |= (from.getValue(i) ? 1L : 0L) << i;
+            }
+            return res;
+        }
+
+        protected static long castI8Vector(LLVMI8Vector from, int elem) {
+            if (from.getLength() != elem) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError("invalid vector size!");
+            }
+            long res = 0;
+            for (int i = 0; i < elem; i++) {
+                res |= ((long) (from.getValue(i) & LLVMExpressionNode.I8_MASK)) << (i * Byte.SIZE);
+            }
+            return res;
+        }
+
+        protected static long castI16Vector(LLVMI16Vector from, int elem) {
+            if (from.getLength() != elem) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError("invalid vector size!");
+            }
+            long res = 0;
+            for (int i = 0; i < elem; i++) {
+                res |= ((long) (from.getValue(i) & LLVMExpressionNode.I16_MASK)) << (i * Short.SIZE);
+            }
+            return res;
+        }
+
+        protected static long castI32Vector(LLVMI32Vector from, int elem) {
+            if (from.getLength() != elem) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError("invalid vector size!");
+            }
+            long res = 0;
+            for (int i = 0; i < elem; i++) {
+                res |= (from.getValue(i) & LLVMExpressionNode.I32_MASK) << (i * Integer.SIZE);
+            }
+            return res;
+        }
+
+        protected static long castFloatVector(LLVMFloatVector from, int elem) {
+            if (from.getLength() != elem) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError("invalid vector size!");
+            }
+            long res = 0;
+            for (int i = 0; i < elem; i++) {
+                res |= (Float.floatToIntBits(from.getValue(i)) & LLVMExpressionNode.I32_MASK) << (i * Integer.SIZE);
+            }
+            return res;
+        }
+
         @Specialization
         public long executeI64(double from) {
             return Double.doubleToRawLongBits(from);
@@ -176,6 +242,49 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
         @Specialization
         public long executeI64(long from) {
             return from;
+        }
+
+        @Specialization
+        public long executeI1Vector(LLVMI1Vector from) {
+            return castI1Vector(from, Long.SIZE);
+        }
+
+        @Specialization
+        public long executeI8Vector(LLVMI8Vector from) {
+            return castI8Vector(from, Long.SIZE / Byte.SIZE);
+        }
+
+        @Specialization
+        public long executeI16Vector(LLVMI16Vector from) {
+            return castI16Vector(from, Long.SIZE / Short.SIZE);
+        }
+
+        @Specialization
+        public long executeI32Vector(LLVMI32Vector from) {
+            return castI32Vector(from, Long.SIZE / Integer.SIZE);
+        }
+
+        @Specialization
+        public long executeFloatVector(LLVMFloatVector from) {
+            return castFloatVector(from, Long.SIZE / Float.SIZE);
+        }
+
+        @Specialization
+        public long executeI64Vector(LLVMI64Vector from) {
+            if (from.getLength() != 1) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError("invalid vector size!");
+            }
+            return from.getValue(0);
+        }
+
+        @Specialization
+        public long executeDoubleVector(LLVMDoubleVector from) {
+            if (from.getLength() != 1) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError("invalid vector size!");
+            }
+            return Double.doubleToLongBits(from.getValue(0));
         }
     }
 
