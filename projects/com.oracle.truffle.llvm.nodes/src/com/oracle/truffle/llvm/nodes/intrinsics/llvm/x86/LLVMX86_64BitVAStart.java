@@ -109,6 +109,8 @@ public final class LLVMX86_64BitVAStart extends LLVMExpressionNode {
             return VarArgArea.OVERFLOW_AREA;
         } else if (arg instanceof LLVMFloatVector && ((LLVMFloatVector) arg).getLength() <= 2) {
             return VarArgArea.FP_AREA;
+        } else if (arg instanceof TruffleObject) {
+            return VarArgArea.GP_AREA;
         } else {
             throw new AssertionError(arg);
         }
