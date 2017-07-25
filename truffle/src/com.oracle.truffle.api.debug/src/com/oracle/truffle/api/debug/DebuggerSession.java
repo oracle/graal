@@ -29,10 +29,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -158,8 +156,7 @@ public final class DebuggerSession implements Closeable {
 
     private final Debugger debugger;
     private final SuspendedCallback callback;
-    private final Set<Breakpoint> breakpoints = Collections.synchronizedSet(new HashSet<Breakpoint>());
-    private final Breakpoint alwaysHaltBreakpoint;
+    private final List<Breakpoint> breakpoints = Collections.synchronizedList(new ArrayList<>());
 
     private EventBinding<? extends ExecutionEventNodeFactory> callBinding;
     private EventBinding<? extends ExecutionEventNodeFactory> statementBinding;
@@ -180,10 +177,6 @@ public final class DebuggerSession implements Closeable {
         this.sessionId = SESSIONS.incrementAndGet();
         this.debugger = debugger;
         this.callback = callback;
-        SourceSectionFilter filter = SourceSectionFilter.newBuilder().tagIs(DebuggerTags.AlwaysHalt.class).build();
-        this.alwaysHaltBreakpoint = new Breakpoint(BreakpointLocation.ANY, filter, false);
-        this.alwaysHaltBreakpoint.setEnabled(true);
-        this.alwaysHaltBreakpoint.install(this);
         if (Debugger.TRACE) {
             trace("open with callback %s", callback);
         }
@@ -383,6 +376,7 @@ public final class DebuggerSession implements Closeable {
     }
 
     private void removeBindings() {
+        assert Thread.holdsLock(this);
         if (statementBinding != null) {
             callBinding.dispose();
             statementBinding.dispose();
@@ -409,19 +403,23 @@ public final class DebuggerSession implements Closeable {
 
         clearStrategies();
         removeBindings();
-        for (Breakpoint breakpoint : getBreakpoints()) {
-            breakpoint.dispose();
+        for (Breakpoint breakpoint : this.breakpoints) {
+            breakpoint.sessionClosed(this);
         }
-        alwaysHaltBreakpoint.dispose();
         currentSuspendedEventMap.clear();
+        debugger.disposedSession(this);
         closed = true;
     }
 
     /**
-     * Returns all breakpoints in the order they were installed. {@link Breakpoint#dispose()
-     * Disposed} breakpoints are automatically removed from this list.
+     * Returns all breakpoints {@link #install(com.oracle.truffle.api.debug.Breakpoint) installed}
+     * in this session, in the install order. {@link Breakpoint#dispose() Disposed} breakpoints are
+     * automatically removed from this list. Breakpoints
+     * {@link Debugger#install(com.oracle.truffle.api.debug.Breakpoint) installed on Debugger} are
+     * not included in this list.
      *
      * @since 0.17
+     * @see Debugger#getBreakpoints()
      */
     public List<Breakpoint> getBreakpoints() {
         if (closed) {
@@ -474,28 +472,33 @@ public final class DebuggerSession implements Closeable {
      * @since 0.17
      */
     public synchronized Breakpoint install(Breakpoint breakpoint) {
-        if (closed) {
-            throw new IllegalStateException("Debugger session is already closed. Cannot install new breakpoints.");
-        }
-        if (breakpoint.isDisposed()) {
-            throw new IllegalArgumentException("Cannot install breakpoint, it is already disposed.");
-        }
-        if (breakpoint.getSession() != null) {
-            throw new IllegalArgumentException("Cannot install breakpoint, it is already installed in different debugger session.");
-        }
-        breakpoint.install(this);
-        this.breakpoints.add(breakpoint);
-        breakpoint.setEnabled(true);
-        if (Debugger.TRACE) {
-            trace("installed breakpoint %s", breakpoint);
-        }
+        install(breakpoint, false);
         return breakpoint;
+    }
+
+    synchronized void install(Breakpoint breakpoint, boolean global) {
+        if (closed) {
+            if (!global) {
+                throw new IllegalStateException("Debugger session is already closed. Cannot install new breakpoints.");
+            } else {
+                return;
+            }
+        }
+        if (!breakpoint.install(this, !global)) {
+            return;
+        }
+        if (!global) { // Do not keep global breakpoints in the list
+            this.breakpoints.add(breakpoint);
+        }
+        if (Debugger.TRACE) {
+            trace("installed session breakpoint %s", breakpoint);
+        }
     }
 
     synchronized void disposeBreakpoint(Breakpoint breakpoint) {
         breakpoints.remove(breakpoint);
         if (Debugger.TRACE) {
-            trace("disposed breakpoint %s", breakpoint);
+            trace("disposed session breakpoint %s", breakpoint);
         }
     }
 
@@ -574,13 +577,17 @@ public final class DebuggerSession implements Closeable {
                 if (breaks == null) {
                     breaks = new ArrayList<>();
                 }
-                breaks.add(breakpoint);
+                breaks.add(breakpoint.isGlobal() ? breakpoint.getROWrapper() : breakpoint);
             }
             if (failure != null) {
                 if (breakpointFailures == null) {
                     breakpointFailures = new HashMap<>();
                 }
-                breakpointFailures.put(failure.getBreakpoint(), failure.getConditionFailure());
+                Breakpoint fb = failure.getBreakpoint();
+                if (fb.isGlobal()) {
+                    fb = fb.getROWrapper();
+                }
+                breakpointFailures.put(fb, failure.getConditionFailure());
             }
         }
 
@@ -661,17 +668,23 @@ public final class DebuggerSession implements Closeable {
                     }
                 }
             }
-            if (!breakpoints.isEmpty()) {
-                synchronized (breakpoints) {
-                    for (Breakpoint b : breakpoints) {
-                        DebuggerNode node = b.lookupNode(context);
-                        if (node != null) {
-                            nodes.add(node);
-                        }
+            synchronized (breakpoints) {
+                for (Breakpoint b : breakpoints) {
+                    DebuggerNode node = b.lookupNode(context);
+                    if (node != null) {
+                        nodes.add(node);
                     }
                 }
             }
-            DebuggerNode node = alwaysHaltBreakpoint.lookupNode(context);
+            synchronized (debugger) {
+                for (Breakpoint b : debugger.getRawBreakpoints()) {
+                    DebuggerNode node = b.lookupNode(context);
+                    if (node != null) {
+                        nodes.add(node);
+                    }
+                }
+            }
+            DebuggerNode node = debugger.alwaysHaltBreakpoint.lookupNode(context);
             if (node != null) {
                 nodes.add(node);
             }

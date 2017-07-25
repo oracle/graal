@@ -286,7 +286,9 @@ public final class SuspendedEvent {
 
     /**
      * Returns the {@link Breakpoint breakpoints} that individually would cause the "hit" where
-     * execution is suspended.
+     * execution is suspended. If {@link Debugger#install(com.oracle.truffle.api.debug.Breakpoint)
+     * Debugger-associated} breakpoint was hit, it is not possible to change the state of returned
+     * breakpoint.
      * <p>
      * This method is thread-safe.
      *

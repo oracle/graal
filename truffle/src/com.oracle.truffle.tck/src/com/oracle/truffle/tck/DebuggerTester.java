@@ -149,6 +149,15 @@ public final class DebuggerTester implements AutoCloseable {
     }
 
     /**
+     * Get the Debugger instance associated with the current engine.
+     *
+     * @since 0.27
+     */
+    public Debugger getDebugger() {
+        return Debugger.find(engine);
+    }
+
+    /**
      * Starts a new {@link Debugger#startSession(SuspendedCallback) debugger session} in the
      * {@link PolyglotEngine engine}. The debugger session allows to suspend the execution and to
      * install breakpoints. If multiple sessions are created for one {@link #startEval(Source)
