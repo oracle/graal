@@ -70,6 +70,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 import com.oracle.truffle.tck.TruffleRunner.RunWithPolyglotRule;
 import com.oracle.truffle.tck.TruffleRunner.Warmup;
+import com.oracle.truffle.tck.TruffleTestInvoker.TruffleTestClass;
+import org.junit.runners.model.TestClass;
 
 /**
  * JUnit test runner for unit testing Truffle AST interpreters.
@@ -268,7 +270,7 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
 
         @Override
         protected Statement methodInvoker(FrameworkMethod method, Object test) {
-            Statement ret = truffleTestInvoker.createStatement(getName(), getTestClass(), method, test);
+            Statement ret = truffleTestInvoker.createStatement(getName(), method, test);
             if (ret == null) {
                 ret = super.methodInvoker(method, test);
             }
@@ -278,6 +280,16 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
         @Override
         protected void validateTestMethods(List<Throwable> errors) {
             TruffleTestInvoker.validateTestMethods(getTestClass(), errors);
+        }
+
+        /**
+         * Internal method used by the JUnit framework. Do not call directly.
+         *
+         * @since 0.27
+         */
+        @Override
+        protected TestClass createTestClass(Class<?> testClass) {
+            return new TruffleTestClass(testClass);
         }
     }
 
@@ -300,7 +312,7 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
      */
     @Override
     protected Statement methodInvoker(FrameworkMethod method, Object test) {
-        Statement ret = truffleTestInvoker.createStatement(testName(method), getTestClass(), method, test);
+        Statement ret = truffleTestInvoker.createStatement(testName(method), method, test);
         if (ret == null) {
             ret = super.methodInvoker(method, test);
         }
@@ -315,6 +327,16 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
     @Override
     protected void validateTestMethods(List<Throwable> errors) {
         TruffleTestInvoker.validateTestMethods(getTestClass(), errors);
+    }
+
+    /**
+     * Internal method used by the JUnit framework. Do not call directly.
+     *
+     * @since 0.27
+     */
+    @Override
+    protected TestClass createTestClass(Class<?> testClass) {
+        return new TruffleTestClass(testClass);
     }
 }
 
