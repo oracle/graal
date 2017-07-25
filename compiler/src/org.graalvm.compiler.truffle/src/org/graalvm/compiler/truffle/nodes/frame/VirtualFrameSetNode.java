@@ -55,7 +55,6 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
             VirtualObjectNode tagVirtual = (VirtualObjectNode) tagAlias;
             VirtualObjectNode dataVirtual = (VirtualObjectNode) dataAlias;
 
-            int frameSlotIndex = getFrameSlotIndex();
             if (frameSlotIndex < tagVirtual.entryCount() && frameSlotIndex < dataVirtual.entryCount()) {
                 tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstant(accessTag), false);
 

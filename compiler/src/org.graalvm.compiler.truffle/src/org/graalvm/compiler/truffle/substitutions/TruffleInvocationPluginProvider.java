@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.truffle.substitutions;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;

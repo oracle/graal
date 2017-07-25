@@ -59,10 +59,6 @@ public abstract class VirtualFrameAccessorNode extends FixedWithNextNode impleme
         this.accessTag = accessTag;
     }
 
-    protected int getFrameSlotIndex() {
-        return frameSlotIndex;
-    }
-
     protected ValueNode getConstant(int n) {
         return frame.smallIntConstants.get(n);
     }

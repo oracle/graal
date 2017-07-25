@@ -54,7 +54,6 @@ public final class VirtualFrameIsNode extends VirtualFrameAccessorNode implement
         if (tagAlias instanceof VirtualObjectNode) {
             VirtualObjectNode tagVirtual = (VirtualObjectNode) tagAlias;
 
-            int frameSlotIndex = getFrameSlotIndex();
             if (frameSlotIndex < tagVirtual.entryCount()) {
                 ValueNode actualTag = tool.getEntry(tagVirtual, frameSlotIndex);
                 if (actualTag.isConstant()) {

@@ -23,8 +23,6 @@
 package org.graalvm.compiler.truffle.hotspot;
 
 import java.lang.ref.Reference;
-import java.lang.ref.SoftReference;
-import java.lang.ref.WeakReference;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaConstant;
