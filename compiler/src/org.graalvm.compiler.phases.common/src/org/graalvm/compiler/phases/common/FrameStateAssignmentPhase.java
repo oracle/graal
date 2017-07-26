@@ -93,7 +93,7 @@ public class FrameStateAssignmentPhase extends Phase {
             if (node instanceof DeoptimizingNode.DeoptAfter) {
                 DeoptimizingNode.DeoptAfter deopt = (DeoptimizingNode.DeoptAfter) node;
                 if (deopt.canDeoptimize() && deopt.stateAfter() == null) {
-                    GraalError.guarantee(currentState != null, "no Fra  meState at DeoptimizingNode %s", deopt);
+                    GraalError.guarantee(currentState != null, "no FrameState at DeoptimizingNode %s", deopt);
                     deopt.setStateAfter(currentState);
                 }
             }

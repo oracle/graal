@@ -596,7 +596,6 @@ public class BytecodeParser implements GraphBuilderContext {
                 frameStateBuilder.push(returnKind, proxy);
                 proxy.setStateAfter(parser.createFrameState(parser.stream.nextBCI(), proxy));
                 parser.lastInstr = proxy;
-                graph.getDebug().forceDump(graph, "Added %s", proxy);
             }
         }
     }

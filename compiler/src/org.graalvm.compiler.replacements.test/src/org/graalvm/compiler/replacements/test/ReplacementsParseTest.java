@@ -179,6 +179,7 @@ public class ReplacementsParseTest extends ReplacementsTest {
             return copyFirstL2RBody(left, right);
         }
 
+        @SuppressWarnings("unused")
         static int[] multiplyToLen(int[] x, int xlen, int[] y, int ylen, int[] zIn) {
             return zIn;
         }
@@ -265,6 +266,7 @@ public class ReplacementsParseTest extends ReplacementsTest {
             return f.apply(value);
         }
 
+        @SuppressWarnings("unused")
         @MethodSubstitution(isStatic = true)
         static int[] multiplyToLen(int[] x, int xlen, int[] y, int ylen, int[] zIn) {
             int[] zResult = zIn;
