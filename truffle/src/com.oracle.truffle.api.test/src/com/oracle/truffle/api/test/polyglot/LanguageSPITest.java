@@ -24,6 +24,7 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -44,6 +45,7 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.Node;
@@ -327,6 +329,76 @@ public class LanguageSPITest {
             }
         };
         assertTrue(context.eval(LanguageSPITestLanguage.ID, "").asBoolean());
+    }
+
+    @Test
+    public void testInnerContext() {
+        Context context = Context.create();
+        LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
+            public Object apply(Env env) {
+                LanguageContext outerLangContext = LanguageSPITestLanguage.getContext();
+                Object config = new Object();
+                TruffleContext innerContext = env.newContextBuilder().config("config", config).build();
+                Object p = innerContext.enter();
+                LanguageContext innerLangContext = LanguageSPITestLanguage.getContext();
+                try {
+
+                    try {
+                        innerContext.close();
+                        fail("context could be closed when entered");
+                    } catch (IllegalStateException e) {
+                    }
+                    assertEquals(0, innerLangContext.disposeCalled);
+
+                    assertEquals(config, innerLangContext.config.get("config"));
+                    assertNotSame(outerLangContext, innerLangContext);
+
+                    boolean assertions = false;
+                    assert (assertions = true) == true;
+                    if (assertions) {
+                        try {
+                            innerContext.leave("foo");
+                            fail("no assertion error for leaving with the wrong object");
+                        } catch (AssertionError e) {
+                        }
+                    }
+                } finally {
+                    innerContext.leave(p);
+                }
+                assertSame(outerLangContext, LanguageSPITestLanguage.getContext());
+                innerContext.close();
+
+                try {
+                    innerContext.enter();
+                    fail("cannot be entered after closing");
+                } catch (IllegalStateException e) {
+                }
+
+                innerContext.close();
+
+                assertEquals(1, innerLangContext.disposeCalled);
+                return null;
+            }
+        };
+        context.eval(LanguageSPITestLanguage.ID, "");
+    }
+
+    @Test
+    public void testCloseInnerContextWithParent() {
+        Context context = Context.create();
+        LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
+            public Object apply(Env env) {
+                TruffleContext innerContext = env.createContext();
+                Object p = innerContext.enter();
+                LanguageContext innerLangContext = LanguageSPITestLanguage.getContext();
+                innerContext.leave(p);
+                return innerLangContext;
+            }
+        };
+        LanguageContext innerContext = context.eval(LanguageSPITestLanguage.ID, "").asHostObject();
+        context.close();
+        // inner context automatically closed
+        assertEquals(1, innerContext.disposeCalled);
     }
 
 }

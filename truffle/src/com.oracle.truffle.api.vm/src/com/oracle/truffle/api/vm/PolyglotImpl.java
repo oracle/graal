@@ -558,6 +558,34 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         public Object toGuestValue(Object obj, Object languageContext) {
             return ((PolyglotLanguageContext) languageContext).toGuestValue(obj);
         }
+
+        @Override
+        public Object enterInternalContext(Object impl) {
+            return ((PolyglotContextImpl) impl).enter();
+        }
+
+        @Override
+        public void leaveInternalContext(Object impl, Object prev) {
+            ((PolyglotContextImpl) impl).leave(prev);
+        }
+
+        @Override
+        public void closeInternalContext(Object impl) {
+            PolyglotContextImpl context = (PolyglotContextImpl) impl;
+            if (context.enteredCount > 0) {
+                throw new IllegalStateException("The context is currently entered and cannot be closed.");
+            }
+            context.close(false);
+        }
+
+        @Override
+        public Object createInternalContext(Object vmObject, Map<String, Object> config) {
+            PolyglotLanguageContext creator = ((PolyglotLanguageContext) vmObject);
+            PolyglotContextImpl impl = new PolyglotContextImpl(creator, config);
+            impl.initializeLanguage(creator.language.getId());
+            return impl;
+        }
+
     }
 
 }

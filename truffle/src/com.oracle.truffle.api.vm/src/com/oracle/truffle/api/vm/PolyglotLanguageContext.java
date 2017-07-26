@@ -33,7 +33,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.proxy.Proxy;
@@ -55,19 +54,20 @@ final class PolyglotLanguageContext implements VMObject {
     final PolyglotLanguage language;
     final Map<Object, CallTarget> sourceCache = new HashMap<>();
     final Map<Class<?>, PolyglotValue> valueCache = new HashMap<>();
+    final Map<String, Object> config;
     final PolyglotValue defaultValueCache;
-    final OptionValues optionValues;
+    final OptionValuesImpl optionValues;
     final Value nullValue;
     final String[] applicationArguments;
     volatile boolean disposed;
     volatile Env env;
 
-    PolyglotLanguageContext(PolyglotContextImpl context, PolyglotLanguage language, OptionValues optionValues, String[] applicationArguments) {
+    PolyglotLanguageContext(PolyglotContextImpl context, PolyglotLanguage language, OptionValuesImpl optionValues, String[] applicationArguments, Map<String, Object> config) {
         this.context = context;
         this.language = language;
         this.optionValues = optionValues;
         this.applicationArguments = applicationArguments == null ? EMPTY_STRING_ARRAY : applicationArguments;
-
+        this.config = config;
         PolyglotValue.createDefaultValueCaches(this);
         nullValue = toHostValue(toGuestValue(null));
         defaultValueCache = new PolyglotValue.Default(this);
@@ -108,7 +108,7 @@ final class PolyglotLanguageContext implements VMObject {
                     env = LANGUAGE.createEnv(this, language.info,
                                     context.out,
                                     context.err,
-                                    context.in, new HashMap<>(), getOptionValues(), applicationArguments);
+                                    context.in, config, getOptionValues(), applicationArguments);
                     LANGUAGE.postInitEnv(env);
                     return true;
                 }
@@ -117,7 +117,7 @@ final class PolyglotLanguageContext implements VMObject {
         return false;
     }
 
-    OptionValues getOptionValues() {
+    OptionValuesImpl getOptionValues() {
         return optionValues;
     }
 

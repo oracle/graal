@@ -79,10 +79,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
     final PolyglotEngineImpl engine;
     @CompilationFinal(dimensions = 1) final PolyglotLanguageContext[] contexts;
 
+    final PolyglotContextImpl parent;
     final OutputStream out;
     final OutputStream err;
     final InputStream in;
-    final Map<String, String> options;
     final Map<String, Value> polyglotScope = new HashMap<>();
     final Predicate<String> classFilter;
     final boolean hostAccessAllowed;
@@ -90,10 +90,14 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
     // map from class to language index
     private final FinalIntMap languageIndexMap = new FinalIntMap();
 
-    final Map<Object, CallTarget> javaInteropCache;
+    final Map<Object, CallTarget> javaInteropCache = new HashMap<>();
     final Set<String> allowedPublicLanguages;
     final Map<String, String[]> applicationArguments;
+    final Set<PolyglotContextImpl> childContexts = new LinkedHashSet<>();
 
+    /*
+     * Constructor for outer contexts.
+     */
     PolyglotContextImpl(PolyglotEngineImpl engine, final OutputStream out,
                     OutputStream err,
                     InputStream in,
@@ -103,6 +107,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
                     Map<String, String[]> applicationArguments,
                     Set<String> allowedPublicLanguages) {
         super(engine.impl);
+        this.parent = null;
         this.hostAccessAllowed = hostAccessAllowed;
         this.applicationArguments = applicationArguments;
         this.classFilter = classFilter;
@@ -118,21 +123,56 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
             this.err = INSTRUMENT.createDelegatingOutput(err, engine.err);
         }
         this.in = in == null ? engine.in : in;
-        this.options = options;
         this.allowedPublicLanguages = allowedPublicLanguages;
         this.engine = engine;
-        this.javaInteropCache = new HashMap<>();
         Collection<PolyglotLanguage> languages = engine.idToLanguage.values();
         this.contexts = new PolyglotLanguageContext[languages.size() + 1];
-        this.contexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX] = new PolyglotLanguageContext(this, engine.hostLanguage, null, applicationArguments.get(PolyglotEngineImpl.HOST_LANGUAGE_ID));
+        this.contexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX] = new PolyglotLanguageContext(this, engine.hostLanguage, null, applicationArguments.get(PolyglotEngineImpl.HOST_LANGUAGE_ID),
+                        new HashMap<>());
 
         for (PolyglotLanguage language : languages) {
             OptionValuesImpl values = language.getOptionValues().copy();
             values.putAll(options);
 
-            PolyglotLanguageContext languageContext = new PolyglotLanguageContext(this, language, values, applicationArguments.get(language.getId()));
+            PolyglotLanguageContext languageContext = new PolyglotLanguageContext(this, language, values, applicationArguments.get(language.getId()), new HashMap<>());
             this.contexts[language.index] = languageContext;
         }
+    }
+
+    /*
+     * Constructor for inner contexts.
+     */
+    @SuppressWarnings("hiding")
+    PolyglotContextImpl(PolyglotLanguageContext creator, Map<String, Object> config) {
+        super(creator.getEngine().impl);
+        PolyglotContextImpl parent = creator.context;
+        this.parent = creator.context;
+        this.hostAccessAllowed = parent.hostAccessAllowed;
+        this.applicationArguments = parent.applicationArguments;
+        this.classFilter = parent.classFilter;
+        this.out = parent.out;
+        this.err = parent.err;
+        this.in = parent.in;
+        this.allowedPublicLanguages = parent.allowedPublicLanguages;
+        this.engine = parent.engine;
+        Collection<PolyglotLanguage> languages = engine.idToLanguage.values();
+        this.contexts = new PolyglotLanguageContext[languages.size() + 1];
+        this.contexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX] = new PolyglotLanguageContext(this, engine.hostLanguage, null, applicationArguments.get(PolyglotEngineImpl.HOST_LANGUAGE_ID),
+                        new HashMap<>());
+        for (PolyglotLanguage language : languages) {
+            OptionValuesImpl values = parent.contexts[language.index].getOptionValues().copy();
+
+            Map<String, Object> languageConfig;
+            if (creator.language == language) {
+                languageConfig = config;
+            } else {
+                languageConfig = new HashMap<>();
+            }
+
+            PolyglotLanguageContext languageContext = new PolyglotLanguageContext(this, language, values, applicationArguments.get(language.getId()), languageConfig);
+            this.contexts[language.index] = languageContext;
+        }
+        this.parent.childContexts.add(this);
     }
 
     Predicate<String> getClassFilter() {
@@ -579,6 +619,11 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
 
             Object prev = enter();
             try {
+
+                for (PolyglotContextImpl childContext : childContexts) {
+                    childContext.closeImpl(cancelIfExecuting);
+                }
+
                 for (PolyglotLanguageContext context : contexts) {
                     try {
                         context.dispose();
@@ -591,6 +636,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
                         ex.printStackTrace(new PrintStream(err));
                     }
                 }
+                childContexts.clear();
                 engine.removeContext(this);
                 notClosingAssumption.invalidate();
                 closed = true;

@@ -366,7 +366,8 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Allows guest languages to access the host language by loading new classes.
+         * Allows guest languages to access the host language by loading new classes. Default is
+         * <code>false</code>.
          *
          * @since 1.0
          */

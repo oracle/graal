@@ -27,6 +27,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added TruffleLanguage.Env.lookupSymbol(String) to be used by other languages to support language lookups in their top-most scope.
 * Added TruffleLanguage.Env.lookupHostSymbol(String) to be used by other languages to support language lookups from the host language.
 * Added TruffleLanguage.Env.isHostLookupAllowed() to find out whether host lookup is generally allowed.
+* Added TruffleLanguage.Env.createContext() that allows guest languages to create inner language contexts/environments.
 
 
 ## Version 0.26
