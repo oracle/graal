@@ -12,6 +12,21 @@ gateLite : ${truffleCommon} {
   ]
 }
 
+benchCommon: ${linux-amd64} ${labsjdk8} {
+  environment: {
+    BENCH_RESULTS_FILE_PATH: "bench-results.json"
+  },
+  targets: [weekly],
+  timelimit: "1:00:00",
+  setup : [
+    ["cd", "./compiler"],
+    ["mx", "build" ]
+  ],
+  teardown : [
+    ["bench-uploader.py", "--url", "${BENCH_SERVER_URL}", "${BENCH_RESULTS_FILE_PATH}"]
+  ]
+}
+
 builds += [
   ${linux-amd64} ${openjdk8} ${truffleCommon} ${eclipse} ${jdt} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-8"},
   ${linux-amd64} ${labsjdk9} ${truffleCommon} ${eclipse} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-9"},
@@ -59,4 +74,11 @@ builds += [
     targets : [post-merge],
     name: "truffle-publish-javadoc"
   }
+  # BENCHMARKS
+  ${benchCommon} {
+    run: [
+      ["mx", "--kill-with-sigquit", "benchmark", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "truffle:*"]
+    ]
+  }
+
 ]
