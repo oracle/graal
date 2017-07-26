@@ -119,7 +119,7 @@ public class TruffleGraphBuilderPlugins {
     }
 
     public static void registerInvocationPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification,
-                             ConstantReflectionProvider constantReflection, KnownTruffleFields knownFields) {
+                    ConstantReflectionProvider constantReflection, KnownTruffleFields knownFields) {
         registerOptimizedAssumptionPlugins(plugins, knownFields);
         registerExactMathPlugins(plugins);
         registerCompilerDirectivesPlugins(plugins, canDelayIntrinsification);
@@ -506,7 +506,7 @@ public class TruffleGraphBuilderPlugins {
         if (frameSlotNode.isConstant()) {
             ValueNode frameNodeValue = frameNode.get(false);
             if (frameNodeValue instanceof NewFrameNode) {
-                NewFrameNode newFrameNode =  (NewFrameNode) frameNodeValue;
+                NewFrameNode newFrameNode = (NewFrameNode) frameNodeValue;
                 if (newFrameNode.getIntrinsifyAccessors()) {
                     int index = constantReflection.readFieldValue(knownFields.fieldFrameSlotIndex, frameSlotNode.asJavaConstant()).asInt();
                     if (newFrameNode.isValidSlotIndex(index)) {
