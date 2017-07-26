@@ -1160,6 +1160,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 try {
                     return ((Number) ForeignAccess.sendGetSize(getSizeNode, (TruffleObject) receiver)).longValue();
                 } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreter();
                     return interop.getArraySizeUnsupported(receiver);
                 }
             }
@@ -1187,8 +1188,10 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 try {
                     return toHostValue.execute(ForeignAccess.sendRead(readMemberNode, (TruffleObject) receiver, key));
                 } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreter();
                     return interop.getMemberUnsupported(receiver, key);
                 } catch (UnknownIdentifierException e) {
+                    CompilerDirectives.transferToInterpreter();
                     throw error(String.format("Unknown provided key %s for object %s.", key, toString()), e);
                 }
             }
@@ -1216,10 +1219,13 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 try {
                     ForeignAccess.sendWrite(writeMemberNode, (TruffleObject) receiver, key, toGuestValue.execute(member));
                 } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreter();
                     interop.putMemberUnsupported(receiver);
                 } catch (UnknownIdentifierException e) {
+                    CompilerDirectives.transferToInterpreter();
                     throw error(String.format("Unknown provided key  %s for object %s.", key, toString()), e);
                 } catch (UnsupportedTypeException e) {
+                    CompilerDirectives.transferToInterpreter();
                     String arguments = interop.formatSuppliedValues(e);
                     throw error(String.format("Invalid value provided %s when writing to %s with member key %s.", arguments, toString(), key), e);
                 }
@@ -1310,6 +1316,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                     try {
                         return ForeignAccess.sendUnbox(unboxNode, (TruffleObject) receiver);
                     } catch (UnsupportedMessageException e) {
+                        CompilerDirectives.transferToInterpreter();
                         throw new AssertionError("isBoxed returned true but unbox threw unsupported error.");
                     }
                 } else {
