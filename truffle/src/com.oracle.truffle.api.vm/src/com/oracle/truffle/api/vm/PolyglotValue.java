@@ -1050,6 +1050,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 try {
                     return ForeignAccess.sendAsPointer(asPointerNode, (TruffleObject) receiver);
                 } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreter();
                     return interop.asNativePointerUnsupported(receiver);
                 }
             }
