@@ -33,7 +33,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
  * to the language's meta-data, including the language's {@link #getId() id}, {@link #getName()
  * name}, {@link #getVersion() version} and {@link #getOptions() options}.
  *
- * @see Engine#getLanguage(String) To return a single language
  * @see Engine#getLanguages() To return a map of all installed languages
  *
  * @since 1.0
@@ -47,8 +46,8 @@ public final class Language {
     }
 
     /**
-     * Gets the primary identification string of this language. The language id is used as the
-     * primary way of identifying languages in the polyglot API. (eg. <code>js</code>)
+     * Gets the primary identification string of this language. The language id is used as the primary
+     * way of identifying languages in the polyglot API. (eg. <code>js</code>)
      *
      * @return a language ID string.
      * @since 1.0
@@ -109,8 +108,8 @@ public final class Language {
     }
 
     /**
-     * Returns the set of options provided by this language. Option values for languages can either
-     * be provided while building an {@link Engine.Builder#option(String, String) engine} or a
+     * Returns the set of options provided by this language. Option values for languages can either be
+     * provided while building an {@link Engine.Builder#option(String, String) engine} or a
      * {@link Context.Builder#option(String, String) context}. The option descriptor
      * {@link OptionDescriptor#getName() name} must be used as the option name.
      *
