@@ -127,7 +127,7 @@ final class PolyglotLanguageContext implements VMObject {
         }
         boolean accessPermitted = language.isHost() || language.cache.isInternal() || context.allowedPublicLanguages.contains(language.info.getId());
         if (!accessPermitted) {
-            throw new IllegalStateException(String.format("Access to language '%s' is not permitted. ", language.getId()));
+            throw new IllegalArgumentException(String.format("Access to language '%s' is not permitted. ", language.getId()));
         }
     }
 
