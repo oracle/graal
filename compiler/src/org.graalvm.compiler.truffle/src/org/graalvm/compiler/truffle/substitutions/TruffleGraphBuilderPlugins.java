@@ -505,10 +505,13 @@ public class TruffleGraphBuilderPlugins {
     static int maybeGetConstantFrameSlotIndex(Receiver frameNode, ValueNode frameSlotNode, ConstantReflectionProvider constantReflection, KnownTruffleFields knownFields) {
         if (frameSlotNode.isConstant()) {
             ValueNode frameNodeValue = frameNode.get(false);
-            if (frameNodeValue instanceof NewFrameNode && ((NewFrameNode) frameNodeValue).getIntrinsifyAccessors()) {
-                int index = constantReflection.readFieldValue(knownFields.fieldFrameSlotIndex, frameSlotNode.asJavaConstant()).asInt();
-                if (((NewFrameNode) frameNodeValue).isValidSlotIndex(index)) {
-                    return index;
+            if (frameNodeValue instanceof NewFrameNode) {
+                NewFrameNode newFrameNode =  (NewFrameNode) frameNodeValue;
+                if (newFrameNode.getIntrinsifyAccessors()) {
+                    int index = constantReflection.readFieldValue(knownFields.fieldFrameSlotIndex, frameSlotNode.asJavaConstant()).asInt();
+                    if (newFrameNode.isValidSlotIndex(index)) {
+                        return index;
+                    }
                 }
             }
         }
