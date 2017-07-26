@@ -29,11 +29,11 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.truffle.FrameWithoutBoxing;
-import com.oracle.truffle.api.frame.FrameSlot;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implements Virtualizable {
@@ -41,8 +41,8 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
 
     @Input private ValueNode value;
 
-    public VirtualFrameSetNode(NewFrameNode frame, FrameSlot frameSlot, int accessTag, ValueNode value) {
-        super(TYPE, StampFactory.forVoid(), frame, frameSlot, accessTag);
+    public VirtualFrameSetNode(Receiver frame, int frameSlotIndex, int accessTag, ValueNode value) {
+        super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, accessTag);
         this.value = value;
     }
 
@@ -55,7 +55,6 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
             VirtualObjectNode tagVirtual = (VirtualObjectNode) tagAlias;
             VirtualObjectNode dataVirtual = (VirtualObjectNode) dataAlias;
 
-            int frameSlotIndex = getFrameSlotIndex();
             if (frameSlotIndex < tagVirtual.entryCount() && frameSlotIndex < dataVirtual.entryCount()) {
                 tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstant(accessTag), false);
 
