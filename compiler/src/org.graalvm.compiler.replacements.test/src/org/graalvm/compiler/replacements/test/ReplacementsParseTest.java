@@ -29,24 +29,44 @@ import java.util.function.Function;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
+import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.GraalGraphError;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import org.graalvm.compiler.nodes.graphbuilderconf.NodeIntrinsicPluginFactory;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
+import org.graalvm.compiler.phases.common.FloatingReadPhase;
+import org.graalvm.compiler.phases.common.FrameStateAssignmentPhase;
+import org.graalvm.compiler.phases.common.GuardLoweringPhase;
+import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -158,6 +178,10 @@ public class ReplacementsParseTest extends ReplacementsTest {
         static int copyFirstL2R(byte[] left, byte[] right) {
             return copyFirstL2RBody(left, right);
         }
+
+        static int[] multiplyToLen(int[] x, int xlen, int[] y, int ylen, int[] zIn) {
+            return zIn;
+        }
     }
 
     @ClassSubstitution(TestObject.class)
@@ -240,18 +264,44 @@ public class ReplacementsParseTest extends ReplacementsTest {
         private static String apply(Function<String, String> f, String value) {
             return f.apply(value);
         }
+
+        @MethodSubstitution(isStatic = true)
+        static int[] multiplyToLen(int[] x, int xlen, int[] y, int ylen, int[] zIn) {
+            int[] zResult = zIn;
+            int zLen;
+            if (zResult == null || zResult.length < (xlen + ylen)) {
+                zLen = xlen + ylen;
+                zResult = new int[xlen + ylen];
+            } else {
+                zLen = zIn.length;
+            }
+            multiplyToLenStub(zLen);
+            return zResult;
+        }
+
+        public static void multiplyToLenStub(int zLen) {
+            multiplyToLenStub(MULTIPLY_TO_LEN, zLen);
+        }
+
+        static final ForeignCallDescriptor MULTIPLY_TO_LEN = new ForeignCallDescriptor("multiplyToLen", void.class, int.class);
+
+        @NodeIntrinsic(ForeignCallNode.class)
+        private static native void multiplyToLenStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, int zLen);
+
     }
 
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
         BytecodeProvider replacementBytecodeProvider = getSystemClassLoaderBytecodeProvider();
         Registration r = new Registration(invocationPlugins, TestObject.class, replacementBytecodeProvider);
-        new PluginFactory_ReplacementsParseTest().registerPlugins(invocationPlugins, null);
+        NodeIntrinsicPluginFactory.InjectionProvider injections = new DummyInjectionProvider();
+        new PluginFactory_ReplacementsParseTest().registerPlugins(invocationPlugins, injections);
         r.registerMethodSubstitution(TestObjectSubstitutions.class, "nextAfter", double.class, double.class);
         r.registerMethodSubstitution(TestObjectSubstitutions.class, "stringize", Object.class);
         r.registerMethodSubstitution(TestObjectSubstitutions.class, "stringizeId", Receiver.class);
         r.registerMethodSubstitution(TestObjectSubstitutions.class, "copyFirst", byte[].class, byte[].class, boolean.class);
         r.registerMethodSubstitution(TestObjectSubstitutions.class, "copyFirstL2R", byte[].class, byte[].class);
+        r.registerMethodSubstitution(TestObjectSubstitutions.class, "multiplyToLen", int[].class, int.class, int[].class, int.class, int[].class);
 
         if (replacementBytecodeProvider.supportsInvokedynamic()) {
             r.registerMethodSubstitution(TestObjectSubstitutions.class, "identity", String.class);
@@ -494,6 +544,79 @@ public class ReplacementsParseTest extends ReplacementsTest {
             test(options, "callCopyFirstWrapper", in, out, false);
         } finally {
             inlineInvokeDecision = null;
+        }
+    }
+
+    public static int[] multiplyToLen(int[] x, int[] y, int[] z) {
+        if (TestObject.multiplyToLen(x, x.length, y, y.length, z) == x) {
+            GraalDirectives.deoptimize();
+        }
+        return z;
+    }
+
+    @SuppressWarnings("try")
+    @Test
+    public void testMultiplyToLen() {
+        StructuredGraph graph = parseEager("multiplyToLen", StructuredGraph.AllowAssumptions.YES);
+        try (DebugContext.Scope s0 = graph.getDebug().scope("testMultiplyToLen", graph)) {
+            HighTierContext context = getDefaultHighTierContext();
+            new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+            new FloatingReadPhase().apply(graph);
+            new DeadCodeEliminationPhase().apply(graph);
+            new GuardLoweringPhase().apply(graph, getDefaultMidTierContext());
+            new FrameStateAssignmentPhase().apply(graph);
+        } catch (Throwable e) {
+            throw graph.getDebug().handle(e);
+        }
+    }
+
+    private class DummyInjectionProvider implements NodeIntrinsicPluginFactory.InjectionProvider {
+        @SuppressWarnings("unchecked")
+        @Override
+        public <T> T getInjectedArgument(Class<T> type) {
+            if (type == ForeignCallsProvider.class) {
+                return (T) new ForeignCallsProvider() {
+                    @Override
+                    public LIRKind getValueKind(JavaKind javaKind) {
+                        return null;
+                    }
+
+                    @Override
+                    public boolean isReexecutable(ForeignCallDescriptor descriptor) {
+                        return false;
+                    }
+
+                    @Override
+                    public LocationIdentity[] getKilledLocations(ForeignCallDescriptor descriptor) {
+                        return new LocationIdentity[0];
+                    }
+
+                    @Override
+                    public boolean canDeoptimize(ForeignCallDescriptor descriptor) {
+                        return false;
+                    }
+
+                    @Override
+                    public boolean isGuaranteedSafepoint(ForeignCallDescriptor descriptor) {
+                        return false;
+                    }
+
+                    @Override
+                    public ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor) {
+                        return null;
+                    }
+                };
+            }
+            if (type == SnippetReflectionProvider.class) {
+                return (T) getSnippetReflection();
+            }
+            return null;
+        }
+
+        @Override
+        public Stamp getInjectedStamp(Class<?> type, boolean nonNull) {
+            JavaKind kind = JavaKind.fromJavaClass(type);
+            return StampFactory.forKind(kind);
         }
     }
 }

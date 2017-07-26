@@ -510,6 +510,7 @@ public class BytecodeParser implements GraphBuilderContext {
          */
         private void processPlaceholderFrameStates(IntrinsicContext intrinsic) {
             StructuredGraph graph = parser.getGraph();
+            boolean sawInvalidFrameState = false;
             for (Node node : graph.getNewNodes(mark)) {
                 if (node instanceof FrameState) {
                     FrameState frameState = (FrameState) node;
@@ -547,6 +548,7 @@ public class BytecodeParser implements GraphBuilderContext {
                                     FrameState newFrameState = graph.add(new FrameState(BytecodeFrame.INVALID_FRAMESTATE_BCI));
                                     newFrameState.setNodeSourcePosition(frameState.getNodeSourcePosition());
                                     frameState.replaceAndDelete(newFrameState);
+                                    sawInvalidFrameState = true;
                                 } else {
                                     // An intrinsic for a void method.
                                     FrameState newFrameState = frameStateBuilder.create(parser.stream.nextBCI(), null);
@@ -584,6 +586,17 @@ public class BytecodeParser implements GraphBuilderContext {
                         }
                     }
                 }
+            }
+            if (sawInvalidFrameState && !(parser.lastInstr instanceof MergeNode)) {
+                JavaKind returnKind = parser.getInvokeReturnType().getJavaKind();
+                FrameStateBuilder frameStateBuilder = parser.frameState;
+                ValueNode returnValue = frameStateBuilder.pop(returnKind);
+                StateSplitProxyNode proxy = graph.add(new StateSplitProxyNode(returnValue));
+                parser.lastInstr.setNext(proxy);
+                frameStateBuilder.push(returnKind, proxy);
+                proxy.setStateAfter(parser.createFrameState(parser.stream.nextBCI(), proxy));
+                parser.lastInstr = proxy;
+                graph.getDebug().forceDump(graph, "Added %s", proxy);
             }
         }
     }
@@ -1596,7 +1609,8 @@ public class BytecodeParser implements GraphBuilderContext {
         } else {
             for (int i = 0; i < recursiveArgs.length; i++) {
                 ValueNode arg = GraphUtil.unproxify(recursiveArgs[i]);
-                assert arg instanceof ParameterNode && ((ParameterNode) arg).index() == i : String.format("argument %d of call denoting partial intrinsic exit should be a %s with index %d, not %s", i,
+                assert arg instanceof ParameterNode && ((ParameterNode) arg).index() == i : String.format("argument %d of call denoting partial intrinsic exit should be a %s with index %d, not %s",
+                                i,
                                 ParameterNode.class.getSimpleName(), i, arg);
             }
         }
@@ -2595,9 +2609,9 @@ public class BytecodeParser implements GraphBuilderContext {
         FixedNode target = createTarget(probability, block, stateAfter);
         AbstractBeginNode begin = BeginNode.begin(target);
 
-        assert !(target instanceof DeoptimizeNode && begin instanceof BeginStateSplitNode &&
-                        ((BeginStateSplitNode) begin).stateAfter() != null) : "We are not allowed to set the stateAfter of the begin node," +
-                                        " because we have to deoptimize to a bci _before_ the actual if, so that the interpreter can update the profiling information.";
+        assert !(target instanceof DeoptimizeNode && begin instanceof BeginStateSplitNode && ((BeginStateSplitNode) begin).stateAfter() != null) : "We are not allowed to set the stateAfter of the begin node,"
+                        +
+                        " because we have to deoptimize to a bci _before_ the actual if, so that the interpreter can update the profiling information.";
         return begin;
     }
 
