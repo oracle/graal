@@ -27,6 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <trufflenfi.h>
 
 void *getNullPointer() {
     return (void*) 0;
@@ -34,4 +35,9 @@ void *getNullPointer() {
 
 void *identity(void* p) {
     return p;
+}
+
+TruffleObject createNativeWrapper(TruffleEnv *env, void *fnPtr) {
+    TruffleObject wrapper = (*env)->getClosureObject(env, fnPtr);
+    return (*env)->releaseAndReturn(env, wrapper);
 }

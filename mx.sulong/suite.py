@@ -249,8 +249,12 @@ suite = {
       "results" : [
         "bin/<lib:sulong>",
       ],
+      "buildDependencies" : [
+        "truffle:TRUFFLE_NFI_NATIVE",
+      ],
       "buildEnv" : {
         "LIBSULONG" : "<lib:sulong>",
+        "CPPFLAGS" : "-I<path:truffle:TRUFFLE_NFI_NATIVE>/include",
         "OS" : "<os>",
       },
       "license" : "BSD-new",
