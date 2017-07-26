@@ -78,7 +78,8 @@ builds += [
   ${benchCommon} {
     run: [
       ["mx", "--kill-with-sigquit", "benchmark", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "truffle:*"]
-    ]
+    ],
+    name: "bench-truffle-jmh"
   }
 
 ]
