@@ -22,21 +22,11 @@
  */
 package org.graalvm.compiler.truffle.hotspot;
 
-import java.lang.ref.Reference;
-
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.PartialEvaluator;
 import org.graalvm.compiler.truffle.phases.InstrumentPhase.Instrumentation;
@@ -50,31 +40,6 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
     @Override
     protected void registerTruffleInvocationPlugins(InvocationPlugins invocationPlugins, boolean canDelayIntrinsification) {
         super.registerTruffleInvocationPlugins(invocationPlugins, canDelayIntrinsification);
-        registerCompilationFinalReferencePlugins(invocationPlugins, canDelayIntrinsification, (HotSpotKnownTruffleFields) getKnownTruffleFields());
+        HotSpotTruffleGraphBuilderPlugins.registerCompilationFinalReferencePlugins(invocationPlugins, canDelayIntrinsification, (HotSpotKnownTruffleFields) getKnownTruffleFields());
     }
-
-    private static void registerCompilationFinalReferencePlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, HotSpotKnownTruffleFields knownFields) {
-        Registration r = new Registration(plugins, Reference.class);
-        r.register1("get", Receiver.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                if (canDelayIntrinsification) {
-                    return false;
-                }
-                if (receiver.isConstant()) {
-                    JavaConstant constant = (JavaConstant) receiver.get().asConstant();
-                    if (constant.isNonNull()) {
-                        if (knownFields.classWeakReference.isInstance(constant) || knownFields.classSoftReference.isInstance(constant)) {
-                            JavaConstant referent = b.getConstantReflection().readFieldValue(knownFields.referenceReferent, constant);
-                            b.addPush(JavaKind.Object, ConstantNode.forConstant(referent, b.getMetaAccess()));
-                            return true;
-                        }
-                    }
-                }
-                return false;
-            }
-        });
-    }
-
-
 }
