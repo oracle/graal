@@ -71,6 +71,14 @@ public final class LLVMIVarBit {
         return new LLVMIVarBit();
     }
 
+    public static LLVMIVarBit createZeroExt(int bits, byte from) {
+        return create(bits, ByteBuffer.allocate(Byte.BYTES).put(from).array());
+    }
+
+    public static LLVMIVarBit createZeroExt(int bits, short from) {
+        return create(bits, ByteBuffer.allocate(Short.BYTES).putShort(from).array());
+    }
+
     public static LLVMIVarBit createZeroExt(int bits, int from) {
         return create(bits, ByteBuffer.allocate(Integer.BYTES).putInt(from).array());
     }
@@ -193,14 +201,23 @@ public final class LLVMIVarBit {
     }
 
     @TruffleBoundary
+    public byte getZeroExtendedByteValue() {
+        return getByteBuffer(Byte.BYTES, false).get();
+    }
+
+    @TruffleBoundary
     public short getShortValue() {
         return getByteBuffer(Short.BYTES, true).getShort();
     }
 
     @TruffleBoundary
+    public short getZeroExtendedShortValue() {
+        return getByteBuffer(Short.BYTES, false).getShort();
+    }
+
+    @TruffleBoundary
     public int getIntValue() {
-        ByteBuffer byteBuffer = getByteBuffer(Integer.BYTES, true);
-        return byteBuffer.getInt();
+        return getByteBuffer(Integer.BYTES, true).getInt();
     }
 
     @TruffleBoundary

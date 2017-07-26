@@ -153,6 +153,11 @@ public abstract class LLVMToI16Node extends LLVMExpressionNode {
         }
 
         @Specialization
+        public short executeI16(LLVMIVarBit from) {
+            return from.getZeroExtendedShortValue();
+        }
+
+        @Specialization
         public short executeLLVMFunction(short from) {
             return from;
         }

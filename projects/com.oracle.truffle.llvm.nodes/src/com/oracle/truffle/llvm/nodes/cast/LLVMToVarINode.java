@@ -82,13 +82,28 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
         public abstract int getBits();
 
         @Specialization
+        public LLVMIVarBit executeI8(byte from) {
+            return LLVMIVarBit.createZeroExt(getBits(), from);
+        }
+
+        @Specialization
+        public LLVMIVarBit executeI16(short from) {
+            return LLVMIVarBit.createZeroExt(getBits(), from);
+        }
+
+        @Specialization
         public LLVMIVarBit executeI32(int from) {
             return LLVMIVarBit.createZeroExt(getBits(), from);
         }
 
         @Specialization
-        public LLVMIVarBit executeI32(long from) {
+        public LLVMIVarBit executeI64(long from) {
             return LLVMIVarBit.createZeroExt(getBits(), from);
+        }
+
+        @Specialization
+        public LLVMIVarBit executeVarI(LLVMIVarBit from) {
+            return LLVMIVarBit.create(getBits(), from.getBytes());
         }
     }
 
