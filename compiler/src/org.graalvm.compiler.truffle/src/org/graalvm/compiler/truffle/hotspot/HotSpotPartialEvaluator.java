@@ -33,7 +33,7 @@ import org.graalvm.compiler.truffle.phases.InstrumentPhase.Instrumentation;
 
 public final class HotSpotPartialEvaluator extends PartialEvaluator {
     public HotSpotPartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, SnippetReflectionProvider snippetReflection, Architecture architecture,
-                                   Instrumentation instrumentation) {
+                    Instrumentation instrumentation) {
         super(providers, configForRoot, snippetReflection, architecture, instrumentation, new HotSpotKnownTruffleFields(providers.getMetaAccess()));
     }
 
