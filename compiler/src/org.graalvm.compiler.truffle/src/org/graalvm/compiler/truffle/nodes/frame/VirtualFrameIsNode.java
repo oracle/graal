@@ -32,10 +32,10 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
-import com.oracle.truffle.api.frame.FrameSlot;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -43,8 +43,8 @@ import jdk.vm.ci.meta.JavaKind;
 public final class VirtualFrameIsNode extends VirtualFrameAccessorNode implements Virtualizable {
     public static final NodeClass<VirtualFrameIsNode> TYPE = NodeClass.create(VirtualFrameIsNode.class);
 
-    public VirtualFrameIsNode(NewFrameNode frame, FrameSlot frameSlot, int accessTag) {
-        super(TYPE, StampFactory.forKind(JavaKind.Boolean), frame, frameSlot, accessTag);
+    public VirtualFrameIsNode(Receiver frame, int frameSlotIndex, int accessTag) {
+        super(TYPE, StampFactory.forKind(JavaKind.Boolean), frame, frameSlotIndex, accessTag);
     }
 
     @Override
@@ -54,12 +54,10 @@ public final class VirtualFrameIsNode extends VirtualFrameAccessorNode implement
         if (tagAlias instanceof VirtualObjectNode) {
             VirtualObjectNode tagVirtual = (VirtualObjectNode) tagAlias;
 
-            int frameSlotIndex = getFrameSlotIndex();
             if (frameSlotIndex < tagVirtual.entryCount()) {
                 ValueNode actualTag = tool.getEntry(tagVirtual, frameSlotIndex);
                 if (actualTag.isConstant()) {
                     tool.replaceWith(getConstant(actualTag.asJavaConstant().asInt() == accessTag ? 1 : 0));
-
                 } else {
                     LogicNode comparison = new IntegerEqualsNode(actualTag, getConstant(accessTag));
                     tool.addNode(comparison);

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle;
+package org.graalvm.compiler.truffle.hotspot;
 
 import com.oracle.truffle.api.Truffle;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -33,8 +33,11 @@ import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.runtime.RuntimeProvider;
+import org.graalvm.compiler.truffle.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.TruffleCompiler;
+import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 
-public final class DefaultTruffleCompiler extends TruffleCompiler {
+public final class HotSpotTruffleCompiler extends TruffleCompiler {
 
     public static TruffleCompiler create(GraalTruffleRuntime runtime) {
         Backend backend = runtime.getRequiredGraalCapability(RuntimeProvider.class).getHostBackend();
@@ -44,10 +47,10 @@ public final class DefaultTruffleCompiler extends TruffleCompiler {
         GraphBuilderPhase phase = (GraphBuilderPhase) backend.getSuites().getDefaultGraphBuilderSuite().findPhase(GraphBuilderPhase.class).previous();
         Plugins plugins = phase.getGraphBuilderConfig().getPlugins();
         SnippetReflectionProvider snippetReflection = runtime.getRequiredGraalCapability(SnippetReflectionProvider.class);
-        return new DefaultTruffleCompiler(plugins, suites, lirSuites, backend, snippetReflection);
+        return new HotSpotTruffleCompiler(plugins, suites, lirSuites, backend, snippetReflection);
     }
 
-    private DefaultTruffleCompiler(Plugins plugins, Suites suites, LIRSuites lirSuites, Backend backend, SnippetReflectionProvider snippetReflection) {
+    private HotSpotTruffleCompiler(Plugins plugins, Suites suites, LIRSuites lirSuites, Backend backend, SnippetReflectionProvider snippetReflection) {
         super(plugins, suites, lirSuites, backend, snippetReflection);
     }
 
@@ -58,12 +61,12 @@ public final class DefaultTruffleCompiler extends TruffleCompiler {
         GraphBuilderPhase phase = (GraphBuilderPhase) backend.getSuites().getDefaultGraphBuilderSuite().findPhase(GraphBuilderPhase.class).previous();
         Plugins plugins = phase.getGraphBuilderConfig().getPlugins();
         SnippetReflectionProvider snippetReflection = runtime.getRequiredGraalCapability(SnippetReflectionProvider.class);
-        return new DefaultTruffleCompiler(plugins, suites, lirSuites, backend, snippetReflection);
+        return new HotSpotTruffleCompiler(plugins, suites, lirSuites, backend, snippetReflection);
     }
 
     @Override
-    protected PartialEvaluator createPartialEvaluator() {
-        return new PartialEvaluator(providers, config, snippetReflection, backend.getTarget().arch, ((GraalTruffleRuntime) Truffle.getRuntime()).getInstrumentation());
+    protected HotSpotPartialEvaluator createPartialEvaluator() {
+        return new HotSpotPartialEvaluator(providers, config, snippetReflection, backend.getTarget().arch, ((GraalTruffleRuntime) Truffle.getRuntime()).getInstrumentation());
     }
 
     @Override

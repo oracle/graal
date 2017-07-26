@@ -35,8 +35,8 @@ import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
-import com.oracle.truffle.api.frame.FrameSlot;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -49,18 +49,14 @@ public abstract class VirtualFrameAccessorNode extends FixedWithNextNode impleme
 
     @Input protected NewFrameNode frame;
 
-    protected final FrameSlot frameSlot;
+    protected final int frameSlotIndex;
     protected final int accessTag;
 
-    protected VirtualFrameAccessorNode(NodeClass<? extends VirtualFrameAccessorNode> c, Stamp stamp, NewFrameNode frame, FrameSlot frameSlot, int accessTag) {
+    protected VirtualFrameAccessorNode(NodeClass<? extends VirtualFrameAccessorNode> c, Stamp stamp, Receiver frame, int frameSlotIndex, int accessTag) {
         super(c, stamp);
-        this.frame = frame;
-        this.frameSlot = frameSlot;
+        this.frame = (NewFrameNode) frame.get();
+        this.frameSlotIndex = frameSlotIndex;
         this.accessTag = accessTag;
-    }
-
-    protected int getFrameSlotIndex() {
-        return frameSlot.getIndex();
     }
 
     protected ValueNode getConstant(int n) {

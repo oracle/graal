@@ -31,7 +31,7 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.DefaultInliningPolicy;
-import org.graalvm.compiler.truffle.DefaultTruffleCompiler;
+import org.graalvm.compiler.truffle.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.TruffleCompiler;
@@ -55,7 +55,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 public class TruffleToTruffleCallExceptionHandlerTest {
 
     private static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
-    private static final TruffleCompiler truffleCompiler = DefaultTruffleCompiler.create(runtime);
+    private static final TruffleCompiler truffleCompiler = HotSpotTruffleCompiler.create(runtime);
 
     private final OptimizedCallTarget calleeNoException = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
         @Override
