@@ -38,6 +38,26 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class CountTrailingZeroesNode {
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class CountTrailingZeroesI8Node extends LLVMBuiltin {
+
+        @Specialization
+        public byte executeI8(byte val, @SuppressWarnings("unused") boolean isZeroUndefined) {
+            final int trailingZeroes = Integer.numberOfTrailingZeros(val);
+            return (byte) (trailingZeroes > Byte.SIZE ? Byte.SIZE : trailingZeroes);
+        }
+    }
+
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class CountTrailingZeroesI16Node extends LLVMBuiltin {
+
+        @Specialization
+        public short executeI16(short val, @SuppressWarnings("unused") boolean isZeroUndefined) {
+            final int trailingZeroes = Integer.numberOfTrailingZeros(val);
+            return (short) (trailingZeroes > Short.SIZE ? Short.SIZE : trailingZeroes);
+        }
+    }
+
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class CountTrailingZeroesI32Node extends LLVMBuiltin {
 
         @Specialization

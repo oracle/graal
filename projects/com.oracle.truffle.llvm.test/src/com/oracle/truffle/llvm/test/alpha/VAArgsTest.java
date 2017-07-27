@@ -47,7 +47,7 @@ import com.oracle.truffle.llvm.test.options.TestOptions;
 public final class VAArgsTest extends BaseSulongOnlyHarness {
 
     private static final Path OTHER_DIR = new File(TestOptions.PROJECT_ROOT + "/../cache/tests/other").toPath();
-    private static final String testSuffix = "_clang_v38_O0.bc";
+    private static final String testSuffix = "_clang_O0.bc";
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public RunConfiguration configuration;
