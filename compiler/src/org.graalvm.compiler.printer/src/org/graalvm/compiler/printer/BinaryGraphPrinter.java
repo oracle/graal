@@ -65,7 +65,8 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 
-public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.GraphInfo, Node, NodeClass<?>, Edges, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition, InputType>
+public class BinaryGraphPrinter
+                extends AbstractGraphPrinter<BinaryGraphPrinter.GraphInfo, Node, NodeClass<?>, Edges, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition, InputType>
                 implements GraphPrinter {
     private SnippetReflectionProvider snippetReflection;
 
@@ -299,7 +300,6 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.
         return Edges.getNode(node, edges.getOffsets(), i);
     }
 
-
     @Override
     protected List<Node> findNodes(GraphInfo graph, Node node, Edges edges, int i) {
         return Edges.getNodeList(node, edges.getOffsets(), i);
@@ -341,7 +341,7 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.
     @Override
     protected String findJavaTypeName(Object obj) {
         if (obj instanceof Class<?>) {
-            return ((Class<?>)obj).getName();
+            return ((Class<?>) obj).getName();
         }
         if (obj instanceof ResolvedJavaType) {
             return ((ResolvedJavaType) obj).getName();

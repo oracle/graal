@@ -140,9 +140,9 @@ public abstract class AbstractGraphPrinter<Graph, Node, NodeClass, Edges, Block,
 
     protected abstract NodeClass findNodeClass(Object obj);
 
-    /** Find a Java class. The returned object must be acceptable
-     * by {@link #findJavaTypeName(java.lang.Object)} and return valid
-     * name for the class.
+    /**
+     * Find a Java class. The returned object must be acceptable by
+     * {@link #findJavaTypeName(java.lang.Object)} and return valid name for the class.
      *
      * @param clazz node class object
      * @return object representing the class, for example {@link Class}
