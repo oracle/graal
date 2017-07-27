@@ -38,7 +38,7 @@ import java.lang.annotation.Target;
 public @interface CEnumConstant {
 
     /**
-     * Specifies the name of the imported C library constant.
+     * Specifies the name of the imported C enum constant.
      */
     String value() default "";
 

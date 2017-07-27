@@ -31,6 +31,9 @@ import java.lang.annotation.Target;
 
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.c.constant.CEnum;
+import org.graalvm.nativeimage.c.constant.CEnumLookup;
+import org.graalvm.nativeimage.c.constant.CEnumValue;
 import org.graalvm.word.WordBase;
 
 /**
@@ -45,8 +48,12 @@ import org.graalvm.word.WordBase;
  * Exceptions cannot be thrown to the caller and must be explicitly caught in the entry point
  * method. Any uncaught exception causes the termination of the process after it is printed.
  * <p>
- * No object types are permitted for parameters or return types, only primitive Java values and
- * {@link WordBase word} values are allowed.
+ * No object types are permitted for parameters or return types; only primitive Java values,
+ * {@link WordBase word} values, and enum values are allowed. Enum values are automatically
+ * converted from integer constants to Java enum object constants. The enum class must have a
+ * {@link CEnum} annotation. When enum values are passed as parameters, the enum class must have a
+ * method with a {@link CEnumLookup} annotation. For enum return types, the enum class must have a
+ * method that is annotated with {@link CEnumValue}.
  * <p>
  * The used calling convention is different to that of regular Java methods, so a method annotated
  * with {@link CEntryPoint} must not be called from any Java method.
