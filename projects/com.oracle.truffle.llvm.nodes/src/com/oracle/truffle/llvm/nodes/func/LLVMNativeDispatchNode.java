@@ -47,6 +47,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
+import com.oracle.truffle.llvm.runtime.NativeLookup.UnsupportedNativeTypeException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -61,7 +62,11 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
 
     protected LLVMNativeDispatchNode(FunctionType type) {
         this.type = type;
-        this.signature = LLVMContext.getNativeSignature(type, LLVMCallNode.USER_ARGUMENT_OFFSET);
+        try {
+            this.signature = LLVMContext.getNativeSignature(type, LLVMCallNode.USER_ARGUMENT_OFFSET);
+        } catch (UnsupportedNativeTypeException ex) {
+            throw new AssertionError(ex);
+        }
         this.nativeCallNode = Message.createExecute(type.getArgumentTypes().length).createNode();
     }
 

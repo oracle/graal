@@ -62,6 +62,22 @@ public final class NativeLookup {
         this.defaultLibrary = loadDefaultLibrary(env);
     }
 
+    public static class UnsupportedNativeTypeException extends Exception {
+
+        private static final long serialVersionUID = 1L;
+
+        private final Type type;
+
+        UnsupportedNativeTypeException(Type type) {
+            super("unsupported type " + type + " in native interop");
+            this.type = type;
+        }
+
+        public Type getType() {
+            return type;
+        }
+    }
+
     /*
      * PRIVATE
      */
@@ -115,7 +131,7 @@ public final class NativeLookup {
         }
     }
 
-    private static String getNativeType(Type type) {
+    private static String getNativeType(Type type) throws UnsupportedNativeTypeException {
         if (type instanceof FunctionType) {
             return prepareSignature((FunctionType) type, 0);
         } else if (type instanceof PointerType && ((PointerType) type).getPointeeType() instanceof FunctionType) {
@@ -141,16 +157,16 @@ public final class NativeLookup {
                 case DOUBLE:
                     return "DOUBLE";
                 default:
-                    throw new AssertionError(primitiveType);
+                    throw new UnsupportedNativeTypeException(primitiveType);
 
             }
         } else if (type instanceof VoidType) {
             return "VOID";
         }
-        throw new AssertionError(type);
+        throw new UnsupportedNativeTypeException(type);
     }
 
-    private static String[] getNativeTypes(Type[] argTypes, int skipArguments) {
+    private static String[] getNativeTypes(Type[] argTypes, int skipArguments) throws UnsupportedNativeTypeException {
         String[] types = new String[argTypes.length - skipArguments];
         for (int i = skipArguments; i < argTypes.length; i++) {
             types[i - skipArguments] = getNativeType(argTypes[i]);
@@ -239,7 +255,7 @@ public final class NativeLookup {
         }
     }
 
-    static String prepareSignature(FunctionType type, int skipArguments) {
+    static String prepareSignature(FunctionType type, int skipArguments) throws UnsupportedNativeTypeException {
         // TODO varargs
         CompilerAsserts.neverPartOfCompilation();
         String nativeRet = getNativeType(type.getReturnType());

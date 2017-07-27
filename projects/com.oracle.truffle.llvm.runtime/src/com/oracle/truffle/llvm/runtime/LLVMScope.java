@@ -41,7 +41,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMScope {
 
-    private final HashMap<String, LLVMFunctionHandle> functions;
+    private final HashMap<String, LLVMFunctionDescriptor> functions;
     private final LLVMScope parent;
     private final LLVMGlobalVariableRegistry globalVariableRegistry;
 
@@ -53,7 +53,8 @@ public final class LLVMScope {
         LLVMScope scope = new LLVMScope(null);
         LLVMFunctionDescriptor zeroFunction = scope.lookupOrCreateFunction(context, "<zero function>", true,
                         idx -> LLVMFunctionDescriptor.createDescriptor(context, "<zero function>", new FunctionType(MetaType.UNKNOWN, new Type[0], false), idx));
-        assert LLVMFunction.getSulongFunctionIndex(zeroFunction.getFunctionPointer()) == 0;
+        long ptr = zeroFunction.getFunctionPointer();
+        assert ptr == 0;
         return scope;
     }
 
@@ -65,10 +66,10 @@ public final class LLVMScope {
 
     @TruffleBoundary
     public synchronized LLVMFunctionDescriptor getFunctionDescriptor(LLVMContext context, String name) {
-        LLVMFunctionHandle functionHandle = functions.get(name);
-        if (functionHandle != null) {
-            return context.getFunctionDescriptor(functionHandle);
-        } else if (functionHandle == null && parent != null) {
+        LLVMFunctionDescriptor functionDescriptor = functions.get(name);
+        if (functionDescriptor != null) {
+            return functionDescriptor;
+        } else if (functionDescriptor == null && parent != null) {
             return parent.getFunctionDescriptor(context, name);
         }
         throw new IllegalStateException("Unknown function: " + name);
@@ -115,10 +116,10 @@ public final class LLVMScope {
         }
         assert global || parent != null;
         if (functions.containsKey(name)) {
-            return context.getFunctionDescriptor(functions.get(name));
+            return functions.get(name);
         } else {
             LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(generator);
-            functions.put(name, LLVMFunctionHandle.createHandle(functionDescriptor.getFunctionPointer()));
+            functions.put(name, functionDescriptor);
             return functionDescriptor;
         }
     }

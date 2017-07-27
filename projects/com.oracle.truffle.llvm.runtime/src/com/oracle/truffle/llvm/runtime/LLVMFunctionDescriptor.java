@@ -40,7 +40,9 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.llvm.runtime.interop.LLVMFunctionMessageResolutionForeign;
@@ -51,11 +53,14 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
 
     private final String functionName;
     private final FunctionType type;
-    private final long functionId;
+    private final int functionId;
     private final LLVMContext context;
 
     @CompilationFinal private Function function;
     @CompilationFinal private Assumption functionAssumption;
+
+    @CompilationFinal private TruffleObject nativeWrapper;
+    @CompilationFinal private long nativePointer;
 
     public static final class Intrinsic {
         private final String name;
@@ -123,9 +128,23 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
         void resolve(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor) {
             // nothing to do
         }
+
+        abstract TruffleObject createNativeWrapper(LLVMFunctionDescriptor descriptor);
     }
 
-    static final class LazyLLVMIRFunction extends Function {
+    abstract static class ManagedFunction extends Function {
+
+        ManagedFunction(boolean weak) {
+            super(weak);
+        }
+
+        @Override
+        TruffleObject createNativeWrapper(LLVMFunctionDescriptor descriptor) {
+            return descriptor.context.createNativeWrapper(descriptor);
+        }
+    }
+
+    static final class LazyLLVMIRFunction extends ManagedFunction {
         private final LazyToTruffleConverter converter;
 
         LazyLLVMIRFunction(LazyToTruffleConverter converter, boolean weak) {
@@ -139,7 +158,7 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
         }
     }
 
-    static final class LLVMIRFunction extends Function {
+    static final class LLVMIRFunction extends ManagedFunction {
         private final RootCallTarget callTarget;
 
         LLVMIRFunction(RootCallTarget callTarget, boolean weak) {
@@ -156,26 +175,29 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
 
         @Override
         void resolve(LLVMFunctionDescriptor descriptor) {
-            if (descriptor.context.getNativeIntrinsicsProvider().isIntrinsified(descriptor.functionName)) {
+            if (descriptor.isNullFunction()) {
+                descriptor.setFunction(new NullFunction());
+            } else if (descriptor.context.getNativeIntrinsicsProvider().isIntrinsified(descriptor.functionName)) {
                 Intrinsic intrinsification = new Intrinsic(descriptor.context.getNativeIntrinsicsProvider(), descriptor.functionName);
                 descriptor.setFunction(new NativeIntrinsicFunction(intrinsification));
             } else {
-                TruffleObject nativeFunction;
-                if (!descriptor.isNullFunction()) {
-                    NativeLookup nativeLookup = descriptor.context.getNativeLookup();
-                    if (nativeLookup == null) {
-                        throw new AssertionError("The NativeLookup is disabled. Failed to look up the function " + descriptor.getName() + ".");
-                    }
-                    nativeFunction = nativeLookup.getNativeFunction(descriptor.getName());
-                } else {
-                    nativeFunction = null;
+                NativeLookup nativeLookup = descriptor.context.getNativeLookup();
+                if (nativeLookup == null) {
+                    throw new AssertionError("The NativeLookup is disabled. Failed to look up the function " + descriptor.getName() + ".");
                 }
+                TruffleObject nativeFunction = nativeLookup.getNativeFunction(descriptor.getName());
                 descriptor.setFunction(new NativeFunction(nativeFunction));
             }
         }
+
+        @Override
+        TruffleObject createNativeWrapper(LLVMFunctionDescriptor descriptor) {
+            resolve(descriptor);
+            return descriptor.getFunction().createNativeWrapper(descriptor);
+        }
     }
 
-    static final class NativeIntrinsicFunction extends Function {
+    static final class NativeIntrinsicFunction extends ManagedFunction {
         private final Intrinsic intrinsic;
 
         NativeIntrinsicFunction(Intrinsic intrinsic) {
@@ -190,6 +212,23 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
         NativeFunction(TruffleObject nativeFunction) {
             super(false);
             this.nativeFunction = nativeFunction;
+        }
+
+        @Override
+        TruffleObject createNativeWrapper(LLVMFunctionDescriptor descriptor) {
+            return nativeFunction;
+        }
+    }
+
+    static final class NullFunction extends Function {
+
+        NullFunction() {
+            super(false);
+        }
+
+        @Override
+        TruffleObject createNativeWrapper(LLVMFunctionDescriptor descriptor) {
+            return new LLVMTruffleAddress(LLVMAddress.nullPointer(), descriptor.type, descriptor.context);
         }
     }
 
@@ -207,21 +246,22 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
         return function;
     }
 
-    private LLVMFunctionDescriptor(LLVMContext context, String name, FunctionType type, long functionId) {
+    private LLVMFunctionDescriptor(LLVMContext context, String name, FunctionType type, int functionId, Function function) {
         CompilerAsserts.neverPartOfCompilation();
-        assert LLVMFunction.isSulongFunctionPointer(functionId);
         this.context = context;
         this.functionName = name;
         this.type = type;
         this.functionId = functionId;
         this.functionAssumption = Truffle.getRuntime().createAssumption();
-        this.function = new UnresolvedFunction();
+        this.function = function;
     }
 
-    public static LLVMFunctionDescriptor createDescriptor(LLVMContext context, String name, FunctionType type, long functionId) {
-        assert (functionId & LLVMFunction.UPPER_MASK) == 0;
-        LLVMFunctionDescriptor func = new LLVMFunctionDescriptor(context, name, type, LLVMFunction.tagSulongFunctionPointer(functionId));
-        return func;
+    public int getFunctionId() {
+        return functionId;
+    }
+
+    public static LLVMFunctionDescriptor createDescriptor(LLVMContext context, String name, FunctionType type, int functionId) {
+        return new LLVMFunctionDescriptor(context, name, type, functionId, new UnresolvedFunction());
     }
 
     public interface LazyToTruffleConverter {
@@ -320,18 +360,25 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
     }
 
     /**
-     * Gets an unique index for a function descriptor.
-     *
-     * @return the function's index
+     * Gets a pointer to this function that can be stored in native memory.
      */
     @Override
     public long getFunctionPointer() {
-        return functionId;
+        if (nativeWrapper == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            nativeWrapper = getFunction().createNativeWrapper(this);
+            try {
+                nativePointer = ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), nativeWrapper);
+            } catch (UnsupportedMessageException ex) {
+                nativePointer = LLVMFunction.tagSulongFunctionPointer(functionId);
+            }
+        }
+        return nativePointer;
     }
 
     @Override
     public boolean isNullFunction() {
-        return LLVMFunction.getSulongFunctionIndex(functionId) == 0;
+        return functionId == 0;
     }
 
     @Override
@@ -345,12 +392,12 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
 
     @Override
     public int compareTo(LLVMFunctionDescriptor o) {
-        return Long.compare(functionId, o.getFunctionPointer());
+        return Long.compare(functionId, o.functionId);
     }
 
     @Override
     public int hashCode() {
-        return (int) functionId;
+        return functionId;
     }
 
     @Override
@@ -359,7 +406,7 @@ public final class LLVMFunctionDescriptor implements LLVMFunction, TruffleObject
             return false;
         } else {
             LLVMFunctionDescriptor other = (LLVMFunctionDescriptor) obj;
-            return getFunctionPointer() == other.getFunctionPointer();
+            return functionId == other.functionId;
         }
     }
 

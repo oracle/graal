@@ -16,6 +16,6 @@ int add(int a, int b) {
 
 int main(int argc, char** argv) {
 	struct container c;
-	c.callback = truffle_sulong_function_to_native_pointer(add, "(SINT32,SINT32):SINT32");
+	c.callback = add;
 	return call_callback2(&c);
 }

@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.func;
 
-import java.io.PrintStream;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -47,6 +45,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.Intrinsic;
+import com.oracle.truffle.llvm.runtime.NativeLookup.UnsupportedNativeTypeException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -66,7 +65,11 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     private String getSignature() {
         if (signature == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.signature = LLVMContext.getNativeSignature(type, LLVMCallNode.USER_ARGUMENT_OFFSET);
+            try {
+                this.signature = LLVMContext.getNativeSignature(type, LLVMCallNode.USER_ARGUMENT_OFFSET);
+            } catch (UnsupportedNativeTypeException ex) {
+                throw new AssertionError(ex);
+            }
         }
         return signature;
     }
@@ -77,7 +80,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
      * Function is defined in the user program (available as LLVM IR)
      */
 
-    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"function.getFunctionPointer() == cachedFunction.getFunctionPointer()", "cachedFunction.isLLVMIRFunction()"})
+    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"function.getFunctionId() == cachedFunction.getFunctionId()", "cachedFunction.isLLVMIRFunction()"})
     protected static Object doDirect(LLVMFunctionDescriptor function, Object[] arguments,
                     @Cached("function") LLVMFunctionDescriptor cachedFunction,
                     @Cached("create(cachedFunction.getLLVMIRFunction())") DirectCallNode callNode) {
