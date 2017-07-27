@@ -71,19 +71,6 @@ darwin-llvm : {
 gateTest38-darwin: ${gateCommon} ${darwin-amd64} ${darwin-llvm} {
 }
 
-gateTest32: ${gateCommon} ${linux-amd64} {
-    downloads: {
-        LIBGMP: {name: libgmp, version: "6.1.0", platformspecific: true}
-        DRAGONEGG_LLVM: {name: "clang+llvm", version: "3.2", platformspecific: true}
-    }
-
-    environment: {
-        CPPFLAGS: "-I$LIBGMP/include"
-        LD_LIBRARY_PATH: "$LIBGMP/lib:$DRAGONEGG_LLVM/lib:$LD_LIBRARY_PATH"
-        PATH: "$DRAGONEGG_LLVM/bin:$PATH"
-    }
-}
-
 requireGCC: {
     downloads: {
         DRAGONEGG_GCC: {name: "gcc+dragonegg", version: "4.6.4-1", platformspecific: true}
@@ -138,10 +125,10 @@ ruby-downstream-test: {
 
 builds = [
   ${gateStyle} { name: gate-style, run: [[mx, check, --verbose, checkstyle, mdl, canonicalizeprojects, httpcheck, checkoverlap, clangformatcheck, pylint, eclipseformat ]] }
-  ${gateTest32} ${requireJDT} { name: gate-full-build, run: [[mx, check, --verbose, ecj, findbugs]] }
-  ${gateTest32} ${requireGCC} { name: gate-suite-gcc, run: [[mx, build, --dependencies, SULONG_TEST], [mx, test, gcc]] }
-  ${gateTest32} ${requireGCC} { name: gate-travis1, run: [[mx, travis1]] }
-  ${gateTest32} ${requireGCC} { name: gate-travis2, run: [[mx, travis2]] }
+  ${gateTest38-linux} ${requireJDT} { name: gate-full-build, run: [[mx, check, --verbose, ecj, findbugs]] }
+  ${gateTest38-linux} ${requireGCC} { name: gate-suite-gcc, run: [[mx, build, --dependencies, SULONG_TEST], [mx, test, gcc]] }
+  ${gateTest38-linux} ${requireGCC} { name: gate-travis1, run: [[mx, travis1]] }
+  ${gateTest38-linux} ${requireGCC} { name: gate-travis2, run: [[mx, travis2]] }
   ${gateTest38-linux} ${requireGCC} ${sulongSuite} { name: gate-sulong-v38-linux }
   ${gateTest38-darwin} ${sulongSuite} { name: gate-sulong-v38-darwin }
   ${gateTest38-linux} { name: gate-gcc-v38, run: [[mx, build, --dependencies, SULONG_TEST], [mx, test, gcc38]] }
