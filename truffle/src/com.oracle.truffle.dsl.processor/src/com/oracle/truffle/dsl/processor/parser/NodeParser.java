@@ -394,8 +394,8 @@ public class NodeParser extends AbstractParser<NodeData> {
         }
 
         /*
-         * Sort elements by enclosing type to ensure that duplicate static methods are used from the most
-         * concrete subtype.
+         * Sort elements by enclosing type to ensure that duplicate static methods are used from the
+         * most concrete subtype.
          */
         Collections.sort(members, new Comparator<Element>() {
             Map<TypeMirror, Set<String>> cachedQualifiedNames = new HashMap<>();
@@ -1707,26 +1707,26 @@ public class NodeParser extends AbstractParser<NodeData> {
             }
         }
 
-        Map<String, List<ExecutableElement>> mappedElements = null;
+        Map<String, List<ExecutableElement>> methodsByName = null;
 
         outer: for (ExecutableElement unusedMethod : ElementFilter.methodsIn(unusedElements)) {
             if (unusedMethod.getModifiers().contains(Modifier.ABSTRACT)) {
 
                 // group by method name to avoid N^2 worst case complexity.
-                if (mappedElements == null) {
-                    mappedElements = new HashMap<>();
+                if (methodsByName == null) {
+                    methodsByName = new HashMap<>();
                     for (ExecutableElement m : ElementFilter.methodsIn(unusedElements)) {
                         String name = m.getSimpleName().toString();
-                        List<ExecutableElement> groupedElements = mappedElements.get(name);
+                        List<ExecutableElement> groupedElements = methodsByName.get(name);
                         if (groupedElements == null) {
                             groupedElements = new ArrayList<>();
-                            mappedElements.put(name, groupedElements);
+                            methodsByName.put(name, groupedElements);
                         }
                         groupedElements.add(m);
                     }
                 }
 
-                for (ExecutableElement otherMethod : mappedElements.get(unusedMethod.getSimpleName().toString())) {
+                for (ExecutableElement otherMethod : methodsByName.get(unusedMethod.getSimpleName().toString())) {
                     if (unusedMethod == otherMethod) {
                         continue;
                     }
