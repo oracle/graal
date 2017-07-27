@@ -145,8 +145,28 @@ public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLower
                     ValueNode entry1 = tool.getEntry(virtual1, i);
                     ValueNode entry2 = tool.getEntry(virtual2, i);
                     if (entry1 != entry2) {
-                        // the contents might be different
-                        allEqual = false;
+                        if (entry1 instanceof ConstantNode && entry2 instanceof ConstantNode) {
+                            // Float NaN constants are different constant nodes but treated as
+                            // equal in Arrays.equals([F[F) or Arrays.equals([D[D).
+                            if (entry1.getStackKind() == JavaKind.Float && entry2.getStackKind() == JavaKind.Float) {
+                                float value1 = ((JavaConstant) ((ConstantNode) entry1).asConstant()).asFloat();
+                                float value2 = ((JavaConstant) ((ConstantNode) entry2).asConstant()).asFloat();
+                                if (Float.floatToIntBits(value1) != Float.floatToIntBits(value2)) {
+                                    allEqual = false;
+                                }
+                            } else if (entry1.getStackKind() == JavaKind.Double && entry2.getStackKind() == JavaKind.Double) {
+                                double value1 = ((JavaConstant) ((ConstantNode) entry1).asConstant()).asDouble();
+                                double value2 = ((JavaConstant) ((ConstantNode) entry2).asConstant()).asDouble();
+                                if (Double.doubleToLongBits(value1) != Double.doubleToLongBits(value2)) {
+                                    allEqual = false;
+                                }
+                            } else {
+                                allEqual = false;
+                            }
+                        } else {
+                            // the contents might be different
+                            allEqual = false;
+                        }
                     }
                     if (entry1.stamp().alwaysDistinct(entry2.stamp())) {
                         // the contents are different
