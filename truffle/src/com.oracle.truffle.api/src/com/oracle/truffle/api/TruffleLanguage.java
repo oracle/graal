@@ -898,18 +898,6 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Creates a new inner context. Additional configuration parameters can be passed when the
-         * context is created using the {@link #newContextBuilder() builder}.
-         *
-         * @see TruffleContext for details on language inner contexts.
-         * @see #newContextBuilder()
-         * @since 0.27
-         */
-        public TruffleContext createContext() {
-            return new TruffleContext(this, new HashMap<>());
-        }
-
-        /**
          * Explicitely imports a symbol from the polyglot scope. The polyglot scope consists of a
          * set of symbols that have been exported explicitely by the languages or the engine. This
          * set of symbols allows for data exchange between polyglot languages.
@@ -1187,7 +1175,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Configuration arguments passed from from an outer language context to an inner language
+         * Configuration arguments passed from an outer language context to an inner language
          * context. Inner language contexts can be created using {@link #newContextBuilder()}.
          *
          * @see TruffleContext to create inner contexts.

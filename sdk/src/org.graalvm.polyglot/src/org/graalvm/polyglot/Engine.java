@@ -85,7 +85,7 @@ public final class Engine implements AutoCloseable {
      * @throws IllegalArgumentException if an invalid language id was provided
      * @see #getLanguages() To get map of all installed languages.
      * @since 1.0
-     * @deprecated use {@link #getLanguage()}.{@link Map#get(Object) get(id)} instead
+     * @deprecated use {@link #getLanguages()}.{@link Map#get(Object) get(id)} instead
      */
     @Deprecated
     public Language getLanguage(String languageId) {

@@ -557,8 +557,9 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                     Thread thread = context.boundThread.get();
                     if (thread != null && context.closingLatch != null) {
                         /*
-                         * We send an interrupt to the thread to wake up and to run some guest language code in case they
-                         * are waiting in some async primitive. The interrupt is then cleared when the closed is performed.
+                         * We send an interrupt to the thread to wake up and to run some guest
+                         * language code in case they are waiting in some async primitive. The
+                         * interrupt is then cleared when the closed is performed.
                          */
                         thread.interrupt();
                     }
