@@ -146,7 +146,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
     }
 
     static PolyglotExceptionFrame createHost(PolyglotExceptionImpl exception, StackTraceElement hostStack) {
-        PolyglotLanguage language = exception.engine.idToLanguage.get(PolyglotEngineImpl.HOST_LANGUAGE_ID);
+        PolyglotLanguage language = exception.engine.hostLanguage;
 
         // source section for the host language is currently null
         // we should potentially in the future create a source section for the host language
