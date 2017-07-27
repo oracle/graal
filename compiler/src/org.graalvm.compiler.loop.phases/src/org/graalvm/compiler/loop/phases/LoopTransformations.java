@@ -22,14 +22,6 @@
  */
 package org.graalvm.compiler.loop.phases;
 
-import static org.graalvm.compiler.core.common.GraalOptions.MaximumDesiredSize;
-import static org.graalvm.compiler.loop.MathUtil.add;
-import static org.graalvm.compiler.loop.MathUtil.sub;
-
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-
 import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
@@ -57,14 +49,24 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.PhiNode;
+import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.extended.SwitchNode;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
+import static org.graalvm.compiler.core.common.GraalOptions.MaximumDesiredSize;
+import static org.graalvm.compiler.loop.MathUtil.add;
+import static org.graalvm.compiler.loop.MathUtil.sub;
 
 public abstract class LoopTransformations {
 
@@ -224,7 +226,7 @@ public abstract class LoopTransformations {
     public static void insertPrePostLoops(LoopEx loop, StructuredGraph graph) {
         graph.getDebug().log("LoopTransformations.insertPrePostLoops %s", loop);
         LoopFragmentWhole preLoop = loop.whole();
-        CountedLoopInfo preCounted = preLoop.loop().counted();
+        CountedLoopInfo preCounted = loop.counted();
         IfNode preLimit = preCounted.getLimitTest();
         if (preLimit != null) {
             LoopBeginNode preLoopBegin = loop.loopBegin();
@@ -277,6 +279,14 @@ public abstract class LoopTransformations {
             preLoopBegin.setLoopFrequency(1);
             mainLoopBegin.setLoopFrequency(Math.max(0.0, mainLoopBegin.loopFrequency() - 2));
             postLoopBegin.setLoopFrequency(Math.max(0.0, postLoopBegin.loopFrequency() - 1));
+
+            // The pre and post loops don't require safepoints at all
+            for (SafepointNode safepoint : preLoop.nodes().filter(SafepointNode.class)) {
+                GraphUtil.removeFixedWithUnusedInputs(safepoint);
+            }
+            for (SafepointNode safepoint : postLoop.nodes().filter(SafepointNode.class)) {
+                GraphUtil.removeFixedWithUnusedInputs(safepoint);
+            }
         }
         graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "InsertPrePostLoops %s", loop);
     }
