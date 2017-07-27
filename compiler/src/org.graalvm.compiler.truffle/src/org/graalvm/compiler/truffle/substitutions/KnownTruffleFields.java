@@ -27,8 +27,6 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.impl.AbstractAssumption;
 
-import java.lang.ref.SoftReference;
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -46,8 +44,6 @@ public class KnownTruffleFields {
 
     public final ResolvedJavaType classFrameClass;
     public final ResolvedJavaType classFrameDescriptor;
-    public final ResolvedJavaType classWeakReference;
-    public final ResolvedJavaType classSoftReference;
 
     public final ResolvedJavaField fieldFrameDescriptorDefaultValue;
     public final ResolvedJavaField fieldFrameDescriptorVersion;
@@ -55,7 +51,10 @@ public class KnownTruffleFields {
     public final ResolvedJavaField fieldFrameDescriptorSlots;
 
     public final ResolvedJavaField fieldArrayListElementData;
+
     public final ResolvedJavaField fieldFrameSlotKind;
+    public final ResolvedJavaField fieldFrameSlotIndex;
+
     public final ResolvedJavaField fieldFrameSlotKindTag;
 
     public final ResolvedJavaField fieldOptimizedAssumptionIsValid;
@@ -66,8 +65,6 @@ public class KnownTruffleFields {
             classFrameClass = metaAccess.lookupJavaType(frameClass);
 
             classFrameDescriptor = metaAccess.lookupJavaType(FrameDescriptor.class);
-            classWeakReference = metaAccess.lookupJavaType(WeakReference.class);
-            classSoftReference = metaAccess.lookupJavaType(SoftReference.class);
 
             fieldFrameDescriptorDefaultValue = metaAccess.lookupJavaField(FrameDescriptor.class.getDeclaredField("defaultValue"));
             fieldFrameDescriptorVersion = metaAccess.lookupJavaField(FrameDescriptor.class.getDeclaredField("version"));
@@ -76,6 +73,7 @@ public class KnownTruffleFields {
 
             fieldArrayListElementData = metaAccess.lookupJavaField(ArrayList.class.getDeclaredField("elementData"));
             fieldFrameSlotKind = metaAccess.lookupJavaField(FrameSlot.class.getDeclaredField("kind"));
+            fieldFrameSlotIndex = metaAccess.lookupJavaField(FrameSlot.class.getDeclaredField("index"));
             fieldFrameSlotKindTag = metaAccess.lookupJavaField(FrameSlotKind.class.getDeclaredField("tag"));
 
             fieldOptimizedAssumptionIsValid = metaAccess.lookupJavaField(AbstractAssumption.class.getDeclaredField("isValid"));
