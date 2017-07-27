@@ -31,17 +31,17 @@ package com.oracle.truffle.llvm.parser.model.enums;
 
 public enum ReadModifyWriteOperator {
 
-    XCHG,
-    ADD,
-    SUB,
-    AND,
-    NAND,
-    OR,
-    XOR,
-    MAX,
-    MIN,
-    UMAX,
-    UMIN;
+    XCHG("xchg"),
+    ADD("add"),
+    SUB("sub"),
+    AND("and"),
+    NAND("nand"),
+    OR("or"),
+    XOR("xor"),
+    MAX("max"),
+    MIN("min"),
+    UMAX("umax"),
+    UMIN("umin");
 
     public static ReadModifyWriteOperator decode(int opcode) {
         ReadModifyWriteOperator[] ops = values();
@@ -49,6 +49,19 @@ public enum ReadModifyWriteOperator {
             return ops[opcode];
         }
         return null;
+    }
+
+    private final String irString;
+
+    ReadModifyWriteOperator(String irString) {
+        this.irString = irString;
+    }
+
+    /**
+     * Useful to get the llvm ir equivalent string of the enum.
+     */
+    public String getIrString() {
+        return irString;
     }
 
 }
