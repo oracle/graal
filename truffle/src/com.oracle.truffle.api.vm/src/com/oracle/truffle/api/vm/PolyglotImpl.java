@@ -60,6 +60,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.vm.PolyglotValue.EngineUnsupportedException;
 
 /*
  * This class is exported to the Graal SDK. Keep that in mind when changing its class or package name.
@@ -177,6 +178,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             return (PolyglotException) e;
         } else if (e instanceof EngineException) {
             throw ((EngineException) e).e;
+        } else if (e instanceof EngineUnsupportedException) {
+            throw (EngineUnsupportedException) e;
         } else {
             // fallthrough
         }
