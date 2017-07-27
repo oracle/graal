@@ -22,6 +22,11 @@
  */
 package org.graalvm.compiler.debug;
 
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValues;
+
 /**
  * Utility for query whether assertions are enabled.
  */
@@ -35,4 +40,17 @@ public class Assertions {
         assert (enabled = true) == true;
         return enabled;
     }
+
+    public static boolean detailedAssertionsEnabled(OptionValues values) {
+        return assertionsEnabled() && Options.DetailedAsserts.getValue(values);
+    }
+
+    // @formatter:off
+    public static class Options {
+
+        @Option(help = "Enable expensive assertions.", type = OptionType.Debug)
+        public static final OptionKey<Boolean> DetailedAsserts = new OptionKey<>(true);
+
+    }
+    // @formatter:on
 }
