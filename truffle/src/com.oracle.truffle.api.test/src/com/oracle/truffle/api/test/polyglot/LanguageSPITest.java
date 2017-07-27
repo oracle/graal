@@ -381,6 +381,9 @@ public class LanguageSPITest {
             }
         };
         context.eval(LanguageSPITestLanguage.ID, "");
+
+        // ensure we are not yet closed
+        context.eval(LanguageSPITestLanguage.ID, "");
     }
 
     @Test
@@ -388,7 +391,7 @@ public class LanguageSPITest {
         Context context = Context.create();
         LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
             public Object apply(Env env) {
-                TruffleContext innerContext = env.createContext();
+                TruffleContext innerContext = env.newContextBuilder().build();
                 Object p = innerContext.enter();
                 LanguageContext innerLangContext = LanguageSPITestLanguage.getContext();
                 innerContext.leave(p);
