@@ -152,7 +152,7 @@ public class OptimizedCompilationProfile {
         Assumption argumentTypesAssumption = profiledArgumentTypesAssumption;
         if (argumentTypesAssumption != null && argumentTypesAssumption.isValid()) {
             // Argument profiling is not possible for targets of indirect calls.
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+            CompilerDirectives.transferToInterpreter();
             argumentTypesAssumption.invalidate();
             profiledArgumentTypes = null;
         }

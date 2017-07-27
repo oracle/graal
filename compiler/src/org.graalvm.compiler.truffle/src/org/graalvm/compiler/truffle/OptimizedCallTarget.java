@@ -185,7 +185,10 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     @Override
     public final Object call(Object... args) {
-        getCompilationProfile().profileIndirectCall();
+        OptimizedCompilationProfile profile = compilationProfile;
+        if (profile != null) {
+            profile.profileIndirectCall();
+        }
         return doInvoke(args);
     }
 
@@ -215,7 +218,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     protected final Object callBoundary(Object[] args) {
         if (CompilerDirectives.inInterpreter()) {
             // We are called and we are still in Truffle interpreter mode.
-            compilationProfile.interpreterCall(this);
+            getCompilationProfile().interpreterCall(this);
             if (isValid()) {
                 // Stubs were deoptimized => reinstall.
                 runtime().reinstallStubs();
