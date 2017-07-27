@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ public class GraphBuilderConfiguration {
         private InlineInvokePlugin[] inlineInvokePlugins;
         private LoopExplosionPlugin loopExplosionPlugin;
         private ClassInitializationPlugin classInitializationPlugin;
+        private InvokeDynamicPlugin invokeDynamicPlugin;
         private ProfilingPlugin profilingPlugin;
 
         /**
@@ -54,6 +55,7 @@ public class GraphBuilderConfiguration {
             this.inlineInvokePlugins = copyFrom.inlineInvokePlugins;
             this.loopExplosionPlugin = copyFrom.loopExplosionPlugin;
             this.classInitializationPlugin = copyFrom.classInitializationPlugin;
+            this.invokeDynamicPlugin = copyFrom.invokeDynamicPlugin;
             this.profilingPlugin = copyFrom.profilingPlugin;
         }
 
@@ -165,6 +167,14 @@ public class GraphBuilderConfiguration {
 
         public void setClassInitializationPlugin(ClassInitializationPlugin plugin) {
             this.classInitializationPlugin = plugin;
+        }
+
+        public InvokeDynamicPlugin getInvokeDynamicPlugin() {
+            return invokeDynamicPlugin;
+        }
+
+        public void setInvokeDynamicPlugin(InvokeDynamicPlugin plugin) {
+            this.invokeDynamicPlugin = plugin;
         }
 
         public ProfilingPlugin getProfilingPlugin() {
