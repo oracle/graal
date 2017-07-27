@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.nfi;
 
-import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -38,39 +37,15 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 final class ClosureNativePointer extends NativeAllocation.Destructor {
 
-    private static final HashMap<Long, ClosureNativePointer> nativePointerMap = new HashMap<>();
-
-    private static ClosureNativePointer get(long codePointer) {
-        synchronized (nativePointerMap) {
-            return nativePointerMap.get(codePointer);
-        }
-    }
-
-    // called from native
-    public static ClosureNativePointer create(long nativeClosure, long codePointer) {
-        ClosureNativePointer ret = new ClosureNativePointer(nativeClosure, codePointer);
-        synchronized (nativePointerMap) {
-            nativePointerMap.put(codePointer, ret);
-        }
-        return ret;
-    }
-
-    // called from native
-    public static void newClosureRef(long codePointer) {
-        get(codePointer).addRef();
-    }
-
-    // called from native
-    public static void releaseClosureRef(long codePointer) {
-        get(codePointer).destroy();
-    }
+    private final NFIContext context;
 
     private final long nativeClosure;
     private final long codePointer;
 
     private final AtomicInteger refCount;
 
-    private ClosureNativePointer(long nativeClosure, long codePointer) {
+    ClosureNativePointer(NFIContext context, long nativeClosure, long codePointer) {
+        this.context = context;
         this.nativeClosure = nativeClosure;
         this.codePointer = codePointer;
 
@@ -88,9 +63,7 @@ final class ClosureNativePointer extends NativeAllocation.Destructor {
         int refs = refCount.decrementAndGet();
         assert refs >= 0 : "destroy on already dead closure";
         if (refs == 0) {
-            synchronized (nativePointerMap) {
-                nativePointerMap.remove(codePointer);
-            }
+            context.removeClosureNativePointer(codePointer);
             freeClosure(nativeClosure);
         }
     }

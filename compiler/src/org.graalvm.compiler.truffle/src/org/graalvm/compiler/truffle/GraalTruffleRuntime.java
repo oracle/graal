@@ -57,9 +57,11 @@ import java.util.function.Supplier;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.CompilerThreadFactory;
+import org.graalvm.compiler.core.CompilationWrapper;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -552,13 +554,39 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         }
     }
 
-    protected void compileMethod(DebugContext debug,
+    protected abstract DiagnosticsOutputDirectory getDebugOutputDirectory();
+
+    protected final void compileMethod(DebugContext initialDebug,
                     TruffleCompiler compiler,
                     OptimizedCallTarget optimizedCallTarget,
                     ResolvedJavaMethod rootMethod,
                     CompilationIdentifier compilationId,
                     CancellableCompileTask task) {
-        compiler.compileMethod(debug, optimizedCallTarget, rootMethod, compilationId, task);
+
+        CompilationWrapper<Void> compilation = new CompilationWrapper<Void>(getDebugOutputDirectory()) {
+
+            @Override
+            public String toString() {
+                return optimizedCallTarget.toString();
+            }
+
+            @Override
+            protected DebugContext createRetryDebugContext(OptionValues options) {
+                return openDebugContext(options, compilationId, optimizedCallTarget);
+            }
+
+            @Override
+            protected Void handleException(Throwable t) {
+                return null;
+            }
+
+            @Override
+            protected Void performCompilation(DebugContext debug) {
+                compiler.compileMethod(debug, optimizedCallTarget, rootMethod, compilationId, task);
+                return null;
+            }
+        };
+        compilation.run(initialDebug);
     }
 
     /**

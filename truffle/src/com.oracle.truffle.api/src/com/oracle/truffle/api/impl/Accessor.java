@@ -118,6 +118,8 @@ public abstract class Accessor {
 
         public abstract Object importSymbol(Object vmObject, Env env, String symbolName);
 
+        public abstract Object lookupSymbol(Object vmObject, Env env, LanguageInfo language, String symbolName);
+
         public abstract boolean isMimeTypeSupported(Object languageShared, String mimeType);
 
         public abstract void registerDebugger(Object vm, Object debugger);
@@ -146,6 +148,8 @@ public abstract class Accessor {
 
         public abstract Env getEnvForInstrument(LanguageInfo language);
 
+        public abstract LanguageInfo getObjectLanguage(Object obj, Object vmObject);
+
         public abstract Object contextReferenceGet(Object reference);
 
         public abstract boolean isDisposed(Object vmInstance);
@@ -169,6 +173,10 @@ public abstract class Accessor {
         public abstract Object getVMFromLanguageObject(Object engineObject);
 
         public abstract OptionValues getCompilerOptionValues(RootNode rootNode);
+
+        public abstract Object lookupHostSymbol(Object vmObject, Env env, String symbolName);
+
+        public abstract boolean isHostAccessAllowed(Object vmObject, Env env);
 
     }
 
@@ -204,6 +212,8 @@ public abstract class Accessor {
         public abstract Object findMetaObject(Env env, Object value);
 
         public abstract SourceSection findSourceLocation(Env env, Object value);
+
+        public abstract boolean isObjectOfLanguage(Env env, Object value);
 
         public abstract Object getContext(Env env);
 
@@ -260,6 +270,8 @@ public abstract class Accessor {
         }
 
         public abstract OptionDescriptors describeOptions(Object instrumentationHandler, Object key, String requiredGroup);
+
+        public abstract Object getEngineInstrumenter(Object instrumentationHandler);
 
     }
 
@@ -381,7 +393,7 @@ public abstract class Accessor {
     }
 
     protected Accessor() {
-        if (!this.getClass().getName().startsWith("com.oracle.truffle.api")) {
+        if (!this.getClass().getName().startsWith("com.oracle.truffle.api") && !this.getClass().getName().startsWith("com.oracle.truffle.tck")) {
             throw new IllegalStateException();
         }
         if (this.getClass().getSimpleName().endsWith("API")) {
@@ -415,6 +427,8 @@ public abstract class Accessor {
         } else if (this.getClass().getSimpleName().endsWith("ScopeAccessor")) {
             // O.K.
         } else if (this.getClass().getSimpleName().endsWith("AccessorDebug")) {
+            // O.K.
+        } else if (this.getClass().getSimpleName().endsWith("TruffleTCKAccessor")) {
             // O.K.
         } else {
             SPI = this.engineSupport();

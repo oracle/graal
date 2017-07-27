@@ -24,6 +24,19 @@
  */
 package com.oracle.truffle.tck;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
+
+import org.graalvm.polyglot.Context;
+import org.junit.Test;
+import org.junit.runners.model.FrameworkMethod;
+import org.junit.runners.model.Statement;
+import org.junit.runners.model.TestClass;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -34,20 +47,11 @@ import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Function;
-import org.junit.Test;
-import org.junit.runners.model.FrameworkMethod;
-import org.junit.runners.model.Statement;
-import org.junit.runners.model.TestClass;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 import com.oracle.truffle.tck.TruffleRunner.RunWithPolyglotRule;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.PolyglotContext;
+import java.lang.reflect.Method;
+import java.util.Map;
+import org.junit.runners.model.FrameworkField;
 
 final class TruffleTestInvoker<T extends CallTarget> extends TVMCI.TestAccessor<T> {
 
@@ -111,18 +115,16 @@ final class TruffleTestInvoker<T extends CallTarget> extends TVMCI.TestAccessor<
 
         @Override
         public void evaluate() throws Throwable {
-            PolyglotContext prevContext = rule.context;
-            try (Engine engine = Engine.create()) {
-                try (PolyglotContext context = engine.createPolyglotContext()) {
-                    rule.context = context;
-                    context.exportSymbol("currentTestStatement", this);
-                    context.eval("truffletestinvoker", "");
-                    if (throwable != null) {
-                        throw throwable;
-                    }
-                } finally {
-                    rule.context = prevContext;
+            Context prevContext = rule.context;
+            try (Context context = Context.create()) {
+                rule.context = context;
+                context.exportSymbol("currentTestStatement", this);
+                context.eval("truffletestinvoker", "");
+                if (throwable != null) {
+                    throw throwable;
                 }
+            } finally {
+                rule.context = prevContext;
             }
         }
 
@@ -149,40 +151,75 @@ final class TruffleTestInvoker<T extends CallTarget> extends TVMCI.TestAccessor<
         super(testTvmci);
     }
 
-    private static int getWarmupIterations(FrameworkMethod method) {
-        TruffleRunner.Warmup warmup = method.getAnnotation(TruffleRunner.Warmup.class);
-        if (warmup != null) {
-            return warmup.value();
-        } else {
-            return 3;
+    private interface NodeConstructor extends Function<Object, RootNode> {
+    }
+
+    static class TruffleTestClass extends TestClass {
+
+        TruffleTestClass(Class<?> cls) {
+            super(cls);
+        }
+
+        @Override
+        protected void scanAnnotatedMembers(Map<Class<? extends Annotation>, List<FrameworkMethod>> methodsForAnnotations,
+                        Map<Class<? extends Annotation>, List<FrameworkField>> fieldsForAnnotations) {
+            super.scanAnnotatedMembers(methodsForAnnotations, fieldsForAnnotations);
+
+            for (List<FrameworkMethod> methods : methodsForAnnotations.values()) {
+                methods.replaceAll(m -> new TruffleFrameworkMethod(this, m.getMethod()));
+            }
         }
     }
 
-    private static RootNode[] createTestRootNodes(TestClass testClass, FrameworkMethod testMethod, Object test) {
-        int paramCount = testMethod.getMethod().getParameterCount();
-        if (paramCount == 0) {
-            // non-truffle test
-            return null;
+    private static class TruffleFrameworkMethod extends FrameworkMethod {
+
+        private final int warmupIterations;
+        private final NodeConstructor[] nodeConstructors;
+
+        TruffleFrameworkMethod(TestClass testClass, Method method) {
+            super(method);
+
+            int paramCount = method.getParameterCount();
+            if (paramCount == 0) {
+                // non-truffle test
+                nodeConstructors = null;
+            } else {
+                nodeConstructors = new NodeConstructor[paramCount];
+
+                for (int i = 0; i < paramCount; i++) {
+                    Inject testRootNode = findRootNodeAnnotation(method.getParameterAnnotations()[i]);
+                    nodeConstructors[i] = getNodeConstructor(testRootNode, testClass);
+                }
+            }
+
+            TruffleRunner.Warmup warmup = method.getAnnotation(TruffleRunner.Warmup.class);
+            if (warmup != null) {
+                warmupIterations = warmup.value();
+            } else {
+                warmupIterations = 3;
+            }
         }
 
-        RootNode[] testNodes = new RootNode[paramCount];
+        RootNode[] createTestRootNodes(Object test) {
+            if (nodeConstructors == null) {
+                // non-truffle test
+                return null;
+            }
 
-        for (int i = 0; i < paramCount; i++) {
-            Inject testRootNode = findRootNodeAnnotation(testMethod.getMethod().getParameterAnnotations()[i]);
-            Function<Object, RootNode> cons = getNodeConstructor(testRootNode, testClass);
-            testNodes[i] = cons.apply(test);
+            RootNode[] ret = new RootNode[nodeConstructors.length];
+            for (int i = 0; i < ret.length; i++) {
+                ret[i] = nodeConstructors[i].apply(test);
+            }
+            return ret;
         }
-
-        return testNodes;
     }
 
-    Statement createStatement(String testName, TestClass testClass, FrameworkMethod method, Object test) {
-        final RootNode[] testNodes = createTestRootNodes(testClass, method, test);
+    Statement createStatement(String testName, FrameworkMethod method, Object test) {
+        final TruffleFrameworkMethod truffleMethod = (TruffleFrameworkMethod) method;
+        final RootNode[] testNodes = truffleMethod.createTestRootNodes(test);
         if (testNodes == null) {
             return null;
         }
-
-        final int warmupIterations = getWarmupIterations(method);
 
         return new Statement() {
 
@@ -194,14 +231,14 @@ final class TruffleTestInvoker<T extends CallTarget> extends TVMCI.TestAccessor<
                 }
 
                 Object[] args = callTargets.toArray();
-                for (int i = 0; i < warmupIterations; i++) {
-                    method.invokeExplosively(test, args);
+                for (int i = 0; i < truffleMethod.warmupIterations; i++) {
+                    truffleMethod.invokeExplosively(test, args);
                 }
 
                 for (T callTarget : callTargets) {
                     finishWarmup(callTarget);
                 }
-                method.invokeExplosively(test, args);
+                truffleMethod.invokeExplosively(test, args);
             }
         };
     }
@@ -219,7 +256,7 @@ final class TruffleTestInvoker<T extends CallTarget> extends TVMCI.TestAccessor<
         return null;
     }
 
-    private static Function<Object, RootNode> getNodeConstructor(Inject annotation, TestClass testClass) {
+    private static NodeConstructor getNodeConstructor(Inject annotation, TestClass testClass) {
         Class<? extends RootNode> nodeClass = annotation.value();
         try {
             Constructor<? extends RootNode> cons = nodeClass.getConstructor(testClass.getJavaClass());

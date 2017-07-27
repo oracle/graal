@@ -26,11 +26,13 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
+import org.graalvm.compiler.options.EnumOptionKey.ValueHelp;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.UnmodifiableEconomicMap;
@@ -50,7 +52,7 @@ public class OptionValues {
     public OptionValues(OptionValues initialValues, UnmodifiableEconomicMap<OptionKey<?>, Object> extraPairs) {
         EconomicMap<OptionKey<?>, Object> map = newOptionMap();
         if (initialValues != null) {
-            map.putAll(initialValues.values);
+            map.putAll(initialValues.getMap());
         }
         initMap(map, extraPairs);
         this.values = map;
@@ -223,11 +225,20 @@ public class OptionValues {
             String help = desc.getHelp();
             if (desc.getOptionKey() instanceof EnumOptionKey) {
                 EnumOptionKey<?> eoption = (EnumOptionKey<?>) desc.getOptionKey();
-                String evalues = eoption.getAllValues().toString();
+                EnumSet<?> evalues = eoption.getAllValues();
+                String evaluesString = evalues.toString();
+                ValueHelp<?> valueHelp = eoption.getValueHelp();
                 if (help.length() > 0 && !help.endsWith(".")) {
                     help += ".";
                 }
-                help += " Valid values are: " + evalues.substring(1, evalues.length() - 1);
+                if (valueHelp == null) {
+                    help += " Valid values are: " + evaluesString.substring(1, evaluesString.length() - 1);
+                } else {
+                    for (Object o : evalues) {
+                        String vhelp = valueHelp.getHelp(o);
+                        help += "%n" + (vhelp == null ? o : vhelp);
+                    }
+                }
             }
             String name = namePrefix + e.getKey();
             String assign = containsKey(desc.optionKey) ? ":=" : "=";

@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.vm;
 
 import static com.oracle.truffle.api.vm.PolyglotImpl.engineError;
+import static com.oracle.truffle.api.vm.PolyglotImpl.isGuestInteropValue;
 import static com.oracle.truffle.api.vm.VMAccessor.JAVAINTEROP;
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 
@@ -89,7 +90,7 @@ final class PolyglotLanguageContextImpl implements VMObject {
         }
     }
 
-    void ensureInitialized() {
+    boolean ensureInitialized() {
         language.ensureInitialized();
 
         if (env == null) {
@@ -101,20 +102,22 @@ final class PolyglotLanguageContextImpl implements VMObject {
                                     context.err,
                                     context.in, new HashMap<>(), getOptionValues(), applicationArguments);
                     LANGUAGE.postInitEnv(env);
+                    return true;
                 }
             }
         }
+        return false;
     }
 
     OptionValues getOptionValues() {
         return optionValues;
     }
 
-    private void checkAccess() {
+    void checkAccess() {
         if (disposed) {
             throw new IllegalStateException(String.format("Context is already disposed for language %s.", language.getId()));
         }
-        boolean accessPermitted = language.isHost() || language.cache.isInternal() || context.singlePublicLanguage == null || context.singlePublicLanguage == language;
+        boolean accessPermitted = language.isHost() || language.cache.isInternal() || context.allowedPublicLanguages.contains(language.info.getId());
         if (!accessPermitted) {
             throw new IllegalStateException(String.format("Access to language '%s' is not permitted. ", language.getId()));
         }
@@ -144,15 +147,18 @@ final class PolyglotLanguageContextImpl implements VMObject {
         if (receiver instanceof Value) {
             Value receiverValue = (Value) receiver;
             PolyglotValueImpl argumentCache = (PolyglotValueImpl) context.engine.impl.getAPIAccess().getImpl(receiverValue);
+            Thread valueThread = argumentCache.languageContext.context.boundThread.get();
+            Thread currentThread = context.boundThread.get();
+
             if (argumentCache.languageContext.getEngine() != getEngine()) {
                 throw engineError(new IllegalArgumentException(String.format("Values cannot be passed from one engine to another. " +
                                 "The current value originates from engine 0x%s and the argument originates from engine 0x%s.",
                                 Integer.toHexString(getEngine().hashCode()), Integer.toHexString(argumentCache.languageContext.getEngine().hashCode()))));
-            } else if (argumentCache.languageContext.context.boundThread != context.boundThread) {
-                throw engineError(new IllegalArgumentException(String.format("A given value argument must be bound to the same thread. " +
+            } else if (valueThread != null && currentThread != null && valueThread != currentThread) {
+                throw engineError(new IllegalArgumentException(String.format("A given value argument must be bound to the same or no thread. " +
                                 "The current value is bound to thread %s and the argument is bound to %s." +
                                 "The involved languages %s and %s don't support multi-threaded access of values.",
-                                context.boundThread, argumentCache.languageContext.context.boundThread,
+                                context.boundThread, valueThread,
                                 language.api.getName(), argumentCache.languageContext.language.api.getName())));
             }
             return context.engine.impl.getAPIAccess().getReceiver(receiverValue);
@@ -200,6 +206,21 @@ final class PolyglotLanguageContextImpl implements VMObject {
             args[i] = toHostValue(values[i]);
         }
         return args;
+    }
+
+    Object lookupGuest(String symbolName) {
+        ensureInitialized();
+        return LANGUAGE.lookupSymbol(env, symbolName);
+    }
+
+    Value lookupHost(String symbolName) {
+        Object symbol = lookupGuest(symbolName);
+        Value resolvedSymbol = null;
+        if (symbol != null) {
+            assert isGuestInteropValue(symbol);
+            resolvedSymbol = toHostValue(symbol);
+        }
+        return resolvedSymbol;
     }
 
 }

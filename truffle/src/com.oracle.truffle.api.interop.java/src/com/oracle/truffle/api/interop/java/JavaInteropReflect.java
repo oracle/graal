@@ -56,13 +56,13 @@ final class JavaInteropReflect {
     private static final Object[] EMPTY = {};
 
     @CompilerDirectives.TruffleBoundary
-    static Object readField(JavaObject object, String name) throws NoSuchFieldError, SecurityException, IllegalArgumentException, IllegalAccessException {
+    static Object readField(JavaObject object, String name) {
         Object obj = object.obj;
         final boolean onlyStatic = object.isClass();
         JavaClassDesc classDesc = JavaClassDesc.forClass(object.clazz);
         Field field = classDesc.lookupField(name, onlyStatic);
         if (field != null) {
-            Object val = field.get(obj);
+            Object val = getField(obj, field);
             return JavaInterop.toGuestValue(val, object.languageContext);
         } else {
             JavaMethodDesc method = classDesc.lookupMethod(name, onlyStatic);
@@ -182,7 +182,7 @@ final class JavaInteropReflect {
         }
 
         JavaClassDesc classDesc = JavaClassDesc.forClass(object.clazz);
-        return classDesc.lookupMethod(name);
+        return classDesc.lookupMethod(name, object.isClass());
     }
 
     private JavaInteropReflect() {
@@ -196,11 +196,20 @@ final class JavaInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static void setField(Object obj, Field f, Object convertedValue) {
+    static void setField(Object obj, Field field, Object value) {
         try {
-            f.set(obj, convertedValue);
+            field.set(obj, value);
         } catch (IllegalAccessException ex) {
-            throw new RuntimeException(ex);
+            throw new IllegalStateException(ex);
+        }
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    static Object getField(Object obj, Field field) {
+        try {
+            return field.get(obj);
+        } catch (IllegalAccessException e) {
+            throw new IllegalStateException(e);
         }
     }
 
@@ -628,27 +637,5 @@ final class JavaInteropReflect {
         }
         noUnderscore(sb.append('L'), type.getName());
         sb.append("_2");
-    }
-
-    static String findFunctionalInterfaceMethodName(final Class<?> clazz) {
-        if (TruffleOptions.AOT) {
-            return null;
-        }
-
-        for (final Class<?> iface : clazz.getInterfaces()) {
-            if (iface.isAnnotationPresent(FunctionalInterface.class)) {
-                for (final Method m : iface.getMethods()) {
-                    if (Modifier.isAbstract(m.getModifiers())) {
-                        return m.getName();
-                    }
-                }
-            }
-        }
-
-        Class<?> superclass = clazz.getSuperclass();
-        if (superclass != null) {
-            return findFunctionalInterfaceMethodName(superclass);
-        }
-        return null;
     }
 }

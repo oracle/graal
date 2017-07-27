@@ -466,7 +466,8 @@ public abstract class Message {
      * target} created for this message accepts a boolean argument specifying whether internal keys
      * should be included. Internal keys are extra property keys that are a part of the object, but
      * are not provided among ordinary keys. They may even not correspond to anything what is an
-     * explicit part of the guest language representation.
+     * explicit part of the guest language representation. An example of such internal values are
+     * internal slots in ECMAScript.
      * <p>
      * The return value from using this message is another {@link TruffleObject} that responds to
      * {@link #HAS_SIZE} message and its indexes 0 to {@link #GET_SIZE} - 1 contain {@link String}

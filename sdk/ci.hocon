@@ -13,8 +13,27 @@ sdkGate : ${sdkCommon} {
 }
 
 builds += [
-  ${linux-amd64}     ${java8} ${sdkGate} ${eclipse} ${jdt} { name: "gate-sdk-linux-8"   },
-  ${linux-amd64}     ${java9} ${sdkGate} ${eclipse}        { name: "gate-sdk-linux-9"   },
-  ${solaris-sparcv9} ${java8} ${sdkGate}                   { name: "gate-sdk-solaris-8" },
-  ${darwin-amd64}    ${java8} ${sdkGate}                   { name: "gate-sdk-darwin-8"  },
+  ${linux-amd64}     ${openjdk8} ${sdkGate} ${eclipse} ${jdt} { name: "gate-sdk-linux-8"   },
+  ${linux-amd64}     ${labsjdk9} ${sdkGate} ${eclipse}        { name: "gate-sdk-linux-9"   },
+  ${solaris-sparcv9} ${labsjdk8} ${sdkGate}                   { name: "gate-sdk-solaris-8" },
+  ${darwin-amd64}    ${labsjdk8} ${sdkGate}                   { name: "gate-sdk-darwin-8"  },
+  ${linux-amd64}     ${labsjdk8} ${sdkCommon} {
+    run : [
+        ["mx", "build"],
+        ["mx", "javadoc"],
+        ["zip", "-r", "javadoc.zip", "javadoc"],
+        ["git", "fetch", "origin", "gh-pages"],
+        ["git", "checkout", "-f", "FETCH_HEAD", "-B", "gh-pages"],
+        ["rm", "-rf", "javadoc"],
+        ["git", "status" ],
+        ["unzip", "-o", "javadoc.zip"],
+        ["git", "add", "javadoc"],
+        ["git", "config", "user.name", "Javadoc Publisher"],
+        ["git", "config", "user.email", "graal-dev@openjdk.java.net"],
+        ["git", "commit", "-m", [ "echo", "Javadoc as of", [ "date", "+%Y/%m/%d" ] ], "javadoc" ],
+        ["git", "push", "origin", "gh-pages"],
+    ],
+    targets : [post-merge],
+    name: "sdk-publish-javadoc"
+  },
 ]

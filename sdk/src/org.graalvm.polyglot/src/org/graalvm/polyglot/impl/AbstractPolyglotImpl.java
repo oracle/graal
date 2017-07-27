@@ -24,6 +24,8 @@
  */
 package org.graalvm.polyglot.impl;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -35,13 +37,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
-import org.graalvm.polyglot.PolyglotContext;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Source;
@@ -67,9 +69,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Engine newEngine(AbstractEngineImpl impl);
 
-        public abstract Context newContext(AbstractContextImpl impl, Language languageImpl);
-
-        public abstract PolyglotContext newPolyglotContext(Engine engine, AbstractContextImpl impl);
+        public abstract Context newContext(AbstractContextImpl impl);
 
         public abstract PolyglotException newLanguageException(String message, AbstractExceptionImpl impl);
 
@@ -79,7 +79,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Value newValue(Object value, AbstractValueImpl impl);
 
-        public abstract Source newSource(Object impl);
+        public abstract Source newSource(String language, Object impl);
 
         public abstract SourceSection newSourceSection(Source source, Object impl);
 
@@ -110,7 +110,7 @@ public abstract class AbstractPolyglotImpl {
     }
 
     public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                    long maximumAllowedAllocationBytes, boolean useSystemProperties);
+                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine);
 
     public abstract AbstractSourceImpl getSourceImpl();
 
@@ -125,7 +125,7 @@ public abstract class AbstractPolyglotImpl {
             this.engineImpl = engineImpl;
         }
 
-        public abstract Source build(Object origin, URI uri, String name, boolean interactive, boolean internal);
+        public abstract Source build(String language, Object origin, URI uri, String name, String content, boolean interactive, boolean internal) throws IOException;
 
         public abstract String getName(Object impl);
 
@@ -164,6 +164,10 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean equals(Object impl, Object otherImpl);
 
         public abstract boolean isInternal(Object impl);
+
+        public abstract String findLanguage(File file) throws IOException;
+
+        public abstract String findLanguage(String mimeType);
     }
 
     public abstract static class AbstractSourceSectionImpl {
@@ -210,13 +214,13 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void exportSymbol(String key, Object value);
 
-        public abstract void initializeLanguage(AbstractLanguageImpl languageImpl);
+        public abstract boolean initializeLanguage(AbstractLanguageImpl languageImpl);
 
-        public abstract Value eval(Object languageImpl, Object sourceImpl);
+        public abstract Value eval(String language, Object sourceImpl);
 
         public abstract Engine getEngineImpl();
 
-        public abstract void close();
+        public abstract void close(boolean interuptExecution);
 
     }
 
@@ -232,7 +236,7 @@ public abstract class AbstractPolyglotImpl {
 
         // Runtime
 
-        public abstract void ensureClosed(boolean ignoreCloseFailure);
+        public abstract void ensureClosed(boolean cancelIfExecuting, boolean ignoreCloseFailure);
 
         public abstract Map<String, Instrument> getInstruments();
 
@@ -240,11 +244,10 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract String getVersion();
 
-        public abstract Language detectLanguage(Object sourceImpls);
-
-        public abstract PolyglotContext createPolyglotContext(OutputStream out, OutputStream err, InputStream in, Map<String, String[]> arguments, Map<String, String> options);
-
         public abstract OptionDescriptors getOptions();
+
+        public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
+                        Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages);
 
     }
 
@@ -256,7 +259,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean isInternalError();
 
-        public abstract boolean isTimeout();
+        public abstract boolean isCancelled();
 
         public abstract boolean isExit();
 
@@ -332,9 +335,9 @@ public abstract class AbstractPolyglotImpl {
             Objects.requireNonNull(engineImpl);
         }
 
-        public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, Map<String, String> options, Map<String, String[]> arguments);
-
         public abstract String getName();
+
+        public abstract String getImplementationName();
 
         public abstract boolean isInteractive();
 

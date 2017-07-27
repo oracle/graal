@@ -1,5 +1,5 @@
 
-x52.c2 : {
+x52.c2 : ${openjdk8} {
   capabilities: [linux, x52, no_frequency_scaling]
   environment : {
     XMX          : "64g"
@@ -22,4 +22,3 @@ builds += [
   ${x52.c2} ${bench-specjbb2015}                  { targets: [weekly], name: "bench-compiler-specjbb2015-linux-x52-c2" }
 #  ${x52.c2} ${bench-micros-graal}                 { targets: [weekly], name: "bench-compiler-jmh-micros-graal-linux-x52-c2" }
 ]
-

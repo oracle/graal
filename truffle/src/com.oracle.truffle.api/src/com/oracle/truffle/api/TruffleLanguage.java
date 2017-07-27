@@ -207,6 +207,13 @@ public abstract class TruffleLanguage<C> {
         String name();
 
         /**
+         * Unique name of your language implementation.
+         *
+         * @return the implementation name of your language
+         */
+        String implementationName() default "";
+
+        /**
          * Unique string identifying the language version. This name will be exposed to users via
          * the {@link com.oracle.truffle.api.vm.PolyglotEngine.Language#getVersion()} getter.
          *
@@ -265,7 +272,7 @@ public abstract class TruffleLanguage<C> {
      * {@link Env#parse(com.oracle.truffle.api.source.Source, java.lang.String...) calls into other
      * languages} and assuming your language is already initialized and others can see it would be
      * wrong - until you return from this method, the initialization isn't over. Should there be a
-     * need to perform complex initializaton, do it by overriding the
+     * need to perform complex initialization, do it by overriding the
      * {@link #initializeContext(java.lang.Object)} method.
      *
      * @param env the environment the language is supposed to operate in
@@ -278,7 +285,7 @@ public abstract class TruffleLanguage<C> {
      * Perform any complex initialization. The
      * {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env) } factory method shouldn't
      * do any complex operations. Just create the instance of the context, let the runtime system
-     * register it properly. Should there be a need to perform complex initializaton, override this
+     * register it properly. Should there be a need to perform complex initialization, override this
      * method and let the runtime call it <em>later</em> to finish any <em>post initialization</em>
      * actions. Example:
      *
@@ -563,7 +570,7 @@ public abstract class TruffleLanguage<C> {
      * @param node node where execution halted, {@code null} if no execution context
      * @param mFrame frame where execution halted, {@code null} if no execution context
      * @return result of running the code in the context, or at top level if no execution context.
-     * @throws Exception if the evaluation cannot be performed
+     * @throws IOException if the evaluation cannot be performed
      * @since 0.8 or earlier
      * @deprecated override {@link #parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest)}
      *             and use {@link ParsingRequest#getFrame()} to obtain the current frame information
@@ -623,7 +630,7 @@ public abstract class TruffleLanguage<C> {
      * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setIn input} streams. When
      * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval} is called over an
      * {@link Source#isInteractive() interactive source} of a language that controls its interactive
-     * behavior, it is the reponsibility of the language itself to print the result to
+     * behavior, it is the responsibility of the language itself to print the result to
      * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut(OutputStream) standard output}
      * or {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setErr(OutputStream) error output}
      * and/or access {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setIn(InputStream)
@@ -674,7 +681,12 @@ public abstract class TruffleLanguage<C> {
      * value allocations}
      * <p>
      * When no meta-object is known, return <code>null</code>. The default implementation returns
-     * <code>null</code>.
+     * <code>null</code>. The meta-object should be an interop value. An interop value can be either
+     * a <code>TruffleObject</code> (e.g. a native object from the other language) to support
+     * interoperability between languages or a {@link String}.
+     * <p>
+     * It can be beneficial for performance to return the same value for each guest type (i.e. cache
+     * the meta-objects per context).
      *
      * @param context the execution context
      * @param value a value to find the meta-object of
@@ -885,8 +897,57 @@ public abstract class TruffleLanguage<C> {
          * @return object representing the symbol or <code>null</code> if it does not exist
          * @since 0.8 or earlier
          */
+        @TruffleBoundary
         public Object importSymbol(String symbolName) {
             return AccessAPI.engineAccess().importSymbol(vmObject, this, symbolName);
+        }
+
+        /**
+         * Looks up symbol in the top-most scope of the language. Returns <code>null</code> if no
+         * symbol was found.
+         * <p>
+         * The returned object can either be <code>TruffleObject</code> (e.g. a native object from
+         * the other language) to support interoperability between languages, {@link String} or one
+         * of the Java primitive wrappers ( {@link Integer}, {@link Double}, {@link Byte},
+         * {@link Boolean}, etc.).
+         * <p>
+         *
+         * @param language the language too lookup. must not be null.
+         * @param symbolName the name of the symbol in the top-most scope.
+         * @since 0.27
+         */
+        @TruffleBoundary
+        public Object lookupSymbol(@SuppressWarnings("hiding") LanguageInfo language, String symbolName) {
+            return AccessAPI.engineAccess().lookupSymbol(vmObject, this, language, symbolName);
+        }
+
+        /**
+         * Looks up a Java class in the top-most scope the host environment. Returns
+         * <code>null</code> if no symbol was found.
+         * <p>
+         * The returned object can either be <code>TruffleObject</code> (e.g. a native object from
+         * the other language) to support interoperability between languages, {@link String} or one
+         * of the Java primitive wrappers ( {@link Integer}, {@link Double}, {@link Byte},
+         * {@link Boolean}, etc.).
+         * <p>
+         *
+         * @param symbolName the name of the symbol in the the host language.
+         * @since 0.27
+         */
+        @TruffleBoundary
+        public Object lookupHostSymbol(String symbolName) {
+            return AccessAPI.engineAccess().lookupHostSymbol(vmObject, this, symbolName);
+        }
+
+        /**
+         * Returns <code>true</code> if host access is generally allowed. If this method returns
+         * <code>false</code> then {@link #lookupHostSymbol(String)} will always fail.
+         *
+         * @since 0.27
+         */
+        @TruffleBoundary
+        public boolean isHostLookupAllowed() {
+            return AccessAPI.engineAccess().isHostAccessAllowed(vmObject, this);
         }
 
         /**
@@ -928,6 +989,7 @@ public abstract class TruffleLanguage<C> {
          * @param value the value to export for
          * @since 0.27
          */
+        @TruffleBoundary
         public void exportSymbol(String symbolName, Object value) {
             AccessAPI.engineAccess().exportSymbol(vmObject, symbolName, value);
         }
@@ -942,6 +1004,7 @@ public abstract class TruffleLanguage<C> {
          * @return a boolean that indicates if the MIME type is supported
          * @since 0.11
          */
+        @TruffleBoundary
         public boolean isMimeTypeSupported(String mimeType) {
             checkDisposed();
             return AccessAPI.engineAccess().isMimeTypeSupported(vmObject, mimeType);
@@ -961,6 +1024,7 @@ public abstract class TruffleLanguage<C> {
          * @return the call target representing the parsed result
          * @since 0.8 or earlier
          */
+        @TruffleBoundary
         public CallTarget parse(Source source, String... argumentNames) {
             CompilerAsserts.neverPartOfCompilation();
             checkDisposed();
@@ -974,6 +1038,7 @@ public abstract class TruffleLanguage<C> {
          * @return reader, never <code>null</code>
          * @since 0.8 or earlier
          */
+        @TruffleBoundary
         public InputStream in() {
             checkDisposed();
             return in;
@@ -986,6 +1051,7 @@ public abstract class TruffleLanguage<C> {
          * @return writer, never <code>null</code>
          * @since 0.8 or earlier
          */
+        @TruffleBoundary
         public OutputStream out() {
             checkDisposed();
             return out;
@@ -998,6 +1064,7 @@ public abstract class TruffleLanguage<C> {
          * @return writer, never <code>null</code>
          * @since 0.8 or earlier
          */
+        @TruffleBoundary
         public OutputStream err() {
             checkDisposed();
             return err;
@@ -1017,6 +1084,7 @@ public abstract class TruffleLanguage<C> {
          * @return instance of T or <code>null</code> if there is no such service available
          * @since 0.12
          */
+        @TruffleBoundary
         public <T> T lookup(Class<T> type) {
             checkDisposed();
             for (Object obj : services) {
@@ -1040,6 +1108,7 @@ public abstract class TruffleLanguage<C> {
          * @since 0.26
          */
         @SuppressWarnings("static-method")
+        @TruffleBoundary
         public <S> S lookup(InstrumentInfo instrument, Class<S> type) {
             return AccessAPI.engineAccess().lookup(instrument, type);
         }
@@ -1056,6 +1125,7 @@ public abstract class TruffleLanguage<C> {
          * @return the registered service or <code>null</code> if none is found
          * @since 0.26
          */
+        @TruffleBoundary
         public <S> S lookup(@SuppressWarnings("hiding") LanguageInfo language, Class<S> type) {
             if (this.language == language) {
                 throw new IllegalArgumentException("Cannot request services from the current language.");
@@ -1071,6 +1141,7 @@ public abstract class TruffleLanguage<C> {
          *
          * @since 0.26
          */
+        @TruffleBoundary
         public Map<String, LanguageInfo> getLanguages() {
             return AccessAPI.engineAccess().getLanguages(vmObject);
         }
@@ -1082,6 +1153,7 @@ public abstract class TruffleLanguage<C> {
          *
          * @since 0.26
          */
+        @TruffleBoundary
         public Map<String, InstrumentInfo> getInstruments() {
             return AccessAPI.engineAccess().getInstruments(vmObject);
         }
@@ -1113,6 +1185,7 @@ public abstract class TruffleLanguage<C> {
          * @return read-only view of configuration options for this language
          * @since 0.11
          */
+        @TruffleBoundary
         public Map<String, Object> getConfig() {
             checkDisposed();
             return config;
@@ -1144,6 +1217,11 @@ public abstract class TruffleLanguage<C> {
         SourceSection findSourceLocation(Object obj) {
             final Object rawValue = AccessAPI.engineAccess().findOriginalObject(obj);
             return spi.findSourceLocation(context, rawValue);
+        }
+
+        boolean isObjectOfLanguage(Object obj) {
+            final Object rawValue = AccessAPI.engineAccess().findOriginalObject(obj);
+            return spi.isObjectOfLanguage(rawValue);
         }
 
         void dispose() {
@@ -1500,6 +1578,11 @@ public abstract class TruffleLanguage<C> {
         @Override
         public SourceSection findSourceLocation(Env env, Object obj) {
             return env.findSourceLocation(obj);
+        }
+
+        @Override
+        public boolean isObjectOfLanguage(Env env, Object value) {
+            return env.isObjectOfLanguage(value);
         }
 
         @Override

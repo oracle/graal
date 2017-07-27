@@ -53,10 +53,9 @@ suite = {
 
     "DACAPO" : {
       "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-bach.jar",
-        "http://softlayer.dl.sourceforge.net/project/dacapobench/9.12-bach/dacapo-9.12-bach.jar",
+        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-bach-patched.jar",
       ],
-      "sha1" : "2626a9546df09009f6da0df854e6dc1113ef7dd4",
+      "sha1" : "e39957904b7e79caf4fa54f30e8e4ee74d4e9e37",
     },
 
     "DACAPO_SCALA" : {
@@ -84,8 +83,8 @@ suite = {
     },
 
     "IDEALGRAPHVISUALIZER_DIST" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/idealgraphvisualizer/idealgraphvisualizer-21.zip"],
-      "sha1" : "8d4721a223ad1b6a6d2d2b7e40f2000a856e589d",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/idealgraphvisualizer/idealgraphvisualizer-47.zip"],
+      "sha1" : "36bb490f20460820d2f8de52003697fdc970b462",
     },
 
     "JOL_INTERNALS" : {
@@ -332,7 +331,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.compiler.core.aarch64",
         "org.graalvm.compiler.hotspot",
         "org.graalvm.compiler.replacements.aarch64",
       ],
@@ -696,7 +694,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.replacements",
-        "org.graalvm.compiler.lir.aarch64",
+        "org.graalvm.compiler.core.aarch64",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",
@@ -1050,7 +1048,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.debug",
-        "sdk:WORD_API",
+        "sdk:GRAAL_SDK",
       ],
       "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -1310,7 +1308,7 @@ suite = {
         "org.graalvm.compiler.graph",
       ],
       "distDependencies" : [
-        "sdk:WORD_API",
+        "sdk:GRAAL_SDK",
         "JVMCI_API",
         "GRAAL_NODEINFO",
         "GRAAL_OPTIONS",
@@ -1476,7 +1474,6 @@ suite = {
       "overlaps" : [
         "GRAAL_OPTIONS",
         "GRAAL_NODEINFO",
-        "sdk:WORD_API",
         "GRAAL_API",
         "GRAAL_COMPILER",
         "GRAAL_RUNTIME",
@@ -1512,6 +1509,7 @@ suite = {
         "org.graalvm.compiler.truffle.hotspot.aarch64",
       ],
       "distDependencies" : [
+        "sdk:GRAAL_SDK",
         "truffle:TRUFFLE_API",
       ],
       "exclude" : [

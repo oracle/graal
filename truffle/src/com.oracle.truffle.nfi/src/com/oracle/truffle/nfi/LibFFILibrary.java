@@ -31,10 +31,12 @@ import java.util.Map;
 
 final class LibFFILibrary implements TruffleObject {
 
-    static final LibFFILibrary DEFAULT = new LibFFILibrary(0);
-
     protected final long handle;
     private Map<String, LibFFIFunction> symbols;
+
+    static LibFFILibrary createDefault() {
+        return new LibFFILibrary(0);
+    }
 
     static LibFFILibrary create(long handle) {
         assert handle != 0;
@@ -47,21 +49,14 @@ final class LibFFILibrary implements TruffleObject {
         this.handle = handle;
     }
 
-    public LibFFISymbol lookupSymbol(String name) {
-        return LibFFISymbol.create(this, NativeAccess.lookup(handle, name));
-    }
-
     @Override
     public ForeignAccess getForeignAccess() {
         return LibFFILibraryMessageResolutionForeign.ACCESS;
     }
 
     LibFFILibrary register(Map<String, LibFFIFunction> functions) {
-        if (this.symbols == null) {
-            this.symbols = functions;
-        } else {
-            this.symbols.putAll(functions);
-        }
+        assert this.symbols == null;
+        this.symbols = functions;
         return this;
     }
 
@@ -80,7 +75,7 @@ final class LibFFILibrary implements TruffleObject {
 
         @Override
         protected void destroy() {
-            NativeAccess.freeLibrary(handle);
+            NFIContext.freeLibrary(handle);
         }
     }
 }

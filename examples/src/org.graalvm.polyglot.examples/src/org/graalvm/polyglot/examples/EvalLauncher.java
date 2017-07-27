@@ -7,10 +7,10 @@ import java.util.Map;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
-import org.graalvm.polyglot.PolyglotContext;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
@@ -70,8 +70,7 @@ public class EvalLauncher {
             return;
         }
 
-        Engine engine = Engine.newBuilder().setOptions(options).build();
-        PolyglotContext polyglot = engine.createPolyglotContext();
+        Context context = Context.newBuilder().options(options).build();
 
         for (String script : scripts) {
             int index = script.indexOf(':');
@@ -80,7 +79,7 @@ public class EvalLauncher {
                 return;
             }
             String languageId = script.substring(0, index);
-            if (engine.getLanguage(languageId) == null) {
+            if (context.getEngine().getLanguages().containsKey(languageId)) {
                 System.err.println(String.format("Error: Invalid language %s provided.\nUse --help for usage information.", languageId));
                 return;
             }
@@ -88,7 +87,7 @@ public class EvalLauncher {
 
             System.out.println("Script:       " + script + ": ");
             try {
-                Value evalValue = polyglot.eval(languageId, code);
+                Value evalValue = context.eval(languageId, code);
                 System.out.println("Result type:  " + evalValue.getMetaObject());
                 System.out.println("Result value: " + evalValue);
             } catch (PolyglotException e) {

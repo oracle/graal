@@ -105,6 +105,20 @@ public class JavaInteropTest {
     }
 
     @Test
+    public void conversionToClass2() {
+        TruffleObject expected = JavaInterop.asTruffleObject(Class.class);
+        TruffleObject computed = JavaInterop.toJavaClass(JavaInterop.asTruffleObject(Data.class));
+        assertEquals("Both class objects are the same", expected, computed);
+    }
+
+    @Test
+    public void conversionToClassNull() {
+        TruffleObject expected = JavaInterop.asTruffleObject(null);
+        TruffleObject computed = JavaInterop.toJavaClass(expected);
+        assertEquals(expected, computed);
+    }
+
+    @Test
     public void doubleWrap() {
         data.x = 32;
         data.y = 10.1;
@@ -522,16 +536,15 @@ public class JavaInteropTest {
     @Test
     public void functionalInterfaceOverridingObjectMethods() throws Exception {
         assertTrue("yes, it is", isJavaFunctionalInterface(FunctionalWithObjectMethodOverrides.class));
-        TruffleObject object = JavaInterop.asTruffleObject((FunctionalWithObjectMethodOverrides) (args) -> null);
+        TruffleObject object = JavaInterop.asTruffleObject((FunctionalWithObjectMethodOverrides) (args) -> args.length >= 1 ? args[0] : null);
         TruffleObject keysObject = ForeignAccess.sendKeys(Message.KEYS.createNode(), object);
         List<?> keyList = JavaInterop.asJavaObject(List.class, keysObject);
         assertArrayEquals(new Object[]{"call"}, keyList.toArray());
+        assertEquals(42, ForeignAccess.sendExecute(Message.createExecute(1).createNode(), object, 42));
     }
 
     @FunctionalInterface
     public interface FunctionalWithObjectMethodOverrides {
-        Object call(Object... args);
-
         @Override
         boolean equals(Object obj);
 
@@ -540,6 +553,8 @@ public class JavaInteropTest {
 
         @Override
         String toString();
+
+        Object call(Object... args);
     }
 
     @Test
@@ -760,6 +775,36 @@ public class JavaInteropTest {
         assertTrue(KeyInfo.isReadable(keyInfo));
         assertTrue(KeyInfo.isWritable(keyInfo));
         assertTrue(KeyInfo.isInvocable(keyInfo));
+    }
+
+    @Test
+    public void testSystemMethod() throws InteropException {
+        TruffleObject system = JavaInterop.asTruffleObject(System.class);
+        Object value = ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), system, "getProperty", "file.separator");
+        assertThat(value, CoreMatchers.instanceOf(String.class));
+        assertThat(value, CoreMatchers.anyOf(CoreMatchers.equalTo("/"), CoreMatchers.equalTo("\\")));
+
+        Object getProperty = ForeignAccess.sendRead(Message.READ.createNode(), system, "getProperty");
+        assertThat(getProperty, CoreMatchers.instanceOf(TruffleObject.class));
+        assertTrue("IS_EXECUTABLE", ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), (TruffleObject) getProperty));
+        value = ForeignAccess.sendExecute(Message.createExecute(1).createNode(), (TruffleObject) getProperty, "file.separator");
+        assertThat(value, CoreMatchers.instanceOf(String.class));
+        assertThat(value, CoreMatchers.anyOf(CoreMatchers.equalTo("/"), CoreMatchers.equalTo("\\")));
+    }
+
+    @Test
+    public void testExecuteClass() {
+        TruffleObject hashMapClass = JavaInterop.asTruffleObject(HashMap.class);
+        assertThrowsExceptionWithCause(() -> ForeignAccess.sendExecute(Message.createExecute(0).createNode(), hashMapClass), UnsupportedMessageException.class);
+        assertFalse("IS_EXECUTABLE", ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), hashMapClass));
+    }
+
+    @Test
+    public void testNewClass() throws InteropException {
+        TruffleObject hashMapClass = JavaInterop.asTruffleObject(HashMap.class);
+        Object hashMap = ForeignAccess.sendNew(Message.createNew(0).createNode(), hashMapClass);
+        assertThat(hashMap, CoreMatchers.instanceOf(TruffleObject.class));
+        assertTrue(JavaInterop.isJavaObject(HashMap.class, (TruffleObject) hashMap));
     }
 
     public static final class TestJavaObject {

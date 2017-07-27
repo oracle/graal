@@ -121,7 +121,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @Override
     public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                    long maximumAllowedAllocationBytes, boolean useSystemProperties) {
+                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine) {
         ensureInitialized();
         OutputStream resolvedOut = out == null ? System.out : out;
         OutputStream resolvedErr = err == null ? System.err : err;
@@ -131,7 +131,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         DispatchOutputStream dispatchErr = INSTRUMENT.createDispatchOutput(resolvedErr);
         ClassLoader contextClassLoader = TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader();
         PolyglotEngineImpl impl = new PolyglotEngineImpl(this, dispatchOut, dispatchErr, resolvedIn, arguments, timeout, timeoutUnit, sandbox, useSystemProperties,
-                        contextClassLoader);
+                        contextClassLoader, boundEngine);
         Engine engine = getAPIAccess().newEngine(impl);
         impl.api = engine;
         return engine;
@@ -323,12 +323,12 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public Map<String, LanguageInfo> getLanguages(Object vmObject) {
-            return getEngine(vmObject).idToLanguageInfo;
+            return getEngine(vmObject).idToInternalLanguageInfo;
         }
 
         @Override
         public Map<String, InstrumentInfo> getInstruments(Object vmObject) {
-            return getEngine(vmObject).idToInstrumentInfo;
+            return getEngine(vmObject).idToInternalInstrumentInfo;
         }
 
         private static PolyglotEngineImpl getEngine(Object vmObject) throws AssertionError {
@@ -344,6 +344,31 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             PolyglotLanguageContextImpl languageContext = PolyglotContextImpl.requireContext().contexts[language.index];
             languageContext.ensureInitialized();
             return languageContext.env;
+        }
+
+        @Override
+        public LanguageInfo getObjectLanguage(Object obj, Object vmObject) {
+            PolyglotLanguageContextImpl[] contexts = PolyglotContextImpl.requireContext().contexts;
+            for (PolyglotLanguageContextImpl context : contexts) {
+                PolyglotLanguageImpl language = context.language;
+                if (!language.initialized) {
+                    continue;
+                }
+                if (language.cache.singletonLanguage instanceof HostLanguage) {
+                    // The HostLanguage might not have context created even when JavaObjects exist
+                    // Check it separately:
+                    if (((HostLanguage) language.cache.singletonLanguage).isObjectOfLanguage(obj)) {
+                        return language.info;
+                    } else {
+                        continue;
+                    }
+                }
+                Env env = context.env;
+                if (env != null && LANGUAGE.isObjectOfLanguage(env, obj)) {
+                    return language.info;
+                }
+            }
+            return null;
         }
 
         @Override
@@ -406,6 +431,25 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             PolyglotLanguageContextImpl context = (PolyglotLanguageContextImpl) vmObject;
             context.language.engine.checkState();
             return context.context.importSymbolFromLanguage(symbolName);
+        }
+
+        @Override
+        public Object lookupSymbol(Object vmObject, Env env, LanguageInfo language, String symbolName) {
+            PolyglotLanguageContextImpl context = (PolyglotLanguageContextImpl) vmObject;
+            int index = context.context.engine.idToLanguage.get(language.getId()).index;
+            return context.context.contexts[index].lookupGuest(symbolName);
+        }
+
+        @Override
+        public Object lookupHostSymbol(Object vmObject, Env env, String symbolName) {
+            PolyglotLanguageContextImpl context = (PolyglotLanguageContextImpl) vmObject;
+            return context.context.getHostContext().lookupGuest(symbolName);
+        }
+
+        @Override
+        public boolean isHostAccessAllowed(Object vmObject, Env env) {
+            PolyglotLanguageContextImpl context = (PolyglotLanguageContextImpl) vmObject;
+            return context.context.hostAccessAllowed;
         }
 
         @Override

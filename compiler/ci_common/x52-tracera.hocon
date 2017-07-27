@@ -16,21 +16,21 @@ x52.tracera-bu-tmpfs10g: ${x52.default} {
 }
 
 builds += [
-  ${x52.tracera-tmpfs10g} ${bench-dacapo-hwloc}                         { targets : [bench, daily],  name: "bench-compiler-dacapo-linux-x52-tracera" }
-  ${x52.tracera-tmpfs10g} ${bench-dacapo-timing-hwloc}                  { targets : [bench, weekly], name: "bench-compiler-dacapo-timing-linux-x52-tracera" }
-  ${x52.tracera-tmpfs10g} ${bench-dacapo-move-profiling-hwloc}          { targets : [bench, weekly], name: "bench-compiler-dacapo-move-profiling-linux-x52-tracera" }
-  ${x52.tracera-tmpfs10g} ${bench-scala-dacapo-hwloc}                   { targets : [bench, daily],  name: "bench-compiler-scala-dacapo-linux-x52-tracera" }
-  ${x52.tracera-tmpfs10g} ${bench-scala-dacapo-timing-hwloc}            { targets : [bench, weekly], name: "bench-compiler-scala-dacapo-timing-linux-x52-tracera" }
-  ${x52.tracera-tmpfs10g} ${bench-scala-dacapo-move-profiling-hwloc}    { targets : [bench, weekly], name: "bench-compiler-scala-dacapo-move-profiling-linux-x52-tracera" }
-  ${x52.tracera} ${bench-specjvm2008-Single}                            { targets : [bench, daily],  name: "bench-compiler-specjvm2008-Single-linux-x52-tracera" }
-  ${x52.tracera} ${bench-specjvm2008-OneVM}                             { targets : [bench, weekly], name: "bench-compiler-specjvm2008-OneVM-linux-x52-tracera" }
-  ${x52.tracera} ${bench-specjbb2015}                                   { targets : [bench, daily],  name: "bench-compiler-specjbb2015-linux-x52-tracera" }
-  ${x52.tracera} ${bench-micros-graal}                                  { targets : [weekly],        name: "bench-compiler-jmh-micros-graal-linux-x52-tracera" }
+  ${x52.tracera-tmpfs10g} ${bench-dacapo-hwloc}                         ${openjdk8} { targets : [bench, daily],  name: "bench-compiler-dacapo-linux-x52-tracera" }
+  ${x52.tracera-tmpfs10g} ${bench-dacapo-timing-hwloc}                  ${openjdk8} { targets : [bench, weekly], name: "bench-compiler-dacapo-timing-linux-x52-tracera" }
+  ${x52.tracera-tmpfs10g} ${bench-dacapo-move-profiling-hwloc}          ${openjdk8} { targets : [bench, weekly], name: "bench-compiler-dacapo-move-profiling-linux-x52-tracera" }
+  ${x52.tracera-tmpfs10g} ${bench-scala-dacapo-hwloc}                   ${openjdk8} { targets : [bench, daily],  name: "bench-compiler-scala-dacapo-linux-x52-tracera" }
+  ${x52.tracera-tmpfs10g} ${bench-scala-dacapo-timing-hwloc}            ${openjdk8} { targets : [bench, weekly], name: "bench-compiler-scala-dacapo-timing-linux-x52-tracera" }
+  ${x52.tracera-tmpfs10g} ${bench-scala-dacapo-move-profiling-hwloc}    ${openjdk8} { targets : [bench, weekly], name: "bench-compiler-scala-dacapo-move-profiling-linux-x52-tracera" }
+  ${x52.tracera} ${bench-specjvm2008-Single}                            ${openjdk8} { targets : [bench, daily],  name: "bench-compiler-specjvm2008-Single-linux-x52-tracera" }
+  ${x52.tracera} ${bench-specjvm2008-OneVM}                             ${openjdk8} { targets : [bench, weekly], name: "bench-compiler-specjvm2008-OneVM-linux-x52-tracera" }
+  ${x52.tracera} ${bench-specjbb2015}                                   ${openjdk8} { targets : [bench, daily],  name: "bench-compiler-specjbb2015-linux-x52-tracera" }
+  ${x52.tracera} ${bench-micros-graal}                                  ${openjdk8} { targets : [weekly],        name: "bench-compiler-jmh-micros-graal-linux-x52-tracera" }
 
-  ${x52.tracera-bu-tmpfs10g} ${bench-dacapo-hwloc}                      { targets : [weekly, bench], name: "bench-compiler-dacapo-linux-x52-tracera-bu" }
-  ${x52.tracera-bu-tmpfs10g} ${bench-dacapo-timing-hwloc}               { targets : [weekly, bench], name: "bench-compiler-dacapo-timing-linux-x52-tracera-bu" }
-  ${x52.tracera-bu-tmpfs10g} ${bench-dacapo-move-profiling-hwloc}       { targets : [weekly, bench], name: "bench-compiler-dacapo-move-profiling-linux-x52-tracera-bu" }
-  ${x52.tracera-bu-tmpfs10g} ${bench-scala-dacapo-hwloc}                { targets : [weekly, bench], name: "bench-compiler-scala-dacapo-linux-x52-tracera-bu" }
-  ${x52.tracera-bu-tmpfs10g} ${bench-scala-dacapo-timing-hwloc}         { targets : [weekly, bench], name: "bench-compiler-scala-dacapo-timing-linux-x52-tracera-bu" }
-  ${x52.tracera-bu-tmpfs10g} ${bench-scala-dacapo-move-profiling-hwloc} { targets : [weekly, bench], name: "bench-compiler-scala-dacapo-move-profiling-linux-x52-tracera-bu" }
+  ${x52.tracera-bu-tmpfs10g} ${bench-dacapo-hwloc}                      ${openjdk8} { targets : [weekly, bench], name: "bench-compiler-dacapo-linux-x52-tracera-bu" }
+  ${x52.tracera-bu-tmpfs10g} ${bench-dacapo-timing-hwloc}               ${openjdk8} { targets : [weekly, bench], name: "bench-compiler-dacapo-timing-linux-x52-tracera-bu" }
+  ${x52.tracera-bu-tmpfs10g} ${bench-dacapo-move-profiling-hwloc}       ${openjdk8} { targets : [weekly, bench], name: "bench-compiler-dacapo-move-profiling-linux-x52-tracera-bu" }
+  ${x52.tracera-bu-tmpfs10g} ${bench-scala-dacapo-hwloc}                ${openjdk8} { targets : [weekly, bench], name: "bench-compiler-scala-dacapo-linux-x52-tracera-bu" }
+  ${x52.tracera-bu-tmpfs10g} ${bench-scala-dacapo-timing-hwloc}         ${openjdk8} { targets : [weekly, bench], name: "bench-compiler-scala-dacapo-timing-linux-x52-tracera-bu" }
+  ${x52.tracera-bu-tmpfs10g} ${bench-scala-dacapo-move-profiling-hwloc} ${openjdk8} { targets : [weekly, bench], name: "bench-compiler-scala-dacapo-move-profiling-linux-x52-tracera-bu" }
 ]

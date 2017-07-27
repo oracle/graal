@@ -38,15 +38,31 @@ import java.util.ListIterator;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.CompiledCode;
+import jdk.vm.ci.code.stack.StackIntrospection;
+import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
+import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.runtime.JVMCI;
+import jdk.vm.ci.runtime.JVMCICompiler;
+
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompilationRequestIdentifier;
 import org.graalvm.compiler.core.target.Backend;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Activation;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
@@ -55,7 +71,6 @@ import org.graalvm.compiler.hotspot.HotSpotCompilationIdentifier;
 import org.graalvm.compiler.hotspot.HotSpotCompiledCodeBuilder;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
-import org.graalvm.compiler.hotspot.HotSpotRetryableCompilation;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
@@ -77,8 +92,6 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.compiler.truffle.CancellableCompileTask;
-import org.graalvm.compiler.truffle.DefaultTruffleCompiler;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.TruffleCallBoundary;
@@ -97,21 +110,6 @@ import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
-
-import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.CompiledCode;
-import jdk.vm.ci.code.stack.StackIntrospection;
-import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
-import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.SpeculationLog;
-import jdk.vm.ci.runtime.JVMCI;
-import jdk.vm.ci.runtime.JVMCICompiler;
 
 /**
  * Implementation of the Truffle runtime when running on top of Graal.
@@ -195,7 +193,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
             // might occur for multiple compiler threads at the same time.
             if (truffleCompiler == null) {
                 try {
-                    truffleCompiler = DefaultTruffleCompiler.create(this);
+                    truffleCompiler = HotSpotTruffleCompiler.create(this);
                 } catch (Throwable e) {
                     if (!reportedTruffleCompilerInitializationFailure) {
                         // This should never happen so report it (once)
@@ -208,22 +206,9 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    protected void compileMethod(DebugContext initialDebug, TruffleCompiler compiler, OptimizedCallTarget optimizedCallTarget, ResolvedJavaMethod rootMethod, CompilationIdentifier compilationId,
-                    CancellableCompileTask task) {
+    protected DiagnosticsOutputDirectory getDebugOutputDirectory() {
         HotSpotGraalRuntimeProvider runtime = (HotSpotGraalRuntimeProvider) getRequiredGraalCapability(RuntimeProvider.class);
-        HotSpotRetryableCompilation<Void> compilation = new HotSpotRetryableCompilation<Void>(runtime) {
-            @Override
-            protected Void run(DebugContext debug, Throwable failure) {
-                HotSpotTruffleRuntime.super.compileMethod(debug, compiler, optimizedCallTarget, rootMethod, compilationId, task);
-                return null;
-            }
-
-            @Override
-            public String toString() {
-                return optimizedCallTarget.toString();
-            }
-        };
-        compilation.runWithRetry(initialDebug);
+        return runtime.getOutputDirectory();
     }
 
     @Override

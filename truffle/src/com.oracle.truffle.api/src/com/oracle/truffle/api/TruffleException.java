@@ -100,13 +100,22 @@ public interface TruffleException {
     }
 
     /**
-     * Returns <code>true</code> if this exception indicates that guest language application timed
-     * out.
+     * Returns <code>true</code> if this exception indicates that guest language application was
+     * cancelled during its execution.
      *
      * @since 0.27
      */
-    default boolean isTimeout() {
+    default boolean isCancelled() {
         return false;
+    }
+
+    /**
+     * @since 0.27
+     * @deprecated in 0.27
+     */
+    @Deprecated
+    default boolean isTimeout() {
+        return isCancelled();
     }
 
     /**

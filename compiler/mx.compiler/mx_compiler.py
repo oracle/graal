@@ -451,13 +451,28 @@ def _gate_java_benchmark(args, successRe):
     if not re.search(successRe, out.data, re.MULTILINE):
         mx.abort('Could not find benchmark success pattern: ' + successRe)
 
+def _is_batik_supported(jdk):
+    """
+    Determines if Batik runs on the given jdk. Batik's JPEGRegistryEntry contains a reference
+    to TruncatedFileException, which is specific to the Sun/Oracle JDK. On a different JDK,
+    this results in a NoClassDefFoundError: com/sun/image/codec/jpeg/TruncatedFileException
+    """
+    try:
+        subprocess.check_output([jdk.javap, 'com.sun.image.codec.jpeg.TruncatedFileException'])
+        return True
+    except subprocess.CalledProcessError:
+        mx.warn('Batik uses Sun internal class com.sun.image.codec.jpeg.TruncatedFileException which is not present in ' + jdk.home)
+        return False
+
 def _gate_dacapo(name, iterations, extraVMarguments=None):
-    vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-Djava.net.preferIPv4Stack=true', '-Dgraal.ExitVMOnException=true'] + _remove_empty_entries(extraVMarguments)
+    vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-Djava.net.preferIPv4Stack=true', '-Dgraal.CompilationFailureAction=ExitVM'] + _remove_empty_entries(extraVMarguments)
     dacapoJar = mx.library('DACAPO').get_path(True)
+    if name == 'batik' and not _is_batik_supported(jdk):
+        return
     _gate_java_benchmark(vmargs + ['-jar', dacapoJar, name, '-n', str(iterations)], r'^===== DaCapo 9\.12 ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
 
 def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
-    vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-Dgraal.ExitVMOnException=true'] + _remove_empty_entries(extraVMarguments)
+    vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-Dgraal.CompilationFailureAction=ExitVM'] + _remove_empty_entries(extraVMarguments)
     scalaDacapoJar = mx.library('DACAPO_SCALA').get_path(True)
     _gate_java_benchmark(vmargs + ['-jar', scalaDacapoJar, name, '-n', str(iterations)], r'^===== DaCapo 0\.1\.0(-SNAPSHOT)? ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
 
@@ -477,7 +492,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     with Task('CTW:hosted', tasks, tags=GraalTags.ctw) as t:
         if t:
             ctw([
-                    '--ctwopts', 'Inline=false ExitVMOnException=true', '-esa', '-XX:-UseJVMCICompiler', '-XX:+EnableJVMCI',
+                    '--ctwopts', 'Inline=false CompilationFailureAction=ExitVM', '-esa', '-XX:-UseJVMCICompiler', '-XX:+EnableJVMCI',
                     '-DCompileTheWorld.MultiThreaded=true', '-Dgraal.InlineDuringParsing=false',
                     '-DCompileTheWorld.Verbose=false', '-XX:ReservedCodeCacheSize=300m',
                 ], _remove_empty_entries(extraVMarguments))
@@ -541,7 +556,7 @@ _registers = 'o0,o1,o2,o3,f8,f9,d32,d34' if mx.get_arch() == 'sparcv9' else 'rbx
 
 _defaultFlags = ['-Dgraal.CompilationWatchDogStartDelay=60.0D']
 _assertionFlags = ['-esa']
-_graalErrorFlags = ['-Dgraal.ExitVMOnException=true']
+_graalErrorFlags = ['-Dgraal.CompilationFailureAction=ExitVM']
 _graalEconomyFlags = ['-Dgraal.CompilerConfiguration=economy']
 _verificationFlags = ['-Dgraal.VerifyGraalGraphs=true', '-Dgraal.VerifyGraalGraphEdges=true', '-Dgraal.VerifyGraalPhasesSize=true', '-Dgraal.VerifyPhases=true']
 _coopFlags = ['-XX:-UseCompressedOops']

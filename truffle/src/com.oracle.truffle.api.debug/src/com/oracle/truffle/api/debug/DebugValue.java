@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
@@ -51,9 +52,12 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 public abstract class DebugValue {
 
+    final LanguageInfo preferredLanguage;
+
     abstract Object get();
 
-    DebugValue() {
+    DebugValue(LanguageInfo preferredLanguage) {
+        this.preferredLanguage = preferredLanguage;
     }
 
     /**
@@ -122,19 +126,14 @@ public abstract class DebugValue {
     public abstract boolean isWritable();
 
     /**
-     * Returns <code>true</code> if this value represents an internal implementation detail,
-     * <code>false</code> otherwise. Internal values should be hidden during normal guest language
-     * debugging.
+     * Returns <code>true</code> if this value represents an internal variable or property,
+     * <code>false</code> otherwise.
      * <p>
-     * Language implementations sometimes create internal helper variables that do not correspond to
-     * anything explicitly written by a programmer. Language implementors mark these variables as
-     * <em>internal</em>.
-     * </p>
-     * <p>
-     * Clients of the debugging API should assume that displaying <em>internal</em> values is
-     * unlikely to help programmers debug guest language programs and might possibly create
-     * confusion. However, clients may choose to display all values, for example in a special mode
-     * to support development of programming language implementations.
+     * Languages might have extra object properties or extra scope variables that are a part of the
+     * runtime, but do not correspond to anything what is an explicit part of the guest language
+     * representation. They may represent additional language artifacts, providing more in-depth
+     * information that can be valuable during debugging. Language implementors mark these variables
+     * as <em>internal</em>. An example of such internal values are internal slots in ECMAScript.
      * </p>
      *
      * @since 0.26
@@ -237,11 +236,18 @@ public abstract class DebugValue {
         if (obj == null) {
             return null;
         }
-        obj = getDebugger().getEnv().findMetaObject(getSourceRoot(), obj);
-        if (obj == null) {
-            return null;
+        TruffleInstrument.Env env = getDebugger().getEnv();
+        LanguageInfo languageInfo;
+        if (preferredLanguage != null) {
+            languageInfo = preferredLanguage;
         } else {
+            languageInfo = getSourceRoot().getRootNode().getLanguageInfo();
+        }
+        if (languageInfo != null) {
+            obj = env.findMetaObject(languageInfo, obj);
             return new HeapValue(getDebugger(), getSourceRoot(), obj);
+        } else {
+            return null;
         }
     }
 
@@ -256,8 +262,59 @@ public abstract class DebugValue {
         if (obj == null) {
             return null;
         }
-        return getDebugger().getEnv().findSourceLocation(getSourceRoot(), obj);
+        TruffleInstrument.Env env = getDebugger().getEnv();
+        LanguageInfo languageInfo;
+        if (preferredLanguage != null) {
+            languageInfo = preferredLanguage;
+        } else {
+            languageInfo = getSourceRoot().getRootNode().getLanguageInfo();
+        }
+        if (languageInfo != null) {
+            return env.findSourceLocation(languageInfo, obj);
+        } else {
+            return null;
+        }
     }
+
+    /**
+     * Get the original language that created the value, if any. This method will return
+     * <code>null</code> for values representing a primitive value, or objects that are not
+     * associated with any language.
+     *
+     * @return the language, or <code>null</code> when no language can be identified as the creator
+     *         of the value.
+     * @since 0.27
+     */
+    public final LanguageInfo getOriginalLanguage() {
+        Object obj = get();
+        if (obj == null) {
+            return null;
+        }
+        return getDebugger().getEnv().findLanguage(obj);
+    }
+
+    /**
+     * Returns a debug value that presents itself as seen by the provided language. The language
+     * affects the output of {@link #as(java.lang.Class)}, {@link #getMetaObject()} and
+     * {@link #getSourceLocation()}. Properties, array elements and other attributes are not
+     * affected by a language. The {@link #getOriginalLanguage() original language} of the returned
+     * value remains the same as of this value.
+     *
+     * @param language a language to get the value representation of
+     * @return the value as represented in the language
+     * @since 0.27
+     */
+    public final DebugValue asInLanguage(LanguageInfo language) {
+        if (preferredLanguage == language) {
+            return this;
+        }
+        if (preferredLanguage == null && getSourceRoot() != null && getSourceRoot().getRootNode().getLanguageInfo() == language) {
+            return this;
+        }
+        return createAsInLanguage(language);
+    }
+
+    abstract DebugValue createAsInLanguage(LanguageInfo language);
 
     abstract Debugger getDebugger();
 
@@ -290,6 +347,11 @@ public abstract class DebugValue {
         private final Object value;
 
         HeapValue(Debugger debugger, RootNode root, Object value) {
+            this(debugger, root, null, value);
+        }
+
+        private HeapValue(Debugger debugger, RootNode root, LanguageInfo preferredLanguage, Object value) {
+            super(preferredLanguage);
             this.debugger = debugger;
             this.sourceRoot = root;
             this.value = value;
@@ -303,11 +365,17 @@ public abstract class DebugValue {
             }
             if (clazz == String.class) {
                 Object val = get();
+                LanguageInfo languageInfo = null;
+                if (preferredLanguage != null) {
+                    languageInfo = preferredLanguage;
+                } else if (sourceRoot != null) {
+                    languageInfo = sourceRoot.getRootNode().getLanguageInfo();
+                }
                 String stringValue;
-                if (sourceRoot == null) {
+                if (languageInfo == null) {
                     stringValue = val.toString();
                 } else {
-                    stringValue = debugger.getEnv().toString(sourceRoot, val);
+                    stringValue = debugger.getEnv().toString(languageInfo, val);
                 }
                 return (T) stringValue;
             }
@@ -345,6 +413,11 @@ public abstract class DebugValue {
         }
 
         @Override
+        DebugValue createAsInLanguage(LanguageInfo language) {
+            return new HeapValue(debugger, sourceRoot, language, value);
+        }
+
+        @Override
         Debugger getDebugger() {
             return debugger;
         }
@@ -363,8 +436,12 @@ public abstract class DebugValue {
         private final DebugScope scope;
 
         PropertyValue(Debugger debugger, RootNode root, TruffleObject object, Map.Entry<Object, Object> property, DebugScope scope) {
-            super(debugger, root, null);
-            this.keyInfo = JavaInterop.getKeyInfo(object, property.getKey());
+            this(debugger, root, null, JavaInterop.getKeyInfo(object, property.getKey()), property, scope);
+        }
+
+        private PropertyValue(Debugger debugger, RootNode root, LanguageInfo preferredLanguage, int keyInfo, Map.Entry<Object, Object> property, DebugScope scope) {
+            super(debugger, root, preferredLanguage, null);
+            this.keyInfo = keyInfo;
             this.property = property;
             this.scope = scope;
         }
@@ -379,15 +456,20 @@ public abstract class DebugValue {
         public String getName() {
             checkValid();
             String name;
-            RootNode sourceRoot = getSourceRoot();
             Object propertyKey = property.getKey();
             if (propertyKey instanceof String) {
                 name = (String) propertyKey;
             } else {
-                if (sourceRoot == null) {
-                    name = Objects.toString(propertyKey);
+                LanguageInfo languageInfo;
+                if (preferredLanguage != null) {
+                    languageInfo = preferredLanguage;
                 } else {
-                    name = getDebugger().getEnv().toString(sourceRoot, propertyKey);
+                    languageInfo = getSourceRoot().getRootNode().getLanguageInfo();
+                }
+                if (languageInfo != null) {
+                    name = getDebugger().getEnv().toString(languageInfo, propertyKey);
+                } else {
+                    name = Objects.toString(propertyKey);
                 }
             }
             return name;
@@ -423,6 +505,11 @@ public abstract class DebugValue {
             property.setValue(value.get());
         }
 
+        @Override
+        DebugValue createAsInLanguage(LanguageInfo language) {
+            return new PropertyValue(getDebugger(), getSourceRoot(), language, keyInfo, property, scope);
+        }
+
         private void checkValid() {
             if (scope != null) {
                 scope.verifyValidState();
@@ -439,8 +526,13 @@ public abstract class DebugValue {
 
         PropertyNamedValue(Debugger debugger, RootNode root, TruffleObject object,
                         Map<Object, Object> map, String name, DebugScope scope) {
-            super(debugger, root, null);
-            this.keyInfo = JavaInterop.getKeyInfo(object, name);
+            this(debugger, root, null, JavaInterop.getKeyInfo(object, name), map, name, scope);
+        }
+
+        private PropertyNamedValue(Debugger debugger, RootNode root, LanguageInfo preferredLanguage,
+                        int keyInfo, Map<Object, Object> map, String name, DebugScope scope) {
+            super(debugger, root, preferredLanguage, null);
+            this.keyInfo = keyInfo;
             this.map = map;
             this.name = name;
             this.scope = scope;
@@ -486,6 +578,11 @@ public abstract class DebugValue {
         public void set(DebugValue value) {
             checkValid();
             map.put(name, value.get());
+        }
+
+        @Override
+        DebugValue createAsInLanguage(LanguageInfo language) {
+            return new PropertyNamedValue(getDebugger(), getSourceRoot(), language, keyInfo, map, name, scope);
         }
 
         private void checkValid() {

@@ -61,6 +61,17 @@ suite = {
       "javaCompliance" : "1.8",
       "workingSets" : "API,SDK",
     },
+
+    "org.graalvm.nativeimage" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.word",
+      ],
+      "checkstyle" : "org.graalvm.word",
+      "javaCompliance" : "1.8",
+      "workingSets" : "API,SDK",
+    },
   },
   "licenses" : {
     "UPL" : {
@@ -75,16 +86,21 @@ suite = {
       "moduleName" : "org.graalvm.sdk",
       "dependencies" : [
         "org.graalvm.polyglot",
+        "org.graalvm.nativeimage",
       ],
       "distDependencies" : [],
     },
     "WORD_API" : {
       "subDir" : "src",
+      "moduleName" : "org.graalvm.word",
       "dependencies" : [
         "org.graalvm.word",
       ],
       "distDependencies" : [
       ],
+      "overlaps" : [
+        "GRAAL_SDK",
+      ],
     },
-  },
+ },
 }

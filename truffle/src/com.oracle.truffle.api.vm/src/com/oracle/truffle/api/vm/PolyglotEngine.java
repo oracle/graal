@@ -1530,6 +1530,16 @@ public class PolyglotEngine {
         }
 
         @Override
+        public boolean isHostAccessAllowed(Object vmObject, Env env) {
+            return false;
+        }
+
+        @Override
+        public Object lookupHostSymbol(Object vmObject, Env env, String symbolName) {
+            return null;
+        }
+
+        @Override
         public Object getVMFromLanguageObject(Object engineObject) {
             return ((LanguageShared) engineObject).runtime;
         }
@@ -1619,6 +1629,20 @@ public class PolyglotEngine {
         }
 
         @Override
+        public LanguageInfo getObjectLanguage(Object obj, Object vmObject) {
+            for (LanguageShared ls : ((Instrument) vmObject).getRuntime().getLanguages()) {
+                if (!ls.initialized) {
+                    continue;
+                }
+                Env env = ls.currentLanguage().getEnv(false);
+                if (env != null && LANGUAGE.isObjectOfLanguage(env, obj)) {
+                    return ls.language;
+                }
+            }
+            return null;
+        }
+
+        @Override
         public Object getCurrentVM() {
             return PolyglotEngine.GLOBAL_PROFILE.get();
         }
@@ -1660,6 +1684,12 @@ public class PolyglotEngine {
                 return null;
             }
             return symbolIterator.next();
+        }
+
+        @Override
+        public Object lookupSymbol(Object vmObject, Env env, LanguageInfo targetLanguage, String symbolName) {
+            // not supported in PolyglotEngine.
+            return null;
         }
 
         @Override

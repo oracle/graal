@@ -43,7 +43,9 @@ abstract class SlowPathSerializeArgumentNode extends Node {
     @SuppressWarnings("unused")
     protected Object cacheType(NativeArgumentBuffer buffer, LibFFIType type, Object value, @Cached("type") LibFFIType cachedType,
                     @Cached("cachedType.createSerializeArgumentNode()") SerializeArgumentNode serialize) {
-        return serialize.execute(buffer, value);
+        boolean consumed = serialize.execute(buffer, value);
+        assert cachedType.injectedArgument != consumed : "return value of SerializeArgumentNode doesn't agree with injectedArgument flag";
+        return null;
     }
 
     @Specialization(replaces = "cacheType", guards = "needNoUnbox(value)")

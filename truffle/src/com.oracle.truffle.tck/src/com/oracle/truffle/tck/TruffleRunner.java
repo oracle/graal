@@ -24,19 +24,6 @@
  */
 package com.oracle.truffle.tck;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.tck.TruffleRunner.Inject;
-import com.oracle.truffle.tck.TruffleRunner.RunWithPolyglotRule;
-import com.oracle.truffle.tck.TruffleRunner.Warmup;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -44,7 +31,8 @@ import java.lang.annotation.Target;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import org.graalvm.polyglot.PolyglotContext;
+
+import org.graalvm.polyglot.Context;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -68,6 +56,22 @@ import org.junit.runners.model.Statement;
 import org.junit.runners.parameterized.BlockJUnit4ClassRunnerWithParameters;
 import org.junit.runners.parameterized.ParametersRunnerFactory;
 import org.junit.runners.parameterized.TestWithParameters;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.tck.TruffleRunner.Inject;
+import com.oracle.truffle.tck.TruffleRunner.RunWithPolyglotRule;
+import com.oracle.truffle.tck.TruffleRunner.Warmup;
+import com.oracle.truffle.tck.TruffleTestInvoker.TruffleTestClass;
+import org.junit.runners.model.TestClass;
 
 /**
  * JUnit test runner for unit testing Truffle AST interpreters.
@@ -209,7 +213,7 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
      */
     public static final class RunWithPolyglotRule implements TestRule {
 
-        PolyglotContext context = null;
+        Context context = null;
         Env testEnv = null;
 
         /**
@@ -229,15 +233,15 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
         }
 
         /**
-         * Get the current {@link PolyglotContext}. This should only be called from code that is
-         * executed by the {@link TruffleRunner}. In particular, this method can not be called from
-         * static initializers and constructors of test classes. Use {@link Before} or
-         * {@link BeforeClass} methods instead, or put the initialization code into the constructor
-         * of the {@link RootNode} of the test.
+         * Get the current {@link Context}. This should only be called from code that is executed by
+         * the {@link TruffleRunner}. In particular, this method can not be called from static
+         * initializers and constructors of test classes. Use {@link Before} or {@link BeforeClass}
+         * methods instead, or put the initialization code into the constructor of the
+         * {@link RootNode} of the test.
          *
          * @since 0.27
          */
-        public PolyglotContext getPolyglotContext() {
+        public Context getPolyglotContext() {
             assert context != null;
             return context;
         }
@@ -266,7 +270,7 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
 
         @Override
         protected Statement methodInvoker(FrameworkMethod method, Object test) {
-            Statement ret = truffleTestInvoker.createStatement(getName(), getTestClass(), method, test);
+            Statement ret = truffleTestInvoker.createStatement(getName(), method, test);
             if (ret == null) {
                 ret = super.methodInvoker(method, test);
             }
@@ -276,6 +280,16 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
         @Override
         protected void validateTestMethods(List<Throwable> errors) {
             TruffleTestInvoker.validateTestMethods(getTestClass(), errors);
+        }
+
+        /**
+         * Internal method used by the JUnit framework. Do not call directly.
+         *
+         * @since 0.27
+         */
+        @Override
+        protected TestClass createTestClass(Class<?> testClass) {
+            return new TruffleTestClass(testClass);
         }
     }
 
@@ -298,7 +312,7 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
      */
     @Override
     protected Statement methodInvoker(FrameworkMethod method, Object test) {
-        Statement ret = truffleTestInvoker.createStatement(testName(method), getTestClass(), method, test);
+        Statement ret = truffleTestInvoker.createStatement(testName(method), method, test);
         if (ret == null) {
             ret = super.methodInvoker(method, test);
         }
@@ -313,6 +327,16 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
     @Override
     protected void validateTestMethods(List<Throwable> errors) {
         TruffleTestInvoker.validateTestMethods(getTestClass(), errors);
+    }
+
+    /**
+     * Internal method used by the JUnit framework. Do not call directly.
+     *
+     * @since 0.27
+     */
+    @Override
+    protected TestClass createTestClass(Class<?> testClass) {
+        return new TruffleTestClass(testClass);
     }
 }
 

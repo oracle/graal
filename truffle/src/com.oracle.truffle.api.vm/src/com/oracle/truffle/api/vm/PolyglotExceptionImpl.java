@@ -46,6 +46,7 @@ import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
+import com.oracle.truffle.api.vm.PolyglotValueImpl.EngineUnsupportedException;
 
 final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObject {
 
@@ -64,7 +65,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
 
     private final SourceSection sourceLocation;
     private final boolean internal;
-    private final boolean timeout;
+    private final boolean cancelled;
     private final boolean exit;
     private final boolean incompleteSource;
     private final boolean syntaxError;
@@ -81,11 +82,11 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
         if (exception instanceof TruffleException) {
             TruffleException truffleException = (TruffleException) exception;
             this.internal = truffleException.isInternalError();
-            this.timeout = truffleException.isTimeout();
+            this.cancelled = truffleException.isCancelled();
             this.syntaxError = truffleException.isSyntaxError();
             this.incompleteSource = truffleException.isIncompleteSource();
             this.exit = truffleException.isExit();
-            this.exitStatus = truffleException.getExitStatus();
+            this.exitStatus = this.exit ? truffleException.getExitStatus() : 0;
 
             Node location = truffleException.getLocation();
             com.oracle.truffle.api.source.SourceSection section = null;
@@ -93,7 +94,13 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
                 section = location.getEncapsulatingSourceSection();
             }
             if (section != null) {
-                Source source = getAPIAccess().newSource(section.getSource());
+                com.oracle.truffle.api.source.Source truffleSource = section.getSource();
+                PolyglotLanguageContextImpl sourceContext = languageContext.context.findLanguageContext(truffleSource.getMimeType(), false);
+                String language = null;
+                if (sourceContext != null) {
+                    language = sourceContext.language.getId();
+                }
+                Source source = getAPIAccess().newSource(language, truffleSource);
                 this.sourceLocation = getAPIAccess().newSourceSection(source, section);
             } else {
                 this.sourceLocation = null;
@@ -105,8 +112,8 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
                 this.guestObject = languageContext.context.getHostContext().nullValue;
             }
         } else {
+            this.cancelled = false;
             this.internal = true;
-            this.timeout = false;
             this.syntaxError = false;
             this.incompleteSource = false;
             this.exit = false;
@@ -114,19 +121,14 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
             this.sourceLocation = null;
             this.guestObject = languageContext.context.getHostContext().nullValue;
         }
-
-        if (!isInternalError() && guestObject != languageContext.context.getHostContext().nullValue) {
-            String msg;
-            try {
-                msg = getGuestObject().toString();
-            } catch (PolyglotException e) {
-                msg = exception.getMessage();
-            }
-            this.message = msg;
-        } else if (isHostException()) {
+        if (isHostException()) {
             this.message = asHostException().getMessage();
         } else {
-            this.message = exception.getMessage();
+            if (internal) {
+                this.message = exception.toString();
+            } else {
+                this.message = exception.getMessage();
+            }
         }
     }
 
@@ -147,6 +149,12 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
 
     @Override
     public Throwable asHostException() {
+        if (!(exception instanceof HostException)) {
+            throw new EngineUnsupportedException(
+                            String.format("Unsupported operation %s.%s. You can ensure that the operation is supported using %s.%s.",
+                                            PolyglotException.class.getSimpleName(), "asHostException()",
+                                            PolyglotException.class.getSimpleName(), "isHostException()"));
+        }
         return ((HostException) exception).getOriginal();
     }
 
@@ -245,8 +253,8 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
     }
 
     @Override
-    public boolean isTimeout() {
-        return timeout;
+    public boolean isCancelled() {
+        return cancelled;
     }
 
     @Override

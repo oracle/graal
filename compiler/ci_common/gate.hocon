@@ -57,23 +57,7 @@ gateBootstrapFullVerify : {
   ]
 }
 
-gateTest8               : ${gateTest} ${java8}
-gateTestCTW8            : ${gateTestCTW} ${java8}
-gateTestCTW9            : ${gateTestCTW} ${java9}
-gateTest8Debug          : ${gateTest} ${java8Debug}
-gateTest9               : ${gateTest} ${java9}
-gateTest9EA             : ${gateTest} ${java9EA}
-gateTestBenchmark8      : ${gateTestBenchmark} ${java8}
-gateTestBenchmark8Debug : ${gateTestBenchmark} ${java8Debug}
-gateTestBenchmark9      : ${gateTestBenchmark} ${java9}
-gateBootstrap8          : ${gateBootstrap} ${java8}
-gateBootstrap9          : ${gateBootstrap} ${java9}
-gateBootstrap9EA        : ${gateBootstrap} ${java9EA}
-gateBootstrap8FullVerify: ${gateBootstrapFullVerify} ${java8}
-gateBootstrapLite8      : ${gateBootstrapLite} ${java8}
-gateBootstrapLite9      : ${gateBootstrapLite} ${java9}
-
-gateStyle : ${java8} ${eclipse} ${jdt} {
+gateStyle : ${eclipse} ${jdt} {
   downloads : {
     JDT : {name: ecj, version: "4.5.1", platformspecific: false}
     ECLIPSE : {name: eclipse, version: "4.5.2", platformspecific: true}

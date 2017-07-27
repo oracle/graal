@@ -25,7 +25,23 @@
 package org.graalvm.polyglot.proxy;
 
 /**
- * Supports being passed as value to a guest language.
+ * Proxy interfaces allow to mimic guest language objects in Graal languages. For example, one can
+ * implement the {@link org.graalvm.polyglot.proxy.ProxyObject} interface and then pass the object
+ * to a guest language. The guest language will then treat this instance as an object. Multiple
+ * proxy interfaces can be implemented at the same time. So in a configuration a value can be an
+ * array and an object at the same time.
+ * <p>
+ * If an object directly and exclusively implements the {@link Proxy} interface then the object can
+ * be passed around in guest language. However, most operations with the value in guest language
+ * will fail.
+ *
+ * @see ProxyArray to mimic arrays
+ * @see ProxyObject to mimic objects
+ * @see ProxyExecutable to mimic functions
+ * @see ProxyNativeObject to mimic native objects
+ * @see ProxyPrimitive to mimic primitive values
+ *
+ * @since 1.0
  */
 public interface Proxy {
 

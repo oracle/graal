@@ -372,6 +372,7 @@ import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.LoadMethodNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
+import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
@@ -1234,6 +1235,10 @@ public class BytecodeParser implements GraphBuilderContext {
             return LoadFieldNode.createOverrideStamp(getConstantFieldProvider(), getConstantReflection(), getMetaAccess(), getOptions(),
                             stamp, receiver, field, false, false);
         }
+    }
+
+    protected StateSplitProxyNode genVolatileFieldReadProxy(ValueNode fieldRead) {
+        return new StateSplitProxyNode(fieldRead);
     }
 
     protected ValueNode emitExplicitNullCheck(ValueNode receiver) {
@@ -3788,10 +3793,21 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
 
-        frameState.push(resolvedField.getJavaKind(), append(genLoadField(receiver, resolvedField)));
+        ValueNode fieldRead = append(genLoadField(receiver, resolvedField));
+
         if (resolvedField.getDeclaringClass().getName().equals("Ljava/lang/ref/Reference;") && resolvedField.getName().equals("referent")) {
             LocationIdentity referentIdentity = new FieldLocationIdentity(resolvedField);
             append(new MembarNode(0, referentIdentity));
+        }
+
+        JavaKind fieldKind = resolvedField.getJavaKind();
+
+        if (resolvedField.isVolatile() && fieldRead instanceof LoadFieldNode) {
+            StateSplitProxyNode readProxy = append(genVolatileFieldReadProxy(fieldRead));
+            frameState.push(fieldKind, readProxy);
+            readProxy.setStateAfter(frameState.create(stream.nextBCI(), readProxy));
+        } else {
+            frameState.push(fieldKind, fieldRead);
         }
     }
 

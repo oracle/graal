@@ -42,10 +42,10 @@
         return increment_##name; \
     } \
     \
-    type pingpong_##name(fnptr_##name (*wrapFn)(fnptr_##name), type arg) { \
-        fnptr_##name wrapped = wrapFn(increment_##name); \
+    type pingpong_##name(TruffleEnv *env, fnptr_##name (*wrapFn)(TruffleEnv *env, fnptr_##name), type arg) { \
+        fnptr_##name wrapped = wrapFn(env, increment_##name); \
         int ret = wrapped(arg + 1) * 2; \
-        releaseClosureRef(wrapped); \
+        (*env)->releaseClosureRef(env, wrapped); \
         return ret; \
     }
 

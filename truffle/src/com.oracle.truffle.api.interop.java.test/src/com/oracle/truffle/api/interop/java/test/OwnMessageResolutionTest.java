@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.interop.java.test;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
@@ -55,14 +54,6 @@ public class OwnMessageResolutionTest {
         public int hashCode() {
             return 42;
         }
-    }
-
-    @Resolve(message = "com.oracle.truffle.api.interop.java.ClassMessage")
-    abstract static class MessageWithFrameNode extends Node {
-        protected Object access(VirtualFrame frame, TruffleObject receiver) {
-            return frame.toString() + receiver.toString();
-        }
-
     }
 
     @Resolve(message = "com.oracle.truffle.api.interop.java.test.OwnMessageResolutionTest.MyMsg")

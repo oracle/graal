@@ -31,7 +31,8 @@ public abstract class NativeTypeMirror {
     public enum Kind {
         SIMPLE,
         ARRAY,
-        FUNCTION;
+        FUNCTION,
+        ENV;
     }
 
     NativeTypeMirror(Kind kind) {
