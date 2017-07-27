@@ -146,7 +146,7 @@ public class CompilationTask {
              * respect CompilationFailureAction if it has been explicitly set.
              */
             if (actionKey == CompilationFailureAction && !actionKey.hasBeenSet(values)) {
-                if (Assertions.ENABLED || compiler.getGraalRuntime().isBootstrapping()) {
+                if (Assertions.assertionsEnabled() || compiler.getGraalRuntime().isBootstrapping()) {
                     return ExitVM;
                 }
             }
