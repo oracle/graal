@@ -45,7 +45,7 @@ import static org.graalvm.compiler.debug.DebugOptions.PrintBinaryGraphPort;
 import static org.graalvm.compiler.debug.DebugOptions.PrintBinaryGraphs;
 import static org.graalvm.compiler.debug.DebugOptions.PrintGraphHost;
 import static org.graalvm.compiler.debug.DebugOptions.PrintXmlGraphPort;
-import org.graalvm.compiler.debug.UniquePathUtilities;
+import org.graalvm.compiler.debug.PathUtilities;
 import org.graalvm.compiler.truffle.GraphPrintVisitor.GraphPrintAdapter;
 import org.graalvm.compiler.truffle.GraphPrintVisitor.GraphPrintHandler;
 
@@ -80,7 +80,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         // Construct the path to the file.
         // PrintGraphFileName -
         String extension = PrintBinaryGraphs.getValue(options) ? "bgv" : "gv.xml";
-        return UniquePathUtilities.getPath(options, DumpPath, extension);
+        return PathUtilities.getPath(options, DumpPath, extension);
     }
 
     private static Callable<WritableByteChannel> createFilePrinter(OptionValues options) {

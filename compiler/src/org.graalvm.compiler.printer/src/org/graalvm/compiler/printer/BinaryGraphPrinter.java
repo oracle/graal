@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.Bytecode;
@@ -57,11 +58,14 @@ import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 
-public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.GraphInfo, Node, NodeClass<?>, Edges, Block>
+public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.GraphInfo, Node, NodeClass<?>, Edges, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition, InputType>
                 implements GraphPrinter {
     private SnippetReflectionProvider snippetReflection;
 
@@ -76,7 +80,7 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.
     }
 
     @Override
-    public String formatTitle(int id, String format, Object... args) {
+    public String formatTitle(GraphInfo graph, int id, String format, Object... args) {
         Object[] newArgs = GraphPrinter.super.simplifyClassArgs(args);
         return id + ": " + String.format(format, newArgs);
     }
@@ -291,13 +295,162 @@ public class BinaryGraphPrinter extends AbstractGraphPrinter<BinaryGraphPrinter.
     }
 
     @Override
-    protected Node findNode(Node node, Edges edges, int i) {
+    protected Node findNode(GraphInfo graph, Node node, Edges edges, int i) {
         return Edges.getNode(node, edges.getOffsets(), i);
     }
 
+
     @Override
-    protected List<Node> findNodes(Node node, Edges edges, int i) {
+    protected List<Node> findNodes(GraphInfo graph, Node node, Edges edges, int i) {
         return Edges.getNodeList(node, edges.getOffsets(), i);
+    }
+
+    @Override
+    protected Object findEnumClass(Object enumValue) {
+        if (enumValue instanceof Enum) {
+            return enumValue.getClass();
+        }
+        return null;
+    }
+
+    @Override
+    protected int findEnumOrdinal(Object obj) {
+        if (obj instanceof Enum<?>) {
+            return ((Enum<?>) obj).ordinal();
+        }
+        return -1;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    protected String[] findEnumTypeValues(Object clazz) {
+        if (clazz instanceof Class<?>) {
+            Class<? extends Enum<?>> enumClass = (Class<? extends Enum<?>>) clazz;
+            Enum<?>[] constants = enumClass.getEnumConstants();
+            if (constants != null) {
+                String[] names = new String[constants.length];
+                for (int i = 0; i < constants.length; i++) {
+                    names[i] = constants[i].name();
+                }
+                return names;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    protected String findJavaTypeName(Object obj) {
+        if (obj instanceof Class<?>) {
+            return ((Class<?>)obj).getName();
+        }
+        if (obj instanceof ResolvedJavaType) {
+            return ((ResolvedJavaType) obj).getName();
+        }
+        return null;
+    }
+
+    @Override
+    protected byte[] findMethodCode(ResolvedJavaMethod method) {
+        return method.getCode();
+    }
+
+    @Override
+    protected int findMethodModifiers(ResolvedJavaMethod method) {
+        return method.getModifiers();
+    }
+
+    @Override
+    protected Signature findMethodSignature(ResolvedJavaMethod method) {
+        return method.getSignature();
+    }
+
+    @Override
+    protected String findMethodName(ResolvedJavaMethod method) {
+        return method.getName();
+    }
+
+    @Override
+    protected Object findMethodDeclaringClass(ResolvedJavaMethod method) {
+        return method.getDeclaringClass();
+    }
+
+    @Override
+    protected int findFieldModifiers(ResolvedJavaField field) {
+        return field.getModifiers();
+    }
+
+    @Override
+    protected String findFieldTypeName(ResolvedJavaField field) {
+        return field.getType().getName();
+    }
+
+    @Override
+    protected String findFieldName(ResolvedJavaField field) {
+        return field.getName();
+    }
+
+    @Override
+    protected Object findFieldDeclaringClass(ResolvedJavaField field) {
+        return field.getDeclaringClass();
+    }
+
+    @Override
+    protected ResolvedJavaField findJavaField(Object object) {
+        if (object instanceof ResolvedJavaField) {
+            return (ResolvedJavaField) object;
+        }
+        return null;
+    }
+
+    @Override
+    protected Signature findSignature(Object object) {
+        if (object instanceof Signature) {
+            return (Signature) object;
+        }
+        return null;
+    }
+
+    @Override
+    protected int findSignatureParameterCount(Signature signature) {
+        return signature.getParameterCount(false);
+    }
+
+    @Override
+    protected String findSignatureParameterTypeName(Signature signature, int index) {
+        return signature.getParameterType(index, null).getName();
+    }
+
+    @Override
+    protected String findSignatureReturnTypeName(Signature signature) {
+        return signature.getReturnType(null).getName();
+    }
+
+    @Override
+    protected NodeSourcePosition findNodeSourcePosition(Object object) {
+        if (object instanceof NodeSourcePosition) {
+            return (NodeSourcePosition) object;
+        }
+        return null;
+    }
+
+    @Override
+    protected ResolvedJavaMethod findNodeSourcePositionMethod(NodeSourcePosition pos) {
+        return pos.getMethod();
+    }
+
+    @Override
+    protected NodeSourcePosition findNodeSourcePositionCaller(NodeSourcePosition pos) {
+        return pos.getCaller();
+    }
+
+    @Override
+    protected int findNodeSourcePositionBCI(NodeSourcePosition pos) {
+        return pos.getBCI();
+    }
+
+    @Override
+    protected StackTraceElement findMethodStackTraceElement(ResolvedJavaMethod method, int bci, NodeSourcePosition pos) {
+        return method.asStackTraceElement(bci);
     }
 
     static final class GraphInfo {
