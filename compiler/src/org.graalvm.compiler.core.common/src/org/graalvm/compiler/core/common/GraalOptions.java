@@ -270,7 +270,7 @@ public final class GraalOptions {
     public static final OptionKey<Boolean> UseSnippetGraphCache = new OptionKey<>(true);
 
     @Option(help = "Enable expensive assertions.", type = OptionType.Debug)
-    public static final OptionKey<Boolean> DetailedAsserts = new OptionKey<>(Assertions.ENABLED);
+    public static final OptionKey<Boolean> DetailedAsserts = new OptionKey<>(Assertions.assertionsEnabled());
 
     @Option(help = "Enable experimental Trace Register Allocation.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TraceRA = new OptionKey<>(false);

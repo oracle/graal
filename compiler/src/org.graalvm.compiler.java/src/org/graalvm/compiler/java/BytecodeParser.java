@@ -1681,7 +1681,7 @@ public class BytecodeParser implements GraphBuilderContext {
         final Mark mark;
 
         InvocationPluginAssertions(InvocationPlugin plugin, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType) {
-            guarantee(Assertions.ENABLED, "%s should only be loaded and instantiated if assertions are enabled", getClass().getSimpleName());
+            guarantee(Assertions.assertionsEnabled(), "%s should only be loaded and instantiated if assertions are enabled", getClass().getSimpleName());
             this.plugin = plugin;
             this.targetMethod = targetMethod;
             this.args = args;
@@ -1913,7 +1913,7 @@ public class BytecodeParser implements GraphBuilderContext {
                 }
             }
 
-            InvocationPluginAssertions assertions = Assertions.ENABLED ? new InvocationPluginAssertions(plugin, args, targetMethod, resultType) : null;
+            InvocationPluginAssertions assertions = Assertions.assertionsEnabled() ? new InvocationPluginAssertions(plugin, args, targetMethod, resultType) : null;
             if (plugin.execute(this, targetMethod, pluginReceiver, args)) {
                 afterInvocationPluginExecution(true, assertions, intrinsicGuard, invokeKind, args, targetMethod, resultType, returnType);
                 return true;

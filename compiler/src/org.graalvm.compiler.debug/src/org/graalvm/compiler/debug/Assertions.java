@@ -30,9 +30,7 @@ public class Assertions {
      * Determines if assertions are enabled. Strictly speaking, this may only be true for the
      * {@link Assertions} class but we assume assertions are enabled/disabled for Graal as a whole.
      */
-    public static final boolean ENABLED = assertionsEnabled();
-
-    private static boolean assertionsEnabled() {
+    public static boolean assertionsEnabled() {
         boolean enabled = false;
         assert (enabled = true) == true;
         return enabled;

@@ -107,7 +107,7 @@ public final class SchedulePhase extends Phase {
     }
 
     private NodeEventScope verifyImmutableGraph(StructuredGraph graph) {
-        if (immutableGraph && Assertions.ENABLED) {
+        if (immutableGraph && Assertions.assertionsEnabled()) {
             return graph.trackNodeEvents(new NodeEventListener() {
                 @Override
                 public void event(NodeEvent e, Node node) {

@@ -575,7 +575,7 @@ public final class DebugContext implements AutoCloseable {
         }
     }
 
-    private final Invariants invariants = Assertions.ENABLED ? new Invariants() : null;
+    private final Invariants invariants = Assertions.assertionsEnabled() ? new Invariants() : null;
 
     static StackTraceElement[] getStackTrace(Thread thread) {
         return thread.getStackTrace();
