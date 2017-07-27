@@ -631,6 +631,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
                 childContexts.clear();
                 engine.removeContext(this);
                 notClosingAssumption.invalidate();
+                // clear interrupted status after closing
+                // needed because we interrupt when closing from another thread.
+                Thread.interrupted();
                 closed = true;
 
                 if (closingLatch != null) {
