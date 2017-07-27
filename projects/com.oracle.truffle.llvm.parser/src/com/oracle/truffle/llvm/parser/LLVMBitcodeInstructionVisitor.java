@@ -234,7 +234,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         final SourceSection sourceSection = runtime.getSourceSection(call);
         final Symbol target = call.getCallTarget();
-        LLVMExpressionNode result = nodeFactory.createLLVMBuiltin(target, argNodes, argCount, sourceSection);
+        LLVMExpressionNode result = nodeFactory.createLLVMBuiltin(runtime, target, argNodes, argCount, sourceSection);
         if (result == null) {
             if (target instanceof InlineAsmConstant) {
                 final InlineAsmConstant inlineAsmConstant = (InlineAsmConstant) target;
@@ -315,7 +315,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         }
 
         final SourceSection sourceSection = runtime.getSourceSection(call);
-        LLVMExpressionNode node = nodeFactory.createLLVMBuiltin(target, args, argCount, sourceSection);
+        LLVMExpressionNode node = nodeFactory.createLLVMBuiltin(runtime, target, args, argCount, sourceSection);
         if (node == null) {
             if (target instanceof InlineAsmConstant) {
                 final InlineAsmConstant inlineAsmConstant = (InlineAsmConstant) target;
@@ -387,7 +387,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
                         unwindType.toArray(new Type[unwindType.size()]));
 
         final SourceSection sourceSection = runtime.getSourceSection(call);
-        LLVMExpressionNode function = nodeFactory.createLLVMBuiltin(target, argNodes, argCount, null);
+        LLVMExpressionNode function = nodeFactory.createLLVMBuiltin(runtime, target, argNodes, argCount, null);
         if (function == null) {
             function = symbols.resolve(target);
         }
@@ -452,7 +452,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
                         unwindType.toArray(new Type[unwindType.size()]));
 
         final SourceSection sourceSection = runtime.getSourceSection(call);
-        LLVMExpressionNode function = nodeFactory.createLLVMBuiltin(target, args, argCount, null);
+        LLVMExpressionNode function = nodeFactory.createLLVMBuiltin(runtime, target, args, argCount, null);
         if (function == null) {
             function = symbols.resolve(target);
         }
