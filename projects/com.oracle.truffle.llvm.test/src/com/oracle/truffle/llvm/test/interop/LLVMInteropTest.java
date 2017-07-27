@@ -1093,7 +1093,7 @@ public final class LLVMInteropTest {
     }
 
     private static final Path TEST_DIR = new File(TestOptions.PROJECT_ROOT + "/../cache/tests/interoptests").toPath();
-    private static final String FILE_SUFFIX = "_clang_v38_O0_MEM2REG.bc";
+    private static final String FILE_SUFFIX = "_clang_O0_MEM2REG.bc";
 
     private static final class Runner {
         private final String fileName;
