@@ -136,6 +136,41 @@ public class LanguageSPITest {
     }
 
     @Test
+    public void testAccessContextFromOtherThread() {
+        Engine engine = Engine.create();
+        langContext = null;
+        Context context = Context.newBuilder().engine(engine).build();
+        LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
+            public Object apply(Env env) {
+                return LanguageSPITestLanguage.getContext();
+            }
+        };
+        LanguageContext initLangContext = context.eval(LanguageSPITestLanguage.ID, "initialize").asHostObject();
+        assertSame(initLangContext, langContext);
+
+        LanguageSPITestLanguage.runinside = new Function<Env, Object>() {
+            public Object apply(Env env) {
+                Object[] result = new Object[1];
+                // Simulate a new thread created by the guest language
+                Thread thread = new Thread(() -> {
+                    result[0] = LanguageSPITestLanguage.getContext();
+                });
+                thread.start();
+                try {
+                    thread.join();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                return result[0];
+            }
+        };
+        LanguageContext langContextFromOtherThread = context.eval(LanguageSPITestLanguage.ID, "accessContextFromOtherThread").asHostObject();
+        assertSame(langContextFromOtherThread, langContext);
+        engine.close();
+        assertEquals(1, langContext.disposeCalled);
+    }
+
+    @Test
     public void testContextCloseInsideFromSameThread() {
         Engine engine = Engine.create();
         langContext = null;
