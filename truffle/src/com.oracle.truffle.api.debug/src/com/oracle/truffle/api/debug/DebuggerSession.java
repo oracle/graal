@@ -413,10 +413,10 @@ public final class DebuggerSession implements Closeable {
 
     /**
      * Returns all breakpoints {@link #install(com.oracle.truffle.api.debug.Breakpoint) installed}
-     * in this session, in the install order. {@link Breakpoint#dispose() Disposed} breakpoints are
-     * automatically removed from this list. Breakpoints
+     * in this session, in the install order. The returned list contains a current snapshot of
+     * breakpoints, those that were {@link Breakpoint#dispose() disposed}, or
      * {@link Debugger#install(com.oracle.truffle.api.debug.Breakpoint) installed on Debugger} are
-     * not included in this list.
+     * not included.
      *
      * @since 0.17
      * @see Debugger#getBreakpoints()

@@ -165,8 +165,9 @@ public class Breakpoint {
 
     /**
      * Controls whether this breakpoint is currently allowed to suspend execution (true by default).
-     * <p>
      * This can be changed arbitrarily until breakpoint is {@linkplain #dispose() disposed}.
+     * <p>
+     * When not {@link #isModifiable() modifiable}, {@link IllegalStateException} is thrown.
      *
      * @param enabled whether this breakpoint should be allowed to suspend execution
      *
@@ -220,6 +221,7 @@ public class Breakpoint {
      * {@linkplain SuspendedEvent#getBreakpointConditionException(Breakpoint) retrieved} while
      * execution is suspended.</li>
      * </ul>
+     * When not {@link #isModifiable() modifiable}, {@link IllegalStateException} is thrown.
      *
      * @param expression if non{@code -null}, a boolean expression, expressed in the guest language
      *            of the breakpoint's location.
@@ -248,7 +250,8 @@ public class Breakpoint {
     }
 
     /**
-     * Permanently prevents this breakpoint from affecting execution.
+     * Permanently prevents this breakpoint from affecting execution. When not
+     * {@link #isModifiable() modifiable}, {@link IllegalStateException} is thrown.
      *
      * @since 0.9
      */
@@ -299,6 +302,7 @@ public class Breakpoint {
      * <li>it does not count as a hit</li>
      * <li>the remaining {@code ignoreCount} does not change.</li>
      * </ul>
+     * When not {@link #isModifiable() modifiable}, {@link IllegalStateException} is thrown.
      *
      * @param ignoreCount number of breakpoint activations to ignore before it hits
      *
@@ -324,6 +328,21 @@ public class Breakpoint {
      */
     public String getLocationDescription() {
         return locationKey.toString();
+    }
+
+    /**
+     * Test whether this breakpoint can be modified. When <code>false</code>, methods that change
+     * breakpoint state throw {@link IllegalStateException}.
+     * <p>
+     * Unmodifiable breakpoints are created from installed breakpoints as read-only copies to be
+     * available to clients other than the one who installed the original breakpoint.
+     * {@link Debugger#getBreakpoints()} returns unmodifiable breakpoints, for instance.
+     *
+     * @return whether this breakpoint can be modified.
+     * @since 0.27
+     */
+    public boolean isModifiable() {
+        return true;
     }
 
     /**
@@ -888,7 +907,12 @@ public class Breakpoint {
         }
 
         private static void fail() {
-            throw new IllegalStateException("State of global breakpoints can not be changed.");
+            throw new IllegalStateException("Unmodifiable breakpoint.");
+        }
+
+        @Override
+        public boolean isModifiable() {
+            return false;
         }
 
         @Override

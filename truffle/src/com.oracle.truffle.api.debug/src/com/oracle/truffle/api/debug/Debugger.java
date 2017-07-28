@@ -170,14 +170,15 @@ public final class Debugger {
 
     /**
      * Returns all breakpoints {@link #install(com.oracle.truffle.api.debug.Breakpoint) installed}
-     * in this debugger instance, in the install order. {@link Breakpoint#dispose() Disposed}
-     * breakpoints are automatically removed from this list.
+     * in this debugger instance, in the install order. The returned list contains a current
+     * snapshot of breakpoints, those that were {@link Breakpoint#dispose() disposed} are not
+     * included.
      * <p>
-     * It's not possible to modify state of breakpoints returned from this list, or associated
-     * property change events. An attempt to modify breakpoints state using any of their set method,
-     * or an attempt to dispose such breakpoints, fails with an {@link IllegalStateException}. Use
-     * the original installed breakpoint instance to change breakpoint state or dispose the
-     * breakpoint.
+     * It's not possible to modify state of breakpoints returned from this list, or from the
+     * associated property change events, they are not {@link Breakpoint#isModifiable() modifiable}.
+     * An attempt to modify breakpoints state using any of their set method, or an attempt to
+     * dispose such breakpoints, fails with an {@link IllegalStateException}. Use the original
+     * installed breakpoint instance to change breakpoint state or dispose the breakpoint.
      *
      * @since 0.27
      * @see DebuggerSession#getBreakpoints()

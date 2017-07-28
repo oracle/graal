@@ -551,6 +551,8 @@ public class BreakpointTest extends AbstractDebugTest {
         Assert.assertTrue(notified[0]);
         Assert.assertEquals(1, debugger.getBreakpoints().size());
         Breakpoint newBP = debugger.getBreakpoints().get(0);
+        Assert.assertTrue(globalBreakpoint.isModifiable());
+        Assert.assertFalse(newBP.isModifiable());
         try {
             newBP.dispose();
             Assert.fail("Public dispose must not be possible for global breakpoints.");
