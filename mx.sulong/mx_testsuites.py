@@ -195,7 +195,7 @@ testSuites = {
     'vaargs' : (compileOtherTests, runVAargsTests),
     'nwcc' : (compileNWCCSuite, runNWCCSuite),
     'assembly' : (compileInlineAssemblySuite, runInlineAssemblySuite),
-    'gcc32' : (compileV32GCCSuite, runGCCSuite38),
+    'gcc32' : (compileV32GCCSuite, runGCCSuite32),
     'llvm' : (compileLLVMSuite, runLLVMSuite),
     'gcc38' : (compileV38GCCSuite, runGCCSuite38),
     'shootout' : (compileShootoutSuite, runShootoutSuite),
