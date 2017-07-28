@@ -1610,8 +1610,7 @@ public class BytecodeParser implements GraphBuilderContext {
         } else {
             for (int i = 0; i < recursiveArgs.length; i++) {
                 ValueNode arg = GraphUtil.unproxify(recursiveArgs[i]);
-                assert arg instanceof ParameterNode && ((ParameterNode) arg).index() == i : String.format("argument %d of call denoting partial intrinsic exit should be a %s with index %d, not %s",
-                                i,
+                assert arg instanceof ParameterNode && ((ParameterNode) arg).index() == i : String.format("argument %d of call denoting partial intrinsic exit should be a %s with index %d, not %s", i,
                                 ParameterNode.class.getSimpleName(), i, arg);
             }
         }
@@ -2206,7 +2205,7 @@ public class BytecodeParser implements GraphBuilderContext {
             /*
              * Propagate any side effects into the caller when parsing intrinsics.
              */
-            if (parser.frameState.isAfterSideEffect()) {
+            if (parser.frameState.isAfterSideEffect() && parsingIntrinsic()) {
                 for (StateSplit sideEffect : parser.frameState.sideEffects()) {
                     frameState.addSideEffect(sideEffect);
                 }
@@ -2618,9 +2617,9 @@ public class BytecodeParser implements GraphBuilderContext {
         FixedNode target = createTarget(probability, block, stateAfter);
         AbstractBeginNode begin = BeginNode.begin(target);
 
-        assert !(target instanceof DeoptimizeNode && begin instanceof BeginStateSplitNode && ((BeginStateSplitNode) begin).stateAfter() != null) : "We are not allowed to set the stateAfter of the begin node,"
-                        +
-                        " because we have to deoptimize to a bci _before_ the actual if, so that the interpreter can update the profiling information.";
+        assert !(target instanceof DeoptimizeNode && begin instanceof BeginStateSplitNode &&
+                        ((BeginStateSplitNode) begin).stateAfter() != null) : "We are not allowed to set the stateAfter of the begin node," +
+                                        " because we have to deoptimize to a bci _before_ the actual if, so that the interpreter can update the profiling information.";
         return begin;
     }
 
