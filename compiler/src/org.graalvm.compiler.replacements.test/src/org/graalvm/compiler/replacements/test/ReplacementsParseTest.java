@@ -41,9 +41,11 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.GraalGraphError;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.debug.OpaqueNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
@@ -180,8 +182,13 @@ public class ReplacementsParseTest extends ReplacementsTest {
         }
 
         @SuppressWarnings("unused")
-        static int[] multiplyToLen(int[] x, int xlen, int[] y, int ylen, int[] zIn) {
-            return zIn;
+        static int nonVoidIntrinsicWithCall(int x, int y) {
+            return y;
+        }
+
+        @SuppressWarnings("unused")
+        static int nonVoidIntrinsicWithOptimizedSplit(int x) {
+            return x;
         }
     }
 
@@ -266,29 +273,28 @@ public class ReplacementsParseTest extends ReplacementsTest {
             return f.apply(value);
         }
 
-        @SuppressWarnings("unused")
         @MethodSubstitution(isStatic = true)
-        static int[] multiplyToLen(int[] x, int xlen, int[] y, int ylen, int[] zIn) {
-            int[] zResult = zIn;
-            int zLen;
-            if (zResult == null || zResult.length < (xlen + ylen)) {
-                zLen = xlen + ylen;
-                zResult = new int[xlen + ylen];
-            } else {
-                zLen = zIn.length;
+        static int nonVoidIntrinsicWithCall(int x, int y) {
+            nonVoidIntrinsicWithCallStub(x);
+            return y;
+        }
+
+        @MethodSubstitution(isStatic = true)
+        static int nonVoidIntrinsicWithOptimizedSplit(int x) {
+            if (x == GraalDirectives.opaque(x)) {
+                nonVoidIntrinsicWithCallStub(x);
             }
-            multiplyToLenStub(zLen);
-            return zResult;
+            return x;
         }
 
-        public static void multiplyToLenStub(int zLen) {
-            multiplyToLenStub(MULTIPLY_TO_LEN, zLen);
+        public static void nonVoidIntrinsicWithCallStub(int zLen) {
+            nonVoidIntrinsicWithCallStub(STUB_CALL, zLen);
         }
 
-        static final ForeignCallDescriptor MULTIPLY_TO_LEN = new ForeignCallDescriptor("multiplyToLen", void.class, int.class);
+        static final ForeignCallDescriptor STUB_CALL = new ForeignCallDescriptor("stubCall", void.class, int.class);
 
         @NodeIntrinsic(ForeignCallNode.class)
-        private static native void multiplyToLenStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, int zLen);
+        private static native void nonVoidIntrinsicWithCallStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, int zLen);
 
     }
 
@@ -303,7 +309,8 @@ public class ReplacementsParseTest extends ReplacementsTest {
         r.registerMethodSubstitution(TestObjectSubstitutions.class, "stringizeId", Receiver.class);
         r.registerMethodSubstitution(TestObjectSubstitutions.class, "copyFirst", byte[].class, byte[].class, boolean.class);
         r.registerMethodSubstitution(TestObjectSubstitutions.class, "copyFirstL2R", byte[].class, byte[].class);
-        r.registerMethodSubstitution(TestObjectSubstitutions.class, "multiplyToLen", int[].class, int.class, int[].class, int.class, int[].class);
+        r.registerMethodSubstitution(TestObjectSubstitutions.class, "nonVoidIntrinsicWithCall", int.class, int.class);
+        r.registerMethodSubstitution(TestObjectSubstitutions.class, "nonVoidIntrinsicWithOptimizedSplit", int.class);
 
         if (replacementBytecodeProvider.supportsInvokedynamic()) {
             r.registerMethodSubstitution(TestObjectSubstitutions.class, "identity", String.class);
@@ -549,21 +556,52 @@ public class ReplacementsParseTest extends ReplacementsTest {
         }
     }
 
-    public static int[] multiplyToLen(int[] x, int[] y, int[] z) {
-        if (TestObject.multiplyToLen(x, x.length, y, y.length, z) == x) {
+    public static int nonVoidIntrinsicWithCall(int x, int y) {
+        if (TestObject.nonVoidIntrinsicWithCall(x, y) == x) {
             GraalDirectives.deoptimize();
         }
-        return z;
+        return y;
+    }
+
+    /**
+     * This tests the case where an intrinsic ends with a runtime call but returns some kind of
+     * value. This requires that a FrameState is available after the {@link ForeignCallNode} since
+     * the return value must be computed on return from the call.
+     */
+    @Test
+    public void testNonVoidIntrinsicWithCall() {
+        testGraph("nonVoidIntrinsicWithCall");
+    }
+
+    public static int nonVoidIntrinsicWithOptimizedSplit(int x) {
+        if (TestObject.nonVoidIntrinsicWithOptimizedSplit(x) == x) {
+            GraalDirectives.deoptimize();
+        }
+        return x;
+    }
+
+    /**
+     * This is similar to {@link #testNonVoidIntrinsicWithCall()} but has a merge after the call
+     * which would normally capture the {@link FrameState} but in this case we force the merge to be
+     * optimized away.
+     */
+    @Test
+    public void testNonVoidIntrinsicWithOptimizedSplit() {
+        testGraph("nonVoidIntrinsicWithOptimizedSplit");
     }
 
     @SuppressWarnings("try")
-    @Test
-    public void testMultiplyToLen() {
-        StructuredGraph graph = parseEager("multiplyToLen", StructuredGraph.AllowAssumptions.YES);
-        try (DebugContext.Scope s0 = graph.getDebug().scope("testMultiplyToLen", graph)) {
+    private void testGraph(String name) {
+        StructuredGraph graph = parseEager(name, StructuredGraph.AllowAssumptions.YES);
+        try (DebugContext.Scope s0 = graph.getDebug().scope(name, graph)) {
+            for (OpaqueNode node : graph.getNodes().filter(OpaqueNode.class)) {
+                node.replaceAndDelete(node.getValue());
+            }
             HighTierContext context = getDefaultHighTierContext();
-            new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+            CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
+            new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
             new FloatingReadPhase().apply(graph);
+            canonicalizer.apply(graph, context);
             new DeadCodeEliminationPhase().apply(graph);
             new GuardLoweringPhase().apply(graph, getDefaultMidTierContext());
             new FrameStateAssignmentPhase().apply(graph);
