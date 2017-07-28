@@ -693,6 +693,17 @@ public abstract class Node implements NodeInterface, Cloneable {
                 return rootNode.sourceVM;
             }
 
+            @Override
+            public int getRootNodeBits(RootNode root) {
+                return root.instrumentationBits;
+            }
+
+            @Override
+            public void setRootNodeBits(RootNode root, int bits) {
+                assert ((byte) bits) == bits : "root bits currently limit to a byte";
+                root.instrumentationBits = (byte) bits;
+            }
+
         }
     }
 

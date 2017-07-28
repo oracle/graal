@@ -154,7 +154,7 @@ final class InstrumentationHandler {
 
         // fast path no bindings attached
         if (!sourceSectionBindings.isEmpty()) {
-            visitRoot(root, root, new NotifyLoadedListenerVisitor(sourceSectionBindings));
+            visitRoot(root, root, new NotifyLoadedListenerVisitor(sourceSectionBindings), false);
         }
 
     }
@@ -171,7 +171,7 @@ final class InstrumentationHandler {
             return;
         }
 
-        visitRoot(root, root, new InsertWrappersVisitor(executionBindings));
+        visitRoot(root, root, new InsertWrappersVisitor(executionBindings), false);
     }
 
     void initializeInstrument(Object vmObject, Class<?> instrumentClass) {
@@ -367,7 +367,7 @@ final class InstrumentationHandler {
 
     private void visitRoots(Collection<RootNode> roots, AbstractNodeVisitor addBindingsVisitor) {
         for (RootNode root : roots) {
-            visitRoot(root, root, addBindingsVisitor);
+            visitRoot(root, root, addBindingsVisitor, false);
         }
     }
 
@@ -442,10 +442,10 @@ final class InstrumentationHandler {
 
     public void onNodeInserted(RootNode rootNode, Node tree) {
         if (!sourceSectionBindings.isEmpty()) {
-            visitRoot(rootNode, tree, new NotifyLoadedListenerVisitor(sourceSectionBindings));
+            visitRoot(rootNode, tree, new NotifyLoadedListenerVisitor(sourceSectionBindings), true);
         }
         if (!executionBindings.isEmpty()) {
-            visitRoot(rootNode, tree, new InsertWrappersVisitor(executionBindings));
+            visitRoot(rootNode, tree, new InsertWrappersVisitor(executionBindings), true);
         }
     }
 
@@ -616,15 +616,23 @@ final class InstrumentationHandler {
         out.printf(message, args);
     }
 
-    private void visitRoot(RootNode root, final Node node, final AbstractNodeVisitor visitor) {
+    private void visitRoot(RootNode root, final Node node, final AbstractNodeVisitor visitor, boolean forceRootBitComputation) {
         if (TRACE) {
             trace("BEGIN: Visit root %s for %s%n", root.toString(), visitor);
         }
 
         visitor.root = root;
         visitor.providedTags = getProvidedTags(root);
+        visitor.rootSourceSection = root.getSourceSection();
+        visitor.rootBits = RootNodeBits.get(visitor.root);
 
-        if (visitor.shouldVisit()) {
+        if (visitor.shouldVisit() || forceRootBitComputation) {
+            if (forceRootBitComputation) {
+                visitor.computingRootNodeBits = RootNodeBits.isUninitialized(visitor.rootBits) ? RootNodeBits.getAll() : visitor.rootBits;
+            } else if (RootNodeBits.isUninitialized(visitor.rootBits)) {
+                visitor.computingRootNodeBits = RootNodeBits.getAll();
+            }
+
             if (TRACE) {
                 trace("BEGIN: Traverse root %s for %s%n", root.toString(), visitor);
             }
@@ -632,7 +640,12 @@ final class InstrumentationHandler {
             if (TRACE) {
                 trace("END: Traverse root %s for %s%n", root.toString(), visitor);
             }
+
+            if (!RootNodeBits.isUninitialized(visitor.computingRootNodeBits)) {
+                RootNodeBits.set(visitor.root, visitor.computingRootNodeBits);
+            }
         }
+
         if (TRACE) {
             trace("END: Visited root %s for %s%n", root.toString(), visitor);
         }
@@ -706,9 +719,43 @@ final class InstrumentationHandler {
     private abstract static class AbstractNodeVisitor implements NodeVisitor {
 
         RootNode root;
+        SourceSection rootSourceSection;
         Set<Class<?>> providedTags;
 
+        /* cached root bits read from the root node. value is reliable. */
+        int rootBits;
+        /* temporary field for currently computing root bits. value is not reliable. */
+        int computingRootNodeBits;
+
         abstract boolean shouldVisit();
+
+        final void computeRootBits(SourceSection sourceSection) {
+            int bits = computingRootNodeBits;
+            if (RootNodeBits.isUninitialized(bits)) {
+                return;
+            }
+
+            if (sourceSection != null) {
+                if (RootNodeBits.isNoSourceSection(bits)) {
+                    bits = RootNodeBits.setHasSourceSection(bits);
+                }
+                if (rootSourceSection != null) {
+                    if (RootNodeBits.isSourceSectionsHierachical(bits)) {
+                        if (sourceSection.getCharIndex() < rootSourceSection.getCharIndex() //
+                                        || sourceSection.getCharEndIndex() > rootSourceSection.getCharEndIndex()) {
+                            bits = RootNodeBits.setSourceSectionsUnstructured(bits);
+                        }
+                    }
+                    if (RootNodeBits.isSameSource(bits) && rootSourceSection.getSource() != sourceSection.getSource()) {
+                        bits = RootNodeBits.setHasDifferentSource(bits);
+                    }
+                } else {
+                    bits = RootNodeBits.setSourceSectionsUnstructured(bits);
+                    bits = RootNodeBits.setHasDifferentSource(bits);
+                }
+            }
+            computingRootNodeBits = bits;
+        }
 
     }
 
@@ -722,12 +769,16 @@ final class InstrumentationHandler {
 
         @Override
         boolean shouldVisit() {
-            return binding.isInstrumentedRoot(providedTags, root, root.getSourceSection());
+            RootNode localRoot = root;
+            SourceSection localRootSourceSection = rootSourceSection;
+            int localRootBits = rootBits;
+            return binding.isInstrumentedRoot(providedTags, localRoot, localRootSourceSection, localRootBits);
         }
 
         public final boolean visit(Node node) {
             SourceSection sourceSection = node.getSourceSection();
             if (isInstrumentableNode(node, sourceSection)) {
+                computeRootBits(sourceSection);
                 if (binding.isInstrumentedLeaf(providedTags, node, sourceSection)) {
                     if (TRACE) {
                         traceFilterCheck("hit", providedTags, binding, node, sourceSection);
@@ -771,14 +822,12 @@ final class InstrumentationHandler {
             if (bindings.isEmpty()) {
                 return false;
             }
-            final RootNode localRoot = root;
-            if (localRoot == null) {
-                return false;
-            }
-            SourceSection sourceSection = localRoot.getSourceSection();
+            RootNode localRoot = root;
+            SourceSection localRootSourceSection = rootSourceSection;
+            int localRootBits = rootBits;
 
             for (EventBinding<?> binding : bindings) {
-                if (binding.isInstrumentedRoot(providedTags, localRoot, sourceSection)) {
+                if (binding.isInstrumentedRoot(providedTags, localRoot, localRootSourceSection, localRootBits)) {
                     return true;
                 }
             }
@@ -788,6 +837,7 @@ final class InstrumentationHandler {
         public final boolean visit(Node node) {
             SourceSection sourceSection = node.getSourceSection();
             if (isInstrumentableNode(node, sourceSection)) {
+                computeRootBits(sourceSection);
                 // no locking required for these atomic reference arrays
                 for (EventBinding<?> binding : bindings) {
                     if (binding.isInstrumentedFull(providedTags, root, node, sourceSection)) {

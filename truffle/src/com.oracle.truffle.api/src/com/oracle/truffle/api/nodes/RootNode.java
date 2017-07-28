@@ -119,6 +119,8 @@ public abstract class RootNode extends Node {
     private final SourceSection sourceSection;
     final ReentrantLock lock = new ReentrantLock();
 
+    volatile byte instrumentationBits;
+
     /**
      * @deprecated use {@link RootNode(TruffleLanguage, FrameDescriptor)} instead. Root nodes do not
      *             support source sections by default any longer. Please override

@@ -78,6 +78,10 @@ public abstract class Accessor {
         public abstract LanguageInfo createLanguage(Object vmObject, String id, String name, String version, Set<String> mimeTypes);
 
         public abstract Object getSourceVM(RootNode rootNode);
+
+        public abstract int getRootNodeBits(RootNode root);
+
+        public abstract void setRootNodeBits(RootNode root, int bits);
     }
 
     public abstract static class DumpSupport {
