@@ -56,16 +56,16 @@ public class LLVMSMulWithOverflow {
     }
 
     private static boolean signedMulWithOverflowI32(int left, int right, LLVMAddress addr) {
-        long res;
+        int res;
         boolean overflow = false;
         try {
             res = Math.multiplyExact(left, right);
         } catch (ArithmeticException e) {
             // no transferToInterpreter - we want the compiler to remove that exception
-            res = (long) left * (long) right;
+            res = left * right;
             overflow = true;
         }
-        LLVMMemory.putI32(addr, (int) res);
+        LLVMMemory.putI32(addr, res);
         return overflow;
     }
 
