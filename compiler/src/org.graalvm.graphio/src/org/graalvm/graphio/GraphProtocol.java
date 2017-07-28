@@ -34,7 +34,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-public abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition, InputType> implements Closeable {
+public abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition> implements Closeable {
     private static final Charset UTF8 = Charset.forName("UTF-8");
 
     private static final int CONSTANT_POOL_MAX_SIZE = 8000;
@@ -153,8 +153,6 @@ public abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, Resolv
 
     protected abstract String findNameTemplate(NodeClass clazz);
 
-    protected abstract Edges findEdges(Node node, boolean dumpInputs);
-
     protected abstract Edges findClassEdges(NodeClass nodeClass, boolean dumpInputs);
 
     protected abstract int findNodeId(Node n);
@@ -165,9 +163,9 @@ public abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, Resolv
 
     protected abstract int findNodesCount(Graph info);
 
-    protected abstract Iterable<Node> findNodes(Graph info);
+    protected abstract Iterable<? extends Node> findNodes(Graph info);
 
-    protected abstract void findNodeProperties(Node node, Map<Object, Object> props, Graph info);
+    protected abstract void findNodeProperties(Node node, Map<String, Object> props, Graph info);
 
     protected abstract Collection<Node> findBlockNodes(Graph info, Block block);
 
@@ -185,11 +183,9 @@ public abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, Resolv
 
     protected abstract String findName(Edges edges, int i);
 
-    protected abstract InputType findType(Edges edges, int i);
+    protected abstract Object findType(Edges edges, int i);
 
-    protected abstract Node findNode(Graph graph, Node node, Edges edges, int i);
-
-    protected abstract Collection<Node> findNodes(Graph graph, Node node, Edges edges, int i);
+    protected abstract Collection<? extends Node> findNodes(Graph graph, Node node, Edges edges, int i);
 
     protected abstract int findEnumOrdinal(Object obj);
 
@@ -382,7 +378,7 @@ public abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, Resolv
     }
 
     private void writeNodes(Graph info) throws IOException {
-        Map<Object, Object> props = new HashMap<>();
+        Map<String, Object> props = new HashMap<>();
 
         final int size = findNodesCount(info);
         writeInt(size);
@@ -410,13 +406,21 @@ public abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, Resolv
     }
 
     private void writeEdges(Graph graph, Node node, boolean dumpInputs) throws IOException {
-        Edges edges = findEdges(node, dumpInputs);
+        NodeClass clazz = findNodeClass(node);
+        Edges edges = findClassEdges(clazz, dumpInputs);
         int size = findSize(edges);
         for (int i = 0; i < size; i++) {
+            Collection<? extends Node> list = findNodes(graph, node, edges, i);
             if (isDirect(edges, i)) {
-                writeNodeRef(findNode(graph, node, edges, i));
+                if (list != null && list.size() != 1) {
+                    throw new IOException("Edge " + i + " in " + edges + " is direct, but list isn't singleton: " + list);
+                }
+                Node n = null;
+                if (list != null && !list.isEmpty()) {
+                    n = list.iterator().next();
+                }
+                writeNodeRef(n);
             } else {
-                Collection<Node> list = findNodes(graph, node, edges, i);
                 if (list == null) {
                     writeShort((char) 0);
                 } else {

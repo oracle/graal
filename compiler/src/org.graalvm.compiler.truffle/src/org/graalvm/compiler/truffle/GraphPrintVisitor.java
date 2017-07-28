@@ -41,16 +41,18 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Objects;
-import org.graalvm.graphio.GraphProtocol;
+import org.graalvm.graphio.ProtocolImpl;
 import org.graalvm.compiler.truffle.GraphPrintVisitor.EdgeType;
 import org.graalvm.compiler.truffle.GraphPrintVisitor.NodeElement;
+import org.graalvm.graphio.GraphStructure;
 
 /**
  * Utility class for creating output for the ideal graph visualizer.
  *
  * @since 0.8 or earlier
  */
-final class GraphPrintVisitor extends GraphProtocol<RootCallTarget, NodeElement, NodeClass, EdgeType, Void, Void, Void, Void, Void, GraphPrintVisitor.EdgeType> {
+final class GraphPrintVisitor extends ProtocolImpl<RootCallTarget, NodeElement, NodeClass, EdgeType, Void, Void, Void, Void, Void>
+                implements GraphStructure<RootCallTarget, NodeElement, NodeClass, EdgeType> {
     private Map<Object, NodeElement> nodeMap;
     private List<EdgeElement> edgeList;
     private Map<Object, NodeElement> prevNodeMap;
@@ -58,7 +60,7 @@ final class GraphPrintVisitor extends GraphProtocol<RootCallTarget, NodeElement,
     private String currentGraphName;
 
     @Override
-    protected RootCallTarget findGraph(RootCallTarget current, Object obj) {
+    public RootCallTarget graph(RootCallTarget current, Object obj) {
         return obj instanceof RootCallTarget ? (RootCallTarget) obj : null;
     }
 
@@ -68,7 +70,7 @@ final class GraphPrintVisitor extends GraphProtocol<RootCallTarget, NodeElement,
     }
 
     @Override
-    protected NodeClass findNodeClass(Object o) {
+    public NodeClass nodeClass(Object o) {
         Object obj = o;
         if (obj instanceof NodeElement) {
             obj = ((NodeElement) obj).node;
@@ -92,22 +94,12 @@ final class GraphPrintVisitor extends GraphProtocol<RootCallTarget, NodeElement,
     }
 
     @Override
-    protected String findNameTemplate(NodeClass clazz) {
+    public String nameTemplate(NodeClass clazz) {
         return "{p#label}";
     }
 
     @Override
-    protected EdgeType findEdges(NodeElement node, boolean dumpInputs) {
-        return dumpInputs ? EdgeType.PARENT : EdgeType.CHILDREN;
-    }
-
-    @Override
-    protected EdgeType findClassEdges(NodeClass nodeClass, boolean dumpInputs) {
-        return dumpInputs ? EdgeType.PARENT : EdgeType.CHILDREN;
-    }
-
-    @Override
-    protected int findNodeId(NodeElement n) {
+    public int nodeId(NodeElement n) {
         return n.id;
     }
 
@@ -116,22 +108,22 @@ final class GraphPrintVisitor extends GraphProtocol<RootCallTarget, NodeElement,
     }
 
     @Override
-    protected boolean hasPredecessor(NodeElement node) {
+    public boolean nodeHasPredecessor(NodeElement node) {
         return false;
     }
 
     @Override
-    protected int findNodesCount(RootCallTarget info) {
+    public int nodesCount(RootCallTarget info) {
         return nodeMap.size();
     }
 
     @Override
-    protected Iterable<NodeElement> findNodes(RootCallTarget info) {
+    public Iterable<NodeElement> nodes(RootCallTarget info) {
         return nodeMap.values();
     }
 
     @Override
-    protected void findNodeProperties(NodeElement node, Map<Object, Object> props, RootCallTarget info) {
+    public void nodeProperties(RootCallTarget info, NodeElement node, Map<String, Object> props) {
         for (Map.Entry<String, Object> entry : node.getProperties().entrySet()) {
             final Object value = entry.getValue();
             props.put(entry.getKey(), Objects.toString(value));
@@ -164,33 +156,37 @@ final class GraphPrintVisitor extends GraphProtocol<RootCallTarget, NodeElement,
     }
 
     @Override
-    protected int findSize(EdgeType edges) {
+    public EdgeType inputPorts(NodeClass nodeClass) {
+        return EdgeType.PARENT;
+    }
+
+    @Override
+    public EdgeType outputPorts(NodeClass nodeClass) {
+        return EdgeType.CHILDREN;
+    }
+
+    @Override
+    public int edgeCount(EdgeType port) {
         return 1;
     }
 
     @Override
-    protected boolean isDirect(EdgeType edges, int i) {
+    public boolean edgeDirect(EdgeType port, int index) {
         return false;
     }
 
     @Override
-    protected String findName(EdgeType edges, int i) {
+    public String edgeName(EdgeType edges, int index) {
         return edges == EdgeType.PARENT ? "Parent" : "Children";
     }
 
     @Override
-    protected EdgeType findType(EdgeType edges, int i) {
-        return edges;
+    public Object edgeType(EdgeType port, int index) {
+        return port;
     }
 
     @Override
-    protected NodeElement findNode(RootCallTarget graph, NodeElement node, EdgeType edges, int i) {
-        List<NodeElement> nodes = findNodes(graph, node, edges, i);
-        return nodes.isEmpty() ? null : nodes.get(0);
-    }
-
-    @Override
-    protected List<NodeElement> findNodes(RootCallTarget graph, NodeElement node, EdgeType edges, int i) {
+    public Collection<? extends NodeElement> edgeNodes(RootCallTarget graph, NodeElement node, EdgeType edges, int index) {
         return edges == EdgeType.PARENT ? Collections.emptyList() : node.out;
     }
 
@@ -384,6 +380,7 @@ final class GraphPrintVisitor extends GraphProtocol<RootCallTarget, NodeElement,
 
     GraphPrintVisitor(WritableByteChannel ch) throws IOException {
         super(ch);
+        assignStructure(this);
     }
 
     /** @since 0.8 or earlier */
