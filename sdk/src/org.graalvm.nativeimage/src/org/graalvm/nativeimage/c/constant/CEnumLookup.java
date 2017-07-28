@@ -30,9 +30,10 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Returns the Java enumeration object for a given C value. The method must be within a class
- * annotated with {@link CEnum}. The method must be declared static, native, and must have exactly
- * one parameter (the C value that is to be looked up). The method can have any name.
+ * Annotation for a method that returns the Java enumeration object for a given C integer value. The
+ * method must be within a class annotated with {@link CEnum}. The method must be declared static,
+ * native, and must have exactly one parameter (the C value that is to be looked up). The method can
+ * have any name.
  * <p>
  * The Java enumeration can have multiple values with the same C value. However, in that case one
  * Java value must be selected manually using the attribute {@link CEnumConstant#includeInLookup()}.
