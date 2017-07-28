@@ -31,6 +31,8 @@ import java.util.List;
 
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
@@ -149,13 +151,18 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
         ValueNode unproxiedObject = GraphUtil.unproxify(object);
         ValueNode cachedValue = state.getReadCache(unproxiedObject, identity, index, this);
         if (cachedValue != null) {
-            if (!load.stamp().isCompatible(cachedValue.stamp())) {
+            Stamp loadStamp = load.stamp();
+            Stamp cachedValueStamp = cachedValue.stamp();
+            if (!loadStamp.isCompatible(cachedValueStamp)) {
                 /*
                  * Can either be the first field of a two slot write to a one slot field which would
                  * have a non compatible stamp or the second load which will see Illegal.
                  */
                 assert load.stamp().getStackKind() == JavaKind.Int && (cachedValue.stamp().getStackKind() == JavaKind.Long || cachedValue.getStackKind() == JavaKind.Double ||
                                 cachedValue.getStackKind() == JavaKind.Illegal) : "Can only allow different stack kind two slot marker writes on one slot fields.";
+                return false;
+            } else if (loadStamp instanceof IntegerStamp && !loadStamp.join(cachedValueStamp).hasValues()) {
+                // JDK-8185442: avoid replacement when intersection of two IntegerStamps is empty.
                 return false;
             } else {
                 // perform the read elimination

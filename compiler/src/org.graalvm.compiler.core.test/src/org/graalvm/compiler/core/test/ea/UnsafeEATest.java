@@ -37,6 +37,7 @@ public class UnsafeEATest extends EATestBase {
 
     private static final long fieldOffset1;
     private static final long fieldOffset2;
+    private static final long byteArrayBaseOffset;
 
     static {
         try {
@@ -51,6 +52,7 @@ public class UnsafeEATest extends EATestBase {
                 fieldOffset2 = UNSAFE.objectFieldOffset(TestClassInt.class.getField("z"));
             }
             assert fieldOffset2 == fieldOffset1 + 4;
+            byteArrayBaseOffset = UNSAFE.arrayBaseOffset(byte[].class);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -195,4 +197,23 @@ public class UnsafeEATest extends EATestBase {
         }
         return x;
     }
+
+    public static int testByteArraySnippet1() {
+        byte[] array = new byte[4];
+        UNSAFE.putInt(array, byteArrayBaseOffset, 0x01020304);
+        return array[0];
+    }
+
+    public static int testByteArraySnippet2() {
+        byte[] array = new byte[8];
+        UNSAFE.putLong(array, byteArrayBaseOffset, 0x0102030405060708L);
+        return array[0];
+    }
+
+    @Test
+    public void testByteBuffer() {
+        test("testByteArraySnippet1");
+        test("testByteArraySnippet2");
+    }
+
 }
