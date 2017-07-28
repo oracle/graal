@@ -82,15 +82,15 @@ public abstract class ProtocolImpl<Graph, Node, NodeClass, Port, Block, Resolved
     @Override
     protected final Port findClassEdges(NodeClass nodeClass, boolean dumpInputs) {
         if (dumpInputs) {
-            return structure.inputPorts(nodeClass);
+            return structure.portInputs(nodeClass);
         } else {
-            return structure.outputPorts(nodeClass);
+            return structure.portOutputs(nodeClass);
         }
     }
 
     @Override
     protected final int findSize(Port edges) {
-        return structure.edgeCount(edges);
+        return structure.portSize(edges);
     }
 
     @Override

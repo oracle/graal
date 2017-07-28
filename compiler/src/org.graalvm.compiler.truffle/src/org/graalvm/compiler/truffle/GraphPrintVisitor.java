@@ -156,17 +156,17 @@ final class GraphPrintVisitor extends ProtocolImpl<RootCallTarget, NodeElement, 
     }
 
     @Override
-    public EdgeType inputPorts(NodeClass nodeClass) {
+    public EdgeType portInputs(NodeClass nodeClass) {
         return EdgeType.PARENT;
     }
 
     @Override
-    public EdgeType outputPorts(NodeClass nodeClass) {
+    public EdgeType portOutputs(NodeClass nodeClass) {
         return EdgeType.CHILDREN;
     }
 
     @Override
-    public int edgeCount(EdgeType port) {
+    public int portSize(EdgeType port) {
         return 1;
     }
 

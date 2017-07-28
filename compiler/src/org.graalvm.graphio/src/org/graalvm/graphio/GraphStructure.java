@@ -115,17 +115,85 @@ public interface GraphStructure<G, N, C, P> {
      */
     String nameTemplate(C nodeClass);
 
-    P inputPorts(C nodeClass);
+    /**
+     * Input ports of a node class. Each node class has a fixed set of ports where individual edges
+     * can attach to.
+     *
+     * @param nodeClass the node class
+     * @return input ports for the node class
+     */
+    P portInputs(C nodeClass);
 
-    P outputPorts(C nodeClass);
+    /**
+     * Output ports of a node class. Each node class has a fixed set of ports from where individual
+     * edges can point to other nodes.
+     *
+     * @param nodeClass the node class
+     * @return output ports for the node class
+     */
+    P portOutputs(C nodeClass);
 
-    int edgeCount(P port);
+    /**
+     * The number of edges in a port. The protocol will then call methods
+     * {@link #edgeDirect(java.lang.Object, int)}, {@link #edgeName(java.lang.Object, int)},
+     * {@link #edgeType(java.lang.Object, int)} and
+     * {@link #edgeNodes(java.lang.Object, java.lang.Object, java.lang.Object, int)} for indexes
+     * from <code>0</code> to <code>portSize - 1</code>
+     *
+     * @param port the port
+     * @return number of edges in this port
+     */
+    int portSize(P port);
 
+    /**
+     * Checks whether an edge is direct. Direct edge shall have exactly one
+     * {@linkplain #edgeNodes(java.lang.Object, java.lang.Object, java.lang.Object, int) node} - it
+     * is an error to return more for such edge from the
+     * {@link #edgeNodes(java.lang.Object, java.lang.Object, java.lang.Object, int)} method.
+     *
+     * @param port the port
+     * @param index index from <code>0</code> to {@link #portSize(java.lang.Object)} minus
+     *            <code>1</code>
+     * @return <code>true</code> if only one node can be returned from
+     *         {@link #edgeNodes(java.lang.Object, java.lang.Object, java.lang.Object, int)} method
+     */
     boolean edgeDirect(P port, int index);
 
+    /**
+     * The name of an edge.
+     * 
+     * @param port the port
+     * @param index index from <code>0</code> to {@link #portSize(java.lang.Object)} minus
+     *            <code>1</code>
+     * @return the name of the edge
+     */
     String edgeName(P port, int index);
 
+    /**
+     * Type of an edge. The type must be a graph
+     * <q>enum</q> - e.g. either real instance of {@link Enum} subclass, or something that the
+     * {@link GraphOutput.Builder} can recognize as
+     * <q>enum</q>.
+     *
+     * @param port
+     * @param index index from <code>0</code> to {@link #portSize(java.lang.Object)} minus
+     *            <code>1</code>
+     * @return any {@link Enum} representing type of the edge
+     */
     Object edgeType(P port, int index);
 
+    /**
+     * Nodes where the edges for a port lead to/from. This method is called for both
+     * {@link #edgeDirect(java.lang.Object, int) direct/non-direct edges}. In case of a direct edge
+     * the returned collection must have exactly one element.
+     *
+     * @param graph the graph
+     * @param node the node in the graph
+     * @param port port of the node class
+     * @param index index from <code>0</code> to {@link #portSize(java.lang.Object)} minus
+     *            <code>1</code>
+     * @return <code>null</code> if there are no edges associated with given port or collection of
+     *         nodes where to/from the edges lead to
+     */
     Collection<? extends N> edgeNodes(G graph, N node, P port, int index);
 }
