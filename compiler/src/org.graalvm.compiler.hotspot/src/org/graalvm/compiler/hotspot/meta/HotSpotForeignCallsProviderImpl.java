@@ -135,7 +135,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
 
     /**
      * Creates a {@linkplain ForeignCallStub stub} for a foreign call.
-     * 
+     *
      * @param descriptor the signature of the call to the stub
      * @param address the address of the foreign code to call
      * @param prependThread true if the JavaThread value for the current thread is to be prepended
