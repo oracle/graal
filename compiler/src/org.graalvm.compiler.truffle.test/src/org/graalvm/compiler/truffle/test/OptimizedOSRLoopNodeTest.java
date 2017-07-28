@@ -60,6 +60,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
@@ -567,6 +568,19 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
         assertCompiled(rootNode.getOSRTarget());
     }
 
+    /**
+     * Test that graal stack frame instances have call nodes associated even when there are OSR
+     * frames on the stack.
+     */
+    @Theory
+    public void testStackFrameNodes(OSRLoopFactory factory) {
+        TestOSRStackTraceFromAbove testOSRStackTrace = new TestOSRStackTraceFromAbove();
+        TestRootNode rootNode = new TestRootNode(factory, testOSRStackTrace);
+        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        rootNode.forceOSR();
+        target.call(1);
+    }
+
     private static class TestOSRStackTrace extends TestRepeatingNode {
 
         @Override
@@ -579,17 +593,47 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
         }
 
         @TruffleBoundary
-        private void checkStackTrace() {
+        protected void checkStackTrace() {
             final OptimizedOSRLoopNode loop = (OptimizedOSRLoopNode) getParent();
             final OptimizedCallTarget compiledLoop = loop.getCompiledOSRLoop();
 
             Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Void>() {
+
+                private boolean first = true;
+
                 @Override
                 public Void visitFrame(FrameInstance frameInstance) {
                     Assert.assertNotSame(compiledLoop, frameInstance.getCallTarget());
+                    if (first) {
+                        first = false;
+                    } else {
+                        Assert.assertNotNull(frameInstance.getCallNode());
+                    }
                     return null;
                 }
             });
+        }
+
+    }
+
+    private static class TestOSRStackTraceFromAbove extends TestOSRStackTrace {
+
+        @Child DirectCallNode callNode;
+
+        @Override
+        @TruffleBoundary
+        protected void checkStackTrace() {
+            // Check the stack from an additional frame created on top
+            RootNode root = new RootNode(null) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    TestOSRStackTraceFromAbove.super.checkStackTrace();
+                    return null;
+                }
+            };
+            callNode = runtime.createDirectCallNode(runtime.createCallTarget(root));
+            adoptChildren();
+            callNode.call(new Object[]{});
         }
 
     }

@@ -43,7 +43,7 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.truffle.DefaultInliningPolicy;
-import org.graalvm.compiler.truffle.DefaultTruffleCompiler;
+import org.graalvm.compiler.truffle.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.TruffleCompiler;
@@ -62,7 +62,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
     public PartialEvaluationTest() {
         beforeInitialization();
         GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
-        this.truffleCompiler = DefaultTruffleCompiler.create(runtime);
+        this.truffleCompiler = HotSpotTruffleCompiler.create(runtime);
 
         // DebugEnvironment.ensureInitialized(getInitialOptions(),
         // runtime.getRequiredGraalCapability(SnippetReflectionProvider.class));
