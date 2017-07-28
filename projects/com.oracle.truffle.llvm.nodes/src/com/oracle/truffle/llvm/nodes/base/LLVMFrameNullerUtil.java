@@ -37,11 +37,13 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
+import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -133,16 +135,17 @@ public final class LLVMFrameNullerUtil {
                     CompilerAsserts.partialEvaluationConstant(type instanceof PrimitiveType && ((PrimitiveType) type).getPrimitiveKind() == PrimitiveKind.X86_FP80);
                     if (Type.isFunctionOrFunctionPointer(type)) {
                         nullFunction(frame, frameSlot);
-                    } else if (type instanceof VectorType) {
-                        nullVector(frame, frameSlot, ((VectorType) type).getElementType().getPrimitiveKind());
+                    } else if (type instanceof VectorType && ((VectorType) type).getElementType() instanceof PrimitiveType) {
+                        nullVector(frame, frameSlot, ((PrimitiveType) ((VectorType) type).getElementType()).getPrimitiveKind());
+                    } else if (type instanceof VectorType && ((VectorType) type).getElementType() instanceof PointerType) {
+                        frame.setObject(frameSlot, LLVMAddressVector.create(null));
                     } else if (type instanceof VariableBitWidthType) {
                         nullIVarBit(frame, frameSlot);
                     } else if (type instanceof PrimitiveType && ((PrimitiveType) type).getPrimitiveKind() == PrimitiveKind.X86_FP80) {
                         null80BitFloat(frame, frameSlot);
                     } else {
                         /*
-                         * This is a best effort approach. It could still be that LLVMAddress and
-                         * LLVMGlobalVariable clash.
+                         * This is a best effort approach. It could still be that LLVMAddress and LLVMGlobalVariable clash.
                          */
                         nullAddress(frame, frameSlot);
                     }

@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.factories;
 
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.nodes.memory.LLVMLoadVectorNodeFactory.LLVMLoadAddressVectorNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMLoadVectorNodeFactory.LLVMLoadDoubleVectorNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMLoadVectorNodeFactory.LLVMLoadFloatVectorNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMLoadVectorNodeFactory.LLVMLoadI16VectorNodeGen;
@@ -137,23 +138,31 @@ final class LLVMMemoryReadWriteFactory {
     }
 
     private static LLVMExpressionNode createLoadVector(VectorType resultType, LLVMExpressionNode loadTarget, int size) {
-        switch (resultType.getElementType().getPrimitiveKind()) {
-            case I1:
-                return LLVMLoadI1VectorNodeGen.create(loadTarget, size);
-            case I8:
-                return LLVMLoadI8VectorNodeGen.create(loadTarget, size);
-            case I16:
-                return LLVMLoadI16VectorNodeGen.create(loadTarget, size);
-            case I32:
-                return LLVMLoadI32VectorNodeGen.create(loadTarget, size);
-            case I64:
-                return LLVMLoadI64VectorNodeGen.create(loadTarget, size);
-            case FLOAT:
-                return LLVMLoadFloatVectorNodeGen.create(loadTarget, size);
-            case DOUBLE:
-                return LLVMLoadDoubleVectorNodeGen.create(loadTarget, size);
-            default:
-                throw new AssertionError(resultType);
+        Type elemType = resultType.getElementType();
+        if (elemType instanceof PrimitiveType) {
+
+            switch (((PrimitiveType) elemType).getPrimitiveKind()) {
+                case I1:
+                    return LLVMLoadI1VectorNodeGen.create(loadTarget, size);
+                case I8:
+                    return LLVMLoadI8VectorNodeGen.create(loadTarget, size);
+                case I16:
+                    return LLVMLoadI16VectorNodeGen.create(loadTarget, size);
+                case I32:
+                    return LLVMLoadI32VectorNodeGen.create(loadTarget, size);
+                case I64:
+                    return LLVMLoadI64VectorNodeGen.create(loadTarget, size);
+                case FLOAT:
+                    return LLVMLoadFloatVectorNodeGen.create(loadTarget, size);
+                case DOUBLE:
+                    return LLVMLoadDoubleVectorNodeGen.create(loadTarget, size);
+                default:
+                    throw new AssertionError(elemType + " vectors not supported");
+            }
+        } else if (elemType instanceof PointerType) {
+            return LLVMLoadAddressVectorNodeGen.create(loadTarget, size);
+        } else {
+            throw new AssertionError(elemType + " vectors not supported");
         }
     }
 

@@ -40,6 +40,7 @@ import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -368,6 +369,10 @@ public abstract class LLVMMemory {
 
     public static LLVMDoubleVector getDoubleVector(LLVMAddress addr, int size) {
         return LLVMDoubleVector.readVectorFromMemory(addr, size);
+    }
+
+    public static LLVMAddressVector getAddressVector(LLVMAddress addr, int size) {
+        return LLVMAddressVector.readVectorFromMemory(addr, size);
     }
 
     // watch out for casts such as I32* to I32Vector* when changing the way how vectors are

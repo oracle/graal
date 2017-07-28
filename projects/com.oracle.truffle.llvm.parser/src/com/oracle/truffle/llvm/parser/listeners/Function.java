@@ -932,9 +932,13 @@ public final class Function implements ParserListener {
         int vector2 = getIndex(args[i++]);
         int mask = getIndex(args[i]);
 
-        PrimitiveType subtype = ((VectorType) vectorType).getElementType();
+        Type subtype = ((VectorType) vectorType).getElementType();
         int length = ((VectorType) function.getValueType(mask)).getNumberOfElements();
-        Type type = new VectorType(subtype, length);
+        Type type;
+        if (subtype instanceof PrimitiveType)
+            type = new VectorType((PrimitiveType) subtype, length);
+        else
+            type = new VectorType((PointerType) subtype, length);
 
         emit(ShuffleVectorInstruction.fromSymbols(function.getSymbols(), type, vector1, vector2, mask));
     }

@@ -42,6 +42,7 @@ import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMI32ReadNodeGen
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMI64ReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMI8ReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMIReadVarBitNodeGen;
+import com.oracle.truffle.llvm.nodes.vars.LLVMReadVectorNodeFactory.LLVMAddressVectorReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadVectorNodeFactory.LLVMDoubleVectorReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadVectorNodeFactory.LLVMFloatVectorReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadVectorNodeFactory.LLVMI16VectorReadNodeGen;
@@ -99,21 +100,26 @@ final class LLVMFrameReadWriteFactory {
                     return LLVM80BitFloatReadNodeGen.create(frameSlot);
             }
         } else if (llvmType instanceof VectorType) {
-            switch (((VectorType) llvmType).getElementType().getPrimitiveKind()) {
-                case I1:
-                    return LLVMI1VectorReadNodeGen.create(frameSlot);
-                case I8:
-                    return LLVMI8VectorReadNodeGen.create(frameSlot);
-                case I16:
-                    return LLVMI16VectorReadNodeGen.create(frameSlot);
-                case I32:
-                    return LLVMI32VectorReadNodeGen.create(frameSlot);
-                case I64:
-                    return LLVMI64VectorReadNodeGen.create(frameSlot);
-                case FLOAT:
-                    return LLVMFloatVectorReadNodeGen.create(frameSlot);
-                case DOUBLE:
-                    return LLVMDoubleVectorReadNodeGen.create(frameSlot);
+            Type elemType = ((VectorType) llvmType).getElementType();
+            if (elemType instanceof PrimitiveType) {
+                switch (((PrimitiveType) elemType).getPrimitiveKind()) {
+                    case I1:
+                        return LLVMI1VectorReadNodeGen.create(frameSlot);
+                    case I8:
+                        return LLVMI8VectorReadNodeGen.create(frameSlot);
+                    case I16:
+                        return LLVMI16VectorReadNodeGen.create(frameSlot);
+                    case I32:
+                        return LLVMI32VectorReadNodeGen.create(frameSlot);
+                    case I64:
+                        return LLVMI64VectorReadNodeGen.create(frameSlot);
+                    case FLOAT:
+                        return LLVMFloatVectorReadNodeGen.create(frameSlot);
+                    case DOUBLE:
+                        return LLVMDoubleVectorReadNodeGen.create(frameSlot);
+                }
+            } else if (elemType instanceof PointerType) {
+                return LLVMAddressVectorReadNodeGen.create(frameSlot);
             }
         } else if (llvmType instanceof VariableBitWidthType) {
             return LLVMIReadVarBitNodeGen.create(frameSlot);

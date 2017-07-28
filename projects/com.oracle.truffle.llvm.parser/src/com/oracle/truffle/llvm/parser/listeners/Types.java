@@ -146,7 +146,10 @@ public final class Types implements ParserListener, Iterable<Type> {
                 break;
 
             case VECTOR:
-                type = new VectorType((PrimitiveType) get(args[1]), (int) args[0]);
+                if (get(args[1]) instanceof PrimitiveType)
+                    type = new VectorType((PrimitiveType) get(args[1]), (int) args[0]);
+                else
+                    type = new VectorType((PointerType) get(args[1]), (int) args[0]);
                 break;
 
             case X86_FP80:
