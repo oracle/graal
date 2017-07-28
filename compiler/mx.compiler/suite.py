@@ -1139,7 +1139,7 @@ suite = {
         "truffle:TRUFFLE_API",
         "org.graalvm.compiler.api.runtime",
         "org.graalvm.compiler.runtime",
-        "org.graalvm.compiler.printer",
+        "org.graalvm.graphio",
         "org.graalvm.compiler.replacements",
       ],
       "uses" : [

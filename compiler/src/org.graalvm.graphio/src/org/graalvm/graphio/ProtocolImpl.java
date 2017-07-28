@@ -29,14 +29,11 @@ import java.util.Map;
 
 public abstract class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition>
                 extends GraphProtocol<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition> {
-    private GraphStructure<Graph, Node, NodeClass, Port> structure;
+    protected GraphStructure<Graph, Node, NodeClass, Port> structure;
+    protected GraphEnums<?> enums = DefaultGraphEnums.DEFAULT;
 
     protected ProtocolImpl(WritableByteChannel channel) throws IOException {
         super(channel);
-    }
-
-    protected final void assignStructure(GraphStructure<Graph, Node, NodeClass, Port> structure) {
-        this.structure = structure;
     }
 
     @Override
@@ -109,8 +106,23 @@ public abstract class ProtocolImpl<Graph, Node, NodeClass, Port, Block, Resolved
     }
 
     @Override
-    protected Collection<? extends Node> findNodes(Graph graph, Node node, Port port, int i) {
+    protected final Collection<? extends Node> findNodes(Graph graph, Node node, Port port, int i) {
         return structure.edgeNodes(graph, node, port, i);
     }
 
+    @Override
+    protected final Object findEnumClass(Object enumValue) {
+        return enums.findEnumClass(enumValue);
+    }
+
+    @Override
+    protected final int findEnumOrdinal(Object obj) {
+        return enums.findEnumOrdinal(obj);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    protected final String[] findEnumTypeValues(Object clazz) {
+        return ((GraphEnums) enums).findEnumTypeValues(clazz);
+    }
 }

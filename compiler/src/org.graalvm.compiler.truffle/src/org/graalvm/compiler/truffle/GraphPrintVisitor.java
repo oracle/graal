@@ -65,11 +65,6 @@ final class GraphPrintVisitor extends ProtocolImpl<RootCallTarget, NodeElement, 
     }
 
     @Override
-    protected Void findMethod(Object obj) {
-        return null;
-    }
-
-    @Override
     public NodeClass nodeClass(Object o) {
         Object obj = o;
         if (obj instanceof NodeElement) {
@@ -131,31 +126,6 @@ final class GraphPrintVisitor extends ProtocolImpl<RootCallTarget, NodeElement, 
     }
 
     @Override
-    protected List<NodeElement> findBlockNodes(RootCallTarget info, Void block) {
-        return Collections.emptyList();
-    }
-
-    @Override
-    protected int findBlockId(Void sux) {
-        return -1;
-    }
-
-    @Override
-    protected List<Void> findBlocks(RootCallTarget graph) {
-        return Collections.emptyList();
-    }
-
-    @Override
-    protected List<Void> findBlockSuccessors(Void block) {
-        return Collections.emptyList();
-    }
-
-    @Override
-    protected String formatTitle(RootCallTarget graph, int ident, String format, Object... args) {
-        return String.format(format, args) + " [" + ident + "]";
-    }
-
-    @Override
     public EdgeType portInputs(NodeClass nodeClass) {
         return EdgeType.PARENT;
     }
@@ -191,36 +161,28 @@ final class GraphPrintVisitor extends ProtocolImpl<RootCallTarget, NodeElement, 
     }
 
     @Override
-    protected Object findEnumClass(Object enumValue) {
-        if (enumValue instanceof Enum<?>) {
-            return enumValue.getClass();
-        }
-        return null;
+    protected List<NodeElement> findBlockNodes(RootCallTarget info, Void block) {
+        return Collections.emptyList();
     }
 
     @Override
-    protected int findEnumOrdinal(Object obj) {
-        if (obj instanceof Enum<?>) {
-            return ((Enum<?>) obj).ordinal();
-        }
+    protected int findBlockId(Void sux) {
         return -1;
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    protected String[] findEnumTypeValues(Object clazz) {
-        if (clazz instanceof Class<?>) {
-            Class<? extends Enum<?>> enumClass = (Class<? extends Enum<?>>) clazz;
-            Enum<?>[] constants = enumClass.getEnumConstants();
-            if (constants != null) {
-                String[] names = new String[constants.length];
-                for (int i = 0; i < constants.length; i++) {
-                    names[i] = constants[i].name();
-                }
-                return names;
-            }
-        }
-        return null;
+    protected List<Void> findBlocks(RootCallTarget graph) {
+        return Collections.emptyList();
+    }
+
+    @Override
+    protected List<Void> findBlockSuccessors(Void block) {
+        return Collections.emptyList();
+    }
+
+    @Override
+    protected String formatTitle(RootCallTarget graph, int ident, String format, Object... args) {
+        return String.format(format, args) + " [" + ident + "]";
     }
 
     @Override
@@ -228,6 +190,11 @@ final class GraphPrintVisitor extends ProtocolImpl<RootCallTarget, NodeElement, 
         if (obj instanceof Class<?>) {
             return ((Class<?>) obj).getName();
         }
+        return null;
+    }
+
+    @Override
+    protected Void findMethod(Object obj) {
         return null;
     }
 
@@ -380,7 +347,7 @@ final class GraphPrintVisitor extends ProtocolImpl<RootCallTarget, NodeElement, 
 
     GraphPrintVisitor(WritableByteChannel ch) throws IOException {
         super(ch);
-        assignStructure(this);
+        structure = this;
     }
 
     /** @since 0.8 or earlier */
