@@ -54,8 +54,8 @@ bin/${LIBSULONG}: bin/sulongeh.o bin/misc.o
 
 bin/%.o: src/%.c
 	@mkdir -p bin
-	clang ${CFLAGS} -c $< -o $@
+	clang ${CPPFLAGS} ${CFLAGS} -c $< -o $@
 
 bin/%.o: src/%.cpp
 	@mkdir -p bin
-	clang++ ${CXXFLAGS} -c $< -o $@
+	clang++ ${CPPFLAGS} ${CXXFLAGS} -c $< -o $@

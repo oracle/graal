@@ -70,23 +70,31 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
         return dispatchNode.executeDispatch(frame, descriptor, arguments);
     }
 
-    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"handle.isSulong()", "handle.getFunctionPointer() == cachedFunction.getFunctionPointer()"})
+    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"cachedFunction != null", "handle.getFunctionPointer() == cachedFunction.getFunctionPointer()"})
     protected static Object doCached(VirtualFrame frame, LLVMFunctionHandle handle, Object[] arguments,
                     @Cached("lookupFunction(handle)") LLVMFunctionDescriptor cachedFunction,
                     @Cached("createCachedDispatch()") LLVMDispatchNode dispatchNode) {
         return dispatchNode.executeDispatch(frame, cachedFunction, arguments);
     }
 
-    @Specialization(replaces = "doCached", guards = "function.isSulong()")
-    protected Object doLookup(VirtualFrame frame, LLVMFunctionHandle function, Object[] arguments,
-                    @Cached("createCachedDispatch()") LLVMDispatchNode dispatchNode) {
-        return dispatchNode.executeDispatch(frame, lookupFunction(function), arguments);
+    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"cachedFunction == null", "handle.getFunctionPointer() == cachedHandle.getFunctionPointer()"})
+    protected static Object doCachedNative(VirtualFrame frame, LLVMFunctionHandle handle, Object[] arguments,
+                    @Cached("handle") LLVMFunctionHandle cachedHandle,
+                    @Cached("lookupFunction(cachedHandle)") LLVMFunctionDescriptor cachedFunction,
+                    @Cached("createCachedNativeDispatch()") LLVMNativeDispatchNode dispatchNode) {
+        return dispatchNode.executeDispatch(frame, cachedHandle, arguments);
     }
 
-    @Specialization(guards = "function.isExternNative()")
-    protected Object doNative(VirtualFrame frame, LLVMFunctionHandle function, Object[] arguments,
-                    @Cached("createCachedNativeDispatch()") LLVMNativeDispatchNode dispatchNode) {
-        return dispatchNode.executeDispatch(frame, function, arguments);
+    @Specialization(replaces = {"doCached", "doCachedNative"})
+    protected Object doLookup(VirtualFrame frame, LLVMFunctionHandle function, Object[] arguments,
+                    @Cached("createCachedDispatch()") LLVMDispatchNode dispatchNode,
+                    @Cached("createCachedNativeDispatch()") LLVMNativeDispatchNode dispatchNativeNode) {
+        LLVMFunctionDescriptor descriptor = lookupFunction(function);
+        if (descriptor != null) {
+            return dispatchNode.executeDispatch(frame, descriptor, arguments);
+        } else {
+            return dispatchNativeNode.executeDispatch(frame, function, arguments);
+        }
     }
 
     protected LLVMFunctionDescriptor lookupFunction(LLVMFunctionHandle function) {

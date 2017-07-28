@@ -29,165 +29,18 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMSulongFunctionToNativePointer extends LLVMIntrinsic {
 
-    @TruffleBoundary
-    protected LLVMFunctionDescriptor lookupFunction(LLVMFunctionHandle function) {
-        return getContext().getFunctionDescriptor(function);
-    }
-
-    @TruffleBoundary
-    protected LLVMFunctionDescriptor lookupFunction(LLVMAddress function) {
-        return getContext().getFunctionDescriptor(LLVMFunctionHandle.createHandle(function.getVal()));
-    }
-
-    @TruffleBoundary
-    protected TruffleObject identityFunction(LLVMAddress signature) {
-        return getContext().getNativeLookup().getNativeFunction("@identity", String.format("(%s):POINTER", readString(signature)));
-    }
-
-    protected boolean isSulong(LLVMAddress address) {
-        return LLVMFunction.isSulongFunctionPointer(address.getVal());
-    }
-
-    @Child private Node execute = Message.createExecute(1).createNode();
-    @Child private Node asPointer = Message.AS_POINTER.createNode();
-
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"isSulong(pointer)", "pointer.getVal() == cachedPointer.getVal()",
-                    "signature.getVal() == cachedSignature.getVal()"})
-    LLVMAddress bothCached(LLVMAddress pointer, LLVMAddress signature,
-                    @Cached("pointer") LLVMAddress cachedPointer,
-                    @Cached("signature") LLVMAddress cachedSignature,
-                    @Cached("lookupFunction(pointer)") LLVMFunctionDescriptor descriptor,
-                    @Cached("identityFunction(signature)") TruffleObject identity) {
-        try {
-            TruffleObject nativePointer = (TruffleObject) ForeignAccess.sendExecute(execute, identity,
-                            descriptor);
-            return LLVMAddress.fromLong(ForeignAccess.sendAsPointer(asPointer, nativePointer));
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
-        }
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"isSulong(pointer)", "signature.getVal() == cachedSignature.getVal()"})
-    LLVMAddress signatureCached(LLVMAddress pointer, LLVMAddress signature,
-                    @Cached("signature") LLVMAddress cachedSignature,
-                    @Cached("identityFunction(signature)") TruffleObject identity) {
-        try {
-            TruffleObject nativePointer = (TruffleObject) ForeignAccess.sendExecute(execute, identity,
-                            lookupFunction(pointer));
-            return LLVMAddress.fromLong(ForeignAccess.sendAsPointer(asPointer, nativePointer));
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
-        }
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"handle.isSulong()", "handle.getFunctionPointer() == cachedHandle.getFunctionPointer()",
-                    "signature.getVal() == cachedSignature.getVal()"})
-    LLVMAddress bothCached(LLVMFunctionHandle handle, LLVMAddress signature,
-                    @Cached("handle") LLVMFunctionHandle cachedHandle,
-                    @Cached("signature") LLVMAddress cachedSignature,
-                    @Cached("lookupFunction(handle)") LLVMFunctionDescriptor descriptor,
-                    @Cached("identityFunction(signature)") TruffleObject identity) {
-        try {
-            TruffleObject nativePointer = (TruffleObject) ForeignAccess.sendExecute(execute, identity,
-                            descriptor);
-            return LLVMAddress.fromLong(ForeignAccess.sendAsPointer(asPointer, nativePointer));
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
-        }
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"handle.isSulong()", "signature.getVal() == cachedSignature.getVal()"})
-    LLVMAddress signatureCached(LLVMFunctionHandle handle, LLVMAddress signature,
-                    @Cached("signature") LLVMAddress cachedSignature,
-                    @Cached("identityFunction(signature)") TruffleObject identity) {
-        try {
-            TruffleObject nativePointer = (TruffleObject) ForeignAccess.sendExecute(execute, identity,
-                            lookupFunction(handle));
-            return LLVMAddress.fromLong(ForeignAccess.sendAsPointer(asPointer, nativePointer));
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
-        }
-    }
-
-    @Specialization(guards = "handle.isSulong()")
-    LLVMAddress generic(LLVMFunctionHandle handle, LLVMAddress signature) {
-        try {
-            TruffleObject nativePointer = (TruffleObject) ForeignAccess.sendExecute(execute,
-                            identityFunction(signature), lookupFunction(handle));
-            return LLVMAddress.fromLong(ForeignAccess.sendAsPointer(asPointer, nativePointer));
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
-        }
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization(guards = "handle.isExternNative()")
-    LLVMAddress extern(LLVMFunctionHandle handle, LLVMAddress signature) {
-        return LLVMAddress.fromLong(handle.getFunctionPointer());
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization(guards = "!isSulong(address)")
-    LLVMAddress extern(LLVMAddress address, LLVMAddress signature) {
-        return address;
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"signature.getVal() == cachedSignature.getVal()"})
-    LLVMAddress signatureCached(LLVMFunctionDescriptor handle, LLVMAddress signature,
-                    @Cached("signature") LLVMAddress cachedSignature,
-                    @Cached("identityFunction(signature)") TruffleObject identity) {
-        try {
-            TruffleObject nativePointer = (TruffleObject) ForeignAccess.sendExecute(execute, identity,
-                            handle);
-            return LLVMAddress.fromLong(ForeignAccess.sendAsPointer(asPointer, nativePointer));
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
-        }
-    }
-
     @Specialization
-    LLVMAddress generic(LLVMFunctionDescriptor handle, LLVMAddress signature) {
-        try {
-            TruffleObject nativePointer = (TruffleObject) ForeignAccess.sendExecute(execute, identityFunction(signature), handle);
-            return LLVMAddress.fromLong(ForeignAccess.sendAsPointer(asPointer, nativePointer));
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
-        }
+    Object identity(Object pointer, @SuppressWarnings("unused") Object signature) {
+        // this function is deprecated in truffle.h
+        return pointer;
     }
-
 }

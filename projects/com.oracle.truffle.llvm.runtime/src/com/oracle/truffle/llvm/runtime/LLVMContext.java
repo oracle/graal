@@ -45,8 +45,12 @@ import java.util.stream.Collectors;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.runtime.NativeLookup.UnsupportedNativeTypeException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
@@ -78,7 +82,7 @@ public final class LLVMContext {
 
     private final Env env;
     private final LLVMScope globalScope;
-    private final LLVMFunctionIndexRegistry functionIndexRegistry;
+    private final LLVMFunctionPointerRegistry functionPointerRegistry;
     private final LLVMTypeRegistry typeRegistry;
 
     // #define SIG_DFL ((__sighandler_t) 0) /* Default action. */
@@ -108,21 +112,25 @@ public final class LLVMContext {
         }
     }
 
-    private static final class LLVMFunctionIndexRegistry {
+    private static final class LLVMFunctionPointerRegistry {
         private int currentFunctionIndex = 0;
-        private final List<LLVMFunctionDescriptor> functionDescriptors = new ArrayList<>();
+        private final HashMap<LLVMAddress, LLVMFunctionDescriptor> functionDescriptors = new HashMap<>();
 
-        LLVMFunctionDescriptor getDescriptor(LLVMFunctionHandle handle) {
-            return functionDescriptors.get(handle.getSulongFunctionIndex());
+        synchronized LLVMFunctionDescriptor getDescriptor(LLVMFunctionHandle handle) {
+            return functionDescriptors.get(LLVMAddress.fromLong(handle.getFunctionPointer()));
         }
 
-        LLVMFunctionDescriptor create(FunctionFactory factory) {
-            LLVMFunctionDescriptor function = factory.create(currentFunctionIndex++);
-            functionDescriptors.add(function);
+        synchronized void register(LLVMAddress pointer, LLVMFunctionDescriptor desc) {
+            functionDescriptors.put(pointer, desc);
+        }
 
-            assert LLVMFunction.getSulongFunctionIndex(function.getFunctionPointer()) == currentFunctionIndex - 1;
-            assert functionDescriptors.get(currentFunctionIndex - 1) == function;
-            return function;
+        synchronized LLVMFunctionDescriptor create(FunctionFactory factory) {
+            LLVMFunctionDescriptor fn = factory.create(currentFunctionIndex++);
+            if (fn.isNullFunction()) {
+                assert !functionDescriptors.containsKey(LLVMAddress.nullPointer());
+                functionDescriptors.put(LLVMAddress.nullPointer(), fn);
+            }
+            return fn;
         }
 
     }
@@ -167,11 +175,11 @@ public final class LLVMContext {
         this.nativeFunctions = new LLVMNativeFunctionsImpl(nativeLookup);
         this.sigDfl = LLVMFunctionHandle.createHandle(0);
         this.sigIgn = LLVMFunctionHandle.createHandle(1);
-        this.sigErr = LLVMFunctionHandle.createHandle((-1) & LLVMFunction.LOWER_MASK);
+        this.sigErr = LLVMFunctionHandle.createHandle(-1);
         this.toNative = new IdentityHashMap<>();
         this.toManaged = new HashMap<>();
         this.handlesLock = new Object();
-        this.functionIndexRegistry = new LLVMFunctionIndexRegistry();
+        this.functionPointerRegistry = new LLVMFunctionPointerRegistry();
         this.typeRegistry = new LLVMTypeRegistry();
         this.globalScope = LLVMScope.createGlobalScope(this);
 
@@ -203,14 +211,42 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public synchronized LLVMFunctionDescriptor getFunctionDescriptor(LLVMFunctionHandle handle) {
-        assert handle.isSulong();
-        return functionIndexRegistry.getDescriptor(handle);
+    public LLVMFunctionDescriptor getFunctionDescriptor(LLVMFunctionHandle handle) {
+        return functionPointerRegistry.getDescriptor(handle);
     }
 
     @TruffleBoundary
-    public synchronized LLVMFunctionDescriptor createFunctionDescriptor(FunctionFactory factory) {
-        return functionIndexRegistry.create(factory);
+    public LLVMFunctionDescriptor createFunctionDescriptor(FunctionFactory factory) {
+        return functionPointerRegistry.create(factory);
+    }
+
+    @TruffleBoundary
+    public TruffleObject createNativeWrapper(LLVMFunctionDescriptor descriptor) {
+        TruffleObject wrapper = null;
+        LLVMAddress pointer = null;
+
+        if (nativeLookup != null) {
+            try {
+                String signature = getNativeSignature(descriptor.getType(), 0);
+                TruffleObject createNativeWrapper = nativeLookup.getNativeFunction("@createNativeWrapper", String.format("(env, %s):object", signature));
+                try {
+                    wrapper = (TruffleObject) ForeignAccess.sendExecute(Message.createExecute(1).createNode(), createNativeWrapper, descriptor);
+                    pointer = LLVMAddress.fromLong(ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), wrapper));
+                } catch (InteropException ex) {
+                    throw new AssertionError(ex);
+                }
+            } catch (UnsupportedNativeTypeException ex) {
+                // ignore, fall back to tagged id
+            }
+        }
+
+        if (wrapper == null) {
+            pointer = LLVMAddress.fromLong(LLVMFunction.tagSulongFunctionPointer(descriptor.getFunctionId()));
+            wrapper = new LLVMTruffleAddress(pointer, descriptor.getType(), this);
+        }
+
+        functionPointerRegistry.register(pointer, descriptor);
+        return wrapper;
     }
 
     public void setNativeIntrinsicsFactory(NativeIntrinsicProvider nativeIntrinsicsFactory) {
@@ -424,7 +460,7 @@ public final class LLVMContext {
         return nativeLookup;
     }
 
-    public static String getNativeSignature(FunctionType type, int skipArguments) {
+    public static String getNativeSignature(FunctionType type, int skipArguments) throws UnsupportedNativeTypeException {
         return NativeLookup.prepareSignature(type, skipArguments);
     }
 
