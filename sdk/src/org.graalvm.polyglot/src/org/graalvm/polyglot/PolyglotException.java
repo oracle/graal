@@ -280,7 +280,7 @@ public final class PolyglotException extends RuntimeException {
      *
      * @since 1.0
      */
-    public static final class StackFrame {
+    public final class StackFrame {
 
         final AbstractStackFrameImpl impl;
 

@@ -49,7 +49,7 @@ public class OptionProcessorTest {
     @Test
     public void testTestLang() {
         Engine engine = Engine.create();
-        OptionDescriptors descriptors = engine.getLanguage("optiontestlang1").getOptions();
+        OptionDescriptors descriptors = engine.getLanguages().get("optiontestlang1").getOptions();
 
         OptionDescriptor descriptor;
         OptionDescriptor descriptor1;
@@ -83,7 +83,7 @@ public class OptionProcessorTest {
     public void testOptionsInstrument() {
 
         Engine engine = Engine.create();
-        OptionDescriptors descriptors = engine.getInstrument("optiontestinstr1").getOptions();
+        OptionDescriptors descriptors = engine.getInstruments().get("optiontestinstr1").getOptions();
 
         OptionDescriptor descriptor;
         OptionDescriptor descriptor1;
@@ -160,7 +160,7 @@ public class OptionProcessorTest {
 
     }
 
-    @Registration(id = "optiontestlang1", version = "1.0", name = "testlang", mimeType = "")
+    @Registration(id = "optiontestlang1", version = "1.0", name = "optiontestlang1", mimeType = "optiontestlang1")
     public static class OptionTestLang1 extends TruffleLanguage<Object> {
 
         @Option(help = "StringOption1 help", deprecated = true, category = OptionCategory.USER) //

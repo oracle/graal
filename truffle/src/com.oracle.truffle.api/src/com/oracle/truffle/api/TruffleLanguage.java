@@ -179,8 +179,9 @@ public abstract class TruffleLanguage<C> {
     /**
      * The annotation to use to register your language to the
      * {@link com.oracle.truffle.api.vm.PolyglotEngine Truffle} system. By annotating your
-     * implementation of {@link TruffleLanguage} by this annotation you are just a <em>one JAR drop
-     * to the class path</em> away from your users. Once they include your JAR in their application,
+     * implementation of {@link TruffleLanguage} by this annotation you are just a
+     * <em>one JAR drop to
+     * the class path</em> away from your users. Once they include your JAR in their application,
      * your language will be available to the {@link com.oracle.truffle.api.vm.PolyglotEngine
      * Truffle virtual machine}.
      *
@@ -849,6 +850,10 @@ public abstract class TruffleLanguage<C> {
             this.applicationArguments = applicationArguments == null ? new String[0] : applicationArguments;
         }
 
+        Object getVMObject() {
+            return vmObject;
+        }
+
         TruffleLanguage<Object> getSpi() {
             return spi;
         }
@@ -879,6 +884,16 @@ public abstract class TruffleLanguage<C> {
          */
         public String[] getApplicationArguments() {
             return applicationArguments;
+        }
+
+        /**
+         * Returns a new context builder useful to create inner context instances.
+         *
+         * @see TruffleContext for details on language inner contexts.
+         * @since 0.27
+         */
+        public TruffleContext.Builder newContextBuilder() {
+            return TruffleContext.EMPTY.new Builder(this);
         }
 
         /**
@@ -1159,30 +1174,12 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Configuration arguments for this language. Arguments set
-         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#config when constructing the
-         * engine} are accessible via this map.
+         * Configuration arguments passed from an outer language context to an inner language
+         * context. Inner language contexts can be created using {@link #newContextBuilder()}.
          *
-         * This method (in combination with
-         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#config}) provides a
-         * straight-forward way to pass implementation-level arguments, as typically specified on a
-         * command line, to the languages.
-         *
-         * {@link com.oracle.truffle.api.vm.PolyglotEngineSnippets#initializeWithParameters}
-         *
-         * In contrast to {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#globalSymbol
-         * global symbols} the provided values are passed in exactly as specified, because these
-         * configuration arguments are strictly at the implementation level and not language-level
-         * objects.
-         *
-         * These configuration arguments are available when
-         * {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env) creating the language
-         * context} to make it possible to take them into account before the language gets ready for
-         * execution. This is the most common way to access them:
-         *
-         * {@link TruffleLanguageSnippets.MyLanguage#createContext}
-         *
-         * @return read-only view of configuration options for this language
+         * @see TruffleContext to create inner contexts.
+         * @see TruffleContext.Builder#config(String, Object) to pass configuration objects to the
+         *      inner context.
          * @since 0.11
          */
         @TruffleBoundary
@@ -1633,15 +1630,13 @@ class TruffleLanguageSnippets {
 
     // @formatter:off
     abstract
-    // BEGIN: TruffleLanguageSnippets.MyLanguage#createContext
     class MyLanguage extends TruffleLanguage<Context> {
         @Override
         protected Context createContext(Env env) {
-            String[] args = (String[]) env.getConfig().get("CMD_ARGS");
+            String[] args = env.getApplicationArguments();
             return new Context(args);
         }
     }
-    // END: TruffleLanguageSnippets.MyLanguage#createContext
 
     abstract
     // BEGIN: TruffleLanguageSnippets.PostInitLanguage#createContext
@@ -1679,6 +1674,5 @@ class TruffleLanguageSnippets {
         assert 10 == ten.intValue();
     }
     // END: TruffleLanguageSnippets#parseWithParams
-
 
 }

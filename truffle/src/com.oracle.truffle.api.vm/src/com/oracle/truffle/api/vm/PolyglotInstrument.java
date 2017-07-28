@@ -33,7 +33,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
-class PolyglotInstrumentImpl extends AbstractInstrumentImpl implements VMObject {
+class PolyglotInstrument extends AbstractInstrumentImpl implements VMObject {
 
     Instrument api;
     InstrumentInfo info;
@@ -45,7 +45,7 @@ class PolyglotInstrumentImpl extends AbstractInstrumentImpl implements VMObject 
     private volatile boolean initialized;
     private volatile boolean created;
 
-    PolyglotInstrumentImpl(PolyglotEngineImpl engine, InstrumentCache cache) {
+    PolyglotInstrument(PolyglotEngineImpl engine, InstrumentCache cache) {
         super(engine.impl);
         this.engine = engine;
         this.cache = cache;

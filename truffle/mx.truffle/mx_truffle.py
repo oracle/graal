@@ -40,8 +40,27 @@ from mx_javamodules import as_java_module, get_java_module_info
 from urlparse import urljoin
 import mx_gate
 import mx_unittest
+import mx_benchmark
 
 _suite = mx.suite('truffle')
+
+class JMHRunnerTruffleBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite):
+
+    def name(self):
+        return "truffle"
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "truffle"
+
+    def extraVmArgs(self):
+        return ['-XX:-UseJVMCIClassLoader'] + super(JMHRunnerTruffleBenchmarkSuite, self).extraVmArgs()
+
+mx_benchmark.add_bm_suite(JMHRunnerTruffleBenchmarkSuite())
+#mx_benchmark.add_java_vm(mx_benchmark.DefaultJavaVm("server", "default"), priority=3)
+
 
 def javadoc(args, vm=None):
     """build the Javadoc for all API packages"""
