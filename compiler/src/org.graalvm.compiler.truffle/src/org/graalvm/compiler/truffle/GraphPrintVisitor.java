@@ -41,7 +41,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Objects;
-import org.graalvm.compiler.printer.AbstractGraphPrinter;
+import org.graalvm.graphio.GraphProtocol;
 import org.graalvm.compiler.truffle.GraphPrintVisitor.EdgeType;
 import org.graalvm.compiler.truffle.GraphPrintVisitor.NodeElement;
 
@@ -50,7 +50,7 @@ import org.graalvm.compiler.truffle.GraphPrintVisitor.NodeElement;
  *
  * @since 0.8 or earlier
  */
-final class GraphPrintVisitor extends AbstractGraphPrinter<RootCallTarget, NodeElement, NodeClass, EdgeType, Void, Void, Void, Void, Void, GraphPrintVisitor.EdgeType> {
+final class GraphPrintVisitor extends GraphProtocol<RootCallTarget, NodeElement, NodeClass, EdgeType, Void, Void, Void, Void, Void, GraphPrintVisitor.EdgeType> {
     private Map<Object, NodeElement> nodeMap;
     private List<EdgeElement> edgeList;
     private Map<Object, NodeElement> prevNodeMap;

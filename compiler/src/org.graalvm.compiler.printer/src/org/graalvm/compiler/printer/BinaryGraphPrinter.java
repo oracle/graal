@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.printer;
 
+import org.graalvm.graphio.AbstractGraphPrinter;
 import static org.graalvm.compiler.graph.Edges.Type.Inputs;
 import static org.graalvm.compiler.graph.Edges.Type.Successors;
 

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.printer;
+package org.graalvm.graphio;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -34,7 +34,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-public abstract class AbstractGraphPrinter<Graph, Node, NodeClass, Edges, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition, InputType> implements Closeable {
+public abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition, InputType> implements Closeable {
     private static final Charset UTF8 = Charset.forName("UTF-8");
 
     private static final int CONSTANT_POOL_MAX_SIZE = 8000;
@@ -75,11 +75,11 @@ public abstract class AbstractGraphPrinter<Graph, Node, NodeClass, Edges, Block,
     private final int versionMajor;
     private final int versionMinor;
 
-    protected AbstractGraphPrinter(WritableByteChannel channel) throws IOException {
+    protected GraphProtocol(WritableByteChannel channel) throws IOException {
         this(channel, 4, 0);
     }
 
-    private AbstractGraphPrinter(WritableByteChannel channel, int major, int minor) throws IOException {
+    private GraphProtocol(WritableByteChannel channel, int major, int minor) throws IOException {
         if (major > 4) {
             throw new IllegalArgumentException();
         }

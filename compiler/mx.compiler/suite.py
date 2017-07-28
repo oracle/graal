@@ -227,6 +227,14 @@ suite = {
       "workingSets" : "Graal",
     },
 
+    "org.graalvm.graphio" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "1.8",
+      "workingSets" : "API,Graal",
+    },
+
     "org.graalvm.util" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1060,6 +1068,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "org.graalvm.graphio",
         "org.graalvm.compiler.core",
         "org.graalvm.compiler.java",
       ],
