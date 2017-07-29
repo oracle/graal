@@ -37,7 +37,10 @@ public class UnsafeEATest extends EATestBase {
 
     private static final long fieldOffset1;
     private static final long fieldOffset2;
+
     private static final long byteArrayBaseOffset;
+    private static final long intArrayBaseOffset;
+    private static final long longArrayBaseOffset;
 
     static {
         try {
@@ -53,6 +56,8 @@ public class UnsafeEATest extends EATestBase {
             }
             assert fieldOffset2 == fieldOffset1 + 4;
             byteArrayBaseOffset = UNSAFE.arrayBaseOffset(byte[].class);
+            intArrayBaseOffset = UNSAFE.arrayBaseOffset(int[].class);
+            longArrayBaseOffset = UNSAFE.arrayBaseOffset(long[].class);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -198,22 +203,49 @@ public class UnsafeEATest extends EATestBase {
         return x;
     }
 
-    public static int testByteArraySnippet1() {
+    public static int testWriteIntToByteArraySnippet() {
         byte[] array = new byte[4];
         UNSAFE.putInt(array, byteArrayBaseOffset, 0x01020304);
         return array[0];
     }
 
-    public static int testByteArraySnippet2() {
-        byte[] array = new byte[8];
-        UNSAFE.putLong(array, byteArrayBaseOffset, 0x0102030405060708L);
+    @Test
+    public void testWriteIntToByteArray() {
+        test("testWriteIntToByteArraySnippet");
+    }
+
+    public static int testWriteLongToIntArraySnippet() {
+        int[] array = new int[2];
+        UNSAFE.putLong(array, intArrayBaseOffset, 0x0102030405060708L);
         return array[0];
     }
 
     @Test
-    public void testByteBuffer() {
-        test("testByteArraySnippet1");
-        test("testByteArraySnippet2");
+    public void testWriteLongToIntArray() {
+        test("testWriteLongToIntArraySnippet");
     }
 
+    public static int testWriteByteToIntArraySnippet() {
+        int[] array = new int[1];
+        array[0] = 0x01020304;
+        UNSAFE.putByte(array, intArrayBaseOffset, (byte) 0x05);
+        return array[0];
+    }
+
+    @Test
+    public void testWriteByteToIntArray() {
+        test("testWriteByteToIntArraySnippet");
+    }
+
+    public static long testWriteIntToLongArraySnippet() {
+        long[] array = new long[1];
+        array[0] = 0x0102030405060708L;
+        UNSAFE.putInt(array, longArrayBaseOffset, 0x04030201);
+        return array[0];
+    }
+
+    @Test
+    public void testWriteIntToLongArray() {
+        test("testWriteIntToLongArraySnippet");
+    }
 }
