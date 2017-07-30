@@ -187,6 +187,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
+import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -812,8 +813,8 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public NativeIntrinsicProvider getNativeIntrinsicsFactory(LLVMLanguage language, LLVMContext context) {
-        return new LLVMNativeIntrinsicsProvider(context, language).collectIntrinsics();
+    public NativeIntrinsicProvider getNativeIntrinsicsFactory(LLVMLanguage language, LLVMContext context, DataSpecConverter dataLayout) {
+        return new LLVMNativeIntrinsicsProvider(context, language, dataLayout).collectIntrinsics();
     }
 
     @Override

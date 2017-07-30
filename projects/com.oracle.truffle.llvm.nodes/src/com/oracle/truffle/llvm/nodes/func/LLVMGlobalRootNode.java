@@ -49,6 +49,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMAbort;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMSignal;
+import com.oracle.truffle.llvm.runtime.GuestLanguageRuntimeException;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.DestructorStackElement;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
@@ -100,6 +101,9 @@ public class LLVMGlobalRootNode extends RootNode {
             CompilerDirectives.transferToInterpreter();
             e.getCStackTrace().printCStackTrace();
             throw e;
+        } catch (GuestLanguageRuntimeException e) {
+            CompilerDirectives.transferToInterpreter();
+            return e.handleExit();
         } catch (Throwable e) {
             throw e;
         } finally {

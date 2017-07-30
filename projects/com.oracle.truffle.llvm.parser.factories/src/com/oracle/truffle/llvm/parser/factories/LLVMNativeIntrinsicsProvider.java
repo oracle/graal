@@ -123,6 +123,9 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexMul;
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunConstructorFunctionsNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunDestructorFunctionsNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunGlobalVariableInitalizationNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMLangStartNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMProcessExitNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMPanicNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -130,6 +133,7 @@ import com.oracle.truffle.llvm.runtime.NativeIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -172,10 +176,12 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
     protected final Demangler demangler = new Demangler();
     protected final LLVMLanguage language;
     protected final LLVMContext context;
+    protected final DataSpecConverter dataLayout;
 
-    public LLVMNativeIntrinsicsProvider(LLVMContext context, LLVMLanguage language) {
+    public LLVMNativeIntrinsicsProvider(LLVMContext context, LLVMLanguage language, DataSpecConverter dataLayout) {
         this.language = language;
         this.context = context;
+        this.dataLayout = dataLayout;
     }
 
     public abstract static class LLVMNativeIntrinsicFactory {
@@ -287,6 +293,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
         registerSulongIntrinsics();
         registerAbortIntrinsics();
         registerTruffleOnlyIntrinsics();
+        registerRustIntrinsics();
         registerMathFunctionIntrinsics();
         registerMemoryFunctionIntrinsics();
         registerExceptionIntrinsics();
@@ -966,6 +973,31 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
             @Override
             protected RootCallTarget generate(FunctionType type) {
                 return wrap("@strcmp", LLVMStrCmpNodeGen.create(context.getNativeLookup().getNativeFunction("@strcmp"), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+            }
+        });
+    }
+
+    protected void registerRustIntrinsics() {
+        factories.put("@std::rt::lang_start", new LLVMNativeIntrinsicFactory(true, false) {
+
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@std::rt::lang_start", LLVMLangStartNodeGen.create(LLVMArgNodeGen.create(0), LLVMArgNodeGen.create(1),
+                                LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
+            }
+        });
+        factories.put("@std::process::exit", new LLVMNativeIntrinsicFactory(true, false) {
+
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@std::process::exit", LLVMProcessExitNodeGen.create(LLVMArgNodeGen.create(1)));
+            }
+        });
+        factories.put("@core::panicking::panic", new LLVMNativeIntrinsicFactory(true, false) {
+
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@core::panicking::panic", LLVMPanicNodeGen.create(dataLayout, LLVMArgNodeGen.create(1)));
             }
         });
     }
