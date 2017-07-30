@@ -128,6 +128,25 @@ public abstract class LLVMInsertValueNode extends LLVMExpressionNode {
         }
     }
 
+    public static class LLVMInsertI64ValueNode extends LLVMInsertValueNode {
+
+        @Child private LLVMExpressionNode element;
+
+        public LLVMInsertI64ValueNode(LLVMExpressionNode sourceAggregate, LLVMExpressionNode targetAggregate, int sourceAggregateSize, int offset,
+                        LLVMExpressionNode element) {
+            super(sourceAggregate, targetAggregate, sourceAggregateSize, offset);
+            this.element = element;
+        }
+
+        @Override
+        public LLVMAddress executeLLVMAddress(VirtualFrame frame) {
+            LLVMAddress targetAggr = super.executeLLVMAddress(frame);
+            long value = element.executeI64(frame);
+            LLVMMemory.putI64(targetAggr.getVal() + offset, value);
+            return targetAggr;
+        }
+    }
+
     public static class LLVMInsertAddressValueNode extends LLVMInsertValueNode {
 
         @Child private LLVMExpressionNode element;

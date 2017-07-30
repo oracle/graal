@@ -91,6 +91,18 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
 
     public abstract LLVMExpressionNode getCase(int i);
 
+    public static final class LLVMI1SwitchNode extends LLVMSwitchNodeImpl {
+        public LLVMI1SwitchNode(LLVMExpressionNode cond, LLVMExpressionNode[] cases, int[] successors, LLVMExpressionNode[] phiWriteNodes, SourceSection source) {
+            super(successors, phiWriteNodes, cond, cases, source);
+        }
+
+        @Override
+        public Object executeCondition(VirtualFrame frame) {
+            return cond.executeI1(frame);
+        }
+
+    }
+
     public static final class LLVMI8SwitchNode extends LLVMSwitchNodeImpl {
         public LLVMI8SwitchNode(LLVMExpressionNode cond, LLVMExpressionNode[] cases, int[] successors, LLVMExpressionNode[] phiNodes, SourceSection source) {
             super(successors, phiNodes, cond, cases, source);

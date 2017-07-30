@@ -49,6 +49,7 @@ import com.oracle.truffle.llvm.nodes.control.LLVMConditionalBranchNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMDispatchBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMIndirectBranchNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMRetNodeFactory.LLVMVoidReturnNodeGen;
+import com.oracle.truffle.llvm.nodes.control.LLVMSwitchNode.LLVMI1SwitchNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMSwitchNode.LLVMI16SwitchNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMSwitchNode.LLVMI32SwitchNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMSwitchNode.LLVMI64SwitchNode;
@@ -345,6 +346,9 @@ public class BasicNodeFactory implements NodeFactory {
     public LLVMControlFlowNode createSwitch(LLVMParserRuntime runtime, LLVMExpressionNode cond, int[] successors, LLVMExpressionNode[] cases,
                     PrimitiveType llvmType, LLVMExpressionNode[] phiWriteNodes, SourceSection source) {
         switch (llvmType.getPrimitiveKind()) {
+            case I1:
+                LLVMExpressionNode[] i1Cases = Arrays.copyOf(cases, cases.length, LLVMExpressionNode[].class);
+                return new LLVMI1SwitchNode(cond, i1Cases, successors, phiWriteNodes, source);
             case I8:
                 LLVMExpressionNode[] i8Cases = Arrays.copyOf(cases, cases.length, LLVMExpressionNode[].class);
                 return new LLVMI8SwitchNode(cond, i8Cases, successors, phiWriteNodes, source);
