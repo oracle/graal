@@ -29,8 +29,11 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.function.UnaryOperator;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -135,13 +138,13 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
     @Override
     @TruffleBoundary
     public final boolean isIntrinsified(String name) {
-        return factories.containsKey(name);
+        return factoriesContainKey(name);
     }
 
     @Override
     public final RootCallTarget generateIntrinsic(String name, FunctionType type) {
         CompilerAsserts.neverPartOfCompilation();
-        if (factories.containsKey(name)) {
+        if (factoriesContainKey(name)) {
             return factories.get(name).generate(type);
         }
         return null;
@@ -150,7 +153,7 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
     @Override
     public final boolean forceInline(String name) {
         CompilerAsserts.neverPartOfCompilation();
-        if (factories.containsKey(name)) {
+        if (factoriesContainKey(name)) {
             return factories.get(name).forceInline;
         }
         return false;
@@ -159,13 +162,14 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
     @Override
     public final boolean forceSplit(String name) {
         CompilerAsserts.neverPartOfCompilation();
-        if (factories.containsKey(name)) {
+        if (factoriesContainKey(name)) {
             return factories.get(name).forceSplit;
         }
         return false;
     }
 
     protected final Map<String, LLVMNativeIntrinsicFactory> factories = new HashMap<>();
+    protected final Demangler demangler = new Demangler();
     protected final LLVMLanguage language;
     protected final LLVMContext context;
 
@@ -186,6 +190,98 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
         protected abstract RootCallTarget generate(FunctionType type);
     }
 
+    protected static class Demangler {
+        protected final List<UnaryOperator<String>> demanglerFunctions = Arrays.asList(new RustDemangleFunction());
+
+        protected String demangle(String name) {
+            CompilerAsserts.neverPartOfCompilation();
+            for (UnaryOperator<String> func : demanglerFunctions) {
+                String demangledName = func.apply(name);
+                if (demangledName != null) {
+                    return demangledName;
+                }
+            }
+            return null;
+        }
+
+        protected static class RustDemangleFunction implements UnaryOperator<String> {
+
+            @Override
+            public String apply(String name) {
+                if (!name.endsWith("E")) {
+                    return null;
+                }
+                NameScanner scanner = new NameScanner(name);
+                if (!(scanner.skip("@_ZN") || scanner.skip("@ZN"))) {
+                    return null;
+                }
+
+                StringBuilder builder = new StringBuilder("@");
+                int elemLen;
+                while ((elemLen = scanner.scanUnsignedInt()) != -1) {
+                    String elem = scanner.scan(elemLen);
+                    if (elem == null) {
+                        return null;
+                    }
+                    if (elem.matches("h[0-9a-fA-F]+")) {
+                        break;
+                    }
+                    builder.append(elem);
+                    builder.append("::");
+                }
+                if (builder.length() < 2 || !scanner.skip("E")) {
+                    return null;
+                }
+                builder.delete(builder.length() - 2, builder.length());
+                return builder.toString();
+            }
+
+        }
+
+        protected static class NameScanner {
+            protected final String name;
+            protected int index;
+
+            protected NameScanner(String name) {
+                this.name = name;
+                index = 0;
+            }
+
+            protected boolean skip(String str) {
+                int endi = index + str.length();
+                if (endi <= name.length() && str.equals(name.substring(index, endi))) {
+                    index = endi;
+                    return true;
+                }
+                return false;
+            }
+
+            protected String scan(int nchars) {
+                if (index + nchars > name.length()) {
+                    return null;
+                }
+                String result = name.substring(index, index + nchars);
+                index += nchars;
+                return result;
+            }
+
+            protected int scanUnsignedInt() {
+                int endi = index;
+                while (endi < name.length() && Character.isDigit(name.charAt(endi))) {
+                    endi++;
+                }
+                try {
+                    int result = Integer.parseInt(name.substring(index, endi));
+                    index = endi;
+                    return result;
+                } catch (NumberFormatException e) {
+                    return -1;
+                }
+            }
+
+        }
+    }
+
     public LLVMNativeIntrinsicsProvider collectIntrinsics() {
         registerTruffleIntrinsics();
         registerSulongIntrinsics();
@@ -196,6 +292,18 @@ public class LLVMNativeIntrinsicsProvider implements NativeIntrinsicProvider {
         registerExceptionIntrinsics();
         registerComplexNumberIntrinsics();
         return this;
+    }
+
+    protected boolean factoriesContainKey(String name) {
+        if (factories.containsKey(name)) {
+            return true;
+        }
+        String demangledName = demangler.demangle(name);
+        if (demangledName == null || !factories.containsKey(demangledName)) {
+            return false;
+        }
+        factories.put(name, factories.get(demangledName));
+        return true;
     }
 
     protected RootCallTarget wrap(String functionName, LLVMExpressionNode node) {
