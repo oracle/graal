@@ -40,6 +40,7 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 class LLVMRootNodeFactory {
@@ -71,30 +72,47 @@ class LLVMRootNodeFactory {
     }
 
     private static Object[] createArgs(Source sourceFile, Object[] mainArgs, Type[] llvmRuntimeTypes) {
-        int mainArgsCount = mainArgs == null ? 0 : mainArgs.length;
-        int argsCount = mainArgsCount + 1;
         if (llvmRuntimeTypes.length == 0) {
             return new Object[0];
-        } else if (llvmRuntimeTypes.length == 1) {
-            return new Object[]{argsCount};
         } else {
-            Object[] args = new Object[argsCount];
-            args[0] = sourceFile.getPath() == null ? "" : sourceFile.getPath();
-            if (mainArgsCount > 0) {
-                System.arraycopy(mainArgs, 0, args, 1, mainArgsCount);
-            }
-            LLVMAddress allocatedArgsStartAddress = getArgsAsStringArray(args);
-            // Checkstyle: stop magic number check
-            if (llvmRuntimeTypes.length == 2) {
-                return new Object[]{argsCount, allocatedArgsStartAddress};
-            } else if (llvmRuntimeTypes.length == 3) {
-                LLVMAddress posixEnvPointer = LLVMAddress.nullPointer();
-                return new Object[]{argsCount, allocatedArgsStartAddress, posixEnvPointer};
+            int mainArgsCount = mainArgs == null ? 0 : mainArgs.length;
+            int argsCount = mainArgsCount + 1;
+            Object argsCountArg = createIntArg(argsCount, llvmRuntimeTypes[0]);
+            if (llvmRuntimeTypes.length == 1) {
+                return new Object[]{argsCountArg};
             } else {
-                throw new AssertionError(sourceFile + " " + Arrays.toString(mainArgs) + " " + Arrays.toString(llvmRuntimeTypes));
+                Object[] args = new Object[argsCount];
+                args[0] = sourceFile.getPath() == null ? "" : sourceFile.getPath();
+                if (mainArgsCount > 0) {
+                    System.arraycopy(mainArgs, 0, args, 1, mainArgsCount);
+                }
+                LLVMAddress allocatedArgsStartAddress = getArgsAsStringArray(args);
+                // Checkstyle: stop magic number check
+                if (llvmRuntimeTypes.length == 2) {
+                    return new Object[]{argsCountArg, allocatedArgsStartAddress};
+                } else if (llvmRuntimeTypes.length == 3) {
+                    LLVMAddress posixEnvPointer = LLVMAddress.nullPointer();
+                    return new Object[]{argsCountArg, allocatedArgsStartAddress, posixEnvPointer};
+                } else {
+                    throw new AssertionError(sourceFile + " " + Arrays.toString(mainArgs) + " " + Arrays.toString(llvmRuntimeTypes));
+                }
+                // Checkstyle: resume magic number check
             }
-            // Checkstyle: resume magic number check
         }
+    }
+
+    private static Object createIntArg(int primitiveArg, Type argType) {
+        if (argType instanceof PrimitiveType) {
+            switch (((PrimitiveType) argType).getPrimitiveKind()) {
+                case I32:
+                    return primitiveArg;
+                case I64:
+                    return (long) primitiveArg;
+                default:
+                    throw new AssertionError(argType);
+            }
+        }
+        throw new AssertionError(argType);
     }
 
     private static LLVMAddress getArgsAsStringArray(Object[] args) {
