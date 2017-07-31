@@ -34,7 +34,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-public abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition> implements Closeable {
+abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition> implements Closeable {
     private static final Charset UTF8 = Charset.forName("UTF-8");
 
     private static final int CONSTANT_POOL_MAX_SIZE = 8000;
@@ -451,17 +451,9 @@ public abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, Resolv
             writeInt(blocks.size());
             for (Block block : blocks) {
                 Collection<? extends Node> nodes = findBlockNodes(info, block);
-                List<Node> extraNodes = new LinkedList<>();
                 writeInt(findBlockId(block));
+                writeInt(nodes.size());
                 for (Node node : nodes) {
-                    findExtraNodes(node, extraNodes);
-                }
-                extraNodes.removeAll(nodes);
-                writeInt(nodes.size() + extraNodes.size());
-                for (Node node : nodes) {
-                    writeInt(findNodeId(node));
-                }
-                for (Node node : extraNodes) {
                     writeInt(findNodeId(node));
                 }
                 final Collection<? extends Block> successors = findBlockSuccessors(block);

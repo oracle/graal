@@ -37,7 +37,7 @@ public interface GraphTypes {
      * @param enumValue the value to test
      * @return <code>null</code> if the value isn't enum, otherwise its class
      */
-    Object findEnumClass(Object enumValue);
+    Object enumClass(Object enumValue);
 
     /**
      * Ordinal of an enum. If the <code>obj</code> represents an enum, then return its ordinal
@@ -46,7 +46,7 @@ public interface GraphTypes {
      * @param obj the value to test
      * @return <code>-1</code> if the obj isn't enum, otherwise its ordinal number
      */
-    int findEnumOrdinal(Object obj);
+    int enumOrdinal(Object obj);
 
     /**
      * All possible values of an enum. If the provided clazz object represents an enum, then compute
@@ -56,7 +56,7 @@ public interface GraphTypes {
      * @param maybeEnumClass the class to test
      * @return <code>null</code> if the clazz isn't an enum, otherwise names of its values
      */
-    String[] findEnumTypeValues(Object maybeEnumClass);
+    String[] enumTypeValues(Object maybeEnumClass);
 
     /**
      * Finds Java type name for a given class.

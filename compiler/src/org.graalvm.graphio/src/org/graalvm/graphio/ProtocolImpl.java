@@ -124,17 +124,17 @@ final class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod
 
     @Override
     protected final Object findEnumClass(Object enumValue) {
-        return types.findEnumClass(enumValue);
+        return types.enumClass(enumValue);
     }
 
     @Override
     protected final int findEnumOrdinal(Object obj) {
-        return types.findEnumOrdinal(obj);
+        return types.enumOrdinal(obj);
     }
 
     @Override
     protected final String[] findEnumTypeValues(Object clazz) {
-        return types.findEnumTypeValues(clazz);
+        return types.enumTypeValues(clazz);
     }
 
     @Override

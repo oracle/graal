@@ -30,6 +30,7 @@ import java.nio.channels.WritableByteChannel;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -45,7 +46,6 @@ import org.graalvm.compiler.graph.InputEdges;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeMap;
-import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
@@ -65,15 +65,22 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
-import org.graalvm.graphio.GraphProtocol;
+import org.graalvm.graphio.GraphBlocks;
+import org.graalvm.graphio.GraphElements;
+import org.graalvm.graphio.GraphOutput;
+import org.graalvm.graphio.GraphStructure;
+import org.graalvm.graphio.GraphTypes;
 
-public class BinaryGraphPrinter
-                extends GraphProtocol<BinaryGraphPrinter.GraphInfo, Node, NodeClass<?>, Edges, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition>
-                implements GraphPrinter {
-    private SnippetReflectionProvider snippetReflection;
+public class BinaryGraphPrinter implements
+                GraphStructure<BinaryGraphPrinter.GraphInfo, Node, NodeClass<?>, Edges>,
+                GraphBlocks<BinaryGraphPrinter.GraphInfo, Block, Node>,
+                GraphElements<ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition>,
+                GraphTypes, GraphPrinter {
+    private final SnippetReflectionProvider snippetReflection;
+    private final GraphOutput<BinaryGraphPrinter.GraphInfo, ResolvedJavaMethod> output;
 
     public BinaryGraphPrinter(WritableByteChannel channel, SnippetReflectionProvider snippetReflection) throws IOException {
-        super(channel);
+        this.output = GraphOutput.newBuilder(this).blocks(this).elements(this).types(this).build(channel);
         this.snippetReflection = snippetReflection;
     }
 
@@ -83,18 +90,22 @@ public class BinaryGraphPrinter
     }
 
     @Override
-    public String formatTitle(GraphInfo graph, int id, String format, Object... args) {
-        Object[] newArgs = GraphPrinter.super.simplifyClassArgs(args);
-        return id + ": " + String.format(format, newArgs);
-    }
-
-    @Override
     public void beginGroup(DebugContext debug, String name, String shortName, ResolvedJavaMethod method, int bci, Map<Object, Object> properties) throws IOException {
-        beginGroup(new GraphInfo(debug, null), name, shortName, method, 0, properties);
+        output.beginGroup(new GraphInfo(debug, null), name, shortName, method, bci, properties);
     }
 
     @Override
-    protected ResolvedJavaMethod findMethod(Object object) {
+    public void endGroup() throws IOException {
+        output.endGroup();
+    }
+
+    @Override
+    public void close() {
+        output.close();
+    }
+
+    @Override
+    public ResolvedJavaMethod method(Object object) {
         if (object instanceof Bytecode) {
             return ((Bytecode) object).getMethod();
         } else if (object instanceof ResolvedJavaMethod) {
@@ -105,7 +116,7 @@ public class BinaryGraphPrinter
     }
 
     @Override
-    protected NodeClass<?> findNodeClass(Object obj) {
+    public NodeClass<?> nodeClass(Object obj) {
         if (obj instanceof NodeClass<?>) {
             return (NodeClass<?>) obj;
         }
@@ -116,17 +127,17 @@ public class BinaryGraphPrinter
     }
 
     @Override
-    protected Class<?> findJavaClass(NodeClass<?> node) {
+    public Object nodeClassType(NodeClass<?> node) {
         return node.getJavaClass();
     }
 
     @Override
-    protected String findNameTemplate(NodeClass<?> nodeClass) {
+    public String nameTemplate(NodeClass<?> nodeClass) {
         return nodeClass.getNameTemplate();
     }
 
     @Override
-    protected final GraphInfo findGraph(GraphInfo currrent, Object obj) {
+    public final GraphInfo graph(GraphInfo currrent, Object obj) {
         if (obj instanceof Graph) {
             return new GraphInfo(currrent.debug, (Graph) obj);
         } else if (obj instanceof CachedGraph) {
@@ -137,13 +148,18 @@ public class BinaryGraphPrinter
     }
 
     @Override
-    protected int findNodeId(Node n) {
+    public int nodeId(Node n) {
         return getNodeId(n);
     }
 
     @Override
-    protected final Edges findClassEdges(NodeClass<?> nodeClass, boolean dumpInputs) {
-        return nodeClass.getEdges(dumpInputs ? Inputs : Successors);
+    public Edges portInputs(NodeClass<?> nodeClass) {
+        return nodeClass.getEdges(Inputs);
+    }
+
+    @Override
+    public Edges portOutputs(NodeClass<?> nodeClass) {
+        return nodeClass.getEdges(Successors);
     }
 
     @SuppressWarnings("deprecation")
@@ -152,33 +168,43 @@ public class BinaryGraphPrinter
     }
 
     @Override
-    protected List<Node> findBlockNodes(GraphInfo info, Block block) {
-        return info.blockToNodes.get(block);
+    public List<Node> blockNodes(GraphInfo info, Block block) {
+        List<Node> nodes = info.blockToNodes.get(block);
+        if (nodes == null) {
+            return null;
+        }
+        List<Node> extraNodes = new LinkedList<>();
+        for (Node node : nodes) {
+            findExtraNodes(node, extraNodes);
+        }
+        extraNodes.removeAll(nodes);
+        extraNodes.addAll(0, nodes);
+        return extraNodes;
     }
 
     @Override
-    protected int findBlockId(Block sux) {
+    public int blockId(Block sux) {
         return sux.getId();
     }
 
     @Override
-    protected List<Block> findBlockSuccessors(Block block) {
+    public List<Block> blockSuccessors(Block block) {
         return Arrays.asList(block.getSuccessors());
     }
 
     @Override
-    protected Iterable<Node> findNodes(GraphInfo info) {
+    public Iterable<Node> nodes(GraphInfo info) {
         return info.graph.getNodes();
     }
 
     @Override
-    protected int findNodesCount(GraphInfo info) {
+    public int nodesCount(GraphInfo info) {
         return info.graph.getNodeCount();
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    protected void findNodeProperties(Node node, Map<String, Object> props, GraphInfo info) {
+    public void nodeProperties(GraphInfo info, Node node, Map<String, Object> props) {
         node.getDebugProperties((Map) props);
         Graph graph = info.graph;
         ControlFlowGraph cfg = info.cfg;
@@ -247,8 +273,7 @@ public class BinaryGraphPrinter
         return null;
     }
 
-    @Override
-    protected void findExtraNodes(Node node, Collection<? super Node> extraNodes) {
+    private void findExtraNodes(Node node, Collection<? super Node> extraNodes) {
         if (node instanceof AbstractMergeNode) {
             AbstractMergeNode merge = (AbstractMergeNode) node;
             for (PhiNode phi : merge.phis()) {
@@ -258,52 +283,52 @@ public class BinaryGraphPrinter
     }
 
     @Override
-    protected boolean hasPredecessor(Node node) {
+    public boolean nodeHasPredecessor(Node node) {
         return node.predecessor() != null;
     }
 
     @Override
-    protected List<Block> findBlocks(GraphInfo graph) {
+    public List<Block> blocks(GraphInfo graph) {
         return graph.blocks;
     }
 
     @Override
     public void print(DebugContext debug, Graph graph, Map<Object, Object> properties, int id, String format, Object... args) throws IOException {
-        print(new GraphInfo(debug, graph), properties, 0, format, args);
+        output.print(new GraphInfo(debug, graph), properties, id, format, args);
     }
 
     @Override
-    protected int findSize(Edges edges) {
-        return edges.getCount();
+    public int portSize(Edges port) {
+        return port.getCount();
     }
 
     @Override
-    protected boolean isDirect(Edges edges, int i) {
-        return i < edges.getDirectCount();
+    public boolean edgeDirect(Edges port, int index) {
+        return index < port.getDirectCount();
     }
 
     @Override
-    protected String findName(Edges edges, int i) {
-        return edges.getName(i);
+    public String edgeName(Edges port, int index) {
+        return port.getName(index);
     }
 
     @Override
-    protected InputType findType(Edges edges, int i) {
-        return ((InputEdges) edges).getInputType(i);
+    public Object edgeType(Edges port, int index) {
+        return ((InputEdges) port).getInputType(index);
     }
 
     @Override
-    protected List<Node> findNodes(GraphInfo graph, Node node, Edges edges, int i) {
-        if (i < edges.getDirectCount()) {
-            node = Edges.getNode(node, edges.getOffsets(), i);
+    public Collection<? extends Node> edgeNodes(GraphInfo graph, Node node, Edges port, int i) {
+        if (i < port.getDirectCount()) {
+            node = Edges.getNode(node, port.getOffsets(), i);
             return Collections.singletonList(node);
         } else {
-            return Edges.getNodeList(node, edges.getOffsets(), i);
+            return Edges.getNodeList(node, port.getOffsets(), i);
         }
     }
 
     @Override
-    protected Object findEnumClass(Object enumValue) {
+    public Object enumClass(Object enumValue) {
         if (enumValue instanceof Enum) {
             return enumValue.getClass();
         }
@@ -311,7 +336,7 @@ public class BinaryGraphPrinter
     }
 
     @Override
-    protected int findEnumOrdinal(Object obj) {
+    public int enumOrdinal(Object obj) {
         if (obj instanceof Enum<?>) {
             return ((Enum<?>) obj).ordinal();
         }
@@ -320,7 +345,7 @@ public class BinaryGraphPrinter
 
     @SuppressWarnings("unchecked")
     @Override
-    protected String[] findEnumTypeValues(Object clazz) {
+    public String[] enumTypeValues(Object clazz) {
         if (clazz instanceof Class<?>) {
             Class<? extends Enum<?>> enumClass = (Class<? extends Enum<?>>) clazz;
             Enum<?>[] constants = enumClass.getEnumConstants();
@@ -336,7 +361,7 @@ public class BinaryGraphPrinter
     }
 
     @Override
-    protected String findJavaTypeName(Object obj) {
+    public String typeName(Object obj) {
         if (obj instanceof Class<?>) {
             return ((Class<?>) obj).getName();
         }
@@ -347,52 +372,52 @@ public class BinaryGraphPrinter
     }
 
     @Override
-    protected byte[] findMethodCode(ResolvedJavaMethod method) {
+    public byte[] methodCode(ResolvedJavaMethod method) {
         return method.getCode();
     }
 
     @Override
-    protected int findMethodModifiers(ResolvedJavaMethod method) {
+    public int methodModifiers(ResolvedJavaMethod method) {
         return method.getModifiers();
     }
 
     @Override
-    protected Signature findMethodSignature(ResolvedJavaMethod method) {
+    public Signature methodSignature(ResolvedJavaMethod method) {
         return method.getSignature();
     }
 
     @Override
-    protected String findMethodName(ResolvedJavaMethod method) {
+    public String methodName(ResolvedJavaMethod method) {
         return method.getName();
     }
 
     @Override
-    protected Object findMethodDeclaringClass(ResolvedJavaMethod method) {
+    public Object methodDeclaringClass(ResolvedJavaMethod method) {
         return method.getDeclaringClass();
     }
 
     @Override
-    protected int findFieldModifiers(ResolvedJavaField field) {
+    public int fieldModifiers(ResolvedJavaField field) {
         return field.getModifiers();
     }
 
     @Override
-    protected String findFieldTypeName(ResolvedJavaField field) {
+    public String fieldTypeName(ResolvedJavaField field) {
         return field.getType().getName();
     }
 
     @Override
-    protected String findFieldName(ResolvedJavaField field) {
+    public String fieldName(ResolvedJavaField field) {
         return field.getName();
     }
 
     @Override
-    protected Object findFieldDeclaringClass(ResolvedJavaField field) {
+    public Object fieldDeclaringClass(ResolvedJavaField field) {
         return field.getDeclaringClass();
     }
 
     @Override
-    protected ResolvedJavaField findJavaField(Object object) {
+    public ResolvedJavaField field(Object object) {
         if (object instanceof ResolvedJavaField) {
             return (ResolvedJavaField) object;
         }
@@ -400,7 +425,7 @@ public class BinaryGraphPrinter
     }
 
     @Override
-    protected Signature findSignature(Object object) {
+    public Signature signature(Object object) {
         if (object instanceof Signature) {
             return (Signature) object;
         }
@@ -408,22 +433,22 @@ public class BinaryGraphPrinter
     }
 
     @Override
-    protected int findSignatureParameterCount(Signature signature) {
+    public int signatureParameterCount(Signature signature) {
         return signature.getParameterCount(false);
     }
 
     @Override
-    protected String findSignatureParameterTypeName(Signature signature, int index) {
+    public String signatureParameterTypeName(Signature signature, int index) {
         return signature.getParameterType(index, null).getName();
     }
 
     @Override
-    protected String findSignatureReturnTypeName(Signature signature) {
+    public String signatureReturnTypeName(Signature signature) {
         return signature.getReturnType(null).getName();
     }
 
     @Override
-    protected NodeSourcePosition findNodeSourcePosition(Object object) {
+    public NodeSourcePosition nodeSourcePosition(Object object) {
         if (object instanceof NodeSourcePosition) {
             return (NodeSourcePosition) object;
         }
@@ -431,22 +456,22 @@ public class BinaryGraphPrinter
     }
 
     @Override
-    protected ResolvedJavaMethod findNodeSourcePositionMethod(NodeSourcePosition pos) {
+    public ResolvedJavaMethod nodeSourcePositionMethod(NodeSourcePosition pos) {
         return pos.getMethod();
     }
 
     @Override
-    protected NodeSourcePosition findNodeSourcePositionCaller(NodeSourcePosition pos) {
+    public NodeSourcePosition nodeSourcePositionCaller(NodeSourcePosition pos) {
         return pos.getCaller();
     }
 
     @Override
-    protected int findNodeSourcePositionBCI(NodeSourcePosition pos) {
+    public int nodeSourcePositionBCI(NodeSourcePosition pos) {
         return pos.getBCI();
     }
 
     @Override
-    protected StackTraceElement findMethodStackTraceElement(ResolvedJavaMethod method, int bci, NodeSourcePosition pos) {
+    public StackTraceElement methodStackTraceElement(ResolvedJavaMethod method, int bci, NodeSourcePosition pos) {
         return method.asStackTraceElement(bci);
     }
 

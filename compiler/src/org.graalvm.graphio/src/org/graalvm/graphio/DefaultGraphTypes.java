@@ -29,7 +29,7 @@ final class DefaultGraphTypes implements GraphTypes {
     }
 
     @Override
-    public Class<?> findEnumClass(Object enumValue) {
+    public Class<?> enumClass(Object enumValue) {
         if (enumValue instanceof Enum<?>) {
             return enumValue.getClass();
         }
@@ -37,7 +37,7 @@ final class DefaultGraphTypes implements GraphTypes {
     }
 
     @Override
-    public int findEnumOrdinal(Object obj) {
+    public int enumOrdinal(Object obj) {
         if (obj instanceof Enum<?>) {
             return ((Enum<?>) obj).ordinal();
         }
@@ -46,7 +46,7 @@ final class DefaultGraphTypes implements GraphTypes {
 
     @SuppressWarnings("unchecked")
     @Override
-    public String[] findEnumTypeValues(Object clazz) {
+    public String[] enumTypeValues(Object clazz) {
         if (clazz instanceof Class<?>) {
             Class<? extends Enum<?>> enumClass = (Class<? extends Enum<?>>) clazz;
             Enum<?>[] constants = enumClass.getEnumConstants();

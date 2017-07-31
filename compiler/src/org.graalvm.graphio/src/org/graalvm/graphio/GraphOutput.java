@@ -146,9 +146,10 @@ public final class GraphOutput<G, M> implements Closeable {
          * @param elements the elements implementation
          * @return this builder
          */
-        public Builder<G, N, M> elements(GraphElements<M, ?, ?, ?> elements) {
-            this.elements = elements;
-            return this;
+        @SuppressWarnings("unchecked")
+        public <M> Builder<G, N, M> elements(GraphElements<M, ?, ?, ?> elements) {
+            this.elements = (GraphElements) elements;
+            return (Builder<G, N, M>) this;
         }
 
         /**
