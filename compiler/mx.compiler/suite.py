@@ -1360,6 +1360,7 @@ suite = {
       "distDependencies" : [
         "GRAAL_API",
         "GRAAL_COMPILER",
+        "GRAAL_GRAPHIO",
       ],
     },
 
