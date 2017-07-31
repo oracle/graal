@@ -50,7 +50,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
-final class PolyglotProxyImpl {
+final class PolyglotProxy {
 
     public static boolean isProxyGuestObject(TruffleObject value) {
         return value instanceof EngineProxy;
@@ -60,16 +60,16 @@ final class PolyglotProxyImpl {
         return ((EngineProxy) value).proxy;
     }
 
-    public static TruffleObject toProxyGuestObject(PolyglotLanguageContextImpl context, Proxy receiver) {
+    public static TruffleObject toProxyGuestObject(PolyglotLanguageContext context, Proxy receiver) {
         return new EngineProxy(context, receiver);
     }
 
     private static class EngineProxy implements TruffleObject {
 
-        final PolyglotLanguageContextImpl languageContext;
+        final PolyglotLanguageContext languageContext;
         final Proxy proxy;
 
-        EngineProxy(PolyglotLanguageContextImpl context, Proxy proxy) {
+        EngineProxy(PolyglotLanguageContext context, Proxy proxy) {
             this.languageContext = context;
             this.proxy = proxy;
         }
@@ -91,7 +91,7 @@ final class PolyglotProxyImpl {
         public Object execute(VirtualFrame frame) {
             Object[] arguments = frame.getArguments();
             EngineProxy proxy = (EngineProxy) arguments[0];
-            PolyglotLanguageContextImpl context = proxy.languageContext;
+            PolyglotLanguageContext context = proxy.languageContext;
             try {
                 return executeProxy(context, proxy.proxy, arguments);
             } catch (Throwable t) {
@@ -103,7 +103,7 @@ final class PolyglotProxyImpl {
             }
         }
 
-        abstract Object executeProxy(PolyglotLanguageContextImpl context, Proxy proxy, Object[] arguments);
+        abstract Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments);
 
     }
 
@@ -111,7 +111,7 @@ final class PolyglotProxyImpl {
 
         @Override
         @TruffleBoundary
-        Object executeProxy(PolyglotLanguageContextImpl context, Proxy proxy, Object[] arguments) {
+        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
             if (proxy instanceof ProxyExecutable) {
                 return context.toGuestValue(((ProxyExecutable) proxy).execute(context.toHostValues(arguments, 1)));
             } else {
@@ -124,7 +124,7 @@ final class PolyglotProxyImpl {
 
         @Override
         @TruffleBoundary
-        Object executeProxy(PolyglotLanguageContextImpl context, Proxy proxy, Object[] arguments) {
+        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
             if (proxy instanceof ProxyExecutable) {
                 return context.toGuestValue(((ProxyExecutable) proxy).execute(context.toHostValues(arguments, 1)));
             } else {
@@ -136,7 +136,7 @@ final class PolyglotProxyImpl {
     private static final class ProxyIsExecutableNode extends ProxyRootNode {
 
         @Override
-        Object executeProxy(PolyglotLanguageContextImpl context, Proxy proxy, Object[] arguments) {
+        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
             return proxy instanceof ProxyExecutable;
         }
     }
@@ -144,7 +144,7 @@ final class PolyglotProxyImpl {
     private static final class ProxyIsPointerNode extends ProxyRootNode {
 
         @Override
-        Object executeProxy(PolyglotLanguageContextImpl context, Proxy proxy, Object[] arguments) {
+        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
             return proxy instanceof ProxyNativeObject;
         }
     }
@@ -153,7 +153,7 @@ final class PolyglotProxyImpl {
 
         @Override
         @TruffleBoundary
-        Object executeProxy(PolyglotLanguageContextImpl context, Proxy proxy, Object[] arguments) {
+        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
             if (proxy instanceof ProxyNativeObject) {
                 return ((ProxyNativeObject) proxy).asPointer();
             } else {
@@ -165,7 +165,7 @@ final class PolyglotProxyImpl {
     private static final class ProxyIsBoxedNode extends ProxyRootNode {
 
         @Override
-        Object executeProxy(PolyglotLanguageContextImpl context, Proxy proxy, Object[] arguments) {
+        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
             return proxy instanceof ProxyPrimitive;
         }
     }
@@ -174,7 +174,7 @@ final class PolyglotProxyImpl {
 
         @Override
         @TruffleBoundary
-        Object executeProxy(PolyglotLanguageContextImpl context, Proxy proxy, Object[] arguments) {
+        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
             if (proxy instanceof ProxyPrimitive) {
                 Object primitive = ((ProxyPrimitive) proxy).asPrimitive();
                 if (primitive instanceof String || primitive instanceof Boolean || //
@@ -194,7 +194,7 @@ final class PolyglotProxyImpl {
     private static final class ProxyHasSizeNode extends ProxyRootNode {
 
         @Override
-        Object executeProxy(PolyglotLanguageContextImpl context, Proxy proxy, Object[] arguments) {
+        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
             return proxy instanceof ProxyArray;
         }
     }
@@ -203,7 +203,7 @@ final class PolyglotProxyImpl {
 
         @Override
         @TruffleBoundary
-        Object executeProxy(PolyglotLanguageContextImpl context, Proxy proxy, Object[] arguments) {
+        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
             if (proxy instanceof ProxyArray) {
                 return (int) ((ProxyArray) proxy).getSize();
             } else {
@@ -231,7 +231,7 @@ final class PolyglotProxyImpl {
 
         @Override
         @TruffleBoundary
-        Object executeProxy(PolyglotLanguageContextImpl context, Proxy proxy, Object[] arguments) {
+        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
             if (proxy instanceof ProxyObject) {
                 final ProxyObject object = (ProxyObject) proxy;
                 return context.toGuestValue(object.getMemberKeys());
@@ -247,7 +247,7 @@ final class PolyglotProxyImpl {
         static final Integer NO_KEY = 0;
 
         @Override
-        Object executeProxy(PolyglotLanguageContextImpl context, Proxy proxy, Object[] arguments) {
+        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
             Object key = arguments[1];
             if (proxy instanceof ProxyObject && key instanceof String) {
                 return keyInfo((ProxyObject) proxy, (String) key);
@@ -269,7 +269,7 @@ final class PolyglotProxyImpl {
     private static final class ProxyInvokeNode extends ProxyRootNode {
 
         @Override
-        Object executeProxy(PolyglotLanguageContextImpl context, Proxy proxy, Object[] arguments) {
+        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
             Object key = arguments[1];
             if (proxy instanceof ProxyObject && key instanceof String) {
                 return invoke(context, (ProxyObject) proxy, (String) key, arguments);
@@ -283,7 +283,7 @@ final class PolyglotProxyImpl {
         @Child private Node executeNode = Message.createExecute(0).createNode();
 
         @TruffleBoundary
-        Object invoke(PolyglotLanguageContextImpl context, ProxyObject object, String key, Object[] arguments) {
+        Object invoke(PolyglotLanguageContext context, ProxyObject object, String key, Object[] arguments) {
             if (object.hasMember(key)) {
                 Object member = context.toGuestValue(object.getMember(key));
                 if (member instanceof TruffleObject && ForeignAccess.sendIsExecutable(isExecutable, (TruffleObject) member)) {
@@ -316,7 +316,7 @@ final class PolyglotProxyImpl {
     private static final class ProxyWriteNode extends ProxyRootNode {
 
         @Override
-        Object executeProxy(PolyglotLanguageContextImpl context, Proxy proxy, Object[] arguments) {
+        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
             Object key = arguments[1];
             Object value = arguments[2];
             if (proxy instanceof ProxyArray && key instanceof Number) {
@@ -331,12 +331,12 @@ final class PolyglotProxyImpl {
         }
 
         @TruffleBoundary
-        static void putMember(PolyglotLanguageContextImpl context, ProxyObject object, String key, Object value) {
+        static void putMember(PolyglotLanguageContext context, ProxyObject object, String key, Object value) {
             object.putMember(key, context.toHostValue(value));
         }
 
         @TruffleBoundary
-        static void setArray(PolyglotLanguageContextImpl context, ProxyArray object, Number index, Object value) {
+        static void setArray(PolyglotLanguageContext context, ProxyArray object, Number index, Object value) {
             object.set(index.longValue(), context.toHostValue(value));
         }
 
@@ -345,7 +345,7 @@ final class PolyglotProxyImpl {
     private static final class ProxyReadNode extends ProxyRootNode {
 
         @Override
-        Object executeProxy(PolyglotLanguageContextImpl context, Proxy proxy, Object[] arguments) {
+        Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
             Object key = arguments[1];
             if (proxy instanceof ProxyArray && key instanceof Number) {
                 return getArray(context, (ProxyArray) proxy, (Number) key);
@@ -358,7 +358,7 @@ final class PolyglotProxyImpl {
         }
 
         @TruffleBoundary
-        static Object getMember(PolyglotLanguageContextImpl context, ProxyObject object, String key) {
+        static Object getMember(PolyglotLanguageContext context, ProxyObject object, String key) {
             if (object.hasMember(key)) {
                 return context.toGuestValue(object.getMember(key));
             } else {
@@ -367,7 +367,7 @@ final class PolyglotProxyImpl {
         }
 
         @TruffleBoundary
-        static Object getArray(PolyglotLanguageContextImpl context, ProxyArray object, Number index) {
+        static Object getArray(PolyglotLanguageContext context, ProxyArray object, Number index) {
             return context.toGuestValue(object.get(index.longValue()));
         }
 

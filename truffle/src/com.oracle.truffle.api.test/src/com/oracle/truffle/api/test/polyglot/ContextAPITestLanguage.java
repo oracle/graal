@@ -22,22 +22,19 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import static org.junit.Assert.assertSame;
-
 import java.util.Map;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
+import com.oracle.truffle.api.test.polyglot.ContextAPITestLanguage.LanguageContext;
 
-@TruffleLanguage.Registration(id = LanguageSPITestLanguage.ID, name = LanguageSPITestLanguage.ID, version = "1.0", mimeType = LanguageSPITestLanguage.ID)
-public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
+@TruffleLanguage.Registration(id = ContextAPITestLanguage.ID, name = ContextAPITestLanguage.ID, version = "1.0", mimeType = ContextAPITestLanguage.ID)
+public class ContextAPITestLanguage extends TruffleLanguage<LanguageContext> {
 
-    static final String ID = "LanguageSPITest";
+    static final String ID = "ContextAPITestLanguage";
 
     static Function<Env, Object> runinside;
 
@@ -50,7 +47,7 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
     }
 
     public static LanguageContext getContext() {
-        return getCurrentContext(LanguageSPITestLanguage.class);
+        return getCurrentContext(ContextAPITestLanguage.class);
     }
 
     @Override
@@ -71,24 +68,13 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
 
     @Override
     protected LanguageContext createContext(Env env) {
-        LanguageSPITest.langContext = new LanguageContext();
-        LanguageSPITest.langContext.env = env;
-        LanguageSPITest.langContext.config = env.getConfig();
-        return LanguageSPITest.langContext;
+        ContextAPITest.langContext = new LanguageContext();
+        ContextAPITest.langContext.env = env;
+        return ContextAPITest.langContext;
     }
 
     @Override
     protected void disposeContext(LanguageContext context) {
-        assertSame(getContext(), context);
-        assertSame(context, getContextReference().get());
-
-        assertSame(context, new RootNode(this) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return null;
-            }
-        }.getLanguage(LanguageSPITestLanguage.class).getContextReference().get());
-
         context.disposeCalled++;
     }
 

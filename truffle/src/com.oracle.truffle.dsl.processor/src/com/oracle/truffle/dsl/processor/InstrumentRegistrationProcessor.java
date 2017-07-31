@@ -51,6 +51,7 @@ import javax.tools.StandardLocation;
 
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
+import com.oracle.truffle.dsl.processor.LanguageRegistrationProcessor.SortedProperties;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 @SupportedAnnotationTypes("com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration")
@@ -66,7 +67,7 @@ public final class InstrumentRegistrationProcessor extends AbstractProcessor {
 
     private void generateFile(List<TypeElement> instruments) {
         String filename = "META-INF/truffle/instrument";
-        Properties p = new Properties();
+        Properties p = new SortedProperties();
         int numInstruments = loadIfFileAlreadyExists(filename, p);
 
         for (TypeElement l : instruments) {

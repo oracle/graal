@@ -33,7 +33,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
  * to the language's meta-data, including the language's {@link #getId() id}, {@link #getName()
  * name}, {@link #getVersion() version} and {@link #getOptions() options}.
  *
- * @see Engine#getLanguage(String) To return a single language
  * @see Engine#getLanguages() To return a map of all installed languages
  *
  * @since 1.0

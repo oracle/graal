@@ -108,7 +108,7 @@ public class SLSharedCodeSeparatedEnvTest {
 
     @Test
     public void instrumentsSeeOutputOfBoth() throws Exception {
-        Instrument outInstr = e2.getEngine().getInstrument("captureOutput");
+        Instrument outInstr = e2.getEngine().getInstruments().get("captureOutput");
         ByteArrayOutputStream outConsumer = outInstr.lookup(ByteArrayOutputStream.class);
         assertNotNull("Stream capturing is ready", outConsumer);
 

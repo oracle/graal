@@ -32,17 +32,18 @@ import java.lang.annotation.Target;
 import org.graalvm.nativeimage.c.CContext;
 
 /**
- * System Java annotation to import a C enumeration to Java. In C, enumeration values are plain
- * integer constants. In Java, enumeration values are object constants. Therefore, the Java
- * enumeration value cannot just represent the C value, as it is done for {@link CConstant}.
- * Instead, the Java enumeration with this annotation can define the following methods to convert
- * between C and Java values:
+ * Annotation to import a C enumeration to Java. In C, enumeration values are plain integer
+ * constants. In Java, enumeration values are object constants. Therefore, the Java enumeration
+ * value cannot just represent the C value, as it is done for {@link CConstant}. Instead, the Java
+ * enumeration with this annotation can define the following methods to convert between C and Java
+ * values:
  * <ul>
- * <li>An instance method annotated with {@link CEnumValue} to convert the Java value to the C
- * value.
- * <li>A static method annotated with {@link CEnumLookup} to retrieve the Java value from a C value.
+ * <li>An instance method annotated with {@link CEnumValue} to convert the Java object value to the
+ * C integer value.
+ * <li>A static method annotated with {@link CEnumLookup} to retrieve the Java object value from a C
+ * integer value.
  * </ul>
- * The Java enumeration values can be annotated with {@link CEnumValue} to specify the name of the C
+ * The Java enumeration values can be annotated with {@link CEnumConstant} to specify the C
  * enumeration value. This annotation is optional and only needed if an attribute has a non-default
  * value.
  * <p>
@@ -56,4 +57,15 @@ import org.graalvm.nativeimage.c.CContext;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface CEnum {
+
+    /**
+     * Specifies the name of the imported C enum type. If no name is provided, <code>int</code> is
+     * used instead.
+     */
+    String value() default "";
+
+    /**
+     * Add the C <code>enum</code> keyword to the name specified in {@link #value()}.
+     */
+    boolean addEnumKeyword() default false;
 }

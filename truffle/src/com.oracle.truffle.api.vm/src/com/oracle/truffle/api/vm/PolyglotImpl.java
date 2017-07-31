@@ -60,6 +60,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.vm.PolyglotValue.EngineUnsupportedException;
 
 /*
  * This class is exported to the Graal SDK. Keep that in mind when changing its class or package name.
@@ -76,8 +77,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     static final String OPTION_GROUP_COMPILER = "compiler";
     static final String OPTION_GROUP_ENGINE = "engine";
 
-    private final PolyglotSourceImpl sourceImpl = new PolyglotSourceImpl(this);
-    private final PolyglotSourceSectionImpl sourceSectionImpl = new PolyglotSourceSectionImpl(this);
+    private final PolyglotSource sourceImpl = new PolyglotSource(this);
+    private final PolyglotSourceSection sourceSectionImpl = new PolyglotSourceSection(this);
 
     private static void ensureInitialized() {
         if (VMAccessor.SPI == null || !(VMAccessor.SPI.engineSupport() instanceof EngineImpl)) {
@@ -172,11 +173,13 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @TruffleBoundary
-    static <T extends Throwable> RuntimeException wrapGuestException(PolyglotLanguageContextImpl context, T e) {
+    static <T extends Throwable> RuntimeException wrapGuestException(PolyglotLanguageContext context, T e) {
         if (e instanceof PolyglotException) {
             return (PolyglotException) e;
         } else if (e instanceof EngineException) {
             throw ((EngineException) e).e;
+        } else if (e instanceof EngineUnsupportedException) {
+            throw (EngineUnsupportedException) e;
         } else {
             // fallthrough
         }
@@ -237,7 +240,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public Object contextReferenceGet(Object vmObject) {
-            PolyglotLanguageImpl language = (PolyglotLanguageImpl) vmObject;
+            PolyglotLanguage language = (PolyglotLanguage) vmObject;
             PolyglotContextImpl context = PolyglotContextImpl.current();
             TruffleLanguage.Env env = null;
             if (context != null) {
@@ -267,28 +270,28 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public Env getEnvForLanguage(Object vmObject, String mimeType) {
-            PolyglotLanguageContextImpl languageContext = (PolyglotLanguageContextImpl) vmObject;
-            PolyglotLanguageContextImpl context = languageContext.context.findLanguageContext(mimeType, true);
+            PolyglotLanguageContext languageContext = (PolyglotLanguageContext) vmObject;
+            PolyglotLanguageContext context = languageContext.context.findLanguageContext(mimeType, true);
             context.ensureInitialized();
             return context.env;
         }
 
         @Override
         public Env getEnvForInstrument(Object vmObject, String mimeType) {
-            PolyglotLanguageContextImpl context = PolyglotContextImpl.requireContext().findLanguageContext(mimeType, true);
+            PolyglotLanguageContext context = PolyglotContextImpl.requireContext().findLanguageContext(mimeType, true);
             context.ensureInitialized();
             return context.env;
         }
 
         @Override
         public <T> T lookup(InstrumentInfo info, Class<T> serviceClass) {
-            PolyglotInstrumentImpl instrument = (PolyglotInstrumentImpl) LANGUAGE.getVMObject(info);
+            PolyglotInstrument instrument = (PolyglotInstrument) LANGUAGE.getVMObject(info);
             return instrument.lookup(serviceClass);
         }
 
         @Override
         public <S> S lookup(LanguageInfo info, Class<S> serviceClass) {
-            PolyglotLanguageImpl language = (PolyglotLanguageImpl) NODES.getEngineObject(info);
+            PolyglotLanguage language = (PolyglotLanguage) NODES.getEngineObject(info);
             return language.lookup(serviceClass);
         }
 
@@ -340,17 +343,17 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public Env getEnvForInstrument(LanguageInfo info) {
-            PolyglotLanguageImpl language = (PolyglotLanguageImpl) NODES.getEngineObject(info);
-            PolyglotLanguageContextImpl languageContext = PolyglotContextImpl.requireContext().contexts[language.index];
+            PolyglotLanguage language = (PolyglotLanguage) NODES.getEngineObject(info);
+            PolyglotLanguageContext languageContext = PolyglotContextImpl.requireContext().contexts[language.index];
             languageContext.ensureInitialized();
             return languageContext.env;
         }
 
         @Override
         public LanguageInfo getObjectLanguage(Object obj, Object vmObject) {
-            PolyglotLanguageContextImpl[] contexts = PolyglotContextImpl.requireContext().contexts;
-            for (PolyglotLanguageContextImpl context : contexts) {
-                PolyglotLanguageImpl language = context.language;
+            PolyglotLanguageContext[] contexts = PolyglotContextImpl.requireContext().contexts;
+            for (PolyglotLanguageContext context : contexts) {
+                PolyglotLanguage language = context.language;
                 if (!language.initialized) {
                     continue;
                 }
@@ -389,7 +392,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public boolean isMimeTypeSupported(Object vmObject, String mimeType) {
             PolyglotEngineImpl engine = getEngine(vmObject);
-            for (PolyglotLanguageImpl language : engine.idToLanguage.values()) {
+            for (PolyglotLanguage language : engine.idToLanguage.values()) {
                 if (language.cache.getMimeTypes().contains(mimeType)) {
                     return true;
                 }
@@ -400,7 +403,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         @SuppressWarnings("rawtypes")
         public Env findEnv(Object vmObject, Class<? extends TruffleLanguage> languageClass, boolean failIfNotFound) {
-            PolyglotLanguageContextImpl findLanguageContext = PolyglotContextImpl.requireContext().findLanguageContext(languageClass, failIfNotFound);
+            PolyglotLanguageContext findLanguageContext = PolyglotContextImpl.requireContext().findLanguageContext(languageClass, failIfNotFound);
             if (findLanguageContext != null) {
                 return findLanguageContext.env;
             }
@@ -414,7 +417,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public Iterable<? extends Object> importSymbols(Object vmObject, Env env, String globalName) {
-            PolyglotLanguageContextImpl context = (PolyglotLanguageContextImpl) vmObject;
+            PolyglotLanguageContext context = (PolyglotLanguageContext) vmObject;
             context.language.engine.checkState();
             Object result = context.context.importSymbolFromLanguage(globalName);
             List<Object> resultValues;
@@ -428,33 +431,33 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public Object importSymbol(Object vmObject, Env env, String symbolName) {
-            PolyglotLanguageContextImpl context = (PolyglotLanguageContextImpl) vmObject;
+            PolyglotLanguageContext context = (PolyglotLanguageContext) vmObject;
             context.language.engine.checkState();
             return context.context.importSymbolFromLanguage(symbolName);
         }
 
         @Override
         public Object lookupSymbol(Object vmObject, Env env, LanguageInfo language, String symbolName) {
-            PolyglotLanguageContextImpl context = (PolyglotLanguageContextImpl) vmObject;
+            PolyglotLanguageContext context = (PolyglotLanguageContext) vmObject;
             int index = context.context.engine.idToLanguage.get(language.getId()).index;
             return context.context.contexts[index].lookupGuest(symbolName);
         }
 
         @Override
         public Object lookupHostSymbol(Object vmObject, Env env, String symbolName) {
-            PolyglotLanguageContextImpl context = (PolyglotLanguageContextImpl) vmObject;
+            PolyglotLanguageContext context = (PolyglotLanguageContext) vmObject;
             return context.context.getHostContext().lookupGuest(symbolName);
         }
 
         @Override
         public boolean isHostAccessAllowed(Object vmObject, Env env) {
-            PolyglotLanguageContextImpl context = (PolyglotLanguageContextImpl) vmObject;
+            PolyglotLanguageContext context = (PolyglotLanguageContext) vmObject;
             return context.context.hostAccessAllowed;
         }
 
         @Override
         public void exportSymbol(Object vmObject, String symbolName, Object value) {
-            PolyglotLanguageContextImpl context = (PolyglotLanguageContextImpl) vmObject;
+            PolyglotLanguageContext context = (PolyglotLanguageContext) vmObject;
             context.language.engine.checkState();
             context.context.exportSymbolFromLanguage(context, symbolName, value);
         }
@@ -463,7 +466,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public <C> com.oracle.truffle.api.impl.FindContextNode<C> createFindContextNode(TruffleLanguage<C> lang) {
             PolyglotContextImpl context = PolyglotContextImpl.requireContext();
-            return new PolyglotFindContextNodeImpl<>(context.findLanguageContext(lang.getClass(), true).env);
+            return new PolyglotFindContextNode<>(context.findLanguageContext(lang.getClass(), true).env);
         }
 
         @Override
@@ -551,13 +554,41 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public Value toHostValue(Object obj, Object languageContext) {
-            return ((PolyglotLanguageContextImpl) languageContext).toHostValue(obj);
+            return ((PolyglotLanguageContext) languageContext).toHostValue(obj);
         }
 
         @Override
         public Object toGuestValue(Object obj, Object languageContext) {
-            return ((PolyglotLanguageContextImpl) languageContext).toGuestValue(obj);
+            return ((PolyglotLanguageContext) languageContext).toGuestValue(obj);
         }
+
+        @Override
+        public Object enterInternalContext(Object impl) {
+            return ((PolyglotContextImpl) impl).enter();
+        }
+
+        @Override
+        public void leaveInternalContext(Object impl, Object prev) {
+            ((PolyglotContextImpl) impl).leave(prev);
+        }
+
+        @Override
+        public void closeInternalContext(Object impl) {
+            PolyglotContextImpl context = (PolyglotContextImpl) impl;
+            if (context.enteredCount > 0) {
+                throw new IllegalStateException("The context is currently entered and cannot be closed.");
+            }
+            context.close(false);
+        }
+
+        @Override
+        public Object createInternalContext(Object vmObject, Map<String, Object> config) {
+            PolyglotLanguageContext creator = ((PolyglotLanguageContext) vmObject);
+            PolyglotContextImpl impl = new PolyglotContextImpl(creator, config);
+            impl.initializeLanguage(creator.language.getId());
+            return impl;
+        }
+
     }
 
 }

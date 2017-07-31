@@ -185,65 +185,62 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
     }
 
     @Test
-    @Ignore("Occasionally takes so long it causes the gate to timeout")
     public void testRewriteAssumption() {
         String testName = "testRewriteAssumption";
-        final int compilationThreshold = TruffleCompilerOptions.getValue(TruffleCompilationThreshold);
-        assertTrue(compilationThreshold >= 2);
         assertTrue("test only works with inlining enabled", TruffleCompilerOptions.getValue(TruffleFunctionInlining));
 
-        IntStream.range(0, 8).parallel().forEach(i -> {
-            // We need to restate the option override for each thread individually.
-            try (TruffleOptionsOverrideScope s = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleBackgroundCompilation, false)) {
-                OptimizedCallTarget innermostCallTarget = (OptimizedCallTarget) runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), testName + 0, new AbstractTestNode() {
-                    @Child private AbstractTestNode child = new ConstantTestNode(42);
-                    @Child private AbstractTestNode dummy = new ConstantTestNode(17);
+        try (TruffleOptionsOverrideScope s = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleCompilationThreshold, 20)) {
+            final int compilationThreshold = TruffleCompilerOptions.getValue(TruffleCompilationThreshold);
+            assertTrue(compilationThreshold >= 2);
 
-                    @Override
-                    public int execute(VirtualFrame frame) {
-                        int k = (int) frame.getArguments()[0];
-                        if (k > compilationThreshold) {
-                            CompilerDirectives.transferToInterpreter();
-                            dummy.replace(new ConstantTestNode(k));
-                        }
-                        return child.execute(frame);
+            OptimizedCallTarget innermostCallTarget = (OptimizedCallTarget) runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), testName + 0, new AbstractTestNode() {
+                @Child private AbstractTestNode child = new ConstantTestNode(42);
+                @Child private AbstractTestNode dummy = new ConstantTestNode(17);
+
+                @Override
+                public int execute(VirtualFrame frame) {
+                    int k = (int) frame.getArguments()[0];
+                    if (k > compilationThreshold) {
+                        CompilerDirectives.transferToInterpreter();
+                        dummy.replace(new ConstantTestNode(k));
                     }
-                }));
-                OptimizedCallTarget ct = innermostCallTarget;
-                ct = (OptimizedCallTarget) runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), testName + 1, new CallTestNode(ct)));
-                ct = (OptimizedCallTarget) runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), testName + 2, new CallTestNode(ct)));
-                final OptimizedCallTarget outermostCallTarget = ct;
+                    return child.execute(frame);
+                }
+            }));
+            OptimizedCallTarget ct = innermostCallTarget;
+            ct = (OptimizedCallTarget) runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), testName + 1, new CallTestNode(ct)));
+            ct = (OptimizedCallTarget) runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), testName + 2, new CallTestNode(ct)));
+            final OptimizedCallTarget outermostCallTarget = ct;
 
-                assertNull("assumption is initially null", getRewriteAssumption(innermostCallTarget));
+            assertNull("assumption is initially null", getRewriteAssumption(innermostCallTarget));
 
-                IntStream.range(0, compilationThreshold / 2).parallel().forEach(k -> {
-                    assertEquals(42, outermostCallTarget.call(k));
-                    assertNull("assumption stays null in the interpreter", getRewriteAssumption(innermostCallTarget));
-                });
+            IntStream.range(0, compilationThreshold / 2).parallel().forEach(k -> {
+                assertEquals(42, outermostCallTarget.call(k));
+                assertNull("assumption stays null in the interpreter", getRewriteAssumption(innermostCallTarget));
+            });
 
-                outermostCallTarget.compile();
-                assertCompiled(outermostCallTarget);
-                Assumption firstRewriteAssumption = getRewriteAssumption(innermostCallTarget);
-                assertNotNull("assumption must not be null after compilation", firstRewriteAssumption);
-                assertTrue(firstRewriteAssumption.isValid());
+            outermostCallTarget.compile();
+            assertCompiled(outermostCallTarget);
+            Assumption firstRewriteAssumption = getRewriteAssumption(innermostCallTarget);
+            assertNotNull("assumption must not be null after compilation", firstRewriteAssumption);
+            assertTrue(firstRewriteAssumption.isValid());
 
-                List<Assumption> rewriteAssumptions = IntStream.range(0, 2 * compilationThreshold).parallel().mapToObj(k -> {
-                    assertEquals(42, outermostCallTarget.call(k));
+            List<Assumption> rewriteAssumptions = IntStream.range(0, 2 * compilationThreshold).parallel().mapToObj(k -> {
+                assertEquals(42, outermostCallTarget.call(k));
 
-                    Assumption rewriteAssumptionAfter = getRewriteAssumption(innermostCallTarget);
-                    assertNotNull("assumption must not be null after compilation", rewriteAssumptionAfter);
-                    return rewriteAssumptionAfter;
-                }).collect(Collectors.toList());
+                Assumption rewriteAssumptionAfter = getRewriteAssumption(innermostCallTarget);
+                assertNotNull("assumption must not be null after compilation", rewriteAssumptionAfter);
+                return rewriteAssumptionAfter;
+            }).collect(Collectors.toList());
 
-                Assumption finalRewriteAssumption = getRewriteAssumption(innermostCallTarget);
-                assertNotNull("assumption must not be null after compilation", finalRewriteAssumption);
-                assertNotSame(firstRewriteAssumption, finalRewriteAssumption);
-                assertFalse(firstRewriteAssumption.isValid());
-                assertTrue(finalRewriteAssumption.isValid());
+            Assumption finalRewriteAssumption = getRewriteAssumption(innermostCallTarget);
+            assertNotNull("assumption must not be null after compilation", finalRewriteAssumption);
+            assertNotSame(firstRewriteAssumption, finalRewriteAssumption);
+            assertFalse(firstRewriteAssumption.isValid());
+            assertTrue(finalRewriteAssumption.isValid());
 
-                assertFalse(rewriteAssumptions.stream().filter(a -> a != finalRewriteAssumption).anyMatch(Assumption::isValid));
-            }
-        });
+            assertFalse(rewriteAssumptions.stream().filter(a -> a != finalRewriteAssumption).anyMatch(Assumption::isValid));
+        }
     }
 
     private static class NamedRootNode extends RootNode {

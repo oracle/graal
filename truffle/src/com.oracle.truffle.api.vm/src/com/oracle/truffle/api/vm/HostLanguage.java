@@ -50,10 +50,10 @@ class HostLanguage extends TruffleLanguage<HostContext> {
     static class HostContext {
 
         final Env env;
-        final PolyglotLanguageContextImpl internalContext;
+        final PolyglotLanguageContext internalContext;
         final Map<String, Class<?>> classCache = new HashMap<>();
 
-        HostContext(Env env, PolyglotLanguageContextImpl context) {
+        HostContext(Env env, PolyglotLanguageContext context) {
             this.env = env;
             this.internalContext = context;
         }
@@ -99,7 +99,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
     @Override
     protected boolean isObjectOfLanguage(Object object) {
         if (object instanceof TruffleObject) {
-            return PolyglotProxyImpl.isProxyGuestObject((TruffleObject) object) || JavaInterop.isJavaObject((TruffleObject) object);
+            return PolyglotProxy.isProxyGuestObject((TruffleObject) object) || JavaInterop.isJavaObject((TruffleObject) object);
         } else {
             return false;
         }
@@ -142,8 +142,8 @@ class HostLanguage extends TruffleLanguage<HostContext> {
                 } catch (Throwable t) {
                     throw PolyglotImpl.wrapHostException(t);
                 }
-            } else if (PolyglotProxyImpl.isProxyGuestObject(to)) {
-                Proxy proxy = PolyglotProxyImpl.toProxyHostObject(to);
+            } else if (PolyglotProxy.isProxyGuestObject(to)) {
+                Proxy proxy = PolyglotProxy.toProxyHostObject(to);
                 try {
                     return proxy.toString();
                 } catch (Throwable t) {
@@ -164,8 +164,8 @@ class HostLanguage extends TruffleLanguage<HostContext> {
             if (JavaInterop.isJavaObject(to)) {
                 Object javaObject = JavaInterop.asJavaObject(to);
                 return JavaInterop.asTruffleValue(javaObject.getClass());
-            } else if (PolyglotProxyImpl.isProxyGuestObject(to)) {
-                Proxy proxy = PolyglotProxyImpl.toProxyHostObject(to);
+            } else if (PolyglotProxy.isProxyGuestObject(to)) {
+                Proxy proxy = PolyglotProxy.toProxyHostObject(to);
                 return JavaInterop.asTruffleValue(proxy.getClass());
             } else {
                 return "Foreign Object";

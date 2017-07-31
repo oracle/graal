@@ -95,6 +95,7 @@ public class EngineAPITest {
         Assert.assertNotNull(Engine.newBuilder().useSystemProperties(false).build());
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void getGetLanguageUnknown() {
         Engine engine = Engine.create();
@@ -112,6 +113,7 @@ public class EngineAPITest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void getLanguageMeta() {
         Engine engine = Engine.create();
 
@@ -128,6 +130,7 @@ public class EngineAPITest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void getLanguageOptions() {
         Engine engine = Engine.create();
 
@@ -177,7 +180,7 @@ public class EngineAPITest {
             // not allowed to access
             Assert.assertTrue(context.initialize(LanguageSPITestLanguage.ID));
             fail();
-        } catch (IllegalStateException e) {
+        } catch (IllegalArgumentException e) {
         }
         context.close();
     }

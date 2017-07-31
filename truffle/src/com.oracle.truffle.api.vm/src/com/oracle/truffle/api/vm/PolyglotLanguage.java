@@ -37,7 +37,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.vm.LanguageCache.LoadedLanguage;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
-class PolyglotLanguageImpl extends AbstractLanguageImpl implements VMObject {
+class PolyglotLanguage extends AbstractLanguageImpl implements VMObject {
 
     final PolyglotEngineImpl engine;
     final LanguageCache cache;
@@ -51,7 +51,7 @@ class PolyglotLanguageImpl extends AbstractLanguageImpl implements VMObject {
 
     volatile boolean initialized;
 
-    PolyglotLanguageImpl(PolyglotEngineImpl engine, LanguageCache cache, int index, boolean host) {
+    PolyglotLanguage(PolyglotEngineImpl engine, LanguageCache cache, int index, boolean host) {
         super(engine.impl);
         this.engine = engine;
         this.cache = cache;
