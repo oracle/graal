@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,20 +27,63 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.generators;
+package com.oracle.truffle.llvm.parser.model;
 
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
 import com.oracle.truffle.llvm.parser.metadata.MetadataList;
+import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
-public interface SymbolGenerator extends ConstantGenerator {
+import java.util.ArrayList;
+import java.util.List;
 
-    void nameBlock(int index, String name);
+public abstract class IRScope {
 
-    void nameEntry(int index, String name);
+    private final Symbols symbols = new Symbols();
+    private final List<Type> valueTypes = new ArrayList<>();
+    private final MetadataList metadata = new MetadataList();
 
-    void nameFunction(int index, int offset, String name);
+    protected IRScope() {
+    }
 
-    MetadataList getMetadata();
+    public void addSymbol(Symbol symbol, Type type) {
+        symbols.addSymbol(symbol);
+        valueTypes.add(type);
+    }
 
-    Symbols getSymbols();
+    public boolean isValueForwardRef(long index) {
+        return index >= valueTypes.size();
+    }
+
+    public int getNextValueIndex() {
+        return valueTypes.size();
+    }
+
+    public Type getValueType(int i) {
+        if (i < valueTypes.size()) {
+            return valueTypes.get(i);
+        } else {
+            return null;
+        }
+    }
+
+    public void nameSymbol(int index, String argName) {
+        symbols.setSymbolName(index, argName);
+    }
+
+    public Symbols getSymbols() {
+        return symbols;
+    }
+
+    public void initialize(IRScope other) {
+        valueTypes.addAll(other.valueTypes);
+        symbols.addSymbols(other.symbols);
+        metadata.initialize(other.metadata);
+    }
+
+    public abstract void nameBlock(int index, String name);
+
+    public MetadataList getMetadata() {
+        return metadata;
+    }
 }

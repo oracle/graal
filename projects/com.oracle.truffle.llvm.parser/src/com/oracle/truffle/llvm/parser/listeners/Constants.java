@@ -30,9 +30,21 @@
 package com.oracle.truffle.llvm.parser.listeners;
 
 import java.math.BigInteger;
-import java.util.List;
 
-import com.oracle.truffle.llvm.parser.model.generators.ConstantGenerator;
+import com.oracle.truffle.llvm.parser.model.IRScope;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.BinaryOperationConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.BlockAddressConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.CastConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.CompareConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.GetElementPointerConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.InlineAsmConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.StringConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.UndefinedConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint.FloatingPointConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.BigIntegerConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.parser.records.ConstantsRecord;
 import com.oracle.truffle.llvm.parser.records.Records;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -43,16 +55,13 @@ public final class Constants implements ParserListener {
 
     private final Types types;
 
-    private final List<Type> symbols;
-
-    private final ConstantGenerator generator;
+    private final IRScope container;
 
     private Type type;
 
-    Constants(Types types, List<Type> symbols, ConstantGenerator generator) {
+    Constants(Types types, IRScope container) {
         this.types = types;
-        this.symbols = symbols;
-        this.generator = generator;
+        this.container = container;
     }
 
     @Override
@@ -65,21 +74,20 @@ public final class Constants implements ParserListener {
                 return;
 
             case NULL:
-                generator.createNull(type);
                 if (Type.isIntegerType(type)) {
-                    symbols.add(Type.createConstantForType(type, 0));
-                    return;
+                    container.addSymbol(new NullConstant(type), Type.createConstantForType(type, 0));
+                } else {
+                    container.addSymbol(new NullConstant(type), type);
                 }
-                break;
+                return;
 
             case UNDEF:
-                generator.createUndefined(type);
-                break;
+                container.addSymbol(new UndefinedConstant(type), type);
+                return;
 
             case INTEGER: {
                 long value = Records.toSignedValue(args[0]);
-                generator.createInteger(type, value);
-                symbols.add(Type.createConstantForType(type, value));
+                container.addSymbol(new IntegerConstant(type, value), Type.createConstantForType(type, value));
                 return;
             }
             case WIDE_INTEGER: {
@@ -91,33 +99,39 @@ public final class Constants implements ParserListener {
                     temp = temp.shiftLeft(i * Long.SIZE);
                     value = value.add(temp);
                 }
-                generator.createInteger(type, value);
-                symbols.add(Type.createConstantForType(type, value));
+                container.addSymbol(new BigIntegerConstant(type, value), Type.createConstantForType(type, value));
                 return;
             }
             case FLOAT:
-                generator.createFloatingPoint(type, args);
-                break;
+                container.addSymbol(FloatingPointConstant.create(type, args), type);
+                return;
 
             case AGGREGATE: {
-                generator.createFromValues(type, Records.toIntegers(args));
-                break;
+                container.addSymbol(Constant.createFromValues(type, container.getSymbols(), Records.toIntegers(args)), type);
+                return;
             }
             case STRING:
-                generator.creatFromString(type, Records.toString(args), false);
-                break;
+                container.addSymbol(new StringConstant(type, Records.toString(args), false), type);
+                return;
 
             case CSTRING:
-                generator.creatFromString(type, Records.toString(args), true);
-                break;
+                container.addSymbol(new StringConstant(type, Records.toString(args), true), type);
+                return;
 
-            case CE_BINOP:
-                generator.createBinaryOperationExpression(type, (int) args[0], (int) args[1], (int) args[2]);
-                break;
+            case CE_BINOP: {
+                int opCode = (int) args[0];
+                int lhs = (int) args[1];
+                int rhs = (int) args[2];
+                container.addSymbol(BinaryOperationConstant.fromSymbols(container.getSymbols(), type, opCode, lhs, rhs), type);
+                return;
+            }
 
-            case CE_CAST:
-                generator.createCastExpression(type, (int) args[0], (int) args[2]);
-                break;
+            case CE_CAST: {
+                int opCode = (int) args[0];
+                int value = (int) args[2];
+                container.addSymbol(CastConstant.fromSymbols(container.getSymbols(), type, opCode, value), type);
+                return;
+            }
 
             case CE_CMP: {
                 int i = 1;
@@ -125,32 +139,34 @@ public final class Constants implements ParserListener {
                 int rhs = (int) args[i++];
                 int opcode = (int) args[i];
 
-                generator.createCompareExpression(type, opcode, lhs, rhs);
-                break;
+                container.addSymbol(CompareConstant.fromSymbols(container.getSymbols(), type, opcode, lhs, rhs), type);
+                return;
             }
 
-            case BLOCKADDRESS:
-                generator.createBlockAddress(type, (int) args[1], (int) args[2]);
-                break;
+            case BLOCKADDRESS: {
+                int function = (int) args[1];
+                int block = (int) args[2];
+                container.addSymbol(BlockAddressConstant.fromSymbols(container.getSymbols(), type, function, block), type);
+                return;
+            }
 
             case DATA:
-                generator.createFromData(type, args);
-                break;
+                container.addSymbol(Constant.createFromData(type, args), type);
+                return;
 
             case INLINEASM:
-                generator.createInlineASM(type, args);
-                break;
+                container.addSymbol(InlineAsmConstant.generate(type, args), type);
+                return;
 
             case CE_GEP:
             case CE_INBOUNDS_GEP:
             case CE_GEP_WITH_INRANGE_INDEX:
                 createGetElementPointerExpression(args, record);
-                break;
+                return;
 
             default:
                 throw new UnsupportedOperationException("Unsupported Constant Record: " + record);
         }
-        symbols.add(type);
     }
 
     private void createGetElementPointerExpression(long[] args, ConstantsRecord record) {
@@ -176,6 +192,6 @@ public final class Constants implements ParserListener {
             indices[j] = (int) args[i++];
         }
 
-        generator.createGetElementPointerExpression(type, pointer, indices, isInbounds);
+        container.addSymbol(GetElementPointerConstant.fromSymbols(container.getSymbols(), type, pointer, indices, isInbounds), type);
     }
 }

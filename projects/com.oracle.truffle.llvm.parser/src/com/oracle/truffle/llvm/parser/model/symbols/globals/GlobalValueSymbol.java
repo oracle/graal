@@ -27,25 +27,87 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.globals;
+package com.oracle.truffle.llvm.parser.model.symbols.globals;
 
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.enums.Visibility;
+import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
+import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 
-public final class GlobalConstant extends GlobalValueSymbol {
+public abstract class GlobalValueSymbol implements ValueSymbol {
 
-    private GlobalConstant(Type type, int initialiser, int align, Linkage linkage, Visibility visibility) {
-        super(type, initialiser, align, linkage, visibility);
+    private final Type type;
+
+    private final int initialiser;
+
+    private final int align;
+
+    private String name = LLVMIdentifier.UNKNOWN;
+
+    private Symbol value = null;
+
+    private final Linkage linkage;
+
+    private final Visibility visibility;
+
+    GlobalValueSymbol(Type type, int initialiser, int align, Linkage linkage, Visibility visibility) {
+        this.type = type;
+        this.initialiser = initialiser;
+        this.align = align;
+        this.linkage = linkage;
+        this.visibility = visibility;
+    }
+
+    public abstract void accept(ModelVisitor visitor);
+
+    @Override
+    public int getAlign() {
+        return align;
+    }
+
+    public int getInitialiser() {
+        return initialiser;
     }
 
     @Override
-    public void accept(ModelVisitor visitor) {
-        visitor.visit(this);
+    public String getName() {
+        return name;
     }
 
-    public static GlobalConstant create(Type type, int initialiser, int align, long linkage, long visibility) {
-        return new GlobalConstant(type, initialiser, align, Linkage.decode(linkage), Visibility.decode(visibility));
+    @Override
+    public Type getType() {
+        return type;
+    }
+
+    public Linkage getLinkage() {
+        return linkage;
+    }
+
+    public Symbol getValue() {
+        return value;
+    }
+
+    public Visibility getVisibility() {
+        return visibility;
+    }
+
+    public void initialise(Symbols symbols) {
+        if (getInitialiser() > 0) {
+            value = symbols.getSymbol(getInitialiser() - 1);
+        }
+    }
+
+    @Override
+    public void setName(String name) {
+        this.name = LLVMIdentifier.toGlobalIdentifier(name);
+    }
+
+    @Override
+    public String toString() {
+        return getName();
     }
 }

@@ -27,18 +27,25 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.generators;
+package com.oracle.truffle.llvm.parser.model.symbols.globals;
 
-import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
+import com.oracle.truffle.llvm.parser.model.enums.Linkage;
+import com.oracle.truffle.llvm.parser.model.enums.Visibility;
+import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public interface FunctionGenerator extends SymbolGenerator {
+public final class GlobalVariable extends GlobalValueSymbol {
 
-    void allocateBlocks(int count);
+    private GlobalVariable(Type type, int initialiser, int align, Linkage linkage, Visibility visibility) {
+        super(type, initialiser, align, linkage, visibility);
+    }
 
-    void createParameter(Type type);
+    @Override
+    public void accept(ModelVisitor visitor) {
+        visitor.visit(this);
+    }
 
-    void exitFunction();
-
-    InstructionBlock generateBlock();
+    public static GlobalVariable create(Type type, int initialiser, int align, long linkage, long visibility) {
+        return new GlobalVariable(type, initialiser, align, Linkage.decode(linkage), Visibility.decode(visibility));
+    }
 }

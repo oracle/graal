@@ -29,81 +29,47 @@
  */
 package com.oracle.truffle.llvm.parser.model;
 
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.llvm.parser.metadata.MetadataList;
-import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
-import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.model.generators.FunctionGenerator;
-import com.oracle.truffle.llvm.parser.model.generators.ModuleGenerator;
-import com.oracle.truffle.llvm.parser.model.globals.GlobalAlias;
-import com.oracle.truffle.llvm.parser.model.globals.GlobalConstant;
-import com.oracle.truffle.llvm.parser.model.globals.GlobalValueSymbol;
-import com.oracle.truffle.llvm.parser.model.globals.GlobalVariable;
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.BinaryOperationConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.BlockAddressConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.CastConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.CompareConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.GetElementPointerConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.InlineAsmConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.StringConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.UndefinedConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint.FloatingPointConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.BigIntegerConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
+import com.oracle.truffle.llvm.parser.model.target.TargetInformation;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
-import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
-public final class ModelModule implements ModuleGenerator {
-
-    private final List<Type> types = new ArrayList<>();
-
-    private final List<GlobalValueSymbol> globals = new ArrayList<>();
-
-    private final List<FunctionDeclaration> declares = new ArrayList<>();
-
-    private final List<FunctionDefinition> defines = new ArrayList<>();
-
-    private final Symbols symbols = new Symbols();
-
-    private final MetadataList metadata;
-
-    private int currentFunction = -1;
-
-    private TargetDataLayout targetDataLayout = null;
+public final class ModelModule extends IRScope {
 
     // when running with Polyglot it can be that there is no layout available - we fall back to this
     // one.
     private static final TargetDataLayout defaultLayout = TargetDataLayout.fromString("e-m:e-i64:64-f80:128-n8:16:32:64-S128");
 
-    @Override
-    public void createTargetDataLayout(TargetDataLayout layout) {
+    private final List<Type> types = new ArrayList<>();
+    private final List<GlobalValueSymbol> globals = new ArrayList<>();
+    private final List<FunctionDeclaration> declares = new ArrayList<>();
+    private final List<FunctionDefinition> defines = new ArrayList<>();
+    private final List<TargetInformation> targetInfo = new ArrayList<>();
+    private int currentFunction = -1;
+    private TargetDataLayout targetDataLayout = defaultLayout;
+
+    public ModelModule() {
+    }
+
+    public void setTargetDataLayout(TargetDataLayout layout) {
         targetDataLayout = layout;
     }
 
     public TargetDataLayout getTargetDataLayout() {
-        return targetDataLayout == null ? defaultLayout : targetDataLayout;
-    }
-
-    public ModelModule() {
-        metadata = new MetadataList();
+        return targetDataLayout;
     }
 
     public void accept(ModelVisitor visitor) {
-        if (targetDataLayout != null) {
-            visitor.visit(targetDataLayout);
-        }
+        visitor.visit(targetDataLayout);
+        targetInfo.forEach(visitor::visit);
         types.forEach(visitor::visit);
         for (GlobalValueSymbol variable : globals) {
             variable.accept(visitor);
@@ -112,137 +78,45 @@ public final class ModelModule implements ModuleGenerator {
         declares.forEach(visitor::visit);
     }
 
-    public int getSymbolCount() {
-        return symbols.getSize();
+    public void addFunctionDeclaration(FunctionDeclaration declaration) {
+        addSymbol(declaration, declaration.getType());
+        declares.add(declaration);
     }
 
-    @Override
-    public void createAlias(Type type, int aliasedValue, long linkage, long visibility) {
-        GlobalAlias alias = GlobalAlias.create(type, aliasedValue, linkage, visibility);
-
-        symbols.addSymbol(alias);
-        globals.add(alias);
+    public void addFunctionDefinition(FunctionDefinition definition) {
+        addSymbol(definition, definition.getType());
+        defines.add(definition);
     }
 
-    @Override
-    public void createBinaryOperationExpression(Type type, int opcode, int lhs, int rhs) {
-        symbols.addSymbol(BinaryOperationConstant.fromSymbols(symbols, type, opcode, lhs, rhs));
-    }
-
-    @Override
-    public void createBlockAddress(Type type, int function, int block) {
-        symbols.addSymbol(BlockAddressConstant.fromSymbols(symbols, type, function, block));
-    }
-
-    @Override
-    public void createCastExpression(Type type, int opcode, int value) {
-        symbols.addSymbol(CastConstant.fromSymbols(symbols, type, opcode, value));
-    }
-
-    @Override
-    public void createCompareExpression(Type type, int opcode, int lhs, int rhs) {
-        symbols.addSymbol(CompareConstant.fromSymbols(symbols, type, opcode, lhs, rhs));
-    }
-
-    @Override
-    public void createFloatingPoint(Type type, long[] value) {
-        symbols.addSymbol(FloatingPointConstant.create(type, value));
-    }
-
-    @Override
-    public void createFromData(Type type, long[] data) {
-        symbols.addSymbol(Constant.createFromData(type, data));
-    }
-
-    @Override
-    public void creatFromString(Type type, String string, boolean isCString) {
-        symbols.addSymbol(new StringConstant(type, string, isCString));
-    }
-
-    @Override
-    public void createFromValues(Type type, int[] values) {
-        symbols.addSymbol(Constant.createFromValues(type, symbols, values));
-    }
-
-    @Override
-    public void createGetElementPointerExpression(Type type, int pointer, int[] indices, boolean isInbounds) {
-        symbols.addSymbol(GetElementPointerConstant.fromSymbols(symbols, type, pointer, indices, isInbounds));
-    }
-
-    @Override
-    public void createInlineASM(Type type, long[] args) {
-        symbols.addSymbol(InlineAsmConstant.generate(type, args));
-    }
-
-    @Override
-    public void createInteger(Type type, long value) {
-        symbols.addSymbol(new IntegerConstant(type, value));
-    }
-
-    @Override
-    public void createInteger(Type type, BigInteger value) {
-        symbols.addSymbol(new BigIntegerConstant(type, value));
-    }
-
-    @Override
-    public void createFunction(FunctionType type, boolean isPrototype, Linkage linkage, AttributesCodeEntry paramAttr) {
-        if (isPrototype) {
-            final FunctionDeclaration function = new FunctionDeclaration(type, linkage, paramAttr);
-            symbols.addSymbol(function);
-            declares.add(function);
-        } else {
-            final FunctionDefinition method = new FunctionDefinition(type, metadata.instantiate(), linkage, paramAttr);
-            symbols.addSymbol(method);
-            defines.add(method);
-        }
-    }
-
-    @Override
-    public void createNull(Type type) {
-        symbols.addSymbol(new NullConstant(type));
-    }
-
-    @Override
-    public void createType(Type type) {
+    public void addGlobalType(Type type) {
         types.add(type);
     }
 
-    @Override
-    public void createUndefined(Type type) {
-        symbols.addSymbol(new UndefinedConstant(type));
-    }
-
-    @Override
-    public void createGlobal(Type type, boolean isConstant, int initialiser, int align, long linkage, long visibility) {
-        final GlobalValueSymbol global;
-        if (isConstant) {
-            global = GlobalConstant.create(type, initialiser, align, linkage, visibility);
-        } else {
-            global = GlobalVariable.create(type, initialiser, align, linkage, visibility);
-        }
-        symbols.addSymbol(global);
+    public void addGlobalSymbol(GlobalValueSymbol global) {
+        addSymbol(global, global.getType());
         globals.add(global);
     }
 
-    @Override
+    public void addTargetInformation(TargetInformation info) {
+        targetInfo.add(info);
+    }
+
     public void exitModule() {
         int globalIndex = 0;
         for (GlobalValueSymbol variable : globals) {
             if (variable.getName().equals(LLVMIdentifier.UNKNOWN)) {
                 variable.setName(String.valueOf(globalIndex++));
             }
-
-            variable.initialise(symbols);
+            variable.initialise(getSymbols());
         }
     }
 
-    @Override
-    public FunctionGenerator generateFunction() {
-        while (++currentFunction < symbols.getSize()) {
-            Symbol symbol = symbols.getSymbol(currentFunction);
+    public FunctionDefinition generateFunction() {
+        while (++currentFunction < getSymbols().getSize()) {
+            final Symbol symbol = getSymbols().getSymbol(currentFunction);
             if (symbol instanceof FunctionDefinition) {
-                FunctionDefinition function = (FunctionDefinition) symbol;
-                function.getSymbols().addSymbols(symbols);
+                final FunctionDefinition function = (FunctionDefinition) symbol;
+                function.initialize(this);
                 return function;
             }
         }
@@ -250,31 +124,11 @@ public final class ModelModule implements ModuleGenerator {
     }
 
     @Override
-    public MetadataList getMetadata() {
-        return metadata;
-    }
-
-    @Override
     public void nameBlock(int index, String name) {
     }
 
     @Override
-    public void nameEntry(int index, String name) {
-        symbols.setSymbolName(index, name);
-    }
-
-    @Override
-    public void nameFunction(int index, int offset, String name) {
-        symbols.setSymbolName(index, name);
-    }
-
-    @Override
-    public Symbols getSymbols() {
-        return symbols;
-    }
-
-    @Override
     public String toString() {
-        return "ModelModule [types=" + types + ", globals=" + globals + ", declares=" + declares + ", defines=" + defines + ", symbols=" + symbols + ", currentFunction=" + currentFunction + "]";
+        return String.format("Model (%d defines, %d declares, %d globals, %d types)", defines.size(), declares.size(), globals.size(), types.size());
     }
 }

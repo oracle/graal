@@ -47,7 +47,7 @@ import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
-import com.oracle.truffle.llvm.parser.model.globals.GlobalValueSymbol;
+import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.BinaryOperationConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.BlockAddressConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.CastConstant;

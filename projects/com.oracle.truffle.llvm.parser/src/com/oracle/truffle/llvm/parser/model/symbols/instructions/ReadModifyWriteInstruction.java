@@ -85,7 +85,7 @@ public final class ReadModifyWriteInstruction extends ValueInstruction {
         return synchronizationScope;
     }
 
-    public static Instruction fromSymbols(Symbols symbols, Type type, int ptr, int value, int opcode, boolean isVolatile, long atomicOrdering, long synchronizationScope) {
+    public static ReadModifyWriteInstruction fromSymbols(Symbols symbols, Type type, int ptr, int value, int opcode, boolean isVolatile, long atomicOrdering, long synchronizationScope) {
         final ReadModifyWriteOperator operator = ReadModifyWriteOperator.decode(opcode);
         final ReadModifyWriteInstruction inst = new ReadModifyWriteInstruction(type, operator, isVolatile, AtomicOrdering.decode(atomicOrdering), SynchronizationScope.decode(synchronizationScope));
         inst.ptr = symbols.getSymbol(ptr, inst);

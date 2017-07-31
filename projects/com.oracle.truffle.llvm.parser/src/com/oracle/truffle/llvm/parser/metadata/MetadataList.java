@@ -33,13 +33,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 public final class MetadataList {
-
-    private final MetadataList parent;
 
     private final List<MDBaseNode> metadata = new ArrayList<>();
 
@@ -57,11 +52,6 @@ public final class MetadataList {
     private final List<MDAttachment> functionAttachments = new ArrayList<>();
 
     public MetadataList() {
-        this(null);
-    }
-
-    private MetadataList(MetadataList parent) {
-        this.parent = parent;
     }
 
     public Map<Long, MDAttachment> getInstructionAttachments() {
@@ -124,46 +114,20 @@ public final class MetadataList {
     }
 
     MDBaseNode getFromRef(int index) {
-        if (parent != null && index < parent.size()) {
-            return parent.getFromRef(index);
-
-        } else {
-            return metadata.get(index - (parent != null ? parent.size() : 0));
-        }
+        return metadata.get(index);
     }
 
     public MDKind getKind(long id) {
-        Stream<MDKind> kindStream = mdKinds.stream();
-        for (MetadataList x = parent; x != null; x = x.parent) {
-            kindStream = Stream.concat(kindStream, x.mdKinds.stream());
+        for (MDKind kind : mdKinds) {
+            if (kind.getId() == id) {
+                return kind;
+            }
         }
-        return kindStream.filter(kind -> kind.getId() == id).findAny().orElseThrow(() -> new AssertionError("No kind with id: " + id));
+        throw new AssertionError("No kind with id: " + id);
     }
 
     public int size() {
-        return parent == null ? metadata.size() : metadata.size() + parent.size();
-    }
-
-    public void print(Consumer<String> target) {
-        print(target, null);
-    }
-
-    public void print(Consumer<String> target, String functionName) {
-        if (metadata.isEmpty() && mdKinds.isEmpty()) {
-            // function-level metadata is often empty
-            return;
-
-        } else if (functionName == null) {
-            target.accept("Module-Level Metadata");
-
-        } else {
-            target.accept(String.format("Function-Level Metadata: %s", functionName));
-        }
-
-        final int startIndex = (parent != null ? parent.size() : 0);
-        IntStream.range(0, metadata.size()).mapToObj(i -> String.format("-> !%d %s", i + startIndex, metadata.get(i))).forEachOrdered(target);
-        namedMetadata.stream().map(n -> String.format("-> !%s", n)).forEach(target);
-        mdKinds.stream().map(k -> String.format("-> %s", k)).forEach(target);
+        return metadata.size();
     }
 
     public void accept(MetadataVisitor visitor) {
@@ -174,10 +138,15 @@ public final class MetadataList {
 
     @Override
     public String toString() {
-        return String.format("MetadataList [size=%d, parent=%s]", size(), parent);
+        return String.format("MetadataList (size=%d)", size());
     }
 
-    public MetadataList instantiate() {
-        return new MetadataList(this);
+    public void initialize(MetadataList other) {
+        metadata.addAll(other.metadata);
+        namedMetadata.addAll(other.namedMetadata);
+        mdKinds.addAll(other.mdKinds);
+        instructionAttachments.putAll(other.instructionAttachments);
+        functionAttachments.addAll(other.functionAttachments);
+        globalAttachments.putAll(other.globalAttachments);
     }
 }

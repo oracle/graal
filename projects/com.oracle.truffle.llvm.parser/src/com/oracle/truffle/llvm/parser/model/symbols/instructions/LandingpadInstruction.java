@@ -81,7 +81,7 @@ public final class LandingpadInstruction extends ValueInstruction {
         return clauseSymbols;
     }
 
-    public static Instruction generate(Symbols symbols, Type type, boolean isCleanup, long[] clauseTypes, long[] clauseTODO) {
+    public static LandingpadInstruction generate(Symbols symbols, Type type, boolean isCleanup, long[] clauseTypes, long[] clauseTODO) {
         LandingpadInstruction l = new LandingpadInstruction(type, isCleanup, clauseTypes);
         Symbol[] s = new Symbol[clauseTODO.length];
         for (int i = 0; i < clauseTODO.length; i++) {

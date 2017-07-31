@@ -72,7 +72,7 @@ import com.oracle.truffle.llvm.parser.metadata.MDTypedValue;
 import com.oracle.truffle.llvm.parser.metadata.MDValue;
 import com.oracle.truffle.llvm.parser.metadata.MetadataList;
 import com.oracle.truffle.llvm.parser.metadata.ParseUtil;
-import com.oracle.truffle.llvm.parser.model.generators.SymbolGenerator;
+import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.records.DwTagRecord;
 import com.oracle.truffle.llvm.parser.records.MetadataRecord;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
@@ -87,7 +87,7 @@ public final class Metadata implements ParserListener {
             return MDSymbolReference.VOID;
 
         } else {
-            return new MDSymbolReference(argType, () -> generator.getSymbols().getOrNull((int) val));
+            return new MDSymbolReference(argType, () -> container.getSymbols().getOrNull((int) val));
         }
     }
 
@@ -102,20 +102,20 @@ public final class Metadata implements ParserListener {
 
         } else {
             // this is a reference to an entry in the symbol table
-            return new MDSymbolReference(argType, () -> generator.getSymbols().getOrNull((int) val));
+            return new MDSymbolReference(argType, () -> container.getSymbols().getOrNull((int) val));
         }
     }
 
-    private final SymbolGenerator generator;
+    private final IRScope container;
 
     protected final Types types;
 
     protected final MetadataList metadata;
 
-    Metadata(Types types, SymbolGenerator generator) {
+    Metadata(Types types, IRScope container) {
         this.types = types;
-        this.generator = generator;
-        metadata = generator.getMetadata();
+        this.container = container;
+        metadata = container.getMetadata();
     }
 
     // https://github.com/llvm-mirror/llvm/blob/release_38/include/llvm/Bitcode/LLVMBitCodes.h#L191
@@ -322,7 +322,7 @@ public final class Metadata implements ParserListener {
 
     private MDSymbolReference getSymbolReference(long index) {
         if (index > 0) {
-            return new MDSymbolReference(types.get(index), () -> generator.getSymbols().getOrNull((int) index));
+            return new MDSymbolReference(types.get(index), () -> container.getSymbols().getOrNull((int) index));
 
         } else {
             return MDSymbolReference.VOID;

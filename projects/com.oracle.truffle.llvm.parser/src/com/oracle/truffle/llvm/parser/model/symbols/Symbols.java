@@ -157,7 +157,7 @@ public final class Symbols {
 
     @Override
     public String toString() {
-        return "Symbols [symbols=" + Arrays.toString(Arrays.copyOfRange(symbols, 0, size)) + ", size=" + size + "]";
+        return String.format("Symbols [size = %d]", size);
     }
 
     private static final class ForwardReference implements Constant, ValueSymbol {

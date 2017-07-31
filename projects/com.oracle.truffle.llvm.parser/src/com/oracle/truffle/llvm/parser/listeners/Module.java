@@ -29,16 +29,17 @@
  */
 package com.oracle.truffle.llvm.parser.listeners;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.enums.Visibility;
-import com.oracle.truffle.llvm.parser.model.generators.FunctionGenerator;
-import com.oracle.truffle.llvm.parser.model.generators.ModuleGenerator;
+import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
+import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
+import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
+import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
+import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
-import com.oracle.truffle.llvm.parser.model.target.TargetInformation;
 import com.oracle.truffle.llvm.parser.model.target.TargetTriple;
 import com.oracle.truffle.llvm.parser.records.ModuleRecord;
 import com.oracle.truffle.llvm.parser.records.Records;
@@ -49,23 +50,17 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class Module implements ParserListener {
 
-    private final ModuleGenerator generator;
+    private final ModelModule module;
 
     private final ParameterAttributes paramAttributes = new ParameterAttributes();
 
     private int mode = 1;
 
-    protected final Types types;
+    private final Types types;
 
-    private final List<TargetInformation> info = new ArrayList<>();
-
-    protected final List<FunctionType> functions = new ArrayList<>();
-
-    protected final List<Type> symbols = new ArrayList<>();
-
-    public Module(ModuleGenerator generator) {
-        this.generator = generator;
-        types = new Types(generator);
+    public Module(ModelModule module) {
+        this.module = module;
+        types = new Types(module);
     }
 
     private static final int FUNCTION_TYPE = 0;
@@ -85,10 +80,12 @@ public final class Module implements ParserListener {
 
         final AttributesCodeEntry paramAttr = paramAttributes.getCodeEntry(args[FUNCTION_PARAMATTR]);
 
-        generator.createFunction(functionType, isPrototype, linkage, paramAttr);
-        symbols.add(functionType);
-        if (!isPrototype) {
-            functions.add(functionType);
+        if (isPrototype) {
+            final FunctionDeclaration function = new FunctionDeclaration(functionType, linkage, paramAttr);
+            module.addFunctionDeclaration(function);
+        } else {
+            final FunctionDefinition function = new FunctionDefinition(functionType, linkage, paramAttr);
+            module.addFunctionDefinition(function);
         }
     }
 
@@ -120,8 +117,13 @@ public final class Module implements ParserListener {
             visibility = args[GLOBALVAR_VISIBILITY];
         }
 
-        generator.createGlobal(type, isConstant, initialiser, align, linkage, visibility);
-        symbols.add(type);
+        final GlobalValueSymbol global;
+        if (isConstant) {
+            global = GlobalConstant.create(type, initialiser, align, linkage, visibility);
+        } else {
+            global = GlobalVariable.create(type, initialiser, align, linkage, visibility);
+        }
+        module.addGlobalSymbol(global);
     }
 
     private static final int GLOBALALIAS_TYPE = 0;
@@ -135,8 +137,7 @@ public final class Module implements ParserListener {
         final int value = (int) args[GLOBALALIAS_NEW_VALUE];
         final long linkage = args[GLOBALALIAS_NEW_LINKAGE];
 
-        generator.createAlias(type, value, linkage, Visibility.DEFAULT.ordinal());
-        symbols.add(type);
+        module.addGlobalSymbol(GlobalAlias.create(type, value, linkage, Visibility.DEFAULT.ordinal()));
     }
 
     private static final int GLOBALALIAS_OLD_VALUE = 1;
@@ -147,8 +148,7 @@ public final class Module implements ParserListener {
         int value = (int) args[GLOBALALIAS_OLD_VALUE];
         long linkage = args[GLOBALALIAS_OLD_LINKAGE];
 
-        generator.createAlias(type, value, linkage, Visibility.DEFAULT.ordinal());
-        symbols.add(type);
+        module.addGlobalSymbol(GlobalAlias.create(type, value, linkage, Visibility.DEFAULT.ordinal()));
     }
 
     @Override
@@ -164,32 +164,26 @@ public final class Module implements ParserListener {
                 return paramAttributes;
 
             case CONSTANTS:
-                return new Constants(types, symbols, generator);
+                return new Constants(types, module);
 
             case FUNCTION: {
-                FunctionType function = functions.remove(0);
-
-                FunctionGenerator gen = generator.generateFunction();
-
-                List<Type> sym = new ArrayList<>(symbols);
-
-                for (Type arg : function.getArgumentTypes()) {
-                    gen.createParameter(arg);
-                    sym.add(arg);
+                final FunctionDefinition functionDefinition = module.generateFunction();
+                final FunctionType functionType = functionDefinition.getType();
+                for (Type arg : functionType.getArgumentTypes()) {
+                    functionDefinition.createParameter(arg);
                 }
-
-                return new Function(types, sym, gen, mode, paramAttributes);
+                return new Function(types, functionDefinition, mode, paramAttributes);
             }
 
             case TYPE:
                 return types;
 
             case VALUE_SYMTAB:
-                return new ValueSymbolTable(generator);
+                return new ValueSymbolTable(module);
 
             case METADATA:
             case METADATA_KIND:
-                return new Metadata(types, generator);
+                return new Metadata(types, module);
 
             default:
                 return ParserListener.DEFAULT;
@@ -198,7 +192,7 @@ public final class Module implements ParserListener {
 
     @Override
     public void exit() {
-        generator.exitModule();
+        module.exitModule();
     }
 
     @Override
@@ -210,13 +204,12 @@ public final class Module implements ParserListener {
                 break;
 
             case TARGET_TRIPLE:
-                info.add(new TargetTriple(Records.toString(args)));
+                module.addTargetInformation(new TargetTriple(Records.toString(args)));
                 break;
 
             case TARGET_DATALAYOUT:
                 final TargetDataLayout layout = TargetDataLayout.fromString(Records.toString(args));
-                info.add(layout);
-                generator.createTargetDataLayout(layout);
+                module.setTargetDataLayout(layout);
                 break;
 
             case GLOBAL_VARIABLE:

@@ -75,12 +75,12 @@ public final class PhiInstruction extends ValueInstruction {
         }
     }
 
-    public static PhiInstruction generate(FunctionDefinition function, Type type, int[] values, int[] blocks) {
+    public static PhiInstruction generate(FunctionDefinition function, Type type, int[] values, InstructionBlock[] blocks) {
         final PhiInstruction phi = new PhiInstruction(type);
         final Symbols symbols = function.getSymbols();
         for (int i = 0; i < values.length; i++) {
             phi.values.add(symbols.getSymbol(values[i], phi));
-            phi.blocks.add(function.getBlock(blocks[i]));
+            phi.blocks.add(blocks[i]);
         }
         return phi;
     }

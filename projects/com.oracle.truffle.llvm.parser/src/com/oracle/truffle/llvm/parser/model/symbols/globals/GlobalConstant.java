@@ -27,27 +27,25 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.generators;
+package com.oracle.truffle.llvm.parser.model.symbols.globals;
 
-import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
-import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
-import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.parser.model.enums.Visibility;
+import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public interface ModuleGenerator extends SymbolGenerator {
+public final class GlobalConstant extends GlobalValueSymbol {
 
-    void createAlias(Type type, int aliasedValue, long linkage, long visibility);
+    private GlobalConstant(Type type, int initialiser, int align, Linkage linkage, Visibility visibility) {
+        super(type, initialiser, align, linkage, visibility);
+    }
 
-    void createFunction(FunctionType type, boolean isPrototype, Linkage linkage, AttributesCodeEntry paramattr);
+    @Override
+    public void accept(ModelVisitor visitor) {
+        visitor.visit(this);
+    }
 
-    void createTargetDataLayout(TargetDataLayout layout);
-
-    void createType(Type type);
-
-    void createGlobal(Type type, boolean isConstant, int initialiser, int align, long linkage, long visibility);
-
-    void exitModule();
-
-    FunctionGenerator generateFunction();
+    public static GlobalConstant create(Type type, int initialiser, int align, long linkage, long visibility) {
+        return new GlobalConstant(type, initialiser, align, Linkage.decode(linkage), Visibility.decode(visibility));
+    }
 }
