@@ -1285,6 +1285,13 @@ suite = {
       ],
     },
 
+    "GRAAL_GRAPHIO" : {
+      "subDir" : "src",
+      "dependencies" : ["org.graalvm.graphio"],
+      "distDependencies" : [
+      ],
+    },
+
     "GRAAL_OPTIONS_PROCESSOR" : {
       "subDir" : "src",
       "dependencies" : ["org.graalvm.compiler.options.processor"],
@@ -1481,6 +1488,7 @@ suite = {
       ],
       "subDir" : "src",
       "overlaps" : [
+        "GRAAL_GRAPHIO",
         "GRAAL_OPTIONS",
         "GRAAL_NODEINFO",
         "GRAAL_API",
