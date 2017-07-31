@@ -468,9 +468,7 @@ public final class ForeignAccess {
      */
     public static boolean sendIsPointer(Node isPointerNode, TruffleObject receiver) {
         try {
-            return (boolean) send(isPointerNode, receiver);
-        } catch (UnsupportedMessageException ex) {
-            return false;
+            return (boolean) ((InteropAccessNode) isPointerNode).executeOrFalse(receiver);
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
@@ -574,7 +572,7 @@ public final class ForeignAccess {
      */
     public static boolean sendIsExecutable(Node isExecutableNode, TruffleObject receiver) {
         try {
-            return (boolean) send(isExecutableNode, receiver);
+            return (boolean) ((InteropAccessNode) isExecutableNode).executeOrFalse(receiver);
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
@@ -660,9 +658,7 @@ public final class ForeignAccess {
      */
     public static boolean sendIsNull(Node isNullNode, TruffleObject receiver) {
         try {
-            return (boolean) send(isNullNode, receiver);
-        } catch (UnsupportedMessageException ex) {
-            return false;
+            return (boolean) ((InteropAccessNode) isNullNode).executeOrFalse(receiver);
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
@@ -683,9 +679,7 @@ public final class ForeignAccess {
      */
     public static boolean sendHasSize(Node hasSizeNode, TruffleObject receiver) {
         try {
-            return (boolean) send(hasSizeNode, receiver);
-        } catch (UnsupportedMessageException ex) {
-            return false;
+            return (boolean) ((InteropAccessNode) hasSizeNode).executeOrFalse(receiver);
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
@@ -732,9 +726,7 @@ public final class ForeignAccess {
      */
     public static boolean sendIsBoxed(Node isBoxedNode, TruffleObject receiver) {
         try {
-            return (boolean) send(isBoxedNode, receiver);
-        } catch (UnsupportedMessageException ex) {
-            return false;
+            return (boolean) ((InteropAccessNode) isBoxedNode).executeOrFalse(receiver);
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
