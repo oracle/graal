@@ -192,8 +192,6 @@ public class TestMemberAccess {
             foundKeys.add(keyName);
         }
 
-        int count = foundKeys.size();
-
         Set<String> foundInternalKeys = new HashSet<>();
         List<?> internalKeys = JavaInterop.asJavaObject(List.class, ForeignAccess.sendKeys(KEYS_NODE, obj, true));
         for (Object key : internalKeys) {
@@ -217,7 +215,7 @@ public class TestMemberAccess {
 
         assertTrue("All normal keys listed in internal mode too: " + foundKeys, foundKeys.isEmpty());
 
-        assertTrue("More than " + count + " real internals: " + foundInternalKeys, foundInternalKeys.size() >= count);
+        assertTrue("Unexpected internal keys: " + foundInternalKeys, foundInternalKeys.isEmpty());
     }
 
     private static boolean isObjectMethodName(String name) {
