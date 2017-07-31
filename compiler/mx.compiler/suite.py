@@ -227,6 +227,14 @@ suite = {
       "workingSets" : "Graal",
     },
 
+    "org.graalvm.graphio" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "1.8",
+      "workingSets" : "API,Graal",
+    },
+
     "org.graalvm.util" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1060,6 +1068,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "org.graalvm.graphio",
         "org.graalvm.compiler.core",
         "org.graalvm.compiler.java",
       ],
@@ -1130,6 +1139,7 @@ suite = {
         "truffle:TRUFFLE_API",
         "org.graalvm.compiler.api.runtime",
         "org.graalvm.compiler.runtime",
+        "org.graalvm.graphio",
         "org.graalvm.compiler.replacements",
       ],
       "uses" : [
@@ -1275,6 +1285,13 @@ suite = {
       ],
     },
 
+    "GRAAL_GRAPHIO" : {
+      "subDir" : "src",
+      "dependencies" : ["org.graalvm.graphio"],
+      "distDependencies" : [
+      ],
+    },
+
     "GRAAL_OPTIONS_PROCESSOR" : {
       "subDir" : "src",
       "dependencies" : ["org.graalvm.compiler.options.processor"],
@@ -1343,6 +1360,7 @@ suite = {
       "distDependencies" : [
         "GRAAL_API",
         "GRAAL_COMPILER",
+        "GRAAL_GRAPHIO",
       ],
     },
 
@@ -1471,6 +1489,7 @@ suite = {
       ],
       "subDir" : "src",
       "overlaps" : [
+        "GRAAL_GRAPHIO",
         "GRAAL_OPTIONS",
         "GRAAL_NODEINFO",
         "GRAAL_API",
