@@ -34,12 +34,10 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeClass;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.nio.channels.WritableByteChannel;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Objects;
 import org.graalvm.compiler.truffle.GraphPrintVisitor.EdgeType;
 import org.graalvm.compiler.truffle.GraphPrintVisitor.NodeElement;
@@ -293,9 +291,10 @@ final class GraphPrintVisitor implements GraphStructure<RootCallTarget, NodeElem
         }
     }
 
+    @SuppressWarnings("deprecation")
     private void readNodeProperties(Node node) {
         NodeClass nodeClass = NodeClass.get(node);
-        for (Object field : findNodeFields(nodeClass)) {
+        for (com.oracle.truffle.api.nodes.NodeFieldAccessor field : findNodeFields(nodeClass)) {
             if (isDataField(nodeClass, field)) {
                 String key = findFieldName(nodeClass, field);
                 if (!getElementByObject(node).getProperties().containsKey(key)) {
@@ -306,7 +305,8 @@ final class GraphPrintVisitor implements GraphStructure<RootCallTarget, NodeElem
         }
     }
 
-    private static boolean isDataField(NodeClass nodeClass, Object field) {
+    @SuppressWarnings("deprecation")
+    private static boolean isDataField(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field) {
         return !isChildField(nodeClass, field) && !isChildrenField(nodeClass, field);
     }
 
@@ -354,11 +354,12 @@ final class GraphPrintVisitor implements GraphStructure<RootCallTarget, NodeElem
         return this;
     }
 
+    @SuppressWarnings("deprecation")
     private static LinkedHashMap<String, Node> findNamedNodeChildren(Node node) {
         LinkedHashMap<String, Node> nodes = new LinkedHashMap<>();
         NodeClass nodeClass = NodeClass.get(node);
 
-        for (Object field : findNodeFields(nodeClass)) {
+        for (com.oracle.truffle.api.nodes.NodeFieldAccessor field : findNodeFields(nodeClass)) {
             if (isChildField(nodeClass, field)) {
                 Object value = findFieldObject(nodeClass, field, node);
                 if (value != null) {
@@ -380,50 +381,34 @@ final class GraphPrintVisitor implements GraphStructure<RootCallTarget, NodeElem
         return nodes;
     }
 
-    private static Object findFieldValue(NodeClass nodeClass, Object field, Node node) {
-        return callOnNodeClass(Object.class, "getFieldValue", nodeClass, field, node);
+    @SuppressWarnings({"deprecation", "unused"})
+    private static Object findFieldValue(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field, Node node) {
+        return field.loadValue(node);
     }
 
-    private static Iterable<?> findNodeFields(NodeClass nodeClass) {
-        return callOnNodeClass(Iterable.class, "getNodeFields", nodeClass);
+    @SuppressWarnings("deprecation")
+    private static Iterable<com.oracle.truffle.api.nodes.NodeFieldAccessor> findNodeFields(NodeClass nodeClass) {
+        return Arrays.asList(nodeClass.getFields());
     }
 
-    private static boolean isChildField(NodeClass nodeClass, Object field) {
-        return callOnNodeClass(Boolean.class, "isChildField", nodeClass, field);
+    @SuppressWarnings({"deprecation", "unused"})
+    private static boolean isChildField(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field) {
+        return field.getKind() == com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.CHILD;
     }
 
-    private static boolean isChildrenField(NodeClass nodeClass, Object field) {
-        return callOnNodeClass(Boolean.class, "isChildrenField", nodeClass, field);
+    @SuppressWarnings({"deprecation", "unused"})
+    private static boolean isChildrenField(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field) {
+        return field.getKind() == com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.CHILDREN;
     }
 
-    private static Object findFieldObject(NodeClass nodeClass, Object field, Node node) {
-        return callOnNodeClass(Object.class, "getFieldObject", nodeClass, field, node);
+    @SuppressWarnings({"deprecation", "unused"})
+    private static Object findFieldObject(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field, Node node) {
+        return field.getObject(node);
     }
 
-    private static String findFieldName(NodeClass nodeClass, Object field) {
-        return callOnNodeClass(String.class, "getFieldName", nodeClass, field);
-    }
-
-    private static final Map<String, Method> METHODS = new HashMap<>();
-
-    private static <T> T callOnNodeClass(Class<T> returnType, String name, NodeClass thiz, Object... args) {
-        Method m = METHODS.get(name);
-        if (m == null) {
-            for (Method candidate : NodeClass.class.getDeclaredMethods()) {
-                if (candidate.getName().equals(name)) {
-                    m = candidate;
-                    m.setAccessible(true);
-                    break;
-                }
-            }
-            assert m != null;
-            METHODS.put(name, m);
-        }
-        try {
-            return returnType.cast(m.invoke(thiz, args));
-        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-            throw new IllegalStateException(ex);
-        }
+    @SuppressWarnings({"deprecation", "unused"})
+    private static String findFieldName(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field) {
+        return field.getName();
     }
 
     /** @since 0.8 or earlier */
