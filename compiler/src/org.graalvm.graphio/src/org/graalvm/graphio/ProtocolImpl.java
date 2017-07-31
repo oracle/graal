@@ -27,15 +27,20 @@ import java.nio.channels.WritableByteChannel;
 import java.util.Collection;
 import java.util.Map;
 
-public abstract class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition>
+final class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition>
                 extends GraphProtocol<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition> {
-    protected GraphStructure<Graph, Node, NodeClass, Port> structure;
-    protected GraphTypes enums = DefaultGraphTypes.DEFAULT;
-    protected GraphBlocks<Graph, Block, Node> blocks = DefaultGraphBlocks.empty();
-    protected GraphElements<ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition, ?> elements;
+    private final GraphStructure<Graph, Node, NodeClass, Port> structure;
+    private final GraphTypes types;
+    private final GraphBlocks<Graph, Block, Node> blocks;
+    private final GraphElements<ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition> elements;
 
-    protected ProtocolImpl(WritableByteChannel channel) throws IOException {
+    ProtocolImpl(GraphStructure<Graph, Node, NodeClass, Port> structure, GraphTypes enums, GraphBlocks<Graph, Block, Node> blocks,
+                    GraphElements<ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition> elements, WritableByteChannel channel) throws IOException {
         super(channel);
+        this.structure = structure;
+        this.types = enums;
+        this.blocks = blocks;
+        this.elements = elements;
     }
 
     @Override
@@ -119,22 +124,22 @@ public abstract class ProtocolImpl<Graph, Node, NodeClass, Port, Block, Resolved
 
     @Override
     protected final Object findEnumClass(Object enumValue) {
-        return enums.findEnumClass(enumValue);
+        return types.findEnumClass(enumValue);
     }
 
     @Override
     protected final int findEnumOrdinal(Object obj) {
-        return enums.findEnumOrdinal(obj);
+        return types.findEnumOrdinal(obj);
     }
 
     @Override
     protected final String[] findEnumTypeValues(Object clazz) {
-        return enums.findEnumTypeValues(clazz);
+        return types.findEnumTypeValues(clazz);
     }
 
     @Override
     protected String findJavaTypeName(Object obj) {
-        return enums.typeName(obj);
+        return types.typeName(obj);
     }
 
     @Override

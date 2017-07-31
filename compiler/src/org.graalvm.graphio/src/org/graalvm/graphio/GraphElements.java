@@ -29,9 +29,8 @@ package org.graalvm.graphio;
  * @param <F> type representing fields
  * @param <S> type representing signature
  * @param <P> type representing source code location
- * @param <C> type representing a class
  */
-public interface GraphElements<M, F, S, P, C> {
+public interface GraphElements<M, F, S, P> {
     /**
      * Recognize method. Can the object be seen as a method?
      *
@@ -73,12 +72,13 @@ public interface GraphElements<M, F, S, P, C> {
     String methodName(M method);
 
     /**
-     * Method's declaring class.
+     * Method's declaring class. The returned object shall be a {@link Class} or be recognizable by
+     * {@link GraphTypes#typeName(java.lang.Object)} method.
      *
      * @param method the method
      * @return object representing class that defined the method
      */
-    C methodDeclaringClass(M method);
+    Object methodDeclaringClass(M method);
 
     /**
      * Recognizes a field. Can the object be seen as a field?
@@ -113,12 +113,13 @@ public interface GraphElements<M, F, S, P, C> {
     String fieldName(F field);
 
     /**
-     * Field's declaring class.
+     * Field's declaring class. The returned object shall be a {@link Class} or be recognizable by
+     * {@link GraphTypes#typeName(java.lang.Object)} method.
      *
      * @param field the field
      * @return object representing class that defined the field
      */
-    C fieldDeclaringClass(F field);
+    Object fieldDeclaringClass(F field);
 
     /**
      * Recognizes signature. Can the object be seen as a signature?

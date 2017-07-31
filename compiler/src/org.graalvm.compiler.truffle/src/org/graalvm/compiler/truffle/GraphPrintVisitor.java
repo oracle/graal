@@ -41,9 +41,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Objects;
-import org.graalvm.graphio.ProtocolImpl;
 import org.graalvm.compiler.truffle.GraphPrintVisitor.EdgeType;
 import org.graalvm.compiler.truffle.GraphPrintVisitor.NodeElement;
+import org.graalvm.graphio.GraphOutput;
 import org.graalvm.graphio.GraphStructure;
 
 /**
@@ -51,8 +51,7 @@ import org.graalvm.graphio.GraphStructure;
  *
  * @since 0.8 or earlier
  */
-final class GraphPrintVisitor extends ProtocolImpl<RootCallTarget, NodeElement, NodeClass, EdgeType, Void, Void, Void, Void, Void>
-                implements GraphStructure<RootCallTarget, NodeElement, NodeClass, EdgeType> {
+final class GraphPrintVisitor implements GraphStructure<RootCallTarget, NodeElement, NodeClass, EdgeType> {
     private Map<Object, NodeElement> nodeMap;
     private List<EdgeElement> edgeList;
     private Map<Object, NodeElement> prevNodeMap;
@@ -208,9 +207,10 @@ final class GraphPrintVisitor extends ProtocolImpl<RootCallTarget, NodeElement, 
         }
     }
 
+    private final GraphOutput<RootCallTarget, ?> output;
+
     GraphPrintVisitor(WritableByteChannel ch) throws IOException {
-        super(ch);
-        structure = this;
+        output = GraphOutput.newBuilder(this).build(ch);
     }
 
     /** @since 0.8 or earlier */
@@ -223,6 +223,14 @@ final class GraphPrintVisitor extends ProtocolImpl<RootCallTarget, NodeElement, 
         edgeList = new ArrayList<>();
 
         return this;
+    }
+
+    void endGroup() throws IOException {
+        output.endGroup();
+    }
+
+    void beginGroup(RootCallTarget root, String name, String shortName) throws IOException {
+        output.beginGroup(root, name, shortName, null, 0, null);
     }
 
     private int nextId() {
@@ -337,10 +345,10 @@ final class GraphPrintVisitor extends ProtocolImpl<RootCallTarget, NodeElement, 
         handler.visit(node, new GraphPrintAdapter());
 
         if (node instanceof RootCallTarget) {
-            print((RootCallTarget) node, null, nextId(), currentGraphName);
+            output.print((RootCallTarget) node, null, nextId(), currentGraphName);
         }
         if (node instanceof RootNode) {
-            print(((RootNode) node).getCallTarget(), null, nextId(), currentGraphName);
+            output.print(((RootNode) node).getCallTarget(), null, nextId(), currentGraphName);
         }
 
         return this;

@@ -24,6 +24,7 @@ package org.graalvm.graphio;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.nio.channels.WritableByteChannel;
 import java.util.Map;
 
 /**
@@ -42,11 +43,16 @@ public final class GraphOutput<G, M> implements Closeable {
     /**
      * Creates new builder to configure a future instance of {@link GraphOutput}.
      * 
+     * @param <G> the type of the graph
+     * @param <N> the type of the nodes
+     * @param <C> the type of the node classes
+     * @param <P> the type of the ports
+     *
+     * @param structure description of the structure of the graph
      * @return the builder to configure
      */
-    public static GraphOutput<?, ?>.Builder newBuilder() {
-        final GraphOutput<Object, Object> temporary = new GraphOutput<>(null);
-        return temporary.new Builder();
+    public static <G, N, C, P> Builder<G, N, ?> newBuilder(GraphStructure<G, N, C, P> structure) {
+        return new Builder<>(structure);
     }
 
     /**
@@ -96,10 +102,66 @@ public final class GraphOutput<G, M> implements Closeable {
     }
 
     /**
-     * Builder to create an instance of {@link GraphOutput}.
+     * Builder to configure and create an instance of {@link GraphOutput}.
+     *
+     * @param <G> the type of the (root element of) graph
+     * @param <N> the type of the nodes
+     * @param <M> the type of the methods
      */
-    public final class Builder {
-        Builder() {
+    public final static class Builder<G, N, M> {
+        private final GraphStructure<G, N, ?, ?> structure;
+        private GraphElements<M, ?, ?, ?> elements = null;
+        private GraphTypes types = DefaultGraphTypes.DEFAULT;
+        private GraphBlocks<G, ?, N> blocks = DefaultGraphBlocks.empty();
+
+        Builder(GraphStructure<G, N, ?, ?> structure) {
+            this.structure = structure;
+        }
+
+        /**
+         * Associates different implementation of types.
+         *
+         * @param types implementation of types and enum recognition
+         * @return this builder
+         */
+        public Builder<G, N, M> types(GraphTypes types) {
+            this.types = types;
+            return this;
+        }
+
+        /**
+         * Associates implementation of blocks.
+         *
+         * @param blocks the blocks implementation
+         * @return this builder
+         */
+        public Builder<G, N, M> blocks(GraphBlocks<G, ?, N> blocks) {
+            this.blocks = blocks;
+            return this;
+        }
+
+        /**
+         * Associates implementation of graph elements.
+         *
+         * @param elements the elements implementation
+         * @return this builder
+         */
+        public Builder<G, N, M> elements(GraphElements<M, ?, ?, ?> elements) {
+            this.elements = elements;
+            return this;
+        }
+
+        /**
+         * Creates new {@link GraphOutput} to output to provided channel. The output will use
+         * interfaces currently associated with this builder.
+         *
+         * @param channel the channel to output to
+         * @return new graph output
+         * @throws IOException if something goes wrong when writing to the channel
+         */
+        public GraphOutput<G, M> build(WritableByteChannel channel) throws IOException {
+            ProtocolImpl<G, N, ?, ?, ?, M, ?, ?, ?> p = new ProtocolImpl<>(structure, types, blocks, elements, channel);
+            return new GraphOutput<>(p);
         }
     }
 }

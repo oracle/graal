@@ -119,7 +119,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
                 throw new IOException(ex);
             }
 
-            printer.beginGroup(callTarget, callTarget.toString(), callTarget.getRootNode().getName(), null, 0, null);
+            printer.beginGroup(callTarget, callTarget.toString(), callTarget.getRootNode().getName());
             printer.beginGraph(message).visit(callTarget.getRootNode());
             if (callTarget instanceof OptimizedCallTarget) {
                 TruffleInlining inlining = new TruffleInlining((OptimizedCallTarget) callTarget, new DefaultInliningPolicy());
@@ -138,7 +138,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
             if (inlinedCallTarget instanceof OptimizedCallTarget && callNode instanceof OptimizedDirectCallNode) {
                 TruffleInliningDecision decision = inlining.findByCall((OptimizedDirectCallNode) callNode);
                 if (decision != null && decision.isInline()) {
-                    printer.beginGroup((RootCallTarget) inlinedCallTarget, inlinedCallTarget.toString(), null, null, 0, null);
+                    printer.beginGroup((RootCallTarget) inlinedCallTarget, inlinedCallTarget.toString(), null);
                     printer.beginGraph(inlinedCallTarget.toString()).visit(((RootCallTarget) inlinedCallTarget).getRootNode());
                     dumpInlinedTrees(printer, (OptimizedCallTarget) inlinedCallTarget, decision);
                     printer.endGroup();
