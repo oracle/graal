@@ -161,26 +161,6 @@ final class GraphPrintVisitor extends ProtocolImpl<RootCallTarget, NodeElement, 
     }
 
     @Override
-    protected List<NodeElement> findBlockNodes(RootCallTarget info, Void block) {
-        return Collections.emptyList();
-    }
-
-    @Override
-    protected int findBlockId(Void sux) {
-        return -1;
-    }
-
-    @Override
-    protected List<Void> findBlocks(RootCallTarget graph) {
-        return Collections.emptyList();
-    }
-
-    @Override
-    protected List<Void> findBlockSuccessors(Void block) {
-        return Collections.emptyList();
-    }
-
-    @Override
     protected String formatTitle(RootCallTarget graph, int ident, String format, Object... args) {
         return String.format(format, args) + " [" + ident + "]";
     }

@@ -31,6 +31,7 @@ public abstract class ProtocolImpl<Graph, Node, NodeClass, Port, Block, Resolved
                 extends GraphProtocol<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition> {
     protected GraphStructure<Graph, Node, NodeClass, Port> structure;
     protected GraphEnums<?> enums = DefaultGraphEnums.DEFAULT;
+    protected GraphBlocks<Graph, Block, Node> blocks = DefaultGraphBlocks.empty();
 
     protected ProtocolImpl(WritableByteChannel channel) throws IOException {
         super(channel);
@@ -124,5 +125,25 @@ public abstract class ProtocolImpl<Graph, Node, NodeClass, Port, Block, Resolved
     @SuppressWarnings("unchecked")
     protected final String[] findEnumTypeValues(Object clazz) {
         return ((GraphEnums) enums).findEnumTypeValues(clazz);
+    }
+
+    @Override
+    protected Collection<? extends Node> findBlockNodes(Graph info, Block block) {
+        return blocks.blockNodes(info, block);
+    }
+
+    @Override
+    protected int findBlockId(Block block) {
+        return blocks.blockId(block);
+    }
+
+    @Override
+    protected Collection<? extends Block> findBlocks(Graph graph) {
+        return blocks.blocks(graph);
+    }
+
+    @Override
+    protected Collection<? extends Block> findBlockSuccessors(Block block) {
+        return blocks.blockSuccessors(block);
     }
 }

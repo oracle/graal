@@ -167,13 +167,13 @@ public abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, Resolv
 
     protected abstract void findNodeProperties(Node node, Map<String, Object> props, Graph info);
 
-    protected abstract Collection<Node> findBlockNodes(Graph info, Block block);
+    protected abstract Collection<? extends Node> findBlockNodes(Graph info, Block block);
 
     protected abstract int findBlockId(Block sux);
 
-    protected abstract Collection<Block> findBlocks(Graph graph);
+    protected abstract Collection<? extends Block> findBlocks(Graph graph);
 
-    protected abstract Collection<Block> findBlockSuccessors(Block block);
+    protected abstract Collection<? extends Block> findBlockSuccessors(Block block);
 
     protected abstract String formatTitle(Graph graph, int id, String format, Object... args);
 
@@ -439,10 +439,10 @@ public abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, Resolv
         writeInt(findNodeId(node));
     }
 
-    private void writeBlocks(Collection<Block> blocks, Graph info) throws IOException {
+    private void writeBlocks(Collection<? extends Block> blocks, Graph info) throws IOException {
         if (blocks != null) {
             for (Block block : blocks) {
-                Collection<Node> nodes = findBlockNodes(info, block);
+                Collection<? extends Node> nodes = findBlockNodes(info, block);
                 if (nodes == null) {
                     writeInt(0);
                     return;
@@ -450,7 +450,7 @@ public abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, Resolv
             }
             writeInt(blocks.size());
             for (Block block : blocks) {
-                Collection<Node> nodes = findBlockNodes(info, block);
+                Collection<? extends Node> nodes = findBlockNodes(info, block);
                 List<Node> extraNodes = new LinkedList<>();
                 writeInt(findBlockId(block));
                 for (Node node : nodes) {
@@ -464,7 +464,7 @@ public abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, Resolv
                 for (Node node : extraNodes) {
                     writeInt(findNodeId(node));
                 }
-                final Collection<Block> successors = findBlockSuccessors(block);
+                final Collection<? extends Block> successors = findBlockSuccessors(block);
                 writeInt(successors.size());
                 for (Block sux : successors) {
                     writeInt(findBlockId(sux));
