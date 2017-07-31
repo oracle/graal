@@ -23,16 +23,17 @@
 package org.graalvm.graphio;
 
 /**
- * Special support for dealing with enums.Normally one can represent various {@link GraphOutput
+ * Special support for dealing with enums. Normally one can represent various {@link GraphOutput
  * graph} enum values with real {@link Enum} instances. In case this is not possible, the
- * {@link GraphOutput.Builder} allows one to register implementation of this interface to treat them
- * especially.
+ * {@link GraphOutput.Builder} allows one to
+ * {@link GraphOutput.Builder#types(org.graalvm.graphio.GraphTypes) register} an implementation of
+ * this interface to treat them specially.
  */
 public interface GraphTypes {
     /**
      * Recognizes an
-     * <q>enum</q> object. If this object represents an enum, then an object that represents its
-     * class shall be returned.
+     * <q>enum</q> object. If the <code>enumValue</code> object represents an enum, then an object
+     * that represents its class shall be returned.
      *
      * @param enumValue the value to test
      * @return <code>null</code> if the value isn't enum, otherwise its class
@@ -49,9 +50,9 @@ public interface GraphTypes {
     int enumOrdinal(Object obj);
 
     /**
-     * All possible values of an enum. If the provided clazz object represents an enum, then compute
-     * enum value names in ordinal order and return them as a string array. Otherwise return
-     * <code>null</code>
+     * All possible values of an enum. If the provided <code>maybeEnumClass</code> object represents
+     * an enum, then compute enum value names in ordinal order and return them as a string array.
+     * Otherwise return <code>null</code>
      * 
      * @param maybeEnumClass the class to test
      * @return <code>null</code> if the clazz isn't an enum, otherwise names of its values

@@ -28,8 +28,8 @@ import java.util.Map;
 /**
  * Interface that defines structure of a compiler graph. The structure of a graph is composed from
  * nodes with properties, the classes of individual nodes, and ports associated with each node that
- * may the contain edge or edges to other nodes. The structure of a graph is assumed to be immutable
- * for the time of {@link GraphOutput operations} on it.
+ * may contain edges to other nodes. The structure of a graph is assumed to be immutable for the
+ * time of {@link GraphOutput operations} on it.
  * 
  * @param <G> the type of the (root node of a) graph
  * @param <N> the type of nodes
@@ -96,10 +96,9 @@ public interface GraphStructure<G, N, C, P> {
     void nodeProperties(G graph, N node, Map<String, ? super Object> properties);
 
     /**
-     * Finds node class for the the provided object to node class, if possible. If the given object
-     * <code>obj</code> is recognized as can be seen as an instance of node class or is a node in
-     * this graph, return the properly typed instance of the node class. Otherwise return
-     * <code>null</code>
+     * Finds the node class for the provided object, if possible. If the given object
+     * <code>obj</code> can be seen as an instance of node class or it is a node in this graph,
+     * return the properly typed instance of the node class. Otherwise return <code>null</code>
      *
      * @param obj an object to find node class for
      * @return appropriate graph object or <code>null</code> if the object doesn't represent a graph
@@ -156,8 +155,8 @@ public interface GraphStructure<G, N, C, P> {
     /**
      * Checks whether an edge is direct. Direct edge shall have exactly one
      * {@linkplain #edgeNodes(java.lang.Object, java.lang.Object, java.lang.Object, int) node} - it
-     * is an error to return more for such edge from the
-     * {@link #edgeNodes(java.lang.Object, java.lang.Object, java.lang.Object, int)} method.
+     * is an error to return more than one for such an edge from the
+     * {@linkplain #edgeNodes(java.lang.Object, java.lang.Object, java.lang.Object, int) method}.
      *
      * @param port the port
      * @param index index from <code>0</code> to {@link #portSize(java.lang.Object)} minus
