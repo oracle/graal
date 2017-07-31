@@ -22,10 +22,10 @@
  */
 package org.graalvm.graphio;
 
-final class DefaultGraphEnums implements GraphEnums<Class<?>> {
-    static final GraphEnums<Class<?>> DEFAULT = new DefaultGraphEnums();
+final class DefaultGraphTypes implements GraphTypes {
+    static final GraphTypes DEFAULT = new DefaultGraphTypes();
 
-    private DefaultGraphEnums() {
+    private DefaultGraphTypes() {
     }
 
     @Override
@@ -46,7 +46,7 @@ final class DefaultGraphEnums implements GraphEnums<Class<?>> {
 
     @SuppressWarnings("unchecked")
     @Override
-    public String[] findEnumTypeValues(Class<?> clazz) {
+    public String[] findEnumTypeValues(Object clazz) {
         if (clazz instanceof Class<?>) {
             Class<? extends Enum<?>> enumClass = (Class<? extends Enum<?>>) clazz;
             Enum<?>[] constants = enumClass.getEnumConstants();
@@ -57,6 +57,14 @@ final class DefaultGraphEnums implements GraphEnums<Class<?>> {
                 }
                 return names;
             }
+        }
+        return null;
+    }
+
+    @Override
+    public String typeName(Object clazz) {
+        if (clazz instanceof Class<?>) {
+            return ((Class<?>) clazz).getName();
         }
         return null;
     }

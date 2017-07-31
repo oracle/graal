@@ -27,10 +27,8 @@ package org.graalvm.graphio;
  * graph} enum values with real {@link Enum} instances. In case this is not possible, the
  * {@link GraphOutput.Builder} allows one to register implementation of this interface to treat them
  * especially.
- *
- * @param <C> the type that represents the classes in the graph
  */
-public interface GraphEnums<C> {
+public interface GraphTypes {
     /**
      * Recognizes an
      * <q>enum</q> object. If this object represents an enum, then an object that represents its
@@ -39,7 +37,7 @@ public interface GraphEnums<C> {
      * @param enumValue the value to test
      * @return <code>null</code> if the value isn't enum, otherwise its class
      */
-    C findEnumClass(Object enumValue);
+    Object findEnumClass(Object enumValue);
 
     /**
      * Ordinal of an enum. If the <code>obj</code> represents an enum, then return its ordinal
@@ -55,9 +53,17 @@ public interface GraphEnums<C> {
      * enum value names in ordinal order and return them as a string array. Otherwise return
      * <code>null</code>
      * 
-     * @param clazz the class to test
+     * @param maybeEnumClass the class to test
      * @return <code>null</code> if the clazz isn't an enum, otherwise names of its values
      */
-    String[] findEnumTypeValues(C clazz);
+    String[] findEnumTypeValues(Object maybeEnumClass);
 
+    /**
+     * Finds Java type name for a given class.
+     * 
+     * @param maybeClass object representing the class
+     * @return the type name of the class or <code>null</code> if the parameter doesn't represent a
+     *         class
+     */
+    String typeName(Object maybeClass);
 }

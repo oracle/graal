@@ -116,6 +116,14 @@ public interface GraphStructure<G, N, C, P> {
     String nameTemplate(C nodeClass);
 
     /**
+     * Java class for a node class.
+     *
+     * @param nodeClass the node class
+     * @return the {@link Class} or other type representation of the node class
+     */
+    Object nodeClassType(C nodeClass);
+
+    /**
      * Input ports of a node class. Each node class has a fixed set of ports where individual edges
      * can attach to.
      *

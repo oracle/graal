@@ -30,7 +30,7 @@ import java.util.Map;
 public abstract class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition>
                 extends GraphProtocol<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition> {
     protected GraphStructure<Graph, Node, NodeClass, Port> structure;
-    protected GraphEnums<?> enums = DefaultGraphEnums.DEFAULT;
+    protected GraphTypes enums = DefaultGraphTypes.DEFAULT;
     protected GraphBlocks<Graph, Block, Node> blocks = DefaultGraphBlocks.empty();
     protected GraphElements<ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition, ?> elements;
 
@@ -113,6 +113,11 @@ public abstract class ProtocolImpl<Graph, Node, NodeClass, Port, Block, Resolved
     }
 
     @Override
+    protected Object findJavaClass(NodeClass clazz) {
+        return structure.nodeClassType(clazz);
+    }
+
+    @Override
     protected final Object findEnumClass(Object enumValue) {
         return enums.findEnumClass(enumValue);
     }
@@ -123,9 +128,13 @@ public abstract class ProtocolImpl<Graph, Node, NodeClass, Port, Block, Resolved
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     protected final String[] findEnumTypeValues(Object clazz) {
-        return ((GraphEnums) enums).findEnumTypeValues(clazz);
+        return enums.findEnumTypeValues(clazz);
+    }
+
+    @Override
+    protected String findJavaTypeName(Object obj) {
+        return enums.typeName(obj);
     }
 
     @Override
@@ -246,5 +255,14 @@ public abstract class ProtocolImpl<Graph, Node, NodeClass, Port, Block, Resolved
     @Override
     protected StackTraceElement findMethodStackTraceElement(ResolvedJavaMethod method, int bci, NodeSourcePosition pos) {
         return elements.methodStackTraceElement(method, bci, pos);
+    }
+
+    @Override
+    protected void findExtraNodes(Node node, Collection<? super Node> extraNodes) {
+    }
+
+    @Override
+    protected String formatTitle(Graph graph, int id, String format, Object... args) {
+        return String.format(format, args) + " [" + id + "]";
     }
 }

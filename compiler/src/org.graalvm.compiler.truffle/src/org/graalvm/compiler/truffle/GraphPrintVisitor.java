@@ -84,8 +84,8 @@ final class GraphPrintVisitor extends ProtocolImpl<RootCallTarget, NodeElement, 
     }
 
     @Override
-    protected Class<?> findJavaClass(NodeClass clazz) {
-        return clazz.getType();
+    public Object nodeClassType(NodeClass nodeClass) {
+        return nodeClass.getType();
     }
 
     @Override
@@ -96,10 +96,6 @@ final class GraphPrintVisitor extends ProtocolImpl<RootCallTarget, NodeElement, 
     @Override
     public int nodeId(NodeElement n) {
         return n.id;
-    }
-
-    @Override
-    protected void findExtraNodes(NodeElement node, Collection<? super NodeElement> extraNodes) {
     }
 
     @Override
@@ -158,19 +154,6 @@ final class GraphPrintVisitor extends ProtocolImpl<RootCallTarget, NodeElement, 
     @Override
     public Collection<? extends NodeElement> edgeNodes(RootCallTarget graph, NodeElement node, EdgeType edges, int index) {
         return edges == EdgeType.PARENT ? Collections.emptyList() : node.out;
-    }
-
-    @Override
-    protected String formatTitle(RootCallTarget graph, int ident, String format, Object... args) {
-        return String.format(format, args) + " [" + ident + "]";
-    }
-
-    @Override
-    protected String findJavaTypeName(Object obj) {
-        if (obj instanceof Class<?>) {
-            return ((Class<?>) obj).getName();
-        }
-        return null;
     }
 
     static class NodeElement {
