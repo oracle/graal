@@ -44,47 +44,47 @@ final class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod
     }
 
     @Override
-    protected final Graph findGraph(Graph current, Object obj) {
+    protected Graph findGraph(Graph current, Object obj) {
         return structure.graph(current, obj);
     }
 
     @Override
-    protected final NodeClass findNodeClass(Object obj) {
+    protected NodeClass findNodeClass(Object obj) {
         return structure.nodeClass(obj);
     }
 
     @Override
-    protected final String findNameTemplate(NodeClass clazz) {
+    protected String findNameTemplate(NodeClass clazz) {
         return structure.nameTemplate(clazz);
     }
 
     @Override
-    protected final int findNodeId(Node n) {
+    protected int findNodeId(Node n) {
         return structure.nodeId(n);
     }
 
     @Override
-    protected final boolean hasPredecessor(Node node) {
+    protected boolean hasPredecessor(Node node) {
         return structure.nodeHasPredecessor(node);
     }
 
     @Override
-    protected final int findNodesCount(Graph info) {
+    protected int findNodesCount(Graph info) {
         return structure.nodesCount(info);
     }
 
     @Override
-    protected final Iterable<? extends Node> findNodes(Graph info) {
+    protected Iterable<? extends Node> findNodes(Graph info) {
         return structure.nodes(info);
     }
 
     @Override
-    protected final void findNodeProperties(Node node, Map<String, Object> props, Graph info) {
+    protected void findNodeProperties(Node node, Map<String, Object> props, Graph info) {
         structure.nodeProperties(info, node, props);
     }
 
     @Override
-    protected final Port findClassEdges(NodeClass nodeClass, boolean dumpInputs) {
+    protected Port findClassEdges(NodeClass nodeClass, boolean dumpInputs) {
         if (dumpInputs) {
             return structure.portInputs(nodeClass);
         } else {
@@ -93,27 +93,27 @@ final class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod
     }
 
     @Override
-    protected final int findSize(Port edges) {
+    protected int findSize(Port edges) {
         return structure.portSize(edges);
     }
 
     @Override
-    protected final boolean isDirect(Port edges, int i) {
+    protected boolean isDirect(Port edges, int i) {
         return structure.edgeDirect(edges, i);
     }
 
     @Override
-    protected final String findName(Port edges, int i) {
+    protected String findName(Port edges, int i) {
         return structure.edgeName(edges, i);
     }
 
     @Override
-    protected final Object findType(Port edges, int i) {
+    protected Object findType(Port edges, int i) {
         return structure.edgeType(edges, i);
     }
 
     @Override
-    protected final Collection<? extends Node> findNodes(Graph graph, Node node, Port port, int i) {
+    protected Collection<? extends Node> findNodes(Graph graph, Node node, Port port, int i) {
         return structure.edgeNodes(graph, node, port, i);
     }
 
@@ -123,17 +123,17 @@ final class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod
     }
 
     @Override
-    protected final Object findEnumClass(Object enumValue) {
+    protected Object findEnumClass(Object enumValue) {
         return types.enumClass(enumValue);
     }
 
     @Override
-    protected final int findEnumOrdinal(Object obj) {
+    protected int findEnumOrdinal(Object obj) {
         return types.enumOrdinal(obj);
     }
 
     @Override
-    protected final String[] findEnumTypeValues(Object clazz) {
+    protected String[] findEnumTypeValues(Object clazz) {
         return types.enumTypeValues(clazz);
     }
 
