@@ -182,6 +182,14 @@ public abstract class Accessor {
 
         public abstract boolean isHostAccessAllowed(Object vmObject, Env env);
 
+        public abstract Object createInternalContext(Object vmObject, Map<String, Object> config);
+
+        public abstract Object enterInternalContext(Object impl);
+
+        public abstract void leaveInternalContext(Object impl, Object prev);
+
+        public abstract void closeInternalContext(Object impl);
+
     }
 
     public abstract static class LanguageSupport {

@@ -90,7 +90,7 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(createStamp(graph().getAssumptions(), array(), elementKind()));
+        return updateStamp(stamp.improveWith(createStamp(graph().getAssumptions(), array(), elementKind())));
     }
 
     @Override

@@ -30,9 +30,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Returns the C value for a Java enumeration. The method must be within a class annotated with
- * {@link CEnum}. The method must be declared non-static, native, and must not have any parameters.
- * The method can have any name.
+ * Annotation for a method that returns the C integer value for a Java enumeration object. The
+ * method must be within a class annotated with {@link CEnum}. The method must be declared
+ * non-static, native, and must not have any parameters. The method can have any name.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)

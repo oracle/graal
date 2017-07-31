@@ -46,7 +46,7 @@ import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
-import com.oracle.truffle.api.vm.PolyglotValueImpl.EngineUnsupportedException;
+import com.oracle.truffle.api.vm.PolyglotValue.EngineUnsupportedException;
 
 final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObject {
 
@@ -73,7 +73,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
     private final Value guestObject;
     private final String message;
 
-    PolyglotExceptionImpl(PolyglotLanguageContextImpl languageContext, Throwable original) {
+    PolyglotExceptionImpl(PolyglotLanguageContext languageContext, Throwable original) {
         super(languageContext.getImpl());
         this.engine = languageContext.getEngine();
         this.exception = original;
@@ -95,7 +95,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
             }
             if (section != null) {
                 com.oracle.truffle.api.source.Source truffleSource = section.getSource();
-                PolyglotLanguageContextImpl sourceContext = languageContext.context.findLanguageContext(truffleSource.getMimeType(), false);
+                PolyglotLanguageContext sourceContext = languageContext.context.findLanguageContext(truffleSource.getMimeType(), false);
                 String language = null;
                 if (sourceContext != null) {
                     language = sourceContext.language.getId();
@@ -195,6 +195,10 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
             if (isHostException()) {
                 s.println(CAUSE_CAPTION + asHostException());
             }
+            if (isInternalError()) {
+                s.println("Original Internal Error: ");
+                s.printStackTrace(exception);
+            }
         }
     }
 
@@ -292,6 +296,8 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
 
         /** Prints the specified string as a line on this StreamOrWriter. */
         abstract void println(Object o);
+
+        abstract void printStackTrace(Throwable t);
     }
 
     private static class WrappedPrintStream extends PrintStreamOrWriter {
@@ -309,6 +315,11 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
         @Override
         void println(Object o) {
             printStream.println(o);
+        }
+
+        @Override
+        void printStackTrace(Throwable t) {
+            t.printStackTrace(printStream);
         }
     }
 
@@ -328,12 +339,17 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
         void println(Object o) {
             printWriter.println(o);
         }
+
+        @Override
+        void printStackTrace(Throwable t) {
+            t.printStackTrace(printWriter);
+        }
     }
 
     private static class StackFrameIterator implements Iterator<StackFrame> {
 
         private static final String POLYGLOT_PACKAGE = Engine.class.getPackage().getName();
-        private static final String PROXY_PACKAGE = PolyglotProxyImpl.class.getName();
+        private static final String PROXY_PACKAGE = PolyglotProxy.class.getName();
 
         final PolyglotExceptionImpl impl;
         final Iterator<TruffleStackTraceElement> guestFrames;
@@ -346,7 +362,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
 
         boolean inHostLanguage;
         boolean firstGuestFrame = true;
-        PolyglotExceptionFrameImpl fetchedNext;
+        PolyglotExceptionFrame fetchedNext;
 
         StackFrameIterator(PolyglotExceptionImpl impl) {
             this.impl = impl;
@@ -367,15 +383,15 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
         }
 
         public StackFrame next() {
-            PolyglotExceptionFrameImpl next = fetchNext();
+            PolyglotExceptionFrame next = fetchNext();
             if (next == null) {
                 throw new NoSuchElementException();
             }
             fetchedNext = null;
-            return apiAccess.newPolyglotStackTraceElement(next);
+            return apiAccess.newPolyglotStackTraceElement(impl.api, next);
         }
 
-        PolyglotExceptionFrameImpl fetchNext() {
+        PolyglotExceptionFrame fetchNext() {
             if (fetchedNext != null) {
                 return fetchedNext;
             }
@@ -407,7 +423,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
                     if (guestFrames.hasNext()) {
                         guestFrame = guestFrames.next();
                     }
-                    PolyglotExceptionFrameImpl frame = PolyglotExceptionFrameImpl.createGuest(impl, guestFrame, firstGuestFrame);
+                    PolyglotExceptionFrame frame = PolyglotExceptionFrame.createGuest(impl, guestFrame, firstGuestFrame);
                     firstGuestFrame = false;
                     if (frame != null) {
                         fetchedNext = frame;
@@ -415,7 +431,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
                     }
                 } else if (inHostLanguage) {
                     // construct host frame
-                    fetchedNext = (PolyglotExceptionFrameImpl.createHost(impl, element));
+                    fetchedNext = (PolyglotExceptionFrame.createHost(impl, element));
                     return fetchedNext;
                 } else {
                     // skip stack frame that is part of guest language stack
@@ -425,7 +441,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
             // consume guest frames
             if (guestFrames.hasNext()) {
                 TruffleStackTraceElement guestFrame = guestFrames.next();
-                PolyglotExceptionFrameImpl frame = PolyglotExceptionFrameImpl.createGuest(impl, guestFrame, firstGuestFrame);
+                PolyglotExceptionFrame frame = PolyglotExceptionFrame.createGuest(impl, guestFrame, firstGuestFrame);
                 firstGuestFrame = false;
                 if (frame != null) {
                     fetchedNext = frame;

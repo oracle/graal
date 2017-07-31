@@ -24,6 +24,7 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertSame;
 
+import java.util.Map;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CallTarget;
@@ -44,6 +45,7 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
 
         int disposeCalled;
         Env env;
+        Map<String, Object> config;
 
     }
 
@@ -71,6 +73,7 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
     protected LanguageContext createContext(Env env) {
         LanguageSPITest.langContext = new LanguageContext();
         LanguageSPITest.langContext.env = env;
+        LanguageSPITest.langContext.config = env.getConfig();
         return LanguageSPITest.langContext;
     }
 

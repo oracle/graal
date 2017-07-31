@@ -168,7 +168,7 @@ public final class Context implements AutoCloseable {
      * @since 1.0
      */
     public Value lookup(String languageId, String symbol) {
-        return impl.lookup(getEngine().getLanguage(languageId).impl, symbol);
+        return impl.lookup(languageId, symbol);
     }
 
     /**
@@ -216,7 +216,7 @@ public final class Context implements AutoCloseable {
      * @since 1.0
      */
     public boolean initialize(String languageId) {
-        return impl.initializeLanguage(getEngine().getLanguage(languageId).impl);
+        return impl.initializeLanguage(languageId);
     }
 
     /**
@@ -283,8 +283,10 @@ public final class Context implements AutoCloseable {
      * @since 1.0
      */
     public static Builder newBuilder(String... onlyLanguages) {
-        return new Builder(onlyLanguages);
+        return EMPTY.new Builder(onlyLanguages);
     }
+
+    private static final Context EMPTY = new Context(null);
 
     /**
      * Builder class to construct {@link Context} instances.
@@ -293,7 +295,7 @@ public final class Context implements AutoCloseable {
      * @since 1.0
      */
     @SuppressWarnings("hiding")
-    public static final class Builder {
+    public final class Builder {
 
         private Engine sharedEngine;
         private String[] onlyLanguages;
@@ -364,7 +366,8 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Allows guest languages to access the host language by loading new classes.
+         * Allows guest languages to access the host language by loading new classes. Default is
+         * <code>false</code>.
          *
          * @since 1.0
          */

@@ -731,9 +731,14 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                         throw new AssertionError(where);
                 }
             }
+            writeAndFlush(writer, what);
+            return null;
+        }
+
+        @TruffleBoundary
+        private static void writeAndFlush(PrintWriter writer, String what) {
             writer.write(what);
             writer.flush();
-            return null;
         }
     }
 

@@ -93,7 +93,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract AbstractInstrumentImpl getImpl(Instrument value);
 
-        public abstract StackFrame newPolyglotStackTraceElement(AbstractStackFrameImpl impl);
+        public abstract StackFrame newPolyglotStackTraceElement(PolyglotException e, AbstractStackFrameImpl impl);
 
     }
 
@@ -208,13 +208,13 @@ public abstract class AbstractPolyglotImpl {
             Objects.requireNonNull(impl);
         }
 
-        public abstract Value lookup(Object languageImpl, String key);
+        public abstract Value lookup(String language, String key);
 
         public abstract Value importSymbol(String key);
 
         public abstract void exportSymbol(String key, Object value);
 
-        public abstract boolean initializeLanguage(AbstractLanguageImpl languageImpl);
+        public abstract boolean initializeLanguage(String languageId);
 
         public abstract Value eval(String language, Object sourceImpl);
 
@@ -230,9 +230,9 @@ public abstract class AbstractPolyglotImpl {
             Objects.requireNonNull(impl);
         }
 
-        public abstract Language getLanguage(String id);
+        public abstract Language requirePublicLanguage(String id);
 
-        public abstract Instrument getInstrument(String id);
+        public abstract Instrument requirePublicInstrument(String id);
 
         // Runtime
 
@@ -364,14 +364,26 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public Value getArrayElement(Object receiver, long index) {
+            return getArrayElementUnsupported(receiver);
+        }
+
+        public final Value getArrayElementUnsupported(Object receiver) {
             throw unsupported(receiver, "getArrayElement(long)", "hasArrayElements()");
         }
 
         public void setArrayElement(Object receiver, long index, Object value) {
+            setArrayElementUnsupported(receiver);
+        }
+
+        public final void setArrayElementUnsupported(Object receiver) {
             throw unsupported(receiver, "setArrayElement(long, Object)", "hasArrayElements()");
         }
 
         public long getArraySize(Object receiver) {
+            return getArraySizeUnsupported(receiver);
+        }
+
+        public final long getArraySizeUnsupported(Object receiver) {
             throw unsupported(receiver, "getArraySize()", "hasArrayElements()");
         }
 
@@ -380,6 +392,10 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public Value getMember(Object receiver, String key) {
+            return getMemberUnsupported(receiver, key);
+        }
+
+        public final Value getMemberUnsupported(Object receiver, String key) {
             throw unsupported(receiver, "getMember(String)", "hasMembers()");
         }
 
@@ -392,6 +408,10 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public void putMember(Object receiver, String key, Object member) {
+            putMemberUnsupported(receiver);
+        }
+
+        public final void putMemberUnsupported(Object receiver) {
             throw unsupported(receiver, "putMember(String, Object)", "hasMembers()");
         }
 
@@ -400,6 +420,10 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public Value execute(Object receiver, Object[] arguments) {
+            return executeUnsupported(receiver);
+        }
+
+        public final Value executeUnsupported(Object receiver) {
             throw unsupported(receiver, "execute(Object...)", "canExecute()");
         }
 
@@ -460,6 +484,10 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public long asNativePointer(Object receiver) {
+            return asNativePointerUnsupported(receiver);
+        }
+
+        public final long asNativePointerUnsupported(Object receiver) {
             throw unsupported(receiver, "asNativePointer()", "isNativeObject()");
         }
 

@@ -45,9 +45,9 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceImpl;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.source.impl.SourceAccessor;
 
-class PolyglotSourceImpl extends AbstractSourceImpl {
+class PolyglotSource extends AbstractSourceImpl {
 
-    protected PolyglotSourceImpl(AbstractPolyglotImpl engineImpl) {
+    protected PolyglotSource(AbstractPolyglotImpl engineImpl) {
         super(engineImpl);
     }
 

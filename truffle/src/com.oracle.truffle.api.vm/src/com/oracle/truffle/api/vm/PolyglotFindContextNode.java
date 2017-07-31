@@ -31,13 +31,13 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 
 @SuppressWarnings("deprecation")
-final class PolyglotFindContextNodeImpl<C> extends com.oracle.truffle.api.impl.FindContextNode<C> {
-    private final PolyglotLanguageImpl polyglotLanguage;
+final class PolyglotFindContextNode<C> extends com.oracle.truffle.api.impl.FindContextNode<C> {
+    private final PolyglotLanguage polyglotLanguage;
     private final Env env;
 
-    PolyglotFindContextNodeImpl(Env env) {
+    PolyglotFindContextNode(Env env) {
         this.env = env;
-        this.polyglotLanguage = (PolyglotLanguageImpl) NODES.getEngineObject(LANGUAGE.getLanguageInfo(env));
+        this.polyglotLanguage = (PolyglotLanguage) NODES.getEngineObject(LANGUAGE.getLanguageInfo(env));
     }
 
     @SuppressWarnings("unchecked")
