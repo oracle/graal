@@ -42,6 +42,11 @@ import com.oracle.truffle.api.test.ReflectionUtils;
 
 public class SourceSectionFilterTest {
 
+    private static final int ROOT_NODE_BITS_UNINITIALIZED = 0;
+    private static final int ROOT_NODE_BITS_SAME_SOURCE = 1 << 1;
+    private static final int ROOT_NODE_BITS_NO_SOURCE_SECTION = 1 << 2;
+    private static final int ROOT_NODE_BITS_SOURCE_SECTION_HIERARCHICAL = 1 << 3;
+
     private static final int LINE_LENGTH = 6;
 
     private static final Set<Class<?>> ALL_TAGS = new HashSet<>(Arrays.asList(InstrumentationTestLanguage.TAGS));
@@ -61,14 +66,18 @@ public class SourceSectionFilterTest {
     }
 
     private static boolean isInstrumentedRoot(SourceSectionFilter filter, Node root) {
+        return isInstrumentedRoot(filter, root, ROOT_NODE_BITS_UNINITIALIZED);
+    }
+
+    private static boolean isInstrumentedRoot(SourceSectionFilter filter, Node root, int rootNodeBits) {
         try {
-            Method m = filter.getClass().getDeclaredMethod("isInstrumentedRoot", Set.class, SourceSection.class, RootNode.class);
+            Method m = filter.getClass().getDeclaredMethod("isInstrumentedRoot", Set.class, SourceSection.class, RootNode.class, int.class);
             ReflectionUtils.setAccessible(m, true);
             RootNode rootNode = null;
             if (root instanceof RootNode) {
                 rootNode = (RootNode) root;
             }
-            return (boolean) m.invoke(filter, ALL_TAGS, root != null ? root.getSourceSection() : null, rootNode);
+            return (boolean) m.invoke(filter, ALL_TAGS, root != null ? root.getSourceSection() : null, rootNode, rootNodeBits);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -446,6 +455,33 @@ public class SourceSectionFilterTest {
     }
 
     @Test
+    public void testRootNodeBits() {
+        Source sampleSource1 = Source.newBuilder("line1\nline2\nline3\nline4").name("unknown").mimeType("mime2").build();
+        Source sampleSource2 = Source.newBuilder("line1\nline2\nline3\nline4").name("unknown").mimeType("mime2").build();
+
+        SourceSectionFilter filter = SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION, InstrumentationTestLanguage.DEFINE).//
+                        tagIsNot(InstrumentationTestLanguage.DEFINE, InstrumentationTestLanguage.ROOT).//
+                        indexIn(0, 3).//
+                        sourceIs(sampleSource1).sourceSectionEquals(sampleSource1.createSection(0, 5)).//
+                        lineIn(1, 1).lineIs(1).mimeTypeIs("mime1", "mime2").build();
+
+        Assert.assertFalse(isInstrumentedRoot(filter, null, ROOT_NODE_BITS_NO_SOURCE_SECTION));
+        Assert.assertFalse(isInstrumentedRoot(filter, createNode(sampleSource1.createSection(1)), ROOT_NODE_BITS_NO_SOURCE_SECTION));
+        Assert.assertFalse(isInstrumentedRoot(filter, createNode(sampleSource1.createSection(1)), ROOT_NODE_BITS_NO_SOURCE_SECTION));
+
+        Assert.assertTrue(isInstrumentedRoot(filter, null, ROOT_NODE_BITS_SAME_SOURCE));
+        Assert.assertTrue(isInstrumentedRoot(filter, createNode(sampleSource1.createSection(1)), ROOT_NODE_BITS_SAME_SOURCE));
+        Assert.assertTrue(isInstrumentedRoot(filter, createNode(sampleSource1.createSection(1)), ROOT_NODE_BITS_UNINITIALIZED));
+        Assert.assertTrue(isInstrumentedRoot(filter, createNode(sampleSource2.createSection(1)), ROOT_NODE_BITS_UNINITIALIZED));
+        Assert.assertFalse(isInstrumentedRoot(filter, createNode(sampleSource2.createSection(1)), ROOT_NODE_BITS_SAME_SOURCE));
+
+        Assert.assertTrue(isInstrumentedRoot(filter, null, ROOT_NODE_BITS_SOURCE_SECTION_HIERARCHICAL));
+        Assert.assertTrue(isInstrumentedRoot(filter, createNode(sampleSource1.createSection(1)), ROOT_NODE_BITS_SOURCE_SECTION_HIERARCHICAL));
+        Assert.assertFalse(isInstrumentedRoot(filter, createNode(sampleSource1.createSection(5, 10)), ROOT_NODE_BITS_SOURCE_SECTION_HIERARCHICAL));
+        Assert.assertTrue(isInstrumentedRoot(filter, createNode(sampleSource1.createSection(5, 10)), ROOT_NODE_BITS_UNINITIALIZED));
+    }
+
+    @Test
     public void testSourceIn() {
         Source sampleSource1 = Source.newBuilder("line1\nline2\nline3\nline4").name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
         Source sampleSource2 = Source.newBuilder("line1\nline2\nline3\nline4").name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
@@ -638,7 +674,7 @@ public class SourceSectionFilterTest {
         Assert.assertFalse(isInstrumentedNode(filter, source()));
 
         Assert.assertFalse(isInstrumented(filter, root, createNode(sampleSource1.createUnavailableSection())));
-        Assert.assertFalse(isInstrumentedRoot(filter, createNode(sampleSource1.createUnavailableSection())));
+        Assert.assertTrue(isInstrumentedRoot(filter, createNode(sampleSource1.createUnavailableSection())));
         Assert.assertFalse(isInstrumentedNode(filter, createNode(sampleSource1.createUnavailableSection())));
 
         Assert.assertTrue(isInstrumented(filter, root, createNode(sampleSource1.createSection(0, 5), tags(InstrumentationTestLanguage.EXPRESSION))));
@@ -647,7 +683,7 @@ public class SourceSectionFilterTest {
 
         Assert.assertFalse(isInstrumented(filter, root, createNode(sampleSource1.createSection(0, 5), tags(InstrumentationTestLanguage.STATEMENT))));
         Assert.assertTrue(isInstrumentedRoot(filter, createNode(sampleSource1.createSection(0, 5))));
-        Assert.assertFalse(isInstrumentedRoot(filter, createNode(sampleSource1.createSection(10, 5))));
+        Assert.assertTrue(isInstrumentedRoot(filter, createNode(sampleSource1.createSection(10, 5))));
         Assert.assertFalse(isInstrumentedNode(filter, createNode(sampleSource1.createSection(0, 5), tags(InstrumentationTestLanguage.STATEMENT))));
 
         Assert.assertNotNull(filter.toString());

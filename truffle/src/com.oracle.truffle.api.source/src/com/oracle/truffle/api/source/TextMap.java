@@ -108,11 +108,29 @@ final class TextMap {
             }
             throw new IllegalArgumentException("offset out of bounds");
         }
-        int line = 1;
-        while (offset >= nlOffsets[line]) {
-            line++;
+        return binarySearchLine(nlOffsets, offset) + 1;
+    }
+
+    private static int binarySearchLine(int[] a, int key) {
+        int low = 0;
+        int high = a.length - 1;
+
+        int mid = 0;
+        int midVal;
+        while (low <= high) {
+            mid = (low + high) >>> 1;
+            midVal = a[mid];
+
+            if (midVal < key) {
+                low = mid + 1;
+            } else if (midVal > key) {
+                high = mid - 1;
+            } else {
+                high = mid;
+                break; // direct hit
+            }
         }
-        return line;
+        return high;  // return high index
     }
 
     /**
