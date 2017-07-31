@@ -312,9 +312,6 @@ class JavaObjectMessageResolution {
                     return 0b1111;
                 }
             }
-            if (JavaInteropReflect.isJNIMethod(receiver, name)) {
-                return 0b11111;
-            }
             if (JavaInteropReflect.isMemberType(receiver, name)) {
                 return 0b11;
             }

@@ -136,15 +136,6 @@ final class JavaInteropReflect {
         return false;
     }
 
-    static boolean isJNIMethod(JavaObject object, String jniName) {
-        if (!isJNIName(jniName)) {
-            return false;
-        }
-        JavaClassDesc classDesc = JavaClassDesc.forClass(object.clazz);
-        final boolean onlyStatic = object.isClass();
-        return (classDesc.lookupMethodByJNIName(jniName, onlyStatic)) != null;
-    }
-
     static boolean isJNIName(String name) {
         return name.contains("__");
     }
@@ -247,9 +238,6 @@ final class JavaInteropReflect {
         Collection<String> names = new LinkedHashSet<>();
         names.addAll(classDesc.getFieldNames(!onlyInstance));
         names.addAll(classDesc.getMethodNames(!onlyInstance, includeInternal));
-        if (includeInternal) {
-            names.addAll(classDesc.getJNIMethodNames(!onlyInstance));
-        }
         if (!onlyInstance) {
             if (Modifier.isPublic(clazz.getModifiers())) {
                 // no support for non-static member types now
