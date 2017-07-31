@@ -32,6 +32,7 @@ public abstract class ProtocolImpl<Graph, Node, NodeClass, Port, Block, Resolved
     protected GraphStructure<Graph, Node, NodeClass, Port> structure;
     protected GraphEnums<?> enums = DefaultGraphEnums.DEFAULT;
     protected GraphBlocks<Graph, Block, Node> blocks = DefaultGraphBlocks.empty();
+    protected GraphElements<ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition, ?> elements;
 
     protected ProtocolImpl(WritableByteChannel channel) throws IOException {
         super(channel);
@@ -145,5 +146,105 @@ public abstract class ProtocolImpl<Graph, Node, NodeClass, Port, Block, Resolved
     @Override
     protected Collection<? extends Block> findBlockSuccessors(Block block) {
         return blocks.blockSuccessors(block);
+    }
+
+    @Override
+    protected ResolvedJavaMethod findMethod(Object obj) {
+        return elements == null ? null : elements.method(obj);
+    }
+
+    @Override
+    protected byte[] findMethodCode(ResolvedJavaMethod method) {
+        return elements.methodCode(method);
+    }
+
+    @Override
+    protected int findMethodModifiers(ResolvedJavaMethod method) {
+        return elements.methodModifiers(method);
+    }
+
+    @Override
+    protected Signature findMethodSignature(ResolvedJavaMethod method) {
+        return elements.methodSignature(method);
+    }
+
+    @Override
+    protected String findMethodName(ResolvedJavaMethod method) {
+        return elements.methodName(method);
+    }
+
+    @Override
+    protected Object findMethodDeclaringClass(ResolvedJavaMethod method) {
+        return elements.methodDeclaringClass(method);
+    }
+
+    @Override
+    protected int findFieldModifiers(ResolvedJavaField field) {
+        return elements.fieldModifiers(field);
+    }
+
+    @Override
+    protected String findFieldTypeName(ResolvedJavaField field) {
+        return elements.fieldTypeName(field);
+    }
+
+    @Override
+    protected String findFieldName(ResolvedJavaField field) {
+        return elements.fieldName(field);
+    }
+
+    @Override
+    protected Object findFieldDeclaringClass(ResolvedJavaField field) {
+        return elements.fieldDeclaringClass(field);
+    }
+
+    @Override
+    protected ResolvedJavaField findJavaField(Object object) {
+        return elements == null ? null : elements.field(object);
+    }
+
+    @Override
+    protected Signature findSignature(Object object) {
+        return elements == null ? null : elements.signature(object);
+    }
+
+    @Override
+    protected int findSignatureParameterCount(Signature signature) {
+        return elements.signatureParameterCount(signature);
+    }
+
+    @Override
+    protected String findSignatureParameterTypeName(Signature signature, int index) {
+        return elements.signatureParameterTypeName(signature, index);
+    }
+
+    @Override
+    protected String findSignatureReturnTypeName(Signature signature) {
+        return elements.signatureReturnTypeName(signature);
+    }
+
+    @Override
+    protected NodeSourcePosition findNodeSourcePosition(Object object) {
+        return elements == null ? null : elements.nodeSourcePosition(object);
+    }
+
+    @Override
+    protected ResolvedJavaMethod findNodeSourcePositionMethod(NodeSourcePosition pos) {
+        return elements.nodeSourcePositionMethod(pos);
+    }
+
+    @Override
+    protected NodeSourcePosition findNodeSourcePositionCaller(NodeSourcePosition pos) {
+        return elements.nodeSourcePositionCaller(pos);
+    }
+
+    @Override
+    protected int findNodeSourcePositionBCI(NodeSourcePosition pos) {
+        return elements.nodeSourcePositionBCI(pos);
+    }
+
+    @Override
+    protected StackTraceElement findMethodStackTraceElement(ResolvedJavaMethod method, int bci, NodeSourcePosition pos) {
+        return elements.methodStackTraceElement(method, bci, pos);
     }
 }
