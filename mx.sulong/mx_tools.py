@@ -146,7 +146,7 @@ class GCCCompiler(Tool):
         tool, toolFlags = self.getTool(inputFile, outputFile)
         ret = self.runTool([tool, '-S', '-fplugin=' + mx_sulong.dragonEggPath(), '-fplugin-arg-dragonegg-emit-ir', '-o', '%s.tmp.ll' % outputFile] + toolFlags + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, os.path.basename(tool)))
         if ret == 0:
-            ret = self.runTool([mx_sulong.findLLVMProgram('llvm-as'), '-o', outputFile, '%s.tmp.ll' % outputFile], errorMsg='Cannot assemble %s with llvm-as' % inputFile)
+            ret = self.runTool([mx_sulong.findLLVMProgramForDragonegg('llvm-as'), '-o', outputFile, '%s.tmp.ll' % outputFile], errorMsg='Cannot assemble %s with llvm-as' % inputFile)
         return ret
 
     def compileReferenceFile(self, inputFile, outputFile, flags):
