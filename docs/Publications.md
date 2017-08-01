@@ -18,21 +18,23 @@ PLDI 2016, June 13, 2016, Santa Barbara, CA
 
 ## Graal Tutorial
 
-This tutorial presents Graal, a high-performance dynamic compiler for Java written in Java. It covers the following topics:
+This tutorial presents Graal, a high-performance dynamic compiler written in Java. Because it is highly configurable and extensible, it delivers excellent peak performance for a diverse set of managed languages including Java (beating the Java HotSpot server compiler), JavaScript (beating the V8 Crankshaft compiler), Ruby, and R. This lifts compiler research using Graal to a new level: researchers can evaluate new compiler optimizations immediately on many languages. If you are a language implementer who is curious how modern VMs like the Java HotSpot VM or the V8 JavaScript VM optimize your code, you will get all your questions answered too.
 
-*   Key distinguishing features of Graal,
-*   Introduction to the Graal IR: basic properties, instructions, and optimization phases
-*   Speculative optimizations: first-class support for optimistic optimizations and deoptimization
-*   Graal API: separation of the compiler from the VM
-*   Snippets: expressing high-level semantics in low-level Java code
-*   Compiler intrinsics: use all your hardware instructions with Graal
-*   Using Graal for static analysis
-*   Custom compilations with Graal: integration of the compiler with an application or library
-*   Graal as a compiler for dynamic programming languages in the Truffle framework
+In detail, the tutorial covers the following topics:
 
-CGO 2015, February 7-11, San Francisco, CA  
-Video recording: [Part 1](https://youtu.be/Af9T9kFk1lM), [Part 2](https://youtu.be/WyU7KctlhzE)  
-[Download Slides](http://lafo.ssw.uni-linz.ac.at/papers/2015_CGO_Graal.pdf)
+* Key distinguishing features of Graal,
+* Introduction to the Graal IR: basic properties, instructions, and optimization phases
+* Speculative optimizations: first-class support for optimistic optimizations and deoptimization
+* Graal API: separation of the compiler from the VM
+* Snippets: expressing high-level semantics in low-level Java code
+* Compiler intrinsics: use all your hardware instructions with Graal
+* Using Graal for static analysis
+* Custom compilations with Graal: integration of the compiler with an application or library
+* Graal as a compiler for dynamic programming languages
+
+PLDI 2017, June 18-23, Barcelona, Spain  
+[Video recording](https://www.youtube.com/watch?v=5_Y3kc--eTI)   
+[Download Slides](http://lafo.ssw.uni-linz.ac.at/papers/2017_PLDI_GraalTutorial.pdf)
 
 ## Truffle Presentations
 
@@ -55,6 +57,12 @@ SPLASH 2012, October 19-26, Tucson, AZ
 
 ### 2017
 
+- T. Würthinger, C. Wimmer, C. Humer, A. Wöss, L. Stadler, C. Seaton, G. Duboscq, D. Simon, M. Grimmer  
+[**Practical Partial Evaluation for High-Performance Dynamic Language Runtimes**](http://chrisseaton.com/rubytruffle/pldi17-truffle/pldi17-truffle.pdf)  
+In _Proceedings of the Conference on Programming Language Design and Implementation (PLDI)_  
+[Video recording](https://www.youtube.com/watch?v=8eff207KPkA&list=PLMTm6Ln7vQZZv6sQ0I4R7iaIjvSVhHXod&index=42)  
+[DOI: 10.1145/3062341.3062381](https://doi.org/10.1145/3062341.3062381)
+
 - Michael Van De Vanter  
 [**Building Flexible, Low-Overhead Tooling Support into a High-Performance Polyglot VM (Extended Abstract)**](http://vandevanter.net/mlvdv/publications/mlvdv-morevms-2017.pdf)  
 _MoreVMs Workshop on Modern Language Runtimes, Ecosystems, and VMs_.
@@ -63,11 +71,11 @@ _MoreVMs Workshop on Modern Language Runtimes, Ecosystems, and VMs_.
 
 - Benoit Daloze, Stefan Marr, Daniele Bonetta, Hanspeter Mössenböck  
 [**Efficient and Thread-Safe Objects for Dynamically-Typed Languages**](http://ssw.jku.at/General/Staff/Daloze/thread-safe-objects.pdf)  
-Accepted for the _Annual ACM SIGPLAN Conference on Object-Oriented Programming, Systems, Languages, and Applications 2016 (OOPSLA)_.
+In _Proceedings of the Conference on Object-Oriented Programming, Systems, Languages, and Applications (OOPSLA)_.
 
 - Manuel Rigger, Matthias Grimmer, Christian Wimmer, Thomas Würthinger, Hanspeter Mössenböck  
-**Bringing Low-Level Languages to the JVM: Efficient Execution of LLVM IR on Truffle**  
-Accepted for the _Workshop on Virtual Machines and Intermediate Languages (VMIL)_.
+[**Bringing Low-Level Languages to the JVM: Efficient Execution of LLVM IR on Truffle**](https://doi.org/10.1145/2998415.2998416)  
+In _Proceedings of the Workshop on Virtual Machines and Intermediate Languages (VMIL)_.
 
 - Manuel Rigger, Matthias Grimmer, Hanspeter Mössenböck  
 [**Sulong -- Execution of LLVM-Based Languages on the JVM**](http://2016.ecoop.org/event/icooolps-2016-sulong-execution-of-llvm-based-languages-on-the-jvm)  
