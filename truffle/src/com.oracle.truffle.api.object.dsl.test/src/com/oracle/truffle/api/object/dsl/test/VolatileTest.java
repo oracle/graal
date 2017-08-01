@@ -28,6 +28,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.dsl.Layout;
+import com.oracle.truffle.api.object.dsl.Nullable;
 import com.oracle.truffle.api.object.dsl.Volatile;
 
 import org.junit.Assert;
@@ -37,15 +38,25 @@ public class VolatileTest {
     @Layout
     public interface VolatileTestLayout {
 
-        DynamicObject createVolatileTest(@Volatile int volatileValue);
+        DynamicObject createVolatileTest(
+                        @Volatile int volatileInt,
+                        @Nullable @Volatile Thread volatileThread);
 
-        int getVolatileValue(DynamicObject object);
+        int getVolatileInt(DynamicObject object);
 
-        void setVolatileValue(DynamicObject object, int value);
+        Thread getVolatileThread(DynamicObject object);
 
-        boolean compareAndSetVolatileValue(DynamicObject object, int expectedValue, int value);
+        void setVolatileInt(DynamicObject object, int value);
 
-        int getAndSetVolatileValue(DynamicObject object, int value);
+        void setVolatileThread(DynamicObject object, Thread value);
+
+        boolean compareAndSetVolatileInt(DynamicObject object, int expectedValue, int value);
+
+        boolean compareAndSetVolatileThread(DynamicObject object, Thread expectedValue, Thread value);
+
+        int getAndSetVolatileInt(DynamicObject object, int value);
+
+        Thread getAndSetVolatileThread(DynamicObject object, Thread value);
 
     }
 
@@ -53,39 +64,56 @@ public class VolatileTest {
 
     @Test
     public void testGetVolatile() {
-        final DynamicObject object = LAYOUT.createVolatileTest(14);
-        Assert.assertEquals(14, LAYOUT.getVolatileValue(object));
+        final DynamicObject object = LAYOUT.createVolatileTest(14, null);
+        Assert.assertEquals(14, LAYOUT.getVolatileInt(object));
+        Assert.assertNull(LAYOUT.getVolatileThread(object));
     }
 
     @Test
     public void testSetVolatile() {
-        final DynamicObject object = LAYOUT.createVolatileTest(14);
-        Assert.assertEquals(14, LAYOUT.getVolatileValue(object));
-        LAYOUT.setVolatileValue(object, 22);
-        Assert.assertEquals(22, LAYOUT.getVolatileValue(object));
+        final DynamicObject object = LAYOUT.createVolatileTest(14, null);
+        Assert.assertEquals(14, LAYOUT.getVolatileInt(object));
+        LAYOUT.setVolatileInt(object, 22);
+        Assert.assertEquals(22, LAYOUT.getVolatileInt(object));
+
+        Assert.assertNull(LAYOUT.getVolatileThread(object));
+        LAYOUT.setVolatileThread(object, Thread.currentThread());
+        Assert.assertEquals(Thread.currentThread(), LAYOUT.getVolatileThread(object));
     }
 
     @Test
     public void testCompareAndSetSuccess() {
-        final DynamicObject object = LAYOUT.createVolatileTest(14);
-        Assert.assertEquals(14, LAYOUT.getVolatileValue(object));
-        Assert.assertTrue(LAYOUT.compareAndSetVolatileValue(object, 14, 22));
-        Assert.assertEquals(22, LAYOUT.getVolatileValue(object));
+        final DynamicObject object = LAYOUT.createVolatileTest(14, null);
+        Assert.assertEquals(14, LAYOUT.getVolatileInt(object));
+        Assert.assertTrue(LAYOUT.compareAndSetVolatileInt(object, 14, 22));
+        Assert.assertEquals(22, LAYOUT.getVolatileInt(object));
+
+        Assert.assertNull(LAYOUT.getVolatileThread(object));
+        Assert.assertTrue(LAYOUT.compareAndSetVolatileThread(object, null, Thread.currentThread()));
+        Assert.assertEquals(Thread.currentThread(), LAYOUT.getVolatileThread(object));
     }
 
     @Test
     public void testCompareAndSetFailure() {
-        final DynamicObject object = LAYOUT.createVolatileTest(14);
-        Assert.assertEquals(14, LAYOUT.getVolatileValue(object));
-        Assert.assertFalse(LAYOUT.compareAndSetVolatileValue(object, 44, 22));
+        final DynamicObject object = LAYOUT.createVolatileTest(14, null);
+        Assert.assertEquals(14, LAYOUT.getVolatileInt(object));
+        Assert.assertFalse(LAYOUT.compareAndSetVolatileInt(object, 44, 22));
+
+        Assert.assertNull(LAYOUT.getVolatileThread(object));
+        Assert.assertFalse(LAYOUT.compareAndSetVolatileThread(object, Thread.currentThread(), Thread.currentThread()));
+        Assert.assertNull(LAYOUT.getVolatileThread(object));
     }
 
     @Test
     public void testGetAndSetVolatile() {
-        final DynamicObject object = LAYOUT.createVolatileTest(14);
-        Assert.assertEquals(14, LAYOUT.getVolatileValue(object));
-        Assert.assertEquals(14, LAYOUT.getAndSetVolatileValue(object, 22));
-        Assert.assertEquals(22, LAYOUT.getVolatileValue(object));
+        final DynamicObject object = LAYOUT.createVolatileTest(14, null);
+        Assert.assertEquals(14, LAYOUT.getVolatileInt(object));
+        Assert.assertEquals(14, LAYOUT.getAndSetVolatileInt(object, 22));
+        Assert.assertEquals(22, LAYOUT.getVolatileInt(object));
+
+        Assert.assertNull(LAYOUT.getVolatileThread(object));
+        Assert.assertEquals(null, LAYOUT.getAndSetVolatileThread(object, Thread.currentThread()));
+        Assert.assertEquals(Thread.currentThread(), LAYOUT.getVolatileThread(object));
     }
 
 }

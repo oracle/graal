@@ -614,7 +614,7 @@ public class LayoutGenerator {
                     } else if (property.getType().getKind() == TypeKind.BOOLEAN) {
                         stream.printf("            new AtomicBoolean(%s)", property.getName());
                     } else {
-                        stream.printf("            new AtomicReference<%s>(%s)", property.getType(), property.getName());
+                        stream.printf("            new AtomicReference<>(%s)", property.getName());
                     }
                 } else {
                     stream.printf("            %s", property.getName());
