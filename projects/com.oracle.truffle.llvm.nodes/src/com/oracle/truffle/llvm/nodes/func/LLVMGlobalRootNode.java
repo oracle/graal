@@ -45,7 +45,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMAbort;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMSignal;
@@ -54,9 +53,11 @@ import com.oracle.truffle.llvm.runtime.LLVMContext.DestructorStackElement;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.SulongRuntimeException;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 /**
  * The global entry point initializes the global scope and starts execution with the main function.
@@ -64,7 +65,7 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
  */
 public class LLVMGlobalRootNode extends RootNode {
 
-    @Child private Node executeDestructor = Message.createExecute(1).createNode();
+    @Child private LLVMDispatchNode executeDestructor = LLVMDispatchNodeGen.create(new FunctionType(VoidType.INSTANCE, new Type[]{null, new PointerType(null)}, false));
     private final DirectCallNode main;
     @CompilationFinal(dimensions = 1) protected final Object[] arguments;
 
@@ -104,22 +105,15 @@ public class LLVMGlobalRootNode extends RootNode {
             throw e;
         } finally {
             getContext().getThreadingStack().getStack().setStackPointer(basePointer);
-            runDestructors();
+            runDestructors(frame, basePointer);
             // if not done already, we want at least call a shutdown command
             getContext().shutdownThreads();
         }
     }
 
-    @TruffleBoundary
-    private void runDestructors() {
+    private void runDestructors(VirtualFrame frame, long basePointer) {
         for (DestructorStackElement destructorStackElement : getContext().getDestructorStack()) {
-            try {
-                ForeignAccess.sendExecute(executeDestructor, destructorStackElement.getDestructor(),
-                                new LLVMTruffleAddress(destructorStackElement.getThiz(), new PointerType(null), getContext()));
-            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
-            }
+            executeDestructor.executeDispatch(frame, destructorStackElement.getDestructor(), new Object[]{basePointer, destructorStackElement.getThiz()});
         }
     }
 
