@@ -73,6 +73,10 @@ public abstract class AbstractDebugTest {
         this.tester = newTester;
     }
 
+    protected final Debugger getDebugger() {
+        return tester.getDebugger();
+    }
+
     protected final DebuggerSession startSession() {
         return tester.startSession();
     }

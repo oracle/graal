@@ -24,10 +24,15 @@
  */
 package com.oracle.truffle.api.debug;
 
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -70,14 +75,29 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
  */
 public final class Debugger {
 
+    /**
+     * Name of a property that is fired when a list of breakpoints changes.
+     *
+     * @since 0.27
+     * @see #getBreakpoints()
+     * @see #addPropertyChangeListener(java.beans.PropertyChangeListener)
+     */
+    public static final String PROPERTY_BREAKPOINTS = "breakpoints";
     static final boolean TRACE = Boolean.getBoolean("truffle.debug.trace");
 
     private final Env env;
+    private final PropertyChangeSupport propSupport = new PropertyChangeSupport(this);
     private final ObjectStructures.MessageNodes msgNodes;
+    private final Set<DebuggerSession> sessions = new HashSet<>();
+    private final List<Breakpoint> breakpoints = new ArrayList<>();
+    final Breakpoint alwaysHaltBreakpoint;
 
     Debugger(Env env) {
         this.env = env;
         this.msgNodes = new ObjectStructures.MessageNodes();
+        SourceSectionFilter filter = SourceSectionFilter.newBuilder().tagIs(DebuggerTags.AlwaysHalt.class).build();
+        this.alwaysHaltBreakpoint = new Breakpoint(BreakpointLocation.ANY, filter, false);
+        this.alwaysHaltBreakpoint.setEnabled(true);
     }
 
     /**
@@ -90,7 +110,108 @@ public final class Debugger {
      * @since 0.17
      */
     public DebuggerSession startSession(SuspendedCallback callback) {
-        return new DebuggerSession(this, callback);
+        DebuggerSession session = new DebuggerSession(this, callback);
+        Breakpoint[] bpts;
+        synchronized (this) {
+            sessions.add(session);
+            bpts = breakpoints.toArray(new Breakpoint[]{});
+        }
+        for (Breakpoint b : bpts) {
+            session.install(b, true);
+        }
+        session.install(alwaysHaltBreakpoint, true);
+        return session;
+    }
+
+    void disposedSession(DebuggerSession session) {
+        synchronized (this) {
+            sessions.remove(session);
+            for (Breakpoint b : breakpoints) {
+                b.sessionClosed(session);
+            }
+        }
+    }
+
+    /**
+     * Adds a new breakpoint to this Debugger instance and makes it available in all its sessions.
+     * <p>
+     * The breakpoint suspends execution in all active {@link DebuggerSession sessions} by making a
+     * callback to the appropriate session {@link SuspendedCallback callback handler}, together with
+     * an event description that includes {@linkplain SuspendedEvent#getBreakpoints() which
+     * breakpoint(s)} were hit.
+     *
+     * @param breakpoint a new breakpoint
+     * @return the installed breakpoint
+     * @throws IllegalStateException if the session has been closed
+     *
+     * @since 0.27
+     */
+    public Breakpoint install(Breakpoint breakpoint) {
+        if (breakpoint.isDisposed()) {
+            throw new IllegalArgumentException("Cannot install breakpoint, it is already disposed.");
+        }
+        breakpoint.installGlobal(this);
+        DebuggerSession[] ds;
+        synchronized (this) {
+            this.breakpoints.add(breakpoint);
+            ds = sessions.toArray(new DebuggerSession[]{});
+        }
+        for (DebuggerSession s : ds) {
+            s.install(breakpoint, true);
+        }
+        if (propSupport.hasListeners(PROPERTY_BREAKPOINTS)) {
+            propSupport.firePropertyChange(new BreakpointsPropertyChangeEvent(this, null, breakpoint));
+        }
+        if (Debugger.TRACE) {
+            trace("installed debugger breakpoint %s", breakpoint);
+        }
+        return breakpoint;
+    }
+
+    /**
+     * Returns all breakpoints {@link #install(com.oracle.truffle.api.debug.Breakpoint) installed}
+     * in this debugger instance, in the install order. The returned list contains a current
+     * snapshot of breakpoints, those that were {@link Breakpoint#dispose() disposed} are not
+     * included.
+     * <p>
+     * It's not possible to modify state of breakpoints returned from this list, or from the
+     * associated property change events, they are not {@link Breakpoint#isModifiable() modifiable}.
+     * An attempt to modify breakpoints state using any of their set method, or an attempt to
+     * dispose such breakpoints, fails with an {@link IllegalStateException}. Use the original
+     * installed breakpoint instance to change breakpoint state or dispose the breakpoint.
+     *
+     * @since 0.27
+     * @see DebuggerSession#getBreakpoints()
+     */
+    public List<Breakpoint> getBreakpoints() {
+        List<Breakpoint> bpts;
+        synchronized (this) {
+            bpts = new ArrayList<>(this.breakpoints.size());
+            for (Breakpoint b : this.breakpoints) {
+                bpts.add(b.getROWrapper());
+            }
+        }
+        return Collections.unmodifiableList(bpts);
+    }
+
+    /**
+     * For package access only, access under synchronized on this.
+     */
+    List<Breakpoint> getRawBreakpoints() {
+        return breakpoints;
+    }
+
+    void disposeBreakpoint(Breakpoint breakpoint) {
+        boolean removed;
+        synchronized (this) {
+            removed = breakpoints.remove(breakpoint);
+        }
+        if (removed && propSupport.hasListeners(PROPERTY_BREAKPOINTS)) {
+            propSupport.firePropertyChange(new BreakpointsPropertyChangeEvent(this, breakpoint, null));
+        }
+        if (Debugger.TRACE) {
+            trace("disposed debugger breakpoint %s", breakpoint);
+        }
     }
 
     /**
@@ -109,6 +230,26 @@ public final class Debugger {
         }, true);
         binding.dispose();
         return Collections.unmodifiableList(sources);
+    }
+
+    /**
+     * Add a property change listener that is notified when a property of this debugger changes.
+     *
+     * @since 0.27
+     * @see #PROPERTY_BREAKPOINTS
+     */
+    public void addPropertyChangeListener(PropertyChangeListener listener) {
+        propSupport.addPropertyChangeListener(listener);
+    }
+
+    /**
+     * Remove a property change listener that is notified when state of this debugger changes.
+     *
+     * @since 0.27
+     * @see #addPropertyChangeListener(java.beans.PropertyChangeListener)
+     */
+    public void removePropertyChangeListener(PropertyChangeListener listener) {
+        propSupport.removePropertyChangeListener(listener);
     }
 
     Env getEnv() {
@@ -154,6 +295,34 @@ public final class Debugger {
      */
     public static Debugger find(TruffleLanguage.Env env) {
         return env.lookup(env.getInstruments().get("debugger"), Debugger.class);
+    }
+
+    private static final class BreakpointsPropertyChangeEvent extends PropertyChangeEvent {
+
+        private static final long serialVersionUID = 1L;
+
+        BreakpointsPropertyChangeEvent(Object source, Breakpoint oldBreakpoint, Breakpoint newBreakpoint) {
+            super(source, PROPERTY_BREAKPOINTS, oldBreakpoint, newBreakpoint);
+        }
+
+        @Override
+        public Object getOldValue() {
+            Breakpoint breakpoint = (Breakpoint) super.getOldValue();
+            if (breakpoint != null) {
+                breakpoint = breakpoint.getROWrapper();
+            }
+            return breakpoint;
+        }
+
+        @Override
+        public Object getNewValue() {
+            Breakpoint breakpoint = (Breakpoint) super.getNewValue();
+            if (breakpoint != null) {
+                breakpoint = breakpoint.getROWrapper();
+            }
+            return breakpoint;
+        }
+
     }
 
     static final class AccessorDebug extends Accessor {

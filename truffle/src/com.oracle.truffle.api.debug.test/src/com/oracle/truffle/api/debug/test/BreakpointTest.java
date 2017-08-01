@@ -31,12 +31,15 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import java.beans.PropertyChangeListener;
 import java.io.File;
+import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.source.Source;
@@ -147,10 +150,10 @@ public class BreakpointTest extends AbstractDebugTest {
                         "  STATEMENT,\n" +
                         "  STATEMENT\n" +
                         ")\n");
-        Breakpoint globalBreakpoint = null;
+        Breakpoint sessionBreakpoint = null;
         try (DebuggerSession session = startSession()) {
             Breakpoint breakpoint = session.install(Breakpoint.newBuilder(source.getURI()).lineIs(4).build());
-            globalBreakpoint = breakpoint;
+            sessionBreakpoint = breakpoint;
             startEval(source);
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, 4, true, "STATEMENT");
@@ -159,9 +162,10 @@ public class BreakpointTest extends AbstractDebugTest {
             });
             Assert.assertEquals(1, breakpoint.getHitCount());
             Assert.assertEquals(true, breakpoint.isEnabled());
+            Assert.assertEquals(true, breakpoint.isResolved());
             expectDone();
         }
-        Assert.assertEquals(false, globalBreakpoint.isEnabled());
+        Assert.assertEquals(false, sessionBreakpoint.isResolved());
     }
 
     @Test
@@ -231,10 +235,10 @@ public class BreakpointTest extends AbstractDebugTest {
                         "  STATEMENT,\n" +
                         "  STATEMENT\n" +
                         ")\n");
-        Breakpoint globalBreakpoint = null;
+        Breakpoint sessionBreakpoint = null;
         try (DebuggerSession session = startSession()) {
             Breakpoint breakpoint = session.install(Breakpoint.newBuilder(source).lineIs(4).build());
-            globalBreakpoint = breakpoint;
+            sessionBreakpoint = breakpoint;
             startEval(source);
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, 4, true, "STATEMENT");
@@ -243,9 +247,10 @@ public class BreakpointTest extends AbstractDebugTest {
             });
             Assert.assertEquals(1, breakpoint.getHitCount());
             Assert.assertEquals(true, breakpoint.isEnabled());
+            Assert.assertEquals(true, breakpoint.isResolved());
             expectDone();
         }
-        Assert.assertEquals(false, globalBreakpoint.isEnabled());
+        Assert.assertEquals(false, sessionBreakpoint.isResolved());
     }
 
     @Test
@@ -365,6 +370,12 @@ public class BreakpointTest extends AbstractDebugTest {
             Breakpoint breakpoint10 = session.install(Breakpoint.newBuilder(source).lineIs(10).build());
             breakpoint10.setEnabled(false);
             breakpoint10.setEnabled(true);
+
+            // Breakpoints are in the install order:
+            List<Breakpoint> breakpoints = session.getBreakpoints();
+            Assert.assertSame(breakpoint4, breakpoints.get(0));
+            Assert.assertSame(breakpoint8, breakpoints.get(1));
+            Assert.assertSame(breakpoint10, breakpoints.get(2));
 
             session.suspendNextExecution();
             startEval(source);
@@ -506,6 +517,204 @@ public class BreakpointTest extends AbstractDebugTest {
             Assert.assertFalse(breakpoint4.isEnabled());
             Assert.assertTrue(breakpoint5.isEnabled());
         }
+    }
+
+    @Test
+    @SuppressWarnings("try") // auto-closeable resource session is never referenced in body of
+                             // corresponding try statement
+    public void testGlobalBreakpoints() throws Throwable {
+        final Source source = testSource("ROOT(\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT\n" +
+                        ")\n");
+
+        Debugger debugger = getDebugger();
+        assertTrue(debugger.getBreakpoints().isEmpty());
+        Breakpoint globalBreakpoint = Breakpoint.newBuilder(source).lineIs(2).build();
+        boolean[] notified = new boolean[]{false};
+        PropertyChangeListener newBPListener = (event) -> {
+            notified[0] = true;
+            Assert.assertEquals(Debugger.PROPERTY_BREAKPOINTS, event.getPropertyName());
+            Assert.assertEquals(debugger, event.getSource());
+            Assert.assertNull(event.getOldValue());
+            Assert.assertNotEquals(globalBreakpoint, event.getNewValue());
+            Breakpoint newBP = (Breakpoint) event.getNewValue();
+            try {
+                newBP.dispose();
+                Assert.fail("Public dispose must not be possible for global breakpoints.");
+            } catch (IllegalStateException ex) {
+                // O.K.
+            }
+        };
+        debugger.addPropertyChangeListener(newBPListener);
+        debugger.install(globalBreakpoint);
+        Assert.assertTrue(notified[0]);
+        Assert.assertEquals(1, debugger.getBreakpoints().size());
+        Breakpoint newBP = debugger.getBreakpoints().get(0);
+        Assert.assertTrue(globalBreakpoint.isModifiable());
+        Assert.assertFalse(newBP.isModifiable());
+        try {
+            newBP.dispose();
+            Assert.fail("Public dispose must not be possible for global breakpoints.");
+        } catch (IllegalStateException ex) {
+            // O.K.
+        }
+        try {
+            newBP.setCondition("Something");
+            Assert.fail();
+        } catch (IllegalStateException ex) {
+            // O.K.
+        }
+        try {
+            newBP.setCondition(null);
+            Assert.fail();
+        } catch (IllegalStateException ex) {
+            // O.K.
+        }
+        try {
+            newBP.setEnabled(false);
+            Assert.fail();
+        } catch (IllegalStateException ex) {
+            // O.K.
+        }
+        try {
+            newBP.setIgnoreCount(10);
+            Assert.fail();
+        } catch (IllegalStateException ex) {
+            // O.K.
+        }
+        Assert.assertNull(newBP.getCondition());
+        Assert.assertEquals(0, newBP.getHitCount());
+        Assert.assertTrue(newBP.isEnabled());
+        Assert.assertFalse(newBP.isDisposed());
+        Assert.assertFalse(newBP.isResolved());
+
+        try (DebuggerSession session = startSession()) {
+            // global breakpoint is not among session breakpoints
+            Assert.assertTrue(session.getBreakpoints().isEmpty());
+
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 2, true, "STATEMENT");
+                assertEquals(1, event.getBreakpoints().size());
+                Breakpoint eventBP = event.getBreakpoints().get(0);
+                try {
+                    eventBP.dispose();
+                    Assert.fail("Public dispose must not be possible for global breakpoints.");
+                } catch (IllegalStateException ex) {
+                    // O.K.
+                }
+                Assert.assertTrue(eventBP.isResolved());
+                event.prepareContinue();
+            });
+        }
+
+        assertFalse(newBP.isDisposed());
+        assertFalse(newBP.isResolved());
+        expectDone();
+
+        try (DebuggerSession session = startSession()) {
+            startEval(source);
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 2, true, "STATEMENT");
+                event.prepareContinue();
+            });
+        }
+        expectDone();
+
+        debugger.removePropertyChangeListener(newBPListener);
+        notified[0] = false;
+        PropertyChangeListener disposeBPListener = (event) -> {
+            notified[0] = true;
+            Assert.assertEquals(Debugger.PROPERTY_BREAKPOINTS, event.getPropertyName());
+            Assert.assertEquals(debugger, event.getSource());
+            Assert.assertNull(event.getNewValue());
+            Assert.assertNotEquals(globalBreakpoint, event.getOldValue());
+            Breakpoint oldBP = (Breakpoint) event.getOldValue();
+            try {
+                oldBP.dispose();
+                Assert.fail("Public dispose must not be possible for global breakpoints.");
+            } catch (IllegalStateException ex) {
+                // O.K.
+            }
+        };
+        debugger.addPropertyChangeListener(disposeBPListener);
+        globalBreakpoint.dispose();
+        Assert.assertTrue(notified[0]);
+        Assert.assertEquals(0, debugger.getBreakpoints().size());
+    }
+
+    @Test
+    public void testGlobalBreakpointsInMultipleSessions() throws Throwable {
+        final Source source = testSource("ROOT(\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT\n" +
+                        ")\n");
+        Debugger debugger = getDebugger();
+        Breakpoint globalBreakpoint1 = Breakpoint.newBuilder(source).lineIs(2).build();
+        debugger.install(globalBreakpoint1);
+        Breakpoint globalBreakpoint2 = Breakpoint.newBuilder(source).lineIs(4).build();
+        debugger.install(globalBreakpoint2);
+        Breakpoint globalBreakpoint3 = Breakpoint.newBuilder(source).lineIs(6).build();
+        debugger.install(globalBreakpoint3);
+        Breakpoint globalBreakpoint4 = Breakpoint.newBuilder(source).lineIs(8).build();
+        debugger.install(globalBreakpoint4);
+        // Breakpoints are in the install order:
+        List<Breakpoint> breakpoints = debugger.getBreakpoints();
+        Assert.assertEquals(4, breakpoints.size());
+        Assert.assertTrue(breakpoints.get(0).getLocationDescription().contains("line=2"));
+        Assert.assertTrue(breakpoints.get(1).getLocationDescription().contains("line=4"));
+        Assert.assertTrue(breakpoints.get(2).getLocationDescription().contains("line=6"));
+
+        DebuggerSession session1 = startSession();
+        // global breakpoints are not among session breakpoints
+        Assert.assertTrue(session1.getBreakpoints().isEmpty());
+
+        try (DebuggerSession session2 = startSession()) {
+            // global breakpoints are not among session breakpoints
+            Assert.assertTrue(session2.getBreakpoints().isEmpty());
+
+            startEval(source);
+
+            // Both sessions should break here:
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 2, true, "STATEMENT").prepareContinue();
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 2, true, "STATEMENT").prepareContinue();
+            });
+            // We close session2 after the next BP:
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 4, true, "STATEMENT");
+            });
+        }
+
+        expectSuspended((SuspendedEvent event) -> {
+            checkState(event, 4, true, "STATEMENT").prepareContinue();
+        });
+
+        // The last breakpoint is hit once only in the session1:
+        expectSuspended((SuspendedEvent event) -> {
+            checkState(event, 6, true, "STATEMENT").prepareStepOver(1);
+        });
+        expectSuspended((SuspendedEvent event) -> {
+            checkState(event, 7, true, "STATEMENT");
+            session1.close();
+            event.prepareContinue();
+        });
+        // Breakpoint at line 8 was not hit at all, the session was closed right before continue
+        // from line 7.
+        expectDone();
+
     }
 
 }

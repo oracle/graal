@@ -25,11 +25,14 @@
 package com.oracle.truffle.api.debug;
 
 import java.net.URI;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -49,6 +52,7 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.SlowPathException;
@@ -99,7 +103,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
  *
  * @since 0.9
  */
-public final class Breakpoint {
+public class Breakpoint {
 
     private static final Breakpoint BUILDER_INSTANCE = new Breakpoint();
 
@@ -107,13 +111,17 @@ public final class Breakpoint {
     private final BreakpointLocation locationKey;
     private final boolean oneShot;
 
-    private volatile DebuggerSession session;
+    private volatile Debugger debugger;
+    private final List<DebuggerSession> sessions = new LinkedList<>();
+    private volatile Assumption sessionsUnchanged;
 
     private volatile boolean enabled;
     private volatile boolean resolved;
     private volatile int ignoreCount;
     private volatile boolean disposed;
     private volatile String condition;
+    private volatile boolean global;
+    private volatile GlobalBreakpoint roWrapper;
 
     /* We use long instead of int in the implementation to avoid not hitting again on overflows. */
     private final AtomicLong hitCount = new AtomicLong();
@@ -157,8 +165,9 @@ public final class Breakpoint {
 
     /**
      * Controls whether this breakpoint is currently allowed to suspend execution (true by default).
-     * <p>
      * This can be changed arbitrarily until breakpoint is {@linkplain #dispose() disposed}.
+     * <p>
+     * When not {@link #isModifiable() modifiable}, {@link IllegalStateException} is thrown.
      *
      * @param enabled whether this breakpoint should be allowed to suspend execution
      *
@@ -170,7 +179,7 @@ public final class Breakpoint {
             return;
         }
         if (this.enabled != enabled) {
-            if (session != null) {
+            if (!sessions.isEmpty()) {
                 if (enabled) {
                     install();
                 } else {
@@ -212,6 +221,7 @@ public final class Breakpoint {
      * {@linkplain SuspendedEvent#getBreakpointConditionException(Breakpoint) retrieved} while
      * execution is suspended.</li>
      * </ul>
+     * When not {@link #isModifiable() modifiable}, {@link IllegalStateException} is thrown.
      *
      * @param expression if non{@code -null}, a boolean expression, expressed in the guest language
      *            of the breakpoint's location.
@@ -240,7 +250,8 @@ public final class Breakpoint {
     }
 
     /**
-     * Permanently prevents this breakpoint from affecting execution.
+     * Permanently prevents this breakpoint from affecting execution. When not
+     * {@link #isModifiable() modifiable}, {@link IllegalStateException} is thrown.
      *
      * @since 0.9
      */
@@ -251,8 +262,12 @@ public final class Breakpoint {
                 sourceBinding.dispose();
                 sourceBinding = null;
             }
-            if (session != null) {
+            for (DebuggerSession session : sessions) {
                 session.disposeBreakpoint(this);
+            }
+            if (debugger != null) {
+                debugger.disposeBreakpoint(this);
+                debugger = null;
             }
             disposed = true;
         }
@@ -287,6 +302,7 @@ public final class Breakpoint {
      * <li>it does not count as a hit</li>
      * <li>the remaining {@code ignoreCount} does not change.</li>
      * </ul>
+     * When not {@link #isModifiable() modifiable}, {@link IllegalStateException} is thrown.
      *
      * @param ignoreCount number of breakpoint activations to ignore before it hits
      *
@@ -306,19 +322,27 @@ public final class Breakpoint {
     }
 
     /**
-     * @return a human-sensible description of this breakpoint's location.
-     */
-    String getShortDescription() {
-        return "Breakpoint@" + locationKey.toString();
-    }
-
-    /**
      * @return a description of this breakpoint's specified location
      *
      * @since 0.9
      */
     public String getLocationDescription() {
         return locationKey.toString();
+    }
+
+    /**
+     * Test whether this breakpoint can be modified. When <code>false</code>, methods that change
+     * breakpoint state throw {@link IllegalStateException}.
+     * <p>
+     * Unmodifiable breakpoints are created from installed breakpoints as read-only copies to be
+     * available to clients other than the one who installed the original breakpoint.
+     * {@link Debugger#getBreakpoints()} returns unmodifiable breakpoints, for instance.
+     *
+     * @return whether this breakpoint can be modified.
+     * @since 0.27
+     */
+    public boolean isModifiable() {
+        return true;
     }
 
     /**
@@ -343,39 +367,87 @@ public final class Breakpoint {
         }
     }
 
-    synchronized Assumption getConditionUnchanged() {
+    private synchronized Assumption getConditionUnchanged() {
         if (conditionUnchanged == null) {
             conditionUnchanged = Truffle.getRuntime().createAssumption("Breakpoint condition unchanged.");
         }
         return conditionUnchanged;
     }
 
-    BreakpointLocation getLocationKey() {
-        return locationKey;
-    }
-
-    DebuggerSession getSession() {
-        return session;
-    }
-
-    synchronized void install(DebuggerSession d) {
-        if (this.session != null) {
-            throw new IllegalStateException("Breakpoint is already installed.");
+    synchronized void installGlobal(Debugger d) {
+        if (disposed) {
+            throw new IllegalArgumentException("Cannot install breakpoint, it is disposed already.");
         }
-        this.session = d;
+        if (this.debugger != null) {
+            throw new IllegalStateException("Breakpoint is already installed in a Debugger instance.");
+        }
+        install(d);
+        this.global = true;
+    }
+
+    private void install(Debugger d) {
+        assert Thread.holdsLock(this);
+        if (this.debugger != null && this.debugger != d) {
+            throw new IllegalStateException("Breakpoint is already installed in a different Debugger instance.");
+        }
+        this.debugger = d;
+    }
+
+    synchronized boolean install(DebuggerSession d, boolean failOnError) {
+        if (disposed) {
+            if (failOnError) {
+                throw new IllegalArgumentException("Cannot install breakpoint, it is disposed already.");
+            } else {
+                return false;
+            }
+        }
+        if (this.sessions.contains(d)) {
+            if (failOnError) {
+                throw new IllegalStateException("Breakpoint is already installed in the session.");
+            } else {
+                return true;
+            }
+        }
+        install(d.getDebugger());
+        this.sessions.add(d);
+        sessionsAssumptionInvalidate();
         if (enabled) {
             install();
         }
+        return true;
     }
 
     private void install() {
-        Thread.holdsLock(this);
-        sourceBinding = session.getDebugger().getInstrumenter().attachLoadSourceSectionListener(filter, new LoadSourceSectionListener() {
-            public void onLoad(LoadSourceSectionEvent event) {
-                resolveBreakpoint();
-            }
-        }, true);
-        breakpointBinding = session.getDebugger().getInstrumenter().attachFactory(filter, new BreakpointNodeFactory());
+        assert Thread.holdsLock(this);
+        if (breakpointBinding == null) {
+            sourceBinding = debugger.getInstrumenter().attachLoadSourceSectionListener(filter, new LoadSourceSectionListener() {
+                public void onLoad(LoadSourceSectionEvent event) {
+                    resolveBreakpoint();
+                }
+            }, true);
+            breakpointBinding = debugger.getInstrumenter().attachFactory(filter, new BreakpointNodeFactory());
+        }
+    }
+
+    boolean isGlobal() {
+        return global;
+    }
+
+    synchronized void sessionClosed(DebuggerSession d) {
+        this.sessions.remove(d);
+        sessionsAssumptionInvalidate();
+        if (this.sessions.isEmpty()) {
+            uninstall();
+        }
+    }
+
+    private void sessionsAssumptionInvalidate() {
+        assert Thread.holdsLock(this);
+        Assumption assumption = sessionsUnchanged;
+        if (assumption != null) {
+            this.sessionsUnchanged = null;
+            assumption.invalidate();
+        }
     }
 
     private synchronized void resolveBreakpoint() {
@@ -393,11 +465,12 @@ public final class Breakpoint {
     }
 
     private void uninstall() {
-        Thread.holdsLock(this);
+        assert Thread.holdsLock(this);
         if (breakpointBinding != null) {
             breakpointBinding.dispose();
             breakpointBinding = null;
         }
+        resolved = false;
     }
 
     /**
@@ -432,14 +505,33 @@ public final class Breakpoint {
     }
 
     @TruffleBoundary
-    private void doBreak(DebuggerNode source, MaterializedFrame frame, BreakpointConditionFailure failure) {
+    @SuppressWarnings("hiding") // We want to mask "sessions", as we recieve preferred ones
+    private void doBreak(DebuggerNode source, DebuggerSession[] sessions, MaterializedFrame frame, BreakpointConditionFailure failure) {
         if (!isEnabled()) {
             // make sure we do not cause break events if we got disabled already
             // the instrumentation framework will make sure that this is not happening if the
             // binding was disposed.
             return;
         }
-        session.notifyCallback(source, frame, null, failure);
+        for (DebuggerSession session : sessions) {
+            if (session.isBreakpointsActive()) {
+                session.notifyCallback(source, frame, null, failure);
+            }
+        }
+    }
+
+    Breakpoint getROWrapper() {
+        assert global;  // wrappers are for global breakpoints only
+        GlobalBreakpoint wrapper = roWrapper;
+        if (wrapper == null) {
+            synchronized (this) {
+                wrapper = roWrapper;
+                if (wrapper == null) {
+                    roWrapper = wrapper = new GlobalBreakpoint(this);
+                }
+            }
+        }
+        return wrapper;
     }
 
     /**
@@ -606,11 +698,12 @@ public final class Breakpoint {
 
     private class BreakpointNodeFactory implements ExecutionEventNodeFactory {
 
+        @Override
         public ExecutionEventNode create(EventContext context) {
             if (!isResolved()) {
                 resolveBreakpoint();
             }
-            return new BreakpointNode(Breakpoint.this, context, session);
+            return new BreakpointNode(Breakpoint.this, context);
         }
 
     }
@@ -619,16 +712,26 @@ public final class Breakpoint {
 
         private final Breakpoint breakpoint;
         private final BranchProfile breakBranch = BranchProfile.create();
-        private final DebuggerSession session;
 
         @Child private ConditionalBreakNode breakCondition;
+        @CompilationFinal(dimensions = 1) private DebuggerSession[] sessions;
+        @CompilationFinal private Assumption sessionsUnchanged;
 
-        BreakpointNode(Breakpoint breakpoint, EventContext context, DebuggerSession session) {
+        BreakpointNode(Breakpoint breakpoint, EventContext context) {
             super(context);
             this.breakpoint = breakpoint;
-            this.session = session;
+            initializeSessions();
             if (breakpoint.condition != null) {
                 this.breakCondition = new ConditionalBreakNode(context, breakpoint);
+            }
+        }
+
+        private void initializeSessions() {
+            CompilerAsserts.neverPartOfCompilation();
+            synchronized (breakpoint) {
+                this.sessions = breakpoint.sessions.toArray(new DebuggerSession[]{});
+                sessionsUnchanged = Truffle.getRuntime().createAssumption("Breakpoint sessions unchanged.");
+                breakpoint.sessionsUnchanged = sessionsUnchanged;
             }
         }
 
@@ -653,8 +756,20 @@ public final class Breakpoint {
         }
 
         @Override
+        @ExplodeLoop
         protected void onEnter(VirtualFrame frame) {
-            if (!session.isBreakpointsActive()) {
+            if (!sessionsUnchanged.isValid()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                initializeSessions();
+            }
+            boolean active = false;
+            for (DebuggerSession session : sessions) {
+                if (session.isBreakpointsActive()) {
+                    active = true;
+                    break;
+                }
+            }
+            if (!active) {
                 return;
             }
             BreakpointConditionFailure conditionError = null;
@@ -666,7 +781,7 @@ public final class Breakpoint {
                 conditionError = e;
             }
             breakBranch.enter();
-            breakpoint.doBreak(this, frame.materialize(), conditionError);
+            breakpoint.doBreak(this, sessions, frame.materialize(), conditionError);
         }
 
         boolean shouldBreak(@SuppressWarnings("unused") Frame frame) throws BreakpointConditionFailure {
@@ -758,6 +873,88 @@ public final class Breakpoint {
         }
     }
 
+    /**
+     * A read-only wrapper over "global" breakpoint installed on {@link Debugger}. Instances of this
+     * wrapper are for public access to global breakpoints.
+     */
+    @SuppressWarnings("sync-override")
+    static final class GlobalBreakpoint extends Breakpoint {
+
+        private final Breakpoint delegate;
+
+        GlobalBreakpoint(Breakpoint delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public void dispose() {
+            fail();
+        }
+
+        @Override
+        public void setCondition(String expression) {
+            fail();
+        }
+
+        @Override
+        public void setEnabled(boolean enabled) {
+            fail();
+        }
+
+        @Override
+        public void setIgnoreCount(int ignoreCount) {
+            fail();
+        }
+
+        private static void fail() {
+            throw new IllegalStateException("Unmodifiable breakpoint.");
+        }
+
+        @Override
+        public boolean isModifiable() {
+            return false;
+        }
+
+        @Override
+        public String getCondition() {
+            return delegate.getCondition();
+        }
+
+        @Override
+        public int getHitCount() {
+            return delegate.getHitCount();
+        }
+
+        @Override
+        public int getIgnoreCount() {
+            return delegate.getIgnoreCount();
+        }
+
+        @Override
+        public String getLocationDescription() {
+            return delegate.getLocationDescription();
+        }
+
+        @Override
+        public boolean isDisposed() {
+            return delegate.isDisposed();
+        }
+
+        @Override
+        public boolean isEnabled() {
+            return delegate.isEnabled();
+        }
+
+        @Override
+        public boolean isOneShot() {
+            return delegate.isOneShot();
+        }
+
+        @Override
+        public boolean isResolved() {
+            return delegate.isResolved();
+        }
+    }
 }
 
 class BreakpointSnippets {
