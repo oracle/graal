@@ -51,7 +51,7 @@ public abstract class LLVMAMD64IncNode extends LLVMExpressionNode {
         @Specialization
         protected byte executeI16(VirtualFrame frame, byte value) {
             byte result = (byte) (value + 1);
-            boolean of = result == Byte.MAX_VALUE;
+            boolean of = value == Byte.MAX_VALUE;
             flags.execute(frame, of, result);
             return result;
         }
@@ -65,7 +65,7 @@ public abstract class LLVMAMD64IncNode extends LLVMExpressionNode {
         @Specialization
         protected short executeI16(VirtualFrame frame, short value) {
             short result = (short) (value + 1);
-            boolean of = result == Short.MAX_VALUE;
+            boolean of = value == Short.MAX_VALUE;
             flags.execute(frame, of, result);
             return result;
         }
@@ -79,7 +79,7 @@ public abstract class LLVMAMD64IncNode extends LLVMExpressionNode {
         @Specialization
         protected int executeI32(VirtualFrame frame, int value) {
             int result = value + 1;
-            boolean of = result == Integer.MAX_VALUE;
+            boolean of = value == Integer.MAX_VALUE;
             flags.execute(frame, of, result);
             return result;
         }
@@ -93,7 +93,7 @@ public abstract class LLVMAMD64IncNode extends LLVMExpressionNode {
         @Specialization
         protected long executeI64(VirtualFrame frame, long value) {
             long result = value + 1;
-            boolean of = result == Long.MAX_VALUE;
+            boolean of = value == Long.MAX_VALUE;
             flags.execute(frame, of, result);
             return result;
         }
