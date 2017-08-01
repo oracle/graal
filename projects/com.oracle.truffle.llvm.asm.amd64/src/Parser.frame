@@ -45,10 +45,10 @@ public class Parser {
 	private LLVMInlineAssemblyRootNode root;
 	-->declarations
 
-	public Parser(String asmSnippet, String asmFlags, LLVMExpressionNode[] args, Type[] argTypes, Type retType) {
+	public Parser(String asmSnippet, String asmFlags, Type[] argTypes, Type retType, Type[] retTypes, int[] retOffsets) {
 		this.scanner = new Scanner(new ByteArrayInputStream(asmSnippet.getBytes()));
 		errors = new Errors();
-		this.factory = new AsmFactory(args, argTypes, asmFlags, retType);
+		this.factory = new AsmFactory(argTypes, asmFlags, retType, retTypes, retOffsets);
 	}
 
 	void SynErr (int n) {

@@ -27,43 +27,25 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.asm;
+package com.oracle.truffle.llvm.nodes.asm.support;
 
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-
-public abstract class LLVMAMD64ShrNode extends LLVMExpressionNode {
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64ShrbNode extends LLVMExpressionNode {
-        @Specialization
-        protected byte executeI16(byte left, byte right) {
-            return (byte) (left >>> right);
-        }
-    }
-
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64ShrwNode extends LLVMExpressionNode {
-        @Specialization
-        protected short executeI16(short left, byte right) {
-            return (short) (left >>> right);
-        }
-    }
-
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64ShrlNode extends LLVMExpressionNode {
-        @Specialization
-        protected int executeI32(int left, byte right) {
-            return left >>> right;
-        }
-    }
-
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64ShrqNode extends LLVMExpressionNode {
-        @Specialization
-        protected long executeI64(long left, byte right) {
-            return left >>> right;
-        }
-    }
+public abstract class LLVMAMD64Flags {
+    // complete IA32/EMT64 manual, p77
+    public static final long CF = 0;
+    public static final long PF = 2;
+    public static final long AF = 4;
+    public static final long ZF = 6;
+    public static final long SF = 7;
+    public static final long TF = 8;
+    public static final long IF = 9;
+    public static final long DF = 10;
+    public static final long OF = 11;
+    // public static final long IOPL = 12 | 13;
+    public static final long NT = 14;
+    public static final long RF = 16;
+    public static final long VM = 17;
+    public static final long AC = 18;
+    public static final long VIF = 19;
+    public static final long VIP = 20;
+    public static final long ID = 21;
 }

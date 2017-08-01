@@ -27,43 +27,44 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.asm;
+package com.oracle.truffle.llvm.nodes.asm.support;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public abstract class LLVMAMD64ShrNode extends LLVMExpressionNode {
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64ShrbNode extends LLVMExpressionNode {
+@NodeChild(value = "base", type = LLVMExpressionNode.class)
+public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode {
+    protected final int displacement;
+
+    public LLVMAMD64AddressComputationNode(int displacement) {
+        this.displacement = displacement;
+    }
+
+    public abstract static class LLVMAMD64AddressDisplacementComputationNode extends LLVMAMD64AddressComputationNode {
+        public LLVMAMD64AddressDisplacementComputationNode(int displacement) {
+            super(displacement);
+        }
+
         @Specialization
-        protected byte executeI16(byte left, byte right) {
-            return (byte) (left >>> right);
+        public LLVMAddress executeLLVMAddress(LLVMAddress base) {
+            return base.increment(displacement);
         }
     }
 
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64ShrwNode extends LLVMExpressionNode {
-        @Specialization
-        protected short executeI16(short left, byte right) {
-            return (short) (left >>> right);
-        }
-    }
+    @NodeChild(value = "offset", type = LLVMExpressionNode.class)
+    public abstract static class LLVMAMD64AddressOffsetComputationNode extends LLVMAMD64AddressComputationNode {
+        private final int shift;
 
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64ShrlNode extends LLVMExpressionNode {
-        @Specialization
-        protected int executeI32(int left, byte right) {
-            return left >>> right;
+        public LLVMAMD64AddressOffsetComputationNode(int displacement, int shift) {
+            super(displacement);
+            this.shift = shift;
         }
-    }
 
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64ShrqNode extends LLVMExpressionNode {
         @Specialization
-        protected long executeI64(long left, byte right) {
-            return left >>> right;
+        public LLVMAddress executeLLVMAddress(LLVMAddress base, int offset) {
+            return base.increment(displacement + offset << shift);
         }
     }
 }

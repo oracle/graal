@@ -31,38 +31,71 @@ package com.oracle.truffle.llvm.nodes.asm;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
+@NodeChild("valueNode")
 public abstract class LLVMAMD64IncNode extends LLVMExpressionNode {
-    @NodeChild("valueNode")
-    public abstract static class LLVMAMD64IncbNode extends LLVMExpressionNode {
+    @Child LLVMAMD64UpdateFlagsNode flags;
+
+    public LLVMAMD64IncNode(LLVMAMD64UpdateFlagsNode flags) {
+        this.flags = flags;
+    }
+
+    public abstract static class LLVMAMD64IncbNode extends LLVMAMD64IncNode {
+        public LLVMAMD64IncbNode(LLVMAMD64UpdateFlagsNode flags) {
+            super(flags);
+        }
+
         @Specialization
-        protected byte executeI16(byte value) {
-            return (byte) (value + 1);
+        protected byte executeI16(VirtualFrame frame, byte value) {
+            byte result = (byte) (value + 1);
+            boolean of = value == Byte.MAX_VALUE;
+            flags.execute(frame, of, result);
+            return result;
         }
     }
 
-    @NodeChild("valueNode")
-    public abstract static class LLVMAMD64IncwNode extends LLVMExpressionNode {
+    public abstract static class LLVMAMD64IncwNode extends LLVMAMD64IncNode {
+        public LLVMAMD64IncwNode(LLVMAMD64UpdateFlagsNode flags) {
+            super(flags);
+        }
+
         @Specialization
-        protected short executeI16(short value) {
-            return (short) (value + 1);
+        protected short executeI16(VirtualFrame frame, short value) {
+            short result = (short) (value + 1);
+            boolean of = value == Short.MAX_VALUE;
+            flags.execute(frame, of, result);
+            return result;
         }
     }
 
-    @NodeChild("valueNode")
-    public abstract static class LLVMAMD64InclNode extends LLVMExpressionNode {
+    public abstract static class LLVMAMD64InclNode extends LLVMAMD64IncNode {
+        public LLVMAMD64InclNode(LLVMAMD64UpdateFlagsNode flags) {
+            super(flags);
+        }
+
         @Specialization
-        protected int executeI32(int value) {
-            return value + 1;
+        protected int executeI32(VirtualFrame frame, int value) {
+            int result = value + 1;
+            boolean of = value == Integer.MAX_VALUE;
+            flags.execute(frame, of, result);
+            return result;
         }
     }
 
-    @NodeChild("valueNode")
-    public abstract static class LLVMAMD64IncqNode extends LLVMExpressionNode {
+    public abstract static class LLVMAMD64IncqNode extends LLVMAMD64IncNode {
+        public LLVMAMD64IncqNode(LLVMAMD64UpdateFlagsNode flags) {
+            super(flags);
+        }
+
         @Specialization
-        protected long executeI64(long value) {
-            return value + 1;
+        protected long executeI64(VirtualFrame frame, long value) {
+            long result = value + 1;
+            boolean of = value == Long.MAX_VALUE;
+            flags.execute(frame, of, result);
+            return result;
         }
     }
 }

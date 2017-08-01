@@ -27,43 +27,25 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.asm;
+package com.oracle.truffle.llvm.nodes.asm.support;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToI8Node;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public abstract class LLVMAMD64ShrNode extends LLVMExpressionNode {
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64ShrbNode extends LLVMExpressionNode {
-        @Specialization
-        protected byte executeI16(byte left, byte right) {
-            return (byte) (left >>> right);
-        }
-    }
+public class LLVMAMD64ToI8Node {
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
+    public abstract static class LLVMAMD64I64ToI8Node extends LLVMToI8Node {
+        private final int shift;
 
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64ShrwNode extends LLVMExpressionNode {
-        @Specialization
-        protected short executeI16(short left, byte right) {
-            return (short) (left >>> right);
+        public LLVMAMD64I64ToI8Node(int shift) {
+            this.shift = shift;
         }
-    }
 
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64ShrlNode extends LLVMExpressionNode {
         @Specialization
-        protected int executeI32(int left, byte right) {
-            return left >>> right;
-        }
-    }
-
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64ShrqNode extends LLVMExpressionNode {
-        @Specialization
-        protected long executeI64(long left, byte right) {
-            return left >>> right;
+        public byte executeI8(long from) {
+            return (byte) (from >> shift);
         }
     }
 }
