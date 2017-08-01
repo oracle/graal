@@ -651,11 +651,11 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                             } else {
                                 /*
                                  * succ also has a loop, might be a child loop
-                                 * 
+                                 *
                                  * if it is a child loop we do not exit a loop. if it is a loop
                                  * different than b.loop and not a child loop it must be a parent
                                  * loop, thus we exit all loops between b.loop and succ.loop
-                                 * 
+                                 *
                                  * if we exit multiple loops immediately after each other the
                                  * bytecode parser might generate loop exit nodes after another and
                                  * the CFG will identify them as separate blocks, we just take the
