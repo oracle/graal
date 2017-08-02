@@ -444,12 +444,6 @@ public final class Source {
             this.origin = origin;
         }
 
-        // legacy constructor
-        Builder(Object origin) {
-            this.language = null;
-            this.origin = origin;
-        }
-
         /**
          *
          *

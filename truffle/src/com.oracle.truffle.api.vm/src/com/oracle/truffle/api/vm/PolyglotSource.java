@@ -35,6 +35,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.spi.FileTypeDetector;
 import java.util.Collection;
+import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
 
@@ -223,6 +224,7 @@ class PolyglotSource extends AbstractSourceImpl {
 
     @Override
     public Source build(String language, Object origin, URI uri, String name, String content, boolean interactive, boolean internal) {
+        assert language != null;
         com.oracle.truffle.api.source.Source.Builder<?, ?, ?> builder;
         boolean needsName = false;
         if (origin instanceof File) {
@@ -262,7 +264,15 @@ class PolyglotSource extends AbstractSourceImpl {
             builder.interactive();
         }
 
-        builder.mimeType("x-unknown");
+        String mimeType = "content/unknown";
+        Map<String, LanguageCache> languages = LanguageCache.languages();
+        for (Map.Entry<String, LanguageCache> langEntry : languages.entrySet()) {
+            if (language.equals(langEntry.getValue().getId())) {
+                mimeType = langEntry.getKey();
+                break;
+            }
+        }
+        builder.mimeType(mimeType);
 
         try {
             return engineImpl.getAPIAccess().newSource(language, builder.build());
