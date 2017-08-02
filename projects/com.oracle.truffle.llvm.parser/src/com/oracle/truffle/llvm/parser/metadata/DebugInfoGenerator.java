@@ -34,10 +34,11 @@ import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 public final class DebugInfoGenerator {
 
     public static String getSourceFunctionName(FunctionDefinition function) {
-        for (final MDAttachment attachment : function.getMetadata().getFunctionAttachments()) {
-            if (MDKind.DBG_NAME.equals(attachment.getKind().getName())) {
+        if (function.hasAttachedMetadata()) {
+            final MDBaseNode attachment = function.getMetadataAttachment(MDKind.DBG_NAME);
+            if (attachment != null) {
                 final DIVisitor visitor = new DIVisitor();
-                attachment.getMdRef().accept(visitor);
+                attachment.accept(visitor);
                 return visitor.getFunctionName();
             }
         }

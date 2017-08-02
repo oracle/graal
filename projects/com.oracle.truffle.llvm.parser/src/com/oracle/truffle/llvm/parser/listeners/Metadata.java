@@ -273,11 +273,11 @@ public final class Metadata implements ParserListener {
 
             case GLOBAL_DECL_ATTACHMENT: {
                 int i = 0;
-                final long globalIndex = args[i++];
+                final int globalIndex = (int) args[i++];
                 while (i < args.length) {
                     final MDKind attachmentKind = metadata.getKind(args[i++]);
                     final MDReference attachment = metadata.getMDRefOrNullRef(args[i++]);
-                    metadata.addGlobalAttachment(globalIndex, new MDAttachment(attachmentKind, attachment));
+                    container.attachSymbolMetadata(globalIndex, new MDAttachment(attachmentKind, attachment));
                 }
                 break;
             }
@@ -313,9 +313,9 @@ public final class Metadata implements ParserListener {
             final MDReference md = metadata.getMDRef(args[i + 1]);
             final MDAttachment attachment = new MDAttachment(kind, md);
             if (offset != 0) {
-                metadata.addAttachment(args[0], attachment);
+                container.attachSymbolMetadata((int) args[0], attachment);
             } else {
-                metadata.addAttachment(attachment);
+                container.attachMetadata(attachment);
             }
         }
     }

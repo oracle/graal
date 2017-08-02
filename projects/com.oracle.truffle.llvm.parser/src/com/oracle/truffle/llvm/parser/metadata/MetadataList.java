@@ -30,36 +30,15 @@
 package com.oracle.truffle.llvm.parser.metadata;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public final class MetadataList {
 
     private final List<MDBaseNode> metadata = new ArrayList<>();
-
     private final List<MDNamedNode> namedMetadata = new ArrayList<>();
-
     private final List<MDKind> mdKinds = new ArrayList<>();
 
-    // TODO associate this with the actual instruction
-    // TODO multiple attachments to the same instruction are possible
-    private final Map<Long, MDAttachment> instructionAttachments = new HashMap<>();
-
-    // TODO associate this with the actual global symbol
-    private final Map<Long, List<MDAttachment>> globalAttachments = new HashMap<>();
-
-    private final List<MDAttachment> functionAttachments = new ArrayList<>();
-
     public MetadataList() {
-    }
-
-    public Map<Long, MDAttachment> getInstructionAttachments() {
-        return instructionAttachments;
-    }
-
-    public List<MDAttachment> getFunctionAttachments() {
-        return functionAttachments;
     }
 
     public void add(MDBaseNode element) {
@@ -72,25 +51,6 @@ public final class MetadataList {
 
     public void addKind(MDKind newKind) {
         mdKinds.add(newKind);
-    }
-
-    public void addGlobalAttachment(long globalIndex, MDAttachment attachment) {
-        final List<MDAttachment> attachments;
-        if (globalAttachments.containsKey(globalIndex)) {
-            attachments = globalAttachments.get(globalIndex);
-        } else {
-            attachments = new ArrayList<>();
-            globalAttachments.put(globalIndex, attachments);
-        }
-        attachments.add(attachment);
-    }
-
-    public void addAttachment(long instructionIndex, MDAttachment attachment) {
-        instructionAttachments.put(instructionIndex, attachment);
-    }
-
-    public void addAttachment(MDAttachment attachment) {
-        functionAttachments.add(attachment);
     }
 
     public MDBaseNode removeLast() {
@@ -145,8 +105,5 @@ public final class MetadataList {
         metadata.addAll(other.metadata);
         namedMetadata.addAll(other.namedMetadata);
         mdKinds.addAll(other.mdKinds);
-        instructionAttachments.putAll(other.instructionAttachments);
-        functionAttachments.addAll(other.functionAttachments);
-        globalAttachments.putAll(other.globalAttachments);
     }
 }

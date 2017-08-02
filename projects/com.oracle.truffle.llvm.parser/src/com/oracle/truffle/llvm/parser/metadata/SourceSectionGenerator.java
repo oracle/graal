@@ -207,7 +207,7 @@ final class SourceSectionGenerator {
     }
 
     private static Optional<MDBaseNode> getFunctionDIAttachment(FunctionDefinition function) {
-        return function.getMetadata().getFunctionAttachments().stream().filter(md -> MDKind.DBG_NAME.equals(md.getKind().getName())).findAny().map(dbg -> dbg.getMdRef().get());
+        return Optional.ofNullable(function.getMetadataAttachment(MDKind.DBG_NAME));
     }
 
     static final String MIMETYPE_PLAINTEXT = "text/plain";

@@ -35,6 +35,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
+import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.AggregateConstant;
 import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
@@ -56,26 +58,51 @@ public final class Symbols {
         symbols = new Symbol[INITIAL_CAPACITY];
     }
 
-    private boolean hasSymbol(int index) {
-        return index >= 0 && index < symbols.length && symbols[index] != null && !(symbols[index] instanceof ForwardReference);
-    }
-
     public Symbol getOrNull(int index) {
-        return hasSymbol(index) ? getSymbol(index) : null;
+        return index < size && index >= 0 ? getSymbol(index) : null;
     }
 
     public void addSymbol(Symbol symbol) {
-        ensureCapacity(size + 1);
+        ensureIndexExists(size);
 
         if (symbols[size] != null) {
             final ForwardReference ref = (ForwardReference) symbols[size];
             ref.replace(symbol);
+
             if (ref.getName() != null && symbol instanceof ValueSymbol) {
                 ((ValueSymbol) symbol).setName(ref.getName());
             }
-            ((ForwardReference) symbols[size]).replace(symbol);
+
+            if (ref.hasAttachedMetadata() && symbol instanceof MetadataAttachmentHolder) {
+                for (MDAttachment attachment : ref.getAttachedMetadata()) {
+                    ((MetadataAttachmentHolder) symbol).attachMetadata(attachment);
+                }
+            }
         }
+
         symbols[size++] = symbol;
+    }
+
+    private ForwardReference getForwardReference(int index) {
+        ensureIndexExists(index);
+        if (symbols[index] == null) {
+            final ForwardReference ref = new ForwardReference();
+            symbols[index] = ref;
+            return ref;
+        } else {
+            return (ForwardReference) symbols[index];
+        }
+    }
+
+    public void attachMetadata(int index, MDAttachment attachment) {
+        if (index < size) {
+            if (symbols[index] instanceof MetadataAttachmentHolder) {
+                ((MetadataAttachmentHolder) symbols[index]).attachMetadata(attachment);
+            }
+
+        } else {
+            getForwardReference(index).attachMetadata(attachment);
+        }
     }
 
     public void addSymbols(Symbols argSymbols) {
@@ -100,14 +127,8 @@ public final class Symbols {
         if (index < size) {
             return symbols[index];
         } else {
-            ensureCapacity(index + 1);
-
-            ForwardReference ref = (ForwardReference) symbols[index];
-            if (ref == null) {
-                symbols[index] = ref = new ForwardReference();
-            }
+            final ForwardReference ref = getForwardReference(index);
             ref.addDependent(dependent);
-
             return ref;
         }
     }
@@ -116,43 +137,32 @@ public final class Symbols {
         if (index < size) {
             return symbols[index];
         } else {
-            ensureCapacity(index + 1);
-
-            ForwardReference ref = (ForwardReference) symbols[index];
-            if (ref == null) {
-                symbols[index] = ref = new ForwardReference();
-            }
+            final ForwardReference ref = getForwardReference(index);
             ref.addDependent(dependent, elementIndex);
-
             return ref;
         }
     }
 
     public void setSymbolName(int index, String name) {
-        Symbol symbol = getSymbol(index);
-        if (symbol instanceof ValueSymbol) {
-            ((ValueSymbol) symbol).setName(name);
-        }
-
         if (index < size) {
             if (symbols[index] instanceof ValueSymbol) {
                 ((ValueSymbol) symbols[index]).setName(name);
             }
         } else {
-            ensureCapacity(index + 1);
-
-            ForwardReference ref = (ForwardReference) symbols[index];
-            if (ref == null) {
-                symbols[index] = ref = new ForwardReference();
-            }
-            ref.setName(name);
+            getForwardReference(index).setName(name);
         }
     }
 
-    private void ensureCapacity(int capacity) {
-        while (symbols.length < capacity) {
-            symbols = Arrays.copyOf(symbols, symbols.length << 1);
+    private void ensureIndexExists(int index) {
+        if (index < symbols.length) {
+            return;
         }
+
+        int newLength = symbols.length;
+        while (index >= newLength) {
+            newLength <<= 1;
+        }
+        symbols = Arrays.copyOf(symbols, newLength);
     }
 
     @Override
@@ -160,10 +170,11 @@ public final class Symbols {
         return String.format("Symbols [size = %d]", size);
     }
 
-    private static final class ForwardReference implements Constant, ValueSymbol {
+    private static final class ForwardReference implements Constant, ValueSymbol, MetadataAttachmentHolder {
 
         private final List<Symbol> dependents = new ArrayList<>();
         private final Map<AggregateConstant, List<Integer>> aggregateDependents = new HashMap<>();
+        private List<MDAttachment> attachedMetadata = null;
 
         private String name;
 
@@ -183,6 +194,19 @@ public final class Symbols {
             final List<Integer> indices = aggregateDependents.getOrDefault(dependent, new ArrayList<>());
             indices.add(index);
             aggregateDependents.put(dependent, indices);
+        }
+
+        @Override
+        public boolean hasAttachedMetadata() {
+            return attachedMetadata != null;
+        }
+
+        @Override
+        public List<MDAttachment> getAttachedMetadata() {
+            if (attachedMetadata == null) {
+                attachedMetadata = new ArrayList<>();
+            }
+            return attachedMetadata;
         }
 
         public void replace(Symbol replacement) {

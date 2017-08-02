@@ -30,8 +30,10 @@
 package com.oracle.truffle.llvm.parser.model;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
+import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
@@ -130,5 +132,15 @@ public final class ModelModule extends IRScope {
     @Override
     public String toString() {
         return String.format("Model (%d defines, %d declares, %d globals, %d types)", defines.size(), declares.size(), globals.size(), types.size());
+    }
+
+    @Override
+    public boolean hasAttachedMetadata() {
+        return false;
+    }
+
+    @Override
+    public List<MDAttachment> getAttachedMetadata() {
+        return Collections.emptyList();
     }
 }

@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.model;
 
+import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
+import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
 import com.oracle.truffle.llvm.parser.metadata.MetadataList;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -37,7 +39,7 @@ import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class IRScope {
+public abstract class IRScope implements MetadataAttachmentHolder {
 
     private final Symbols symbols = new Symbols();
     private final List<Type> valueTypes = new ArrayList<>();
@@ -85,5 +87,9 @@ public abstract class IRScope {
 
     public MetadataList getMetadata() {
         return metadata;
+    }
+
+    public void attachSymbolMetadata(int index, MDAttachment attachment) {
+        symbols.attachMetadata(index, attachment);
     }
 }

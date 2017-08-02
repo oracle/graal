@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,42 +27,26 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.instructions;
+package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
-import com.oracle.truffle.llvm.parser.metadata.MDLocation;
-import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
-
-import java.util.ArrayList;
 import java.util.List;
 
-public abstract class Instruction implements Symbol, MetadataAttachmentHolder {
+public interface MetadataAttachmentHolder {
 
-    private MDLocation debugLocation = null;
-    private List<MDAttachment> mdAttachments = null;
+    boolean hasAttachedMetadata();
 
-    public MDLocation getDebugLocation() {
-        return debugLocation;
+    List<MDAttachment> getAttachedMetadata();
+
+    default void attachMetadata(MDAttachment attachment) {
+        getAttachedMetadata().add(attachment);
     }
 
-    public void setDebugLocation(MDLocation debugLocation) {
-        this.debugLocation = debugLocation;
-    }
-
-    public abstract void accept(InstructionVisitor visitor);
-
-    @Override
-    public boolean hasAttachedMetadata() {
-        return mdAttachments != null;
-    }
-
-    @Override
-    public List<MDAttachment> getAttachedMetadata() {
-        if (mdAttachments == null) {
-            mdAttachments = new ArrayList<>(1);
+    default MDBaseNode getMetadataAttachment(String kind) {
+        for (MDAttachment attachment : getAttachedMetadata()) {
+            if (attachment.getKind().getName().equals(kind)) {
+                return attachment.getMdRef();
+            }
         }
-        return mdAttachments;
+        return null;
     }
 }

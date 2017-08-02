@@ -36,6 +36,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
@@ -58,6 +59,8 @@ public final class FunctionDefinition extends IRScope implements Constant, Value
     private final AttributesCodeEntry paramAttr;
     private final Linkage linkage;
 
+    private List<MDAttachment> mdAttachments = null;
+
     private InstructionBlock[] blocks = new InstructionBlock[0];
     private int currentBlock = 0;
     private String name;
@@ -71,6 +74,19 @@ public final class FunctionDefinition extends IRScope implements Constant, Value
 
     public FunctionDefinition(FunctionType type, Linkage linkage, AttributesCodeEntry paramAttr) {
         this(type, LLVMIdentifier.UNKNOWN, linkage, paramAttr);
+    }
+
+    @Override
+    public boolean hasAttachedMetadata() {
+        return mdAttachments != null;
+    }
+
+    @Override
+    public List<MDAttachment> getAttachedMetadata() {
+        if (mdAttachments == null) {
+            mdAttachments = new ArrayList<>(1);
+        }
+        return mdAttachments;
     }
 
     public Linkage getLinkage() {
