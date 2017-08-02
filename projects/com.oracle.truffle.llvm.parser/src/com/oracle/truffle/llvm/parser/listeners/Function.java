@@ -412,19 +412,17 @@ public final class Function implements ParserListener {
         final AttributesCodeEntry paramAttr = paramAttributes.getCodeEntry(args[i++]);
         final long ccinfo = args[i++];
 
-        FunctionType functionType = null;
-        int callee = -1;
-        Type calleeType = null;
-
         if (((ccinfo >> CALL_HAS_FMF_SHIFT) & 1) != 0) {
             i++; // fast math flags
         }
 
+        FunctionType functionType = null;
         if (((ccinfo >> CALL_HAS_EXPLICITTYPE_SHIFT) & 1) != 0) {
             functionType = (FunctionType) types.get(args[i++]);
         }
 
-        callee = getIndex(args[i++]);
+        int callee = getIndex(args[i++]);
+        Type calleeType;
         if (function.isValueForwardRef(callee)) {
             calleeType = types.get(args[i++]);
         } else {

@@ -58,7 +58,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.ArrayCon
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.StructureConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
-import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolResolver;
+import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.util.Pair;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
@@ -102,7 +102,7 @@ public final class LLVMParserRuntime {
 
         runtime.initializeFunctions(phiManager, labels, module.getFunctions());
 
-        LLVMSymbolResolver symbolResolver = new LLVMSymbolResolver(runtime, labels);
+        LLVMSymbolReadResolver symbolResolver = new LLVMSymbolReadResolver(runtime, labels);
         LLVMExpressionNode[] globals = runtime.createGlobalVariableInitializationNodes(symbolResolver, module.getGlobals());
         RootNode globalVarInits = nodeFactory.createStaticInitsRootNode(runtime, globals);
         RootCallTarget globalVarInitsTarget = Truffle.getRuntime().createCallTarget(globalVarInits);
@@ -166,7 +166,7 @@ public final class LLVMParserRuntime {
         }
     }
 
-    private LLVMExpressionNode[] createGlobalVariableInitializationNodes(LLVMSymbolResolver symbolResolver, List<GlobalValueSymbol> globals) {
+    private LLVMExpressionNode[] createGlobalVariableInitializationNodes(LLVMSymbolReadResolver symbolResolver, List<GlobalValueSymbol> globals) {
         final List<LLVMExpressionNode> globalNodes = new ArrayList<>();
         for (GlobalValueSymbol global : globals) {
             final LLVMExpressionNode store = createGlobalInitialization(symbolResolver, global);
@@ -177,7 +177,7 @@ public final class LLVMParserRuntime {
         return globalNodes.toArray(new LLVMExpressionNode[globalNodes.size()]);
     }
 
-    private LLVMExpressionNode createGlobalInitialization(LLVMSymbolResolver symbolResolver, GlobalValueSymbol global) {
+    private LLVMExpressionNode createGlobalInitialization(LLVMSymbolReadResolver symbolResolver, GlobalValueSymbol global) {
         if (global == null || global.getValue() == null) {
             return null;
         }
@@ -204,7 +204,7 @@ public final class LLVMParserRuntime {
         return null;
     }
 
-    private LLVMExpressionNode getGlobalVariable(LLVMSymbolResolver symbolResolver, GlobalValueSymbol global) {
+    private LLVMExpressionNode getGlobalVariable(LLVMSymbolReadResolver symbolResolver, GlobalValueSymbol global) {
         Symbol g = global;
         while (g instanceof GlobalAlias) {
             g = aliases.get(g);
@@ -274,7 +274,7 @@ public final class LLVMParserRuntime {
 
             final StructureConstant structorDefinition = (StructureConstant) arrayConstant.getElement(i);
             final Symbol prioritySymbol = structorDefinition.getElement(0);
-            final Integer priority = LLVMSymbolResolver.evaluateIntegerConstant(prioritySymbol);
+            final Integer priority = LLVMSymbolReadResolver.evaluateIntegerConstant(prioritySymbol);
             structors.add(new Pair<>(priority != null ? priority : LEAST_CONSTRUCTOR_PRIORITY, functionCall));
         }
 
@@ -293,7 +293,7 @@ public final class LLVMParserRuntime {
         return nodeFactory.createAlloc(this, type, size, alignment, null, null);
     }
 
-    public LLVMExpressionNode getGlobalAddress(LLVMSymbolResolver symbolResolver, GlobalValueSymbol var) {
+    public LLVMExpressionNode getGlobalAddress(LLVMSymbolReadResolver symbolResolver, GlobalValueSymbol var) {
         return getGlobalVariable(symbolResolver, var);
     }
 

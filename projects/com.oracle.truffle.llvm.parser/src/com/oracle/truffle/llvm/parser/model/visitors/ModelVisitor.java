@@ -43,38 +43,38 @@ public interface ModelVisitor {
      * We normally don't need to implement all visitors, but want to have a default implementation
      * for those visitors which are not handled explicitly. This little method allows us to do so.
      */
-    default void ifVisitNotOverwritten(@SuppressWarnings("unused") Object obj) {
+    default void defaultAction(@SuppressWarnings("unused") Object obj) {
     }
 
     default void visit(GlobalAlias alias) {
-        ifVisitNotOverwritten(alias);
+        defaultAction(alias);
     }
 
     default void visit(GlobalConstant constant) {
-        ifVisitNotOverwritten(constant);
+        defaultAction(constant);
     }
 
     default void visit(GlobalVariable variable) {
-        ifVisitNotOverwritten(variable);
+        defaultAction(variable);
     }
 
     default void visit(FunctionDeclaration function) {
-        ifVisitNotOverwritten(function);
+        defaultAction(function);
     }
 
     default void visit(FunctionDefinition function) {
-        ifVisitNotOverwritten(function);
+        defaultAction(function);
     }
 
     default void visit(TargetDataLayout layout) {
-        ifVisitNotOverwritten(layout);
+        defaultAction(layout);
     }
 
     default void visit(TargetInformation info) {
-        ifVisitNotOverwritten(info);
+        defaultAction(info);
     }
 
     default void visit(Type type) {
-        ifVisitNotOverwritten(type);
+        defaultAction(type);
     }
 }
