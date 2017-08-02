@@ -214,6 +214,21 @@ public class UnsafeEATest extends EATestBase {
         test("testWriteIntToByteArraySnippet");
     }
 
+    public static byte testWriteSignedExtendedByteToByteArraySnippet(byte b) {
+        byte[] array = new byte[4];
+        array[0] = 0x01;
+        array[1] = 0x02;
+        array[2] = 0x03;
+        array[3] = 0x04;
+        UNSAFE.putInt(array, byteArrayBaseOffset, b);
+        return array[3];
+    }
+
+    @Test
+    public void testWriteSignedExtendedByteToByteArray() {
+        test("testWriteSignedExtendedByteToByteArraySnippet", (byte) 0);
+    }
+
     public static int testWriteLongToIntArraySnippet() {
         int[] array = new int[2];
         UNSAFE.putLong(array, intArrayBaseOffset, 0x0102030405060708L);
@@ -248,4 +263,16 @@ public class UnsafeEATest extends EATestBase {
     public void testWriteIntToLongArray() {
         test("testWriteIntToLongArraySnippet");
     }
+
+    public static float testWriteFloatToIntArraySnippet() {
+        float[] array = new float[1];
+        UNSAFE.putInt(array, intArrayBaseOffset, Float.floatToRawIntBits(0.5f));
+        return array[0];
+    }
+
+    @Test
+    public void testWriteFloatToIntArray() {
+        test("testWriteFloatToIntArraySnippet");
+    }
+
 }
