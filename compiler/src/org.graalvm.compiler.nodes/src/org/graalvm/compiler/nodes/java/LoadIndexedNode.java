@@ -101,7 +101,13 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
             ValueNode indexValue = tool.getAlias(index());
             int idx = indexValue.isConstant() ? indexValue.asJavaConstant().asInt() : -1;
             if (idx >= 0 && idx < virtual.entryCount()) {
-                tool.replaceWith(tool.getEntry(virtual, idx));
+                ValueNode entry = tool.getEntry(virtual, idx);
+                if (stamp.isCompatible(entry.stamp())) {
+                    tool.replaceWith(entry);
+                } else {
+                    assert stamp().getStackKind() == JavaKind.Int && (entry.stamp().getStackKind() == JavaKind.Long || entry.getStackKind() == JavaKind.Double ||
+                                    entry.getStackKind() == JavaKind.Illegal) : "Can only allow different stack kind two slot marker writes on one stot fields.";
+                }
             }
         }
     }
