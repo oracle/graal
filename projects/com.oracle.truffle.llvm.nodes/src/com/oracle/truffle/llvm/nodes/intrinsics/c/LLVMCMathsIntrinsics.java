@@ -32,10 +32,10 @@ package com.oracle.truffle.llvm.nodes.intrinsics.c;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
-import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -47,7 +47,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMCMathsIntrinsics {
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMSqrt extends LLVMIntrinsic {
+    public abstract static class LLVMSqrt extends LLVMBuiltin {
 
         @Specialization
         public double executeIntrinsic(double value) {
@@ -57,7 +57,7 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMLog extends LLVMIntrinsic {
+    public abstract static class LLVMLog extends LLVMBuiltin {
 
         @Specialization
         public double executeIntrinsic(double value) {
@@ -67,7 +67,7 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMLog2 extends LLVMIntrinsic {
+    public abstract static class LLVMLog2 extends LLVMBuiltin {
 
         private static final double LOG_2 = Math.log(2);
 
@@ -79,7 +79,7 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMLog10 extends LLVMIntrinsic {
+    public abstract static class LLVMLog10 extends LLVMBuiltin {
 
         @Specialization
         public double executeIntrinsic(double value) {
@@ -89,7 +89,7 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMRint extends LLVMIntrinsic {
+    public abstract static class LLVMRint extends LLVMBuiltin {
 
         @Specialization
         public double executeIntrinsic(double value) {
@@ -99,7 +99,7 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMCeil extends LLVMIntrinsic {
+    public abstract static class LLVMCeil extends LLVMBuiltin {
 
         @Specialization
         public double executeIntrinsic(double value) {
@@ -109,7 +109,7 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMFloor extends LLVMIntrinsic {
+    public abstract static class LLVMFloor extends LLVMBuiltin {
 
         @Specialization
         public double executeIntrinsic(double value) {
@@ -128,9 +128,13 @@ public abstract class LLVMCMathsIntrinsics {
 
     }
 
-    @NodeField(name = "sourceSection", type = SourceSection.class)
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMFAbs extends LLVMIntrinsic {
+    public abstract static class LLVMFAbs extends LLVMBuiltin {
+
+        @Specialization
+        public float executeIntrinsic(float value) {
+            return Math.abs(value);
+        }
 
         @Specialization
         public double executeIntrinsic(double value) {
@@ -143,7 +147,7 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMExp extends LLVMIntrinsic {
+    public abstract static class LLVMExp extends LLVMBuiltin {
 
         @Specialization
         public double executeIntrinsic(double value) {
@@ -153,7 +157,7 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMExp2 extends LLVMIntrinsic {
+    public abstract static class LLVMExp2 extends LLVMBuiltin {
 
         @Specialization
         public double executeIntrinsic(double value) {
@@ -199,9 +203,8 @@ public abstract class LLVMCMathsIntrinsics {
 
     }
 
-    @NodeField(name = "sourceSection", type = SourceSection.class)
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMPow extends LLVMIntrinsic {
+    public abstract static class LLVMPow extends LLVMBuiltin {
 
         @Specialization
         public float executeFloat(float val, int pow) {
@@ -233,9 +236,6 @@ public abstract class LLVMCMathsIntrinsics {
             return val.pow(pow);
         }
 
-        @Override
-        public abstract SourceSection getSourceSection();
-
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -249,7 +249,7 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMSin extends LLVMIntrinsic {
+    public abstract static class LLVMSin extends LLVMBuiltin {
 
         @Specialization
         public double executeIntrinsic(double value) {
@@ -294,7 +294,7 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMCos extends LLVMIntrinsic {
+    public abstract static class LLVMCos extends LLVMBuiltin {
 
         @Specialization
         public double executeIntrinsic(double value) {
@@ -396,5 +396,19 @@ public abstract class LLVMCMathsIntrinsics {
             return (float) Math.atan2(value1, value2);
         }
 
+    }
+
+    @NodeChildren({@NodeChild(value = "magnitude", type = LLVMExpressionNode.class), @NodeChild(value = "sign", type = LLVMExpressionNode.class)})
+    public abstract static class LLVMCopySign extends LLVMBuiltin {
+
+        @Specialization
+        public float executeFloat(float magnitude, float sign) {
+            return Math.copySign(magnitude, sign);
+        }
+
+        @Specialization
+        public double executeDouble(double magnitude, double sign) {
+            return Math.copySign(magnitude, sign);
+        }
     }
 }
