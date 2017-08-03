@@ -314,7 +314,6 @@ final class LLVMComparisonFactory {
                     throw new AssertionError(llvmType);
             }
         } else if (llvmType instanceof VectorType && ((VectorType) llvmType).getElementType() instanceof PointerType) {
-            // TODO either throw an assertion error, as it is done for double or float or do something like this
             return visitAddressVectorComparison(left, right, condition);
         } else {
             throw new AssertionError(llvmType);
