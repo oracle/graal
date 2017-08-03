@@ -214,6 +214,13 @@ public interface Feature {
     }
 
     /**
+     * Access methods available for {@link Feature#afterImageWrite}.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    interface AfterImageWriteAccess extends FeatureAccess {
+    }
+
+    /**
      * This method is called immediately after the constructor, to check whether the feature is part
      * of the configuration or not. If this method returns false, the feature is not included in the
      * list of features and no other methods are called (in particular, the
@@ -305,6 +312,14 @@ public interface Feature {
      * @param access The supported operations that the feature can perform at this time.
      */
     default void beforeImageWrite(BeforeImageWriteAccess access) {
+    }
+
+    /**
+     * Handler for altering the image (or shared object) that the linker command produced.
+     *
+     * @param access The supported operations that the feature can perform at this time.
+     */
+    default void afterImageWrite(AfterImageWriteAccess access) {
     }
 
     /**
