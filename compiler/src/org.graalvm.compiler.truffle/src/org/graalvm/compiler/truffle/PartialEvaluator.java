@@ -33,6 +33,7 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrum
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleIterativePartialEscape;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TrufflePerformanceWarningsAreFatal;
 
+import java.lang.invoke.MethodHandle;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -330,7 +331,7 @@ public abstract class PartialEvaluator {
             for (ValueNode argument : arguments) {
                 if (argument.isConstant()) {
                     JavaConstant constant = argument.asJavaConstant();
-                    if (constant.getJavaKind() == JavaKind.Object && constant.isNonNull()) {
+                    if (constant.getJavaKind() == JavaKind.Object && snippetReflection.asObject(MethodHandle.class, constant) != null) {
                         return true;
                     }
                 }
