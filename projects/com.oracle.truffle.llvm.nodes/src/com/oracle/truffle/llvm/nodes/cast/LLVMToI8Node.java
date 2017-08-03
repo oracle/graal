@@ -168,6 +168,11 @@ public abstract class LLVMToI8Node extends LLVMExpressionNode {
         public byte executeI8(byte from) {
             return from;
         }
+
+        @Specialization
+        public byte executeI8(LLVMIVarBit from) {
+            return from.getZeroExtendedByteValue();
+        }
     }
 
     public abstract static class LLVMToI8BitNode extends LLVMToI8Node {

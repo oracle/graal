@@ -179,7 +179,7 @@ public abstract class LLVMMemory {
             loadedBytes[i] = getI8(currentAddressPtr);
             currentAddressPtr += Byte.BYTES;
         }
-        return LLVMIVarBit.create(bitWidth, loadedBytes);
+        return LLVMIVarBit.create(bitWidth, loadedBytes, bitWidth, false);
     }
 
     public static long getI64(LLVMAddress addr) {

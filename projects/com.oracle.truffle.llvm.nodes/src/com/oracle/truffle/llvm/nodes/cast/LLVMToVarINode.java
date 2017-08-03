@@ -65,13 +65,13 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public LLVMIVarBit executeI8(LLVMIVarBit from) {
-            return LLVMIVarBit.create(getBits(), from.getSignExtendedBytes());
+        public LLVMIVarBit executeVarI(LLVMIVarBit from) {
+            return LLVMIVarBit.create(getBits(), from.getSignExtendedBytes(), from.getBitSize(), true);
         }
 
         @Specialization
-        public LLVMIVarBit executeI8(LLVM80BitFloat from) {
-            return LLVMIVarBit.create(getBits(), from.getBytes());
+        public LLVMIVarBit execute80BitFloat(LLVM80BitFloat from) {
+            return LLVMIVarBit.create(getBits(), from.getBytes(), LLVM80BitFloat.BIT_WIDTH, true);
         }
     }
 
@@ -82,13 +82,28 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
         public abstract int getBits();
 
         @Specialization
+        public LLVMIVarBit executeI8(byte from) {
+            return LLVMIVarBit.createZeroExt(getBits(), from);
+        }
+
+        @Specialization
+        public LLVMIVarBit executeI16(short from) {
+            return LLVMIVarBit.createZeroExt(getBits(), from);
+        }
+
+        @Specialization
         public LLVMIVarBit executeI32(int from) {
             return LLVMIVarBit.createZeroExt(getBits(), from);
         }
 
         @Specialization
-        public LLVMIVarBit executeI32(long from) {
+        public LLVMIVarBit executeI64(long from) {
             return LLVMIVarBit.createZeroExt(getBits(), from);
+        }
+
+        @Specialization
+        public LLVMIVarBit executeVarI(LLVMIVarBit from) {
+            return LLVMIVarBit.create(getBits(), from.getBytes(), from.getBitSize(), false);
         }
     }
 
@@ -97,7 +112,7 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMIVarBit execute80BitFloat(LLVM80BitFloat from) {
-            return LLVMIVarBit.create(80, from.getBytes());
+            return LLVMIVarBit.create(LLVM80BitFloat.BIT_WIDTH, from.getBytes(), LLVM80BitFloat.BIT_WIDTH, false);
         }
     }
 
