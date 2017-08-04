@@ -153,7 +153,7 @@ public class LoopFragmentInside extends LoopFragment {
             if (duplicatedNode != null) {
                 mainPhiNode.setValueAt(1, duplicatedNode);
             } else {
-                assert mainLoopBegin.isPhiAtMerge(mainPhiNode.valueAt(1));
+                assert mainPhiNode.valueAt(1).isConstant() || mainLoopBegin.isPhiAtMerge(mainPhiNode.valueAt(1)) : mainPhiNode.valueAt(1);
             }
         }
 
