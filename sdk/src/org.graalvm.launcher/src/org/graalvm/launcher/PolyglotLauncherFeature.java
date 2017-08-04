@@ -22,41 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativeimage;
+package org.graalvm.launcher;
 
-import java.util.Map;
+import org.graalvm.nativeimage.Feature;
 
-import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
-import org.graalvm.options.OptionDescriptor;
-
-/**
- * Used for manipulating options at run time.
- */
-public final class RuntimeOptions {
-
-    private RuntimeOptions() {
-    }
-
-    /**
-     * Set the value of an option at run time.
-     *
-     * @param optionName The name of the option to be changed.
-     * @param value The new value for the option.
-     */
-    public static void set(String optionName, Object value) {
-        ImageSingletons.lookup(RuntimeOptionsSupport.class).set(optionName, value);
-    }
-
-    /**
-     * Get the value of an option at run time.
-     *
-     * @param optionName The name of the option to be accessed.
-     */
-    public static <T> T get(String optionName) {
-        return ImageSingletons.lookup(RuntimeOptionsSupport.class).get(optionName);
-    }
-
-    public static Map<String, OptionDescriptor> getOptions() {
-        return ImageSingletons.lookup(RuntimeOptionsSupport.class).getOptions();
+public class PolyglotLauncherFeature implements Feature {
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        PolyglotLauncher.AOT_LAUNCHER_CLASSES.values().forEach(access::registerForReflectiveInstantiation);
     }
 }

@@ -23,7 +23,17 @@ suite = {
   "snippetsPattern" : ".*(Snippets|doc-files).*",
   "defaultLicense" : "GPLv2-CPE",
   "imports": {},
-  "libraries" : {},
+  "libraries" : {
+    "JLINE" : {
+      "sha1" : "fdedd5f2522122102f0b3db85fe7aa563a009926",
+      "maven" : {
+        "groupId" : "jline",
+        "artifactId" : "jline",
+        "version" : "2.14.5",
+      },
+      "license" : "BSD-new"
+    },
+  },
   "projects" : {
     "org.graalvm.options" : {
       "subDir" : "src",
@@ -67,10 +77,23 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.word",
+        "org.graalvm.options",
       ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "1.8",
       "workingSets" : "API,SDK",
+    },
+    "org.graalvm.launcher" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.polyglot",
+        "org.graalvm.nativeimage",
+        "JLINE",
+      ],
+      "javaCompliance" : "1.8",
+      "workingSets" : "Truffle,Tools",
+      "checkstyle" : "org.graalvm.word",
     },
   },
   "licenses" : {
@@ -110,5 +133,15 @@ GraalVM removes the isolation between programming languages and enables interope
       ],
       "maven" : False,
     },
- },
+    "LAUNCHER" : {
+      "subDir" : "src",
+      "moduleName" : "org.graalvm.launcher",
+      "dependencies" : [
+        "org.graalvm.launcher",
+      ],
+      "distDependencies" : [
+        "GRAAL_SDK",
+      ],
+    },
+  },
 }

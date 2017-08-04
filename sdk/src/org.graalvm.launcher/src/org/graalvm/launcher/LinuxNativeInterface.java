@@ -22,41 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativeimage;
+package org.graalvm.launcher;
 
-import java.util.Map;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 
-import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
-import org.graalvm.options.OptionDescriptor;
+@Platforms(Platform.LINUX.class)
+class LinuxNativeInterface {
 
-/**
- * Used for manipulating options at run time.
- */
-public final class RuntimeOptions {
-
-    private RuntimeOptions() {
+    public static int errno() {
+        return __errno_location().read();
     }
 
-    /**
-     * Set the value of an option at run time.
-     *
-     * @param optionName The name of the option to be changed.
-     * @param value The new value for the option.
-     */
-    public static void set(String optionName, Object value) {
-        ImageSingletons.lookup(RuntimeOptionsSupport.class).set(optionName, value);
-    }
-
-    /**
-     * Get the value of an option at run time.
-     *
-     * @param optionName The name of the option to be accessed.
-     */
-    public static <T> T get(String optionName) {
-        return ImageSingletons.lookup(RuntimeOptionsSupport.class).get(optionName);
-    }
-
-    public static Map<String, OptionDescriptor> getOptions() {
-        return ImageSingletons.lookup(RuntimeOptionsSupport.class).getOptions();
-    }
+    // Checkstyle: stop method name check
+    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+    private static native CIntPointer __errno_location();
+    // Checkstyle: resume method name check
 }

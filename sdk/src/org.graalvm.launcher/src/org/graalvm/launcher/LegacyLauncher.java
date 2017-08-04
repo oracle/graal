@@ -22,41 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativeimage;
+package org.graalvm.launcher;
 
-import java.util.Map;
+import java.lang.reflect.Method;
+import java.util.Arrays;
 
-import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
-import org.graalvm.options.OptionDescriptor;
+import org.graalvm.polyglot.Engine;
 
-/**
- * Used for manipulating options at run time.
- */
-public final class RuntimeOptions {
+public final class LegacyLauncher {
 
-    private RuntimeOptions() {
-    }
-
-    /**
-     * Set the value of an option at run time.
-     *
-     * @param optionName The name of the option to be changed.
-     * @param value The new value for the option.
-     */
-    public static void set(String optionName, Object value) {
-        ImageSingletons.lookup(RuntimeOptionsSupport.class).set(optionName, value);
-    }
-
-    /**
-     * Get the value of an option at run time.
-     *
-     * @param optionName The name of the option to be accessed.
-     */
-    public static <T> T get(String optionName) {
-        return ImageSingletons.lookup(RuntimeOptionsSupport.class).get(optionName);
-    }
-
-    public static Map<String, OptionDescriptor> getOptions() {
-        return ImageSingletons.lookup(RuntimeOptionsSupport.class).getOptions();
+    public static void main(String[] args) throws NoSuchMethodException, SecurityException {
+        String className = args[0];
+        Method loadClassMethod = Engine.class.getDeclaredMethod("loadLanguageClass", String.class);
+        try {
+            loadClassMethod.setAccessible(true);
+            Class<?> result = (Class<?>) loadClassMethod.invoke(null, className);
+            result.getMethod("main", String[].class).invoke(null, (Object) Arrays.copyOfRange(args, 1, args.length));
+        } catch (NoSuchMethodException | SecurityException e) {
+            e.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
     }
 }
