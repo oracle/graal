@@ -276,7 +276,7 @@ public final class Metadata implements ParserListener {
                 final int globalIndex = (int) args[i++];
                 while (i < args.length) {
                     final MDKind attachmentKind = metadata.getKind(args[i++]);
-                    final MDReference attachment = metadata.getMDRefOrNullRef(args[i++]);
+                    final MDReference attachment = metadata.getMDRef(args[i++]);
                     container.attachSymbolMetadata(globalIndex, new MDAttachment(attachmentKind, attachment));
                 }
                 break;

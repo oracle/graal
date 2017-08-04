@@ -47,7 +47,6 @@ import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.enums.AsmDialect;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.InlineAsmConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.MetadataConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.AllocateInstruction;
@@ -286,36 +285,46 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         createFrameWrite(nodeFactory.createCompareExchangeInstruction(runtime, cmpxchg.getType(), elementType, ptrNode, cmpNode, newNode), cmpxchg);
     }
 
+    private boolean visitDebugDeclaration(VoidCallInstruction call) {
+        if (!runtime.getContext().getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI) || call.getArgumentCount() < 1) {
+            return false;
+        }
+
+        final Symbol symbol = call.getArgument(0);
+        final ValueInstruction value;
+        if (symbol instanceof ValueInstruction) {
+            value = (ValueInstruction) symbol;
+        } else {
+            return false;
+        }
+
+        final SourceModel.Variable var = value.getSourceVariable();
+        if (var == null) {
+            return false;
+        }
+
+        FrameSlot debugSlot = frame.findOrAddFrameSlot(LLVMDebugSlotType.FRAMESLOT_NAME, FrameSlotKind.Object);
+        LLVMExpressionNode valueRead = symbols.resolve(symbol);
+        addInstruction(nodeFactory.createDebugDeclaration(var.getName(), var.getType(), debugSlot, valueRead));
+        return true;
+    }
+
+    private static final String LLVM_DEBUG_DECLARE = "@llvm.dbg.declare";
+    private static final String LLVM_DEBUG_VALUE = "@llvm.dbg.value";
+
     @Override
     public void visit(VoidCallInstruction call) {
         final Symbol target = call.getCallTarget();
 
         if (target instanceof FunctionDeclaration) {
             final String name = ((FunctionDeclaration) target).getName();
-            if ("@llvm.dbg.declare".equals(name) && call.getArgumentCount() >= 1) {
-                if (runtime.getContext().getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
-                    Symbol allocationSiteSymbol = call.getArgument(0);
-                    if (allocationSiteSymbol instanceof MetadataConstant) {
-                        Symbol resolvedAllocationSiteSymbol = symbols.getSymbol((MetadataConstant) allocationSiteSymbol);
-                        if (resolvedAllocationSiteSymbol != null && resolvedAllocationSiteSymbol instanceof ValueInstruction) {
-                            SourceModel.Variable var = ((ValueInstruction) resolvedAllocationSiteSymbol).getSourceVariable();
-                            if (var != null) {
-                                FrameSlot debugSlot = frame.findOrAddFrameSlot(LLVMDebugSlotType.FRAMESLOT_NAME, FrameSlotKind.Object);
-                                // TODO the argument to the call is a metadata constant so lifetime
-                                // analysis does not consider that the referenced object needs to be
-                                // alive at this point
-                                LLVMExpressionNode valueRead = symbols.resolve(resolvedAllocationSiteSymbol);
-                                LLVMExpressionNode debugDeclaration = nodeFactory.createDebugDeclaration(var.getName(), var.getType(), debugSlot, valueRead);
-                                addInstruction(debugDeclaration);
-                                return;
-                            }
-                        }
-                    }
+            if (LLVM_DEBUG_DECLARE.equals(name)) {
+                if (!visitDebugDeclaration(call)) {
+                    handleNullerInfo();
                 }
-                handleNullerInfo();
                 return;
 
-            } else if ("@llvm.dbg.declare".equals(name) || "@llvm.dbg.value".equals(name)) {
+            } else if (LLVM_DEBUG_VALUE.equals(name)) {
                 // these intrinsics are debug information and should be resolved during parsing, not
                 // at runtime
                 handleNullerInfo();

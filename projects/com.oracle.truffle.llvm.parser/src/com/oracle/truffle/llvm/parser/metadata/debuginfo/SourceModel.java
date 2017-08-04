@@ -31,12 +31,17 @@ package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
-import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
+import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariableExpression;
+import com.oracle.truffle.llvm.parser.metadata.MDKind;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.MetadataConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
+import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
+import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
@@ -54,7 +59,7 @@ public final class SourceModel {
 
     public static SourceModel generate(ModelModule irModel) {
         final Parser parser = new Parser();
-        irModel.getMetadata().accept(parser.mdGlobalVisitor);
+        irModel.getMetadata().accept(parser);
         irModel.accept(parser);
         return parser.sourceModel;
     }
@@ -124,11 +129,13 @@ public final class SourceModel {
     private SourceModel() {
     }
 
-    private static final class Parser implements ModelVisitor, MetadataVisitor, FunctionVisitor, InstructionVisitorAdapter {
+    private static final class Parser implements ModelVisitor, MDFollowRefVisitor, FunctionVisitor, InstructionVisitorAdapter {
 
         private final SourceModel sourceModel;
 
         private Function currentFunction = null;
+
+        private GlobalValueSymbol currentGlobal = null;
 
         private final MDTypeExtractor typeExtractor = new MDTypeExtractor();
 
@@ -142,6 +149,32 @@ public final class SourceModel {
             function.accept(this);
             function.setSourceFunction(currentFunction);
             currentFunction = null;
+        }
+
+        private void visitGlobal(GlobalValueSymbol global) {
+            if (global.hasAttachedMetadata()) {
+                final MDBaseNode md = global.getMetadataAttachment(MDKind.DBG_NAME);
+                if (md != null) {
+                    currentGlobal = global;
+                    md.accept(this);
+                    currentGlobal = null;
+                }
+            }
+        }
+
+        @Override
+        public void visit(GlobalAlias alias) {
+            visitGlobal(alias);
+        }
+
+        @Override
+        public void visit(GlobalConstant constant) {
+            visitGlobal(constant);
+        }
+
+        @Override
+        public void visit(GlobalVariable variable) {
+            visitGlobal(variable);
         }
 
         @Override
@@ -165,6 +198,11 @@ public final class SourceModel {
             if (alloca instanceof ValueInstruction) {
                 Symbol mdLocalMDRef = call.getArgument(1);
                 if (mdLocalMDRef instanceof MetadataConstant) {
+
+                    // ensure that lifetime analysis does not kill the variable before it is used in
+                    // the call
+                    call.replace(call.getArgument(0), alloca);
+
                     final long mdIndex = ((MetadataConstant) mdLocalMDRef).getValue();
                     final MDBaseNode mdLocal = currentFunction.definition.getMetadata().getMDRef(mdIndex);
                     LLVMDebugType type = typeExtractor.parseType(mdLocal);
@@ -176,16 +214,26 @@ public final class SourceModel {
             }
         }
 
-        private final MDFollowRefVisitor mdGlobalVisitor = new MDFollowRefVisitor() {
-
-            @Override
-            public void visit(MDGlobalVariable mdGlobal) {
-                String name = MDNameExtractor.getName(mdGlobal.getName());
-                Symbol symbol = MDSymbolExtractor.getSymbol(mdGlobal.getVariable());
-                LLVMDebugType type = typeExtractor.parseType(mdGlobal.getType());
-                Variable globalVar = new Variable(name, symbol, type);
-                sourceModel.globals.add(globalVar);
+        @Override
+        public void visit(MDGlobalVariable mdGlobal) {
+            String name = MDNameExtractor.getName(mdGlobal.getName());
+            Symbol symbol;
+            if (currentGlobal != null) {
+                symbol = currentGlobal;
+            } else {
+                symbol = MDSymbolExtractor.getSymbol(mdGlobal.getVariable());
             }
-        };
+            if (symbol == null) {
+                return;
+            }
+            LLVMDebugType type = typeExtractor.parseType(mdGlobal.getType());
+            Variable globalVar = new Variable(name, symbol, type);
+            sourceModel.globals.add(globalVar);
+        }
+
+        @Override
+        public void visit(MDGlobalVariableExpression md) {
+            md.getGlobalVariable().accept(this);
+        }
     }
 }

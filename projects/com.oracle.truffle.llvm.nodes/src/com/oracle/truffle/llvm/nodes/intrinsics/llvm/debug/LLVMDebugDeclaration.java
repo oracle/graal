@@ -78,10 +78,8 @@ public abstract class LLVMDebugDeclaration extends LLVMExpressionNode {
             frame.setObject(debugSlot, debugObj);
         }
 
-        final Object localsContainer = debugObj.get(LLVMDebugSlotType.LOCALS.getName());
         final LLVMDebugObject object = instantiate(varType, 0L, new LLVMAddressValueProvider(address));
-        ((DynamicObject) localsContainer).define(varName, object);
-
+        debugObj.define(varName, object);
         return null;
     }
 
@@ -98,11 +96,11 @@ public abstract class LLVMDebugDeclaration extends LLVMExpressionNode {
             frame.setObject(debugSlot, debugObj);
         }
 
-        final Object globalsContainer = debugObj.get(LLVMDebugSlotType.GLOBALS.getName());
+        debugObj = LLVMDebugSlotType.findOrAddGlobalsContainer(debugObj);
+
         final LLVMAddress address = globalAccess.getNativeLocation(global);
         final LLVMDebugObject object = instantiate(varType, 0L, new LLVMAddressValueProvider(address));
-        ((DynamicObject) globalsContainer).define(varName, object);
-
+        debugObj.define(varName, object);
         return null;
     }
 
