@@ -35,7 +35,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.spi.FileTypeDetector;
 import java.util.Collection;
-import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
 
@@ -264,15 +263,7 @@ class PolyglotSource extends AbstractSourceImpl {
             builder.interactive();
         }
 
-        String mimeType = "content/unknown";
-        Map<String, LanguageCache> languages = LanguageCache.languages();
-        for (Map.Entry<String, LanguageCache> langEntry : languages.entrySet()) {
-            if (language.equals(langEntry.getValue().getId())) {
-                mimeType = langEntry.getKey();
-                break;
-            }
-        }
-        builder.mimeType(mimeType);
+        builder.mimeType("x-unknown");
 
         try {
             return engineImpl.getAPIAccess().newSource(language, builder.build());
