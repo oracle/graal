@@ -2,6 +2,7 @@ cache:
   directories:
   - $HOME/.cache/pip
   - $HOME/.m2
+  - $HOME/.mx
 dist: trusty
 sudo: required
 language: java
