@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
+import com.oracle.truffle.llvm.parser.metadata.Flags;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDBasicType;
 import com.oracle.truffle.llvm.parser.metadata.MDCompositeType;
@@ -258,6 +259,12 @@ final class MDTypeExtractor implements MetadataVisitor {
                     if (baseType == null) {
                         baseType = LLVMDebugType.UNKNOWN_TYPE;
                     }
+                    if (Flags.BITFIELD.isSetIn(mdType.getFlags())) {
+                        LLVMDebugDecoratorType decorator = new LLVMDebugDecoratorType(size, align, offset, Function.identity(), l -> size);
+                        final LLVMDebugType finalBaseType = baseType;
+                        decorator.setBaseType(() -> finalBaseType);
+                        baseType = decorator;
+                    }
                     type.setElementType(baseType);
                     break;
                 }
@@ -297,7 +304,7 @@ final class MDTypeExtractor implements MetadataVisitor {
                         default:
                             decorator = Function.identity();
                     }
-                    final LLVMDebugDecoratorType type = new LLVMDebugDecoratorType(size, align, offset, decorator);
+                    final LLVMDebugDecoratorType type = new LLVMDebugDecoratorType(size, align, offset, decorator, Function.identity());
                     parsedTypes.put(mdType, type);
                     final MDReference mdBaseType = mdType.getBaseType();
                     mdBaseType.accept(this);

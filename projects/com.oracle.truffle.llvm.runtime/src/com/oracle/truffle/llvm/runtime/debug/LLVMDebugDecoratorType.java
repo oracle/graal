@@ -38,16 +38,21 @@ public final class LLVMDebugDecoratorType extends LLVMDebugType {
 
     private final Function<String, String> nameDecorator;
 
-    public LLVMDebugDecoratorType(long size, long align, long offset, Function<String, String> nameDecorator) {
+    private final Function<Long, Long> sizeDecorator;
+
+    public LLVMDebugDecoratorType(long size, long align, long offset, Function<String, String> nameDecorator, Function<Long, Long> sizeDecorator) {
         super(size, align, offset);
         this.nameDecorator = nameDecorator;
         this.baseType = () -> LLVMDebugType.UNKNOWN_TYPE;
+        this.sizeDecorator = sizeDecorator;
     }
 
-    private LLVMDebugDecoratorType(Supplier<String> nameSupplier, long size, long align, long offset, Supplier<LLVMDebugType> baseType, Function<String, String> nameDecorator) {
+    private LLVMDebugDecoratorType(Supplier<String> nameSupplier, long size, long align, long offset, Supplier<LLVMDebugType> baseType, Function<String, String> nameDecorator,
+                    Function<Long, Long> sizeDecorator) {
         super(nameSupplier, size, align, offset);
         this.baseType = baseType;
         this.nameDecorator = nameDecorator;
+        this.sizeDecorator = sizeDecorator;
     }
 
     public void setBaseType(Supplier<LLVMDebugType> baseType) {
@@ -75,7 +80,7 @@ public final class LLVMDebugDecoratorType extends LLVMDebugType {
 
     @Override
     public long getSize() {
-        return baseType.get().getSize();
+        return sizeDecorator.apply(baseType.get().getSize());
     }
 
     @Override
@@ -131,6 +136,6 @@ public final class LLVMDebugDecoratorType extends LLVMDebugType {
     @Override
     public LLVMDebugType getOffset(long newOffset) {
         final LLVMDebugType offsetBaseType = baseType.get().getOffset(newOffset);
-        return new LLVMDebugDecoratorType(this::getName, getSize(), getAlign(), getOffset(), () -> offsetBaseType, nameDecorator);
+        return new LLVMDebugDecoratorType(this::getName, getSize(), getAlign(), getOffset(), () -> offsetBaseType, nameDecorator, sizeDecorator);
     }
 }

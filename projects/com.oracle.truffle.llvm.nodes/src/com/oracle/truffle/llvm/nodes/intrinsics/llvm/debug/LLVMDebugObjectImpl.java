@@ -57,6 +57,10 @@ abstract class LLVMDebugObjectImpl implements LLVMDebugObject {
 
     abstract Object getValue();
 
+    Object cannotRead() {
+        return String.format("Cannot read %d bits from offset %d in %s", type.getSize(), offset, value);
+    }
+
     @Override
     public Object getType() {
         return type;
@@ -75,10 +79,11 @@ abstract class LLVMDebugObjectImpl implements LLVMDebugObject {
 
         @Override
         Object getValue() {
-            if (!value.canReadId(offset, (int) type.getSize())) {
+            // TODO this needs to be improved
+            if (!value.canReadId(offset / Byte.SIZE, (int) type.getSize())) {
                 return "<unknown>";
             }
-            final long id = value.readId(offset, (int) type.getSize());
+            final long id = value.readId(offset / Byte.SIZE, (int) type.getSize());
             final Object val = type.getElementName(id);
             return val != null ? val : "<unknown>";
         }
@@ -112,13 +117,17 @@ abstract class LLVMDebugObjectImpl implements LLVMDebugObject {
 
         @Override
         public Object getValue() {
+            if (!value.canRead()) {
+                return cannotRead();
+            }
+
             LLVMDebugType actualType = this.type;
             if (actualType instanceof LLVMDebugDecoratorType) {
                 actualType = ((LLVMDebugDecoratorType) actualType).getTrueBaseType();
             }
 
             if (actualType.isPointer()) {
-                return value.readAddress(offset);
+                return value.readAddress(offset / Byte.SIZE);
             }
 
             if (actualType.isAggregate()) {
@@ -128,10 +137,10 @@ abstract class LLVMDebugObjectImpl implements LLVMDebugObject {
             if (actualType instanceof LLVMDebugBasicType) {
                 switch (((LLVMDebugBasicType) actualType).getKind()) {
                     case ADDRESS:
-                        return value.readAddress(offset);
+                        return value.readAddress(offset / Byte.SIZE);
 
                     case BOOLEAN:
-                        return value.readBoolean(offset);
+                        return value.readBoolean(offset / Byte.SIZE);
 
                     case FLOATING:
                         return readFloating();
@@ -140,71 +149,104 @@ abstract class LLVMDebugObjectImpl implements LLVMDebugObject {
                         return readSigned();
 
                     case SIGNED_CHAR:
-                        return value.readCharSigned(offset);
+                        return value.readCharSigned(offset / Byte.SIZE);
 
                     case UNSIGNED:
                         return readUnsigned();
 
                     case UNSIGNED_CHAR:
-                        return value.readCharUnsigned(offset);
+                        return value.readCharUnsigned(offset / Byte.SIZE);
                 }
             }
 
-            return value.readUnknown(offset, type.getSize());
+            return value.readUnknown(offset / Byte.SIZE, type.getSize());
         }
 
         private Object readFloating() {
             switch ((int) type.getSize()) {
                 case Float.SIZE:
-                    return value.readFloat(offset);
+                    return value.readFloat(offset / Byte.SIZE);
 
                 case Double.SIZE:
-                    return value.readDouble(offset);
+                    return value.readDouble(offset / Byte.SIZE);
 
                 case LLVM80BitFloat.BIT_WIDTH:
-                    return value.read80BitFloat(offset);
+                    return value.read80BitFloat(offset / Byte.SIZE);
 
                 default:
-                    return value.readUnknown(offset, type.getSize());
+                    return value.readUnknown(offset / Byte.SIZE, type.getSize());
             }
         }
 
         private Object readSigned() {
             switch ((int) type.getSize()) {
                 case Byte.SIZE:
-                    return value.readByteSigned(offset);
+                    return value.readByteSigned(offset / Byte.SIZE);
 
                 case Short.SIZE:
-                    return value.readShortSigned(offset);
+                    return value.readShortSigned(offset / Byte.SIZE);
 
                 case Integer.SIZE:
-                    return value.readIntSigned(offset);
+                    return value.readIntSigned(offset / Byte.SIZE);
 
                 case Long.SIZE:
-                    return value.readLongSigned(offset);
+                    return value.readLongSigned(offset / Byte.SIZE);
 
                 default:
-                    return value.readUnknown(offset, type.getSize());
+                    return readBitFieldInteger(true);
             }
         }
 
         private Object readUnsigned() {
             switch ((int) type.getSize()) {
                 case Byte.SIZE:
-                    return value.readByteUnsigned(offset);
+                    return value.readByteUnsigned(offset / Byte.SIZE);
 
                 case Short.SIZE:
-                    return value.readShortUnsigned(offset);
+                    return value.readShortUnsigned(offset / Byte.SIZE);
 
                 case Integer.SIZE:
-                    return value.readIntUnsigned(offset);
+                    return value.readIntUnsigned(offset / Byte.SIZE);
 
                 case Long.SIZE:
-                    return value.readLongUnsigned(offset);
+                    return value.readLongUnsigned(offset / Byte.SIZE);
 
                 default:
-                    return value.readUnknown(offset, type.getSize());
+                    return readBitFieldInteger(false);
             }
+
+        }
+
+        private Object readBitFieldInteger(boolean signed) {
+            // bitfields in a structured object may have arbitrary size
+            long field;
+            if (type.getSize() < Byte.SIZE) {
+                field = value.readByteUnsigned(offset / Byte.SIZE);
+            } else if (type.getSize() < Short.SIZE) {
+                field = value.readShortUnsigned(offset / Byte.SIZE);
+            } else if (type.getSize() < Integer.SIZE) {
+                field = value.readIntUnsigned(offset / Byte.SIZE);
+            } else if (type.getSize() < Long.SIZE) {
+                field = value.readLongSigned(offset / Byte.SIZE);
+            } else {
+                return cannotRead();
+            }
+
+            long shift = offset & (Byte.SIZE - 1);
+            if (shift != 0) {
+                field >>= shift;
+            }
+
+            shift = Long.SIZE - type.getSize();
+            field <<= shift;
+
+            if (signed) {
+                field >>= shift;
+            } else {
+                field >>>= shift;
+            }
+
+            return field;
         }
     }
 
@@ -233,7 +275,7 @@ abstract class LLVMDebugObjectImpl implements LLVMDebugObject {
 
         @Override
         Object getValue() {
-            return value.computeAddress(offset);
+            return value.computeAddress(offset / Byte.SIZE);
         }
     }
 }

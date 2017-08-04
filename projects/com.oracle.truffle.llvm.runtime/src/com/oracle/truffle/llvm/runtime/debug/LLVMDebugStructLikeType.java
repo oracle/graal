@@ -52,26 +52,6 @@ public final class LLVMDebugStructLikeType extends LLVMDebugType {
         members.add(member);
     }
 
-    public int getMemberCount() {
-        return members.size();
-    }
-
-    public String getMemberName(int i) {
-        if (0 <= i && i < members.size()) {
-            return members.get(i).getName();
-        } else {
-            return null;
-        }
-    }
-
-    public LLVMDebugType getMemberType(int i) {
-        if (0 <= i && i < members.size()) {
-            return members.get(i).getOffsetElementType();
-        } else {
-            return null;
-        }
-    }
-
     @Override
     public LLVMDebugType getOffset(long newOffset) {
         return new LLVMDebugStructLikeType(this::getName, getSize(), getAlign(), newOffset, members);

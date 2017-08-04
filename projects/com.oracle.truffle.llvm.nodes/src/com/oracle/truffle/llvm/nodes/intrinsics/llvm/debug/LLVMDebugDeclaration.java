@@ -112,7 +112,7 @@ public abstract class LLVMDebugDeclaration extends LLVMExpressionNode {
             for (int i = 0; i < type.getElementCount(); i++) {
                 final LLVMDebugType elementType = type.getElementType(i);
                 final String elementName = type.getElementName(i);
-                final long newOffset = baseOffset + (elementType.getOffset() / Byte.SIZE);
+                final long newOffset = baseOffset + elementType.getOffset();
 
                 final LLVMDebugObject member = instantiate(elementType, newOffset, value);
                 memberIdentifiers[i] = elementName;

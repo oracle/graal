@@ -31,11 +31,10 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
+import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
 final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
-
-    private static final String UNAVAILABLE = "<unavailable>";
 
     private final LLVMAddress baseAddress;
 
@@ -44,135 +43,140 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
     }
 
     @Override
-    public Object readBoolean(long offset) {
-        if (LLVMAddress.nullPointer().equals(baseAddress)) {
-            return UNAVAILABLE;
+    public boolean canRead() {
+        return !LLVMAddress.nullPointer().equals(baseAddress);
+    }
+
+    @Override
+    public boolean readBoolean(long offset) {
+        if (!canRead()) {
+            throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return LLVMMemory.getI1(baseAddress.increment(offset));
         }
     }
 
     @Override
-    public Object readByteSigned(long offset) {
-        if (LLVMAddress.nullPointer().equals(baseAddress)) {
-            return UNAVAILABLE;
+    public byte readByteSigned(long offset) {
+        if (!canRead()) {
+            throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return LLVMMemory.getI8(baseAddress.increment(offset));
         }
     }
 
     @Override
-    public Object readByteUnsigned(long offset) {
-        if (LLVMAddress.nullPointer().equals(baseAddress)) {
-            return UNAVAILABLE;
+    public int readByteUnsigned(long offset) {
+        if (!canRead()) {
+            throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return Byte.toUnsignedInt(LLVMMemory.getI8(baseAddress.increment(offset)));
         }
     }
 
     @Override
-    public Object readCharSigned(long offset) {
-        if (LLVMAddress.nullPointer().equals(baseAddress)) {
-            return UNAVAILABLE;
+    public char readCharSigned(long offset) {
+        if (!canRead()) {
+            throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return (char) LLVMMemory.getI8(baseAddress.increment(offset));
         }
     }
 
     @Override
-    public Object readCharUnsigned(long offset) {
-        if (LLVMAddress.nullPointer().equals(baseAddress)) {
-            return UNAVAILABLE;
+    public char readCharUnsigned(long offset) {
+        if (!canRead()) {
+            throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return (char) Byte.toUnsignedInt(LLVMMemory.getI8(baseAddress.increment(offset)));
         }
     }
 
     @Override
-    public Object readShortSigned(long offset) {
-        if (LLVMAddress.nullPointer().equals(baseAddress)) {
-            return UNAVAILABLE;
+    public short readShortSigned(long offset) {
+        if (!canRead()) {
+            throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return LLVMMemory.getI16(baseAddress.increment(offset));
         }
     }
 
     @Override
-    public Object readShortUnsigned(long offset) {
-        if (LLVMAddress.nullPointer().equals(baseAddress)) {
-            return UNAVAILABLE;
+    public int readShortUnsigned(long offset) {
+        if (!canRead()) {
+            throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return Short.toUnsignedInt(LLVMMemory.getI16(baseAddress.increment(offset)));
         }
     }
 
     @Override
-    public Object readIntSigned(long offset) {
-        if (LLVMAddress.nullPointer().equals(baseAddress)) {
-            return UNAVAILABLE;
+    public int readIntSigned(long offset) {
+        if (!canRead()) {
+            throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return LLVMMemory.getI32(baseAddress.increment(offset));
         }
     }
 
     @Override
-    public Object readIntUnsigned(long offset) {
-        if (LLVMAddress.nullPointer().equals(baseAddress)) {
-            return UNAVAILABLE;
+    public long readIntUnsigned(long offset) {
+        if (!canRead()) {
+            throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return Integer.toUnsignedLong(LLVMMemory.getI32(baseAddress.increment(offset)));
         }
     }
 
     @Override
-    public Object readLongSigned(long offset) {
-        if (LLVMAddress.nullPointer().equals(baseAddress)) {
-            return UNAVAILABLE;
+    public long readLongSigned(long offset) {
+        if (!canRead()) {
+            throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return LLVMMemory.getI64(baseAddress.increment(offset));
         }
     }
 
     @Override
-    public Object readLongUnsigned(long offset) {
-        if (LLVMAddress.nullPointer().equals(baseAddress)) {
-            return UNAVAILABLE;
+    public String readLongUnsigned(long offset) {
+        if (!canRead()) {
+            throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return Long.toUnsignedString(LLVMMemory.getI64(baseAddress.increment(offset)));
         }
     }
 
     @Override
-    public Object readFloat(long offset) {
-        if (LLVMAddress.nullPointer().equals(baseAddress)) {
-            return UNAVAILABLE;
+    public float readFloat(long offset) {
+        if (!canRead()) {
+            throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return LLVMMemory.getFloat(baseAddress.increment(offset));
         }
     }
 
     @Override
-    public Object readDouble(long offset) {
-        if (LLVMAddress.nullPointer().equals(baseAddress)) {
-            return UNAVAILABLE;
+    public double readDouble(long offset) {
+        if (!canRead()) {
+            throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return LLVMMemory.getDouble(baseAddress.increment(offset));
         }
     }
 
     @Override
-    public Object read80BitFloat(long offset) {
-        if (LLVMAddress.nullPointer().equals(baseAddress)) {
-            return UNAVAILABLE;
+    public LLVM80BitFloat read80BitFloat(long offset) {
+        if (!canRead()) {
+            throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return LLVMMemory.get80BitFloat(baseAddress.increment(offset));
         }
     }
 
     @Override
-    public Object readAddress(long offset) {
-        if (LLVMAddress.nullPointer().equals(baseAddress)) {
-            return UNAVAILABLE;
+    public LLVMAddress readAddress(long offset) {
+        if (!canRead()) {
+            throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return LLVMMemory.getAddress(baseAddress.increment(offset));
         }
@@ -180,16 +184,12 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
 
     @Override
     public Object readUnknown(long offset, long size) {
-        if (LLVMAddress.nullPointer().equals(baseAddress)) {
-            return UNAVAILABLE;
-        } else {
-            return String.format("Unknown %d bits at %s", size, baseAddress.increment(offset));
-        }
+        return String.format("Unknown %d bits at %s", size, baseAddress.increment(offset));
     }
 
     @Override
     public boolean canReadId(long offset, int size) {
-        if (LLVMAddress.nullPointer().equals(baseAddress)) {
+        if (!canRead()) {
             return false;
         }
 
@@ -226,9 +226,14 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
     @Override
     public Object computeAddress(long offset) {
         if (LLVMAddress.nullPointer().equals(baseAddress)) {
-            return UNAVAILABLE;
+            return baseAddress;
         } else {
             return baseAddress.increment(offset);
         }
+    }
+
+    @Override
+    public String toString() {
+        return baseAddress.toString();
     }
 }

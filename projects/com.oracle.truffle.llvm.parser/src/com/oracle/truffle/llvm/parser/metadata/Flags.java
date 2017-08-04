@@ -27,50 +27,20 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug;
+package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+public enum Flags {
 
-public interface LLVMDebugValueProvider {
+    // see https://llvm.org/svn/llvm-project/llvm/trunk/include/llvm/IR/DebugInfoFlags.def
+    BITFIELD(1L << 19);
 
-    boolean canRead();
+    private final long mask;
 
-    boolean readBoolean(long offset);
+    Flags(long mask) {
+        this.mask = mask;
+    }
 
-    byte readByteSigned(long offset);
-
-    int readByteUnsigned(long offset);
-
-    char readCharSigned(long offset);
-
-    char readCharUnsigned(long offset);
-
-    short readShortSigned(long offset);
-
-    int readShortUnsigned(long offset);
-
-    int readIntSigned(long offset);
-
-    long readIntUnsigned(long offset);
-
-    long readLongSigned(long offset);
-
-    String readLongUnsigned(long offset);
-
-    float readFloat(long offset);
-
-    double readDouble(long offset);
-
-    LLVM80BitFloat read80BitFloat(long offset);
-
-    LLVMAddress readAddress(long offset);
-
-    Object readUnknown(long offset, long size);
-
-    boolean canReadId(long offset, int size);
-
-    long readId(long offset, int size);
-
-    Object computeAddress(long offset);
+    public boolean isSetIn(long flags) {
+        return (mask & flags) != 0;
+    }
 }
