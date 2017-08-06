@@ -72,8 +72,8 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     @Temp({REG}) protected Value temp3;
     @Temp({REG}) protected Value temp4;
 
-    @Temp({REG}) protected Value temp5;
-    @Temp({REG}) protected Value tempXMM;
+    @Temp({REG, ILLEGAL}) protected Value temp5;
+    @Temp({REG, ILLEGAL}) protected Value tempXMM;
 
     @Temp({REG, ILLEGAL}) protected Value vectorTemp1;
     @Temp({REG, ILLEGAL}) protected Value vectorTemp2;
