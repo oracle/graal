@@ -98,6 +98,7 @@ public final class LLVMParserRuntime {
         model.accept(module);
 
         DataLayoutConverter.DataSpecConverterImpl targetDataLayout = DataLayoutConverter.getConverter(layout.getDataLayout());
+        context.setNativeIntrinsicsFactory(nodeFactory.getNativeIntrinsicsFactory(language, context, targetDataLayout));
         LLVMParserRuntime runtime = new LLVMParserRuntime(source, language, context, stack, targetDataLayout, nodeFactory, module.getAliases());
 
         runtime.initializeFunctions(phiManager, labels, module.getFunctions());

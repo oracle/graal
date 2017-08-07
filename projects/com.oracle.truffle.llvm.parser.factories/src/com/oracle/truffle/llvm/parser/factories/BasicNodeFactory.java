@@ -49,6 +49,7 @@ import com.oracle.truffle.llvm.nodes.control.LLVMConditionalBranchNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMDispatchBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMIndirectBranchNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMRetNodeFactory.LLVMVoidReturnNodeGen;
+import com.oracle.truffle.llvm.nodes.control.LLVMSwitchNode.LLVMI1SwitchNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMSwitchNode.LLVMI16SwitchNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMSwitchNode.LLVMI32SwitchNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMSwitchNode.LLVMI64SwitchNode;
@@ -187,6 +188,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
+import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -344,6 +346,9 @@ public class BasicNodeFactory implements NodeFactory {
     public LLVMControlFlowNode createSwitch(LLVMParserRuntime runtime, LLVMExpressionNode cond, int[] successors, LLVMExpressionNode[] cases,
                     PrimitiveType llvmType, LLVMExpressionNode[] phiWriteNodes, SourceSection source) {
         switch (llvmType.getPrimitiveKind()) {
+            case I1:
+                LLVMExpressionNode[] i1Cases = Arrays.copyOf(cases, cases.length, LLVMExpressionNode[].class);
+                return new LLVMI1SwitchNode(cond, i1Cases, successors, phiWriteNodes, source);
             case I8:
                 LLVMExpressionNode[] i8Cases = Arrays.copyOf(cases, cases.length, LLVMExpressionNode[].class);
                 return new LLVMI8SwitchNode(cond, i8Cases, successors, phiWriteNodes, source);
@@ -812,8 +817,8 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public NativeIntrinsicProvider getNativeIntrinsicsFactory(LLVMLanguage language, LLVMContext context) {
-        return new LLVMNativeIntrinsicsProvider(context, language).collectIntrinsics();
+    public NativeIntrinsicProvider getNativeIntrinsicsFactory(LLVMLanguage language, LLVMContext context, DataSpecConverter dataLayout) {
+        return new LLVMNativeIntrinsicsProvider(context, language, dataLayout).collectIntrinsics();
     }
 
     @Override
