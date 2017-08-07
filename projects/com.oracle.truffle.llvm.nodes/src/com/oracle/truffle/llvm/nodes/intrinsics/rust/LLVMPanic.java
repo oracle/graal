@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.rust;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -66,39 +64,22 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
 
         private final StrSliceType strslice;
 
-        @CompilationFinal private int offsetFilename = -1;
-        @CompilationFinal private int offsetLineNr = -1;
+        private final int offsetFilename;
+        private final int offsetLineNr;
 
         private PanicLocType(DataSpecConverter dataLayout, Type type, StrSliceType strslice) {
             super(dataLayout, type);
             this.strslice = strslice;
+            StructureType structureType = (StructureType) ((PointerType) type).getElementType(0);
+            this.offsetFilename = structureType.getOffsetOf(1, dataLayout);
+            this.offsetLineNr = structureType.getOffsetOf(2, dataLayout);
         }
 
         RustPanicException read(long address) {
             String desc = strslice.read(address);
-            String filename = strslice.read(address + getOffsetFilename());
-            int linenr = LLVMMemory.getI32(address + getOffsetLineNr());
+            String filename = strslice.read(address + offsetFilename);
+            int linenr = LLVMMemory.getI32(address + offsetLineNr);
             return new RustPanicException(desc, filename, linenr);
-        }
-
-        private int getOffsetFilename() {
-            if (offsetFilename == -1) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.offsetFilename = getStructType().getOffsetOf(1, dataLayout);
-            }
-            return offsetFilename;
-        }
-
-        private int getOffsetLineNr() {
-            if (offsetLineNr == -1) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.offsetLineNr = getStructType().getOffsetOf(2, dataLayout);
-            }
-            return offsetLineNr;
-        }
-
-        private StructureType getStructType() {
-            return ((StructureType) ((PointerType) type).getElementType(0));
         }
 
         static PanicLocType create(DataSpecConverter dataLayout) {

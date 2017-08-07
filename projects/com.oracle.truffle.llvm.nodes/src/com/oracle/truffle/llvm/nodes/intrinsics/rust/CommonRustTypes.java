@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.rust;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
@@ -43,30 +41,23 @@ final class CommonRustTypes {
 
     static final class StrSliceType extends RustType {
 
-        @CompilationFinal private int lengthOffset = -1;
+        private final int lengthOffset;
 
         private StrSliceType(DataSpecConverter dataLayout, Type type) {
             super(dataLayout, type);
+            this.lengthOffset = ((StructureType) type).getOffsetOf(1, dataLayout);
         }
 
         @TruffleBoundary
         String read(long address) {
             long strAddr = LLVMMemory.getAddress(address).getVal();
-            int strLen = LLVMMemory.getI32(address + getLengthOffset()); // long to int
+            int strLen = LLVMMemory.getI32(address + lengthOffset);
             StringBuilder strBuilder = new StringBuilder();
             for (int i = 0; i < strLen; i++) {
                 strBuilder.append((char) Byte.toUnsignedInt(LLVMMemory.getI8(strAddr)));
                 strAddr += Byte.BYTES;
             }
             return strBuilder.toString();
-        }
-
-        private int getLengthOffset() {
-            if (lengthOffset == -1) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.lengthOffset = ((StructureType) type).getOffsetOf(1, dataLayout);
-            }
-            return lengthOffset;
         }
 
         static StrSliceType create(DataSpecConverter dataLayout) {
