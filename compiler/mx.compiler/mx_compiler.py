@@ -477,10 +477,13 @@ def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
     _gate_java_benchmark(vmargs + ['-jar', scalaDacapoJar, name, '-n', str(iterations)], r'^===== DaCapo 0\.1\.0(-SNAPSHOT)? ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
 
 
-def jvmci_ci_version_gate_runner(tasks):
+def jvmci_ci_version_gate_runner(tasks, args=[]):
     # Check that travis and ci.hocon use the same JVMCI version
     with Task('JVMCI_CI_VersionSyncCheck', tasks, tags=[mx_gate.Tags.style]) as t:
         if t: verify_jvmci_ci_versions([])
+    if jdk.javaCompliance >= '9':
+        with Task('JDK9_java_base_test', tasks, tags=[mx_gate.Tags.fullbuild]) as t:
+            if t: java_base_unittest(args)
 
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None):
 
@@ -580,7 +583,7 @@ graal_bootstrap_tests = [
 
 def _graal_gate_runner(args, tasks):
     compiler_gate_runner(['compiler', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
-    jvmci_ci_version_gate_runner(tasks)
+    jvmci_ci_version_gate_runner(tasks, args)
 
 class ShellEscapedStringAction(argparse.Action):
     """Turns a shell-escaped string into a list of arguments.
@@ -867,12 +870,35 @@ def sl(args):
     mx.get_opts().jdk = 'jvmci'
     mx_truffle.sl(args)
 
+def java_base_unittest(args):
+    """tests whether graal compiler runs on JDK9 with limited set of modules"""
+    jlink = mx.exe_suffix(join(jdk.home, 'bin', 'jlink'))
+    if not exists(jlink):
+        raise mx.JDKConfigException('jlink tool does not exist: ' + jlink)
+    basejdk_dir = join(_suite.get_output_root(), 'jdkbase')
+    basemodules = 'java.base,jdk.internal.vm.ci,jdk.unsupported,java.management,jdk.management,java.xml,java.desktop,java.logging,java.instrument'
+    if exists(basejdk_dir):
+        shutil.rmtree(basejdk_dir)
+    mx.run([jlink, '--output', basejdk_dir, '--add-modules', basemodules, '--module-path', join(jdk.home, 'jmods')])
+
+    fakeJavac = join(basejdk_dir, 'bin', 'javac')
+    open(fakeJavac, 'a').close()
+
+    basejdk = mx.JDKConfig(basejdk_dir)
+    savedJava = jdk.java
+    try:
+        jdk.java = basejdk.java
+        mx_unittest.unittest(args.extra_build_args)
+    finally:
+        jdk.java = savedJava
+
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
     'vm': [run_vm, '[-options] class [args...]'],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'nodecostdump' : [_nodeCostDump, ''],
     'verify_jvmci_ci_versions': [verify_jvmci_ci_versions, ''],
+    'java_base_unittest' : [java_base_unittest, 'Runs unittest on JDK9 java.base "only" module(s)']
 })
 
 def mx_post_parse_cmd_line(opts):
