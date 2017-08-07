@@ -29,43 +29,46 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.ObjectType;
 
-public final class LLVMDebugSlotType extends ObjectType {
+public final class LLVMDebugValueContainerType extends ObjectType {
 
     public static final String FRAMESLOT_NAME = "\tSource-Level Values";
 
-    public static final LLVMDebugSlotType CONTAINER = new LLVMDebugSlotType(FRAMESLOT_NAME);
-    public static final LLVMDebugSlotType GLOBALS = new LLVMDebugSlotType("Global Variables");
+    public static final LLVMDebugValueContainerType CONTAINER = new LLVMDebugValueContainerType(FRAMESLOT_NAME);
+    public static final LLVMDebugValueContainerType GLOBALS = new LLVMDebugValueContainerType("\tGlobal Variables");
 
     private static final Layout LAYOUT = Layout.createLayout();
     private final String name;
 
-    private LLVMDebugSlotType(String name) {
+    private LLVMDebugValueContainerType(String name) {
         this.name = name;
     }
 
+    @TruffleBoundary
     public static DynamicObject createContainer() {
-        final DynamicObject container = LAYOUT.createShape(LLVMDebugSlotType.CONTAINER).newInstance();
-        container.define(LLVMDebugSlotType.GLOBALS.getName(), LAYOUT.createShape(LLVMDebugSlotType.GLOBALS).newInstance());
+        final DynamicObject container = LAYOUT.createShape(LLVMDebugValueContainerType.CONTAINER).newInstance();
+        container.define(LLVMDebugValueContainerType.GLOBALS.getName(), LAYOUT.createShape(LLVMDebugValueContainerType.GLOBALS).newInstance());
         return container;
     }
 
+    @TruffleBoundary
     public static DynamicObject findOrAddGlobalsContainer(DynamicObject container) {
         if (container.containsKey(GLOBALS.getName())) {
             return (DynamicObject) container.get(GLOBALS.getName());
         }
-        final DynamicObject globalsContainer = LAYOUT.createShape(LLVMDebugSlotType.GLOBALS).newInstance();
-        container.define(LLVMDebugSlotType.GLOBALS.getName(), globalsContainer);
+        final DynamicObject globalsContainer = LAYOUT.createShape(LLVMDebugValueContainerType.GLOBALS).newInstance();
+        container.define(LLVMDebugValueContainerType.GLOBALS.getName(), globalsContainer);
         return globalsContainer;
     }
 
     public static boolean isInstance(TruffleObject obj) {
-        return obj instanceof DynamicObject && ((DynamicObject) obj).getShape().getObjectType() instanceof LLVMDebugSlotType;
+        return obj instanceof DynamicObject && ((DynamicObject) obj).getShape().getObjectType() instanceof LLVMDebugValueContainerType;
     }
 
     public String getName() {
@@ -79,7 +82,7 @@ public final class LLVMDebugSlotType extends ObjectType {
 
     @Override
     public ForeignAccess getForeignAccessFactory(DynamicObject object) {
-        return LLVMDebugSlotTypeMessageResolutionForeign.ACCESS;
+        return LLVMDebugValueContainerTypeMessageResolutionForeign.ACCESS;
     }
 
     @Override

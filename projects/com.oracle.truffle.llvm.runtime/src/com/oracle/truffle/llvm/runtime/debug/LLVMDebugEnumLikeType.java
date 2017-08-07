@@ -29,6 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -37,25 +40,30 @@ public final class LLVMDebugEnumLikeType extends LLVMDebugType {
 
     private final Map<Long, String> values;
 
+    @TruffleBoundary
     public LLVMDebugEnumLikeType(Supplier<String> nameSupplier, long size, long align, long offset) {
         this(nameSupplier, size, align, offset, new HashMap<>());
     }
 
+    @TruffleBoundary
     private LLVMDebugEnumLikeType(Supplier<String> nameSupplier, long size, long align, long offset, Map<Long, String> values) {
         super(nameSupplier, size, align, offset);
         this.values = values;
     }
 
     public void addValue(long id, String representation) {
+        CompilerAsserts.neverPartOfCompilation();
         values.put(id, representation);
     }
 
     @Override
+    @TruffleBoundary
     public String getElementName(long i) {
         return values.get(i);
     }
 
     @Override
+    @TruffleBoundary
     public LLVMDebugType getOffset(long newOffset) {
         return new LLVMDebugEnumLikeType(this::getName, getSize(), getAlign(), getOffset(), values);
     }

@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
@@ -48,8 +50,10 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
     }
 
     @Override
+    @TruffleBoundary
     public boolean readBoolean(long offset) {
         if (!canRead()) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return LLVMMemory.getI1(baseAddress.increment(offset));
@@ -57,8 +61,10 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
     }
 
     @Override
+    @TruffleBoundary
     public byte readByteSigned(long offset) {
         if (!canRead()) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return LLVMMemory.getI8(baseAddress.increment(offset));
@@ -66,8 +72,10 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
     }
 
     @Override
+    @TruffleBoundary
     public int readByteUnsigned(long offset) {
         if (!canRead()) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return Byte.toUnsignedInt(LLVMMemory.getI8(baseAddress.increment(offset)));
@@ -75,8 +83,10 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
     }
 
     @Override
+    @TruffleBoundary
     public char readCharSigned(long offset) {
         if (!canRead()) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return (char) LLVMMemory.getI8(baseAddress.increment(offset));
@@ -84,8 +94,10 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
     }
 
     @Override
+    @TruffleBoundary
     public char readCharUnsigned(long offset) {
         if (!canRead()) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return (char) Byte.toUnsignedInt(LLVMMemory.getI8(baseAddress.increment(offset)));
@@ -93,8 +105,10 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
     }
 
     @Override
+    @TruffleBoundary
     public short readShortSigned(long offset) {
         if (!canRead()) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return LLVMMemory.getI16(baseAddress.increment(offset));
@@ -102,8 +116,10 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
     }
 
     @Override
+    @TruffleBoundary
     public int readShortUnsigned(long offset) {
         if (!canRead()) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return Short.toUnsignedInt(LLVMMemory.getI16(baseAddress.increment(offset)));
@@ -111,8 +127,10 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
     }
 
     @Override
+    @TruffleBoundary
     public int readIntSigned(long offset) {
         if (!canRead()) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return LLVMMemory.getI32(baseAddress.increment(offset));
@@ -120,8 +138,10 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
     }
 
     @Override
+    @TruffleBoundary
     public long readIntUnsigned(long offset) {
         if (!canRead()) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return Integer.toUnsignedLong(LLVMMemory.getI32(baseAddress.increment(offset)));
@@ -129,8 +149,10 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
     }
 
     @Override
+    @TruffleBoundary
     public long readLongSigned(long offset) {
         if (!canRead()) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return LLVMMemory.getI64(baseAddress.increment(offset));
@@ -138,8 +160,10 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
     }
 
     @Override
+    @TruffleBoundary
     public String readLongUnsigned(long offset) {
         if (!canRead()) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return Long.toUnsignedString(LLVMMemory.getI64(baseAddress.increment(offset)));
@@ -147,8 +171,10 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
     }
 
     @Override
+    @TruffleBoundary
     public float readFloat(long offset) {
         if (!canRead()) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return LLVMMemory.getFloat(baseAddress.increment(offset));
@@ -156,8 +182,10 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
     }
 
     @Override
+    @TruffleBoundary
     public double readDouble(long offset) {
         if (!canRead()) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return LLVMMemory.getDouble(baseAddress.increment(offset));
@@ -165,8 +193,10 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
     }
 
     @Override
+    @TruffleBoundary
     public LLVM80BitFloat read80BitFloat(long offset) {
         if (!canRead()) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return LLVMMemory.get80BitFloat(baseAddress.increment(offset));
@@ -174,8 +204,10 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
     }
 
     @Override
+    @TruffleBoundary
     public LLVMAddress readAddress(long offset) {
         if (!canRead()) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
             return LLVMMemory.getAddress(baseAddress.increment(offset));
@@ -206,6 +238,7 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
     }
 
     @Override
+    @TruffleBoundary
     public long readId(long offset, int size) {
         switch (size) {
             case Byte.SIZE:

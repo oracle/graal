@@ -36,7 +36,7 @@ import java.util.ServiceLoader;
 
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugSlotType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueContainerType;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
@@ -155,7 +155,7 @@ public final class Sulong extends LLVMLanguage {
     protected Object findMetaObject(LLVMContext context, Object value) {
         if (value instanceof LLVMDebugObject) {
             return ((LLVMDebugObject) value).getType();
-        } else if (value instanceof TruffleObject && LLVMDebugSlotType.isInstance((TruffleObject) value)) {
+        } else if (value instanceof TruffleObject && LLVMDebugValueContainerType.isInstance((TruffleObject) value)) {
             return "";
         }
 

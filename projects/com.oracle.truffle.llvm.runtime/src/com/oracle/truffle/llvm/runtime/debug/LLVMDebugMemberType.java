@@ -29,14 +29,20 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 public final class LLVMDebugMemberType extends LLVMDebugType {
 
-    private LLVMDebugType elementType;
+    @CompilationFinal private LLVMDebugType elementType;
 
+    @TruffleBoundary
     public LLVMDebugMemberType(String name, long size, long align, long offset) {
         this(name, size, align, offset, null);
     }
 
+    @TruffleBoundary
     private LLVMDebugMemberType(String name, long size, long align, long offset, LLVMDebugType elementType) {
         super(() -> name, size, align, offset);
         this.elementType = elementType;
@@ -47,6 +53,7 @@ public final class LLVMDebugMemberType extends LLVMDebugType {
     }
 
     public void setElementType(LLVMDebugType elementType) {
+        CompilerAsserts.neverPartOfCompilation();
         this.elementType = elementType;
     }
 
@@ -55,11 +62,13 @@ public final class LLVMDebugMemberType extends LLVMDebugType {
      *
      * @return the element type with the offset of this type
      */
+    @TruffleBoundary
     LLVMDebugType getOffsetElementType() {
         return elementType != null ? elementType.getOffset(getOffset()) : null;
     }
 
     @Override
+    @TruffleBoundary
     public String toString() {
         return String.format("%s: %s", getName(), elementType != null ? elementType.getName() : null);
     }

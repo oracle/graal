@@ -29,6 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -40,6 +43,7 @@ public final class LLVMDebugDecoratorType extends LLVMDebugType {
 
     private final Function<Long, Long> sizeDecorator;
 
+    @TruffleBoundary
     public LLVMDebugDecoratorType(long size, long align, long offset, Function<String, String> nameDecorator, Function<Long, Long> sizeDecorator) {
         super(size, align, offset);
         this.nameDecorator = nameDecorator;
@@ -47,6 +51,7 @@ public final class LLVMDebugDecoratorType extends LLVMDebugType {
         this.sizeDecorator = sizeDecorator;
     }
 
+    @TruffleBoundary
     private LLVMDebugDecoratorType(Supplier<String> nameSupplier, long size, long align, long offset, Supplier<LLVMDebugType> baseType, Function<String, String> nameDecorator,
                     Function<Long, Long> sizeDecorator) {
         super(nameSupplier, size, align, offset);
@@ -56,9 +61,11 @@ public final class LLVMDebugDecoratorType extends LLVMDebugType {
     }
 
     public void setBaseType(Supplier<LLVMDebugType> baseType) {
+        CompilerAsserts.neverPartOfCompilation();
         this.baseType = baseType;
     }
 
+    @TruffleBoundary
     public LLVMDebugType getTrueBaseType() {
         final LLVMDebugType resolvedBaseType = baseType.get();
         if (resolvedBaseType instanceof LLVMDebugDecoratorType) {
@@ -69,71 +76,85 @@ public final class LLVMDebugDecoratorType extends LLVMDebugType {
     }
 
     @Override
+    @TruffleBoundary
     public String getName() {
         return nameDecorator.apply(baseType.get().getName());
     }
 
     @Override
     public void setName(Supplier<String> nameSupplier) {
+        CompilerAsserts.neverPartOfCompilation();
         baseType.get().setName(nameSupplier);
     }
 
     @Override
+    @TruffleBoundary
     public long getSize() {
         return sizeDecorator.apply(baseType.get().getSize());
     }
 
     @Override
+    @TruffleBoundary
     public long getAlign() {
         return baseType.get().getAlign();
     }
 
     @Override
+    @TruffleBoundary
     public long getOffset() {
         return baseType.get().getOffset();
     }
 
     @Override
+    @TruffleBoundary
     public boolean isPointer() {
         return baseType.get().isPointer();
     }
 
     @Override
+    @TruffleBoundary
     public boolean isAggregate() {
         return baseType.get().isAggregate();
     }
 
     @Override
+    @TruffleBoundary
     public boolean isEnum() {
         return baseType.get().isEnum();
     }
 
     @Override
+    @TruffleBoundary
     public int getElementCount() {
         return baseType.get().getElementCount();
     }
 
     @Override
+    @TruffleBoundary
     public String getElementName(long i) {
         return baseType.get().getElementName(i);
     }
 
     @Override
+    @TruffleBoundary
     public LLVMDebugType getElementType(long i) {
         return baseType.get().getElementType(i);
     }
 
     @Override
+    @TruffleBoundary
     public LLVMDebugType getElementType(String name) {
         return baseType.get().getElementType(name);
     }
 
     @Override
+    @TruffleBoundary
     public String toString() {
         return getName();
     }
 
     @Override
+    @TruffleBoundary
     public LLVMDebugType getOffset(long newOffset) {
         final LLVMDebugType offsetBaseType = baseType.get().getOffset(newOffset);
         return new LLVMDebugDecoratorType(this::getName, getSize(), getAlign(), getOffset(), () -> offsetBaseType, nameDecorator, sizeDecorator);

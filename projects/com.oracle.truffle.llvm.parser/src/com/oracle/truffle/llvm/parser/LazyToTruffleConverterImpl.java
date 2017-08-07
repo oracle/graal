@@ -56,7 +56,7 @@ import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMException;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LazyToTruffleConverter;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugSlotType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueContainerType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -96,7 +96,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
         boolean isLVIEnabled = false;
         if (context.getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
-            frame.findOrAddFrameSlot(LLVMDebugSlotType.FRAMESLOT_NAME, FrameSlotKind.Object);
+            frame.findOrAddFrameSlot(LLVMDebugValueContainerType.FRAMESLOT_NAME, FrameSlotKind.Object);
             isLVIEnabled = true;
         }
 

@@ -29,30 +29,39 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import java.util.function.Supplier;
 
 public final class LLVMDebugPointerType extends LLVMDebugType {
 
-    private Supplier<LLVMDebugType> baseType;
+    @CompilationFinal private Supplier<LLVMDebugType> baseType;
 
+    @TruffleBoundary
     public LLVMDebugPointerType(long size, long align, long offset) {
         this(LLVMDebugType.UNKNOWN_TYPE::getName, size, align, offset, () -> LLVMDebugType.UNKNOWN_TYPE);
     }
 
+    @TruffleBoundary
     private LLVMDebugPointerType(Supplier<String> nameSupplier, long size, long align, long offset, Supplier<LLVMDebugType> baseType) {
         super(nameSupplier, size, align, offset);
         this.baseType = baseType;
     }
 
+    @TruffleBoundary
     public LLVMDebugType getBaseType() {
         return baseType.get();
     }
 
     public void setBaseType(Supplier<LLVMDebugType> baseType) {
+        CompilerAsserts.neverPartOfCompilation();
         this.baseType = baseType;
     }
 
     @Override
+    @TruffleBoundary
     public LLVMDebugType getOffset(long newOffset) {
         return new LLVMDebugPointerType(this::getName, getSize(), getAlign(), newOffset, this::getBaseType);
     }

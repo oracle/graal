@@ -85,7 +85,7 @@ import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMException;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugSlotType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueContainerType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -303,9 +303,9 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             return false;
         }
 
-        FrameSlot debugSlot = frame.findOrAddFrameSlot(LLVMDebugSlotType.FRAMESLOT_NAME, FrameSlotKind.Object);
+        FrameSlot sourceValuesContainerSlot = frame.findOrAddFrameSlot(LLVMDebugValueContainerType.FRAMESLOT_NAME, FrameSlotKind.Object);
         LLVMExpressionNode valueRead = symbols.resolve(symbol);
-        addInstruction(nodeFactory.createDebugDeclaration(var.getName(), var.getType(), debugSlot, valueRead));
+        addInstruction(nodeFactory.createDebugDeclaration(var.getName(), var.getType(), sourceValuesContainerSlot, valueRead));
         return true;
     }
 

@@ -29,6 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
@@ -37,11 +40,13 @@ public final class LLVMDebugStructLikeType extends LLVMDebugType {
 
     private final List<LLVMDebugMemberType> members;
 
+    @TruffleBoundary
     public LLVMDebugStructLikeType(long size, long align, long offset) {
         super(size, align, offset);
         this.members = new ArrayList<>();
     }
 
+    @TruffleBoundary
     private LLVMDebugStructLikeType(Supplier<String> name, long size, long align, long offset, List<LLVMDebugMemberType> members) {
         super(size, align, offset);
         setName(name);
@@ -49,10 +54,12 @@ public final class LLVMDebugStructLikeType extends LLVMDebugType {
     }
 
     public void addMember(LLVMDebugMemberType member) {
+        CompilerAsserts.neverPartOfCompilation();
         members.add(member);
     }
 
     @Override
+    @TruffleBoundary
     public LLVMDebugType getOffset(long newOffset) {
         return new LLVMDebugStructLikeType(this::getName, getSize(), getAlign(), newOffset, members);
     }
@@ -63,11 +70,13 @@ public final class LLVMDebugStructLikeType extends LLVMDebugType {
     }
 
     @Override
+    @TruffleBoundary
     public int getElementCount() {
         return members.size();
     }
 
     @Override
+    @TruffleBoundary
     public String getElementName(long i) {
         if (0 <= i && i < members.size()) {
             return members.get((int) i).getName();
@@ -76,6 +85,7 @@ public final class LLVMDebugStructLikeType extends LLVMDebugType {
     }
 
     @Override
+    @TruffleBoundary
     public LLVMDebugType getElementType(long i) {
         if (0 <= i && i < members.size()) {
             return members.get((int) i).getOffsetElementType();
@@ -84,6 +94,7 @@ public final class LLVMDebugStructLikeType extends LLVMDebugType {
     }
 
     @Override
+    @TruffleBoundary
     public LLVMDebugType getElementType(String name) {
         if (name == null) {
             return null;

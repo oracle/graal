@@ -29,6 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import java.util.function.Supplier;
 
 public abstract class LLVMDebugType {
@@ -44,7 +48,7 @@ public abstract class LLVMDebugType {
     private final long size;
     private final long align;
     private final long offset;
-    private Supplier<String> nameSupplier;
+    @CompilationFinal private Supplier<String> nameSupplier;
 
     public LLVMDebugType(Supplier<String> nameSupplier, long size, long align, long offset) {
         this.nameSupplier = nameSupplier;
@@ -57,11 +61,13 @@ public abstract class LLVMDebugType {
         this(UNKNOWN_TYPE::getName, size, align, offset);
     }
 
+    @TruffleBoundary
     public String getName() {
         return nameSupplier.get();
     }
 
     public void setName(Supplier<String> nameSupplier) {
+        CompilerAsserts.neverPartOfCompilation();
         this.nameSupplier = nameSupplier;
     }
 

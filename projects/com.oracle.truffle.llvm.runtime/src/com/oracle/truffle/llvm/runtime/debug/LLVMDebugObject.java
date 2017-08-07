@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 
@@ -38,6 +39,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
  */
 public interface LLVMDebugObject extends TruffleObject {
 
+    @TruffleBoundary
     static boolean isInstance(TruffleObject object) {
         return object instanceof LLVMDebugObject;
     }

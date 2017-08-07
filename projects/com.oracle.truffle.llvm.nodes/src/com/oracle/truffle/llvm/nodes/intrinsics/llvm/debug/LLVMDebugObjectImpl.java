@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugBasicType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugDecoratorType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
@@ -55,8 +56,10 @@ abstract class LLVMDebugObjectImpl implements LLVMDebugObject {
         this.type = type;
     }
 
+    @TruffleBoundary
     abstract Object getValue();
 
+    @TruffleBoundary
     Object cannotRead() {
         return String.format("Cannot read %d bits from offset %d in %s", type.getSize(), offset, value);
     }
@@ -78,6 +81,7 @@ abstract class LLVMDebugObjectImpl implements LLVMDebugObject {
         }
 
         @Override
+        @TruffleBoundary
         Object getValue() {
             // TODO this needs to be improved
             if (!value.canReadId(offset / Byte.SIZE, (int) type.getSize())) {
@@ -89,11 +93,13 @@ abstract class LLVMDebugObjectImpl implements LLVMDebugObject {
         }
 
         @Override
+        @TruffleBoundary
         public Object[] getKeys() {
             return NO_KEYS;
         }
 
         @Override
+        @TruffleBoundary
         public Object getMember(Object identifier) {
             return null;
         }
@@ -106,16 +112,19 @@ abstract class LLVMDebugObjectImpl implements LLVMDebugObject {
         }
 
         @Override
+        @TruffleBoundary
         public Object[] getKeys() {
             return NO_KEYS;
         }
 
         @Override
+        @TruffleBoundary
         public Object getMember(Object identifier) {
             return null;
         }
 
         @Override
+        @TruffleBoundary
         public Object getValue() {
             if (!value.canRead()) {
                 return cannotRead();
@@ -162,6 +171,7 @@ abstract class LLVMDebugObjectImpl implements LLVMDebugObject {
             return value.readUnknown(offset / Byte.SIZE, type.getSize());
         }
 
+        @TruffleBoundary
         private Object readFloating() {
             switch ((int) type.getSize()) {
                 case Float.SIZE:
@@ -178,6 +188,7 @@ abstract class LLVMDebugObjectImpl implements LLVMDebugObject {
             }
         }
 
+        @TruffleBoundary
         private Object readSigned() {
             switch ((int) type.getSize()) {
                 case Byte.SIZE:
@@ -197,6 +208,7 @@ abstract class LLVMDebugObjectImpl implements LLVMDebugObject {
             }
         }
 
+        @TruffleBoundary
         private Object readUnsigned() {
             switch ((int) type.getSize()) {
                 case Byte.SIZE:
@@ -217,6 +229,7 @@ abstract class LLVMDebugObjectImpl implements LLVMDebugObject {
 
         }
 
+        @TruffleBoundary
         private Object readBitFieldInteger(boolean signed) {
             // bitfields in a structured object may have arbitrary size
             long field;
@@ -264,16 +277,19 @@ abstract class LLVMDebugObjectImpl implements LLVMDebugObject {
         }
 
         @Override
+        @TruffleBoundary
         public Object[] getKeys() {
             return memberIdentifiers;
         }
 
         @Override
+        @TruffleBoundary
         public LLVMDebugObject getMember(Object key) {
             return members.get(key);
         }
 
         @Override
+        @TruffleBoundary
         Object getValue() {
             return value.computeAddress(offset / Byte.SIZE);
         }

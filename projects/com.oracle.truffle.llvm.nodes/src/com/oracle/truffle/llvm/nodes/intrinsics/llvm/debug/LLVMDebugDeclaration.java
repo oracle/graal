@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -38,7 +39,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugSlotType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueContainerType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugType;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
@@ -50,12 +51,13 @@ import java.util.Map;
 @NodeChild(value = "accessor", type = LLVMExpressionNode.class)
 public abstract class LLVMDebugDeclaration extends LLVMExpressionNode {
 
-    private final FrameSlot debugSlot;
+    /** Contains the object that stores the source-level variables. */
+    private final FrameSlot sourceValuesContainerSlot;
     private final String varName;
     private final LLVMDebugType varType;
 
-    public LLVMDebugDeclaration(String varName, LLVMDebugType varType, FrameSlot debugSlot) {
-        this.debugSlot = debugSlot;
+    public LLVMDebugDeclaration(String varName, LLVMDebugType varType, FrameSlot sourceValuesContainerSlot) {
+        this.sourceValuesContainerSlot = sourceValuesContainerSlot;
         this.varName = varName;
         this.varType = varType;
     }
@@ -67,15 +69,15 @@ public abstract class LLVMDebugDeclaration extends LLVMExpressionNode {
 
     @Specialization
     public Object readAddress(VirtualFrame frame, LLVMAddress address) {
-        final Object debugSlotVal = frame.getValue(debugSlot);
+        final Object debugSlotVal = frame.getValue(sourceValuesContainerSlot);
         DynamicObject debugObj;
 
         if (debugSlotVal instanceof DynamicObject) {
             debugObj = (DynamicObject) debugSlotVal;
 
         } else {
-            debugObj = LLVMDebugSlotType.createContainer();
-            frame.setObject(debugSlot, debugObj);
+            debugObj = LLVMDebugValueContainerType.createContainer();
+            frame.setObject(sourceValuesContainerSlot, debugObj);
         }
 
         final LLVMDebugObject object = instantiate(varType, 0L, new LLVMAddressValueProvider(address));
@@ -85,18 +87,18 @@ public abstract class LLVMDebugDeclaration extends LLVMExpressionNode {
 
     @Specialization
     public Object readGlobal(VirtualFrame frame, LLVMGlobalVariable global, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        final Object debugSlotVal = frame.getValue(debugSlot);
+        final Object debugSlotVal = frame.getValue(sourceValuesContainerSlot);
         DynamicObject debugObj;
 
         if (debugSlotVal instanceof DynamicObject) {
             debugObj = (DynamicObject) debugSlotVal;
 
         } else {
-            debugObj = LLVMDebugSlotType.createContainer();
-            frame.setObject(debugSlot, debugObj);
+            debugObj = LLVMDebugValueContainerType.createContainer();
+            frame.setObject(sourceValuesContainerSlot, debugObj);
         }
 
-        debugObj = LLVMDebugSlotType.findOrAddGlobalsContainer(debugObj);
+        debugObj = LLVMDebugValueContainerType.findOrAddGlobalsContainer(debugObj);
 
         final LLVMAddress address = globalAccess.getNativeLocation(global);
         final LLVMDebugObject object = instantiate(varType, 0L, new LLVMAddressValueProvider(address));
@@ -104,6 +106,7 @@ public abstract class LLVMDebugDeclaration extends LLVMExpressionNode {
         return null;
     }
 
+    @TruffleBoundary
     private LLVMDebugObject instantiate(LLVMDebugType type, long baseOffset, LLVMDebugValueProvider value) {
         if (type.isAggregate()) {
 

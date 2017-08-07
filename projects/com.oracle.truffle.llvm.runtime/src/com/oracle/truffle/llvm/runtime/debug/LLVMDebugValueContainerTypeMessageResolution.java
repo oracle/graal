@@ -36,8 +36,8 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 
-@MessageResolution(receiverType = LLVMDebugSlotType.class)
-public class LLVMDebugSlotTypeMessageResolution {
+@MessageResolution(receiverType = LLVMDebugValueContainerType.class)
+public class LLVMDebugValueContainerTypeMessageResolution {
 
     @Resolve(message = "KEYS")
     public abstract static class LLVMDebugObjectPropertiesNode extends Node {
