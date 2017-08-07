@@ -1987,7 +1987,7 @@ public class BytecodeParser implements GraphBuilderContext {
      */
     private boolean tryFastInlineAccessor(ValueNode[] args, ResolvedJavaMethod targetMethod) {
         byte[] bytecode = targetMethod.getCode();
-        if (bytecode.length == ACCESSOR_BYTECODE_LENGTH &&
+        if (bytecode != null && bytecode.length == ACCESSOR_BYTECODE_LENGTH &&
                         Bytes.beU1(bytecode, 0) == ALOAD_0 &&
                         Bytes.beU1(bytecode, 1) == GETFIELD) {
             int b4 = Bytes.beU1(bytecode, 4);
