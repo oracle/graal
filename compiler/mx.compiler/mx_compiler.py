@@ -482,7 +482,7 @@ def jvmci_ci_version_gate_runner(tasks, args=[]):
     with Task('JVMCI_CI_VersionSyncCheck', tasks, tags=[mx_gate.Tags.style]) as t:
         if t: verify_jvmci_ci_versions([])
     if jdk.javaCompliance >= '9':
-        with Task('JDK9_java_base_test', tasks, tags=[mx_gate.Tags.fullbuild]) as t:
+        with Task('JDK9_java_base_test', tasks, tags=[mx_gate.Tags.build]) as t:
             if t: java_base_unittest(args)
 
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None):
