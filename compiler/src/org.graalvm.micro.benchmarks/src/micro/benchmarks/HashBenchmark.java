@@ -22,32 +22,29 @@
  */
 package micro.benchmarks;
 
-import java.util.concurrent.ConcurrentSkipListMap;
-
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
-import org.graalvm.compiler.microbenchmarks.graal.GraalBenchmark;
-
 /**
- * Benchmarks cost of ArrayList.
+ * Benchmarks cost of hasing a character array.
  */
-public class ConcurrentSkipListBenchmark extends GraalBenchmark {
-
-    private static final int N = 100;
+public class HashBenchmark extends BenchmarkBase {
 
     @State(Scope.Benchmark)
     public static class ThreadState {
-        ConcurrentSkipListMap<Integer, Integer> list = new ConcurrentSkipListMap<>();
+        char[] characters = ("Hello world from the HashBenchmark!").toCharArray();
     }
 
     @Benchmark
     @Warmup(iterations = 20)
-    public void addBoxed(ThreadState state) {
-        for (int i = 0; i < N; ++i) {
-            state.list.put(i, i);
+    public int hash(ThreadState state) {
+        int value = 0;
+        char[] array = state.characters;
+        for (int i = 0; i < array.length; ++i) {
+            value = value * 31 + array[i];
         }
+        return value;
     }
 }

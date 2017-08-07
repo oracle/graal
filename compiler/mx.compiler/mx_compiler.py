@@ -41,7 +41,6 @@ from mx_unittest import unittest
 from mx_javamodules import as_java_module
 import mx_gate
 import mx_unittest
-import mx_microbench
 
 import mx_graal_benchmark # pylint: disable=unused-import
 import mx_graal_tools #pylint: disable=unused-import
@@ -144,22 +143,6 @@ def add_bootclasspath_append(dep):
 
 mx_gate.add_jacoco_includes(['org.graalvm.compiler.*'])
 mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution'])
-
-class JVMCIMicrobenchExecutor(mx_microbench.MicrobenchExecutor):
-
-    def parseVmArgs(self, vmArgs):
-        if isJDK8:
-            if _is_jvmci_enabled(vmArgs) and '-XX:-UseJVMCIClassLoader' not in vmArgs:
-                vmArgs = ['-XX:-UseJVMCIClassLoader'] + vmArgs
-        return ['-server'] + _parseVmArgs(vmArgs)
-
-    def parseForkedVmArgs(self, vmArgs):
-        return ['-server'] + _parseVmArgs(vmArgs)
-
-    def run_java(self, args):
-        return run_vm(args)
-
-mx_microbench.set_microbenchmark_executor(JVMCIMicrobenchExecutor())
 
 def _get_XX_option_value(vmargs, name, default):
     """
@@ -403,16 +386,6 @@ class BootstrapTest:
                 else:
                     out = None
                 run_vm(self.args + ['-XX:+UseJVMCICompiler'] + _remove_empty_entries(extraVMarguments) + ['-XX:-TieredCompilation', '-XX:+BootstrapJVMCI', '-version'], out=out)
-
-class MicrobenchRun:
-    def __init__(self, name, args, tags):
-        self.name = name
-        self.args = args
-        self.tags = tags
-
-    def run(self, tasks, extraVMarguments=None):
-        with Task(self.name + ': hosted-product ', tasks, tags=self.tags) as t:
-            if t: mx_microbench.get_microbenchmark_executor().microbench(_remove_empty_entries(extraVMarguments) + ['--', '-foe', 'true'] + self.args)
 
 class GraalTags:
     bootstrap = ['bootstrap', 'fulltest']
@@ -895,13 +868,18 @@ def java_base_unittest(args):
     finally:
         jdk.java = savedJava
 
+def microbench(*args):
+    mx.abort("`mx microbench` is deprecated.\n" +
+             "Use `mx benchmark jmh-whitebox:*` and `mx benchmark jmh-dist:*` instead!")
+
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
     'vm': [run_vm, '[-options] class [args...]'],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'nodecostdump' : [_nodeCostDump, ''],
     'verify_jvmci_ci_versions': [verify_jvmci_ci_versions, ''],
-    'java_base_unittest' : [java_base_unittest, 'Runs unittest on JDK9 java.base "only" module(s)']
+    'java_base_unittest' : [java_base_unittest, 'Runs unittest on JDK9 java.base "only" module(s)'],
+    'microbench': [microbench, ''],
 })
 
 def mx_post_parse_cmd_line(opts):

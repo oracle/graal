@@ -20,5 +20,5 @@ builds += [
   ${x52.c2} ${bench-specjvm2008-Single}           { targets: [weekly], name: "bench-compiler-specjvm2008-Single-linux-x52-c2" }
   ${x52.c2} ${bench-specjvm2008-OneVM}            { targets: [weekly], name: "bench-compiler-specjvm2008-OneVM-linux-x52-c2" }
   ${x52.c2} ${bench-specjbb2015}                  { targets: [weekly], name: "bench-compiler-specjbb2015-linux-x52-c2" }
-#  ${x52.c2} ${bench-micros-graal}                 { targets: [weekly], name: "bench-compiler-jmh-micros-graal-linux-x52-c2" }
+#  ${x52.c2} ${bench-micros-graal-dist}                 { targets: [weekly], name: "bench-compiler-jmh-micros-graal-dist-linux-x52-c2" }
 ]

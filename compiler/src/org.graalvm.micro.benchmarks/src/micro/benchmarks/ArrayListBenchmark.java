@@ -24,7 +24,6 @@ package micro.benchmarks;
 
 import java.util.ArrayList;
 
-import org.graalvm.compiler.microbenchmarks.graal.GraalBenchmark;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Scope;
@@ -35,7 +34,7 @@ import org.openjdk.jmh.annotations.Warmup;
 /**
  * Benchmarks cost of ArrayList.
  */
-public class ArrayListBenchmark extends GraalBenchmark {
+public class ArrayListBenchmark extends BenchmarkBase {
 
     private static final int N = 100;
 

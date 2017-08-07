@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.113.0",
+  "mxversion" : "5.122.0",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -1271,6 +1271,24 @@ suite = {
       "workingSets" : "Graal,Truffle,AArch64",
     },
 
+    # ------------- blackbox micro benchmarks -------------
+
+    "org.graalvm.micro.benchmarks" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JMH_1_18",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "1.8",
+      "checkPackagePrefix" : "false",
+      "annotationProcessors" : ["mx:JMH_1_18"],
+      "findbugsIgnoresGenerated" : True,
+      "workingSets" : "Graal,Bench",
+      "isTestProject" : True,
+    },
+
+
   },
 
   "distributions" : {
@@ -1535,6 +1553,24 @@ suite = {
         "JVMCI_API",
         "JVMCI_HOTSPOT",
       ],
+    },
+
+    "GRAAL_COMPILER_WHITEBOX_MICRO_BENCHMARKS" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.compiler.virtual.bench",
+        "org.graalvm.compiler.microbenchmarks",
+        "org.graalvm.compiler.truffle.bench",
+      ],
+      "distDependencies" : [
+        "GRAAL",
+        "GRAAL_TEST",
+      ],
+    },
+
+    "GRAAL_COMPILER_MICRO_BENCHMARKS" : {
+      "subDir" : "src",
+      "dependencies" : ["org.graalvm.micro.benchmarks"],
     },
   },
 }
