@@ -462,7 +462,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     /**
      * Emits code to fall through if {@code src} is NaN, otherwise jump to {@code branchOrdered}.
      */
-    private void emitNaNCheck(AMD64MacroAssembler masm, AMD64Address src, Label branchOrdered) {
+    private void emitNaNCheck(AMD64MacroAssembler masm, AMD64Address src, Label branchIfNonNaN) {
         assert kind.isNumericFloat();
         Register tempXMMReg = asRegister(tempXMM);
         if (kind == JavaKind.Float) {
@@ -471,7 +471,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
             masm.movdbl(tempXMMReg, src);
         }
         SSEOp.UCOMIS.emit(masm, kind == JavaKind.Float ? OperandSize.PS : OperandSize.PD, tempXMMReg, tempXMMReg);
-        masm.jcc(ConditionFlag.NoParity, branchOrdered);
+        masm.jcc(ConditionFlag.NoParity, branchIfNonNaN);
     }
 
     /**
