@@ -477,15 +477,15 @@ def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
     _gate_java_benchmark(vmargs + ['-jar', scalaDacapoJar, name, '-n', str(iterations)], r'^===== DaCapo 0\.1\.0(-SNAPSHOT)? ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
 
 
-def jvmci_ci_version_gate_runner(tasks, args=[]):
+def jvmci_ci_version_gate_runner(tasks):
     # Check that travis and ci.hocon use the same JVMCI version
     with Task('JVMCI_CI_VersionSyncCheck', tasks, tags=[mx_gate.Tags.style]) as t:
         if t: verify_jvmci_ci_versions([])
-    if jdk.javaCompliance >= '9':
-        with Task('JDK9_java_base_test', tasks, tags=[mx_gate.Tags.build]) as t:
-            if t: java_base_unittest(args)
 
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None):
+    if jdk.javaCompliance >= '9':
+        with Task('JDK9_java_base_test', tasks, tags=[mx_gate.Tags.build]) as t:
+            if t: java_base_unittest(extraVMarguments)
 
     # Run unit tests in hosted mode
     for r in unit_test_runs:
@@ -583,7 +583,7 @@ graal_bootstrap_tests = [
 
 def _graal_gate_runner(args, tasks):
     compiler_gate_runner(['compiler', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
-    jvmci_ci_version_gate_runner(tasks, args)
+    jvmci_ci_version_gate_runner(tasks)
 
 class ShellEscapedStringAction(argparse.Action):
     """Turns a shell-escaped string into a list of arguments.
@@ -881,6 +881,9 @@ def java_base_unittest(args):
         shutil.rmtree(basejdk_dir)
     mx.run([jlink, '--output', basejdk_dir, '--add-modules', basemodules, '--module-path', join(jdk.home, 'jmods')])
 
+    if not args:
+        args = []
+
     fakeJavac = join(basejdk_dir, 'bin', 'javac')
     open(fakeJavac, 'a').close()
 
@@ -888,7 +891,7 @@ def java_base_unittest(args):
     savedJava = jdk.java
     try:
         jdk.java = basejdk.java
-        mx_unittest.unittest(args.extra_build_args)
+        mx_unittest.unittest(args)
     finally:
         jdk.java = savedJava
 
