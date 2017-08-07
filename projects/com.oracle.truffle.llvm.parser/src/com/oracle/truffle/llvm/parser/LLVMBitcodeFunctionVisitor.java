@@ -41,7 +41,7 @@ import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
-import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolResolver;
+import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
@@ -51,14 +51,14 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
     private final List<LLVMExpressionNode> blocks;
     private final Map<String, Integer> labels;
     private final Map<InstructionBlock, List<Phi>> phis;
-    private final LLVMSymbolResolver symbols;
+    private final LLVMSymbolReadResolver symbols;
     private final NodeFactory nodeFactory;
     private final int argCount;
     private final FunctionDefinition function;
     private final LLVMLivenessAnalysisResult liveness;
 
     LLVMBitcodeFunctionVisitor(LLVMParserRuntime runtime, FrameDescriptor frame, Map<String, Integer> labels,
-                    Map<InstructionBlock, List<Phi>> phis, NodeFactory nodeFactory, int argCount, LLVMSymbolResolver symbols, FunctionDefinition functionDefinition,
+                    Map<InstructionBlock, List<Phi>> phis, NodeFactory nodeFactory, int argCount, LLVMSymbolReadResolver symbols, FunctionDefinition functionDefinition,
                     LLVMLivenessAnalysisResult liveness) {
         this.runtime = runtime;
         this.frame = frame;

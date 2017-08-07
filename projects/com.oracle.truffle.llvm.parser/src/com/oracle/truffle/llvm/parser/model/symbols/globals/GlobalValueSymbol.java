@@ -27,8 +27,10 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.globals;
+package com.oracle.truffle.llvm.parser.model.symbols.globals;
 
+import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
+import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.enums.Visibility;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
@@ -38,7 +40,10 @@ import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 
-public abstract class GlobalValueSymbol implements ValueSymbol {
+import java.util.ArrayList;
+import java.util.List;
+
+public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachmentHolder {
 
     private final Type type;
 
@@ -53,6 +58,8 @@ public abstract class GlobalValueSymbol implements ValueSymbol {
     private final Linkage linkage;
 
     private final Visibility visibility;
+
+    private List<MDAttachment> mdAttachments = null;
 
     GlobalValueSymbol(Type type, int initialiser, int align, Linkage linkage, Visibility visibility) {
         this.type = type;
@@ -109,5 +116,18 @@ public abstract class GlobalValueSymbol implements ValueSymbol {
     @Override
     public String toString() {
         return getName();
+    }
+
+    @Override
+    public boolean hasAttachedMetadata() {
+        return mdAttachments != null;
+    }
+
+    @Override
+    public List<MDAttachment> getAttachedMetadata() {
+        if (mdAttachments == null) {
+            mdAttachments = new ArrayList<>(1);
+        }
+        return mdAttachments;
     }
 }

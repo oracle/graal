@@ -36,10 +36,10 @@ import java.util.Map;
 
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.model.globals.GlobalAlias;
-import com.oracle.truffle.llvm.parser.model.globals.GlobalConstant;
-import com.oracle.truffle.llvm.parser.model.globals.GlobalValueSymbol;
-import com.oracle.truffle.llvm.parser.model.globals.GlobalVariable;
+import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
+import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
+import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;

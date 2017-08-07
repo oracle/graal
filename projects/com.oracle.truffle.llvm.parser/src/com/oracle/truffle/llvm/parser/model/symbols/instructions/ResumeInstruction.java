@@ -67,7 +67,7 @@ public final class ResumeInstruction extends VoidInstruction implements Terminat
         }
     }
 
-    public static Instruction fromSymbols(Symbols symbols, int value) {
+    public static ResumeInstruction fromSymbols(Symbols symbols, int value) {
         final ResumeInstruction inst = new ResumeInstruction();
         inst.value = symbols.getSymbol(value, inst);
         return inst;

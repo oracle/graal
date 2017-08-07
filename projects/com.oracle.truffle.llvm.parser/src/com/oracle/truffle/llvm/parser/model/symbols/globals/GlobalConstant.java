@@ -27,31 +27,25 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.util;
+package com.oracle.truffle.llvm.parser.model.symbols.globals;
 
-import java.util.Arrays;
+import com.oracle.truffle.llvm.parser.model.enums.Linkage;
+import com.oracle.truffle.llvm.parser.model.enums.Visibility;
+import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
-public final class LLVMParserAsserts {
+public final class GlobalConstant extends GlobalValueSymbol {
 
-    private LLVMParserAsserts() {
+    private GlobalConstant(Type type, int initialiser, int align, Linkage linkage, Visibility visibility) {
+        super(type, initialiser, align, linkage, visibility);
     }
 
-    public static boolean noNullElements(Object[] objects) {
-        for (Object o : objects) {
-            if (o == null) {
-                throw new AssertionError(Arrays.toString(objects));
-            }
-        }
-        return true;
+    @Override
+    public void accept(ModelVisitor visitor) {
+        visitor.visit(this);
     }
 
-    public static <T> boolean noNullElements(Iterable<T> it) {
-        for (T obj : it) {
-            if (obj == null) {
-                throw new AssertionError(it);
-            }
-        }
-        return true;
+    public static GlobalConstant create(Type type, int initialiser, int align, long linkage, long visibility) {
+        return new GlobalConstant(type, initialiser, align, Linkage.decode(linkage), Visibility.decode(visibility));
     }
-
 }

@@ -34,7 +34,7 @@ import java.util.List;
 
 public class AttributesCodeEntry {
 
-    public static final AttributesCodeEntry EMPTY = new AttributesCodeEntry(Collections.<AttributesGroup> emptyList());
+    public static final AttributesCodeEntry EMPTY = new AttributesCodeEntry(Collections.emptyList());
 
     private final List<AttributesGroup> codeEntry;
 

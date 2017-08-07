@@ -80,7 +80,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstructio
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolResolver;
+import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
@@ -103,7 +103,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     private final List<Phi> blockPhis;
     private final NodeFactory nodeFactory;
     private final int argCount;
-    private final LLVMSymbolResolver symbols;
+    private final LLVMSymbolReadResolver symbols;
     private final LLVMParserRuntime runtime;
     private final ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos;
     private final List<? extends FrameSlot> frameSlots;
@@ -113,7 +113,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     private LLVMControlFlowNode controlFlowNode;
 
     LLVMBitcodeInstructionVisitor(FrameDescriptor frame, Map<String, Integer> labels,
-                    List<Phi> blockPhis, NodeFactory nodeFactory, int argCount, LLVMSymbolResolver symbols, LLVMParserRuntime runtime,
+                    List<Phi> blockPhis, NodeFactory nodeFactory, int argCount, LLVMSymbolReadResolver symbols, LLVMParserRuntime runtime,
                     ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos) {
         this.frame = frame;
         this.labels = labels;

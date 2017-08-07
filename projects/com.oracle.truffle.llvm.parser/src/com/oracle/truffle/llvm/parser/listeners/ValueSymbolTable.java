@@ -29,36 +29,35 @@
  */
 package com.oracle.truffle.llvm.parser.listeners;
 
-import com.oracle.truffle.llvm.parser.model.generators.SymbolGenerator;
+import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.records.Records;
 import com.oracle.truffle.llvm.parser.records.ValueSymbolTableRecord;
 
 public final class ValueSymbolTable implements ParserListener {
 
-    private final SymbolGenerator generator;
+    private final IRScope container;
 
-    ValueSymbolTable(SymbolGenerator generator) {
-        this.generator = generator;
+    ValueSymbolTable(IRScope container) {
+        this.container = container;
     }
 
     @Override
     public void record(long id, long[] args) {
-        ValueSymbolTableRecord record = ValueSymbolTableRecord.decode(id);
-
+        final ValueSymbolTableRecord record = ValueSymbolTableRecord.decode(id);
         switch (record) {
             case ENTRY:
                 final String entryName = Records.toString(args, 1);
-                generator.nameEntry((int) args[0], entryName);
+                container.nameSymbol((int) args[0], entryName);
                 break;
 
             case BASIC_BLOCK_ENTRY:
                 final String blockName = Records.toString(args, 1);
-                generator.nameBlock((int) args[0], blockName);
+                container.nameBlock((int) args[0], blockName);
                 break;
 
             case FUNCTION_ENTRY:
                 final String functionName = Records.toString(args, 2);
-                generator.nameFunction((int) args[0], (int) args[1], functionName);
+                container.nameSymbol((int) args[0], functionName);
                 break;
 
             default:

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,27 +27,26 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.generators;
+package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
-import com.oracle.truffle.llvm.parser.model.enums.Linkage;
-import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
-import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import java.util.List;
 
-public interface ModuleGenerator extends SymbolGenerator {
+public interface MetadataAttachmentHolder {
 
-    void createAlias(Type type, int aliasedValue, long linkage, long visibility);
+    boolean hasAttachedMetadata();
 
-    void createFunction(FunctionType type, boolean isPrototype, Linkage linkage, AttributesCodeEntry paramattr);
+    List<MDAttachment> getAttachedMetadata();
 
-    void createTargetDataLayout(TargetDataLayout layout);
+    default void attachMetadata(MDAttachment attachment) {
+        getAttachedMetadata().add(attachment);
+    }
 
-    void createType(Type type);
-
-    void createGlobal(Type type, boolean isConstant, int initialiser, int align, long linkage, long visibility);
-
-    void exitModule();
-
-    FunctionGenerator generateFunction();
+    default MDBaseNode getMetadataAttachment(String kind) {
+        for (MDAttachment attachment : getAttachedMetadata()) {
+            if (attachment.getKind().getName().equals(kind)) {
+                return attachment.getMdRef();
+            }
+        }
+        return null;
+    }
 }

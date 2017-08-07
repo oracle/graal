@@ -27,20 +27,38 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.generators;
+package com.oracle.truffle.llvm.parser.model.symbols.globals;
 
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.metadata.MetadataList;
+import com.oracle.truffle.llvm.parser.model.enums.Linkage;
+import com.oracle.truffle.llvm.parser.model.enums.Visibility;
+import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
-public interface SymbolGenerator extends ConstantGenerator {
+public final class GlobalAlias extends GlobalValueSymbol {
 
-    void nameBlock(int index, String name);
+    private static final int ALIGN = 0;
 
-    void nameEntry(int index, String name);
+    private GlobalAlias(Type type, int aliasedValue, Linkage linkage, Visibility visibility) {
+        super(type, aliasedValue, ALIGN, linkage, visibility);
+    }
 
-    void nameFunction(int index, int offset, String name);
+    @Override
+    public void accept(ModelVisitor visitor) {
+        visitor.visit(this);
+    }
 
-    MetadataList getMetadata();
+    @Override
+    public int getAlign() {
+        return getValue() instanceof GlobalValueSymbol ? ((GlobalValueSymbol) getValue()).getAlign() : ALIGN;
+    }
 
-    Symbols getSymbols();
+    public static GlobalAlias create(Type type, int aliasedValue, long linkage, long visibility) {
+        return new GlobalAlias(type, aliasedValue, Linkage.decode(linkage), Visibility.decode(visibility));
+    }
+
+    @Override
+    public int getInitialiser() {
+        // aliases always have a value so compensate for zero test is super class
+        return super.getInitialiser() + 1;
+    }
 }

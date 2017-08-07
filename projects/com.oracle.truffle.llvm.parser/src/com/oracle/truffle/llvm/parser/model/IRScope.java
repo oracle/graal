@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,42 +27,69 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.instructions;
+package com.oracle.truffle.llvm.parser.model;
 
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
-import com.oracle.truffle.llvm.parser.metadata.MDLocation;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.metadata.MetadataList;
+import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
+import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class Instruction implements Symbol, MetadataAttachmentHolder {
+public abstract class IRScope implements MetadataAttachmentHolder {
 
-    private MDLocation debugLocation = null;
-    private List<MDAttachment> mdAttachments = null;
+    private final Symbols symbols = new Symbols();
+    private final List<Type> valueTypes = new ArrayList<>();
+    private final MetadataList metadata = new MetadataList();
 
-    public MDLocation getDebugLocation() {
-        return debugLocation;
+    protected IRScope() {
     }
 
-    public void setDebugLocation(MDLocation debugLocation) {
-        this.debugLocation = debugLocation;
+    public void addSymbol(Symbol symbol, Type type) {
+        symbols.addSymbol(symbol);
+        valueTypes.add(type);
     }
 
-    public abstract void accept(InstructionVisitor visitor);
-
-    @Override
-    public boolean hasAttachedMetadata() {
-        return mdAttachments != null;
+    public boolean isValueForwardRef(long index) {
+        return index >= valueTypes.size();
     }
 
-    @Override
-    public List<MDAttachment> getAttachedMetadata() {
-        if (mdAttachments == null) {
-            mdAttachments = new ArrayList<>(1);
+    public int getNextValueIndex() {
+        return valueTypes.size();
+    }
+
+    public Type getValueType(int i) {
+        if (i < valueTypes.size()) {
+            return valueTypes.get(i);
+        } else {
+            return null;
         }
-        return mdAttachments;
+    }
+
+    public void nameSymbol(int index, String argName) {
+        symbols.setSymbolName(index, argName);
+    }
+
+    public Symbols getSymbols() {
+        return symbols;
+    }
+
+    public void initialize(IRScope other) {
+        valueTypes.addAll(other.valueTypes);
+        symbols.addSymbols(other.symbols);
+        metadata.initialize(other.metadata);
+    }
+
+    public abstract void nameBlock(int index, String name);
+
+    public MetadataList getMetadata() {
+        return metadata;
+    }
+
+    public void attachSymbolMetadata(int index, MDAttachment attachment) {
+        symbols.attachMetadata(index, attachment);
     }
 }

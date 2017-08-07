@@ -31,10 +31,11 @@ package com.oracle.truffle.llvm.parser.model.visitors;
 
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.model.globals.GlobalAlias;
-import com.oracle.truffle.llvm.parser.model.globals.GlobalConstant;
-import com.oracle.truffle.llvm.parser.model.globals.GlobalVariable;
+import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
+import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
+import com.oracle.truffle.llvm.parser.model.target.TargetInformation;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public interface ModelVisitor {
@@ -42,34 +43,38 @@ public interface ModelVisitor {
      * We normally don't need to implement all visitors, but want to have a default implementation
      * for those visitors which are not handled explicitly. This little method allows us to do so.
      */
-    default void ifVisitNotOverwritten(@SuppressWarnings("unused") Object obj) {
+    default void defaultAction(@SuppressWarnings("unused") Object obj) {
     }
 
     default void visit(GlobalAlias alias) {
-        ifVisitNotOverwritten(alias);
+        defaultAction(alias);
     }
 
     default void visit(GlobalConstant constant) {
-        ifVisitNotOverwritten(constant);
+        defaultAction(constant);
     }
 
     default void visit(GlobalVariable variable) {
-        ifVisitNotOverwritten(variable);
+        defaultAction(variable);
     }
 
     default void visit(FunctionDeclaration function) {
-        ifVisitNotOverwritten(function);
+        defaultAction(function);
     }
 
     default void visit(FunctionDefinition function) {
-        ifVisitNotOverwritten(function);
+        defaultAction(function);
     }
 
     default void visit(TargetDataLayout layout) {
-        ifVisitNotOverwritten(layout);
+        defaultAction(layout);
+    }
+
+    default void visit(TargetInformation info) {
+        defaultAction(info);
     }
 
     default void visit(Type type) {
-        ifVisitNotOverwritten(type);
+        defaultAction(type);
     }
 }
