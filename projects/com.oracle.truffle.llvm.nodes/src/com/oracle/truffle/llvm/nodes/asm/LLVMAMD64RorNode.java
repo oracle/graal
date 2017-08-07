@@ -32,38 +32,39 @@ package com.oracle.truffle.llvm.nodes.asm;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64BarrelShifter;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public abstract class LLVMAMD64ShrNode extends LLVMExpressionNode {
+public abstract class LLVMAMD64RorNode extends LLVMExpressionNode {
     @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64ShrbNode extends LLVMExpressionNode {
+    public abstract static class LLVMAMD64RorbNode extends LLVMExpressionNode {
         @Specialization
         protected byte executeI16(byte left, byte right) {
-            return (byte) (left >>> right);
+            return LLVMAMD64BarrelShifter.ror(left, right);
         }
     }
 
     @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64ShrwNode extends LLVMExpressionNode {
+    public abstract static class LLVMAMD64RorwNode extends LLVMExpressionNode {
         @Specialization
         protected short executeI16(short left, byte right) {
-            return (short) (left >>> right);
+            return LLVMAMD64BarrelShifter.ror(left, right);
         }
     }
 
     @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64ShrlNode extends LLVMExpressionNode {
+    public abstract static class LLVMAMD64RorlNode extends LLVMExpressionNode {
         @Specialization
         protected int executeI32(int left, byte right) {
-            return left >>> right;
+            return LLVMAMD64BarrelShifter.ror(left, right);
         }
     }
 
     @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64ShrqNode extends LLVMExpressionNode {
+    public abstract static class LLVMAMD64RorqNode extends LLVMExpressionNode {
         @Specialization
         protected long executeI64(long left, byte right) {
-            return left >>> right;
+            return LLVMAMD64BarrelShifter.ror(left, right);
         }
     }
 }

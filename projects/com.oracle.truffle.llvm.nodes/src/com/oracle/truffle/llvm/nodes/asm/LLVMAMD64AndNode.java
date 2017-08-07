@@ -32,38 +32,67 @@ package com.oracle.truffle.llvm.nodes.asm;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
+@NodeChildren({@NodeChild("left"), @NodeChild("right")})
 public abstract class LLVMAMD64AndNode extends LLVMExpressionNode {
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64AndbNode extends LLVMExpressionNode {
+    @Child LLVMAMD64UpdateFlagsNode flags;
+
+    private LLVMAMD64AndNode(LLVMAMD64UpdateFlagsNode flags) {
+        this.flags = flags;
+    }
+
+    public abstract static class LLVMAMD64AndbNode extends LLVMAMD64AndNode {
+        public LLVMAMD64AndbNode(LLVMAMD64UpdateFlagsNode flags) {
+            super(flags);
+        }
+
         @Specialization
-        protected byte executeI16(byte left, byte right) {
-            return (byte) (left & right);
+        protected byte executeI16(VirtualFrame frame, byte left, byte right) {
+            byte result = (byte) (left & right);
+            flags.execute(frame, result);
+            return result;
         }
     }
 
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64AndwNode extends LLVMExpressionNode {
+    public abstract static class LLVMAMD64AndwNode extends LLVMAMD64AndNode {
+        public LLVMAMD64AndwNode(LLVMAMD64UpdateFlagsNode flags) {
+            super(flags);
+        }
+
         @Specialization
-        protected short executeI16(short left, short right) {
-            return (short) (left & right);
+        protected short executeI16(VirtualFrame frame, short left, short right) {
+            short result = (short) (left & right);
+            flags.execute(frame, result);
+            return result;
         }
     }
 
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64AndlNode extends LLVMExpressionNode {
+    public abstract static class LLVMAMD64AndlNode extends LLVMAMD64AndNode {
+        public LLVMAMD64AndlNode(LLVMAMD64UpdateFlagsNode flags) {
+            super(flags);
+        }
+
         @Specialization
-        protected int executeI32(int left, int right) {
-            return left & right;
+        protected int executeI32(VirtualFrame frame, int left, int right) {
+            int result = left & right;
+            flags.execute(frame, result);
+            return result;
         }
     }
 
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
-    public abstract static class LLVMAMD64AndqNode extends LLVMExpressionNode {
+    public abstract static class LLVMAMD64AndqNode extends LLVMAMD64AndNode {
+        public LLVMAMD64AndqNode(LLVMAMD64UpdateFlagsNode flags) {
+            super(flags);
+        }
+
         @Specialization
-        protected long executeI64(long left, long right) {
-            return left & right;
+        protected long executeI64(VirtualFrame frame, long left, long right) {
+            long result = left & right;
+            flags.execute(frame, result);
+            return result;
         }
     }
 }

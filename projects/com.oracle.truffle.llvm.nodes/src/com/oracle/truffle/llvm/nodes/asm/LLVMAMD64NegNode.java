@@ -31,38 +31,75 @@ package com.oracle.truffle.llvm.nodes.asm;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
+@NodeChild("valueNode")
 public abstract class LLVMAMD64NegNode extends LLVMExpressionNode {
-    @NodeChild("valueNode")
-    public abstract static class LLVMAMD64NegbNode extends LLVMExpressionNode {
+    @Child LLVMAMD64UpdateFlagsNode flags;
+
+    public LLVMAMD64NegNode(LLVMAMD64UpdateFlagsNode flags) {
+        this.flags = flags;
+    }
+
+    public abstract static class LLVMAMD64NegbNode extends LLVMAMD64NegNode {
+        public LLVMAMD64NegbNode(LLVMAMD64UpdateFlagsNode flags) {
+            super(flags);
+        }
+
         @Specialization
-        protected byte executeI16(byte value) {
-            return (byte) -value;
+        protected byte executeI16(VirtualFrame frame, byte value) {
+            byte result = (byte) -value;
+            boolean cf = value != 0;
+            boolean of = false;
+            flags.execute(frame, cf, of, result);
+            return result;
         }
     }
 
-    @NodeChild("valueNode")
-    public abstract static class LLVMAMD64NegwNode extends LLVMExpressionNode {
+    public abstract static class LLVMAMD64NegwNode extends LLVMAMD64NegNode {
+        public LLVMAMD64NegwNode(LLVMAMD64UpdateFlagsNode flags) {
+            super(flags);
+        }
+
         @Specialization
-        protected short executeI16(short value) {
-            return (short) -value;
+        protected short executeI16(VirtualFrame frame, short value) {
+            short result = (short) -value;
+            boolean cf = value != 0;
+            boolean of = false;
+            flags.execute(frame, cf, of, result);
+            return result;
         }
     }
 
-    @NodeChild("valueNode")
-    public abstract static class LLVMAMD64NeglNode extends LLVMExpressionNode {
+    public abstract static class LLVMAMD64NeglNode extends LLVMAMD64NegNode {
+        public LLVMAMD64NeglNode(LLVMAMD64UpdateFlagsNode flags) {
+            super(flags);
+        }
+
         @Specialization
-        protected int executeI32(int value) {
-            return -value;
+        protected int executeI32(VirtualFrame frame, int value) {
+            int result = -value;
+            boolean cf = value != 0;
+            boolean of = false;
+            flags.execute(frame, cf, of, result);
+            return result;
         }
     }
 
-    @NodeChild("valueNode")
-    public abstract static class LLVMAMD64NegqNode extends LLVMExpressionNode {
+    public abstract static class LLVMAMD64NegqNode extends LLVMAMD64NegNode {
+        public LLVMAMD64NegqNode(LLVMAMD64UpdateFlagsNode flags) {
+            super(flags);
+        }
+
         @Specialization
-        protected long executeI64(long value) {
-            return -value;
+        protected long executeI64(VirtualFrame frame, long value) {
+            long result = -value;
+            boolean cf = value != 0;
+            boolean of = false;
+            flags.execute(frame, cf, of, result);
+            return result;
         }
     }
 }

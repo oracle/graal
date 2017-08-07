@@ -445,7 +445,16 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMExpressionNode createInlineAssemblerExpression(LLVMParserRuntime runtime, String asmExpression, String asmFlags, LLVMExpressionNode[] args, Type[] argTypes, Type retType,
                     SourceSection sourceSection) {
-        Parser asmParser = new Parser(asmExpression, asmFlags, args, argTypes, retType);
+        Type[] retTypes = null;
+        int[] retOffsets = null;
+        if (retType instanceof StructureType) { // multiple out values
+            assert args[1] instanceof LLVMAllocaConstInstruction;
+            LLVMAllocaConstInstruction alloca = (LLVMAllocaConstInstruction) args[1];
+            retTypes = alloca.getTypes();
+            retOffsets = alloca.getOffsets();
+        }
+
+        Parser asmParser = new Parser(asmExpression, asmFlags, argTypes, retType, retTypes, retOffsets);
         LLVMInlineAssemblyRootNode assemblyRoot = asmParser.Parse();
         LLVMFunctionDescriptor asm = LLVMFunctionDescriptor.createDescriptor(runtime.getContext(), "<asm>", new FunctionType(MetaType.UNKNOWN, new Type[0], false), -1);
         asm.declareInSulong(Truffle.getRuntime().createCallTarget(assemblyRoot), false);
