@@ -32,6 +32,8 @@ package com.oracle.truffle.llvm.runtime.debug;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 
+import java.math.BigInteger;
+
 public interface LLVMDebugValueProvider {
 
     boolean canRead();
@@ -56,7 +58,7 @@ public interface LLVMDebugValueProvider {
 
     long readLongSigned(long offset);
 
-    String readLongUnsigned(long offset);
+    BigInteger readLongUnsigned(long offset);
 
     float readFloat(long offset);
 

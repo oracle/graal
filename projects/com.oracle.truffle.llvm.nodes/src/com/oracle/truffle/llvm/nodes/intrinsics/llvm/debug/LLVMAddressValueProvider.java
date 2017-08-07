@@ -36,6 +36,8 @@ import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
+import java.math.BigInteger;
+
 final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
 
     private final LLVMAddress baseAddress;
@@ -161,12 +163,12 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
 
     @Override
     @TruffleBoundary
-    public String readLongUnsigned(long offset) {
+    public BigInteger readLongUnsigned(long offset) {
         if (!canRead()) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Cannot read from " + baseAddress);
         } else {
-            return Long.toUnsignedString(LLVMMemory.getI64(baseAddress.increment(offset)));
+            return new BigInteger(Long.toUnsignedString(LLVMMemory.getI64(baseAddress.increment(offset))));
         }
     }
 

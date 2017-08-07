@@ -87,7 +87,48 @@ abstract class LLVMDebugObjectImpl implements LLVMDebugObject {
             if (!value.canReadId(offset / Byte.SIZE, (int) type.getSize())) {
                 return "<unknown>";
             }
-            final long id = value.readId(offset / Byte.SIZE, (int) type.getSize());
+
+            long id;
+            switch ((int) type.getSize()) {
+                case Byte.SIZE:
+                    id = value.readByteUnsigned(offset / Byte.SIZE);
+                    break;
+
+                case Short.SIZE:
+                    id = value.readShortUnsigned(offset / Byte.SIZE);
+                    break;
+
+                case Integer.SIZE:
+                    id = value.readIntUnsigned(offset / Byte.SIZE);
+                    break;
+
+                case Long.SIZE:
+                    id = value.readLongSigned(offset / Byte.SIZE);
+                    break;
+
+                default: {
+                    if (type.getSize() < Byte.SIZE) {
+                        id = value.readByteUnsigned(offset / Byte.SIZE);
+                    } else if (type.getSize() < Short.SIZE) {
+                        id = value.readShortUnsigned(offset / Byte.SIZE);
+                    } else if (type.getSize() < Integer.SIZE) {
+                        id = value.readIntUnsigned(offset / Byte.SIZE);
+                    } else if (type.getSize() < Long.SIZE) {
+                        id = value.readLongSigned(offset / Byte.SIZE);
+                    } else {
+                        return cannotRead();
+                    }
+
+                    long shift = offset & (Byte.SIZE - 1);
+                    if (shift != 0) {
+                        id >>= shift;
+                    }
+
+                    shift = Long.SIZE - type.getSize();
+                    id <<= shift;
+                    id >>= shift;
+                }
+            }
             final Object val = type.getElementName(id);
             return val != null ? val : "<unknown>";
         }
@@ -158,13 +199,21 @@ abstract class LLVMDebugObjectImpl implements LLVMDebugObject {
                         return readSigned();
 
                     case SIGNED_CHAR:
-                        return value.readCharSigned(offset / Byte.SIZE);
+                        if (type.getSize() == Byte.SIZE) {
+                            return value.readCharSigned(offset / Byte.SIZE);
+                        } else {
+                            return readBitFieldChar(true);
+                        }
 
                     case UNSIGNED:
                         return readUnsigned();
 
                     case UNSIGNED_CHAR:
-                        return value.readCharUnsigned(offset / Byte.SIZE);
+                        if (type.getSize() == Byte.SIZE) {
+                            return value.readCharUnsigned(offset / Byte.SIZE);
+                        } else {
+                            return readBitFieldChar(false);
+                        }
                 }
             }
 
@@ -260,6 +309,33 @@ abstract class LLVMDebugObjectImpl implements LLVMDebugObject {
             }
 
             return field;
+        }
+
+        @TruffleBoundary
+        private Object readBitFieldChar(boolean signed) {
+            // bitfields in a structured object may have arbitrary size
+            int field;
+            if (type.getSize() < Byte.SIZE) {
+                field = value.readByteUnsigned(offset / Byte.SIZE);
+            } else {
+                return cannotRead();
+            }
+
+            int shift = ((int) (offset)) & (Byte.SIZE - 1);
+            if (shift != 0) {
+                field >>= shift;
+            }
+
+            shift = Long.SIZE - ((int) type.getSize());
+            field <<= shift;
+
+            if (signed) {
+                field >>= shift;
+            } else {
+                field >>>= shift;
+            }
+
+            return (char) field;
         }
     }
 
