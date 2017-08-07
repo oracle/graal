@@ -64,6 +64,7 @@ import com.oracle.truffle.llvm.nodes.func.LLVMResumeNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMTypeIdForExceptionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFAbsNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMPowNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMSqrtNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleGetArgNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMAssumeNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI16NodeGen;
@@ -651,6 +652,8 @@ public class BasicNodeFactory implements NodeFactory {
                 return LLVMPowNodeGen.create(args[1], args[2], sourceSection);
             case "@llvm.fabs.f64":
                 return LLVMFAbsNodeGen.create(args[1], sourceSection);
+            case "@llvm.sqrt.f64":
+                return LLVMSqrtNodeGen.create(args[1]);
             case "@llvm.returnaddress":
                 return LLVMReturnAddressNodeGen.create(args[1], sourceSection);
             case "@llvm.lifetime.start":
