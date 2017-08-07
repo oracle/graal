@@ -1564,6 +1564,7 @@ suite = {
       ],
       "distDependencies" : [
         "GRAAL",
+        "GRAAL_TEST",
       ],
     },
 
