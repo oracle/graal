@@ -98,11 +98,6 @@ public final class FunctionDeclaration implements Constant, ValueSymbol {
     }
 
     @Override
-    public boolean hasName() {
-        return name != null;
-    }
-
-    @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;

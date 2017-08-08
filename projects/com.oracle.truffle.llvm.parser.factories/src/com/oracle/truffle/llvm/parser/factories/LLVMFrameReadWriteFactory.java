@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.parser.factories;
 
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVM80BitFloatReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMAddressReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMDoubleReadNodeGen;
@@ -66,6 +67,7 @@ import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
+import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
@@ -131,6 +133,8 @@ final class LLVMFrameReadWriteFactory {
             return LLVMAddressReadNodeGen.create(frameSlot);
         } else if (llvmType instanceof VoidType) {
             throw new LLVMUnsupportedException(UnsupportedReason.PARSER_ERROR_VOID_SLOT);
+        } else if (llvmType == MetaType.DEBUG) {
+            return LLVMReadNodeFactory.LLVMDebugReadNodeGen.create(frameSlot);
         }
         throw new AssertionError(llvmType + " for " + frameSlot.getIdentifier());
     }

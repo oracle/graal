@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
 public final class LLVMDebugBasicType extends LLVMDebugType {
 
     private final Kind kind;
@@ -45,7 +43,6 @@ public final class LLVMDebugBasicType extends LLVMDebugType {
     }
 
     @Override
-    @TruffleBoundary
     public LLVMDebugType getOffset(long newOffset) {
         return new LLVMDebugBasicType(getName(), getSize(), getAlign(), newOffset, kind);
     }

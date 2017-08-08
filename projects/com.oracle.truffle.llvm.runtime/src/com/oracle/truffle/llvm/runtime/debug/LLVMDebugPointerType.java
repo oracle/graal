@@ -39,12 +39,10 @@ public final class LLVMDebugPointerType extends LLVMDebugType {
 
     @CompilationFinal private Supplier<LLVMDebugType> baseType;
 
-    @TruffleBoundary
     public LLVMDebugPointerType(long size, long align, long offset) {
         this(LLVMDebugType.UNKNOWN_TYPE::getName, size, align, offset, () -> LLVMDebugType.UNKNOWN_TYPE);
     }
 
-    @TruffleBoundary
     private LLVMDebugPointerType(Supplier<String> nameSupplier, long size, long align, long offset, Supplier<LLVMDebugType> baseType) {
         super(nameSupplier, size, align, offset);
         this.baseType = baseType;
@@ -61,7 +59,6 @@ public final class LLVMDebugPointerType extends LLVMDebugType {
     }
 
     @Override
-    @TruffleBoundary
     public LLVMDebugType getOffset(long newOffset) {
         return new LLVMDebugPointerType(this::getName, getSize(), getAlign(), newOffset, this::getBaseType);
     }

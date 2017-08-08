@@ -37,12 +37,10 @@ public final class LLVMDebugMemberType extends LLVMDebugType {
 
     @CompilationFinal private LLVMDebugType elementType;
 
-    @TruffleBoundary
     public LLVMDebugMemberType(String name, long size, long align, long offset) {
-        this(name, size, align, offset, null);
+        this(name, size, align, offset, LLVMDebugType.UNKNOWN_TYPE);
     }
 
-    @TruffleBoundary
     private LLVMDebugMemberType(String name, long size, long align, long offset, LLVMDebugType elementType) {
         super(() -> name, size, align, offset);
         this.elementType = elementType;
@@ -62,7 +60,6 @@ public final class LLVMDebugMemberType extends LLVMDebugType {
      *
      * @return the element type with the offset of this type
      */
-    @TruffleBoundary
     LLVMDebugType getOffsetElementType() {
         return elementType != null ? elementType.getOffset(getOffset()) : null;
     }

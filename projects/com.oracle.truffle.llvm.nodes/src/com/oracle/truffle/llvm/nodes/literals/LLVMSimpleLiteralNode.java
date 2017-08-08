@@ -239,4 +239,18 @@ public class LLVMSimpleLiteralNode {
 
     }
 
+    public static class LLVMDebugLiteralNode extends LLVMExpressionNode {
+
+        private final Object object;
+
+        public LLVMDebugLiteralNode(Object object) {
+            this.object = object;
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return object;
+        }
+    }
+
 }

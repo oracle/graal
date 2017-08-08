@@ -52,9 +52,7 @@ public final class LLVMDebugValueContainerType extends ObjectType {
 
     @TruffleBoundary
     public static DynamicObject createContainer() {
-        final DynamicObject container = LAYOUT.createShape(LLVMDebugValueContainerType.CONTAINER).newInstance();
-        container.define(LLVMDebugValueContainerType.GLOBALS.getName(), LAYOUT.createShape(LLVMDebugValueContainerType.GLOBALS).newInstance());
-        return container;
+        return LAYOUT.createShape(LLVMDebugValueContainerType.CONTAINER).newInstance();
     }
 
     @TruffleBoundary

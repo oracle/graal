@@ -29,50 +29,27 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-
 import java.math.BigInteger;
 
 public interface LLVMDebugValueProvider {
 
-    boolean canRead();
+    boolean canRead(long bitOffset, int bits);
 
-    boolean readBoolean(long offset);
+    boolean readBoolean(long bitOffset);
 
-    byte readByteSigned(long offset);
+    Object readFloat(long bitOffset);
 
-    int readByteUnsigned(long offset);
+    Object readDouble(long bitOffset);
 
-    char readCharSigned(long offset);
+    Object read80BitFloat(long bitOffset);
 
-    char readCharUnsigned(long offset);
+    Object readAddress(long bitOffset);
 
-    short readShortSigned(long offset);
+    Object readUnknown(long bitOffset, int bitSize);
 
-    int readShortUnsigned(long offset);
+    Object computeAddress(long bitOffset);
 
-    int readIntSigned(long offset);
+    BigInteger readUnsignedInteger(long bitOffset, int bitSize);
 
-    long readIntUnsigned(long offset);
-
-    long readLongSigned(long offset);
-
-    BigInteger readLongUnsigned(long offset);
-
-    float readFloat(long offset);
-
-    double readDouble(long offset);
-
-    LLVM80BitFloat read80BitFloat(long offset);
-
-    LLVMAddress readAddress(long offset);
-
-    Object readUnknown(long offset, long size);
-
-    boolean canReadId(long offset, int size);
-
-    long readId(long offset, int size);
-
-    Object computeAddress(long offset);
+    BigInteger readSignedInteger(long bitOffset, int bitSize);
 }

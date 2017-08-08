@@ -43,7 +43,6 @@ public final class LLVMDebugDecoratorType extends LLVMDebugType {
 
     private final Function<Long, Long> sizeDecorator;
 
-    @TruffleBoundary
     public LLVMDebugDecoratorType(long size, long align, long offset, Function<String, String> nameDecorator, Function<Long, Long> sizeDecorator) {
         super(size, align, offset);
         this.nameDecorator = nameDecorator;
@@ -51,7 +50,6 @@ public final class LLVMDebugDecoratorType extends LLVMDebugType {
         this.sizeDecorator = sizeDecorator;
     }
 
-    @TruffleBoundary
     private LLVMDebugDecoratorType(Supplier<String> nameSupplier, long size, long align, long offset, Supplier<LLVMDebugType> baseType, Function<String, String> nameDecorator,
                     Function<Long, Long> sizeDecorator) {
         super(nameSupplier, size, align, offset);

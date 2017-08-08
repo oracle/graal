@@ -96,11 +96,6 @@ public final class FunctionDefinition extends IRScope implements Constant, Value
     }
 
     @Override
-    public boolean hasName() {
-        return name != null;
-    }
-
-    @Override
     public String getName() {
         assert name != null;
         return name;

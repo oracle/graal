@@ -48,12 +48,12 @@ import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugType;
+import com.oracle.truffle.llvm.runtime.types.MetaType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public final class SourceModel {
 
@@ -68,31 +68,26 @@ public final class SourceModel {
 
         private final FunctionDefinition definition;
 
-        private final Map<Symbol, Variable> locals = new HashMap<>();
+        private final List<Variable> locals;
 
         private final List<Variable> globals;
 
         private Function(FunctionDefinition definition, List<Variable> globals) {
             this.definition = definition;
             this.globals = globals;
-        }
-
-        public FunctionDefinition getDefinition() {
-            return definition;
-        }
-
-        public Variable findVariable(Symbol symbol) {
-            return locals.get(symbol);
+            this.locals = new ArrayList<>();
         }
 
         public List<Variable> getGlobals() {
             return globals;
         }
+
+        public List<Variable> getLocals() {
+            return locals;
+        }
     }
 
-    public static final class Variable {
-
-        public static final String INVALID_NAME = MDNameExtractor.DEFAULT_STRING;
+    public static final class Variable implements Symbol {
 
         private final String name;
 
@@ -114,8 +109,13 @@ public final class SourceModel {
             return symbol;
         }
 
-        public LLVMDebugType getType() {
+        public LLVMDebugType getDebugType() {
             return type;
+        }
+
+        @Override
+        public Type getType() {
+            return MetaType.DEBUG;
         }
 
         @Override
@@ -207,9 +207,10 @@ public final class SourceModel {
                     final MDBaseNode mdLocal = currentFunction.definition.getMetadata().getMDRef(mdIndex);
                     LLVMDebugType type = typeExtractor.parseType(mdLocal);
                     String varName = MDNameExtractor.getName(mdLocal);
-                    Variable var = new Variable(varName, alloca, type);
+                    final Variable var = new Variable(varName, alloca, type);
                     ((ValueInstruction) alloca).setSourceVariable(var);
-                    currentFunction.locals.put(alloca, var);
+                    call.replace(call.getArgument(1), var);
+                    currentFunction.locals.add(var);
                 }
             }
         }

@@ -146,19 +146,19 @@ public final class LLVMIVarBit {
     }
 
     @TruffleBoundary
-    private static BigInteger bigInt(LLVMIVarBit right) {
+    private static BigInteger asBigInteger(LLVMIVarBit right) {
         return new BigInteger(right.getBytes());
     }
 
     @TruffleBoundary
-    private BigInteger unsignedBigInt() {
+    public BigInteger asUnsignedBigInteger() {
         byte[] newArr = new byte[arr.length + 1];
         System.arraycopy(arr, 0, newArr, 1, arr.length);
         return new BigInteger(newArr);
     }
 
     @TruffleBoundary
-    private BigInteger bigInt() {
+    public BigInteger asBigInteger() {
         return new BigInteger(arr);
     }
 
@@ -281,37 +281,37 @@ public final class LLVMIVarBit {
 
     @TruffleBoundary
     public LLVMIVarBit add(LLVMIVarBit right) {
-        return asIVar(bigInt().add(bigInt(right)));
+        return asIVar(asBigInteger().add(asBigInteger(right)));
     }
 
     @TruffleBoundary
     public LLVMIVarBit mul(LLVMIVarBit right) {
-        return asIVar(bigInt().multiply(bigInt(right)));
+        return asIVar(asBigInteger().multiply(asBigInteger(right)));
     }
 
     @TruffleBoundary
     public LLVMIVarBit sub(LLVMIVarBit right) {
-        return asIVar(bigInt().subtract(bigInt(right)));
+        return asIVar(asBigInteger().subtract(asBigInteger(right)));
     }
 
     @TruffleBoundary
     public LLVMIVarBit div(LLVMIVarBit right) {
-        return asIVar(bigInt().divide(bigInt(right)));
+        return asIVar(asBigInteger().divide(asBigInteger(right)));
     }
 
     @TruffleBoundary
     public LLVMIVarBit rem(LLVMIVarBit right) {
-        return asIVar(bigInt().remainder(bigInt(right)));
+        return asIVar(asBigInteger().remainder(asBigInteger(right)));
     }
 
     @TruffleBoundary
     public LLVMIVarBit unsignedRem(LLVMIVarBit right) {
-        return asIVar(unsignedBigInt().remainder(bigInt(right)));
+        return asIVar(asUnsignedBigInteger().remainder(asBigInteger(right)));
     }
 
     @TruffleBoundary
     public LLVMIVarBit unsignedDiv(LLVMIVarBit right) {
-        return asIVar(unsignedBigInt().divide(bigInt(right)));
+        return asIVar(asUnsignedBigInteger().divide(asBigInteger(right)));
     }
 
     public int compare(LLVMIVarBit other) {
@@ -356,7 +356,7 @@ public final class LLVMIVarBit {
 
     @TruffleBoundary
     public LLVMIVarBit leftShift(LLVMIVarBit right) {
-        BigInteger result = bigInt().shiftLeft(right.getIntValue());
+        BigInteger result = asBigInteger().shiftLeft(right.getIntValue());
         return asIVar(bits, result);
     }
 
@@ -398,13 +398,13 @@ public final class LLVMIVarBit {
 
     @TruffleBoundary
     public LLVMIVarBit arithmeticRightShift(LLVMIVarBit right) {
-        BigInteger result = bigInt().shiftRight(right.getIntValue());
+        BigInteger result = asBigInteger().shiftRight(right.getIntValue());
         return asIVar(result);
     }
 
     @TruffleBoundary
     public int signedCompare(LLVMIVarBit other) {
-        return bigInt().compareTo(other.bigInt());
+        return asBigInteger().compareTo(other.asBigInteger());
     }
 
 }

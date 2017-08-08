@@ -305,7 +305,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         FrameSlot sourceValuesContainerSlot = frame.findOrAddFrameSlot(LLVMDebugValueContainerType.FRAMESLOT_NAME, FrameSlotKind.Object);
         LLVMExpressionNode valueRead = symbols.resolve(symbol);
-        addInstruction(nodeFactory.createDebugDeclaration(var.getName(), var.getType(), sourceValuesContainerSlot, valueRead));
+        addInstruction(nodeFactory.createDebugDeclaration(var.getName(), var.getDebugType(), valueRead, sourceValuesContainerSlot));
         return true;
     }
 

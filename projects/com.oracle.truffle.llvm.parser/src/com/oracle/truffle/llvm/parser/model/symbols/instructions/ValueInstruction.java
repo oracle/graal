@@ -57,11 +57,6 @@ public abstract class ValueInstruction extends Instruction implements ValueSymbo
     }
 
     @Override
-    public boolean hasName() {
-        return true;
-    }
-
-    @Override
     public void setName(String name) {
         this.name = LLVMIdentifier.toLocalIdentifier(name);
     }

@@ -46,7 +46,6 @@ public final class LLVMDebugStructLikeType extends LLVMDebugType {
         this.members = new ArrayList<>();
     }
 
-    @TruffleBoundary
     private LLVMDebugStructLikeType(Supplier<String> name, long size, long align, long offset, List<LLVMDebugMemberType> members) {
         super(size, align, offset);
         setName(name);
@@ -59,7 +58,6 @@ public final class LLVMDebugStructLikeType extends LLVMDebugType {
     }
 
     @Override
-    @TruffleBoundary
     public LLVMDebugType getOffset(long newOffset) {
         return new LLVMDebugStructLikeType(this::getName, getSize(), getAlign(), newOffset, members);
     }

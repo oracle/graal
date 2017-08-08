@@ -902,7 +902,8 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createDebugDeclaration(String varName, LLVMDebugType type, FrameSlot sourceValuesContainerSlot, LLVMExpressionNode valueProvider) {
-        return LLVMDebugDeclarationNodeGen.create(varName, type, sourceValuesContainerSlot, valueProvider);
+    public LLVMExpressionNode createDebugDeclaration(String varName, LLVMDebugType type, LLVMExpressionNode valueProvider, FrameSlot sourceValuesContainerSlot) {
+        final LLVMExpressionNode containerProvider = LLVMFrameReadWriteFactory.createFrameRead(MetaType.DEBUG, sourceValuesContainerSlot);
+        return LLVMDebugDeclarationNodeGen.create(varName, type, sourceValuesContainerSlot, containerProvider, valueProvider);
     }
 }

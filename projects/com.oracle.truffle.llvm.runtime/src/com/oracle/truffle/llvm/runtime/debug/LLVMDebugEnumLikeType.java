@@ -45,7 +45,6 @@ public final class LLVMDebugEnumLikeType extends LLVMDebugType {
         this(nameSupplier, size, align, offset, new HashMap<>());
     }
 
-    @TruffleBoundary
     private LLVMDebugEnumLikeType(Supplier<String> nameSupplier, long size, long align, long offset, Map<Long, String> values) {
         super(nameSupplier, size, align, offset);
         this.values = values;
@@ -63,7 +62,6 @@ public final class LLVMDebugEnumLikeType extends LLVMDebugType {
     }
 
     @Override
-    @TruffleBoundary
     public LLVMDebugType getOffset(long newOffset) {
         return new LLVMDebugEnumLikeType(this::getName, getSize(), getAlign(), getOffset(), values);
     }

@@ -46,11 +46,6 @@ public final class MetadataConstant implements Constant {
     }
 
     @Override
-    public boolean hasName() {
-        return false;
-    }
-
-    @Override
     public String toString() {
         return String.valueOf(value);
     }

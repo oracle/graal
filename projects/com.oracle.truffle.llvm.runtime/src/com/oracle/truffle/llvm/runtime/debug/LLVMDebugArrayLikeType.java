@@ -39,12 +39,10 @@ public final class LLVMDebugArrayLikeType extends LLVMDebugType {
     private Supplier<LLVMDebugType> baseType;
     private Supplier<Long> length;
 
-    @TruffleBoundary
     public LLVMDebugArrayLikeType(long size, long align, long offset) {
         this(LLVMDebugType.UNKNOWN_TYPE::getName, size, align, offset, () -> LLVMDebugType.UNKNOWN_TYPE, () -> -1L);
     }
 
-    @TruffleBoundary
     private LLVMDebugArrayLikeType(Supplier<String> name, long size, long align, long offset, Supplier<LLVMDebugType> baseType, Supplier<Long> length) {
         super(size, align, offset);
         setName(name);
@@ -73,7 +71,6 @@ public final class LLVMDebugArrayLikeType extends LLVMDebugType {
     }
 
     @Override
-    @TruffleBoundary
     public LLVMDebugType getOffset(long newOffset) {
         return new LLVMDebugArrayLikeType(this::getName, getSize(), getAlign(), newOffset, this::getBaseType, length);
     }
@@ -84,7 +81,6 @@ public final class LLVMDebugArrayLikeType extends LLVMDebugType {
     }
 
     @Override
-    @TruffleBoundary
     public int getElementCount() {
         return (int) getLength();
     }
