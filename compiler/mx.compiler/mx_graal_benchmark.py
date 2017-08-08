@@ -1338,6 +1338,10 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite):
     def extraVmArgs(self):
         return ['-XX:-UseJVMCIClassLoader'] + super(JMHDistWhiteboxBenchmarkSuite, self).extraVmArgs()
 
+    def getJMHEntry(self, bmSuiteArgs):
+        assert self.dist
+        return [mx.distribution(self.dist).mainClass]
+
 
 mx_benchmark.add_bm_suite(JMHDistWhiteboxBenchmarkSuite())
 
