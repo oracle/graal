@@ -160,7 +160,7 @@ public abstract class LLVMWriteNode extends LLVMExpressionNode {
 
     public abstract static class LLVMWriteFunctionNode extends LLVMWriteNode {
         @Specialization
-        protected Object writeFunction(VirtualFrame frame, LLVMAddress value) {
+        protected Object writeAddress(VirtualFrame frame, LLVMAddress value) {
             frame.setObject(getSlot(), value);
             return null;
         }

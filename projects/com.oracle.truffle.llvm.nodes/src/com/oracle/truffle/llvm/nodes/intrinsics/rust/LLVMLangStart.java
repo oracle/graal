@@ -29,7 +29,8 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.rust;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
@@ -37,11 +38,14 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.func.LLVMDispatchNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMDispatchNodeGen;
+import com.oracle.truffle.llvm.nodes.func.LLVMLookupDispatchNode;
+import com.oracle.truffle.llvm.nodes.func.LLVMLookupDispatchNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMLangStart extends LLVMIntrinsic {
@@ -52,23 +56,30 @@ public abstract class LLVMLangStart extends LLVMIntrinsic {
                     @Cached("main") LLVMAddress cachedMain,
                     @Cached("getMainDescriptor(cachedMain)") LLVMFunctionDescriptor mainDescriptor,
                     @Cached("getDispatchNode(mainDescriptor)") LLVMDispatchNode dispatchNode) {
-        dispatchNode.executeDispatch(frame, mainDescriptor, new Object[]{stackPointer});
+        dispatchNode.executeDispatch(frame, mainDescriptor, new Object[]{stackPointer, argc, argv});
         return 0;
     }
 
+    @TruffleBoundary
     protected LLVMFunctionDescriptor getMainDescriptor(LLVMAddress main) {
         return getContext().getFunctionDescriptor(LLVMFunctionHandle.createHandle(main.getVal()));
     }
 
     protected LLVMDispatchNode getDispatchNode(LLVMFunctionDescriptor mainDescriptor) {
+        CompilerAsserts.neverPartOfCompilation();
         return LLVMDispatchNodeGen.create(mainDescriptor.getType());
     }
 
-    @SuppressWarnings("unused")
+    protected LLVMLookupDispatchNode getLookupDispatchNode(LLVMAddress main) {
+        CompilerAsserts.neverPartOfCompilation();
+        FunctionType functionType = getContext().getFunctionDescriptor(LLVMFunctionHandle.createHandle(main.getVal())).getType();
+        return LLVMLookupDispatchNodeGen.create(functionType);
+    }
+
     @Specialization
-    public long executeGeneric(VirtualFrame frame, long stackPointer, LLVMAddress main, long argc, LLVMAddress argv) {
-        CompilerDirectives.transferToInterpreter();
-        throw new IllegalStateException("Not implemented");
+    public long executeGeneric(VirtualFrame frame, long stackPointer, LLVMAddress main, long argc, LLVMAddress argv, @Cached("getLookupDispatchNode(main)") LLVMLookupDispatchNode dispatch) {
+        dispatch.executeDispatch(frame, LLVMFunctionHandle.createHandle(main.getVal()), new Object[]{stackPointer, argc, argv});
+        return 0;
     }
 
 }
