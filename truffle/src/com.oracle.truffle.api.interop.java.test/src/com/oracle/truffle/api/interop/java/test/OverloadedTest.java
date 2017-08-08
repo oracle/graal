@@ -138,6 +138,30 @@ public class OverloadedTest {
         assertEquals("BigInteger", num.parameter);
     }
 
+    public interface Identity<T> {
+        T getId();
+    }
+
+    public interface SomeThingWithIdentity extends Identity<Integer> {
+        @Override
+        Integer getId();
+    }
+
+    public static class ActualRealThingWithIdentity implements SomeThingWithIdentity {
+        Integer id = 42;
+
+        @Override
+        public Integer getId() {
+            return id;
+        }
+    }
+
+    @Test
+    public void testGenericReturnTypeBridgeMethod() throws InteropException {
+        TruffleObject thing = JavaInterop.asTruffleObject(new ActualRealThingWithIdentity());
+        assertEquals(42, ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), thing, "getId"));
+    }
+
     @MessageResolution(receiverType = UnboxableToInt.class)
     public static final class UnboxableToInt implements TruffleObject {
 
