@@ -27,6 +27,7 @@ package com.oracle.truffle.api.interop;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleOptions;
@@ -578,6 +579,7 @@ public abstract class Message {
      * @since 0.8 or earlier
      */
     public final Node createNode() {
+        CompilerAsserts.neverPartOfCompilation();
         return InteropAccessNode.create(this);
     }
 

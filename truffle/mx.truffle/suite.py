@@ -114,7 +114,6 @@ suite = {
       "dependencies" : [
         "sdk:GRAAL_SDK",
         "com.oracle.truffle.api.interop.java",
-        "com.oracle.truffle.api.profiles",
         "com.oracle.truffle.api.instrumentation",
       ],
       "exports" : [
@@ -232,7 +231,10 @@ suite = {
     "com.oracle.truffle.api.interop" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.api.dsl"],
+      "dependencies" : [
+        "com.oracle.truffle.api.dsl",
+        "com.oracle.truffle.api.profiles",
+      ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTERNAL"],
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java

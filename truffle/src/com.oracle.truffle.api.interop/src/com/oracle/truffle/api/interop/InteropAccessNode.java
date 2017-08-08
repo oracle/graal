@@ -33,6 +33,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 
 abstract class InteropAccessNode extends Node {
 
@@ -41,6 +42,7 @@ abstract class InteropAccessNode extends Node {
     protected static final int CACHE_SIZE = 8;
     protected final Message message;
     @CompilationFinal private int previousLength = -2;
+    private final BranchProfile profileDefaultUnsupported = BranchProfile.create();
 
     protected InteropAccessNode(Message message) {
         this.message = message;
@@ -49,6 +51,15 @@ abstract class InteropAccessNode extends Node {
     @SuppressWarnings("unused")
     public final Object execute(TruffleObject receiver) throws InteropException {
         return checkInteropType(executeImpl(receiver, new Object[]{receiver}));
+    }
+
+    public final Object executeOrFalse(TruffleObject receiver) throws InteropException {
+        try {
+            return checkInteropType(executeImplInterop(receiver, new Object[]{receiver}));
+        } catch (UnsupportedMessageException ex) {
+            profileDefaultUnsupported.enter();
+            return false;
+        }
     }
 
     @SuppressWarnings("unused")
@@ -156,6 +167,12 @@ abstract class InteropAccessNode extends Node {
             }
         }
         return returnLength;
+    }
+
+    // Only to declare that it can throw InteropException
+    @SuppressWarnings("unused")
+    private Object executeImplInterop(TruffleObject receiver, Object[] arguments) throws InteropException {
+        return executeImpl(receiver, arguments);
     }
 
     protected abstract Object executeImpl(TruffleObject receiver, Object[] arguments);
