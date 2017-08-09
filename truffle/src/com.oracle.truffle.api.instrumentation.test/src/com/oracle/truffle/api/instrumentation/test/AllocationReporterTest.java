@@ -30,7 +30,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.beans.PropertyChangeListener;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -553,6 +552,13 @@ public class AllocationReporterTest {
 
     @Test
     public void testReporterChangeListener() {
+        try {
+            Class.forName("java.beans.PropertyChangeListener");
+        } catch (ClassNotFoundException ex) {
+            // skip the test if running only with java.base JDK9 module
+            return;
+        }
+
         // Test of AllocationReporter property change listener notifications
         instrument.setEnabled(false);
         Source source = Source.newBuilder("NEW").name("AllocateLanguageWakeUp").mimeType(AllocationReporterLanguage.MIME_TYPE).build();
@@ -562,32 +568,20 @@ public class AllocationReporterTest {
         engine.eval(source);
         AllocationReporter reporter = (AllocationReporter) engine.findGlobalSymbol(AllocationReporter.class.getSimpleName()).get();
         AtomicInteger listenerCalls = new AtomicInteger(0);
-        PropertyChangeListener activatedListener = (event) -> {
-            assertEquals(AllocationReporter.PROPERTY_ACTIVE, event.getPropertyName());
-            assertEquals(Boolean.FALSE, event.getOldValue());
-            assertEquals(Boolean.TRUE, event.getNewValue());
-            listenerCalls.incrementAndGet();
-        };
-        reporter.addPropertyChangeListener(activatedListener);
+        AllocationReporterListener activatedListener = AllocationReporterListener.register(listenerCalls, reporter);
         assertEquals(0, listenerCalls.get());
         assertFalse(reporter.isActive());
         instrument.setEnabled(true);
         assertEquals(1, listenerCalls.get());
-        reporter.removePropertyChangeListener(activatedListener);
+        activatedListener.unregister();
         listenerCalls.set(0);
 
-        PropertyChangeListener deactivatedListener = (event) -> {
-            assertEquals(AllocationReporter.PROPERTY_ACTIVE, event.getPropertyName());
-            assertEquals(Boolean.TRUE, event.getOldValue());
-            assertEquals(Boolean.FALSE, event.getNewValue());
-            listenerCalls.incrementAndGet();
-        };
-        reporter.addPropertyChangeListener(deactivatedListener);
+        AllocationDeactivatedListener deactivatedListener = AllocationDeactivatedListener.register(listenerCalls, reporter);
         assertEquals(0, listenerCalls.get());
         assertTrue(reporter.isActive());
         instrument.setEnabled(false);
         assertEquals(1, listenerCalls.get());
-        reporter.removePropertyChangeListener(deactivatedListener);
+        deactivatedListener.unregister();
     }
 
     /**

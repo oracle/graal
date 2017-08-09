@@ -24,8 +24,6 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
-import java.beans.PropertyChangeListener;
-import java.beans.PropertyChangeSupport;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
@@ -74,7 +72,7 @@ public final class AllocationReporter {
     public static final String PROPERTY_ACTIVE = "active";
 
     final LanguageInfo language;
-    private final PropertyChangeSupport propSupport = new PropertyChangeSupport(this);
+    private final PropChangeSupport propSupport = new PropChangeSupport(this);
     private ThreadLocal<LinkedList<Reference<Object>>> valueCheck;
 
     @CompilationFinal private volatile Assumption listenersNotChangedAssumption = Truffle.getRuntime().createAssumption();
@@ -92,7 +90,8 @@ public final class AllocationReporter {
      * @since 0.27
      * @see #PROPERTY_ACTIVE
      */
-    public void addPropertyChangeListener(PropertyChangeListener listener) {
+    public void addPropertyChangeListener(java.beans.PropertyChangeListener listener) {
+        // Using FQN to avoid mx to generate dependency on java.desktop JDK9 module
         propSupport.addPropertyChangeListener(listener);
     }
 
@@ -102,7 +101,8 @@ public final class AllocationReporter {
      * @since 0.27
      * @see #addPropertyChangeListener(java.beans.PropertyChangeListener)
      */
-    public void removePropertyChangeListener(PropertyChangeListener listener) {
+    public void removePropertyChangeListener(java.beans.PropertyChangeListener listener) {
+        // Using FQN to avoid mx to generate dependency on java.desktop JDK9 module
         propSupport.removePropertyChangeListener(listener);
     }
 
@@ -110,7 +110,7 @@ public final class AllocationReporter {
      * Test if the reporter instance is actually doing some reporting when notify methods are
      * called. Methods {@link #onEnter(java.lang.Object, long, long)} and
      * {@link #onReturnValue(java.lang.Object, long, long)} have no effect when this method returns
-     * false. A {@link PropertyChangeListener} can be
+     * false. A {@link java.beans.PropertyChangeListener} can be
      * {@link #addPropertyChangeListener(java.beans.PropertyChangeListener) added} to listen on
      * changes of this property.
      *

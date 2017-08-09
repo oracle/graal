@@ -24,9 +24,6 @@
  */
 package com.oracle.truffle.api.debug;
 
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import java.beans.PropertyChangeSupport;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -49,6 +46,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Represents debugging related state of a {@link PolyglotEngine}.
@@ -86,7 +84,7 @@ public final class Debugger {
     static final boolean TRACE = Boolean.getBoolean("truffle.debug.trace");
 
     private final Env env;
-    private final PropertyChangeSupport propSupport = new PropertyChangeSupport(this);
+    final List<Object> propSupport = new CopyOnWriteArrayList<>();
     private final ObjectStructures.MessageNodes msgNodes;
     private final Set<DebuggerSession> sessions = new HashSet<>();
     private final List<Breakpoint> breakpoints = new ArrayList<>();
@@ -159,9 +157,7 @@ public final class Debugger {
         for (DebuggerSession s : ds) {
             s.install(breakpoint, true);
         }
-        if (propSupport.hasListeners(PROPERTY_BREAKPOINTS)) {
-            propSupport.firePropertyChange(new BreakpointsPropertyChangeEvent(this, null, breakpoint));
-        }
+        BreakpointsPropertyChangeEvent.firePropertyChange(this, null, breakpoint);
         if (Debugger.TRACE) {
             trace("installed debugger breakpoint %s", breakpoint);
         }
@@ -206,8 +202,8 @@ public final class Debugger {
         synchronized (this) {
             removed = breakpoints.remove(breakpoint);
         }
-        if (removed && propSupport.hasListeners(PROPERTY_BREAKPOINTS)) {
-            propSupport.firePropertyChange(new BreakpointsPropertyChangeEvent(this, breakpoint, null));
+        if (removed) {
+            BreakpointsPropertyChangeEvent.firePropertyChange(this, breakpoint, null);
         }
         if (Debugger.TRACE) {
             trace("disposed debugger breakpoint %s", breakpoint);
@@ -238,8 +234,9 @@ public final class Debugger {
      * @since 0.27
      * @see #PROPERTY_BREAKPOINTS
      */
-    public void addPropertyChangeListener(PropertyChangeListener listener) {
-        propSupport.addPropertyChangeListener(listener);
+    public void addPropertyChangeListener(java.beans.PropertyChangeListener listener) {
+        // using FQN to avoid mx to generate dependency on java.desktop module
+        propSupport.add(listener);
     }
 
     /**
@@ -248,8 +245,9 @@ public final class Debugger {
      * @since 0.27
      * @see #addPropertyChangeListener(java.beans.PropertyChangeListener)
      */
-    public void removePropertyChangeListener(PropertyChangeListener listener) {
-        propSupport.removePropertyChangeListener(listener);
+    public void removePropertyChangeListener(java.beans.PropertyChangeListener listener) {
+        // using FQN to avoid mx to generate dependency on java.desktop module
+        propSupport.remove(listener);
     }
 
     Env getEnv() {
@@ -295,34 +293,6 @@ public final class Debugger {
      */
     public static Debugger find(TruffleLanguage.Env env) {
         return env.lookup(env.getInstruments().get("debugger"), Debugger.class);
-    }
-
-    private static final class BreakpointsPropertyChangeEvent extends PropertyChangeEvent {
-
-        private static final long serialVersionUID = 1L;
-
-        BreakpointsPropertyChangeEvent(Object source, Breakpoint oldBreakpoint, Breakpoint newBreakpoint) {
-            super(source, PROPERTY_BREAKPOINTS, oldBreakpoint, newBreakpoint);
-        }
-
-        @Override
-        public Object getOldValue() {
-            Breakpoint breakpoint = (Breakpoint) super.getOldValue();
-            if (breakpoint != null) {
-                breakpoint = breakpoint.getROWrapper();
-            }
-            return breakpoint;
-        }
-
-        @Override
-        public Object getNewValue() {
-            Breakpoint breakpoint = (Breakpoint) super.getNewValue();
-            if (breakpoint != null) {
-                breakpoint = breakpoint.getROWrapper();
-            }
-            return breakpoint;
-        }
-
     }
 
     static final class AccessorDebug extends Accessor {
