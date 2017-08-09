@@ -52,6 +52,7 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NativeIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -175,7 +176,7 @@ public interface NodeFactory {
 
     LLVMExpressionNode createLLVMBuiltin(LLVMParserRuntime runtime, Symbol target, LLVMExpressionNode[] args, int callerArgumentCount, SourceSection sourceSection);
 
-    NativeIntrinsicProvider getNativeIntrinsicsFactory(LLVMLanguage language, LLVMContext context);
+    NativeIntrinsicProvider getNativeIntrinsicsFactory(LLVMLanguage language, LLVMContext context, DataSpecConverter targetDataLayout);
 
     RootNode createStaticInitsRootNode(LLVMParserRuntime visitor, LLVMExpressionNode[] deallocs);
 

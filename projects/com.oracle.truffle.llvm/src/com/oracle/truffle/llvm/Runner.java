@@ -176,7 +176,6 @@ public final class Runner {
     }
 
     private LLVMParserResult parseBitcodeFile(Source source, LLVMLanguage language, LLVMContext context) {
-        context.setNativeIntrinsicsFactory(nodeFactory.getNativeIntrinsicsFactory(language, context));
         return LLVMParserRuntime.parse(source, language, context, nodeFactory);
     }
 }
