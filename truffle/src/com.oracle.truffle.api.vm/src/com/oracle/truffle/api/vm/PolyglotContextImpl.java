@@ -294,45 +294,50 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
     }
 
     @TruffleBoundary
-    private synchronized PolyglotContextImpl enterSlowPath() {
-        PolyglotContextImpl prev = null;
-        if (constantStoreAssumption.isValid()) {
-            if (contextConstant.get() == null) {
-                contextConstant = new WeakReference<>(this);
-                contextSingleThread = Thread.currentThread();
-                return null;
-            } else {
-                constantStoreAssumption.invalidate();
-                prev = contextConstant.get();
-                contextConstant.clear();
+    private PolyglotContextImpl enterSlowPath() {
+        synchronized (PolyglotContextImpl.class) {
+            PolyglotContextImpl prev = null;
+            if (constantStoreAssumption.isValid()) {
+                if (contextConstant.get() == null) {
+                    contextConstant = new WeakReference<>(this);
+                    contextSingleThread = Thread.currentThread();
+                    return null;
+                } else {
+                    constantStoreAssumption.invalidate();
+                    prev = contextConstant.get();
+                    contextConstant.clear();
+                }
             }
-        }
-        if (dynamicStoreAssumption.isValid()) {
-            Thread currentThread = Thread.currentThread();
-            if (contextDynamic == null && contextSingleThread == currentThread) {
-                contextDynamic = this;
-                return prev;
-            } else {
-                final PolyglotContextImpl initialEngine = contextDynamic == null ? prev : contextDynamic;
-                contextThreadStore = new ThreadLocal<PolyglotContextImpl>() {
-                    @Override
-                    protected PolyglotContextImpl initialValue() {
-                        return initialEngine;
-                    }
-                };
-                contextThreadStore.set(this);
-                dynamicStoreAssumption.invalidate();
-                prev = initialEngine;
+            if (dynamicStoreAssumption.isValid()) {
+                Thread currentThread = Thread.currentThread();
+                if (contextDynamic == null && contextSingleThread == currentThread) {
+                    contextDynamic = this;
+                    return prev;
+                } else {
+                    final PolyglotContextImpl initialEngine = contextDynamic == null ? prev : contextDynamic;
+                    assert contextThreadStore == null;
+                    contextThreadStore = new ThreadLocal<PolyglotContextImpl>() {
+                        @Override
+                        protected PolyglotContextImpl initialValue() {
+                            return initialEngine;
+                        }
+                    };
+                    contextThreadStore.set(this);
+                    dynamicStoreAssumption.invalidate();
+                    contextDynamic = null;
+                    prev = initialEngine;
+                }
             }
+            contextThreadStore.set(this);
+
+            assert contextDynamic == null;
+            assert !constantStoreAssumption.isValid();
+            assert !dynamicStoreAssumption.isValid();
+
+            // ensure cleaned up speculation
+            assert contextThreadStore != null;
+            return prev;
         }
-        contextDynamic = null;
-
-        assert !constantStoreAssumption.isValid();
-        assert !dynamicStoreAssumption.isValid();
-
-        // ensure cleaned up speculation
-        assert contextThreadStore != null;
-        return prev;
     }
 
     Object importSymbolFromLanguage(String symbolName) {
