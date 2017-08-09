@@ -24,8 +24,6 @@
  */
 package com.oracle.truffle.api.vm;
 
-import static com.oracle.truffle.api.vm.PolyglotEngine.LOG;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -39,10 +37,10 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.logging.Level;
 
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import java.io.PrintStream;
 
 //TODO (chumer): maybe this class should share some code with LanguageCache?
 final class InstrumentCache {
@@ -160,7 +158,9 @@ final class InstrumentCache {
                     p.load(is);
                 }
             } catch (IOException ex) {
-                LOG.log(Level.CONFIG, "Cannot process " + u + " as language definition", ex);
+                PrintStream out = System.err;
+                out.println("Cannot process " + u + " as language definition");
+                ex.printStackTrace();
                 continue;
             }
             for (int cnt = 1;; cnt++) {

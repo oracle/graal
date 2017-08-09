@@ -38,7 +38,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Level;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -51,6 +50,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.vm.LanguageCache.LoadedLanguage;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
+import java.io.PrintStream;
 
 /**
  * A runtime environment for one or more {@link PolyglotEngine} instances. By default a constructed
@@ -191,7 +191,9 @@ public final class PolyglotRuntime {
                 try {
                     instrument.setEnabledImpl(false, false);
                 } catch (Exception | Error ex) {
-                    PolyglotEngine.LOG.log(Level.SEVERE, "Error disposing " + instrument, ex);
+                    PrintStream ps = System.err;
+                    ps.println("Error disposing " + instrument);
+                    ex.printStackTrace();
                 }
             }
         }

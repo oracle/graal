@@ -24,8 +24,6 @@
  */
 package com.oracle.truffle.api.vm;
 
-import static com.oracle.truffle.api.vm.PolyglotEngine.LOG;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -39,11 +37,11 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.logging.Level;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.vm.PolyglotEngine.LegacyEngineImpl;
+import java.io.PrintStream;
 
 /**
  * Ahead-of-time initialization. If the JVM is started with {@link TruffleOptions#AOT}, it populates
@@ -185,7 +183,9 @@ final class LanguageCache implements Comparable<LanguageCache> {
                     p.load(is);
                 }
             } catch (IOException ex) {
-                LOG.log(Level.CONFIG, "Cannot process " + u + " as language definition", ex);
+                PrintStream out = System.err;
+                out.println("Cannot process " + u + " as language definition");
+                ex.printStackTrace();
                 continue;
             }
             for (int cnt = 1;; cnt++) {
