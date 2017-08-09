@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.103.0",
+  "mxversion" : "5.123.0",
   "name" : "truffle",
   "sourceinprojectwhitelist" : [],
   "url" : "http://openjdk.java.net/projects/graal",
@@ -275,6 +275,9 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.api.vm", "com.oracle.truffle.api.metadata"],
+      "runtimeDeps" : [
+        "java.desktop"
+      ],
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java
       ],
