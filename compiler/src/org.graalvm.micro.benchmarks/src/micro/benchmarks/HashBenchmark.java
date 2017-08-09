@@ -28,7 +28,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
 /**
- * Benchmarks cost of hasing a character array.
+ * Benchmarks cost of hashing a character array.
  */
 public class HashBenchmark extends BenchmarkBase {
 
