@@ -357,7 +357,6 @@ public abstract class DebugValue {
             this.value = value;
         }
 
-        @SuppressWarnings("unchecked")
         @Override
         public <T> T as(Class<T> clazz) {
             if (!isReadable()) {
@@ -377,7 +376,7 @@ public abstract class DebugValue {
                 } else {
                     stringValue = debugger.getEnv().toString(languageInfo, val);
                 }
-                return (T) stringValue;
+                return clazz.cast(stringValue);
             }
             throw new UnsupportedOperationException();
         }

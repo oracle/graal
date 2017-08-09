@@ -34,6 +34,7 @@ import com.oracle.truffle.api.dsl.test.TestSerializationFactory.SerializedNodeFa
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.nodes.NodeUtil;
 
 public class TestSerialization {
 
@@ -47,8 +48,7 @@ public class TestSerialization {
         assertEquals(3, node.getNode().invocations);
         assertEquals(NodeCost.POLYMORPHIC, node.getNode().getCost());
 
-        @SuppressWarnings("unchecked")
-        TestRootNode<SerializedNode> copiedNode = (TestRootNode<SerializedNode>) node.deepCopy();
+        TestRootNode<SerializedNode> copiedNode = NodeUtil.cloneNode(node);
         copiedNode.adoptChildren();
         assertTrue(copiedNode != node);
         assertEquals(true, executeWith(copiedNode, true));

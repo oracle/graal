@@ -148,9 +148,9 @@ final class ConsListPropertyMap extends PropertyMap {
 
     public Set<Map.Entry<Object, Property>> entrySet() {
         return new AbstractSet<Map.Entry<Object, Property>>() {
+            @SuppressWarnings("unchecked")
             @Override
             public Iterator<Map.Entry<Object, Property>> iterator() {
-                @SuppressWarnings("unchecked")
                 Map.Entry<Object, Property>[] entries = (Map.Entry<Object, Property>[]) new Map.Entry<?, ?>[size()];
                 Iterator<Map.Entry<Object, Property>> iterator = reverseOrderEntrySet().iterator();
                 for (int pos = size() - 1; pos >= 0; pos--) {

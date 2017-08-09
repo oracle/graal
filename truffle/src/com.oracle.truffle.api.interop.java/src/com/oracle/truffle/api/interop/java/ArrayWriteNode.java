@@ -38,12 +38,10 @@ abstract class ArrayWriteNode extends Node {
 
     protected abstract Object executeWithTarget(JavaObject receiver, Object index, Object value);
 
-    @SuppressWarnings("unchecked")
     @Specialization(guards = {"receiver.isArray()", "index.getClass() == clazz"})
     protected final Object doNumber(JavaObject receiver, Number index, Object value,
-                    @Cached("index.getClass()") Class<?> clazz) {
-        Class<Number> numberClazz = (Class<Number>) clazz;
-        return doArrayAccess(receiver, numberClazz.cast(index).intValue(), value);
+                    @Cached("index.getClass()") Class<? extends Number> clazz) {
+        return doArrayAccess(receiver, clazz.cast(index).intValue(), value);
     }
 
     @Specialization(guards = {"receiver.isArray()"}, replaces = "doNumber")
