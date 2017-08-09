@@ -31,7 +31,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import com.oracle.truffle.api.nodes.GraphPrintVisitor;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 
@@ -139,7 +138,7 @@ class Debug {
                 }
 
                 private void dumpIGV() {
-                    GraphPrintVisitor printer = new GraphPrintVisitor();
+                    com.oracle.truffle.api.nodes.GraphPrintVisitor printer = new com.oracle.truffle.api.nodes.GraphPrintVisitor();
                     printer.beginGroup("shapes");
                     com.oracle.truffle.object.debug.IGVShapeVisitor visitor = new com.oracle.truffle.object.debug.IGVShapeVisitor(printer);
                     for (ShapeImpl shape : getAllShapes()) {

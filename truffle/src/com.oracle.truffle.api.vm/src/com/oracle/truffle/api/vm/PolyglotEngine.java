@@ -47,8 +47,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.Executor;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import org.graalvm.options.OptionValues;
 
@@ -206,7 +204,6 @@ import com.oracle.truffle.api.vm.PolyglotRuntime.LanguageShared;
  */
 @SuppressWarnings({"rawtypes"})
 public class PolyglotEngine {
-    static final Logger LOG = Logger.getLogger(PolyglotEngine.class.getName());
     static final PolyglotEngine UNUSABLE_ENGINE = new PolyglotEngine();
 
     static {
@@ -1452,7 +1449,7 @@ public class PolyglotEngine {
                         try {
                             LANGUAGE.dispose(localEnv);
                         } catch (Exception | Error ex) {
-                            LOG.log(Level.SEVERE, "Error disposing " + this, ex);
+                            ex.printStackTrace();
                         }
                         this.env = null;
                         context = UNSET_CONTEXT;

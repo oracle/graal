@@ -44,18 +44,20 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.xml.stream.FactoryConfigurationError;
-import javax.xml.stream.XMLOutputFactory;
-import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamWriter;
-
 import com.oracle.truffle.api.TruffleOptions;
 
 /**
- * Utility class for creating output for the ideal graph visualizer.
+ * Don't use. There is more lightweight replacement - the <code>org.graalvm.graphio</code> API
+ * provided as part of the Graal compiler project.
+ *
  *
  * @since 0.8 or earlier
+ * @deprecated This class references XML API which is in its own separate module on JDK9. Such
+ *             dependency makes the Truffle API too "heavy weight" and as such it is scheduled for
+ *             removal.
  */
+@SuppressWarnings("deprecated")
+@Deprecated
 public class GraphPrintVisitor implements Closeable {
     /** @since 0.8 or earlier */
     public static final String GraphVisualizerAddress = "127.0.0.1";
@@ -140,22 +142,30 @@ public class GraphPrintVisitor implements Closeable {
         void close();
     }
 
+    @SuppressWarnings("all")
     private static class XMLImpl implements Impl {
-        private static final XMLOutputFactory XML_OUTPUT_FACTORY = XMLOutputFactory.newInstance();
-        private final XMLStreamWriter xmlstream;
+        // uses fully qualified name to prevent mx to add "require java.xml" when compiling on JDK9
+        private static final javax.xml.stream.XMLOutputFactory XML_OUTPUT_FACTORY = javax.xml.stream.XMLOutputFactory.newInstance();
+        // uses fully qualified name to prevent mx to add "require java.xml" when compiling on JDK9
+        private final javax.xml.stream.XMLStreamWriter xmlstream;
 
         XMLImpl(OutputStream outputStream) {
             try {
                 this.xmlstream = XML_OUTPUT_FACTORY.createXMLStreamWriter(outputStream);
-            } catch (XMLStreamException | FactoryConfigurationError e) {
+                // uses fully qualified name to prevent mx to add "require java.xml" when compiling
+                // on JDK9
+            } catch (javax.xml.stream.XMLStreamException | javax.xml.stream.FactoryConfigurationError e) {
                 throw new RuntimeException(e);
             }
         }
 
+        @Override
         public void writeStartDocument() {
             try {
                 xmlstream.writeStartDocument();
-            } catch (XMLStreamException e) {
+                // uses fully qualified name to prevent mx to add "require java.xml" when compiling
+                // on JDK9
+            } catch (javax.xml.stream.XMLStreamException e) {
                 throw new RuntimeException(e);
             }
         }
@@ -163,7 +173,9 @@ public class GraphPrintVisitor implements Closeable {
         public void writeEndDocument() {
             try {
                 xmlstream.writeEndDocument();
-            } catch (XMLStreamException e) {
+                // uses fully qualified name to prevent mx to add "require java.xml" when compiling
+                // on JDK9
+            } catch (javax.xml.stream.XMLStreamException e) {
                 throw new RuntimeException(e);
             }
         }
@@ -171,7 +183,9 @@ public class GraphPrintVisitor implements Closeable {
         public void writeStartElement(String name) {
             try {
                 xmlstream.writeStartElement(name);
-            } catch (XMLStreamException e) {
+                // uses fully qualified name to prevent mx to add "require java.xml" when compiling
+                // on JDK9
+            } catch (javax.xml.stream.XMLStreamException e) {
                 throw new RuntimeException(e);
             }
         }
@@ -179,7 +193,9 @@ public class GraphPrintVisitor implements Closeable {
         public void writeEndElement() {
             try {
                 xmlstream.writeEndElement();
-            } catch (XMLStreamException e) {
+                // uses fully qualified name to prevent mx to add "require java.xml" when compiling
+                // on JDK9
+            } catch (javax.xml.stream.XMLStreamException e) {
                 throw new RuntimeException(e);
             }
         }
@@ -187,7 +203,9 @@ public class GraphPrintVisitor implements Closeable {
         public void writeAttribute(String name, String value) {
             try {
                 xmlstream.writeAttribute(name, value);
-            } catch (XMLStreamException e) {
+                // uses fully qualified name to prevent mx to add "require java.xml" when compiling
+                // on JDK9
+            } catch (javax.xml.stream.XMLStreamException e) {
                 throw new RuntimeException(e);
             }
         }
@@ -195,7 +213,9 @@ public class GraphPrintVisitor implements Closeable {
         public void writeCharacters(String text) {
             try {
                 xmlstream.writeCharacters(text);
-            } catch (XMLStreamException e) {
+                // uses fully qualified name to prevent mx to add "require java.xml" when compiling
+                // on JDK9
+            } catch (javax.xml.stream.XMLStreamException e) {
                 throw new RuntimeException(e);
             }
         }
@@ -203,7 +223,9 @@ public class GraphPrintVisitor implements Closeable {
         public void flush() {
             try {
                 xmlstream.flush();
-            } catch (XMLStreamException e) {
+                // uses fully qualified name to prevent mx to add "require java.xml" when compiling
+                // on JDK9
+            } catch (javax.xml.stream.XMLStreamException e) {
                 throw new RuntimeException(e);
             }
         }
@@ -211,7 +233,9 @@ public class GraphPrintVisitor implements Closeable {
         public void close() {
             try {
                 xmlstream.close();
-            } catch (XMLStreamException e) {
+                // uses fully qualified name to prevent mx to add "require java.xml" when compiling
+                // on JDK9
+            } catch (javax.xml.stream.XMLStreamException e) {
                 throw new RuntimeException(e);
             }
         }
@@ -655,6 +679,7 @@ public class GraphPrintVisitor implements Closeable {
     }
 
     private static final class DefaultGraphPrintHandler implements GraphPrintHandler {
+        @SuppressWarnings("all")
         public void visit(Object node, GraphPrintAdapter printer) {
             printer.createElementForNode(node);
 
