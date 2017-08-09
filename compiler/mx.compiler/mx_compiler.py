@@ -853,6 +853,8 @@ def java_base_unittest(args):
     if exists(basejdk_dir):
         shutil.rmtree(basejdk_dir)
     mx.run([jlink, '--output', basejdk_dir, '--add-modules', basemodules, '--module-path', join(jdk.home, 'jmods')])
+    shutil.copy(join(jdk.home, 'lib', 'libjdwp.so'), join(basejdk_dir, 'lib', 'libjdwp.so'))
+    shutil.copy(join(jdk.home, 'lib', 'libdt_socket.so'), join(basejdk_dir, 'lib', 'libdt_socket.so'))
 
     if not args:
         args = []
