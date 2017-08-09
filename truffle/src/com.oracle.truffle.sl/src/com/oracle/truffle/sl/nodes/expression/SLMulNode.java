@@ -43,7 +43,6 @@ package com.oracle.truffle.sl.nodes.expression;
 import java.math.BigInteger;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.nodes.SLBinaryNode;
@@ -56,7 +55,7 @@ public abstract class SLMulNode extends SLBinaryNode {
 
     @Specialization(rewriteOn = ArithmeticException.class)
     protected long mul(long left, long right) {
-        return ExactMath.multiplyExact(left, right);
+        return Math.multiplyExact(left, right);
     }
 
     @Specialization

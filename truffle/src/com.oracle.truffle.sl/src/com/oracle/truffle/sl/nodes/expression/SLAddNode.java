@@ -43,7 +43,6 @@ package com.oracle.truffle.sl.nodes.expression;
 import java.math.BigInteger;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -67,20 +66,20 @@ public abstract class SLAddNode extends SLBinaryNode {
      * Specialization for primitive {@code long} values. This is the fast path of the
      * arbitrary-precision arithmetic. We need to check for overflows of the addition, and switch to
      * the {@link #add(BigInteger, BigInteger) slow path}. Therefore, we use an
-     * {@link ExactMath#addExact(long, long) addition method that throws an exception on overflow}.
-     * The {@code rewriteOn} attribute on the {@link Specialization} annotation automatically
-     * triggers the node rewriting on the exception.
+     * {@link Math#addExact(long, long) addition method that throws an exception on overflow}. The
+     * {@code rewriteOn} attribute on the {@link Specialization} annotation automatically triggers
+     * the node rewriting on the exception.
      * <p>
-     * In compiled code, {@link ExactMath#addExact(long, long) addExact} is compiled to efficient
-     * machine code that uses the processor's overflow flag. Therefore, this method is compiled to
-     * only two machine code instructions on the fast path.
+     * In compiled code, {@link Math#addExact(long, long) addExact} is compiled to efficient machine
+     * code that uses the processor's overflow flag. Therefore, this method is compiled to only two
+     * machine code instructions on the fast path.
      * <p>
      * This specialization is automatically selected by the Truffle DSL if both the left and right
      * operand are {@code long} values.
      */
     @Specialization(rewriteOn = ArithmeticException.class)
     protected long add(long left, long right) {
-        return ExactMath.addExact(left, right);
+        return Math.addExact(left, right);
     }
 
     /**
