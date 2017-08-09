@@ -769,14 +769,13 @@ public class ElementUtils {
         }
     }
 
-    @SuppressWarnings("unchecked")
     public static <T> List<T> getAnnotationValueList(Class<T> expectedListType, AnnotationMirror mirror, String name) {
-        List<? extends AnnotationValue> values = getAnnotationValue(List.class, mirror, name);
+        List<?> values = getAnnotationValue(List.class, mirror, name);
         List<T> result = new ArrayList<>();
 
         if (values != null) {
-            for (AnnotationValue value : values) {
-                T annotationValue = resolveAnnotationValue(expectedListType, value);
+            for (Object value : values) {
+                T annotationValue = resolveAnnotationValue(expectedListType, (AnnotationValue) value);
                 if (annotationValue != null) {
                     result.add(annotationValue);
                 }
@@ -789,7 +788,6 @@ public class ElementUtils {
         return resolveAnnotationValue(expectedType, getAnnotationValue(mirror, name));
     }
 
-    @SuppressWarnings({"unchecked"})
     private static <T> T resolveAnnotationValue(Class<T> expectedType, AnnotationValue value) {
         if (value == null) {
             return null;
@@ -804,7 +802,7 @@ public class ElementUtils {
                 throw new ClassCastException(unboxedValue.getClass().getName() + " not assignable from " + expectedType.getName());
             }
         }
-        return (T) unboxedValue;
+        return expectedType.cast(unboxedValue);
     }
 
     public static AnnotationValue getAnnotationValue(AnnotationMirror mirror, String name, boolean resolveDefault) {

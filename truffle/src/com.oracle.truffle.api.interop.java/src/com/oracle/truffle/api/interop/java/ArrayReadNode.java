@@ -37,11 +37,9 @@ abstract class ArrayReadNode extends Node {
 
     protected abstract Object executeWithTarget(JavaObject receiver, Object index);
 
-    @SuppressWarnings("unchecked")
     @Specialization(guards = {"receiver.isArray()", "index.getClass() == clazz"})
-    protected Object doNumber(JavaObject receiver, Number index, @Cached("index.getClass()") Class<?> clazz) {
-        Class<Number> numberClazz = (Class<Number>) clazz;
-        return doArrayAccess(receiver, numberClazz.cast(index).intValue());
+    protected Object doNumber(JavaObject receiver, Number index, @Cached("index.getClass()") Class<? extends Number> clazz) {
+        return doArrayAccess(receiver, clazz.cast(index).intValue());
     }
 
     @Specialization(guards = {"receiver.isArray()"}, replaces = "doNumber")

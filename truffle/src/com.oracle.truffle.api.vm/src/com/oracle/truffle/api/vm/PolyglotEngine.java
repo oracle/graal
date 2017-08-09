@@ -1582,7 +1582,6 @@ public class PolyglotEngine {
             return (C) language.context;
         }
 
-        @SuppressWarnings("unchecked")
         @Override
         public <T extends TruffleLanguage<?>> T getCurrentLanguage(Class<T> languageClass) {
             PolyglotEngine engine = PolyglotEngine.GLOBAL_PROFILE.get();
@@ -1591,7 +1590,7 @@ public class PolyglotEngine {
                 throw new IllegalStateException("No current language available.");
             }
             Language language = engine.getLanguage(languageClass);
-            return (T) NODES.getLanguageSpi(language.shared.language);
+            return languageClass.cast(NODES.getLanguageSpi(language.shared.language));
         }
 
         @Override

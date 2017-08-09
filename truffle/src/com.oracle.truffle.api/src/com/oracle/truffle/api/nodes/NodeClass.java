@@ -38,13 +38,11 @@ import java.util.List;
  */
 public abstract class NodeClass {
     private static final ClassValue<NodeClass> nodeClasses = new ClassValue<NodeClass>() {
-        @SuppressWarnings("unchecked")
         @Override
         protected NodeClass computeValue(final Class<?> clazz) {
-            assert Node.class.isAssignableFrom(clazz);
             return AccessController.doPrivileged(new PrivilegedAction<NodeClass>() {
                 public NodeClass run() {
-                    return new NodeClassImpl((Class<? extends Node>) clazz);
+                    return new NodeClassImpl(clazz.asSubclass(Node.class));
                 }
             });
         }

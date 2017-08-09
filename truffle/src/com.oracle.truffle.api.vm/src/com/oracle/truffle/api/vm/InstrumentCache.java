@@ -215,10 +215,9 @@ final class InstrumentCache {
         return services.toArray(new String[0]);
     }
 
-    @SuppressWarnings("unchecked")
     private void loadClass() {
         try {
-            instrumentClass = (Class<? extends TruffleInstrument>) Class.forName(className, true, loader);
+            instrumentClass = Class.forName(className, true, loader).asSubclass(TruffleInstrument.class);
         } catch (Exception ex) {
             throw new IllegalStateException("Cannot initialize " + getName() + " instrument with implementation " + className, ex);
         }
