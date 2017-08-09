@@ -30,10 +30,13 @@ import static org.graalvm.compiler.core.common.GraalOptions.HotSpotPrintInlining
 import static org.graalvm.compiler.debug.DebugContext.DEFAULT_LOG_STREAM;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
+import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.target.Backend;
@@ -95,6 +98,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
     private final OptionValues options;
     private final DiagnosticsOutputDirectory outputDirectory;
+    private final Map<ExceptionAction, Integer> compilationProblemsPerAction;
     private final HotSpotGraalMBean mBean;
 
     /**
@@ -114,6 +118,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         }
 
         outputDirectory = new DiagnosticsOutputDirectory(options);
+        compilationProblemsPerAction = new EnumMap<>(ExceptionAction.class);
         snippetCounterGroups = GraalOptions.SnippetCounters.getValue(options) ? new ArrayList<>() : null;
         CompilerConfiguration compilerConfiguration = compilerConfigurationFactory.createCompilerConfiguration();
 
@@ -297,5 +302,10 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     @Override
     public DiagnosticsOutputDirectory getOutputDirectory() {
         return outputDirectory;
+    }
+
+    @Override
+    public Map<ExceptionAction, Integer> getCompilationProblemsPerAction() {
+        return compilationProblemsPerAction;
     }
 }
