@@ -31,7 +31,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
-import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.util.List;
 
@@ -523,6 +522,13 @@ public class BreakpointTest extends AbstractDebugTest {
     @SuppressWarnings("try") // auto-closeable resource session is never referenced in body of
                              // corresponding try statement
     public void testGlobalBreakpoints() throws Throwable {
+        try {
+            Class.forName("java.beans.PropertyChangeListener");
+        } catch (ClassNotFoundException ex) {
+            // skip the test if running only with java.base JDK9 module
+            return;
+        }
+
         final Source source = testSource("ROOT(\n" +
                         "  STATEMENT,\n" +
                         "  STATEMENT\n" +
@@ -532,21 +538,7 @@ public class BreakpointTest extends AbstractDebugTest {
         assertTrue(debugger.getBreakpoints().isEmpty());
         Breakpoint globalBreakpoint = Breakpoint.newBuilder(source).lineIs(2).build();
         boolean[] notified = new boolean[]{false};
-        PropertyChangeListener newBPListener = (event) -> {
-            notified[0] = true;
-            Assert.assertEquals(Debugger.PROPERTY_BREAKPOINTS, event.getPropertyName());
-            Assert.assertEquals(debugger, event.getSource());
-            Assert.assertNull(event.getOldValue());
-            Assert.assertNotEquals(globalBreakpoint, event.getNewValue());
-            Breakpoint newBP = (Breakpoint) event.getNewValue();
-            try {
-                newBP.dispose();
-                Assert.fail("Public dispose must not be possible for global breakpoints.");
-            } catch (IllegalStateException ex) {
-                // O.K.
-            }
-        };
-        debugger.addPropertyChangeListener(newBPListener);
+        BreakpointListener newBPListener = BreakpointListener.register(notified, debugger, globalBreakpoint);
         debugger.install(globalBreakpoint);
         Assert.assertTrue(notified[0]);
         Assert.assertEquals(1, debugger.getBreakpoints().size());
@@ -623,23 +615,9 @@ public class BreakpointTest extends AbstractDebugTest {
         }
         expectDone();
 
-        debugger.removePropertyChangeListener(newBPListener);
+        newBPListener.unregister();
         notified[0] = false;
-        PropertyChangeListener disposeBPListener = (event) -> {
-            notified[0] = true;
-            Assert.assertEquals(Debugger.PROPERTY_BREAKPOINTS, event.getPropertyName());
-            Assert.assertEquals(debugger, event.getSource());
-            Assert.assertNull(event.getNewValue());
-            Assert.assertNotEquals(globalBreakpoint, event.getOldValue());
-            Breakpoint oldBP = (Breakpoint) event.getOldValue();
-            try {
-                oldBP.dispose();
-                Assert.fail("Public dispose must not be possible for global breakpoints.");
-            } catch (IllegalStateException ex) {
-                // O.K.
-            }
-        };
-        debugger.addPropertyChangeListener(disposeBPListener);
+        BreakpointDisposeListener.register(notified, debugger, globalBreakpoint);
         globalBreakpoint.dispose();
         Assert.assertTrue(notified[0]);
         Assert.assertEquals(0, debugger.getBreakpoints().size());
@@ -647,6 +625,13 @@ public class BreakpointTest extends AbstractDebugTest {
 
     @Test
     public void testGlobalBreakpointsInMultipleSessions() throws Throwable {
+        try {
+            Class.forName("java.beans.PropertyChangeListener");
+        } catch (ClassNotFoundException ex) {
+            // skip the test if running only with java.base JDK9 module
+            return;
+        }
+
         final Source source = testSource("ROOT(\n" +
                         "  STATEMENT,\n" +
                         "  STATEMENT,\n" +
