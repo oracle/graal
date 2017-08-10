@@ -24,30 +24,62 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.CallTarget;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Container object for the two pointers (data and code) that make up a closure on the native side.
  * The native closure is reference counted, with the reference count being stored in this object.
  *
- * By convention, the first reference is owned by the {@link LibFFIClosure} object and therefore
- * controlled by the Java GC. There should be no other references to this object from the Java side.
- * When the reference count drops to zero, the native side of this object is freed, so the Java side
- * contains garbage and must not be used anymore.
+ * Every {@link LibFFIClosure} object has a reference to a {@link ClosureNativePointer} object.
+ * Native code may have additional references that are manually counted using the
+ * {@code newClosureRef} and {@code addClosureRef} functions.
+ *
+ * This object is kept alive in a map in the {@link NFIContext} as long as the reference count is
+ * greater than zero. The reference from {@link NFIContext} to {@link ClosureNativePointer} is not
+ * counted in the reference count. When the reference count drops to zero, it is removed from the
+ * map in the context, and the GC can free this object, and subsequently destroy the closure on the
+ * native side.
+ *
+ * When the {@link NFIContext} is disposed, all native references to all closures owned by this
+ * context are released. If there are also no Java references left, then the native closure is
+ * destroyed.
  */
-final class ClosureNativePointer extends NativeAllocation.Destructor {
+final class ClosureNativePointer {
 
     private final NFIContext context;
 
-    private final long nativeClosure;
     private final long codePointer;
 
     private final AtomicInteger refCount;
 
-    ClosureNativePointer(NFIContext context, long nativeClosure, long codePointer) {
+    /**
+     * The native side of this object has a JNI reference to a {@link CallTarget}. This
+     * {@link CallTarget} may indirectly hold a reference to this object, preventing garbage
+     * collection of the whole structure. To break this reference cycle, the native side contains a
+     * weak JNI reference, and this object contains a strong managed reference to keep the object
+     * alive. That way the GC can collect everything on the Java side before the native side is
+     * deallocated.
+     */
+    final CallTarget callTarget;
+
+    /**
+     * The LibFFI closure structure keeps a pointer to the native signature. Keep a Java reference
+     * to the signature around to prevent GC as long as the closure is alive.
+     */
+    final LibFFISignature signature;
+
+    static ClosureNativePointer create(NFIContext context, long nativeClosure, long codePointer, CallTarget callTarget, LibFFISignature signature) {
+        ClosureNativePointer ret = new ClosureNativePointer(context, codePointer, callTarget, signature);
+        NativeAllocation.registerNativeAllocation(ret, new NativeDestructor(nativeClosure));
+        return ret;
+    }
+
+    private ClosureNativePointer(NFIContext context, long codePointer, CallTarget callTarget, LibFFISignature signature) {
         this.context = context;
-        this.nativeClosure = nativeClosure;
         this.codePointer = codePointer;
+        this.callTarget = callTarget;
+        this.signature = signature;
 
         // the first reference is owned by the LibFFIClosure object
         this.refCount = new AtomicInteger(1);
@@ -58,19 +90,31 @@ final class ClosureNativePointer extends NativeAllocation.Destructor {
         assert refs > 0 : "addRef on dead closure";
     }
 
-    @Override
-    protected void destroy() {
+    void releaseRef() {
         int refs = refCount.decrementAndGet();
-        assert refs >= 0 : "destroy on already dead closure";
+        assert refs >= 0 : "releaseRef on already dead closure";
         if (refs == 0) {
             context.removeClosureNativePointer(codePointer);
-            freeClosure(nativeClosure);
         }
     }
 
     long getCodePointer() {
         assert refCount.get() > 0 : "accessing dead closure";
         return codePointer;
+    }
+
+    private static class NativeDestructor extends NativeAllocation.Destructor {
+
+        private final long nativeClosure;
+
+        NativeDestructor(long nativeClosure) {
+            this.nativeClosure = nativeClosure;
+        }
+
+        @Override
+        protected void destroy() {
+            freeClosure(nativeClosure);
+        }
     }
 
     private static native void freeClosure(long closure);
