@@ -25,6 +25,7 @@ package org.graalvm.compiler.truffle.test;
 import java.io.ByteArrayOutputStream;
 
 import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.LogStream;
 import org.graalvm.compiler.debug.TTY;
@@ -105,7 +106,9 @@ public class PerformanceWarningTest {
                             TruffleOptionsOverrideScope scope2 = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TrufflePerformanceWarningsAreFatal, Boolean.TRUE)) {
                 OptionValues options = TruffleCompilerOptions.getOptions();
                 DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
-                HotSpotTruffleCompiler.create(runtime).compileMethod(debug, target, runtime);
+                try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("PerformanceWarningTest")) {
+                    HotSpotTruffleCompiler.create(runtime).compileMethod(debug, target, runtime);
+                }
             } catch (AssertionError e) {
                 seenException = true;
                 if (!expectException) {

@@ -174,11 +174,11 @@ public class CompilationWrapperTest extends GraalCompilerTest {
 
         String diagnosticOutputZip = diagnosticProbe.lastMatchingLine.substring(diagnosticProbe.substring.length()).trim();
 
-        String[] dumpPathEntries = dumpPath.list();
+        List<String> dumpPathEntries = Arrays.asList(dumpPath.list());
 
         File zip = new File(diagnosticOutputZip).getAbsoluteFile();
         Assert.assertTrue(zip.toString(), zip.exists());
-        Assert.assertArrayEquals(dumpPathEntries, new String[]{zip.getName()});
+        Assert.assertTrue(zip + " not in " + dumpPathEntries, dumpPathEntries.contains(zip.getName()));
         try {
             int bgv = 0;
             int cfg = 0;
