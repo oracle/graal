@@ -25,7 +25,6 @@
 package com.oracle.truffle.api.dsl;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -167,7 +166,7 @@ public @interface Specialization {
      *
      * </p>
      *
-     * @see ExactMath#addExact(int, int)
+     * @see Math#addExact(int, int)
      */
     Class<? extends Throwable>[] rewriteOn() default {};
 

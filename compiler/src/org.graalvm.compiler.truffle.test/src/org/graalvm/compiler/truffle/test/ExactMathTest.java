@@ -123,15 +123,15 @@ public class ExactMathTest extends GraalCompilerTest {
     }
 
     public static int add(int a, int b) {
-        return ExactMath.addExact(a, b);
+        return Math.addExact(a, b);
     }
 
     public static int mul(int a, int b) {
-        return ExactMath.multiplyExact(a, b);
+        return Math.multiplyExact(a, b);
     }
 
     public static int sub(int a, int b) {
-        return ExactMath.subtractExact(a, b);
+        return Math.subtractExact(a, b);
     }
 
     public static int mulHigh(int a, int b) {
@@ -143,15 +143,15 @@ public class ExactMathTest extends GraalCompilerTest {
     }
 
     public static long longAdd(long a, long b) {
-        return ExactMath.addExact(a, b);
+        return Math.addExact(a, b);
     }
 
     public static long longMul(long a, long b) {
-        return ExactMath.multiplyExact(a, b);
+        return Math.multiplyExact(a, b);
     }
 
     public static long longSub(long a, long b) {
-        return ExactMath.subtractExact(a, b);
+        return Math.subtractExact(a, b);
     }
 
     public static long longMulHigh(long a, long b) {

@@ -32,7 +32,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -239,7 +238,7 @@ public class FallbackTest {
 
         @Specialization(rewriteOn = ArithmeticException.class)
         int f1(int a) throws ArithmeticException {
-            return ExactMath.addExact(a, a);
+            return Math.addExact(a, a);
         }
 
         @Specialization
