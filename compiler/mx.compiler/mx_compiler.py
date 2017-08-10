@@ -849,7 +849,7 @@ def java_base_unittest(args):
     if not exists(jlink):
         raise mx.JDKConfigException('jlink tool does not exist: ' + jlink)
     basejdk_dir = join(_suite.get_output_root(), 'jdkbase')
-    basemodules = 'java.base,jdk.internal.vm.ci,jdk.unsupported,java.management,jdk.management,java.instrument'
+    basemodules = 'java.base,jdk.internal.vm.ci,jdk.unsupported,java.management,jdk.management'
     if exists(basejdk_dir):
         shutil.rmtree(basejdk_dir)
     mx.run([jlink, '--output', basejdk_dir, '--add-modules', basemodules, '--module-path', join(jdk.home, 'jmods')])
