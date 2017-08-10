@@ -13,6 +13,6 @@ $clazz \u003a\u003a new :: inTruffleButNotInTest()
 <?
 private boolean inTruffleButNotInTest() {
     String pkg = context.enclosingPackage();
-    return !(pkg.endsWith(".test") || pkg.contains(".test.")) && (pkg.startsWith("com.oracle.truffle.api") || pkg.startsWith("com.oracle.truffle.dsl"));
+    return !(pkg.endsWith(".test") || pkg.contains(".test.") || pkg.equals("com.oracle.truffle.tck")) && pkg.startsWith("com.oracle.truffle.");
 }
 ?>
