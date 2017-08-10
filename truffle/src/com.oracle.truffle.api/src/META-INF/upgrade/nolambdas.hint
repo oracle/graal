@@ -1,4 +1,4 @@
-'Avoid use of lamdas in Truffle API':
+'Avoid use of lambdas in Truffle API':
 ($args$) -> $any :: inTruffleButNotInTest()
 ;;
 
