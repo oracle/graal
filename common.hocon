@@ -6,8 +6,8 @@ overlay = d7d8755e92c891ace88cdc197e08671bf8665f07
 jdks: {
   openjdk8 : {name : openjdk, version : "8u121-jvmci-0.31", platformspecific: true}
   labsjdk8 : {name : labsjdk, version : "8u121-jvmci-0.31", platformspecific: true}
-  labsjdk9 : {name : labsjdk, version : "9-20170703-141343", platformspecific: true}
-  labsjdk9EA : {name : labsjdk, version : "9+176", platformspecific: true}
+  labsjdk9 : {name : labsjdk, version : "9-20170810-210536", platformspecific: true}
+  labsjdk9EA : {name : labsjdk, version : "9+181", platformspecific: true}
   openjdk8Debug : {name : openjdk, version : "8u121-jvmci-0.31-fastdebug", platformspecific: true}
   labsjdk8Debug : {name : labsjdk, version : "8u121-jvmci-0.31-fastdebug", platformspecific: true}
 }
