@@ -230,16 +230,17 @@ final class LLVMAddressValueProvider implements LLVMDebugValueProvider {
         totalBitSize += paddingAfter;
 
         LLVMIVarBit var = LLVMMemory.getIVarBit(baseAddress.increment(bitOffset / Byte.SIZE), totalBitSize);
-        var = var.leftShift(LLVMIVarBit.fromInt(Integer.SIZE, paddingAfter));
 
-        final LLVMIVarBit totalPadding = LLVMIVarBit.fromInt(Integer.SIZE, paddingBefore + paddingAfter);
-        if (signed) {
-            var = var.arithmeticRightShift(totalPadding);
-            return var.asBigInteger();
-        } else {
-            var = var.logicalRightShift(totalPadding);
-            return var.asUnsignedBigInteger();
+        if (paddingAfter != 0) {
+            var = var.leftShift(LLVMIVarBit.fromInt(Integer.SIZE, paddingAfter));
         }
+
+        final int totalPadding = paddingBefore + paddingAfter;
+        final LLVMIVarBit shiftRight = LLVMIVarBit.fromInt(Integer.SIZE, totalPadding);
+        if (totalPadding != 0) {
+            var = signed ? var.arithmeticRightShift(shiftRight) : var.logicalRightShift(shiftRight);
+        }
+        return signed ? var.asBigInteger() : var.asUnsignedBigInteger();
     }
 
     private static boolean isByteAligned(long offset) {
