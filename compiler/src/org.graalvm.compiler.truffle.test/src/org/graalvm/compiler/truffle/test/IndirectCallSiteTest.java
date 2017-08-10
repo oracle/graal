@@ -52,7 +52,7 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
         final OptimizedCallTarget expectedInvlidation;
         boolean invalidationHappened;
 
-        public InvalidationListener(OptimizedCallTarget expectedInvlidation) {
+        InvalidationListener(OptimizedCallTarget expectedInvlidation) {
             this.expectedInvlidation = expectedInvlidation;
             this.invalidationHappened = false;
         }
@@ -110,12 +110,12 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
         }
 
         @Override
-        public void notifyShutdown(GraalTruffleRuntime runtime) {
+        public void notifyShutdown(GraalTruffleRuntime r) {
 
         }
 
         @Override
-        public void notifyStartup(GraalTruffleRuntime runtime) {
+        public void notifyStartup(GraalTruffleRuntime r) {
 
         }
     }
@@ -159,7 +159,7 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
     final Object[] globalState = new Object[1];
 
     class WritesToGlobalState extends RootNode {
-        public WritesToGlobalState() {
+        WritesToGlobalState() {
             super(null);
         }
 
@@ -181,7 +181,7 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
 
     class DirectlyCallsTargetWithArguments extends RootNode {
 
-        public DirectlyCallsTargetWithArguments(OptimizedCallTarget target, Object[] arguments) {
+        DirectlyCallsTargetWithArguments(OptimizedCallTarget target, Object[] arguments) {
             super(null);
             this.directCallNode = new OptimizedDirectCallNode(runtime, target);
             this.arguments = arguments;
