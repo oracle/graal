@@ -75,6 +75,8 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMExpectFactory.LLVMExpec
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMExpectFactory.LLVMExpectI64NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMFrameAddressNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMI64ObjectSizeNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMInvariantEndNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMInvariantStartNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMLifetimeEndNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMLifetimeStartNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemCopyFactory.LLVMMemI32CopyNodeGen;
@@ -137,6 +139,8 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountTrailingZeroesNode
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64BitVACopyNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64BitVAEnd;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64BitVAStart;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_ConversionDoubleToIntNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_ConversionFloatToIntNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMFunctionLiteralNode;
 import com.oracle.truffle.llvm.nodes.literals.LLVMFunctionLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMI1LiteralNode;
@@ -575,9 +579,9 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMExpressionNode createLLVMBuiltin(LLVMParserRuntime runtime, Symbol target, LLVMExpressionNode[] args, int callerArgumentCount, SourceSection sourceSection) {
         /*
-         * This LLVM Builtins are *not* function intrinsics. Builtins replace statements that look
-         * like function calls but are actually LLVM intrinsics. An example is llvm.stackpointer.
-         * Also, it is not possible to retrieve the functionpointer of such pseudo-call-targets.
+         * This LLVM Builtins are *not* function intrinsics. Builtins replace statements that look like
+         * function calls but are actually LLVM intrinsics. An example is llvm.stackpointer. Also, it is not
+         * possible to retrieve the functionpointer of such pseudo-call-targets.
          *
          * This builtins shall not be used for regular function intrinsification!
          */
@@ -666,6 +670,10 @@ public class BasicNodeFactory implements NodeFactory {
                 return LLVMLifetimeStartNodeGen.create(args[1], args[2], sourceSection);
             case "@llvm.lifetime.end":
                 return LLVMLifetimeEndNodeGen.create(args[1], args[2], sourceSection);
+            case "@llvm.invariant.start":
+                return LLVMInvariantStartNodeGen.create(args[1], args[2], sourceSection);
+            case "@llvm.invariant.end":
+                return LLVMInvariantEndNodeGen.create(args[1], args[2], sourceSection);
             case "@llvm.stacksave":
                 return LLVMStackSaveNodeGen.create(sourceSection);
             case "@llvm.stackrestore":
@@ -790,7 +798,10 @@ public class BasicNodeFactory implements NodeFactory {
             case "@llvm.rint.f32":
             case "@llvm.rint.f64":
                 return LLVMCMathsIntrinsicsFactory.LLVMRintNodeGen.create(args[1], sourceSection);
-
+            case "@llvm.x86.sse.cvtss2si":
+                return LLVMX86_ConversionFloatToIntNodeGen.create(args[1], sourceSection);
+            case "@llvm.x86.sse2.cvtsd2si":
+                return LLVMX86_ConversionDoubleToIntNodeGen.create(args[1], sourceSection);
             default:
                 throw new IllegalStateException("Missing LLVM builtin: " + declaration.getName());
         }

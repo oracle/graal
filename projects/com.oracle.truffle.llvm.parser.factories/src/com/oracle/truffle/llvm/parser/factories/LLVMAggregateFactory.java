@@ -36,6 +36,8 @@ import com.oracle.truffle.llvm.nodes.base.LLVMStructWriteNodeFactory.LLVMPrimiti
 import com.oracle.truffle.llvm.nodes.memory.LLVMInsertValueNode.LLVMInsertAddressValueNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMInsertValueNode.LLVMInsertDoubleValueNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMInsertValueNode.LLVMInsertFloatValueNode;
+import com.oracle.truffle.llvm.nodes.memory.LLVMInsertValueNode.LLVMInsertI8ValueNode;
+import com.oracle.truffle.llvm.nodes.memory.LLVMInsertValueNode.LLVMInsertI16ValueNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMInsertValueNode.LLVMInsertI32ValueNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMInsertValueNode.LLVMInsertI64ValueNode;
 import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode;
@@ -83,7 +85,7 @@ final class LLVMAggregateFactory {
                 default:
                     throw new AssertionError(type);
             }
-        } else if (type instanceof PointerType || type instanceof StructureType) {
+        } else if (type instanceof PointerType || type instanceof StructureType || type instanceof ArrayType) {
             return LLVMExtractAddressValueNodeGen.create(targetAddress);
         } else {
             throw new AssertionError(type);
@@ -94,14 +96,18 @@ final class LLVMAggregateFactory {
                     LLVMExpressionNode valueToInsert, Type llvmType) {
         if (llvmType instanceof PrimitiveType) {
             switch (((PrimitiveType) llvmType).getPrimitiveKind()) {
-                case FLOAT:
-                    return new LLVMInsertFloatValueNode(sourceAggregate, resultAggregate, size, offset, valueToInsert);
-                case DOUBLE:
-                    return new LLVMInsertDoubleValueNode(sourceAggregate, resultAggregate, size, offset, valueToInsert);
+                case I8:
+                    return new LLVMInsertI8ValueNode(sourceAggregate, resultAggregate, size, offset, valueToInsert);
+                case I16:
+                    return new LLVMInsertI16ValueNode(sourceAggregate, resultAggregate, size, offset, valueToInsert);
                 case I32:
                     return new LLVMInsertI32ValueNode(sourceAggregate, resultAggregate, size, offset, valueToInsert);
                 case I64:
                     return new LLVMInsertI64ValueNode(sourceAggregate, resultAggregate, size, offset, valueToInsert);
+                case FLOAT:
+                    return new LLVMInsertFloatValueNode(sourceAggregate, resultAggregate, size, offset, valueToInsert);
+                case DOUBLE:
+                    return new LLVMInsertDoubleValueNode(sourceAggregate, resultAggregate, size, offset, valueToInsert);
                 default:
                     throw new AssertionError(llvmType);
             }
