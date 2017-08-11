@@ -100,6 +100,12 @@ public class RedefineIntrinsicTest extends ReplacementsTest {
 
     @Test
     public void test() throws Throwable {
+        try {
+            Class.forName("java.lang.instrument.Instrumentation");
+        } catch (ClassNotFoundException ex) {
+            // skip this test if java.instrument JDK9 module is missing
+            return;
+        }
         String recursionPropName = getClass().getName() + ".recursion";
         if (Java8OrEarlier || Boolean.getBoolean(recursionPropName)) {
             testHelper();
