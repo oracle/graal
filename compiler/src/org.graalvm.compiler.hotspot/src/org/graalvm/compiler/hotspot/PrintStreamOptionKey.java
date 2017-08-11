@@ -52,8 +52,8 @@ public class PrintStreamOptionKey extends OptionKey<String> {
     private String getFilename(OptionValues options) {
         String name = getValue(options);
         if (name.contains("%p")) {
-            String runtimeName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
             try {
+                String runtimeName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
                 int index = runtimeName.indexOf('@');
                 if (index != -1) {
                     long pid = Long.parseLong(runtimeName.substring(0, index));
@@ -62,6 +62,8 @@ public class PrintStreamOptionKey extends OptionKey<String> {
                 name = name.replaceAll("%p", runtimeName);
             } catch (NumberFormatException e) {
 
+            } catch (LinkageError err) {
+                name = String.valueOf(org.graalvm.compiler.debug.PathUtilities.getGlobalTimeStamp());
             }
         }
         if (name.contains("%t")) {
