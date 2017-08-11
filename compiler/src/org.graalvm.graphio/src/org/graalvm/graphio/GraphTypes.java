@@ -53,7 +53,7 @@ public interface GraphTypes {
      * All possible values of an enum. If the provided <code>maybeEnumClass</code> object represents
      * an enum, then compute enum value names in ordinal order and return them as a string array.
      * Otherwise return <code>null</code>
-     * 
+     *
      * @param maybeEnumClass the class to test
      * @return <code>null</code> if the clazz isn't an enum, otherwise names of its values
      */
@@ -61,7 +61,7 @@ public interface GraphTypes {
 
     /**
      * Finds Java type name for a given class.
-     * 
+     *
      * @param maybeClass object representing the class
      * @return the type name of the class or <code>null</code> if the parameter doesn't represent a
      *         class
