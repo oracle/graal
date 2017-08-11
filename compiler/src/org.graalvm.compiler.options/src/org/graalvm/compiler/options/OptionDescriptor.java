@@ -66,6 +66,8 @@ public final class OptionDescriptor {
 
     /**
      * Gets a descriptive help message for the option.
+     *
+     * @see Option#help()
      */
     public String getHelp() {
         return help;

@@ -28,8 +28,11 @@ import java.util.regex.Pattern;
 import org.graalvm.compiler.debug.DebugContext.Scope;
 
 /**
- * Implements the filter specified by the {@link DebugOptions#Dump}, {@link DebugOptions#Log},
- * {@link DebugOptions#Count} and {@link DebugOptions#Time} options.
+ * Implements the filter specified by options such as {@link DebugOptions#Dump},
+ * {@link DebugOptions#Log}, {@link DebugOptions#Count} and {@link DebugOptions#Time}.
+ *
+ * See <a href="DumpHelp.txt">here</a> for a description of the filter syntax.
+ *
  * <p>
  * These options enable the associated debug facility if their filter matches the
  * {@linkplain Scope#getQualifiedName() name} of the current scope. For the

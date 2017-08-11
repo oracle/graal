@@ -51,6 +51,7 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.JavaFileObject;
+import javax.tools.StandardLocation;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionDescriptor;
@@ -118,7 +119,7 @@ public class OptionProcessor extends AbstractProcessor {
         }
 
         String help = annotation.help();
-        if (help.length() != 0) {
+        if (help.length() != 0 && !help.startsWith("file:")) {
             char firstChar = help.charAt(0);
             if (!Character.isUpperCase(firstChar)) {
                 processingEnv.getMessager().printMessage(Kind.ERROR, "Option help text must start with upper case letter", element);
@@ -132,7 +133,7 @@ public class OptionProcessor extends AbstractProcessor {
         }
 
         if (!Character.isUpperCase(optionName.charAt(0))) {
-            processingEnv.getMessager().printMessage(Kind.ERROR, "Option name must start with capital letter", element);
+            processingEnv.getMessager().printMessage(Kind.ERROR, "Option name must start with upper case letter", element);
             return;
         }
 
@@ -154,6 +155,7 @@ public class OptionProcessor extends AbstractProcessor {
         String separator = "";
         Set<Element> originatingElementsList = info.originatingElements;
         originatingElementsList.add(field);
+        PackageElement enclosingPackage = null;
         while (enclosing != null) {
             if (enclosing.getKind() == ElementKind.CLASS || enclosing.getKind() == ElementKind.INTERFACE) {
                 if (enclosing.getModifiers().contains(Modifier.PRIVATE)) {
@@ -166,10 +168,26 @@ public class OptionProcessor extends AbstractProcessor {
                 separator = ".";
             } else {
                 assert enclosing.getKind() == ElementKind.PACKAGE;
+                enclosingPackage = (PackageElement) enclosing;
             }
             enclosing = enclosing.getEnclosingElement();
         }
+        if (enclosingPackage == null) {
+            processingEnv.getMessager().printMessage(Kind.ERROR, "Option field cannot be declared in the unnamed package", element);
+            return;
+        }
+        if (help.startsWith("file:")) {
+            String path = help.substring("file:".length());
+            Filer filer = processingEnv.getFiler();
 
+            try {
+                filer.getResource(StandardLocation.CLASS_OUTPUT, enclosingPackage.getQualifiedName(), path).openInputStream();
+            } catch (IOException e) {
+                String msg = String.format("Cannot find %s containing the help text for option field: %s", path, e);
+                processingEnv.getMessager().printMessage(Kind.ERROR, msg, element);
+                return;
+            }
+        }
         info.options.add(new OptionInfo(optionName, help, optionType, declaringClass, field));
     }
 

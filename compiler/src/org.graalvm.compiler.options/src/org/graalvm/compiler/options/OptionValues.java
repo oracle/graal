@@ -22,17 +22,20 @@
  */
 package org.graalvm.compiler.options;
 
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import org.graalvm.compiler.options.EnumOptionKey.ValueHelp;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.UnmodifiableEconomicMap;
@@ -223,23 +226,7 @@ public class OptionValues {
                 value = '"' + String.valueOf(value) + '"';
             }
             String help = desc.getHelp();
-            if (desc.getOptionKey() instanceof EnumOptionKey) {
-                EnumOptionKey<?> eoption = (EnumOptionKey<?>) desc.getOptionKey();
-                EnumSet<?> evalues = eoption.getAllValues();
-                String evaluesString = evalues.toString();
-                ValueHelp<?> valueHelp = eoption.getValueHelp();
-                if (help.length() > 0 && !help.endsWith(".")) {
-                    help += ".";
-                }
-                if (valueHelp == null) {
-                    help += " Valid values are: " + evaluesString.substring(1, evaluesString.length() - 1);
-                } else {
-                    for (Object o : evalues) {
-                        String vhelp = valueHelp.getHelp(o);
-                        help += "%n" + (vhelp == null ? o : vhelp);
-                    }
-                }
-            }
+
             String name = namePrefix + e.getKey();
             String assign = containsKey(desc.optionKey) ? ":=" : "=";
             String typeName = desc.getOptionKey() instanceof EnumOptionKey ? "String" : desc.getType().getSimpleName();
@@ -253,9 +240,35 @@ public class OptionValues {
             }
 
             if (help.length() != 0) {
-                List<String> helpLines = wrap(help, PROPERTY_LINE_WIDTH - PROPERTY_HELP_INDENT);
-                for (int i = 0; i < helpLines.size(); i++) {
-                    out.printf("%" + PROPERTY_HELP_INDENT + "s%s%n", "", helpLines.get(i));
+                if (help.startsWith("file:")) {
+                    String path = help.substring("file:".length());
+                    Class<?> enclosing = desc.declaringClass;
+                    while (enclosing.getEnclosingClass() != null) {
+                        enclosing = enclosing.getEnclosingClass();
+                    }
+                    if (!path.startsWith("/")) {
+                        path = enclosing.getPackage().getName().replace('.', '/') + '/' + path;
+                    }
+
+                    try {
+                        InputStream in = enclosing.getClassLoader().getResourceAsStream(path);
+                        if (in == null) {
+                            throw new FileNotFoundException(path);
+                        }
+                        BufferedReader br = new BufferedReader(new InputStreamReader(in));
+                        String line = br.readLine();
+                        while (line != null) {
+                            out.printf("%" + PROPERTY_HELP_INDENT + "s%s%n", "", line);
+                            line = br.readLine();
+                        }
+                    } catch (IOException ioe) {
+                        throw new InternalError(ioe);
+                    }
+                } else {
+                    List<String> helpLines = wrap(help, PROPERTY_LINE_WIDTH - PROPERTY_HELP_INDENT);
+                    for (int i = 0; i < helpLines.size(); i++) {
+                        out.printf("%" + PROPERTY_HELP_INDENT + "s%s%n", "", helpLines.get(i));
+                    }
                 }
             }
         }

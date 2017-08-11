@@ -1,0 +1,52 @@
+Filter pattern for specifying scopes in which dumping is enabled.
+
+A filter is a list of comma-separated terms of the form:
+ 
+  <pattern>[:<level>]
+ 
+If <pattern> contains a "*" or "?" character, it is interpreted as a glob pattern.
+Otherwise, it is interpreted as a substring. If <pattern> is empty, it
+matches every scope. If :<level> is omitted, it defaults to 1. The term
+~<pattern> is a shorthand for <pattern>:0 to disable a debug facility for a pattern.
+
+The resulting level of a scope is determined by the last matching term.
+If no term matches, the level is 0 (disabled). A filter with no terms matches every
+scope with a level of 1.
+
+Examples of debug filters:
+--------- 
+  (empty string)
+
+  Matches any scope with level 1.
+--------- 
+  :1
+
+  Matches any scope with level 1.
+--------- 
+  *
+
+  Matches any scope with level 1.
+--------- 
+  CodeGen,CodeInstall
+
+  Matches scopes containing "CodeGen" or "CodeInstall", both with level 1.
+--------- 
+  CodeGen:2,CodeInstall:1
+
+  Matches scopes containing "CodeGen" with level 2, or "CodeInstall" with level 1.
+--------- 
+  :1,Dead:2
+
+  Matches scopes containing "Dead" with level 2, and all other scopes with level 1.
+--------- 
+  :1,Dead:0
+
+  Matches all scopes with level 1, except those containing "Dead".
+--------- 
+  Code*
+
+  Matches scopes starting with "Code" with level 1.
+--------- 
+  Code,~Dead
+
+  Matches scopes containing "Code" but not "Dead", with level 1.
