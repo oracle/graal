@@ -25,7 +25,6 @@ package org.graalvm.compiler.debug;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -74,7 +73,7 @@ public class DiagnosticsOutputDirectory {
      * Gets a unique identifier for this execution such as a process ID.
      */
     protected String getExecutionID() {
-        String runtimeName = ManagementFactory.getRuntimeMXBean().getName();
+        String runtimeName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
         try {
             int index = runtimeName.indexOf('@');
             if (index != -1) {
