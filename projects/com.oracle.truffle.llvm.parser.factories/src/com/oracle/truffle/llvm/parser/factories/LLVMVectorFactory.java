@@ -43,7 +43,10 @@ import com.oracle.truffle.llvm.nodes.vector.LLVMInsertElementNodeFactory.LLVMI1I
 import com.oracle.truffle.llvm.nodes.vector.LLVMInsertElementNodeFactory.LLVMI32InsertElementNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMInsertElementNodeFactory.LLVMI64InsertElementNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMInsertElementNodeFactory.LLVMI8InsertElementNodeGen;
+import com.oracle.truffle.llvm.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleDoubleVectorNodeGen;
+import com.oracle.truffle.llvm.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleFloatVectorNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleI32VectorNodeGen;
+import com.oracle.truffle.llvm.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleI64VectorNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleI8VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -103,6 +106,12 @@ final class LLVMVectorFactory {
                 return LLVMShuffleI8VectorNodeGen.create(vector1, vector2, mask);
             case I32:
                 return LLVMShuffleI32VectorNodeGen.create(vector1, vector2, mask);
+            case I64:
+                return LLVMShuffleI64VectorNodeGen.create(vector1, vector2, mask);
+            case FLOAT:
+                return LLVMShuffleFloatVectorNodeGen.create(vector1, vector2, mask);
+            case DOUBLE:
+                return LLVMShuffleDoubleVectorNodeGen.create(vector1, vector2, mask);
             default:
                 throw new AssertionError(resultType);
         }
