@@ -763,13 +763,13 @@ public final class Function implements ParserListener {
         int i = 0;
         int vector = getIndex(args[i++]);
 
-        Type type;
+        Type vectorType;
         if (function.isValueForwardRef(vector)) {
-            type = types.get(i++);
+            vectorType = types.get(args[i++]);
         } else {
-            type = ((VectorType) function.getValueType(vector)).getElementType();
+            vectorType = function.getValueType(vector);
         }
-
+        Type type = ((VectorType) vectorType).getElementType();
         int index = getIndex(args[i]);
 
         emit(ExtractElementInstruction.fromSymbols(function.getSymbols(), type, vector, index));
