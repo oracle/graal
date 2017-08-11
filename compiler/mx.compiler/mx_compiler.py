@@ -457,8 +457,8 @@ def jvmci_ci_version_gate_runner(tasks):
 
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None):
     if jdk.javaCompliance >= '9':
-        with Task('JDK9_java_base_test', tasks, tags=[mx_gate.Tags.build]) as t:
-            if t: java_base_unittest(extraVMarguments)
+        with Task('JDK9_java_base_test', tasks, tags=GraalTags.test) as t:
+            if t: java_base_unittest(_remove_empty_entries(extraVMarguments))
 
     # Run unit tests in hosted mode
     for r in unit_test_runs:
@@ -868,7 +868,11 @@ def java_base_unittest(args):
     savedJava = jdk.java
     try:
         jdk.java = basejdk.java
-        mx_unittest.unittest(args)
+        if mx_gate.Task.verbose:
+            extra_args = ['--verbose', '--enable-timing']
+        else:
+            extra_args = []
+        mx_unittest.unittest(['--suite', 'compiler', '--fail-fast'] + extra_args + args)
     finally:
         jdk.java = savedJava
 
