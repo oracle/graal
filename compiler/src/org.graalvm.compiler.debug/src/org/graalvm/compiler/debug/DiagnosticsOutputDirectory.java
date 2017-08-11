@@ -85,7 +85,7 @@ public class DiagnosticsOutputDirectory {
             }
             return runtimeName;
         } catch (LinkageError err) {
-            return "unknown";
+            return String.valueOf(org.graalvm.compiler.debug.PathUtilities.getGlobalTimeStamp());
         }
     }
 
