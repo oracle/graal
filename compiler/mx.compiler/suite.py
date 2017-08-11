@@ -323,6 +323,11 @@ suite = {
         # see org.graalvm.compiler.hotspot.HotSpotGraalJVMCIServiceLocator
         "jdk.internal.module",
       ],
+      "runtimeDeps" : [
+        "java.management",
+        "jdk.management"
+      ],
+
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
         "GRAAL_NODEINFO_PROCESSOR",
