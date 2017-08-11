@@ -73,16 +73,20 @@ public class DiagnosticsOutputDirectory {
      * Gets a unique identifier for this execution such as a process ID.
      */
     protected String getExecutionID() {
-        String runtimeName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
         try {
-            int index = runtimeName.indexOf('@');
-            if (index != -1) {
-                long pid = Long.parseLong(runtimeName.substring(0, index));
-                return Long.toString(pid);
+            String runtimeName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
+            try {
+                int index = runtimeName.indexOf('@');
+                if (index != -1) {
+                    long pid = Long.parseLong(runtimeName.substring(0, index));
+                    return Long.toString(pid);
+                }
+            } catch (NumberFormatException e) {
             }
-        } catch (NumberFormatException e) {
+            return runtimeName;
+        } catch (LinkageError err) {
+            return "unknown";
         }
-        return runtimeName;
     }
 
     private synchronized String getPath(boolean createIfNull) {
