@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -240,37 +241,50 @@ public class OptionValues {
             }
 
             if (help.length() != 0) {
+                List<String> helpLines;
                 if (help.startsWith("file:")) {
                     String path = help.substring("file:".length());
-                    Class<?> enclosing = desc.declaringClass;
-                    while (enclosing.getEnclosingClass() != null) {
-                        enclosing = enclosing.getEnclosingClass();
-                    }
-                    if (!path.startsWith("/")) {
-                        path = enclosing.getPackage().getName().replace('.', '/') + '/' + path;
-                    }
-
-                    try {
-                        InputStream in = enclosing.getClassLoader().getResourceAsStream(path);
-                        if (in == null) {
-                            throw new FileNotFoundException(path);
-                        }
-                        BufferedReader br = new BufferedReader(new InputStreamReader(in));
-                        String line = br.readLine();
-                        while (line != null) {
-                            out.printf("%" + PROPERTY_HELP_INDENT + "s%s%n", "", line);
-                            line = br.readLine();
-                        }
-                    } catch (IOException ioe) {
-                        throw new InternalError(ioe);
-                    }
+                    helpLines = readHelpFile(desc, path);
                 } else {
-                    List<String> helpLines = wrap(help, PROPERTY_LINE_WIDTH - PROPERTY_HELP_INDENT);
-                    for (int i = 0; i < helpLines.size(); i++) {
-                        out.printf("%" + PROPERTY_HELP_INDENT + "s%s%n", "", helpLines.get(i));
-                    }
+                    helpLines = wrap(help, PROPERTY_LINE_WIDTH - PROPERTY_HELP_INDENT);
+                }
+                for (int i = 0; i < helpLines.size(); i++) {
+                    out.printf("%" + PROPERTY_HELP_INDENT + "s%s%n", "", helpLines.get(i));
                 }
             }
         }
+    }
+
+    /**
+     * Gets help text for the option described by {@code desc} by resolving {@code path} against the
+     * location of the package in which the option is declared, loading the resolved path via the
+     * class loader of the option and breaking it into lines.
+     *
+     * @throws InternalError if help text file does not exist or there's an error reading it
+     */
+    private static List<String> readHelpFile(OptionDescriptor desc, String path) throws InternalError {
+        List<String> lines = new ArrayList<>();
+        // Get top level enclosing class
+        Class<?> enclosing = desc.declaringClass;
+        while (enclosing.getEnclosingClass() != null) {
+            enclosing = enclosing.getEnclosingClass();
+        }
+        String resolvedPath = Paths.get(enclosing.getPackage().getName().replace('.', '/'), path).normalize().toString();
+
+        try {
+            InputStream in = desc.declaringClass.getClassLoader().getResourceAsStream(resolvedPath);
+            if (in == null) {
+                throw new FileNotFoundException(resolvedPath);
+            }
+            BufferedReader br = new BufferedReader(new InputStreamReader(in));
+            String line = br.readLine();
+            while (line != null) {
+                lines.add(line);
+                line = br.readLine();
+            }
+        } catch (IOException ioe) {
+            throw new InternalError(ioe);
+        }
+        return lines;
     }
 }

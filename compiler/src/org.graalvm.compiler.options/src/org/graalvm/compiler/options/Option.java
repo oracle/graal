@@ -42,9 +42,9 @@ public @interface Option {
      * {@code "%n"}.
      *
      * If this value starts with {@code "file:"<path>}, then the help message is located in a file
-     * located by resolving {@code <path>} against the location of the class file for the top level
-     * class in which the option is declared. A help message located in a file is not subject to any
-     * formatting or line wrapping by {@link OptionValues#printHelp} apart from indentation.
+     * located by resolving {@code <path>} against the location of package in which the option is
+     * declared. A help message located in a file is not subject to any formatting or line wrapping
+     * by {@link OptionValues#printHelp} apart from indentation.
      */
     String help();
 
