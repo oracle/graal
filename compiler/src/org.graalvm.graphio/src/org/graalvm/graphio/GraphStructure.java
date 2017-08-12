@@ -30,7 +30,7 @@ import java.util.Map;
  * nodes with properties, the classes of individual nodes, and ports associated with each node that
  * may contain edges to other nodes. The structure of a graph is assumed to be immutable for the
  * time of {@link GraphOutput operations} on it.
- * 
+ *
  * @param <G> the type of the (root node of a) graph
  * @param <N> the type of nodes
  * @param <C> the type of node classes
@@ -168,7 +168,7 @@ public interface GraphStructure<G, N, C, P> {
 
     /**
      * The name of an edge.
-     * 
+     *
      * @param port the port
      * @param index index from <code>0</code> to {@link #portSize(java.lang.Object)} minus
      *            <code>1</code>
