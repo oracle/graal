@@ -1,5 +1,5 @@
-Control the naming and granularity of the counters when using
-ProfileAllocations. The accepted values are:
+Control the naming and granularity of the counters when using ProfileAllocations.
+The accepted values are:
         AllocatingMethod - a counter per method
          InstanceOrArray - one counter for all instance allocations and
                            one counter for all array allocations 

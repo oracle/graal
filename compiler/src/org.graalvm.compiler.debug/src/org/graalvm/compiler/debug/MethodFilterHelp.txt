@@ -1,5 +1,5 @@
 Pattern for filtering debug scope output based on method context.
-The syntax for the source pattern that is passed to the constructor is as follows:
+The syntax for a pattern is:
 
   SourcePatterns = SourcePattern ["," SourcePatterns] .
   SourcePattern = [ Class "." ] method [ "(" [ Parameter { ";" Parameter } ] ")" ] .

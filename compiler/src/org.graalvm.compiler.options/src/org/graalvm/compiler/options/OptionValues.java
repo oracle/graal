@@ -22,15 +22,8 @@
  */
 package org.graalvm.compiler.options;
 
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.PrintStream;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -169,10 +162,9 @@ public class OptionValues {
      * @return {@code text} broken into lines
      */
     private static List<String> wrap(String text, int width) {
-        List<String> lines = Collections.singletonList(text);
+        List<String> lines = new ArrayList<>();
         if (text.length() > width) {
             String[] chunks = text.split("\\s+");
-            lines = new ArrayList<>();
             StringBuilder line = new StringBuilder();
             for (String chunk : chunks) {
                 if (line.length() + chunk.length() > width) {
@@ -182,22 +174,13 @@ public class OptionValues {
                 if (line.length() != 0) {
                     line.append(' ');
                 }
-                String[] embeddedLines = chunk.split("%n", -2);
-                if (embeddedLines.length == 1) {
-                    line.append(chunk);
-                } else {
-                    for (int i = 0; i < embeddedLines.length; i++) {
-                        line.append(embeddedLines[i]);
-                        if (i < embeddedLines.length - 1) {
-                            lines.add(line.toString());
-                            line.setLength(0);
-                        }
-                    }
-                }
+                line.append(chunk);
             }
             if (line.length() != 0) {
                 lines.add(line.toString());
             }
+        } else {
+            lines.add(text);
         }
         return lines;
     }
@@ -226,7 +209,6 @@ public class OptionValues {
             if (value instanceof String) {
                 value = '"' + String.valueOf(value) + '"';
             }
-            String help = desc.getHelp();
 
             String name = namePrefix + e.getKey();
             String assign = containsKey(desc.optionKey) ? ":=" : "=";
@@ -240,51 +222,17 @@ public class OptionValues {
                 out.printf("%s[%s]%n", linePrefix, typeName);
             }
 
+            List<String> helpLines;
+            String help = desc.getHelp();
             if (help.length() != 0) {
-                List<String> helpLines;
-                if (help.startsWith("file:")) {
-                    String path = help.substring("file:".length());
-                    helpLines = readHelpFile(desc, path);
-                } else {
-                    helpLines = wrap(help, PROPERTY_LINE_WIDTH - PROPERTY_HELP_INDENT);
-                }
-                for (int i = 0; i < helpLines.size(); i++) {
-                    out.printf("%" + PROPERTY_HELP_INDENT + "s%s%n", "", helpLines.get(i));
-                }
+                helpLines = wrap(help, PROPERTY_LINE_WIDTH - PROPERTY_HELP_INDENT);
+                helpLines.addAll(desc.getExtraHelp());
+            } else {
+                helpLines = desc.getExtraHelp();
+            }
+            for (String line : helpLines) {
+                out.printf("%" + PROPERTY_HELP_INDENT + "s%s%n", "", line);
             }
         }
-    }
-
-    /**
-     * Gets help text for the option described by {@code desc} by resolving {@code path} against the
-     * location of the package in which the option is declared, loading the resolved path via the
-     * class loader of the option and breaking it into lines.
-     *
-     * @throws InternalError if help text file does not exist or there's an error reading it
-     */
-    private static List<String> readHelpFile(OptionDescriptor desc, String path) throws InternalError {
-        List<String> lines = new ArrayList<>();
-        // Get top level enclosing class
-        Class<?> enclosing = desc.declaringClass;
-        while (enclosing.getEnclosingClass() != null) {
-            enclosing = enclosing.getEnclosingClass();
-        }
-        String resolvedPath = Paths.get(enclosing.getPackage().getName().replace('.', '/'), path).normalize().toString();
-
-        try {
-            InputStream in = desc.declaringClass.getClassLoader().getResourceAsStream(resolvedPath);
-            if (in == null) {
-                throw new FileNotFoundException(resolvedPath);
-            }
-            BufferedReader br = new BufferedReader(new InputStreamReader(in));
-            String line = br.readLine();
-            while (line != null) {
-                lines.add(line);
-                line = br.readLine();
-            }
-        } catch (IOException ioe) {
-            throw new InternalError(ioe);
-        }
-        return lines;
     }
 }

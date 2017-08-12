@@ -1,5 +1,5 @@
-Turn on the benchmark counters, and listen for specific patterns on
-System.out/System.err. The format of this option is:
+Turn on the benchmark counters, and listen for specific patterns on System.out/System.err.
+The format of this option is:
 
   (err|out),start pattern,end pattern
   

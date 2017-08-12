@@ -97,9 +97,7 @@ public class DebugOptions {
                    "Note that this only lists the metrics that were initialized during the VM execution and so " +
                    "will not include metrics for compiler code that is not executed.", type = OptionType.Debug)
     public static final OptionKey<Boolean> ListMetrics = new OptionKey<>(false);
-    @Option(help = "File to which metrics are dumped per compilation. A CSV format is used if the file ends with .csv " +
-                    "otherwise a more human readable format is used. The fields in the CSV format are: " +
-                    "compilable, compilable_identity, compilation_nr, compilation_id, metric_name, metric_value", type = OptionType.Debug)
+    @Option(help = "file:MetricsFileHelp.txt", type = OptionType.Debug)
      public static final OptionKey<String> MetricsFile = new OptionKey<>(null);
     @Option(help = "File to which aggregated metrics are dumped at shutdown. A CSV format is used if the file ends with .csv " +
                     "otherwise a more human readable format is used. If not specified, metrics are dumped to the console.", type = OptionType.Debug)
@@ -153,7 +151,7 @@ public class DebugOptions {
     @Option(help = "Enable dumping canonical text from for graphs.", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintCanonicalGraphStrings = new OptionKey<>(false);
     @Option(help = "Choose format used when dumping canonical text for graphs: " +
-            "0 gives a scheduled graph (better for spotting changes involving the schedule)" +
+            "0 gives a scheduled graph (better for spotting changes involving the schedule) " +
             "while 1 gives a CFG containing expressions rooted at fixed nodes (better for spotting small structure differences)", type = OptionType.Debug)
     public static final OptionKey<Integer> PrintCanonicalGraphStringFlavor = new OptionKey<>(0);
     @Option(help = "Exclude virtual nodes when dumping canonical text for graphs.", type = OptionType.Debug)
