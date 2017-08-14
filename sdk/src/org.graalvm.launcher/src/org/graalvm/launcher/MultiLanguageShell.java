@@ -31,11 +31,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Set;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Language;
@@ -71,9 +73,16 @@ public class MultiLanguageShell {
         console.println("GraalVM MultiLanguage Shell " + VERSION);
         console.println("Copyright (c) 2013-7, Oracle and/or its affiliates");
 
-        List<Language> languages = context.getEngine().getLanguages().values().stream().filter(
-                Language::isInteractive).distinct().sorted(Comparator.comparing(Language::getName))
-                        .collect(Collectors.toList());
+        List<Language> languages = new ArrayList<>();
+        Set<Language> uniqueValues = new HashSet<>();
+        for (Language language : context.getEngine().getLanguages().values()) {
+            if (language.isInteractive()) {
+                if (uniqueValues.add(language)) {
+                    languages.add(language);
+                }
+            }
+        }
+        languages.sort(Comparator.comparing(Language::getName));
 
         Map<String, Language> prompts = new HashMap<>();
 
