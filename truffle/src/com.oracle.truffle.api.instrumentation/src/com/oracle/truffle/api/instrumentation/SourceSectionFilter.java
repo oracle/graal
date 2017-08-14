@@ -589,7 +589,7 @@ public final class SourceSectionFilter {
                 if (RootNodeBits.isNoSourceSection(rootNodeBits)) {
                     return false;
                 }
-                if (RootNodeBits.isSameSource(rootNodeBits)) {
+                if (RootNodeBits.isSameSource(rootNodeBits) && rootSourceSection != null) {
                     return isSourceIncluded(rootSourceSection.getSource());
                 }
                 return true;
