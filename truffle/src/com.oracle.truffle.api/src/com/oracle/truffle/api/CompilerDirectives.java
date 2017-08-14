@@ -100,6 +100,13 @@ public final class CompilerDirectives {
     }
 
     /**
+     * TODO
+     */
+    public static boolean inCompilationRoot() {
+        return false;
+    }
+
+    /**
      * Returns a boolean indicating whether or not a given value is seen as constant in optimized
      * code. If this method is called in the interpreter this method will always return
      * <code>true</code>.

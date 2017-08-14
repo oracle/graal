@@ -200,6 +200,14 @@ public class TruffleGraphBuilderPlugins {
                 return true;
             }
         });
+        r.register0("inCompilationRoot", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                // TODO check if it really is a compilation root.
+                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
+                return true;
+            }
+        });
         r.register0("transferToInterpreter", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -242,7 +250,7 @@ public class TruffleGraphBuilderPlugins {
                      * and constant folding could still eliminate the call to bailout(). However, we
                      * also want to stop parsing, since we are sure that we will never need the
                      * graph beyond the bailout point.
-                     *
+                     * 
                      * Therefore, we manually emit the call to bailout, which will be intrinsified
                      * later when intrinsifications can no longer be delayed. The call is followed
                      * by a NeverPartOfCompilationNode, which is a control sink and therefore stops
