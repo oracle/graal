@@ -394,6 +394,7 @@ class GraalTags:
     test = ['test', 'fulltest']
     benchmarktest = ['benchmarktest', 'fulltest']
     ctw = ['ctw', 'fulltest']
+    doc = ['javadoc']
 
 def _remove_empty_entries(a):
     """Removes empty entries. Return value is always a list."""
@@ -523,6 +524,9 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     # ensure -Xcomp still works
     with Task('XCompMode:product', tasks, tags=GraalTags.test) as t:
         if t: run_vm(_remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xcomp', '-version'])
+
+    with Task('Javadoc', tasks, tags=GraalTags.doc) as t:
+        if t: mx.javadoc([])
 
 graal_unit_test_runs = [
     UnitTestRun('UnitTests', [], tags=GraalTags.test),
