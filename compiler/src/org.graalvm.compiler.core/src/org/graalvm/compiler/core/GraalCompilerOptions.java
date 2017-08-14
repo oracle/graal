@@ -40,7 +40,7 @@ public class GraalCompilerOptions {
                    "This option exists to test handling compilation crashes gracefully. " +
                    "See the MethodFilter option for the pattern syntax. ", type = OptionType.Debug)
     public static final OptionKey<String> CrashAt = new OptionKey<>(null);
-    @Option(help = "file:CompilationBailoutActionHelp.txt", type = OptionType.User)
+    @Option(help = "file:doc-files/CompilationBailoutActionHelp.txt", type = OptionType.User)
     public static final EnumOptionKey<ExceptionAction> CompilationBailoutAction = new EnumOptionKey<>(ExceptionAction.Silent);
     @Option(help = "Specifies the action to take when compilation fails with a bailout exception. " +
                     "The accepted values are the same as for CompilationBailoutAction.", type = OptionType.User)

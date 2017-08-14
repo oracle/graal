@@ -81,7 +81,7 @@ public class BenchmarkCounters {
         @Option(help = "Turn on the benchmark counters, and displays the results every n milliseconds", type = OptionType.Debug)
         public static final OptionKey<Integer> TimedDynamicCounters = new OptionKey<>(-1);
 
-        @Option(help = "file:BenchmarkDynamicCountersHelp.txt", type = OptionType.Debug)
+        @Option(help = "file:doc-files/BenchmarkDynamicCountersHelp.txt", type = OptionType.Debug)
         public static final OptionKey<String> BenchmarkDynamicCounters = new OptionKey<>(null);
         @Option(help = "Use grouping separators for number printing", type = OptionType.Debug)
         public static final OptionKey<Boolean> DynamicCountersPrintGroupSeparator = new OptionKey<>(true);

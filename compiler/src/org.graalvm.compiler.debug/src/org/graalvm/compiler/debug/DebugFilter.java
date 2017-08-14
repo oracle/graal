@@ -40,7 +40,7 @@ import org.graalvm.compiler.debug.DebugContext.Scope;
  * {@link DebugOptions#Count} and {@link DebugOptions#Time} options don't have a level, for them
  * {@code level = 0} means disabled and a {@code level > 0} means enabled.
  * <p>
- * The syntax for a filter is explained <a href="DumpHelp.txt">here</a>.
+ * The syntax for a filter is explained <a href="file:doc-files/DumpHelp.txt">here</a>.
  */
 final class DebugFilter {
 
