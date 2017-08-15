@@ -48,7 +48,13 @@ public abstract class AbstractLanguageLauncher extends Launcher {
      */
     protected final void launch(String[] args) {
         try {
-            launch(new ArrayList<>(Arrays.asList(args)), null);
+            try {
+                launch(new ArrayList<>(Arrays.asList(args)), null);
+            } catch (AbortException e) {
+                throw e;
+            } catch (Throwable t) {
+                throw abort(t);
+            }
         } catch (AbortException e) {
             handleAbortException(e);
         }

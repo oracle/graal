@@ -44,8 +44,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.options.OptionCategory;
@@ -217,6 +215,10 @@ public abstract class Launcher {
      */
     protected final AbortException abort(Throwable t, int exitCode) {
         if (t.getCause() instanceof IOException && t.getClass() == RuntimeException.class) {
+            String message = t.getMessage();
+            if (message != null && !message.startsWith(t.getCause().getClass().getName() + ": ")) {
+                System.err.println(message);
+            }
             throw abort((IOException) t.getCause(), exitCode);
         }
         throw new AbortException(t, exitCode);
@@ -296,18 +298,28 @@ public abstract class Launcher {
 
         StringBuilder sb = new StringBuilder();
         if (message != null) {
-            sb.append(message).append(System.lineSeparator());
+            sb.append(message);
         }
         if (!matches.isEmpty()) {
+            if (sb.length() > 0) {
+                sb.append(System.lineSeparator());
+            }
             sb.append("Did you mean one of the following arguments?").append(System.lineSeparator());
-            for (String match : matches) {
-                sb.append("      ").append(match).append(System.lineSeparator());
+            Iterator<String> iterator = matches.iterator();
+            while (true) {
+                String match = iterator.next();
+                sb.append("  ").append(match);
+                if (iterator.hasNext()) {
+                    sb.append(System.lineSeparator());
+                } else {
+                    break;
+                }
             }
         }
         if (sb.length() > 0) {
-            throw exit(exitCode);
-        } else {
             throw abort(sb.toString(), exitCode);
+        } else {
+            throw exit(exitCode);
         }
     }
 
@@ -391,12 +403,12 @@ public abstract class Launcher {
         switch (versionAction) {
             case PrintAndContinue:
                 printVersion();
-                return false;
+                // fall through
+            case None:
+                break;
             case PrintAndExit:
                 printVersion();
                 return true;
-            case None:
-                break;
         }
         boolean printDefaultHelp = help || ((helpExpert || helpDebug) && !helpTools && !helpLanguages);
         if (printDefaultHelp) {
