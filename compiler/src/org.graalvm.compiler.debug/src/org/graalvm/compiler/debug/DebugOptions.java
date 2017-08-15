@@ -80,12 +80,12 @@ public class DebugOptions {
     @Option(help = "Pattern for specifying scopes in which logging is enabled. " +
                    "See the Dump option for the pattern syntax.", type = OptionType.Debug)
     public static final OptionKey<String> Verify = new OptionKey<>(null);
-    @Option(help = "file:DumpHelp.txt", type = OptionType.Debug)
+    @Option(help = "file:doc-files/DumpHelp.txt", type = OptionType.Debug)
     public static final OptionKey<String> Dump = new OptionKey<>(null);
     @Option(help = "Pattern for specifying scopes in which logging is enabled. " +
                    "See the Dump option for the pattern syntax.", type = OptionType.Debug)
     public static final OptionKey<String> Log = new OptionKey<>(null);
-    @Option(help = "file:MethodFilterHelp.txt")
+    @Option(help = "file:doc-files/MethodFilterHelp.txt")
     public static final OptionKey<String> MethodFilter = new OptionKey<>(null);
     @Option(help = "Only check MethodFilter against the root method in the context if true, otherwise check all methods", type = OptionType.Debug)
     public static final OptionKey<Boolean> MethodFilterRootOnly = new OptionKey<>(false);
@@ -97,7 +97,7 @@ public class DebugOptions {
                    "Note that this only lists the metrics that were initialized during the VM execution and so " +
                    "will not include metrics for compiler code that is not executed.", type = OptionType.Debug)
     public static final OptionKey<Boolean> ListMetrics = new OptionKey<>(false);
-    @Option(help = "file:MetricsFileHelp.txt", type = OptionType.Debug)
+    @Option(help = "file:doc-files/MetricsFileHelp.txt", type = OptionType.Debug)
      public static final OptionKey<String> MetricsFile = new OptionKey<>(null);
     @Option(help = "File to which aggregated metrics are dumped at shutdown. A CSV format is used if the file ends with .csv " +
                     "otherwise a more human readable format is used. If not specified, metrics are dumped to the console.", type = OptionType.Debug)
