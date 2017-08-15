@@ -27,6 +27,8 @@ import jdk.vm.ci.meta.JavaConstant;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.lang.reflect.Field;
+
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
@@ -41,6 +43,10 @@ public class UnsafeEATest extends EATestBase {
     private static final long byteArrayBaseOffset;
     private static final long intArrayBaseOffset;
     private static final long longArrayBaseOffset;
+
+    static short onHeapMemory;
+    static Object onHeapMemoryBase;
+    static long onHeapMemoryOffset;
 
     static {
         try {
@@ -58,6 +64,10 @@ public class UnsafeEATest extends EATestBase {
             byteArrayBaseOffset = UNSAFE.arrayBaseOffset(byte[].class);
             intArrayBaseOffset = UNSAFE.arrayBaseOffset(int[].class);
             longArrayBaseOffset = UNSAFE.arrayBaseOffset(long[].class);
+
+            Field staticField = UnsafeEATest.class.getDeclaredField("onHeapMemory");
+            onHeapMemoryBase = UNSAFE.staticFieldBase(staticField);
+            onHeapMemoryOffset = UNSAFE.staticFieldOffset(staticField);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -275,4 +285,37 @@ public class UnsafeEATest extends EATestBase {
         test("testWriteFloatToIntArraySnippet");
     }
 
+    public static boolean testGetBooleanSnippet() {
+        UNSAFE.putShort(onHeapMemoryBase, onHeapMemoryOffset, (short) 0x0204);
+        return UNSAFE.getBoolean(onHeapMemoryBase, onHeapMemoryOffset);
+    }
+
+    @Test
+    public void testGetBoolean() {
+        test("testGetBooleanSnippet");
+    }
+
+    public static short testPutBooleanSnippet() {
+        UNSAFE.putShort(onHeapMemoryBase, onHeapMemoryOffset, (short) 0x0204);
+        boolean bool = UNSAFE.getBoolean(onHeapMemoryBase, onHeapMemoryOffset);
+        UNSAFE.putBoolean(onHeapMemoryBase, onHeapMemoryOffset, bool);
+        return onHeapMemory;
+    }
+
+    @Test
+    public void testPutBoolean() {
+        test("testPutBooleanSnippet");
+    }
+
+    public static boolean testAndBooleanSnippet() {
+        UNSAFE.putShort(onHeapMemoryBase, onHeapMemoryOffset, (short) 0x0204);
+        boolean bool0 = UNSAFE.getBoolean(onHeapMemoryBase, onHeapMemoryOffset);
+        boolean bool1 = UNSAFE.getBoolean(onHeapMemoryBase, onHeapMemoryOffset + 1);
+        return bool0 & bool1;
+    }
+
+    @Test
+    public void testAndBoolean() {
+        test("testAndBooleanSnippet");
+    }
 }
