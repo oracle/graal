@@ -15,15 +15,13 @@ dist: trusty
 
 env:
   global:
-    - JVMCI_VERSION="jvmci-0.31"
-    - JVMCI_BASE_JDK8="jdk1.8.0_121"
+    - JVMCI_VERSION="jvmci-0.32"
+    - JVMCI_BASE_JDK8="openjdk1.8.0_141"
     - JDK9_BUILD="181"
   matrix:
-# Cannot build OpenJDK8 based JVMCI JDK until
-# https://github.com/travis-ci/travis-ci/issues/7337 is resolved
-#    - JDK="jdk8" GATE="style,fullbuild"
-#    - JDK="jdk8" GATE="build,test"
-#    - JDK="jdk8" GATE="build,bootstraplite"
+    - JDK="jdk8" GATE="style,fullbuild"
+    - JDK="jdk8" GATE="build,test"
+    - JDK="jdk8" GATE="build,bootstraplite"
     - JDK="jdk9" GATE="style,fullbuild"
     - JDK="jdk9" GATE="build,test"
     - JDK="jdk9" GATE="build,bootstraplite"
