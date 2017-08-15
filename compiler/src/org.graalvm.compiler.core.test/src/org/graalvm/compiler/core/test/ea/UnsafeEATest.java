@@ -27,8 +27,6 @@ import jdk.vm.ci.meta.JavaConstant;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.lang.reflect.Field;
-
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
@@ -39,14 +37,6 @@ public class UnsafeEATest extends EATestBase {
 
     private static final long fieldOffset1;
     private static final long fieldOffset2;
-
-    private static final long byteArrayBaseOffset;
-    private static final long intArrayBaseOffset;
-    private static final long longArrayBaseOffset;
-
-    static short onHeapMemory;
-    static Object onHeapMemoryBase;
-    static long onHeapMemoryOffset;
 
     static {
         try {
@@ -61,13 +51,6 @@ public class UnsafeEATest extends EATestBase {
                 fieldOffset2 = UNSAFE.objectFieldOffset(TestClassInt.class.getField("z"));
             }
             assert fieldOffset2 == fieldOffset1 + 4;
-            byteArrayBaseOffset = UNSAFE.arrayBaseOffset(byte[].class);
-            intArrayBaseOffset = UNSAFE.arrayBaseOffset(int[].class);
-            longArrayBaseOffset = UNSAFE.arrayBaseOffset(long[].class);
-
-            Field staticField = UnsafeEATest.class.getDeclaredField("onHeapMemory");
-            onHeapMemoryBase = UNSAFE.staticFieldBase(staticField);
-            onHeapMemoryOffset = UNSAFE.staticFieldOffset(staticField);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -213,109 +196,4 @@ public class UnsafeEATest extends EATestBase {
         return x;
     }
 
-    public static int testWriteIntToByteArraySnippet() {
-        byte[] array = new byte[4];
-        UNSAFE.putInt(array, byteArrayBaseOffset, 0x01020304);
-        return array[0];
-    }
-
-    @Test
-    public void testWriteIntToByteArray() {
-        test("testWriteIntToByteArraySnippet");
-    }
-
-    public static byte testWriteSignedExtendedByteToByteArraySnippet(byte b) {
-        byte[] array = new byte[4];
-        array[0] = 0x01;
-        array[1] = 0x02;
-        array[2] = 0x03;
-        array[3] = 0x04;
-        UNSAFE.putInt(array, byteArrayBaseOffset, b);
-        return array[3];
-    }
-
-    @Test
-    public void testWriteSignedExtendedByteToByteArray() {
-        test("testWriteSignedExtendedByteToByteArraySnippet", (byte) 0);
-    }
-
-    public static int testWriteLongToIntArraySnippet() {
-        int[] array = new int[2];
-        UNSAFE.putLong(array, intArrayBaseOffset, 0x0102030405060708L);
-        return array[0];
-    }
-
-    @Test
-    public void testWriteLongToIntArray() {
-        test("testWriteLongToIntArraySnippet");
-    }
-
-    public static int testWriteByteToIntArraySnippet() {
-        int[] array = new int[1];
-        array[0] = 0x01020304;
-        UNSAFE.putByte(array, intArrayBaseOffset, (byte) 0x05);
-        return array[0];
-    }
-
-    @Test
-    public void testWriteByteToIntArray() {
-        test("testWriteByteToIntArraySnippet");
-    }
-
-    public static long testWriteIntToLongArraySnippet() {
-        long[] array = new long[1];
-        array[0] = 0x0102030405060708L;
-        UNSAFE.putInt(array, longArrayBaseOffset, 0x04030201);
-        return array[0];
-    }
-
-    @Test
-    public void testWriteIntToLongArray() {
-        test("testWriteIntToLongArraySnippet");
-    }
-
-    public static float testWriteFloatToIntArraySnippet() {
-        float[] array = new float[1];
-        UNSAFE.putInt(array, intArrayBaseOffset, Float.floatToRawIntBits(0.5f));
-        return array[0];
-    }
-
-    @Test
-    public void testWriteFloatToIntArray() {
-        test("testWriteFloatToIntArraySnippet");
-    }
-
-    public static boolean testGetBooleanSnippet() {
-        UNSAFE.putShort(onHeapMemoryBase, onHeapMemoryOffset, (short) 0x0204);
-        return UNSAFE.getBoolean(onHeapMemoryBase, onHeapMemoryOffset);
-    }
-
-    @Test
-    public void testGetBoolean() {
-        test("testGetBooleanSnippet");
-    }
-
-    public static short testPutBooleanSnippet() {
-        UNSAFE.putShort(onHeapMemoryBase, onHeapMemoryOffset, (short) 0x0204);
-        boolean bool = UNSAFE.getBoolean(onHeapMemoryBase, onHeapMemoryOffset);
-        UNSAFE.putBoolean(onHeapMemoryBase, onHeapMemoryOffset, bool);
-        return onHeapMemory;
-    }
-
-    @Test
-    public void testPutBoolean() {
-        test("testPutBooleanSnippet");
-    }
-
-    public static boolean testAndBooleanSnippet() {
-        UNSAFE.putShort(onHeapMemoryBase, onHeapMemoryOffset, (short) 0x0204);
-        boolean bool0 = UNSAFE.getBoolean(onHeapMemoryBase, onHeapMemoryOffset);
-        boolean bool1 = UNSAFE.getBoolean(onHeapMemoryBase, onHeapMemoryOffset + 1);
-        return bool0 & bool1;
-    }
-
-    @Test
-    public void testAndBoolean() {
-        test("testAndBooleanSnippet");
-    }
 }
