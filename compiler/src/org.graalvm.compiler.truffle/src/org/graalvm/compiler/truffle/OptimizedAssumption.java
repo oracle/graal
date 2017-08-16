@@ -84,6 +84,10 @@ public final class OptimizedAssumption extends AbstractAssumption {
                 if (TruffleCompilerOptions.getValue(TraceTruffleAssumptions)) {
                     logInvalidatedInstalledCode(installedCode);
                 }
+                if (installedCode instanceof OptimizedCallTarget) {
+                    OptimizedCallTarget target = (OptimizedCallTarget) installedCode;
+                    target.getCompilationProfile().reportInvalidated();
+                }
             }
             e = e.next;
         }
